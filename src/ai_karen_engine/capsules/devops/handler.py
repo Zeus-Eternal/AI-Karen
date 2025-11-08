@@ -5,6 +5,14 @@ DevOps Capsule Handler - Nuclear-Grade Implementation for Kari AI
 - Military-grade RBAC with JWT validation
 - Quantum-resistant audit trails
 - Observability-ready for Prometheus and forensic logging
+
+Production Standards:
+- JWT + RBAC enforcement with role validation
+- Cryptographic integrity verification (SHA-256 file hashing)
+- Signed audit trails (HMAC-SHA512)
+- Prometheus metrics integration
+- Hardware isolation (CPU affinity)
+- Prompt safety controls (banned tokens, injection prevention)
 """
 
 import os
@@ -18,6 +26,15 @@ from pathlib import Path
 from typing import Dict, Any
 import threading
 import platform
+
+# Import security common module
+from ai_karen_engine.capsules.security_common import (
+    sanitize_prompt_input,
+    sanitize_dict_values,
+    validate_prompt_safety,
+    validate_allowed_tools,
+    PromptSecurityError,
+)
 
 # === Security Constants ===
 CAPSULE_SIGNING_KEY = os.getenv("KARI_CAPSULE_SIGNING_KEY", "change-me-to-secure-key")
@@ -166,8 +183,8 @@ class DevOpsCapsule:
         Main execution handler with:
         - JWT validation
         - Hardware isolation (NUMA-free)
-        - Prompt sanitization
-        - Secure LLM routing
+        - Prompt sanitization (banned tokens, injection prevention)
+        - Secure LLM routing with tool whitelist validation
         - Quantum-proof audit and observability
         """
         correlation_id = get_correlation_id()
@@ -175,36 +192,66 @@ class DevOpsCapsule:
         try:
             # Phase 1: Authentication
             user_ctx = validate_jwt(jwt_token)
-            # Phase 2: Authorization
+
+            # Phase 2: Authorization (RBAC)
             user_roles = set(user_ctx.get("roles", []))
             required_roles = set(self.manifest["required_roles"])
             if not user_roles.issuperset(required_roles):
                 raise CapsuleSecurityError("Insufficient privileges")
-            # Phase 3: Secure Execution
+
+            # Phase 3: Input Sanitization (Zero-Trust)
+            try:
+                sanitized_request = sanitize_dict_values(request, MAX_PROMPT_LENGTH)
+            except PromptSecurityError as pse:
+                raise CapsuleSecurityError(f"Input sanitization failed: {str(pse)}")
+
+            # Phase 4: Secure Execution
             with self.execution_lock:
                 _set_hardware_affinity()
-                # Audit
+
+                # Audit preparation
                 audit_payload = {
                     "user": user_ctx.get("sub"),
                     "action": "devops_task",
                     "timestamp": int(time.time()),
-                    "correlation_id": correlation_id
+                    "correlation_id": correlation_id,
+                    "capsule": "devops"
                 }
                 audit_payload["signature"] = _sign_payload(audit_payload)
+
                 try:
                     # Lazy-import to avoid circulars and keep plugin load atomic
                     from ai_karen_engine.core.prompt_router import render_prompt
                     from ai_karen_engine.integrations.llm_registry import registry
 
-                    prompt = render_prompt(self.prompt_template, context=request)
+                    # Render prompt with sanitized input
+                    prompt = render_prompt(self.prompt_template, context={
+                        "user_ctx": user_ctx,
+                        "request": sanitized_request,
+                        "audit_payload": audit_payload
+                    })
+
+                    # Validate prompt safety (banned tokens check)
+                    validate_prompt_safety(prompt)
+
+                    # Validate tool access
+                    validate_allowed_tools("llm.generate_text", self.manifest.get("allowed_tools", []))
+
+                    # Execute LLM generation
                     llm = registry.get_active()
                     result = llm.generate_text(
                         prompt,
-                        max_tokens=256,
-                        temperature=0.7
+                        max_tokens=self.manifest.get("max_tokens", 256),
+                        temperature=self.manifest.get("temperature", 0.7)
                     )
+
+                    # Metrics: Success
                     CAPSULE_SUCCESS()
-                    logger.info(f"Task succeeded for user {user_ctx.get('sub')}", extra={"correlation_id": correlation_id})
+                    logger.info(
+                        f"Task succeeded for user {user_ctx.get('sub')}",
+                        extra={"correlation_id": correlation_id}
+                    )
+
                     return {
                         "result": result,
                         "audit": audit_payload,
@@ -214,10 +261,21 @@ class DevOpsCapsule:
                             "correlation_id": correlation_id
                         }
                     }
+                except PromptSecurityError as pse:
+                    CAPSULE_FAILURE()
+                    logger.error(
+                        f"Prompt security violation: {str(pse)}",
+                        extra={"correlation_id": correlation_id}
+                    )
+                    raise CapsuleSecurityError(f"Prompt security violation: {str(pse)}")
                 except Exception as e:
                     CAPSULE_FAILURE()
-                    logger.error(f"Secure execution failed: {str(e)}", extra={"correlation_id": correlation_id})
+                    logger.error(
+                        f"Secure execution failed: {str(e)}",
+                        extra={"correlation_id": correlation_id}
+                    )
                     raise CapsuleSecurityError("Execution aborted by security policy")
+
         except CapsuleSecurityError as sec_e:
             logger.warning(str(sec_e), extra={"correlation_id": correlation_id})
             raise
