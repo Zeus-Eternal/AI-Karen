@@ -1,21 +1,23 @@
-# DevOps Capsule Manifest - Kari AI Production Standard
-id: "capsule.devops"
-name: "DevOps Capsule"
+# Memory Maintenance Capsule Manifest - Kari AI Production Standard
+id: "capsule.memory"
+name: "Memory Maintenance Capsule"
 version: "1.0.0"
 description: |
-  Nuclear-grade DevOps capsule for secure, hardware-isolated, zero-trust task execution.
-  Enforces military-grade RBAC with JWT validation and cryptographic audit trails.
+  Zero-trust memory maintenance capsule for NeuroVault operations:
+  memory refresh, pruning, vector compaction, and memory health monitoring.
 
 # Security: Required roles for execution (zero-trust enforcement)
 required_roles:
   - "system.admin"
-  - "capsule.devops"
+  - "capsule.memory"
 
 # Security: Allowed tool interfaces (whitelist-only)
 allowed_tools:
   - "llm.generate_text"
   - "monitor.metrics"
   - "neuro_vault.query"
+  - "neuro_vault.compact"
+  - "neuro_vault.prune"
 
 # Security: Isolation and sandboxing policies
 security_policy:
@@ -23,17 +25,16 @@ security_policy:
   allow_file_system_access: false
   allow_system_calls: false
   require_hardware_isolation: true
-  max_execution_time: 60  # seconds
+  max_execution_time: 120  # seconds (memory ops may take longer)
 
-# Capabilities: DevOps operations (for documentation)
+# Capabilities: Memory operations (for documentation)
 capabilities:
-  - provision_infrastructure
-  - restart_service
-  - deploy_code
-  - apply_patch
-  - run_compliance_scan
-  - view_audit_log
-  - manage_rbac
+  - memory_refresh
+  - memory_prune
+  - vector_compaction
+  - memory_health_check
+  - memory_optimization
+  - cache_invalidation
 
 # Observability: Audit and monitoring
 auditable: true
@@ -42,10 +43,10 @@ prometheus_enabled: true
 
 # Execution: LLM configuration
 prompt_type: jinja2
-max_tokens: 256
-temperature: 0.7
+max_tokens: 384
+temperature: 0.5
 
 # Metadata
 author: "Zeus - Chief Architect"
-created: "2025-07-03"
+created: "2025-11-08"
 updated: "2025-11-08"
