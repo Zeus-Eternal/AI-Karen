@@ -3,9 +3,14 @@ import logging
 from typing import List, Tuple
 from tqdm import tqdm
 
-import torch
-import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoTokenizer, AutoModel
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
 
 logger = logging.getLogger(__name__)
 
