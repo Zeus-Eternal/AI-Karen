@@ -328,6 +328,26 @@ async def logout(request: RefreshTokenRequest, current_user=Depends(get_current_
     return JSONResponse(content={"detail": "Successfully logged out"})
 
 
+@router.get("/validate-session")
+async def validate_session(current_user=Depends(get_current_user)) -> Dict[str, Any]:
+    """Validate current session and return user information."""
+    return {
+        "valid": True,
+        "user": {
+            "user_id": current_user.user_id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "roles": current_user.roles,
+            "is_active": current_user.is_active,
+            "tenant_id": current_user.tenant_id,
+            "preferences": current_user.preferences,
+        },
+        "authenticated": True,
+        "session_valid": True,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user=Depends(get_current_user)) -> Dict[str, Any]:
     """Get current user information."""

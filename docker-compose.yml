@@ -314,6 +314,8 @@ services:
       TRANSFORMERS_OFFLINE: "true"
       HF_HUB_OFFLINE: "1"
       TOKENIZERS_PARALLELISM: "false"
+      # Enable heavy NLP helpers (DistilBERT, spaCy, etc.)
+      KARI_ENABLE_DEGRADED_HELPERS: "1"
       # Model Orchestrator Plugin Configuration
       PLUGIN_DIR: "/app/plugin_marketplace"
       MODELS_ROOT: "/app/models"
@@ -342,6 +344,8 @@ services:
       - logs_data:/app/logs
       # Backup volume
       - backup_data:/app/backups
+      # Hugging Face cache for transformers models
+      - "${HOME}/.cache/huggingface/hub:/root/.cache/huggingface/hub:ro"
     depends_on:
       postgres:
         condition: service_healthy

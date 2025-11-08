@@ -62,6 +62,26 @@ def register_startup_tasks(app: FastAPI) -> None:
             logger.warning(f"Extension monitoring initialization failed: {e}")
     
     @app.on_event("startup")
+    async def _init_extension_health_monitor() -> None:
+        """Initialize extension health monitor"""
+        try:
+            from .extension_health_monitor import initialize_extension_health_monitor
+            
+            # Get extension manager if available
+            extension_manager = None
+            try:
+                extension_system = getattr(app.state, 'extension_system', None)
+                if extension_system:
+                    extension_manager = extension_system.extension_manager
+            except Exception:
+                pass
+            
+            await initialize_extension_health_monitor(extension_manager)
+            logger.info("Extension health monitor initialized")
+        except Exception as e:
+            logger.warning(f"Extension health monitor initialization failed: {e}")
+    
+    @app.on_event("startup")
     async def _init_extension_service_recovery() -> None:
         """Initialize extension service recovery system with integration to existing patterns"""
         # Skip if database is not available
@@ -230,6 +250,16 @@ def register_shutdown_tasks(app: FastAPI) -> None:
             logger.info("Extension monitoring system shutdown completed")
         except Exception as e:
             logger.error(f"Extension monitoring shutdown failed: {e}")
+    
+    @app.on_event("shutdown")
+    async def _shutdown_extension_health_monitor() -> None:
+        """Shutdown extension health monitor"""
+        try:
+            from .extension_health_monitor import shutdown_extension_health_monitor
+            await shutdown_extension_health_monitor()
+            logger.info("Extension health monitor shutdown completed")
+        except Exception as e:
+            logger.error(f"Extension health monitor shutdown failed: {e}")
     
     @app.on_event("shutdown")
     async def _shutdown_extension_service_recovery() -> None:
