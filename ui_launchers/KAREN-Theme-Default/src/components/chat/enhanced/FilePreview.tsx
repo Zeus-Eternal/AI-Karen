@@ -4,8 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { format as formatDate } from "date-fns";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeBlock } from "@/components/ui/syntax-highlighter";
 import { useToast } from "@/hooks/use-toast";
 
 /* ---------- UI (shadcn) ---------- */

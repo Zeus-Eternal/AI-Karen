@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileCode, Eye, Download, Copy, Check, X } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CodeBlock } from '@/components/ui/syntax-highlighter';
 import { cn } from '@/lib/utils';
 
 export interface Artifact {
@@ -113,18 +112,14 @@ export default function CopilotArtifacts({
                 <TabsContent value="preview" className="mt-4">
                   <div className="rounded-md bg-gray-50 dark:bg-gray-900 p-4">
                     {artifact.type === 'code' && artifact.language ? (
-                      <SyntaxHighlighter
+                      <CodeBlock
                         language={artifact.language}
-                        style={vscDarkPlus}
-                        customStyle={{
-                          margin: 0,
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                        }}
+                        theme="dark"
                         showLineNumbers
+                        className="text-sm"
                       >
                         {artifact.content}
-                      </SyntaxHighlighter>
+                      </CodeBlock>
                     ) : (
                       <pre className="text-sm whitespace-pre-wrap">
                         {artifact.content}

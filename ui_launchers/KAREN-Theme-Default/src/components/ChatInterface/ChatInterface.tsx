@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { ChatHeader } from "./components/ChatHeader";
 import { ChatMainContent } from "./components/ChatMainContent";
 import { ChatCodeTab } from "./components/ChatCodeTab";
-import { AnalyticsTab } from "./components/AnalyticsTab";
+import AnalyticsTab from "./components/AnalyticsTab";
 import { useChatState } from "./hooks/useChatState";
 import { useChatMessages } from "./hooks/useChatMessages";
 import { useChatSettings } from "./hooks/useChatSettings";

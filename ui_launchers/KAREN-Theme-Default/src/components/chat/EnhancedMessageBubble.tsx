@@ -17,8 +17,7 @@ import {
   Zap,
   Check
 } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CodeBlock } from '@/components/ui/syntax-highlighter';
 import { cn } from '@/lib/utils';
 
 export interface MessageMetadata {
