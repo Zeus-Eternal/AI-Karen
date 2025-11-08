@@ -19,6 +19,13 @@ try:
 except ImportError:
     from nlp_config import SpacyConfig
 
+try:
+    from ai_karen_engine.utils.error_formatter import ErrorFormatter, log_dependency_error
+except ImportError:
+    # Fallback if error formatter is not available
+    ErrorFormatter = None
+    log_dependency_error = None
+
 logger = logging.getLogger(__name__)
 
 # Optional dependencies with graceful fallback
@@ -142,12 +149,13 @@ class SpacyService:
             else:
                 logger.info(f"spaCy service initialized with model: {self.config.model_name}")
         except Exception as e:
-            logger.error(f"Failed to initialize spaCy service: {e}")
+            error_msg = f"❌ spaCy Service Initialization Failed: {e}"
+            logger.error(error_msg)
             self._last_error = str(e)
             self._error_count += 1
             if self.config.enable_fallback:
                 self.fallback_mode = True
-                logger.info("Enabled fallback mode due to initialization failure")
+                logger.info("✅ Enabled fallback mode - basic NLP functionality available")
             else:
                 raise
     
@@ -183,7 +191,35 @@ class SpacyService:
                         except Exception:
                             logger.error("Fallback model also failed to load")
             
-            logger.error(f"Could not load spaCy model: {e}")
+            # Use enhanced error formatting if available
+            if ErrorFormatter and log_dependency_error:
+                log_dependency_error(logger, e, "spacy[en_core_web_sm]")
+            else:
+                # Fallback to enhanced manual formatting
+                error_msg = f"❌ spaCy Model Loading Failed: {e}"
+                
+                if "Can't find model" in str(e) and "en_core_web_sm" in str(e):
+                    error_msg += (
+                        "\n\n🔧 SOLUTION: Install the missing spaCy model by running:\n"
+                        "   python -m spacy download en_core_web_sm\n"
+                        "   \n"
+                        "   Or activate your virtual environment first:\n"
+                        "   source .env_kari/bin/activate\n"
+                        "   python -m spacy download en_core_web_sm\n"
+                        "\n"
+                        "ℹ️  The application will continue using fallback NLP processing."
+                    )
+                else:
+                    error_msg += (
+                        "\n\n🔧 POSSIBLE SOLUTIONS:\n"
+                        "   1. Install spaCy: pip install spacy\n"
+                        "   2. Download language model: python -m spacy download en_core_web_sm\n"
+                        "   3. Check your virtual environment is activated\n"
+                        "\n"
+                        "ℹ️  The application will continue using fallback NLP processing."
+                    )
+                
+                logger.error(error_msg)
             return None
     
     async def parse_message(self, text: str) -> ParsedMessage:
