@@ -35,31 +35,42 @@ const emailRegex =
 
 function scorePassword(pw: string): number {
   if (!pw) return 0;
-  // length, lower, upper, digit, special, variety bonus
+  // All requirements must be met for production backend
   const rules = [
-    /.{8,}/, // min length
-    /[a-z]/,
-    /[A-Z]/,
-    /\d/,
-    /[^A-Za-z0-9]/,
+    /.{8,}/, // min length (required)
+    /[a-z]/, // lowercase (required)
+    /[A-Z]/, // uppercase (required)
+    /\d/,    // digit (required)
+    /[^A-Za-z0-9]/, // special char (required)
   ];
   let score = rules.reduce((s, r) => s + (r.test(pw) ? 1 : 0), 0);
-  // extra length bonus
+
+  // Extra length bonuses
   if (pw.length >= 12) score += 1;
   if (pw.length >= 16) score += 1;
-  return Math.min(score, 7); // cap to 7
+
+  // Variety bonus for multiple special characters or character types
+  const specialCount = (pw.match(/[^A-Za-z0-9]/g) || []).length;
+  if (specialCount >= 2) score += 0.5;
+
+  return Math.min(Math.floor(score), 7); // cap to 7
 }
 
 function strengthLabel(score: number) {
-  if (score <= 2) return { label: "Weak", intent: "destructive" as const, pct: 25 };
-  if (score <= 4) return { label: "Okay", intent: "default" as const, pct: 55 };
-  if (score <= 6) return { label: "Strong", intent: "default" as const, pct: 80 };
-  return { label: "Fortress", intent: "default" as const, pct: 100 };
+  // Score < 5 means missing required elements
+  if (score < 5) return { label: "Too Weak", intent: "destructive" as const, pct: Math.min((score / 5) * 50, 50) };
+  // Score 5 = meets all requirements (8+ chars, upper, lower, digit, special)
+  if (score === 5) return { label: "Good", intent: "default" as const, pct: 65 };
+  // Score 6 = 12+ chars
+  if (score === 6) return { label: "Strong", intent: "default" as const, pct: 85 };
+  // Score 7+ = 16+ chars or extra variety
+  return { label: "Excellent", intent: "default" as const, pct: 100 };
 }
 
 export function AdminDetailsStep({
   onNext,
   onPrevious,
+  onFormDataChange,
   defaultEmail = "",
   defaultName = "",
 }: AdminDetailsStepProps) {
@@ -92,12 +103,19 @@ export function AdminDetailsStep({
     if (!form.full_name.trim()) next.full_name = "Full name is required.";
     else if (form.full_name.trim().length < 2) next.full_name = "Full name must be at least 2 characters.";
 
-    // Password rules
+    // Password rules - match backend validation requirements
     if (!form.password) next.password = "Password is required.";
     else {
-      if (form.password.length < 8) next.password = "Password must be at least 8 characters.";
-      if (!/[a-z]/.test(form.password) || !/[A-Z]/.test(form.password) || !/\d/.test(form.password)) {
-        next.password = "Include uppercase, lowercase, and a number.";
+      if (form.password.length < 8) {
+        next.password = "Password must be at least 8 characters.";
+      } else if (!/[a-z]/.test(form.password)) {
+        next.password = "Password must include lowercase letters.";
+      } else if (!/[A-Z]/.test(form.password)) {
+        next.password = "Password must include uppercase letters.";
+      } else if (!/\d/.test(form.password)) {
+        next.password = "Password must include numbers.";
+      } else if (!/[^A-Za-z0-9]/.test(form.password)) {
+        next.password = "Password must include special characters (!@#$%^&*).";
       }
     }
 
@@ -115,15 +133,16 @@ export function AdminDetailsStep({
     if (!validate()) return;
     setSubmitting(true);
     try {
-      // pass forward to wizard; keep payload minimal & secure
-      onNext?.({
-        admin: {
-          email: form.email.trim(),
-          full_name: form.full_name.trim(),
-          password: form.password, // wizard should transmit securely to API in the next step
-          organization: form.organization?.trim() || undefined,
-        },
+      // Update wizard form data with validated values
+      onFormDataChange({
+        email: form.email.trim(),
+        full_name: form.full_name.trim(),
+        password: form.password,
+        confirm_password: form.confirm_password,
       });
+
+      // Proceed to next step
+      onNext();
     } catch (err: any) {
       setErrors({ general: err?.message ?? "Failed to proceed. Please try again." });
     } finally {
@@ -143,7 +162,10 @@ export function AdminDetailsStep({
       <Progress value={pwMeta.pct} className="h-2 mt-1" />
       <ul className="mt-2 text-xs text-muted-foreground list-disc pl-5 space-y-1">
         <li>At least 8 characters (12–16 recommended)</li>
-        <li>Use upper/lowercase, numbers, and symbols</li>
+        <li>At least one uppercase letter (A-Z)</li>
+        <li>At least one lowercase letter (a-z)</li>
+        <li>At least one number (0-9)</li>
+        <li>At least one special character (!@#$%^&*)</li>
       </ul>
     </div>
   );
