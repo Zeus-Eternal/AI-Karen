@@ -38,6 +38,7 @@ class UserAccount:
     password_hash: str
     full_name: str
     roles: List[str]
+    username: Optional[str] = None  # Optional username for login
     is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_login: Optional[datetime] = None
@@ -164,9 +165,13 @@ class ProductionAuthService(BaseService):
                     self.logger.info(f"Skipping demo account: {email}")
                     continue
                 
+                # Extract username from email if not provided
+                username = user_data.get("username") or (email.split("@")[0] if "@" in email else email)
+                
                 user = UserAccount(
-                    user_id=user_data.get("user_id", email.split("@")[0]),
+                    user_id=user_data.get("user_id", username),
                     email=email,
+                    username=username,
                     password_hash=user_data.get("password_hash", ""),
                     full_name=user_data.get("full_name", ""),
                     roles=user_data.get("roles", ["user"]),
@@ -186,6 +191,20 @@ class ProductionAuthService(BaseService):
         except Exception as e:
             self.logger.error(f"Error loading users: {e}")
             self.users = {}
+    
+    def _find_user_by_identifier(self, identifier: str) -> Optional[UserAccount]:
+        """Find user by email or username."""
+        # First try direct email lookup
+        user = self.users.get(identifier)
+        if user:
+            return user
+        
+        # If not found, try username lookup
+        for email, user in self.users.items():
+            if hasattr(user, 'username') and user.username == identifier:
+                return user
+        
+        return None
     
     async def _save_users(self) -> None:
         """Save users to file."""
@@ -389,9 +408,13 @@ class ProductionAuthService(BaseService):
             raise ValueError(f"Password validation failed: {', '.join(issues)}")
         
         # Create admin user
+        # Extract username from email
+        username = email.split('@')[0] if '@' in email else email
+        
         user = UserAccount(
             user_id="super_admin",
             email=email,
+            username=username,
             password_hash=self._hash_password(password),
             full_name=full_name,
             roles=["super_admin", "admin", "user"],
@@ -429,8 +452,8 @@ class ProductionAuthService(BaseService):
             self._record_auth_attempt(ip_address, email, False, user_agent)
             return None, None, "Too many authentication attempts. Please try again later."
         
-        # Get user
-        user = self.users.get(email)
+        # Get user by email or username
+        user = self._find_user_by_identifier(email)
         if not user:
             self._record_auth_attempt(ip_address, email, False, user_agent)
             return None, None, "Invalid credentials"
@@ -564,9 +587,12 @@ class ProductionAuthService(BaseService):
             return None, f"Password validation failed: {', '.join(issues)}"
         
         # Create user
+        username = email.split("@")[0] if "@" in email else email
+        
         user = UserAccount(
-            user_id=email.split("@")[0],
+            user_id=username,
             email=email,
+            username=username,
             password_hash=self._hash_password(password),
             full_name=full_name,
             roles=roles or ["user"],

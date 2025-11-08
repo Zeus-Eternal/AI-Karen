@@ -12,9 +12,9 @@ from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 try:
-    from pydantic import BaseModel, EmailStr, Field
+    from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field
+    from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from ..services.production_auth_service import ProductionAuthService
 from ..core.services.base import ServiceConfig
@@ -23,8 +23,16 @@ from ..core.services.base import ServiceConfig
 # Request/Response Models
 class LoginRequest(BaseModel):
     """Login request model."""
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
     password: str = Field(..., min_length=1)
+    
+    @model_validator(mode='after')
+    def validate_login_identifier(self):
+        """Ensure either email or username is provided."""
+        if not self.email and not self.username:
+            raise ValueError('Either email or username must be provided')
+        return self
 
 
 class LoginResponse(BaseModel):
@@ -250,8 +258,11 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     ip_address = get_client_ip(http_request)
     user_agent = get_user_agent(http_request)
     
+    # Determine login identifier (email or username)
+    login_identifier = request.email or request.username
+    
     user, access_token, refresh_token_or_error = await auth_service.authenticate_user(
-        email=request.email,
+        email=login_identifier,  # auth_service can handle both email and username
         password=request.password,
         ip_address=ip_address,
         user_agent=user_agent
