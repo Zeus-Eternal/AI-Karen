@@ -200,10 +200,15 @@ class DistilBertService:
             logger.info("PyTorch not available; defaulting to CPU mode")
             return "cpu"
 
-        if self.config.enable_gpu and torch.cuda.is_available():
-            device = torch.device("cuda")
-            logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
-            return device
+        # Check for CUDA availability with error handling
+        try:
+            if self.config.enable_gpu and torch.cuda.is_available():
+                device = torch.device("cuda")
+                logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
+                return device
+        except Exception as e:
+            logger.warning(f"CUDA initialization failed: {e}")
+            logger.info("Falling back to CPU due to CUDA issues")
 
         device = torch.device("cpu")
         logger.info("Using CPU for inference")
