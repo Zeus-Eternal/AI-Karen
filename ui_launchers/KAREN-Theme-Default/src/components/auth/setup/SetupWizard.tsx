@@ -102,18 +102,49 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const request: CreateSuperAdminRequest = {
+
+      // Validate form data before submitting
+      if (!formData.email || !formData.full_name || !formData.password || !formData.confirm_password) {
+        throw new Error('All fields are required');
+      }
+
+      if (formData.password !== formData.confirm_password) {
+        throw new Error('Passwords do not match');
+      }
+
+      if (formData.password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+
+      const request = {
         email: formData.email,
         full_name: formData.full_name,
         password: formData.password,
         confirm_password: formData.confirm_password
       };
-      const response = await enhancedApiClient.post<ApiResponse<any>>('/api/admin/setup/create-super-admin', request);
-      if (response.status !== 'success') {
-        throw new Error(response.message || 'Failed to create super admin account');
+
+      // Call production auth endpoint via API proxy
+      const response = await fetch('/api/auth/first-run/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || 'Failed to create super admin account');
       }
-      // Move to email verification step
-      setCurrentStep(2);
+
+      const data = await response.json();
+
+      // Production endpoint auto-authenticates and returns tokens
+      // Mark setup as completed and move to completion step
+      markSetupCompleted();
+      setCurrentStep(3);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to create admin account');
     } finally {
@@ -139,15 +170,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
     try {
       setIsLoading(true);
       setError(null);
-      // Mark setup as completed
-      markSetupCompleted();
-      // Auto-login the newly created super admin
-      await login({
-        email: formData.email,
-        password: formData.password
-      });
 
-      // Redirect to admin dashboard
+      // Production endpoint already authenticated the user during setup
+      // Just redirect to admin dashboard
       router.replace('/admin');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Setup completion failed');

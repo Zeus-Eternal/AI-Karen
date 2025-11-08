@@ -41,28 +41,32 @@ export function useFirstRunSetup(): UseFirstRunSetupReturn {
   const checkFirstRun = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/admin/setup/check-first-run', {
+
+      // Call production auth endpoint via API proxy
+      const response = await fetch('/api/auth/first-run', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'include',
         cache: 'no-cache'
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      const result: AdminApiResponse<FirstRunSetup> = await response.json();
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Failed to check first-run status');
-      }
-      const setupData = result.data!;
+
+      const result = await response.json();
+
+      // Production endpoint returns { first_run_required: boolean, message: string }
+      const isFirstRun = result.first_run_required === true;
+
       setState(prev => ({
         ...prev,
         isLoading: false,
-        isFirstRun: !setupData.super_admin_exists,
-        setupCompleted: setupData.setup_completed,
-        setupToken: setupData.setup_token,
+        isFirstRun: isFirstRun,
+        setupCompleted: !isFirstRun,
         lastChecked: new Date(),
         error: null
       }));
