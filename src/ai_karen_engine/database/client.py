@@ -19,6 +19,13 @@ from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.database.models import Base
 from ai_karen_engine.core.logging import get_logger
 
+try:
+    from ai_karen_engine.utils.error_formatter import ErrorFormatter, log_config_error
+except ImportError:
+    # Fallback if error formatter is not available
+    ErrorFormatter = None
+    log_config_error = None
+
 logger = get_logger(__name__)
 
 
@@ -110,7 +117,41 @@ class DatabaseClient:
             logger.info("Database engine initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize database engine: {e}")
+            # Use enhanced error formatting if available
+            if ErrorFormatter and log_config_error:
+                log_config_error(logger, e, ".env")
+            else:
+                # Enhanced fallback error message
+                error_msg = f"❌ Database Engine Initialization Failed: {e}"
+                
+                if "Could not parse SQLAlchemy URL" in str(e):
+                    error_msg += (
+                        "\n\n🔧 SOLUTION: Fix your database configuration:\n"
+                        "   1. Check your .env file for DATABASE_URL\n"
+                        "   2. Ensure PostgreSQL is running:\n"
+                        "      $ docker compose up -d postgres\n"
+                        "   3. Verify the URL format:\n"
+                        "      DATABASE_URL=postgresql://user:pass@host:port/dbname\n"
+                        "\n"
+                        f"ℹ️  Current DATABASE_URL: {getattr(settings, 'database_url', 'NOT SET')}"
+                    )
+                elif "Connection refused" in str(e):
+                    error_msg += (
+                        "\n\n🔧 SOLUTION: Start the database service:\n"
+                        "   $ docker compose up -d postgres\n"
+                        "   $ docker ps  # Check if postgres is running\n"
+                        "\n"
+                        "ℹ️  Make sure PostgreSQL is accessible on the configured port."
+                    )
+                else:
+                    error_msg += (
+                        "\n\n🔧 POSSIBLE SOLUTIONS:\n"
+                        "   1. Check database configuration in .env\n"
+                        "   2. Start database service: docker compose up -d postgres\n"
+                        "   3. Verify database credentials and connectivity\n"
+                    )
+                
+                logger.error(error_msg)
             raise
     
     def create_tables(self):

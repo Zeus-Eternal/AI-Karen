@@ -2,21 +2,33 @@
   "admin@kari.ai": {
     "user_id": "super_admin",
     "email": "admin@kari.ai",
-    "password_hash": "01cb92dfff4091c2bee0f343b2af049fb39b45c08a1e5132b834e12e037d919d",
+    "password_hash": "95c47114803b1046fb4fa22a82b8f29b:379f0e4165ef9baf500a832fac8847cfc3ac532d62b8278b7e03ae0480f41996",
     "full_name": "Super Administrator",
-    "roles": [
-      "super_admin",
-      "admin",
-      "routing_admin",
-      "user"
-    ],
+    "roles": ["super_admin", "admin", "user"],
     "is_active": true,
-    "created_at": "2025-09-11T10:02:00+00:00",
-    "last_login": "2025-09-11T14:40:45.006361+00:00",
+    "created_at": "2025-11-08T03:00:00+00:00",
+    "last_login": "2025-11-08T03:22:44.346819+00:00",
     "failed_login_attempts": 0,
     "locked_until": null,
     "tenant_id": "default",
     "two_factor_enabled": false,
-    "preferences": {}
+    "preferences": {
+      "personalityTone": "professional",
+      "personalityVerbosity": "detailed",
+      "memoryDepth": "deep",
+      "preferredLLMProvider": "llama-cpp",
+      "preferredModel": "llama3.2:latest",
+      "temperature": 0.7,
+      "maxTokens": 2048,
+      "notifications": {
+        "email": true,
+        "push": false
+      },
+      "ui": {
+        "theme": "system",
+        "language": "en",
+        "avatarUrl": null
+      }
+    }
   }
 }

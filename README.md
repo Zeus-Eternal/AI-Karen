@@ -48,7 +48,7 @@ Tuning env:
 * **Multiple UI Interfaces** - Web (Next.js) is the default interface, with Desktop (Tauri) and Streamlit options
 * **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support, CUDA acceleration, helper models
 * **Production Monitoring** - Prometheus metrics, OSIRIS logging, health checks, and comprehensive observability
-* **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation, PII protection
+* **Authentication & Security** - Enhanced JWT-based auth with username/email login, advanced validation, rate limiting, password policies, and comprehensive security logging
 * **Container Orchestration** - Docker Compose setup with service discovery and health monitoring
 
 **Technology Stack:**
@@ -64,7 +64,55 @@ Tuning env:
 
 ## 🎯 Recent Updates
 
-### v2.0.0 - Production AI Intelligence & Memory Systems (Latest)
+### v2.1.0 - Enhanced Authentication & Validation System (Latest)
+
+AI-Karen now features a comprehensive enhanced authentication and validation system with username-based login, advanced security features, and configurable validation rules.
+
+#### **Enhanced Authentication System**
+Production-ready authentication with advanced security and flexibility:
+
+- **Username/Email Login** - Users can authenticate with either username or email address
+- **Advanced Form Validation** - Configurable validation rules with detailed error messages
+- **Enhanced Security Logging** - Comprehensive audit trail with security event tracking
+- **Rate Limiting** - Configurable rate limiting to prevent brute force attacks
+- **Password Policies** - Enforced password strength requirements with history tracking
+- **Database Migration System** - Proper schema versioning and migration tracking
+- **Enhanced Monitoring** - Detailed authentication statistics and security metrics
+
+**Key Features:**
+- Flexible login identifiers (username or email)
+- Pydantic model validation with detailed error responses
+- Security event logging with risk scoring
+- Configurable password policies per tenant
+- Rate limiting with configurable windows
+- Password history tracking to prevent reuse
+- Enhanced statistics and monitoring views
+
+**Migration Applied:**
+```bash
+# The enhanced authentication migration has been applied
+# Schema version: 022_enhanced_auth_validation_system.sql
+# Username column added to auth_users table
+# Enhanced validation and security features enabled
+```
+
+**API Usage:**
+```bash
+# Login with username
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Login with email
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+
+# Get enhanced authentication statistics
+curl -X GET "http://localhost:8000/api/auth/status"
+```
+
+### v2.0.0 - Production AI Intelligence & Memory Systems
 
 AI-Karen has been significantly enhanced with production-grade intelligent routing and neuroscience-inspired memory architecture:
 
@@ -203,11 +251,18 @@ KARI_LAZY_LOADING=true KARI_MINIMAL_STARTUP=true python start_optimized.py
 
 ## Access URLs
 
-- Frontend: http://10.96.136.74:8020/login
-- API Documentation: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
-- Local LLM: http://localhost:8080
-- Monitoring: http://localhost:9090
+- **Frontend**: http://localhost:8010 (Web UI)
+- **API Documentation**: http://localhost:8000/docs
+- **Authentication Status**: http://localhost:8000/api/auth/status
+- **Health Check**: http://localhost:8000/health
+- **API Base**: http://localhost:8000/api
+- **Monitoring**: http://localhost:9090 (Prometheus)
+- **Database**: localhost:5434 (PostgreSQL)
+
+**Default Login Credentials:**
+- Username: `admin` or Email: `admin@kari.ai`
+- Password: `admin123`
+- **⚠️ Important**: Change default password after first login
 
 ## Performance & Optimization
 
@@ -314,30 +369,48 @@ config = AuthConfig.from_environment("production")
 Example configuration files are provided in `config/auth_config.yaml`
 and `config/auth_config.json`.
 
-### Production Authentication Setup
+### Enhanced Authentication System
 
-AI-Karen ships with a production-ready authentication stack featuring
-PostgreSQL storage, bcrypt password hashing, JWT token management,
-Redis-backed sessions, and multi-tenant support. See
-[Production Authentication Setup](docs/auth/PRODUCTION_AUTH_SETUP.md) for
-full deployment instructions.
+AI-Karen features a comprehensive enhanced authentication system with username/email login, advanced validation, and security features:
 
-**Environment Variables**
+**Key Features:**
+- **Flexible Login**: Users can authenticate with either username or email
+- **Advanced Validation**: Configurable form validation with detailed error messages
+- **Security Logging**: Comprehensive audit trail with security event tracking
+- **Rate Limiting**: Configurable rate limiting to prevent brute force attacks
+- **Password Policies**: Enforced password strength requirements with history tracking
+- **Enhanced Monitoring**: Detailed authentication statistics and security metrics
+
+**Migration Status:**
+The enhanced authentication migration (v022) has been applied, adding:
+- Username column to auth_users table
+- Enhanced validation and security features
+- Comprehensive monitoring and statistics
+
+**Authentication Examples:**
 
 ```bash
-cp config/production_auth_config.env .env
-# Edit .env with secure production values
+# Login with username
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Login with email  
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+
+# Get authentication status and statistics
+curl -X GET "http://localhost:8000/api/auth/status"
 ```
 
-**Migration Script**
+**Default Credentials:**
+- Username: `admin` or Email: `admin@kari.ai`
+- Password: `admin123`
+- **Important**: Change the default password immediately after first login
 
-Initialize the authentication database schema:
-
-```bash
-python scripts/run_auth_migration.py
-# Optional dry run
-python scripts/run_auth_migration.py --dry-run
-```
+**Migration Documentation:**
+See [Enhanced Authentication Migration Guide](ENHANCED_AUTH_MIGRATION_README.md) for detailed migration information and new features.
 
 ---
 
@@ -559,21 +632,57 @@ curl -H "X-Tenant-ID: default" \
 ### Authentication
 
 ```bash
-# Login with default admin credentials
+# Login with username (new feature)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@kari.ai", "password": "password123"}'
+  -d '{"username": "admin", "password": "admin123"}'
 
-# Use token
+# Login with email (traditional method)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+
+# Use token for authenticated requests
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/chat
 
-# Update your credentials after logging in
-curl -X POST http://localhost:8000/api/auth/update_credentials \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"new_password": "strongpass"}'
+# Get current user information
+curl -X GET http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer <token>"
+
+# Get authentication statistics (admin only)
+curl -X GET http://localhost:8000/api/auth/stats \
+  -H "Authorization: Bearer <token>"
 ```
+
+### Enhanced Validation System
+
+The new validation system provides comprehensive form validation with detailed error messages:
+
+```bash
+# Test login validation - missing identifier (should fail)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password": "admin123"}'
+# Returns: "Either email or username must be provided"
+
+# Test with invalid email format (should fail)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "invalid-email", "password": "admin123"}'
+
+# Test with valid username (should succeed)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+```
+
+**Validation Features:**
+- **Form Validation**: Login, registration, and password reset forms
+- **Field Validation**: Email format, username patterns, password strength
+- **Security Validation**: SQL injection prevention, XSS protection
+- **Detailed Errors**: Specific error messages for each validation failure
+- **Configurable Rules**: Database-stored validation rules for flexibility
 
 ### Plugin Management
 
@@ -680,6 +789,55 @@ docker compose restart postgres redis
 
 # Check logs
 docker compose logs postgres
+```
+
+#### Authentication Issues
+
+**Problem**: Login failures or "Invalid credentials" errors
+
+**Solution**:
+```bash
+# Check authentication service status
+curl http://localhost:8000/api/auth/status
+
+# Verify default credentials work
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Check authentication statistics
+curl http://localhost:8000/api/auth/status | jq .stats
+
+# If migration issues, check schema version
+docker compose exec postgres psql -U karen_user -d ai_karen -c \
+  "SELECT migration_name, status FROM migration_history ORDER BY applied_at DESC LIMIT 5;"
+```
+
+#### Schema Migration Issues
+
+**Problem**: Schema version mismatch or migration errors
+
+**Solution**:
+```bash
+# Check current migration status
+docker compose exec postgres psql -U karen_user -d ai_karen -c \
+  "SELECT migration_name, applied_at, status FROM migration_history WHERE service = 'postgres' ORDER BY applied_at DESC LIMIT 1;"
+
+# If migration_history table doesn't exist, initialize it
+docker compose exec postgres psql -U karen_user -d ai_karen -c \
+  "CREATE TABLE IF NOT EXISTS migration_history (
+    id SERIAL PRIMARY KEY,
+    migration_name VARCHAR(255) NOT NULL,
+    service VARCHAR(50) NOT NULL DEFAULT 'postgres',
+    applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    status VARCHAR(20) NOT NULL DEFAULT 'applied'
+  );"
+
+# Record current migration as applied
+docker compose exec postgres psql -U karen_user -d ai_karen -c \
+  "INSERT INTO migration_history (migration_name, service, status) 
+   VALUES ('022_enhanced_auth_validation_system.sql', 'postgres', 'applied')
+   ON CONFLICT DO NOTHING;"
 ```
 
 #### Plugin Loading Failures
@@ -812,6 +970,9 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
 - [Extension Documentation](extensions/README.md) - Extension system overview
+
+### Authentication Documentation
+- [Enhanced Authentication Migration Guide](ENHANCED_AUTH_MIGRATION_README.md) - Complete migration guide with new features
 - [Auth Service](docs/auth/auth_service.md) - Core authentication service overview
 - [Auth Service Deployment Guide](docs/auth/auth_service_deployment.md) - Environment setup and configuration loading
 - [Auth Service Migration Guide](docs/auth/auth_service_migration.md) - Removal of legacy security modules
