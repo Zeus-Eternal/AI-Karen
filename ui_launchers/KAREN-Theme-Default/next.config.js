@@ -20,24 +20,19 @@ const nextConfig = {
     swcPlugins: [],
     forceSwcTransforms: true,
   },
-  
+
   // These are now top-level config options in Next.js 15
   skipTrailingSlashRedirect: true,
   skipMiddlewareUrlNormalize: true,
-  
-  // Disable static generation to avoid Html import issues
-  output: 'standalone',
-  
 
-  
   // Cross-origin configuration handled in headers
-  
+
   // Force Next.js to use this directory as the workspace root
   distDir: '.next',
-  
+
   // Explicitly set the output file tracing root to prevent workspace detection issues
   outputFileTracingRoot: __dirname,
-  
+
   // TypeScript configuration - disable for faster builds
   typescript: {
     // Skip type checking during build for speed
@@ -171,15 +166,6 @@ const nextConfig = {
         new webpack.IgnorePlugin({
           resourceRegExp: /prism-async/,
           contextRegExp: /react-syntax-highlighter/,
-        }),
-        // Ignore problematic Html imports from next/document
-        new webpack.IgnorePlugin({
-          resourceRegExp: /next\/document/,
-        }),
-        // Ignore Html component specifically
-        new webpack.IgnorePlugin({
-          resourceRegExp: /Html/,
-          contextRegExp: /next/,
         })
       );
 
@@ -608,23 +594,6 @@ const nextConfig = {
 
   // Fail fast if any static generation step hangs
   staticPageGenerationTimeout: 60,
-  
-  // Disable static generation for error pages
-  // experimental: {
-  //   staticGenerationAsyncStorage: false,
-  //   staticGenerationBailout: 'force-static',
-  // },
-  
-  // Skip static generation for problematic pages during build
-  // experimental: {
-  //   skipTrailingSlashRedirect: true,
-  //   skipMiddlewareUrlNormalize: true,
-  // },
-  
-  // Disable static optimization for error pages to avoid Html import issues
-  generateBuildId: async () => {
-    return 'build-' + Date.now();
-  },
 
   // API proxying is handled by the catch-all route in src/app/api/[...path]/route.ts
   // Remove rewrite rules to avoid conflicts with custom API route implementations
