@@ -16,57 +16,71 @@ from ai_karen_engine.server.startup import create_lifespan
 
 def register_startup_tasks(app: FastAPI) -> None:
     """Register startup tasks for LLM providers and services with extension recovery integration"""
-    
+
+    # Store database availability state in app
+    app.state.database_available = False
+
     @app.on_event("startup")
     async def _init_database_config() -> None:
         """Initialize database configuration with enhanced settings"""
         try:
             from .database_config import get_database_config
             from .config import Settings
-            
+
             settings = Settings()
             db_config = get_database_config(settings)
-            
+
             # Initialize database with enhanced configuration
             success = await db_config.initialize_database()
+            app.state.database_available = success
+
             if success:
-                logger.info("Database configuration initialized successfully")
-                
+                logger.info("Database available - initialized successfully")
+
                 # Setup graceful shutdown
                 await db_config.setup_graceful_shutdown()
-                logger.info("Database graceful shutdown configured")
             else:
-                logger.warning("Database initialization failed, continuing with degraded mode")
-                
+                logger.info("Database not available - running in degraded mode (DB-dependent features disabled)")
+
         except Exception as e:
-            logger.error(f"Database configuration initialization failed: {e}")
+            logger.warning(f"Database initialization failed (degraded mode): {e}")
+            app.state.database_available = False
     
     @app.on_event("startup")
     async def _init_extension_monitoring() -> None:
         """Initialize extension monitoring and alerting system"""
+        # Skip if database is not available
+        if not getattr(app.state, 'database_available', False):
+            logger.info("Skipping extension monitoring (database not available)")
+            return
+
         try:
             from .extension_monitoring_startup import initialize_extension_monitoring
             await initialize_extension_monitoring()
-            logger.info("Extension monitoring system initialized successfully")
+            logger.info("Extension monitoring system initialized")
         except Exception as e:
-            logger.error(f"Extension monitoring initialization failed: {e}")
-            # Don't raise - monitoring is not critical for core functionality
+            logger.warning(f"Extension monitoring initialization failed: {e}")
     
     @app.on_event("startup")
     async def _init_extension_service_recovery() -> None:
         """Initialize extension service recovery system with integration to existing patterns"""
+        # Skip if database is not available
+        if not getattr(app.state, 'database_available', False):
+            logger.info("Skipping extension service recovery (database not available)")
+            return
+
         try:
             from .extension_service_recovery import initialize_extension_service_recovery_manager
             from .database_config import get_database_config
             from .enhanced_database_health_monitor import get_enhanced_database_health_monitor
             from .config import Settings
-            
+
             settings = Settings()
-            
+
             # Get existing components for integration
             database_config = get_database_config(settings)
             enhanced_health_monitor = get_enhanced_database_health_monitor()
-            
+
             # Get extension manager if available
             extension_manager = None
             try:
@@ -75,34 +89,34 @@ def register_startup_tasks(app: FastAPI) -> None:
                     extension_manager = extension_system.extension_manager
             except Exception:
                 pass
-            
+
             # Initialize recovery manager with existing components
             recovery_manager = await initialize_extension_service_recovery_manager(
                 extension_manager=extension_manager,
                 database_config=database_config,
                 enhanced_health_monitor=enhanced_health_monitor
             )
-            
+
             # Register extension-specific startup handlers
             recovery_manager.add_startup_handler(lambda: _extension_startup_recovery_handler(recovery_manager))
-            
+
             # Register extension-specific graceful degradation handlers
             recovery_manager.add_graceful_degradation_handler(
-                "extension_api", 
+                "extension_api",
                 lambda: _extension_api_degradation_handler()
             )
             recovery_manager.add_graceful_degradation_handler(
-                "authentication", 
+                "authentication",
                 lambda: _authentication_degradation_handler()
             )
-            
+
             # Execute startup handlers
             await recovery_manager.execute_startup_handlers()
-            
-            logger.info("Extension service recovery system initialized successfully")
-            
+
+            logger.info("Extension service recovery initialized")
+
         except Exception as e:
-            logger.error(f"Extension service recovery initialization failed: {e}")
+            logger.warning(f"Extension service recovery initialization failed: {e}")
     
     async def _extension_startup_recovery_handler(recovery_manager):
         """Extension-specific startup recovery handler"""

@@ -77,8 +77,10 @@ class DatabaseClient:
                 sql_echo = False
 
             # Create synchronous engine with connection pooling
+            # Ensure sync URL uses psycopg2 driver, not asyncpg
+            sync_url = settings.database_url.replace('postgresql+asyncpg://', 'postgresql://')
             self.engine = create_engine(
-                settings.database_url,
+                sync_url,
                 poolclass=QueuePool,
                 pool_size=10,
                 max_overflow=20,
@@ -86,9 +88,9 @@ class DatabaseClient:
                 pool_recycle=3600,  # Recycle connections every hour
                 echo=sql_echo,  # Controlled by env to avoid noise
             )
-            
+
             # Create async engine
-            async_url = settings.database_url.replace('postgresql://', 'postgresql+asyncpg://')
+            async_url = settings.database_url if 'asyncpg' in settings.database_url else settings.database_url.replace('postgresql://', 'postgresql+asyncpg://')
             self.async_engine = create_async_engine(
                 async_url,
                 pool_size=10,

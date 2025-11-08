@@ -36,7 +36,7 @@ def main():
         args = parse_args(settings=settings)
 
         # Create the FastAPI app using the factory to fail fast on startup issues
-        _ = create_app()
+        app = create_app()
 
         # Run the server
         run_server(args=args, settings=settings)
