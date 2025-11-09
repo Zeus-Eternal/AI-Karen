@@ -112,14 +112,17 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
 };
 // Utility function to create lazy route components
 export function createLazyRoute<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>, options: { fallback?: React.ComponentType; errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>; from "@/lib/placeholder";
+  importFn: () => Promise<{ default: T }>,
+  options: {
+    fallback?: React.ComponentType;
+    errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
     preload?: boolean;
   } = {}
 ) {
   const LazyRouteComponent = React.lazy(importFn);
   // Preload the component if requested
   if (options.preload) {
-    importFn().catch(error => { }); from "@/components/ui/placeholder";
+    importFn().catch(error => { });
   }
   return ((props: any) => (
     <RouteLazyLoader
@@ -134,7 +137,7 @@ export function createLazyRoute<T extends ComponentType<any>>(
 export function useRoutePreloader() {
   const preloadRoute = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
-      importFn().catch(error => { }); from "@/components/ui/placeholder";
+      importFn().catch(error => { });
     },
     []
   );

@@ -6,21 +6,23 @@
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
-
+import {
+  Controller,
+  FormProvider,
   useFormContext,
   type ControllerProps,
   type FieldPath,
   type FieldValues,
-import { } from "react-hook-form";
+} from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-
-  createFormAria, 
-  createAriaLabel, 
+import {
+  createFormAria,
+  createAriaLabel,
   generateAriaId,
   mergeAriaProps,
   type AriaProps,
-import { } from "@/utils/aria";
+} from "@/utils/aria";
 import { AriaLiveRegion, AriaStatus } from "./aria-live-region";
 
 // Re-export the base Form provider
@@ -34,7 +36,7 @@ export type FormFieldContextValue<
   required?: boolean;
   helpText?: string;
   errorAnnouncement?: boolean;
-}
+};
 
 const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue
@@ -100,7 +102,7 @@ const useAriaFormField = () => {
 
 export type FormItemContextValue = {
   id: string;
-}
+};
 
 const FormItemContext = React.createContext<FormItemContextValue>(
   {} as FormItemContextValue
@@ -128,10 +130,11 @@ const AriaEnhancedFormItem = React.forwardRef<
           const { 'aria-relevant': _, ...safeProps } = merged;
           return safeProps;
         })()}
-        {...props} 
+        {...props}
       />
     </FormItemContext.Provider>
   );
+});
 
 AriaEnhancedFormItem.displayName = "AriaEnhancedFormItem";
 
@@ -173,6 +176,7 @@ const AriaEnhancedFormLabel = React.forwardRef<
       )}
     </Label>
   );
+});
 
 AriaEnhancedFormLabel.displayName = "AriaEnhancedFormLabel";
 
@@ -221,6 +225,7 @@ const AriaEnhancedFormControl = React.forwardRef<
       {...props}
     />
   );
+});
 
 AriaEnhancedFormControl.displayName = "AriaEnhancedFormControl";
 
@@ -240,6 +245,7 @@ const AriaEnhancedFormDescription = React.forwardRef<
       {...props}
     />
   );
+});
 
 AriaEnhancedFormDescription.displayName = "AriaEnhancedFormDescription";
 
@@ -280,6 +286,7 @@ const AriaEnhancedFormMessage = React.forwardRef<
       )}
     </>
   );
+});
 
 AriaEnhancedFormMessage.displayName = "AriaEnhancedFormMessage";
 
@@ -299,6 +306,7 @@ const AriaFormHelp = React.forwardRef<
       {...props}
     />
   );
+});
 
 AriaFormHelp.displayName = "AriaFormHelp";
 
@@ -400,5 +408,13 @@ const AriaFormSection = React.forwardRef<HTMLElement, AriaFormSectionProps>(
 AriaFormSection.displayName = "AriaFormSection";
 
 export {
+  AriaEnhancedForm as Form,
   useAriaFormField,
+  AriaFormField,
+  AriaFormItem,
+  AriaFormLabel,
+  AriaFormControl,
+  AriaFormDescription,
+  AriaFormMessage,
+  AriaFormSection,
 };

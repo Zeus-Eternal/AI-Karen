@@ -122,15 +122,17 @@ export class ErrorBoundary extends Component<Props, State> {
             <h3>Something went wrong</h3>
             <p>{componentName} encountered an error and couldn't be displayed.</p>
             {enableRetry && retryCount < this.maxRetries && (
-              <Button 
+              <Button
                 onClick={this.handleRetry}
                 className="retry-button"
-                disabled={retryCount  aria-label="Button">= this.maxRetries}
+                disabled={retryCount >= this.maxRetries}
+                aria-label="Retry Button"
               >
                 Retry ({retryCount}/{this.maxRetries})
               </Button>
             )}
-            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            <Button onClick={this.handleReset} className="reset-button" aria-label="Reset Button">
+              Reset
             </Button>
           </div>
         </div>

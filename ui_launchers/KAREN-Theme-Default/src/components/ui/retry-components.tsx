@@ -85,7 +85,7 @@ function RetryCard({
             return 0;
           }
           return prev - 100;
-
+        });
       }, 100);
 
       return () => clearInterval(interval);

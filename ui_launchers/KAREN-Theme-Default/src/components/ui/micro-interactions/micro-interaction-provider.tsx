@@ -31,6 +31,7 @@ export function MicroInteractionProvider({
     enableHaptics: true,
     animationDuration: 'normal',
     ...defaultConfig
+  });
 
   useEffect(() => {
     // Check for reduced motion preference

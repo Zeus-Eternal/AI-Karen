@@ -187,9 +187,9 @@ export function withFocusIndicator<P extends object>(
         <Component {...componentProps} />
       </FocusIndicator>
     );
-
+  });
   WrappedComponent.displayName = `withFocusIndicator(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 }
 

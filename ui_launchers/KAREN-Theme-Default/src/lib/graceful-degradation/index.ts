@@ -71,18 +71,16 @@ export function withProgressiveEnhancement(opts: {
 
   // SSR-safe handling: fallback when SSR, dynamic when client-side
   if (typeof window === "undefined") {
-    return <>{fallbackComponent}</>;
+    return React.createElement(React.Fragment, null, fallbackComponent);
   }
 
-  return (
-    <ProgressiveEnhancement
-      featureName={featureName}
-      fallbackComponent={fallbackComponent}
-      enhancedComponent={enhancedComponent}
-      loadingComponent={loadingComponent}
-      errorComponent={errorComponent}
-    />
-  );
+  return React.createElement(ProgressiveEnhancement, {
+    featureName,
+    fallbackComponent,
+    enhancedComponent,
+    loadingComponent,
+    errorComponent
+  });
 }
 
 /**
