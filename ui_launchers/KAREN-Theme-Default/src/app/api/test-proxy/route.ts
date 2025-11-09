@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 
-export async function GET(request: NextRequest) {
+type HealthProbeResult = {
+  base: string;
+  url: string;
+  status: number | null;
+  ok: boolean;
+  error: string | null;
+};
+
+export async function GET(_request: NextRequest) {
   try {
     const candidates = getBackendCandidates();
-    const testResults = [];
+    const testResults: HealthProbeResult[] = [];
 
     for (const base of candidates) {
       const url = withBackendPath('/api/health', base);
@@ -29,13 +37,13 @@ export async function GET(request: NextRequest) {
           ok: response.ok,
           error: null,
         });
-      } catch (error: any) {
+      } catch (error) {
         testResults.push({
           base,
           url,
           status: null,
           ok: false,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }

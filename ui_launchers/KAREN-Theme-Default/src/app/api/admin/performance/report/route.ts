@@ -201,31 +201,31 @@ function exportCSV(report: PerformanceReport, recommendations: ReturnType<typeof
   }
 
   // Cache
-  if (report.cache) {
-    lines.push('CACHE METRICS');
-    lines.push('Metric,Value');
-    lines.push(`hitRate,${esc(report.cache.hitRate)}`);
-    lines.push(`evictions,${esc(report.cache.evictions)}`);
-    lines.push('');
-  }
+    if (report.cache) {
+      lines.push('CACHE METRICS');
+      lines.push('Metric,Value');
+      lines.push(`hitRate,${esc(report.cache.hitRate)}`);
+      lines.push(`evictionRate,${esc(report.cache.evictionRate)}`);
+      lines.push('');
+    }
 
   // Jobs
-  if (report.jobs) {
-    lines.push('JOB METRICS');
-    lines.push('Metric,Value');
-    lines.push(`backlog,${esc(report.jobs.backlog)}`);
-    lines.push(`throughput,${esc(report.jobs.throughput)}`);
-    lines.push('');
-  }
+    if (report.jobs) {
+      lines.push('JOB METRICS');
+      lines.push('Metric,Value');
+      lines.push(`backlog,${esc(report.jobs.backlog)}`);
+      lines.push(`processed,${esc(report.jobs.processed)}`);
+      lines.push('');
+    }
 
   // Frontend
-  if (report.frontend?.ssr) {
-    lines.push('FRONTEND SSR');
-    lines.push('Metric,Value');
-    lines.push(`avgRenderMs,${esc(report.frontend.ssr.avgRenderMs)}`);
-    lines.push(`p95Ms,${esc(report.frontend.ssr.p95Ms)}`);
-    lines.push('');
-  }
+    if (report.frontend?.ssr) {
+      lines.push('FRONTEND SSR');
+      lines.push('Metric,Value');
+      lines.push(`avgRenderMs,${esc(report.frontend.ssr.avgRenderMs)}`);
+      lines.push(`p95Ms,${esc(report.frontend.ssr.p95)}`);
+      lines.push('');
+    }
 
   // Recommendations
   if (recommendations?.length) {

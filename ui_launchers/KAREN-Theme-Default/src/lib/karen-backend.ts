@@ -1288,7 +1288,8 @@ class KarenBackendService {
     llmPreferences?: {
       preferredLLMProvider?: string;
       preferredModel?: string;
-    }
+    },
+    tools?: Record<string, (...args: any[]) => unknown>
   ): Promise<HandleUserMessageResult> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const sid = sessionId ?? this.getSessionId();
@@ -1345,6 +1346,7 @@ class KarenBackendService {
             })),
             user_id: userId,
             session_id: sid,
+            tools: tools ? Object.keys(tools) : undefined,
           },
           include_memories: true,
           include_insights: true,
