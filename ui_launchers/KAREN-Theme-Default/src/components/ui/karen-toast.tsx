@@ -506,4 +506,5 @@ export {
   KarenToastClose,
   KarenToastAction,
   KarenToastProgress,
+  karenToastVariants,
 };
