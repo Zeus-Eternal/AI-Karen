@@ -82,14 +82,15 @@ export interface EnhancedSelectTriggerProps
     VariantProps<typeof enhancedSelectTriggerVariants> {}
 export const EnhancedSelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
+  EnhancedSelectTriggerProps
 >(({ className, size, variant, state, children, ...props }, ref) => (
-  <selectPrimitive.Trigger
+  <SelectPrimitive.Trigger
     ref={ref}
     className={cn(enhancedSelectTriggerVariants({ size, variant, state, className }))}
     {...props}
    aria-label="Select option">
     {children}
-    <selectPrimitive.Icon asChild aria-label="Select option">
+    <SelectPrimitive.Icon asChild aria-label="Select option">
       <ChevronDown className="h-4 w-4 opacity-50 " />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
@@ -100,7 +101,7 @@ export const EnhancedSelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
 >(({ className, ...props }, ref) => (
-  <selectPrimitive.ScrollUpButton
+  <SelectPrimitive.ScrollUpButton
     ref={ref}
     className={cn(
       'flex cursor-default items-center justify-center py-1',
@@ -116,7 +117,7 @@ export const EnhancedSelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
 >(({ className, ...props }, ref) => (
-  <selectPrimitive.ScrollDownButton
+  <SelectPrimitive.ScrollDownButton
     ref={ref}
     className={cn(
       'flex cursor-default items-center justify-center py-1',
@@ -133,8 +134,8 @@ export const EnhancedSelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = 'popper', ...props }, ref) => (
-  <selectPrimitive.Portal aria-label="Select option">
-    <selectPrimitive.Content
+  <SelectPrimitive.Portal aria-label="Select option">
+    <SelectPrimitive.Content
       ref={ref}
       className={cn(
         'relative z-50 max-h-96 min-w-[8rem] overflow-hidden',
@@ -156,7 +157,7 @@ export const EnhancedSelectContent = React.forwardRef<
       {...props}
      aria-label="Close">
       <EnhancedSelectScrollUpButton />
-      <selectPrimitive.Viewport
+      <SelectPrimitive.Viewport
         className={cn(
           'p-1',
           position === 'popper' &&
@@ -175,7 +176,7 @@ export const EnhancedSelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
 >(({ className, ...props }, ref) => (
-  <selectPrimitive.Label
+  <SelectPrimitive.Label
     ref={ref}
     className={cn(
       'py-[var(--space-xs)] pl-8 pr-2',
@@ -191,7 +192,7 @@ export const EnhancedSelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
 >(({ className, children, ...props }, ref) => (
-  <selectPrimitive.Item
+  <SelectPrimitive.Item
     ref={ref}
     className={cn(
       'relative flex w-full cursor-default select-none items-center',
@@ -206,11 +207,11 @@ export const EnhancedSelectItem = React.forwardRef<
     {...props}
    aria-label="Select option">
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center ">
-      <selectPrimitive.ItemIndicator aria-label="Select option">
+      <SelectPrimitive.ItemIndicator aria-label="Select option">
         <Check className="h-4 w-4 " />
       </SelectPrimitive.ItemIndicator>
     </span>
-    <selectPrimitive.ItemText aria-label="Select option">{children}</SelectPrimitive.ItemText>
+    <SelectPrimitive.ItemText aria-label="Select option">{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));
 EnhancedSelectItem.displayName = SelectPrimitive.Item.displayName;
@@ -219,7 +220,7 @@ export const EnhancedSelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
 >(({ className, ...props }, ref) => (
-  <selectPrimitive.Separator
+  <SelectPrimitive.Separator
     ref={ref}
     className={cn(
       '-mx-1 my-1 h-px bg-[var(--color-neutral-200)]',
@@ -247,7 +248,8 @@ export interface EnhancedSelectProps {
   disabled?: boolean;
 }
 export const EnhancedSelect = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+  HTMLDivElement,
+  EnhancedSelectProps
 >(({ 
   children, 
   label, 
@@ -264,7 +266,7 @@ export const EnhancedSelect = React.forwardRef<
   const hasError = state === 'error' || !!errorText;
   const actualState = hasError ? 'error' : state;
   return (
-    <div className="w-full">
+    <div ref={ref} className="w-full">
       {label && (
         <label 
           htmlFor={selectId}
@@ -282,7 +284,7 @@ export const EnhancedSelect = React.forwardRef<
           )}
         </label>
       )}
-      <selectPrimitive.Root {...props} aria-label="Select option">
+      <SelectPrimitive.Root {...props} aria-label="Select option">
         <EnhancedSelectTrigger 
           id={selectId}
           size={size}

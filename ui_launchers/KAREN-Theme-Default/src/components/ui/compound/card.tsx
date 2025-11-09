@@ -2,17 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-// Base types for compound components
-export interface BaseCardProps extends React.HTMLAttributes<HTMLDivElement> {}
-
-export interface CardRootProps extends BaseCardProps {
-  interactive?: boolean
-  variant?: "default" | "elevated" | "outlined" | "glass"
-}
-
-export interface CardActionsProps extends BaseCardProps {
-  justify?: "start" | "center" | "end" | "between"
-}
+import type { BaseCardProps, CardRootProps, CardActionsProps } from "./types";
 
 // Card Root Component
 const CardRoot = React.forwardRef<HTMLDivElement, CardRootProps>(
@@ -128,6 +118,8 @@ const Card = {
   Actions: CardActions,
 }
 
+const CardDefault = Card;
+
 export {
   Card,
   CardRoot,
@@ -139,8 +131,4 @@ export {
   CardActions,
 }
 
-export type {
-  BaseCardProps,
-  CardRootProps,
-  CardActionsProps,
-}
+export default CardDefault;

@@ -4,23 +4,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-// Base types for modal compound components
-export interface BaseModalProps extends React.HTMLAttributes<HTMLDivElement> {}
-
-export interface ModalRootProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> {}
-
-export interface ModalTriggerProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger> {
-  asChild?: boolean
-}
-
-export interface ModalContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  size?: "sm" | "md" | "lg" | "xl" | "full"
-  showCloseButton?: boolean
-}
-
-export interface ModalActionsProps extends BaseModalProps {
-  justify?: "start" | "center" | "end" | "between"
-}
+import type { BaseModalProps, ModalTriggerProps, ModalContentProps, ModalActionsProps } from "./types";
 
 // Modal Root Component
 const ModalRoot = DialogPrimitive.Root
@@ -29,6 +13,7 @@ ModalRoot.displayName = "ModalRoot"
 // Modal Trigger Component
 const ModalTrigger = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Trigger>,
+  ModalTriggerProps
 >(({ asChild = false, ...props }, ref) => (
   <DialogPrimitive.Trigger ref={ref} asChild={asChild} {...props} />
 ))
@@ -59,6 +44,7 @@ ModalOverlay.displayName = "ModalOverlay"
 // Modal Content Component
 const ModalContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
+  ModalContentProps
 >(({ className, children, size = "md", showCloseButton = true, ...props }, ref) => (
   <ModalPortal>
     <ModalOverlay />
@@ -192,8 +178,21 @@ const Modal = {
   Close: ModalClose,
 }
 
+const ModalDefault = Modal;
+
 export {
+  Modal,
+  ModalRoot,
+  ModalTrigger,
+  ModalPortal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalActions,
+  ModalClose,
 }
 
-export type {
-}
+export default ModalDefault;

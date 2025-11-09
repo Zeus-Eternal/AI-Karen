@@ -31,6 +31,9 @@ export interface FormatOptions {
   dateStyle?: 'full' | 'long' | 'medium' | 'short';
   timeStyle?: 'full' | 'long' | 'medium' | 'short';
   numberStyle?: 'decimal' | 'currency' | 'percent';
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+  numeric?: Intl.RelativeTimeFormatNumeric;
 }
 export interface PluralOptions {
   count: number;
@@ -135,6 +138,12 @@ export class I18nManager {
     if (style === 'currency' && options.currency) {
       formatOptions.currency = options.currency;
     }
+    if (typeof options.minimumFractionDigits === 'number') {
+      formatOptions.minimumFractionDigits = options.minimumFractionDigits;
+    }
+    if (typeof options.maximumFractionDigits === 'number') {
+      formatOptions.maximumFractionDigits = options.maximumFractionDigits;
+    }
     try {
       return new Intl.NumberFormat(locale, formatOptions).format(value);
     } catch (error) {
@@ -144,8 +153,9 @@ export class I18nManager {
   /**
    * Format dates according to locale
    */
-  formatDate(date: Date, options: FormatOptions = {}): string {
+  formatDate(date: Date | string | number, options: FormatOptions = {}): string {
     const locale = options.locale || this.currentLocale;
+    const resolvedDate = date instanceof Date ? date : new Date(date);
     const formatOptions: Intl.DateTimeFormatOptions = {};
     if (options.dateStyle) {
       formatOptions.dateStyle = options.dateStyle;
@@ -157,9 +167,11 @@ export class I18nManager {
       formatOptions.timeZone = options.timeZone;
     }
     try {
-      return new Intl.DateTimeFormat(locale, formatOptions).format(date);
+      return new Intl.DateTimeFormat(locale, formatOptions).format(resolvedDate);
     } catch (error) {
-      return date.toISOString();
+      return resolvedDate instanceof Date && !Number.isNaN(resolvedDate.getTime())
+        ? resolvedDate.toISOString()
+        : '';
     }
   }
   /**
@@ -168,7 +180,7 @@ export class I18nManager {
   formatRelativeTime(value: number, unit: Intl.RelativeTimeFormatUnit, options: FormatOptions = {}): string {
     const locale = options.locale || this.currentLocale;
     try {
-      return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(value, unit);
+      return new Intl.RelativeTimeFormat(locale, { numeric: options.numeric || 'auto' }).format(value, unit);
     } catch (error) {
       return `${value} ${unit}`;
     }
@@ -324,13 +336,16 @@ export class I18nManager {
     try {
       localStorage.setItem('i18n-locale', locale);
     } catch (error) {
+      // Ignore storage errors
     }
   }
+  
   private notifyListeners(locale: string): void {
     this.listeners.forEach(callback => {
       try {
         callback(locale);
       } catch (error) {
+        // Ignore callback errors
       }
     });
   }

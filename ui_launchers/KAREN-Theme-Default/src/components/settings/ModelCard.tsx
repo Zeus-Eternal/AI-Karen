@@ -22,7 +22,7 @@ export interface ModelInfo {
     speed?: 'fast' | 'medium' | 'slow';
     quality?: 'high' | 'medium' | 'low';
   };
-  status?: 'active' | 'beta' | 'deprecated';
+  status?: 'active' | 'beta' | 'deprecated' | 'available' | 'downloading' | 'local' | 'error';
 }
 
 export interface ModelCardProps {
@@ -164,4 +164,3 @@ export default function ModelCard({
 }
 
 export { ModelCard };
-export type { ModelInfo };

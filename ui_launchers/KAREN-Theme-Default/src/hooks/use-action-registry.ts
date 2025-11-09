@@ -8,7 +8,7 @@
  * - Loading states and error handling
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type DependencyList } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getActionRegistry, type SuggestedAction, type ActionResult, type ActionHandler } from '@/services/actionMapper';
 
@@ -252,7 +252,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
 export function useActionEvents(
   eventName: string,
   handler: (event: CustomEvent) => void,
-  deps: React.DependencyList = []
+  deps: DependencyList = []
 ): void {
   const { addEventListener, removeEventListener } = useActionRegistry({ autoToast: false });
   

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plug, Settings, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface Extension {
+interface DashboardExtension {
   id: string;
   name: string;
   description: string;
@@ -19,7 +19,7 @@ export interface Extension {
 }
 
 export interface ExtensionDashboardProps {
-  extensions?: Extension[];
+  extensions?: DashboardExtension[];
   onToggle?: (id: string, enabled: boolean) => void;
   onConfigure?: (id: string) => void;
   onRemove?: (id: string) => void;
@@ -33,7 +33,7 @@ export default function ExtensionDashboard({
   onRemove,
   className,
 }: ExtensionDashboardProps) {
-  const [localExtensions, setLocalExtensions] = useState<Extension[]>(extensions);
+  const [localExtensions, setLocalExtensions] = useState<DashboardExtension[]>(extensions);
 
   const handleToggle = (id: string, enabled: boolean) => {
     setLocalExtensions(prev =>
@@ -133,4 +133,4 @@ export default function ExtensionDashboard({
 }
 
 export { ExtensionDashboard };
-export type { Extension };
+export type { DashboardExtension };

@@ -6,8 +6,8 @@ import {
   getPluginService,
   getExtensionService,
   type PluginCategory,
-  type ExtensionInfo,
 } from "@/services";
+import type { ExtensionInfo as LegacyExtensionInfo } from "@/services/extensionService";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -22,7 +22,7 @@ export default function SidebarNavigation() {
   const { state, dispatch } = useExtensionContext();
 
   const [pluginCategories, setPluginCategories] = useState<PluginCategory[]>([]);
-  const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
+  const [extensions, setExtensions] = useState<LegacyExtensionInfo[]>([]);
 
   const [loadingPlugins, setLoadingPlugins] = useState(true);
   const [loadingExts, setLoadingExts] = useState(true);
