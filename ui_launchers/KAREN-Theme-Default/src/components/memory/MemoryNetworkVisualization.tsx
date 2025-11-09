@@ -19,6 +19,7 @@ export interface MemoryNetworkNode {
 }
 
 export interface MemoryNetworkEdge {
+  id?: string;
   source: string;
   target: string;
   weight: number; // 0..1 preferred
@@ -79,7 +80,11 @@ const NetworkChart: React.FC<{
       const positions = new Map<string, XY>();
       if (nodes.length === 0) return positions;
 
-      const rand = seededRandom(JSON.stringify(nodes.map((n) => n.id)) + "|" + JSON.stringify(edges.map((e) => e.id)));
+        const rand = seededRandom(
+          JSON.stringify(nodes.map((n) => n.id)) +
+            "|" +
+            JSON.stringify(edges.map((e) => e.id ?? `${e.source}-${e.target}`))
+        );
 
       // Initialize positions
       nodes.forEach((n) => {

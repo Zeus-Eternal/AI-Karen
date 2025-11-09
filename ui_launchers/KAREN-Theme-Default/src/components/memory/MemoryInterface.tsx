@@ -13,7 +13,10 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { v4 as uuidv4 } from "uuid";
 
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 import { CopilotKit } from "@copilotkit/react-core";
 import MemoryGrid from "./MemoryGrid";
 import MemoryEditor from "./MemoryEditor";
@@ -31,6 +34,15 @@ const MemoryNetworkVisualization = dynamic(
 const AgCharts = dynamic(() => import("ag-charts-react").then((m) => m.AgCharts), {
   ssr: false,
 });
+
+const MemoryInterfaceFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4" role="alert">
+    <p className="font-semibold">Something went wrong in MemoryInterface</p>
+    <Button variant="outline" size="sm" className="mt-2" onClick={resetError}>
+      Retry
+    </Button>
+  </div>
+);
 
 /* ============================
  * Types
@@ -268,16 +280,17 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           count,
         })
       );
-      charts.push({
+      const pieChartOptions = {
         title: { text: "Memory Types Distribution" },
         data: typeData,
         series: [{ type: "pie", angleKey: "count", labelKey: "type" }],
-      });
+      } satisfies AgChartOptions;
+      charts.push(pieChartOptions);
     }
 
     // Confidence distribution columns
     if (analytics.confidence_distribution) {
-      charts.push({
+      const confidenceChartOptions = {
         title: { text: "Confidence Score Distribution" },
         data: analytics.confidence_distribution,
         axes: [
@@ -285,12 +298,13 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           { type: "number", position: "left" },
         ],
         series: [{ type: "column", xKey: "range", yKey: "count" }],
-      });
+      } satisfies AgChartOptions;
+      charts.push(confidenceChartOptions);
     }
 
     // Access patterns line
     if (analytics.access_patterns) {
-      charts.push({
+      const accessPatternsChartOptions = {
         title: { text: "Memory Access Patterns (Last 30 Days)" },
         data: analytics.access_patterns,
         axes: [
@@ -298,7 +312,8 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           { type: "number", position: "left" },
         ],
         series: [{ type: "line", xKey: "date", yKey: "count", marker: { enabled: true } }],
-      });
+      } satisfies AgChartOptions;
+      charts.push(accessPatternsChartOptions);
     }
 
     return charts;
@@ -310,7 +325,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
 
   /* ----- Render ----- */
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in MemoryInterface</div>}>
+    <ErrorBoundary fallback={MemoryInterfaceFallback}>
       <CopilotKit apiKey={copilotApiKey}>
         <div
           className="memory-interface relative flex flex-col"
@@ -426,10 +441,14 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                       {analyticsCharts.map((opts, i) => (
                         <div key={i} className="rounded-lg border bg-background p-4">
                           <h3 className="mb-4 text-base font-semibold">
-                            {opts.title && typeof opts.title !== "string" ? opts.title.text : opts.title}
+                            {
+                              typeof opts.title === "string"
+                                ? opts.title
+                                : opts.title?.text ?? "Untitled Chart"
+                            }
                           </h3>
                           <div className="h-[300px]">
-                            <AgCharts options={opts as AgChartOptions} />
+                            <AgCharts options={opts} />
                           </div>
                         </div>
                       ))}

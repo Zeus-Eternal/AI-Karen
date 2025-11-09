@@ -223,7 +223,7 @@ const generateRecommendations = (
   context: ContextAnalysis,
   preferences?: IntelligentModelSelectorProps['userPreferences']
 ): ModelRecommendation[] => {
-  const recommendations = models.map(model => {
+  const recommendations: ModelRecommendation[] = models.map(model => {
     const reasoning: string[] = [];
     let score = 50;
 
@@ -318,10 +318,15 @@ const generateRecommendations = (
 
   // Add alternatives to top recommendation
   if (recommendations.length > 1) {
-    recommendations[0].alternatives = recommendations.slice(1, 3).map(rec => ({
-      model_id: rec.model.id,
-      reason: rec.score > 60 ? 'Similar quality, different trade-offs' : 'Lower cost alternative',
-    }));
+    const [topRecommendation, ...rest] = recommendations;
+    const enrichedTop: ModelRecommendation = {
+      ...topRecommendation,
+      alternatives: rest.slice(0, 2).map(rec => ({
+        model_id: rec.model.id,
+        reason: rec.score > 60 ? 'Similar quality, different trade-offs' : 'Lower cost alternative',
+      })),
+    };
+    recommendations[0] = enrichedTop;
   }
 
   return recommendations;

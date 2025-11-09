@@ -140,7 +140,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       setLoading(true);
       setError(null);
 
-      const stats = await memoryService.getMemoryStats(userId, tenantId);
+      const stats = await memoryService.getMemoryStats(userId);
 
       const nodes: MemoryNetworkNode[] = [];
       const edges: MemoryNetworkEdge[] = [];
@@ -240,7 +240,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userId, tenantId, memoryService, colorScales, config.nodeSize]);
+  }, [userId, memoryService, colorScales, config.nodeSize]);
 
   /** Filter data for rendering */
   const filteredData = useMemo(() => {
