@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 type SimpleComponent = React.ComponentType<Record<string, unknown>>;
+type ComponentProps<T> = T extends ComponentType<infer P> ? P : never;
 
 export interface LazyComponentProps {
   fallback?: SimpleComponent;
@@ -140,40 +141,30 @@ export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: LazyLoadOptions = {}
 ): LazyExoticComponent<T> {
-  const LazyComp = React.lazy(() => {
-    // Add artificial delay if specified (useful for testing)
-    if (options.delay) {
-      return new Promise<{ default: T }>(resolve => {
-        setTimeout(() => {
-          importFn().then(resolve);
-        }, options.delay);
+  const { delay = 0, fallback, errorFallback } = options;
+
+  return React.lazy(async () => {
+    if (delay > 0) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, delay);
       });
     }
-    return importFn();
-  });
 
-  // Return a wrapped component that includes error boundary and fallback
-  return React.lazy(() =>
-    Promise.resolve({
-      default: ((props: any) => (
-        <LazyComponent
-          fallback={options.fallback}
-          errorFallback={options.errorFallback}
-        >
-          <LazyComp {...props} />
-        </LazyComponent>
-      )) as unknown as T,
-    })
-  );
-      
-  const preloadComponent = React.useCallback(
-    (importFn: () => Promise<{ default: ComponentType<any> }>) => {
-      // Preload the component by calling the import function
-      importFn().catch(error => { });
-    },
-    []
-  );
-  return { preloadComponent };
+    const module = await importFn();
+    const LoadedComponent = module.default;
+
+    const WrappedComponent = (props: ComponentProps<T>) => (
+      <LazyComponent fallback={fallback} errorFallback={errorFallback}>
+        <LoadedComponent {...props} />
+      </LazyComponent>
+    );
+
+    WrappedComponent.displayName = `LazyComponent(${LoadedComponent.displayName ?? LoadedComponent.name ?? "Component"})`;
+
+    return {
+      default: WrappedComponent as unknown as T,
+    };
+  });
 }
 
 export default LazyComponent;
