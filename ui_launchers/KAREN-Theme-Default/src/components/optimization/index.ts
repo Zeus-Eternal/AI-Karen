@@ -9,7 +9,8 @@
 // ============================================================================
 
 // Optimization Dashboard
-export { OptimizationDashboard, default as OptimizationDashboardDefault } from "./OptimizationDashboard";
+export { OptimizationDashboard } from "./OptimizationDashboard";
+export { default as OptimizationDashboardDefault } from "./OptimizationDashboard";
 export type {
   IntegrationStatus,
   HealthStatus,
