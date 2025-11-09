@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
   createFormAria,
-  createAriaLabel,
-  generateAriaId,
   mergeAriaProps,
   type AriaProps,
 } from "@/utils/aria";
@@ -38,9 +36,7 @@ export type FormFieldContextValue<
   errorAnnouncement?: boolean;
 };
 
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-);
+const FormFieldContext = React.createContext<FormFieldContextValue | null>(null);
 
 /**
  * Enhanced FormField with ARIA support
@@ -78,11 +74,15 @@ const useAriaFormField = () => {
   const itemContext = React.useContext(FormItemContext);
   const { getFieldState, formState } = useFormContext();
 
-  const fieldState = getFieldState(fieldContext.name, formState);
-
   if (!fieldContext) {
     throw new Error("useAriaFormField should be used within <AriaEnhancedFormField>");
   }
+
+  if (!itemContext) {
+    throw new Error("useAriaFormField should be used within <AriaEnhancedFormItem>");
+  }
+
+  const fieldState = getFieldState(fieldContext.name, formState);
 
   const { id } = itemContext;
 
@@ -104,9 +104,7 @@ export type FormItemContextValue = {
   id: string;
 };
 
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-);
+const FormItemContext = React.createContext<FormItemContextValue | null>(null);
 
 /**
  * Enhanced FormItem with proper ARIA structure
@@ -407,14 +405,29 @@ const AriaFormSection = React.forwardRef<HTMLElement, AriaFormSectionProps>(
 );
 AriaFormSection.displayName = "AriaFormSection";
 
+const AriaFormField = AriaEnhancedFormField;
+const AriaFormItem = AriaEnhancedFormItem;
+const AriaFormLabel = AriaEnhancedFormLabel;
+const AriaFormControl = AriaEnhancedFormControl;
+const AriaFormDescription = AriaEnhancedFormDescription;
+const AriaFormMessage = AriaEnhancedFormMessage;
+
 export {
   AriaEnhancedForm as Form,
   useAriaFormField,
+  AriaEnhancedFormField,
+  AriaEnhancedFormItem,
+  AriaEnhancedFormLabel,
+  AriaEnhancedFormControl,
+  AriaEnhancedFormDescription,
+  AriaEnhancedFormMessage,
   AriaFormField,
   AriaFormItem,
   AriaFormLabel,
   AriaFormControl,
   AriaFormDescription,
   AriaFormMessage,
+  AriaFormHelp,
+  AriaFormFieldset,
   AriaFormSection,
 };

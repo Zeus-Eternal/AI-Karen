@@ -4,6 +4,7 @@
  */
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { useScreenReaderAnnouncements } from './screen-reader';
 export interface AccessibilityTestResult {
   /** Test name */
@@ -193,7 +194,8 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
           onClick={runTests}
           disabled={!target || isRunning}
           className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-         aria-label="Button">
+          aria-label="Run accessibility tests"
+        >
           {isRunning ? 'Running Tests...' : 'Run Accessibility Tests'}
         </Button>
         {testResults && (
