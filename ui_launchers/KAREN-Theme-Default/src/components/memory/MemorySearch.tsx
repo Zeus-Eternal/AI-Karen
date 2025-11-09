@@ -101,25 +101,23 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
 
   const loadSearchHistory = useCallback(async () => {
     try {
-      const memoryService = getMemoryService();
       const history = await memoryService.getSearchHistory(userId, 20);
       setSearchHistory(history);
     } catch (error) {
-      console.error('Failed to load search history:', error);
+      console.error("Failed to load search history:", error);
       // Gracefully fail - search history is a nice-to-have feature
     }
-  }, [userId]);
+  }, [userId, memoryService]);
 
   const loadSavedSearches = useCallback(async () => {
     try {
-      const memoryService = getMemoryService();
       const searches = await memoryService.getSavedSearches(userId);
       setSavedSearches(searches);
     } catch (error) {
-      console.error('Failed to load saved searches:', error);
+      console.error("Failed to load saved searches:", error);
       // Gracefully fail - saved searches are a nice-to-have feature
     }
-  }, [userId]);
+  }, [userId, memoryService]);
 
   const generateSuggestions = useCallback(
     async (searchQuery: string) => {
