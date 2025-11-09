@@ -45,10 +45,14 @@ export function LocaleMetadata({
       const languageCode = parts[0];
       const regionCode = parts[1];
 
-      const displayNames = new Intl.DisplayNames([locale], { type: "language" });
-      const regionDisplayNames = regionCode
-        ? new Intl.DisplayNames([locale], { type: "region" })
-        : null;
+      const displayNames =
+        typeof Intl.DisplayNames !== "undefined"
+          ? new Intl.DisplayNames([locale], { type: "language" })
+          : null;
+      const regionDisplayNames =
+        regionCode && typeof Intl.DisplayNames !== "undefined"
+          ? new Intl.DisplayNames([locale], { type: "region" })
+          : null;
 
       const direction = isRTLLocale(locale) ? "rtl" : "ltr";
 
@@ -74,14 +78,18 @@ export function LocaleMetadata({
       }
 
       // Get timezone
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const timezone =
+        typeof Intl !== "undefined"
+          ? new Intl.DateTimeFormat().resolvedOptions().timeZone
+          : "UTC";
 
       return {
         locale,
         languageCode,
         regionCode,
-        languageName: displayNames.of(languageCode) || languageCode,
-        regionName: regionCode && regionDisplayNames ? regionDisplayNames.of(regionCode) : null,
+        languageName: displayNames?.of(languageCode) || languageCode,
+        regionName:
+          regionCode && regionDisplayNames ? regionDisplayNames.of(regionCode) : null,
         direction,
         calendar,
         currency,
