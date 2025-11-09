@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { useAriaAnnouncements, AriaLiveRegion } from './aria-live-region';
 
 /**
@@ -409,7 +410,8 @@ export const ScreenReaderTestHelper: React.FC<{
 
   return (
     <div className="sr-only">
-      <Button onClick={testAnnouncements} aria-label="Button">
+      <Button onClick={testAnnouncements} aria-label="Run screen reader announcement test">
+        Run test
       </Button>
     </div>
   );
