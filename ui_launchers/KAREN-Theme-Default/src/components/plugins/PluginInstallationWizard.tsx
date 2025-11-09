@@ -316,8 +316,6 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
         },
       ],
       apiVersion: "1.0",
-      dependenciesResolved: undefined,
-      permissionsResolved: undefined,
       endpoints: [
         { path: "/slack/events", method: "POST", description: "Slack event webhook" },
         { path: "/slack/commands", method: "POST", description: "Slack slash commands" },
@@ -1451,3 +1449,5 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     </div>
   );
 };
+
+export default PluginInstallationWizard;

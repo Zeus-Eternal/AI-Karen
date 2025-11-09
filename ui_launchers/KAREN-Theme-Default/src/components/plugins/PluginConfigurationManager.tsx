@@ -758,3 +758,5 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
     </ErrorBoundary>
   );
 };
+
+export default PluginConfigurationManager;

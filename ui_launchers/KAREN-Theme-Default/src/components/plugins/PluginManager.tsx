@@ -612,3 +612,5 @@ export const PluginManager: React.FC = () => {
     </ErrorBoundary>
   );
 };
+
+export default PluginManager;
