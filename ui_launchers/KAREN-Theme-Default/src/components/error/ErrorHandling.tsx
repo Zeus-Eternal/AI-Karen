@@ -28,6 +28,17 @@ const ErrorToastContainer: React.FC<{ toasts: any[]; onRemove: (id: string) => v
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 import { getServiceErrorHandler } from "@/services/errorHandler";
 
+type ToastLevel = "error" | "warning" | "info" | "success";
+
+interface ToastMessage {
+  id: string;
+  message: string;
+  type: ToastLevel;
+  title?: string;
+  enableRetry?: boolean;
+  onRetry?: () => Promise<void> | void;
+}
+
 // Icons
 import { AlertCircle, Network, ShieldX, RefreshCw, CheckCircle2, Info, Bug, Trash2, KeyRound } from "lucide-react";
 
@@ -62,18 +73,27 @@ const ComponentThatThrows = ({ errorType }: { errorType: string }) => {
 const ErrorHandlingExample: React.FC = () => {
   const [errorType, setErrorType] = useState<string>("none");
   const [showApiError, setShowApiError] = useState(false);
-  const [toasts, setToasts] = useState<any[]>([]);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // ---- Mock toast helpers (replace with your useErrorToast / toast hook) ----
-  const pushToast = (payload: any) => setToasts((prev) => [...prev, { id: Date.now().toString(), ...payload }]);
+  const pushToast = (payload: Omit<ToastMessage, "id">) =>
+    setToasts((prev) => [...prev, { id: Date.now().toString(), ...payload }]);
   const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  const showError = (message: string, options?: any) => pushToast({ message, type: "error", ...options });
-  const showServiceError = (error: any, options?: any) =>
-    pushToast({ message: error?.message || "Service error", type: "error", ...options });
-  const showWarning = (message: string, options?: any) => pushToast({ message, type: "warning", ...options });
-  const showInfo = (message: string, options?: any) => pushToast({ message, type: "info", ...options });
-  const showSuccess = (message: string, options?: any) => pushToast({ message, type: "success", ...options });
+  const showError = (message: string, options?: Partial<ToastMessage>) =>
+    pushToast({ message, type: "error", ...options });
+  const showServiceError = (error: unknown, options?: Partial<ToastMessage>) =>
+    pushToast({
+      message: error instanceof Error ? error.message : "Service error",
+      type: "error",
+      ...options,
+    });
+  const showWarning = (message: string, options?: Partial<ToastMessage>) =>
+    pushToast({ message, type: "warning", ...options });
+  const showInfo = (message: string, options?: Partial<ToastMessage>) =>
+    pushToast({ message, type: "info", ...options });
+  const showSuccess = (message: string, options?: Partial<ToastMessage>) =>
+    pushToast({ message, type: "success", ...options });
 
   // -------------------------------------------------------------------------
   const apiClient = enhancedApiClient; // ensure import is used for lint; not strictly required here

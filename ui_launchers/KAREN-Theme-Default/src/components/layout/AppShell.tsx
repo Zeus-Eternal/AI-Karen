@@ -431,6 +431,8 @@ export const appShellMainVariants = cva(
   {}
 );
 
+export type AppShellMainVariants = VariantProps<typeof appShellMainVariants>;
+
 export interface AppShellMainProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
 }

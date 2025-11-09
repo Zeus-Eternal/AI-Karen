@@ -46,7 +46,7 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
     role: user.role as Role,
     is_active: user.is_active,
     is_verified: user.is_verified,
-    two_factor_enabled: user.two_factor_enabled,
+    two_factor_enabled: Boolean(user.two_factor_enabled),
   });
 
   const [errors, setErrors] = useState<FormErrors>({});

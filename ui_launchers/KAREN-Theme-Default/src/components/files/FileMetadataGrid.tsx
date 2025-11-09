@@ -3,7 +3,13 @@
 
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import type { ColDef, GridReadyEvent, SelectionChangedEvent, CellClickedEvent } from 'ag-grid-community';
+import type {
+  ColDef,
+  GridReadyEvent,
+  SelectionChangedEvent,
+  CellClickedEvent,
+  ICellRendererParams,
+} from 'ag-grid-community';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -253,7 +259,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     {
       headerName: 'File',
       field: 'filename',
-      cellRenderer: FileIconRenderer as any,
+      cellRenderer: FileIconRenderer as unknown as ColDef<FileMetadata>["cellRenderer"],
       flex: 2,
       minWidth: 220,
       sortable: enableSorting,
@@ -288,7 +294,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
       width: 130,
       sortable: enableSorting,
       filter: enableFiltering ? 'agSetColumnFilter' : false,
-      cellRenderer: StatusRenderer as any
+      cellRenderer: StatusRenderer as unknown as ColDef<FileMetadata>["cellRenderer"],
     },
     {
       headerName: 'Security',
@@ -296,7 +302,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
       width: 120,
       sortable: enableSorting,
       filter: enableFiltering ? 'agSetColumnFilter' : false,
-      cellRenderer: SecurityRenderer as any
+      cellRenderer: SecurityRenderer as unknown as ColDef<FileMetadata>["cellRenderer"],
     },
     {
       headerName: 'Uploaded',
@@ -323,7 +329,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
       width: 170,
       sortable: false,
       filter: false,
-      cellRenderer: TagsRenderer as any
+      cellRenderer: TagsRenderer as unknown as ColDef<FileMetadata>["cellRenderer"],
     },
     {
       headerName: 'Features',
@@ -352,14 +358,15 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
       sortable: false,
       filter: false,
       pinned: 'right',
-      cellRenderer: (params: any) => (
-        <ActionsRenderer
-          data={params.data}
-          onDownload={onFileDownload}
-          onPreview={onFilePreview}
-          onDelete={onFileDelete}
-        />
-      )
+      cellRenderer: ({ data }: ICellRendererParams<FileMetadata>) =>
+        data ? (
+          <ActionsRenderer
+            data={data}
+            onDownload={onFileDownload}
+            onPreview={onFilePreview}
+            onDelete={onFileDelete}
+          />
+        ) : null
     }
   ], [enableSorting, enableFiltering, onFileDownload, onFilePreview, onFileDelete]);
 
