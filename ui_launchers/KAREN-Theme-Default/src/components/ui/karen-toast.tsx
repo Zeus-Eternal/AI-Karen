@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * Karen Toast System
+ *
+ * Production-ready Radix Toast wrapper for Kari/Karen ecosystem.
+ * - Variant-driven visual system for status, system, and domain-specific alerts
+ * - Alert model aware (KarenAlert / AlertAction)
+ * - Supports actions, expandable details, emoji indicator, and progress bar
+ * - Viewport with configurable screen position
+ * - SSR-safe progress animation, motion-reduce aware
+ */
+
 import * as React from "react";
 import * as ToastPrimitives from "@radix-ui/react-toast";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -43,6 +54,10 @@ type KarenToastVariant = NonNullable<
   VariantProps<typeof karenToastVariants>["variant"]
 >;
 
+/* ----------------------------------------------------------------------------
+ * Progress Bar
+ * ------------------------------------------------------------------------- */
+
 const PROGRESS_COLOR_BY_VARIANT: Record<KarenToastVariant, string> = {
   default: "bg-gradient-to-r from-primary/80 to-primary shadow-sm",
   destructive:
@@ -59,17 +74,16 @@ const PROGRESS_COLOR_BY_VARIANT: Record<KarenToastVariant, string> = {
     "bg-gradient-to-r from-purple-400 to-purple-600 shadow-sm shadow-purple-200 dark:shadow-purple-900/20",
 };
 
-/* ----------------------------------------------------------------------------
- * Progress Bar
- * ------------------------------------------------------------------------- */
+interface KarenToastProgressProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  duration?: number;
+  variant?: KarenToastVariant;
+  enableAnimations?: boolean;
+}
 
 const KarenToastProgress = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
-    duration?: number;
-    variant?: KarenToastVariant;
-    enableAnimations?: boolean;
-  }
+  KarenToastProgressProps
 >(function KarenToastProgress(
   {
     className,
@@ -127,7 +141,7 @@ const KarenToastProgress = React.forwardRef<
     >
       <div
         className={cn(
-          "h-full transition-[width] duration-100 ease-linear motion-reduce:transition-none",
+          "h-full origin-left transition-[width] duration-100 ease-linear motion-reduce:transition-none",
           progressClassName,
           enableAnimations ? "will-change-[width]" : ""
         )}
@@ -143,7 +157,7 @@ KarenToastProgress.displayName = "KarenToastProgress";
  * Root Toast
  * ------------------------------------------------------------------------- */
 
-type KarenToastRootProps = React.ComponentPropsWithoutRef<
+export type KarenToastRootProps = React.ComponentPropsWithoutRef<
   typeof ToastPrimitives.Root
 > &
   VariantProps<typeof karenToastVariants> & {
@@ -178,12 +192,16 @@ const KarenToast = React.forwardRef<
     typeof alert?.duration === "number" ? alert.duration : duration;
 
   const hasCustomChildren = React.Children.count(children) > 0;
+  const hasActions = Boolean(alert?.actions && alert.actions.length > 0);
 
   const handleActionClick = React.useCallback(
     (action: AlertAction) => {
       try {
         const outcome = action.action?.();
-        if (outcome && typeof (outcome as Promise<unknown>).finally === "function") {
+        if (
+          outcome &&
+          typeof (outcome as Promise<unknown>).finally === "function"
+        ) {
           (outcome as Promise<unknown>).finally(() => {
             onActionClick?.(action);
           });
@@ -241,7 +259,11 @@ const KarenToast = React.forwardRef<
                   onClick={() => setIsExpanded((value) => !value)}
                   className="flex items-center space-x-1 text-xs font-medium opacity-75 transition-opacity hover:opacity-100 sm:text-sm"
                   aria-expanded={isExpanded}
-                  aria-controls="karen-toast-expandable-content"
+                  aria-controls={
+                    alert.id
+                      ? `karen-toast-expandable-${alert.id}`
+                      : "karen-toast-expandable"
+                  }
                 >
                   <span>{isExpanded ? "Show less" : "Show more"}</span>
                   {isExpanded ? (
@@ -253,7 +275,11 @@ const KarenToast = React.forwardRef<
 
                 {isExpanded ? (
                   <div
-                    id="karen-toast-expandable-content"
+                    id={
+                      alert.id
+                        ? `karen-toast-expandable-${alert.id}`
+                        : "karen-toast-expandable"
+                    }
                     className="mt-2 rounded bg-black/5 p-2 text-xs dark:bg-white/5 sm:text-sm"
                   >
                     {alert.expandableContent}
@@ -264,45 +290,42 @@ const KarenToast = React.forwardRef<
           </div>
         </div>
 
-        {alert?.actions && alert.actions.length > 0 ? (
+        {hasActions ? (
           <div className="flex flex-wrap gap-2 border-t border-current/10 pt-3">
-            {alert.actions.map((action, index) => {
-              const variantClassName =
+            {alert!.actions!.map((action, index) => {
+              const variantKey: "default" | "destructive" | "outline" =
                 action.variant === "destructive"
-                  ? "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500"
+                  ? "destructive"
                   : action.variant === "outline"
-                  ? "border border-current/20 bg-transparent hover:bg-current/10 focus-visible:ring-current"
-                  : "bg-current/10 hover:bg-current/20 focus-visible:ring-current";
+                  ? "outline"
+                  : "default";
 
               return (
-                <button
+                <KarenToastAction
                   key={`${action.label}-${index}`}
-                  type="button"
+                  variant={variantKey}
                   onClick={() => handleActionClick(action)}
-                  className={cn(
-                    "inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                    variantClassName
-                  )}
                 >
                   {action.icon ? (
-                    <span className="mr-1">{action.icon}</span>
+                    <span className="mr-1 inline-flex items-center">
+                      {action.icon}
+                    </span>
                   ) : null}
                   {action.label}
-                </button>
+                </KarenToastAction>
               );
             })}
           </div>
         ) : null}
-      </div>
 
-      {showProgress && resolvedDuration ? (
-        <KarenToastProgress
-          className="mt-1"
-          duration={resolvedDuration}
-          variant={resolvedVariant}
-          enableAnimations
-        />
-      ) : null}
+        {showProgress && resolvedDuration ? (
+          <KarenToastProgress
+            duration={resolvedDuration}
+            variant={resolvedVariant}
+            enableAnimations
+          />
+        ) : null}
+      </div>
 
       <KarenToastClose />
     </ToastPrimitives.Root>
@@ -471,8 +494,8 @@ const KarenToastProvider = ToastPrimitives.Provider;
  * Types & Exports
  * ------------------------------------------------------------------------- */
 
-type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
-type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
+export type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
+export type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
 
 export {
   KarenToastProvider,
@@ -484,5 +507,3 @@ export {
   KarenToastAction,
   KarenToastProgress,
 };
-
-export type { KarenToastActionElement, KarenToastProps };

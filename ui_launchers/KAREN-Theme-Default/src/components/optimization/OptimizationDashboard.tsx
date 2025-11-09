@@ -2,7 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,7 +80,18 @@ export interface PerformanceDashboard {
   trends: Record<string, "increasing" | "decreasing" | "stable">;
 }
 
-const OptimizationDashboard: React.FC = () => {
+const OptimizationDashboardErrorFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+    <p>Something went wrong while loading the optimization dashboard.</p>
+    <Button onClick={resetError} variant="outline">
+      Try again
+    </Button>
+  </div>
+);
+
+export const OptimizationDashboard: React.FC = () => {
   const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [performanceDashboard, setPerformanceDashboard] = useState<PerformanceDashboard | null>(null);
@@ -227,7 +241,7 @@ const OptimizationDashboard: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in OptimizationDashboard</div>}>
+    <ErrorBoundary fallback={OptimizationDashboardErrorFallback}>
       <div className="space-y-6 p-6 sm:p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
