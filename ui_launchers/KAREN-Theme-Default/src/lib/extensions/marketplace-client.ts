@@ -173,65 +173,103 @@ export class ExtensionMarketplaceClient {
       page,
       page_size: request.page_size,
     });
-    return this.apiClient.get(`/api/extensions/marketplace/search?${qs}`);
+    const response = await this.apiClient.get<ExtensionSearchResponse>(
+      `/api/extensions/marketplace/search?${qs}`
+    );
+    return response.data;
   }
 
   /** Get detailed information about a specific extension (by slug / name) */
   async getExtensionDetails(extensionName: string): Promise<ExtensionListing> {
     const name = encodeURIComponent(extensionName);
-    return this.apiClient.get(`/api/extensions/marketplace/extensions/${name}`);
+    const response = await this.apiClient.get<ExtensionListing>(
+      `/api/extensions/marketplace/extensions/${name}`
+    );
+    return response.data;
   }
 
   /** Get all versions of an extension */
   async getExtensionVersions(extensionName: string): Promise<ExtensionVersion[]> {
     const name = encodeURIComponent(extensionName);
-    return this.apiClient.get(`/api/extensions/marketplace/extensions/${name}/versions`);
+    const response = await this.apiClient.get<ExtensionVersion[]>(
+      `/api/extensions/marketplace/extensions/${name}/versions`
+    );
+    return response.data;
   }
 
   /** Install an extension */
   async installExtension(request: ExtensionInstallRequest): Promise<ExtensionInstallResponse> {
-    return this.apiClient.post("/api/extensions/marketplace/install", request);
+    const response = await this.apiClient.post<ExtensionInstallResponse>(
+      "/api/extensions/marketplace/install",
+      request
+    );
+    return response.data;
   }
 
   /** Update an installed extension */
   async updateExtension(request: ExtensionUpdateRequest): Promise<ExtensionInstallResponse> {
-    return this.apiClient.post("/api/extensions/marketplace/update", request);
+    const response = await this.apiClient.post<ExtensionInstallResponse>(
+      "/api/extensions/marketplace/update",
+      request
+    );
+    return response.data;
   }
 
   /** Uninstall an extension */
   async uninstallExtension(extensionName: string): Promise<ExtensionInstallResponse> {
     const name = encodeURIComponent(extensionName);
-    return this.apiClient.delete(`/api/extensions/marketplace/uninstall/${name}`);
+    const response = await this.apiClient.delete<ExtensionInstallResponse>(
+      `/api/extensions/marketplace/uninstall/${name}`
+    );
+    return response.data;
   }
 
   /** Get the status of an installation */
   async getInstallationStatus(installationId: number): Promise<ExtensionInstallation> {
-    return this.apiClient.get(`/api/extensions/marketplace/installations/${installationId}`);
+    const response = await this.apiClient.get<ExtensionInstallation>(
+      `/api/extensions/marketplace/installations/${installationId}`
+    );
+    return response.data;
   }
 
   /** Get all installed extensions for the current tenant */
   async getInstalledExtensions(): Promise<ExtensionInstallation[]> {
-    return this.apiClient.get("/api/extensions/marketplace/installed");
+    const response = await this.apiClient.get<ExtensionInstallation[]>(
+      "/api/extensions/marketplace/installed"
+    );
+    return response.data;
   }
 
   /** Get available extension categories */
   async getExtensionCategories(): Promise<string[]> {
-    return this.apiClient.get("/api/extensions/marketplace/categories");
+    const response = await this.apiClient.get<string[]>(
+      "/api/extensions/marketplace/categories"
+    );
+    return response.data;
   }
 
   /** Get featured extensions */
   async getFeaturedExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/featured?${buildQuery({ limit })}`);
+    const response = await this.apiClient.get<ExtensionListing[]>(
+      `/api/extensions/marketplace/featured?${buildQuery({ limit })}`
+    );
+    return response.data;
   }
 
   /** Get popular extensions */
   async getPopularExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/popular?${buildQuery({ limit })}`);
+    const response = await this.apiClient.get<ExtensionListing[]>(
+      `/api/extensions/marketplace/popular?${buildQuery({ limit })}`
+    );
+    return response.data;
   }
 
   /** Get recently published extensions */
   async getRecentExtensions(limit: number = 10): Promise<ExtensionListing[]> {
-    return this.apiClient.get(`/api/extensions/marketplace/recent?${buildQuery({ limit })}`);
+    const response = await this.apiClient.get<ExtensionListing[]>(
+      `/api/extensions/marketplace/recent?${buildQuery({ limit })}`
+    );
+    return response.data;
   }
 
   /**

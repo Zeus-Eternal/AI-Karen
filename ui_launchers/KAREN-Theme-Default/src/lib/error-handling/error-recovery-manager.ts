@@ -125,14 +125,18 @@ export class ErrorRecoveryManager {
               name: 'CHECK_CONNECTIVITY',
               description: 'Verify network connectivity',
               execute: async () => {
+                const { signal, cleanup } = this.createAbortController(5000);
                 try {
-                  const response = await fetch('/api/health', { 
-                    method: 'HEAD',
-                    signal: AbortSignal.timeout(5000),
-                  });
+                  const requestInit: RequestInit = { method: 'HEAD' };
+                  if (signal) {
+                    requestInit.signal = signal;
+                  }
+                  const response = await fetch('/api/health', requestInit);
                   return response.ok;
                 } catch {
                   return false;
+                } finally {
+                  cleanup();
                 }
               },
             },
@@ -276,14 +280,18 @@ export class ErrorRecoveryManager {
   }
 
   private async retryDatabaseConnection(): Promise<boolean> {
+    const { signal, cleanup } = this.createAbortController(10000);
     try {
-      const response = await fetch('/api/health/database', {
-        method: 'GET',
-        signal: AbortSignal.timeout(10000),
-      });
+      const requestInit: RequestInit = { method: 'GET' };
+      if (signal) {
+        requestInit.signal = signal;
+      }
+      const response = await fetch('/api/health/database', requestInit);
       return response.ok;
     } catch {
       return false;
+    } finally {
+      cleanup();
     }
   }
 
@@ -312,6 +320,20 @@ export class ErrorRecoveryManager {
     } catch {
       return false;
     }
+  }
+
+  private createAbortController(timeoutMs: number): { signal?: AbortSignal; cleanup: () => void } {
+    if (typeof AbortController === 'undefined') {
+      return { cleanup: () => {} };
+    }
+
+    const controller = new AbortController();
+    const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
+
+    return {
+      signal: controller.signal,
+      cleanup: () => clearTimeout(timeoutId)
+    };
   }
 
   /**

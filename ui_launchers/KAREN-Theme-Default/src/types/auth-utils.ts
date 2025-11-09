@@ -442,6 +442,9 @@ export function parseBackendError(error: BackendError | Error | unknown): Authen
   const hasMessage = (err: unknown): err is { message: string } =>
     typeof err === 'object' && err !== null && 'message' in err && typeof (err as any).message === 'string';
 
+  const isBackendError = (err: unknown): err is BackendError =>
+    typeof err === 'object' && err !== null;
+
   // Handle network errors
   if (hasName(error) && error.name === 'TypeError' && hasMessage(error) && error.message.includes('fetch')) {
     return createAuthError('network_error', 'Network connection failed');
@@ -497,7 +500,14 @@ export function parseBackendError(error: BackendError | Error | unknown): Authen
   }
 
   // Default to unknown error
-  return createAuthError('unknown_error', error.message || 'An unexpected error occurred');
+  const backendMessage = isBackendError(error)
+    ? error.response?.data?.message || error.message
+    : undefined;
+
+  const fallbackMessage =
+    backendMessage || (hasMessage(error) ? error.message : 'An unexpected error occurred');
+
+  return createAuthError('unknown_error', fallbackMessage);
 }
 
 /**
