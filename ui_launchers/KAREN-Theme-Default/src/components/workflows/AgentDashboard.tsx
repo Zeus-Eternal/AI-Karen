@@ -10,11 +10,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, AlertCircle, Play, Stop, RefreshCw, Cpu, MemoryStick, TrendingUp, Search, Clock, Users, Activity, RotateCcw, Settings } from 'lucide-react';
+import {
+  CheckCircle,
+  AlertCircle,
+  Play,
+  Square,
+  Cpu,
+  MemoryStick,
+  TrendingUp,
+  Search,
+  Clock,
+  Users,
+  Activity,
+  RotateCcw,
+  Settings,
+} from 'lucide-react';
 
-import { Agent, AgentHealth } from '@/types/workflows'; // Assuming Agent and AgentHealth types are imported
+import { Agent, AgentHealth } from '@/types/workflows';
 
-const statusColors = {
+type AgentStatus = Agent['status'];
+type AgentPriority = Agent['taskQueue'][number]['priority'];
+
+const statusColors: Record<AgentStatus, string> = {
   idle: 'bg-gray-100 text-gray-700 border-gray-200',
   running: 'bg-green-100 text-green-700 border-green-200',
   paused: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -22,21 +39,30 @@ const statusColors = {
   stopped: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
-const healthColors = {
+const healthColors: Record<AgentHealth['status'], string> = {
   healthy: 'text-green-600',
   warning: 'text-yellow-600',
   critical: 'text-red-600',
   unknown: 'text-gray-600',
 };
 
-const taskPriorityColors = {
+const taskPriorityColors: Record<AgentPriority, string> = {
   low: 'bg-blue-100 text-blue-700',
   normal: 'bg-gray-100 text-gray-700',
   high: 'bg-orange-100 text-orange-700',
   critical: 'bg-red-100 text-red-700',
 };
 
-const getHealthIcon = (health: AgentHealth) => {
+interface AgentDashboardProps {
+  agents: Agent[];
+  onStartAgent?: (agentId: string) => Promise<void> | void;
+  onStopAgent?: (agentId: string) => Promise<void> | void;
+  onRestartAgent?: (agentId: string) => Promise<void> | void;
+  onConfigureAgent?: (agentId: string) => void;
+  className?: string;
+}
+
+const getHealthIcon = (health: AgentHealth): React.ReactNode => {
   switch (health.status) {
     case 'healthy':
       return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -59,7 +85,7 @@ export function AgentDashboard({
 }: AgentDashboardProps) {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | AgentStatus>('all');
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
 
   // Filter agents based on search term and status filter
@@ -74,7 +100,12 @@ export function AgentDashboard({
 
   // Calculate agent stats
   const agentStats = useMemo(() => {
-    const stats = {
+    const stats: Record<AgentStatus, number> & {
+      total: number;
+      totalTasks: number;
+      completedTasks: number;
+      failedTasks: number;
+    } = {
       total: agents.length,
       running: 0,
       idle: 0,
@@ -86,10 +117,11 @@ export function AgentDashboard({
       failedTasks: 0,
     };
     agents.forEach(agent => {
-      stats[agent.status]++;
-      stats.totalTasks += agent.metrics.tasksCompleted + agent.metrics.tasksInProgress + agent.metrics.tasksFailed;
-      stats.completedTasks += agent.metrics.tasksCompleted;
-      stats.failedTasks += agent.metrics.tasksFailed;
+      stats[agent.status] += 1;
+      const { tasksCompleted = 0, tasksInProgress = 0, tasksFailed = 0 } = agent.metrics;
+      stats.totalTasks += tasksCompleted + tasksInProgress + tasksFailed;
+      stats.completedTasks += tasksCompleted;
+      stats.failedTasks += tasksFailed;
     });
     return stats;
   }, [agents]);
@@ -121,7 +153,10 @@ export function AgentDashboard({
     return `${hours}h ${minutes}m`;
   };
 
-  const formatResourceUsage = (usage: number) => {
+  const formatResourceUsage = (usage?: number) => {
+    if (typeof usage !== 'number' || Number.isNaN(usage)) {
+      return '0.0%';
+    }
     return `${(usage * 100).toFixed(1)}%`;
   };
 
@@ -136,7 +171,7 @@ export function AgentDashboard({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
-            <input
+            <Input
               placeholder="Search agents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -276,8 +311,8 @@ export function AgentDashboard({
                                 </span>
                                 <span>{formatResourceUsage(agent.metrics.resourceUsage.cpu)}</span>
                               </div>
-                              <Progress 
-                                value={agent.metrics.resourceUsage.cpu * 100} 
+                              <Progress
+                                value={(agent.metrics.resourceUsage.cpu ?? 0) * 100}
                                 className="h-1"
                               />
                               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
@@ -286,8 +321,8 @@ export function AgentDashboard({
                                 </span>
                                 <span>{formatResourceUsage(agent.metrics.resourceUsage.memory)}</span>
                               </div>
-                              <Progress 
-                                value={agent.metrics.resourceUsage.memory * 100} 
+                              <Progress
+                                value={(agent.metrics.resourceUsage.memory ?? 0) * 100}
                                 className="h-1"
                               />
                             </div>

@@ -2,22 +2,33 @@
 "use client";
 
 import React, { useCallback, useMemo, useState, useRef } from 'react';
-import ReactFlow, { Node, Edge, addEdge, useNodesState, useEdgesState, Controls, MiniMap, Background, BackgroundVariant, Connection, ReactFlowProvider, ReactFlowInstance, NodeTypes, EdgeTypes } from 'reactflow';
+import ReactFlow, {
+  Node,
+  Edge,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  Controls,
+  MiniMap,
+  Background,
+  BackgroundVariant,
+  Connection,
+  ReactFlowProvider,
+  ReactFlowInstance,
+  NodeTypes,
+} from 'reactflow';
 import 'reactflow/dist/style.css';
-import { WorkflowDefinition, WorkflowNode, WorkflowEdge, NodeTemplate, WorkflowValidationResult } from '@/types/workflows';
+import { WorkflowDefinition, WorkflowNode, WorkflowEdge, NodeTemplate, WorkflowValidationResult, NodePort } from '@/types/workflows';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Copy, Eye, EyeOff, Play, Save, Trash2 } from 'lucide-react';
 import { WorkflowNodeComponent } from './WorkflowNodeComponent';
 import { NodeLibrary } from './NodeLibrary';
 import { WorkflowValidator } from './WorkflowValidator';
-import { WorkflowTester } from './WorkflowTester';
 
 export interface WorkflowBuilderProps {
   workflow?: WorkflowDefinition;
@@ -69,6 +80,7 @@ export function WorkflowBuilder({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const selectedNodeData = selectedNode?.data as WorkflowNode['data'] | undefined;
   const [validationResult, setValidationResult] = useState<WorkflowValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -96,11 +108,21 @@ export function WorkflowBuilder({
     (event: React.DragEvent) => {
       event.preventDefault();
       if (!reactFlowInstance || readOnly) return;
+
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       if (!reactFlowBounds) return;
-      const nodeTemplate = JSON.parse(
-        event.dataTransfer.getData('application/reactflow')
-      ) as NodeTemplate;
+
+      const payload = event.dataTransfer.getData('application/reactflow');
+      if (!payload) return;
+
+      let nodeTemplate: NodeTemplate;
+      try {
+        nodeTemplate = JSON.parse(payload) as NodeTemplate;
+      } catch (error) {
+        console.error('Failed to parse node template from drag event', error);
+        return;
+      }
+
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
@@ -114,7 +136,7 @@ export function WorkflowBuilder({
           label: nodeTemplate.name,
           description: nodeTemplate.description,
           nodeType: nodeTemplate.id,
-          config: nodeTemplate.config.defaults,
+          config: { ...nodeTemplate.config?.defaults },
           inputs: nodeTemplate.inputs,
           outputs: nodeTemplate.outputs,
         },
@@ -139,6 +161,7 @@ export function WorkflowBuilder({
       const result = await WorkflowValidator.validate(workflowDef);
       setValidationResult(result);
     } catch (error) {
+      console.error('Workflow validation failed', error);
     } finally {
       setIsValidating(false);
     }
@@ -151,31 +174,49 @@ export function WorkflowBuilder({
       const workflowDef = convertToWorkflowDefinition();
       await onTest(workflowDef);
     } catch (error) {
+      console.error('Workflow test failed', error);
     } finally {
       setIsTesting(false);
     }
   }, [nodes, edges, onTest]);
 
   const convertToWorkflowDefinition = useCallback((): WorkflowDefinition => {
-    const workflowNodes: WorkflowNode[] = nodes.map(node => ({
-      id: node.id,
-      type: node.data.nodeType || 'custom',
-      position: node.position,
-      data: node.data,
-      style: node.style,
-    }));
+    const allowedNodeTypes: WorkflowNode['type'][] = ['input', 'output', 'llm', 'memory', 'plugin', 'condition', 'loop', 'custom'];
 
-    const workflowEdges: WorkflowEdge[] = edges.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle ?? undefined,
-      targetHandle: edge.targetHandle ?? undefined,
-      type: edge.type as 'default' | 'straight' | 'step' | 'smoothstep' | undefined,
-      animated: edge.animated,
-      style: edge.style,
-      data: edge.data,
-    }));
+    const workflowNodes: WorkflowNode[] = nodes.map((node) => {
+      const nodeData = node.data as WorkflowNode['data'];
+      const resolvedType = allowedNodeTypes.includes(nodeData?.nodeType as WorkflowNode['type'])
+        ? (nodeData.nodeType as WorkflowNode['type'])
+        : 'custom';
+
+      return {
+        id: node.id,
+        type: resolvedType,
+        position: node.position,
+        data: nodeData,
+        style: node.style,
+      };
+    });
+
+    const allowedEdgeTypes: WorkflowEdge['type'][] = ['default', 'straight', 'step', 'smoothstep'];
+
+    const workflowEdges: WorkflowEdge[] = edges.map((edge) => {
+      const normalizedType = allowedEdgeTypes.includes(edge.type as WorkflowEdge['type'])
+        ? (edge.type as WorkflowEdge['type'])
+        : 'default';
+
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle ?? undefined,
+        targetHandle: edge.targetHandle ?? undefined,
+        type: normalizedType,
+        animated: edge.animated,
+        style: edge.style,
+        data: edge.data,
+      };
+    });
 
     return {
       id: workflow?.id || `workflow-${Date.now()}`,
@@ -250,6 +291,7 @@ export function WorkflowBuilder({
             </div>
             <div className="flex items-center gap-2">
               <Button
+                aria-label={showMiniMap ? 'Hide minimap' : 'Show minimap'}
                 variant="outline"
                 size="sm"
                 onClick={() => setShowMiniMap(!showMiniMap)}
@@ -257,6 +299,7 @@ export function WorkflowBuilder({
                 {showMiniMap ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
               </Button>
               <Button
+                aria-label={showBackground ? 'Hide background grid' : 'Show background grid'}
                 variant="outline"
                 size="sm"
                 onClick={() => setShowBackground(!showBackground)}
@@ -265,29 +308,35 @@ export function WorkflowBuilder({
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <Button
+                aria-label="Validate workflow"
                 variant="outline"
                 size="sm"
                 onClick={validateWorkflow}
                 disabled={isValidating}
-               >
+              >
                 <CheckCircle className="h-4 w-4 mr-2 " />
+                <span className="hidden sm:inline">Validate</span>
               </Button>
               {onTest && (
                 <Button
+                  aria-label="Test workflow"
                   variant="outline"
                   size="sm"
                   onClick={testWorkflow}
                   disabled={isTesting}
-                 >
+                >
                   <Play className="h-4 w-4 mr-2 " />
+                  <span className="hidden sm:inline">Test</span>
                 </Button>
               )}
               {onSave && !readOnly && (
                 <Button
+                  aria-label="Save workflow"
                   size="sm"
                   onClick={handleSave}
-                 aria-label="Button">
+                >
                   <Save className="h-4 w-4 mr-2 " />
+                  <span className="hidden sm:inline">Save</span>
                 </Button>
               )}
             </div>
@@ -356,47 +405,49 @@ export function WorkflowBuilder({
               <div className="flex gap-2">
                 {!readOnly && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={duplicateSelectedNode}
-                     >
-                      <Copy className="h-4 w-4 " />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={deleteSelectedNode}
-                     >
-                      <Trash2 className="h-4 w-4 " />
-                    </Button>
+                  <Button
+                    aria-label="Duplicate node"
+                    variant="outline"
+                    size="sm"
+                    onClick={duplicateSelectedNode}
+                  >
+                    <Copy className="h-4 w-4 " />
+                  </Button>
+                  <Button
+                    aria-label="Delete node"
+                    variant="outline"
+                    size="sm"
+                    onClick={deleteSelectedNode}
+                  >
+                    <Trash2 className="h-4 w-4 " />
+                  </Button>
                   </>
                 )}
               </div>
             </div>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm md:text-base lg:text-lg">{selectedNode.data.label}</CardTitle>
+                <CardTitle className="text-sm md:text-base lg:text-lg">{selectedNodeData?.label}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium md:text-base lg:text-lg">Description</label>
                     <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                      {selectedNode.data.description || 'No description available'}
+                      {selectedNodeData?.description || 'No description available'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium md:text-base lg:text-lg">Type</label>
                     <p className="text-sm text-muted-foreground mt-1 md:text-base lg:text-lg">
-                      {selectedNode.data.nodeType || 'custom'}
+                      {selectedNodeData?.nodeType || 'custom'}
                     </p>
                   </div>
-                  {selectedNode.data.inputs && selectedNode.data.inputs.length > 0 && (
+                  {selectedNodeData?.inputs && selectedNodeData.inputs.length > 0 && (
                     <div>
                       <label className="text-sm font-medium md:text-base lg:text-lg">Inputs</label>
                       <div className="mt-2 space-y-1">
-                        {selectedNode.data.inputs.map((input: any) => (
+                        {selectedNodeData.inputs?.map((input: NodePort) => (
                           <div key={input.id} className="text-sm md:text-base lg:text-lg">
                             <span className="font-medium">{input.name}</span>
                             <span className="text-muted-foreground ml-2">({input.type})</span>
@@ -406,11 +457,11 @@ export function WorkflowBuilder({
                       </div>
                     </div>
                   )}
-                  {selectedNode.data.outputs && selectedNode.data.outputs.length > 0 && (
+                  {selectedNodeData?.outputs && selectedNodeData.outputs.length > 0 && (
                     <div>
                       <label className="text-sm font-medium md:text-base lg:text-lg">Outputs</label>
                       <div className="mt-2 space-y-1">
-                        {selectedNode.data.outputs.map((output: any) => (
+                        {selectedNodeData.outputs?.map((output: NodePort) => (
                           <div key={output.id} className="text-sm md:text-base lg:text-lg">
                             <span className="font-medium">{output.name}</span>
                             <span className="text-muted-foreground ml-2">({output.type})</span>
