@@ -4,8 +4,9 @@ export const dynamic = 'force-dynamic';
 // IMPORTANT: Do not default to the web UI port; that creates a proxy loop.
 const BACKEND_URL =
   process.env.KAREN_BACKEND_URL ||
+  process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'http://127.0.0.1:8000';
+  'http://localhost:8000';
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     // Safely resolve params with error handling
@@ -40,7 +41,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
     // Log the request for debugging
     // Get request body if it exists
-    let body = undefined;
+    let body: string | undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();

@@ -65,9 +65,27 @@ export interface QualityGate {
   threshold: number;
   actual: number;
   description: string;
+  overridden?: boolean;
+  overrideStatus?: 'passed' | 'failed' | 'warning';
+  overrideNote?: string | null;
+  overrideAt?: string | null;
+  overrideBy?: string | null;
 }
 
 export type CacheEntry<T> = { data: T; timestamp: number };
+
+export interface QualityGateOverrideRecord {
+  status: QualityGate['status'];
+  note?: string | null;
+  overriddenAt: string;
+  overriddenBy?: string | null;
+}
+
+export interface QualityGateOverrideInput {
+  status?: QualityGate['status'];
+  note?: string | null;
+  overriddenBy?: string | null;
+}
 
 export interface MetricsCollectorConfig {
   projectRoot?: string;
@@ -88,6 +106,7 @@ export interface MetricsCollectorConfig {
     perfReportsDir?: string;       // e2e-artifacts/performance-results
     trendsDir?: string;            // qa-metrics
     trendsFile?: string;           // qa-metrics/trends.json
+    gateOverrides?: string;        // qa-metrics/gate-overrides.json
   };
 }
 
@@ -169,6 +188,7 @@ export class QualityMetricsCollector {
       perfReportsDir: cfg.paths?.perfReportsDir ?? 'e2e-artifacts/performance-results',
       trendsDir: cfg.paths?.trendsDir ?? 'qa-metrics',
       trendsFile: cfg.paths?.trendsFile ?? 'qa-metrics/trends.json',
+      gateOverrides: cfg.paths?.gateOverrides ?? 'qa-metrics/gate-overrides.json',
     };
   }
 
@@ -252,7 +272,22 @@ export class QualityMetricsCollector {
         description: 'Maintainability index must be at least 70%'
       }
     ];
-    return gates;
+    const overrides = this.readGateOverrides();
+
+    return gates.map((gate) => {
+      const override = overrides[gate.id];
+      if (!override) return gate;
+
+      return {
+        ...gate,
+        overridden: true,
+        overrideStatus: override.status,
+        overrideNote: override.note ?? null,
+        overrideAt: override.overriddenAt,
+        overrideBy: override.overriddenBy ?? null,
+        status: override.status,
+      };
+    });
   }
 
   async generateTrends(days: number = 30): Promise<QualityTrend[]> {
@@ -673,6 +708,68 @@ export class QualityMetricsCollector {
   private setCachedMetric<T>(key: string, data: T): void {
     const entry: CacheEntry<T> = { data, timestamp: Date.now() };
     this.metricsCache.set(key, entry);
+  }
+
+  private overridesFilePath(): string {
+    return safePathJoin(this.projectRoot, this.paths.gateOverrides);
+  }
+
+  private readGateOverrides(): Record<string, QualityGateOverrideRecord> {
+    try {
+      const file = this.overridesFilePath();
+      if (!fileExists(file)) return {};
+      const raw = tryJson<Record<string, QualityGateOverrideRecord>>(readFileUtf8(file));
+      if (!raw || typeof raw !== 'object') return {};
+      return Object.fromEntries(
+        Object.entries(raw).filter(([key, value]) => !!key && !!value && typeof value.status === 'string')
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  private writeGateOverrides(overrides: Record<string, QualityGateOverrideRecord>): void {
+    try {
+      const file = this.overridesFilePath();
+      const dir = path.dirname(file);
+      if (!fileExists(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(file, JSON.stringify(overrides, null, 2), 'utf8');
+    } catch {
+      // ignore write failures to avoid crashing route
+    }
+  }
+
+  async overrideGate(id: string, override: QualityGateOverrideInput = {}): Promise<QualityGateOverrideRecord> {
+    if (!id) {
+      throw new Error('Gate id is required to override quality gates.');
+    }
+
+    const overrides = this.readGateOverrides();
+    const record: QualityGateOverrideRecord = {
+      status: override.status ?? 'passed',
+      note: override.note ?? null,
+      overriddenAt: new Date().toISOString(),
+      overriddenBy: override.overriddenBy ?? null,
+    };
+
+    overrides[id] = record;
+    this.writeGateOverrides(overrides);
+    return record;
+  }
+
+  async clearGateOverride(id: string): Promise<void> {
+    if (!id) return;
+    const overrides = this.readGateOverrides();
+    if (overrides[id]) {
+      delete overrides[id];
+      this.writeGateOverrides(overrides);
+    }
+  }
+
+  async getGateOverrides(): Promise<Record<string, QualityGateOverrideRecord>> {
+    return this.readGateOverrides();
   }
 }
 

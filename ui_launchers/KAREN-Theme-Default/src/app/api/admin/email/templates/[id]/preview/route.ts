@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { EmailTemplateVariables } from '@/lib/email/types';
+import { EmailTemplate, EmailTemplateVariables } from '@/lib/email/types';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
 
@@ -159,18 +159,21 @@ export async function POST(
 
     // Fetch template (prefer DB/manager; graceful fallback to defaults if needed)
     // Expect EmailTemplateManager.getById in production; fallback for environments where only defaults exist
-    let template = await EmailTemplateManager.getById?.(templateId);
-    if (!template) {
-      const defaults = await EmailTemplateManager.createDefaultTemplates('system');
-      template = defaults.find((t) => t.id === templateId);
-    }
-    if (!template) {
-      return notFound('Email template not found', correlationId);
-    }
+      let template: EmailTemplate | null = null;
+      if (typeof EmailTemplateManager.getById === 'function') {
+        template = await EmailTemplateManager.getById(templateId);
+      }
+      if (!template) {
+        const defaults = await EmailTemplateManager.createDefaultTemplates('system');
+        template = defaults.find((t) => t.id === templateId) ?? null;
+      }
+      if (!template) {
+        return notFound('Email template not found', correlationId);
+      }
 
-    // Generate preview + validate
-    const preview = EmailTemplateManager.generatePreview(template, customVariables);
-    const validation = TemplateEngine.validateTemplate(template, customVariables);
+      // Generate preview + validate
+      const preview = EmailTemplateManager.generatePreview(template, customVariables);
+      const validation = TemplateEngine.validateTemplate(template, customVariables);
 
     // Audit (PII-safe; never attach raw request)
     await auditLogger.log(currentUserId, 'email_template_previewed', 'email_template', {

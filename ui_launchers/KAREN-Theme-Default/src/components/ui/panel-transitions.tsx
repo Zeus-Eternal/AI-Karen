@@ -302,6 +302,7 @@ export function applyTransitionConfig(
     } else {
       enhancedVariants[key] = variant;
     }
+  });
 
   return enhancedVariants;
 }
@@ -311,7 +312,7 @@ export function applyTransitionConfig(
  */
 export function createReducedMotionVariants(variants: Variants): Variants {
   const reducedVariants: Variants = {};
-  
+
   Object.keys(variants).forEach((key) => {
     const variant = variants[key];
     if (typeof variant === 'object' && variant !== null) {
@@ -322,6 +323,6 @@ export function createReducedMotionVariants(variants: Variants): Variants {
     } else {
       reducedVariants[key] = variant;
     }
-
+  });
   return reducedVariants;
 }

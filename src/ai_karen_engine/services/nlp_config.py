@@ -58,7 +58,7 @@ class DistilBertConfig(BaseModel):
             "model_name": os.getenv("TRANSFORMER_MODEL", "distilbert-base-uncased"),
             "max_length": 512,
             "batch_size": 32,
-            "enable_gpu": True,
+            "enable_gpu": os.getenv("DISTILBERT_ENABLE_GPU", "false").lower() in ("1", "true", "yes"),
             "enable_fallback": True,
             "cache_size": 5000,
             "cache_ttl": 7200,
@@ -71,7 +71,7 @@ class DistilBertConfig(BaseModel):
     model_name: str = "distilbert-base-uncased"
     max_length: int = 512
     batch_size: int = 32
-    enable_gpu: bool = True
+    enable_gpu: bool = False
     enable_fallback: bool = True
     cache_size: int = 5000
     cache_ttl: int = 7200

@@ -150,6 +150,7 @@ export function useMultipleIntersectionObserver(
 
     validElements.forEach(element => {
       observerRef.current?.observe(element);
+    });
 
     return () => {
       if (observerRef.current) {

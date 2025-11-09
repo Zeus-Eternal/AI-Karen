@@ -111,7 +111,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const appHttp = applicationMetrics?.httpRequests ?? {};
     Object.entries(appHttp).forEach(([path, data]: [string, any]) => {
       Object.entries(data?.methods ?? {}).forEach(([method, count]) => {
-        lines.push(`kari_http_requests_total{path="${esc(path)}",method="${esc(method)}"} ${n(count)}`);
+        const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
+        lines.push(`kari_http_requests_total{path="${esc(path)}",method="${esc(method)}"} ${n(numericCount)}`);
       });
     });
 
@@ -132,33 +133,45 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
     lines.push('# TYPE kari_active_sessions_total gauge');
-    lines.push(`kari_active_sessions_total ${n(applicationMetrics?.activeSessions)}`);
+    const activeSessions =
+      typeof applicationMetrics?.activeSessions === 'number'
+        ? applicationMetrics.activeSessions
+        : Number(applicationMetrics?.activeSessions ?? 0);
+    lines.push(`kari_active_sessions_total ${n(activeSessions)}`);
 
     // kari_websocket_connections_total (gauge)
     lines.push('# HELP kari_websocket_connections_total Number of active WebSocket connections');
     lines.push('# TYPE kari_websocket_connections_total gauge');
-    lines.push(`kari_websocket_connections_total ${n(applicationMetrics?.websocketConnections)}`);
+    const websocketConnections =
+      typeof applicationMetrics?.websocketConnections === 'number'
+        ? applicationMetrics.websocketConnections
+        : Number(applicationMetrics?.websocketConnections ?? 0);
+    lines.push(`kari_websocket_connections_total ${n(websocketConnections)}`);
 
     // Feature usage (counter by feature)
     lines.push('# HELP kari_feature_usage_total Total usage count for application features');
     lines.push('# TYPE kari_feature_usage_total counter');
     Object.entries(applicationMetrics?.featureUsage ?? {}).forEach(([feature, count]) => {
-      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(count)}`);
+      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
+      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(numericCount)}`);
     });
 
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
     lines.push('# TYPE kari_plugin_executions_total counter');
     Object.entries(applicationMetrics?.pluginExecutions ?? {}).forEach(([plugin, d]: [string, any]) => {
-      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(d?.success)}`);
-      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(d?.failure)}`);
+      const successCount = typeof d?.success === 'number' ? d.success : Number(d?.success ?? 0);
+      const failureCount = typeof d?.failure === 'number' ? d.failure : Number(d?.failure ?? 0);
+      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(successCount)}`);
+      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(failureCount)}`);
     });
 
     // Model requests (counter by model)
     lines.push('# HELP kari_model_requests_total Total number of model requests');
     lines.push('# TYPE kari_model_requests_total counter');
     Object.entries(applicationMetrics?.modelRequests ?? {}).forEach(([model, count]) => {
-      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(count)}`);
+      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
+      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(numericCount)}`);
     });
 
     // Model response time (histogram by model)
@@ -221,10 +234,15 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // ----------------------
     lines.push('# HELP kari_health_check_status Health check status (1 = healthy, 0 = unhealthy)');
     lines.push('# TYPE kari_health_check_status gauge');
-    Object.entries(systemMetrics?.healthChecks ?? {}).forEach(([check, status]) => {
-      const val = status === 'healthy' || status === true ? 1 : 0;
-      lines.push(`kari_health_check_status{check_name="${esc(String(check))}"} ${val}`);
-    });
+      Object.entries(systemMetrics?.healthChecks ?? {}).forEach(([check, status]) => {
+        let val = 0;
+        if (status === 'healthy') {
+          val = 1;
+        } else if (status === 'degraded') {
+          val = 0.5;
+        }
+        lines.push(`kari_health_check_status{check_name="${esc(String(check))}"} ${val}`);
+      });
 
     lines.push('# HELP kari_database_connections_total Number of database connections');
     lines.push('# TYPE kari_database_connections_total gauge');

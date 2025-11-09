@@ -490,13 +490,20 @@ export class SecurityManager {
   /**
    * Resolve security event
    */
-  async resolveSecurityEvent(eventId: string, resolvedBy: string): Promise<void> {
+  async resolveSecurityEvent(
+    eventId: string,
+    resolvedBy: string,
+    options: { resolution_notes?: string } = {},
+  ): Promise<void> {
     for (const [key, events] of securityEvents.entries()) {
       const event = events.find((e) => e.id === eventId);
       if (event) {
         event.resolved = true;
         (event as any).resolved_by = resolvedBy;
         (event as any).resolved_at = new Date();
+        if (options.resolution_notes) {
+          (event as any).resolution_notes = options.resolution_notes;
+        }
 
         await this.adminUtils.createAuditLog({
           user_id: resolvedBy,
@@ -507,6 +514,7 @@ export class SecurityManager {
             event_type: event.event_type,
             original_severity: event.severity,
             resolution_time_ms: Date.now() - event.created_at.getTime(),
+            resolution_notes: options.resolution_notes,
           },
           created_at: new Date(),
         });

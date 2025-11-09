@@ -376,10 +376,15 @@ export class ModelSelectionService {
   /**
    * Switch to a different model
    */
-  async switchModel(modelId: string, options: {
-    preserveContext?: boolean;
-    forceSwitch?: boolean;
-  } = {}): Promise<{
+  async switchModel(
+    modelId: string,
+    options: {
+      preserveContext?: boolean;
+      forceSwitch?: boolean;
+      reason?: string;
+      metadata?: Record<string, unknown>;
+    } = {},
+  ): Promise<{
     success: boolean;
     previousModel?: string;
     newModel: string;
@@ -405,11 +410,14 @@ export class ModelSelectionService {
       
       // Update the last selected model
       await this.updateLastSelectedModel(modelId);
-      
+
       const switchTime = Date.now() - startTime;
-      
-      safeLog(`ModelSelectionService: Switched from ${previousModel || 'none'} to ${modelId} in ${switchTime}ms`);
-      
+
+      const reason = options.reason ? ` (reason: ${options.reason})` : '';
+      safeLog(
+        `ModelSelectionService: Switched from ${previousModel || 'none'} to ${modelId} in ${switchTime}ms${reason}`,
+      );
+
       return {
         success: true,
         previousModel,
@@ -429,6 +437,33 @@ export class ModelSelectionService {
         message: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
+  }
+
+  async getCurrentModelId(): Promise<string | null> {
+    try {
+      const preferences = await this.getUserPreferences();
+      if (preferences.lastSelectedModel) {
+        return preferences.lastSelectedModel;
+      }
+      if (preferences.defaultModel) {
+        return preferences.defaultModel;
+      }
+    } catch {
+      // ignore preference lookup errors
+    }
+
+    const models = await this.getAvailableModels();
+    return models[0]?.id ?? null;
+  }
+
+  async getCurrentModel(): Promise<Model | null> {
+    const currentId = await this.getCurrentModelId();
+    if (!currentId) {
+      return null;
+    }
+
+    const models = await this.getAvailableModels();
+    return models.find((model) => model.id === currentId) ?? null;
   }
 
   /**

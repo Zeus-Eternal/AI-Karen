@@ -4,8 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { format as formatDate } from "date-fns";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeBlock } from "@/components/ui/syntax-highlighter";
 import { useToast } from "@/hooks/use-toast";
 
 /* ---------- UI (shadcn) ---------- */
@@ -226,19 +225,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         <Card>
           <CardContent className="p-0 sm:p-4 md:p-6">
             <ScrollArea className="h-96">
-              <SyntaxHighlighter
+              <CodeBlock
                 language={language}
-                style={theme === "dark" ? oneDark : oneLight}
-                customStyle={{
-                  margin: 0,
-                  borderRadius: "0.5rem",
-                  fontSize: "0.875rem",
-                }}
                 showLineNumbers
-                wrapLines
               >
                 {fileContent}
-              </SyntaxHighlighter>
+              </CodeBlock>
             </ScrollArea>
           </CardContent>
         </Card>
@@ -285,7 +277,11 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             summary.
           </p>
           {onAnalyze && (
-            <Button onClick={handleAnalyze} disabled={isAnalyzing} aria-label="Analyze file">
+            <Button
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              aria-label="Analyze file"
+            >
               <Zap className="h-4 w-4 mr-2" />
               {isAnalyzing ? "Analyzing..." : "Analyze File"}
             </Button>
@@ -304,7 +300,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm md:text-base lg:text-lg">{analysis.summary}</p>
+              <p className="text-sm md:text-base lg:text-lg">
+                {analysis.summary}
+              </p>
               {typeof analysis.confidence === "number" && (
                 <Badge variant="secondary" className="mt-2">
                   {Math.round(analysis.confidence * 100)}% confidence
@@ -324,7 +322,11 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {analysis.entities.map((entity, index) => (
-                  <Badge key={`${entity}-${index}`} variant="outline" className="text-xs sm:text-sm md:text-base">
+                  <Badge
+                    key={`${entity}-${index}`}
+                    variant="outline"
+                    className="text-xs sm:text-sm md:text-base"
+                  >
                     {entity}
                   </Badge>
                 ))}
@@ -343,7 +345,11 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {analysis.topics.map((topic, index) => (
-                  <Badge key={`${topic}-${index}`} variant="secondary" className="text-xs sm:text-sm md:text-base">
+                  <Badge
+                    key={`${topic}-${index}`}
+                    variant="secondary"
+                    className="text-xs sm:text-sm md:text-base"
+                  >
                     {topic}
                   </Badge>
                 ))}
@@ -433,7 +439,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <Download className="h-4 w-4" />
             </Button>
             {onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close preview">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                aria-label="Close preview"
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -460,7 +471,8 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                     {attachment.type === "image" && renderImagePreview()}
                     {attachment.type === "code" && renderCodePreview()}
                     {attachment.type === "document" && renderDocumentPreview()}
-                    {(attachment.type === "video" || attachment.type === "audio") && (
+                    {(attachment.type === "video" ||
+                      attachment.type === "audio") && (
                       <div className="text-center py-8">
                         <FileIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p className="text-sm text-muted-foreground md:text-base lg:text-lg">

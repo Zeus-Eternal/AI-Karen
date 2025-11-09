@@ -140,40 +140,39 @@ export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: LazyLoadOptions = {}
 ): LazyExoticComponent<T> {
-  let loader: Promise<{ default: T }> | null = null;
-
-  const loadComponent = async () => {
-    if (!loader) {
-      loader = (async () => {
-        if (options.delay && options.delay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, options.delay));
-        }
-        return importFn();
-      })();
+  const LazyComp = React.lazy(() => {
+    // Add artificial delay if specified (useful for testing)
+    if (options.delay) {
+      return new Promise<{ default: T }>(resolve => {
+        setTimeout(() => {
+          importFn().then(resolve);
+        }, options.delay);
+      });
     }
+    return importFn();
+  });
 
-    return loader;
-  };
-
-  const LazyInner = React.lazy(loadComponent);
-
-  const WrappedComponent = ((props: React.ComponentProps<T>) => (
-    <LazyComponent fallback={options.fallback} errorFallback={options.errorFallback}>
-      <LazyInner {...props} />
-    </LazyComponent>
-  )) as React.FC<React.ComponentProps<T>> & { preload?: () => Promise<void> };
-
-  WrappedComponent.displayName = `LazyComponent(${LazyInner.displayName ?? LazyInner.name ?? "Component"})`;
-  WrappedComponent.preload = () => loadComponent().then(() => undefined);
-
-  return WrappedComponent as unknown as LazyExoticComponent<T>;
-}
-
-export function useLazyPreload() {
-  const preloadComponent = React.useCallback((importFn: () => Promise<unknown>) => {
-    void importFn();
-  }, []);
-
+  // Return a wrapped component that includes error boundary and fallback
+  return React.lazy(() =>
+    Promise.resolve({
+      default: ((props: any) => (
+        <LazyComponent
+          fallback={options.fallback}
+          errorFallback={options.errorFallback}
+        >
+          <LazyComp {...props} />
+        </LazyComponent>
+      )) as unknown as T,
+    })
+  );
+      
+  const preloadComponent = React.useCallback(
+    (importFn: () => Promise<{ default: ComponentType<any> }>) => {
+      // Preload the component by calling the import function
+      importFn().catch(error => { });
+    },
+    []
+  );
   return { preloadComponent };
 }
 

@@ -716,8 +716,10 @@ export default function ModelLibrary() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 " />
+            Integration Status
           </CardTitle>
           <CardDescription>
+            Track ready-to-use local models and active download operations across providers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -730,6 +732,7 @@ export default function ModelLibrary() {
                   {localModels.length} models
                 </Badge>
                 <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                  Fully downloaded and ready for routing
                 </span>
               </div>
             </div>
@@ -741,6 +744,7 @@ export default function ModelLibrary() {
                   {downloadingModels.length} downloading
                 </Badge>
                 <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                  Currently queued or in progress
                 </span>
               </div>
             </div>
@@ -997,6 +1001,7 @@ export default function ModelLibrary() {
                 <HelpTooltip helpKey="storageManagement" variant="inline" size="sm" />
               </CardTitle>
               <CardDescription>
+                Models stored on this node and immediately available for routing or fine-tuning.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1031,6 +1036,7 @@ export default function ModelLibrary() {
                 <HelpTooltip helpKey="downloadProcess" variant="inline" size="sm" />
               </CardTitle>
               <CardDescription>
+                Transfers in progress; keep this panel open to monitor status or cancel jobs.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1053,6 +1059,7 @@ export default function ModelLibrary() {
                 Available Models ({cloudModels.length})
               </CardTitle>
               <CardDescription>
+                Cloud-hosted or catalog models that can be pulled into your workspace on demand.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -158,7 +158,7 @@ export class AccessibilityDocumentationGenerator {
     return this.config.excludePatterns.some(pattern => {
       // Simple pattern matching - in a real implementation, use a proper glob library
       return filePath.includes(pattern.replace('**/', '').replace('*', ''));
-
+    });
   }
   /**
    * Analyze a single component file
@@ -171,7 +171,7 @@ export class AccessibilityDocumentationGenerator {
       const ast = parse(content, {
         sourceType: 'module',
         plugins: ['typescript', 'jsx']
-
+      });
       const analysis = this.analyzeAST(ast, content);
       return {
         name: componentName,
@@ -267,6 +267,7 @@ export class AccessibilityDocumentationGenerator {
           analysis.hooks.add(path.node.callee.name);
         }
       }
+    });
 
     return analysis;
   }
@@ -284,7 +285,7 @@ export class AccessibilityDocumentationGenerator {
           description: `Uses semantic ${element} element`,
           implementation: `<${element}>...</${element}>`,
           wcagCriteria: ['1.3.1', '4.1.2']
-
+        });
       }
     }
     // Check for ARIA attributes
@@ -294,7 +295,7 @@ export class AccessibilityDocumentationGenerator {
         description: 'Implements ARIA attributes for enhanced accessibility',
         implementation: Array.from(analysis.ariaAttributes).join(', '),
         wcagCriteria: ['1.3.1', '4.1.2']
-
+      });
     }
     // Check for keyboard support
     const keyboardEvents = ['onKeyDown', 'onKeyUp', 'onKeyPress'];
@@ -304,7 +305,7 @@ export class AccessibilityDocumentationGenerator {
         description: 'Supports keyboard interaction',
         implementation: 'Keyboard event handlers implemented',
         wcagCriteria: ['2.1.1', '2.1.2']
-
+      });
     }
     return features;
   }
@@ -354,7 +355,7 @@ export class AccessibilityDocumentationGenerator {
           usage: doc.usage,
           required: doc.required,
           example: `${attr}="value"`
-
+        });
       }
     }
     return ariaAttributes;
@@ -387,7 +388,7 @@ export class AccessibilityDocumentationGenerator {
         action: 'Move focus to next element',
         context: 'Form navigation',
         required: true
-
+      });
     }
     if (analysis.ariaAttributes.has('aria-expanded')) {
       keyboardSupport.push(
@@ -418,7 +419,7 @@ export class AccessibilityDocumentationGenerator {
         announcement: 'Announces custom accessible name',
         context: 'When element receives focus',
         implementation: 'aria-label attribute'
-
+      });
     }
     if (analysis.ariaAttributes.has('aria-live')) {
       features.push({
@@ -426,7 +427,7 @@ export class AccessibilityDocumentationGenerator {
         announcement: 'Announces dynamic content changes',
         context: 'When content updates',
         implementation: 'aria-live attribute'
-
+      });
     }
     if (analysis.ariaAttributes.has('role')) {
       features.push({
@@ -434,7 +435,7 @@ export class AccessibilityDocumentationGenerator {
         announcement: 'Announces element role and purpose',
         context: 'When element receives focus',
         implementation: 'role attribute'
-
+      });
     }
     return features;
   }
@@ -450,7 +451,7 @@ export class AccessibilityDocumentationGenerator {
       code: this.generateGoodExample(componentName, analysis),
       doExample: true,
       explanation: 'This example includes proper ARIA attributes, keyboard support, and semantic HTML.'
-
+    });
     // Bad example
     examples.push({
       title: 'Inaccessible Implementation',
@@ -458,7 +459,7 @@ export class AccessibilityDocumentationGenerator {
       code: this.generateBadExample(componentName),
       doExample: false,
       explanation: 'This example lacks proper accessibility features and should be avoided.'
-
+    });
     return examples;
   }
   /**
@@ -525,20 +526,20 @@ export class AccessibilityDocumentationGenerator {
       description: 'Interactive elements lack visible focus indicators',
       solution: 'Add CSS focus styles with sufficient contrast',
       severity: 'high'
-
+    });
     issues.push({
       issue: 'Insufficient color contrast',
       description: 'Text and background colors do not meet WCAG contrast requirements',
       solution: 'Use colors with at least 4.5:1 contrast ratio for normal text',
       severity: 'high'
-
+    });
     if (analysis.htmlElements.has('button')) {
       issues.push({
         issue: 'Generic button text',
         description: 'Button text like "Click here" or "Read more" is not descriptive',
         solution: 'Use descriptive button text that explains the action',
         severity: 'medium'
-
+      });
     }
     return issues;
   }
@@ -553,14 +554,14 @@ export class AccessibilityDocumentationGenerator {
       instruction: 'Navigate to the component using only the Tab key',
       expectedResult: 'Component should receive focus with visible focus indicator',
       tools: ['Keyboard only']
-
+    });
     if (analysis.htmlElements.has('button')) {
       instructions.push({
         method: 'keyboard',
         instruction: 'Press Enter or Space when button is focused',
         expectedResult: 'Button action should be triggered',
         tools: ['Keyboard only']
-
+      });
     }
     // Screen reader testing
     instructions.push({
@@ -568,14 +569,14 @@ export class AccessibilityDocumentationGenerator {
       instruction: 'Navigate to component with screen reader',
       expectedResult: 'Screen reader should announce component role and accessible name',
       tools: ['NVDA', 'JAWS', 'VoiceOver']
-
+    });
     // Automated testing
     instructions.push({
       method: 'automated',
       instruction: 'Run axe-core accessibility tests',
       expectedResult: 'No accessibility violations should be reported',
       tools: ['axe-core', 'jest-axe']
-
+    });
     return instructions;
   }
   /**

@@ -23,13 +23,13 @@ export type { ExtensionSettings } from './extensions/useExtensionSettings';
 export { useExtensions } from './extensions/useExtensions';
 export type { UseExtensionsResult } from './extensions/useExtensions';
 
-export { useAccessibilityTesting, useAccessibilityMonitor, useAccessibilityTestRunner, default as use-accessibility-testing } from './use-accessibility-testing';
+export { useAccessibilityTesting, useAccessibilityMonitor, useAccessibilityTestRunner } from './use-accessibility-testing';
 export type { UseAccessibilityTestingOptions, AccessibilityTestingState } from './use-accessibility-testing';
 
 export { useActionEvents, useActionSuggestions, useActionRegistry } from './use-action-registry';
 export type { UseActionRegistryOptions, UseActionRegistryReturn } from './use-action-registry';
 
-export { useDashboardUrlSync, default as use-dashboard-url-sync } from './use-dashboard-url-sync';
+export { useDashboardUrlSync } from './use-dashboard-url-sync';
 export type { DashboardUrlState } from './use-dashboard-url-sync';
 
 export { useDebounce } from './use-debounce';
@@ -37,7 +37,7 @@ export { useDebounce } from './use-debounce';
 export { useDownloadStatus } from './use-download-status';
 export type { DownloadTask, DownloadStatusHookReturn } from './use-download-status';
 
-export { useTableKeyboardShortcuts, useEscapeKeyHandler, useKeyboardShortcutHelp, useSearchKeyboardShortcuts, useFormKeyboardShortcuts, useModalKeyboardShortcuts, useEnhancedKeyboardShortcuts, default as use-enhanced-keyboard-shortcuts } from './use-enhanced-keyboard-shortcuts';
+export { useTableKeyboardShortcuts, useEscapeKeyHandler, useKeyboardShortcutHelp, useSearchKeyboardShortcuts, useFormKeyboardShortcuts, useModalKeyboardShortcuts, useEnhancedKeyboardShortcuts } from './use-enhanced-keyboard-shortcuts';
 export type { KeyboardShortcutContext, EnhancedKeyboardShortcutConfig } from './use-enhanced-keyboard-shortcuts';
 
 export { useErrorRecovery, useFormErrorRecovery, useNetworkErrorRecovery } from './use-error-recovery';
@@ -45,10 +45,10 @@ export type { ErrorRecoveryOptions, ErrorRecoveryState } from './use-error-recov
 
 export { useFeatureFlag, useFeatureFlags, useDeploymentPhase, useFeatureClasses, useConditionalComponent } from './use-feature-flags';
 
-export { invalidateFeatureFlagCache, isFeatureEnabled, useFeatures, useAllFeatures, useFeature, default as use-feature } from './use-feature';
+export { invalidateFeatureFlagCache, isFeatureEnabled, useFeatures, useAllFeatures, useFeature } from './use-feature';
 export type { FeatureFlag } from './use-feature';
 
-export { useFocusVisible, useFocusRestore, useFocusTrap, useFocusManagement, default as use-focus-management } from './use-focus-management';
+export { useFocusVisible, useFocusRestore, useFocusTrap, useFocusManagement } from './use-focus-management';
 export type { FocusableElement, FocusManagementOptions } from './use-focus-management';
 
 export { useFormValidation, useFieldValidation } from './use-form-validation';
@@ -57,7 +57,7 @@ export type { FieldValidationState, UseFormValidationConfig, UseFormValidationRe
 export { useInputPreservation } from './use-input-preservation';
 export type { InputPreservationHook } from './use-input-preservation';
 
-export { useIntelligentErrorBoundary, useIntelligentApiError, useIntelligentError, default as use-intelligent-error } from './use-intelligent-error';
+export { useIntelligentErrorBoundary, useIntelligentApiError, useIntelligentError } from './use-intelligent-error';
 export type { ErrorAnalysisRequest, UseIntelligentErrorReturn, ErrorAnalysisResponse, UseIntelligentErrorOptions } from './use-intelligent-error';
 
 export { useKarenAlerts, useSimpleAlerts } from './use-karen-alerts';
@@ -92,10 +92,10 @@ export type { ResponsivePanelOptions, ResponsivePanelState, ResponsivePanelActio
 export { useSession } from './use-session';
 export type { UseSessionReturn } from './use-session';
 
-export { useStreamingController, default as use-streaming-controller } from './use-streaming-controller';
+export { useStreamingController } from './use-streaming-controller';
 export type { StreamOptions, StreamState, StreamMetrics, StreamingController } from './use-streaming-controller';
 
-export { useTabOrderItem, useTabOrder, default as use-tab-order } from './use-tab-order';
+export { useTabOrderItem, useTabOrder } from './use-tab-order';
 export type { TabOrderItem, TabOrderOptions } from './use-tab-order';
 
 export { useTelemetry } from './use-telemetry';

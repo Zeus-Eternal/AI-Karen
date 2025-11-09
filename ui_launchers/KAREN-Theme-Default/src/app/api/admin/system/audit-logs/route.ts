@@ -275,14 +275,14 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           exportFilter.user_id = context.user.user_id;
         }
 
-        const exportResult = await exporter.exportLogs({
-          format: exportFormat as 'json' | 'csv' | 'xlsx',
-          filter: exportFilter,
-          filename: body.export_options?.filename,
-          fields: body.export_options?.fields,
-          include_headers: body.export_options?.include_headers,
-          maxRecords: 10_000, // safety cap
-        });
+          const exportResult = await exporter.exportLogs({
+            format: exportFormat as 'json' | 'csv' | 'xlsx',
+            filter: exportFilter,
+            filename: body.export_options?.filename,
+            fields: body.export_options?.fields,
+            includeHeaders: body.export_options?.include_headers,
+            maxRecords: 10_000, // safety cap
+          });
 
         if (!exportResult.success) {
           return NextResponse.json(
@@ -381,12 +381,28 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           );
         }
 
-        const complianceType = body.compliance_type || 'generic';
-        const range = body.date_range
-          ? {
-              start_date: parseDateSafe(body.date_range.start),
-              end_date: parseDateSafe(body.date_range.end),
-            }
+          const complianceTypeInput =
+            typeof body.compliance_type === 'string' ? body.compliance_type.toUpperCase() : 'SOX';
+          const allowedComplianceTypes = ['SOX', 'GDPR', 'HIPAA', 'PCI_DSS'] as const;
+          if (!allowedComplianceTypes.includes(complianceTypeInput as typeof allowedComplianceTypes[number])) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: {
+                  code: 'INVALID_COMPLIANCE_TYPE',
+                  message: 'Invalid compliance export type',
+                  details: { provided_type: body.compliance_type, allowed: allowedComplianceTypes },
+                },
+              } as AdminApiResponse<never>,
+              noStore({ status: 400 }),
+            );
+          }
+          const complianceType = complianceTypeInput as (typeof allowedComplianceTypes)[number];
+          const range = body.date_range
+            ? {
+                start_date: parseDateSafe(body.date_range.start),
+                end_date: parseDateSafe(body.date_range.end),
+              }
           : undefined;
 
         const exportResult = await getAuditLogExporter().exportForCompliance(

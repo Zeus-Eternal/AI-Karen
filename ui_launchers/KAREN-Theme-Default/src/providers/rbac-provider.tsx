@@ -106,6 +106,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     // Add permissions from roles
     userRoles.forEach(role => {
       role.permissions.forEach(permission => permissions.add(permission));
+    });
 
     // Add direct permissions
     if (currentUser?.directPermissions) {
@@ -116,9 +117,9 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     if (rbacConfig.enableRoleHierarchy && roleHierarchy) {
       roleHierarchy.forEach(hierarchy => {
         hierarchy.effectivePermissions.forEach(permission => permissions.add(permission));
-
+      });
     }
-    
+
     return Array.from(permissions);
   }, [userRoles, currentUser?.directPermissions, rbacConfig.enableRoleHierarchy, roleHierarchy]);
 

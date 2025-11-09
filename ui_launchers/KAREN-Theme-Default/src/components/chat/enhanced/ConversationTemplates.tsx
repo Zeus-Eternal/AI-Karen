@@ -59,7 +59,13 @@ interface ConversationTemplate {
   id: string;
   name: string;
   description: string;
-  category: "coding" | "learning" | "problem-solving" | "creative" | "analysis" | "general";
+  category:
+    | "coding"
+    | "learning"
+    | "problem-solving"
+    | "creative"
+    | "analysis"
+    | "general";
   prompts: Array<{
     id: string;
     text: string;
@@ -80,7 +86,13 @@ interface QuickAction {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   prompt: string;
-  category: "coding" | "learning" | "problem-solving" | "creative" | "analysis" | "general";
+  category:
+    | "coding"
+    | "learning"
+    | "problem-solving"
+    | "creative"
+    | "analysis"
+    | "general";
   shortcut?: string; // e.g., "Ctrl+E"
   isBuiltIn: boolean;
 }
@@ -90,8 +102,13 @@ interface ConversationTemplatesProps {
   quickActions?: QuickAction[];
   onTemplateSelect: (template: ConversationTemplate) => void;
   onQuickActionSelect: (action: QuickAction) => void;
-  onTemplateCreate?: (template: Omit<ConversationTemplate, "id" | "createdAt" | "updatedAt">) => void;
-  onTemplateUpdate?: (templateId: string, updates: Partial<ConversationTemplate>) => void;
+  onTemplateCreate?: (
+    template: Omit<ConversationTemplate, "id" | "createdAt" | "updatedAt">
+  ) => void;
+  onTemplateUpdate?: (
+    templateId: string,
+    updates: Partial<ConversationTemplate>
+  ) => void;
   onTemplateDelete?: (templateId: string) => void;
   className?: string;
 }
@@ -105,9 +122,23 @@ const defaultTemplates: ConversationTemplate[] = [
     description: "Get comprehensive code review and suggestions",
     category: "coding",
     prompts: [
-      { id: "1", text: "Please review this code for best practices and potential improvements:", order: 1 },
-      { id: "2", text: "Are there any security concerns I should be aware of?", order: 2, isOptional: true },
-      { id: "3", text: "How can I optimize this code for better performance?", order: 3, isOptional: true },
+      {
+        id: "1",
+        text: "Please review this code for best practices and potential improvements:",
+        order: 1,
+      },
+      {
+        id: "2",
+        text: "Are there any security concerns I should be aware of?",
+        order: 2,
+        isOptional: true,
+      },
+      {
+        id: "3",
+        text: "How can I optimize this code for better performance?",
+        order: 3,
+        isOptional: true,
+      },
     ],
     tags: ["code", "review", "best-practices"],
     isBuiltIn: true,
@@ -119,12 +150,22 @@ const defaultTemplates: ConversationTemplate[] = [
   {
     id: "learning-session",
     name: "Learning Session",
-    description: "Structured learning conversation with explanations and examples",
+    description:
+      "Structured learning conversation with explanations and examples",
     category: "learning",
     prompts: [
-      { id: "1", text: "I want to learn about [TOPIC]. Can you explain it step by step?", order: 1 },
+      {
+        id: "1",
+        text: "I want to learn about [TOPIC]. Can you explain it step by step?",
+        order: 1,
+      },
       { id: "2", text: "Can you provide practical examples?", order: 2 },
-      { id: "3", text: "What are some common mistakes to avoid?", order: 3, isOptional: true },
+      {
+        id: "3",
+        text: "What are some common mistakes to avoid?",
+        order: 3,
+        isOptional: true,
+      },
     ],
     tags: ["learning", "education", "examples"],
     isBuiltIn: true,
@@ -139,9 +180,21 @@ const defaultTemplates: ConversationTemplate[] = [
     description: "Systematic approach to solving complex problems",
     category: "problem-solving",
     prompts: [
-      { id: "1", text: "I have a problem: [DESCRIBE PROBLEM]. Can you help me break it down?", order: 1 },
-      { id: "2", text: "What are the possible solutions and their trade-offs?", order: 2 },
-      { id: "3", text: "What would be the best approach given my constraints?", order: 3 },
+      {
+        id: "1",
+        text: "I have a problem: [DESCRIBE PROBLEM]. Can you help me break it down?",
+        order: 1,
+      },
+      {
+        id: "2",
+        text: "What are the possible solutions and their trade-offs?",
+        order: 2,
+      },
+      {
+        id: "3",
+        text: "What would be the best approach given my constraints?",
+        order: 3,
+      },
     ],
     tags: ["problem-solving", "analysis", "solutions"],
     isBuiltIn: true,
@@ -158,7 +211,8 @@ const defaultQuickActions: QuickAction[] = [
     name: "Explain Code",
     description: "Get detailed explanation of code functionality",
     icon: Code,
-    prompt: "Please explain what this code does, how it works, and any important details:",
+    prompt:
+      "Please explain what this code does, how it works, and any important details:",
     category: "coding",
     shortcut: "Ctrl+E",
     isBuiltIn: true,
@@ -209,11 +263,13 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] =
-    useState<ConversationTemplate["category"] | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<
+    ConversationTemplate["category"] | "all"
+  >("all");
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<ConversationTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] =
+    useState<ConversationTemplate | null>(null);
 
   const [newTemplate, setNewTemplate] = useState<{
     name: string;
@@ -240,7 +296,8 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         template.description.toLowerCase().includes(q) ||
         template.tags.some((t) => t.toLowerCase().includes(q));
 
-      const matchesCategory = categoryFilter === "all" || template.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "all" || template.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
   }, [templates, searchQuery, categoryFilter]);
@@ -253,7 +310,8 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
         action.name.toLowerCase().includes(q) ||
         action.description.toLowerCase().includes(q);
 
-      const matchesCategory = categoryFilter === "all" || action.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "all" || action.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
   }, [quickActions, searchQuery, categoryFilter]);
@@ -270,7 +328,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       return;
     }
 
-    const template: Omit<ConversationTemplate, "id" | "createdAt" | "updatedAt"> = {
+    const template: Omit<
+      ConversationTemplate,
+      "id" | "createdAt" | "updatedAt"
+    > = {
       name: newTemplate.name.trim(),
       description: newTemplate.description.trim(),
       category: newTemplate.category,
@@ -309,7 +370,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
     (template: ConversationTemplate) => {
       onTemplateSelect(template);
       if (onTemplateUpdate) {
-        onTemplateUpdate(template.id, { usageCount: template.usageCount + 1, updatedAt: new Date() });
+        onTemplateUpdate(template.id, {
+          usageCount: template.usageCount + 1,
+          updatedAt: new Date(),
+        });
       }
     },
     [onTemplateSelect, onTemplateUpdate]
@@ -322,7 +386,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
       const key = e.key.toLowerCase();
 
       const matchByShortcut = (shortcut?: string) =>
-        shortcut ? shortcut.toLowerCase().replace("cmd", "ctrl") === `ctrl+${key}` : false;
+        shortcut
+          ? shortcut.toLowerCase().replace("cmd", "ctrl") === `ctrl+${key}`
+          : false;
 
       if (ctrl && ["e", "q", "b"].includes(key)) {
         const action = quickActions.find((a) => matchByShortcut(a.shortcut));
@@ -338,7 +404,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
 
   /* --------------------------- UI Helpers ----------------------------- */
 
-  const getCategoryIcon = (category: ConversationTemplate["category"] | "all") => {
+  const getCategoryIcon = (
+    category: ConversationTemplate["category"] | "all"
+  ) => {
     switch (category) {
       case "coding":
         return Code;
@@ -356,7 +424,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
     }
   };
 
-  const getCategoryColor = (category: ConversationTemplate["category"] | "all") => {
+  const getCategoryColor = (
+    category: ConversationTemplate["category"] | "all"
+  ) => {
     switch (category) {
       case "coding":
         return "bg-blue-100 text-blue-800";
@@ -387,7 +457,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             <div className="flex items-start gap-3 flex-1">
               <CategoryIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm md:text-base lg:text-lg">{template.name}</h3>
+                <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                  {template.name}
+                </h3>
                 <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
                   {template.description}
                 </p>
@@ -396,12 +468,19 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Template actions">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  aria-label="Template actions"
+                >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleTemplateSelect(template)}>
+                <DropdownMenuItem
+                  onClick={() => handleTemplateSelect(template)}
+                >
                   <Play className="h-4 w-4 mr-2" />
                   Use
                 </DropdownMenuItem>
@@ -413,7 +492,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                   onClick={() => {
                     // simple clone-to-create UX
                     if (onTemplateCreate) {
-                      const cloned: Omit<ConversationTemplate, "id" | "createdAt" | "updatedAt"> = {
+                      const cloned: Omit<
+                        ConversationTemplate,
+                        "id" | "createdAt" | "updatedAt"
+                      > = {
                         name: `${template.name} (Copy)`,
                         description: template.description,
                         category: template.category,
@@ -429,7 +511,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                         rating: 0,
                       };
                       onTemplateCreate(cloned);
-                      toast({ title: "Template Cloned", description: "Copy created successfully." });
+                      toast({
+                        title: "Template Cloned",
+                        description: "Copy created successfully.",
+                      });
                     }
                   }}
                 >
@@ -451,7 +536,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
           </div>
 
           <div className="flex items-center gap-2 mb-3">
-            <Badge className={`text-xs ${getCategoryColor(template.category)}`}>{template.category}</Badge>
+            <Badge className={`text-xs ${getCategoryColor(template.category)}`}>
+              {template.category}
+            </Badge>
 
             <div className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm md:text-base">
               <Star className="h-3 w-3 fill-current text-yellow-500" />
@@ -465,7 +552,11 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
 
           <div className="flex flex-wrap gap-1 mb-3">
             {template.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
+              <Badge
+                key={tag}
+                variant="outline"
+                className="text-xs sm:text-sm md:text-base"
+              >
                 {tag}
               </Badge>
             ))}
@@ -476,7 +567,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
               Prompts ({template.prompts.length}):
             </span>
             {template.prompts.slice(0, 2).map((prompt) => (
-              <p key={prompt.id} className="text-xs text-muted-foreground line-clamp-1 sm:text-sm md:text-base">
+              <p
+                key={prompt.id}
+                className="text-xs text-muted-foreground line-clamp-1 sm:text-sm md:text-base"
+              >
                 {prompt.order}. {prompt.text}
               </p>
             ))}
@@ -487,7 +581,11 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             )}
           </div>
 
-          <Button onClick={() => handleTemplateSelect(template)} className="w-full mt-3" size="sm">
+          <Button
+            onClick={() => handleTemplateSelect(template)}
+            className="w-full mt-3"
+            size="sm"
+          >
             <Play className="h-4 w-4 mr-2" />
             Use Template
           </Button>
@@ -499,21 +597,29 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
   const renderQuickAction = (action: QuickAction) => {
     const Icon = action.icon;
     return (
-      <Card
+      <div
         key={action.id}
         role="button"
         tabIndex={0}
         className="hover:shadow-sm transition-shadow cursor-pointer"
         onClick={() => onQuickActionSelect(action)}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onQuickActionSelect(action)}
+        onKeyDown={(e) =>
+          (e.key === "Enter" || e.key === " ") && onQuickActionSelect(action)
+        }
       >
+        <Card>
         <CardContent className="p-4 sm:p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
             <Icon className="h-5 w-5 text-primary" />
             <div className="flex-1">
-              <h3 className="font-medium text-sm md:text-base lg:text-lg">{action.name}</h3>
+              <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                {action.name}
+              </h3>
               {action.shortcut && (
-                <Badge variant="outline" className="text-xs mt-1 sm:text-sm md:text-base">
+                <Badge
+                  variant="outline"
+                  className="text-xs mt-1 sm:text-sm md:text-base"
+                >
                   {action.shortcut}
                 </Badge>
               )}
@@ -524,9 +630,12 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {action.description}
           </p>
 
-          <Badge className={`text-xs ${getCategoryColor(action.category)}`}>{action.category}</Badge>
+          <Badge className={`text-xs ${getCategoryColor(action.category)}`}>
+            {action.category}
+          </Badge>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     );
   };
 
@@ -552,7 +661,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create Template</DialogTitle>
-                  <DialogDescription>Define a reusable chat template for your team.</DialogDescription>
+                  <DialogDescription>
+                    Define a reusable chat template for your team.
+                  </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
@@ -560,7 +671,12 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     <label className="text-sm font-medium">Name</label>
                     <Input
                       value={newTemplate.name}
-                      onChange={(e) => setNewTemplate((prev) => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setNewTemplate((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                       placeholder="Template name"
                     />
                   </div>
@@ -570,7 +686,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     <Textarea
                       value={newTemplate.description}
                       onChange={(e) =>
-                        setNewTemplate((prev) => ({ ...prev, description: e.target.value }))
+                        setNewTemplate((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
                       }
                       placeholder="Template description"
                       rows={2}
@@ -595,7 +714,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                         <SelectItem value="general">General</SelectItem>
                         <SelectItem value="coding">Coding</SelectItem>
                         <SelectItem value="learning">Learning</SelectItem>
-                        <SelectItem value="problem-solving">Problem Solving</SelectItem>
+                        <SelectItem value="problem-solving">
+                          Problem Solving
+                        </SelectItem>
                         <SelectItem value="creative">Creative</SelectItem>
                         <SelectItem value="analysis">Analysis</SelectItem>
                       </SelectContent>
@@ -612,7 +733,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                         onClick={() =>
                           setNewTemplate((prev) => ({
                             ...prev,
-                            prompts: [...prev.prompts, { text: "", order: prev.prompts.length + 1 }],
+                            prompts: [
+                              ...prev.prompts,
+                              { text: "", order: prev.prompts.length + 1 },
+                            ],
                           }))
                         }
                       >
@@ -628,7 +752,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                             onChange={(e) =>
                               setNewTemplate((prev) => {
                                 const copy = [...prev.prompts];
-                                copy[idx] = { ...copy[idx], text: e.target.value };
+                                copy[idx] = {
+                                  ...copy[idx],
+                                  text: e.target.value,
+                                };
                                 return { ...prev, prompts: copy };
                               })
                             }
@@ -645,7 +772,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                                 copy.splice(idx, 1);
                                 return {
                                   ...prev,
-                                  prompts: copy.map((pp, i) => ({ ...pp, order: i + 1 })),
+                                  prompts: copy.map((pp, i) => ({
+                                    ...pp,
+                                    order: i + 1,
+                                  })),
                                 };
                               })
                             }
@@ -658,7 +788,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Tags (comma separated)</label>
+                    <label className="text-sm font-medium">
+                      Tags (comma separated)
+                    </label>
                     <Input
                       value={newTemplate.tags.join(", ")}
                       onChange={(e) =>
@@ -678,7 +810,10 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
                     <Button className="flex-1" onClick={handleCreateTemplate}>
                       Create
                     </Button>
-                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCreateDialog(false)}
+                    >
                       Cancel
                     </Button>
                   </div>
@@ -702,9 +837,14 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
 
           <Select
             value={categoryFilter}
-            onValueChange={(val) => setCategoryFilter(val as ConversationTemplate["category"] | "all")}
+            onValueChange={(val) =>
+              setCategoryFilter(val as ConversationTemplate["category"] | "all")
+            }
           >
-            <SelectTrigger className="w-full h-8 text-xs sm:text-sm md:text-base" aria-label="Filter by category">
+            <SelectTrigger
+              className="w-full h-8 text-xs sm:text-sm md:text-base"
+              aria-label="Filter by category"
+            >
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -726,7 +866,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {/* Quick Actions */}
             {filteredQuickActions.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-medium md:text-base lg:text-lg">Quick Actions</h3>
+                <h3 className="text-sm font-medium md:text-base lg:text-lg">
+                  Quick Actions
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredQuickActions.map(renderQuickAction)}
                 </div>
@@ -736,22 +878,27 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
             {/* Templates */}
             {filteredTemplates.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-medium md:text-base lg:text-lg">Templates</h3>
-                <div className="space-y-3">{filteredTemplates.map(renderTemplate)}</div>
+                <h3 className="text-sm font-medium md:text-base lg:text-lg">
+                  Templates
+                </h3>
+                <div className="space-y-3">
+                  {filteredTemplates.map(renderTemplate)}
+                </div>
               </div>
             )}
 
             {/* Empty State */}
-            {filteredTemplates.length === 0 && filteredQuickActions.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <LayoutTemplate className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm md:text-base lg:text-lg">
-                  {searchQuery || categoryFilter !== "all"
-                    ? "No templates or actions match your search"
-                    : "No templates or actions available"}
-                </p>
-              </div>
-            )}
+            {filteredTemplates.length === 0 &&
+              filteredQuickActions.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <LayoutTemplate className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm md:text-base lg:text-lg">
+                    {searchQuery || categoryFilter !== "all"
+                      ? "No templates or actions match your search"
+                      : "No templates or actions available"}
+                  </p>
+                </div>
+              )}
           </div>
         </ScrollArea>
       </CardContent>

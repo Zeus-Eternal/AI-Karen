@@ -245,6 +245,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
       )}
     </div>
   );
+});
 
 FormField.displayName = 'FormField';
 
@@ -306,6 +307,7 @@ export const ValidatedFormField = forwardRef<HTMLInputElement, ValidatedFormFiel
       {...props}
     />
   );
+});
 
 ValidatedFormField.displayName = 'ValidatedFormField';
 

@@ -392,7 +392,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
     try {
       const payload = sanitizeConfig(workingConfig);
 
-      const response = await backend.makeRequestPublic('/api/system/config/models', {
+      const response = await backend.makeRequestPublic<SystemModelConfig>('/api/system/config/models', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

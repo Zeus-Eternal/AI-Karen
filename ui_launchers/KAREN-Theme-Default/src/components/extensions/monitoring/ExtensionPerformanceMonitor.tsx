@@ -156,7 +156,7 @@ export function ExtensionPerformanceMonitor({
       },
       {
         name: "Response Time",
-        value: performanceData?.avgResponseTime ?? 125, // fallback simulated average
+        value: performanceData?.avgResponseTime ?? performanceData?.totalCpu ?? 125, // fallback simulated average
         unit: "ms",
         trend: "stable",
         status: "good",

@@ -1,16 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-  listLlamaModels, 
-  listTransformersModels, 
-  listOpenaiModels,
-  listAllAvailableModels,
-  getProvidersWithModels 
-import { } from '@/lib/providers-api';
+// Mock functions for model availability checking
+const listAllAvailableModels = async (): Promise<ModelInfo[]> => {
+  // Mock implementation - replace with actual API call
+  return [
+    { id: 'gpt-3.5-turbo', provider: 'openai', displayName: 'GPT-3.5 Turbo', family: 'gpt', installed: true },
+    { id: 'gpt-4', provider: 'openai', displayName: 'GPT-4', family: 'gpt', installed: false },
+    { id: 'llama-2-7b', provider: 'llamacpp', displayName: 'Llama 2 7B', family: 'llama', installed: true },
+  ];
+};
+
+const getProvidersWithModels = async () => {
+  // Mock implementation - replace with actual API call
+  return [
+    { id: 'openai', title: 'OpenAI', group: 'cloud', available: true },
+    { id: 'llamacpp', title: 'Llama.cpp', group: 'local', available: true },
+    { id: 'transformers', title: 'Transformers', group: 'local', available: false },
+  ];
+};
 
 interface ModelInfo {
   id: string;

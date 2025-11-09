@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { AccessibilityTestSuiteImpl, type AccessibilityTestSuite, type AccessibilityReport } from '../lib/accessibility/accessibility-testing';
 
 export interface UseAccessibilityTestingOptions {
@@ -32,7 +32,7 @@ export interface AccessibilityTestingState {
 }
 
 export function useAccessibilityTesting(
-  elementRef: React.RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement>,
   options: UseAccessibilityTestingOptions = {}
 ) {
   const {

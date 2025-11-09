@@ -1,17 +1,7 @@
 "use client";
-
-import React, { useEffect, useMemo, useState } from "react";
-import { Activity, Clock, TrendingUp, Zap } from "lucide-react";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import {
-  PERFORMANCE_THRESHOLDS,
-  type CustomMetric,
-  type PerformanceSummary,
-  usePerformanceMonitor,
-} from "@/utils/performance-monitor";
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { usePerformanceMonitor, checkPerformanceBudget } from '@/utils/performance-monitor';
 
 export interface PerformanceDashboardProps {
   className?: string;

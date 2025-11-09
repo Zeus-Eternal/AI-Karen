@@ -41,7 +41,8 @@ class OptimizedStartup:
         self._essential_services: Set[str] = {
             "database",
             "config_manager",
-            "health_service"
+            "health_service",
+            "extension_health_monitor"
         }
         self._heavy_services: Set[str] = {
             "nlp_service",
@@ -130,6 +131,9 @@ class OptimizedStartup:
         
         # Health service (lightweight)
         essential_tasks.append(self._init_health_service(report))
+        
+        # Extension health monitor (lightweight)
+        essential_tasks.append(self._init_extension_health_monitor(report))
         
         # Execute essential services in parallel
         results = await asyncio.gather(*essential_tasks, return_exceptions=True)
@@ -267,6 +271,37 @@ class OptimizedStartup:
             logger.error(f"Health service initialization failed: {e}")
             raise
     
+    async def _init_extension_health_monitor(self, report: Dict[str, Any]) -> None:
+        """Initialize extension health monitor (lightweight)."""
+        try:
+            # Initialize extension health monitor
+            from server.extension_health_monitor import initialize_extension_health_monitor
+            
+            # Get extension manager if available
+            extension_manager = None
+            try:
+                # Try to get extension manager from various sources
+                pass  # Extension manager will be None for now, monitor can handle it
+            except Exception:
+                pass
+            
+            await initialize_extension_health_monitor(extension_manager)
+            
+            self._initialized_services.add("extension_health_monitor")
+            report["services"]["extension_health_monitor"] = {
+                "status": "initialized",
+                "initialized": True, 
+                "deferred": False
+            }
+            
+            logger.info("Extension health monitor initialized")
+            
+        except Exception as e:
+            logger.warning(f"Extension health monitor initialization failed: {e}")
+            # Don't raise - this is not critical for core functionality
+            report["warnings"] = report.get("warnings", [])
+            report["warnings"].append(f"Extension health monitor: {e}")
+    
     async def _init_lightweight_service(self, service_name: str, settings: Any) -> None:
         """Initialize a lightweight service."""
         # Placeholder for lightweight service initialization
@@ -285,7 +320,13 @@ class OptimizedStartup:
             await cleanup_lazy_services()
             
             # Cleanup essential services
-            # (Add specific cleanup logic here)
+            if "extension_health_monitor" in self._initialized_services:
+                try:
+                    from server.extension_health_monitor import shutdown_extension_health_monitor
+                    await shutdown_extension_health_monitor()
+                    logger.info("Extension health monitor shutdown completed")
+                except Exception as e:
+                    logger.error(f"Extension health monitor shutdown failed: {e}")
             
             logger.info("✅ Optimized shutdown completed")
             

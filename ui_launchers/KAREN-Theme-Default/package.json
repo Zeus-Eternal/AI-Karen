@@ -1,7 +1,9 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
+  "name": "@karen/theme-default",
+  "version": "1.0.0",
+  "description": "Production-ready KAREN AI Theme - Default Modern UI",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "node scripts/preflight-check.js && next dev -p 8000",
     "dev:8010": "node scripts/preflight-check.js && next dev -p 8010",
@@ -62,6 +64,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource/inter": "^5.2.8",
     "@genkit-ai/googleai": "^1.8.0",
     "@genkit-ai/next": "^1.8.0",
     "@hookform/resolvers": "^4.1.3",

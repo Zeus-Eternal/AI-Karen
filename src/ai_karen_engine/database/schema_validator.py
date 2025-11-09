@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Expected migration version (update when adding migrations)
 # This should match the latest migration file in /data/migrations/postgres/
-EXPECTED_MIGRATION_VERSION = "021_admin_system_rollback.sql"
+EXPECTED_MIGRATION_VERSION = "022_enhanced_auth_validation_system.sql"
 EXPECTED_MIGRATION_SERVICE = "postgres"
 
 

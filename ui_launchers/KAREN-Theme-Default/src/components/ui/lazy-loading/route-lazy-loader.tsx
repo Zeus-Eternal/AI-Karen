@@ -121,7 +121,7 @@ export function createLazyRoute<T extends ComponentType<any>>(
   const load = async () => importFn();
 
   if (options.preload) {
-    void load();
+    importFn().catch(error => { });
   }
 
   const LazyComponent = React.lazy(load);
@@ -137,10 +137,12 @@ export function createLazyRoute<T extends ComponentType<any>>(
 }
 
 export function useRoutePreloader() {
-  const preloadRoute = React.useCallback((importFn: () => Promise<unknown>) => {
-    void importFn();
-  }, []);
-
+  const preloadRoute = React.useCallback(
+    (importFn: () => Promise<{ default: ComponentType<any> }>) => {
+      importFn().catch(error => { });
+    },
+    []
+  );
   return { preloadRoute };
 }
 

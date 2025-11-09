@@ -4,12 +4,12 @@
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
-
-  createFormAria, 
-  createAriaLabel, 
+import {
+  createFormAria,
+  createAriaLabel,
   mergeAriaProps,
-  type AriaProps 
-import { } from "@/utils/aria";
+  type AriaProps
+} from "@/utils/aria";
 export interface AriaEnhancedInputProps extends React.ComponentProps<"input"> {
   /** Accessible label for the input */
   ariaLabel?: string;

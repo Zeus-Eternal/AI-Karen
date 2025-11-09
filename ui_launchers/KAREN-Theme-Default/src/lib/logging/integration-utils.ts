@@ -45,7 +45,7 @@ export async function loggedFetch(
     const response = await fetch(url, {
       ...options,
       headers
-
+    });
     const metrics = networkTracker.end(response.status);
     
     connectivityLogger.logConnectivity(

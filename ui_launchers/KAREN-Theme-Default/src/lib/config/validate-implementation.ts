@@ -58,13 +58,13 @@ export function validateImplementation(): {
       results.push(`   - Warning details:`);
       validation.warnings.forEach(warning => {
         results.push(`     • ${warning}`);
-
+      });
     }
     if (validation.errors.length > 0) {
       results.push(`   - Error details:`);
       validation.errors.forEach(error => {
         results.push(`     • ${error}`);
-
+      });
     }
     // Test 7: Utility methods
     const healthUrl = manager.getHealthCheckUrl();
@@ -108,13 +108,13 @@ export function validateImplementation(): {
  * Run validation and log results
  */
 export function runValidation(): void {
-  console.log('=' .repeat(70));
+  console.log('='.repeat(70));
   const validation = validateImplementation();
   validation.results.forEach(result => console.log(result));
   if (validation.errors.length > 0) {
     validation.errors.forEach(error => console.log(error));
   }
-  console.log('=' .repeat(70));
+  console.log('='.repeat(70));
 }
 // Run validation if this file is executed directly
 if (typeof require !== 'undefined' && require.main === module) {

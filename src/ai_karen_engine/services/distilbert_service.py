@@ -200,10 +200,15 @@ class DistilBertService:
             logger.info("PyTorch not available; defaulting to CPU mode")
             return "cpu"
 
-        if self.config.enable_gpu and torch.cuda.is_available():
-            device = torch.device("cuda")
-            logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
-            return device
+        # Check for CUDA availability with error handling
+        try:
+            if self.config.enable_gpu and torch.cuda.is_available():
+                device = torch.device("cuda")
+                logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
+                return device
+        except Exception as e:
+            logger.warning(f"CUDA initialization failed: {e}")
+            logger.info("Falling back to CPU due to CUDA issues")
 
         device = torch.device("cpu")
         logger.info("Using CPU for inference")
@@ -212,19 +217,41 @@ class DistilBertService:
     def _load_model(self):
         """Load DistilBERT model and tokenizer."""
         try:
-            # Respect offline mode to avoid network calls
-            offline = os.getenv("TRANSFORMERS_OFFLINE", "").lower() in ("1", "true", "yes")
+            # Check for offline mode environment variables
+            offline = (
+                os.getenv("TRANSFORMERS_OFFLINE", "").lower() in ("1", "true", "yes") or
+                os.getenv("HF_HUB_OFFLINE", "").lower() in ("1", "true", "yes")
+            )
+            
             if AutoTokenizer is None or AutoModel is None:
                 raise RuntimeError("Transformers library is unavailable")
 
-            tokenizer = AutoTokenizer.from_pretrained(
-                self.config.model_name,
-                local_files_only=offline,
-            )
-            model = AutoModel.from_pretrained(
-                self.config.model_name,
-                local_files_only=offline,
-            )
+            # Try offline first, then fallback to online if needed
+            try:
+                logger.info(f"Loading model {self.config.model_name} in offline mode")
+                tokenizer = AutoTokenizer.from_pretrained(
+                    self.config.model_name,
+                    local_files_only=True,
+                )
+                model = AutoModel.from_pretrained(
+                    self.config.model_name,
+                    local_files_only=True,
+                )
+                logger.info("✓ Model loaded successfully from local cache")
+            except Exception as e:
+                if offline:
+                    logger.error(f"Failed to load model in offline mode: {e}")
+                    raise
+                else:
+                    logger.warning(f"Failed to load from cache, trying online: {e}")
+                    tokenizer = AutoTokenizer.from_pretrained(
+                        self.config.model_name,
+                        local_files_only=False,
+                    )
+                    model = AutoModel.from_pretrained(
+                        self.config.model_name,
+                        local_files_only=False,
+                    )
             
             # Move model to device and set to eval mode
             model.to(self.device)
@@ -238,6 +265,10 @@ class DistilBertService:
             
         except Exception as e:
             logger.error(f"Failed to load DistilBERT model: {e}")
+            logger.error(f"Model name: {self.config.model_name}")
+            logger.error(f"Offline mode: {offline}")
+            logger.error(f"TRANSFORMERS_OFFLINE: {os.getenv('TRANSFORMERS_OFFLINE', 'not set')}")
+            logger.error(f"HF_HUB_OFFLINE: {os.getenv('HF_HUB_OFFLINE', 'not set')}")
             return None, None
     
     async def get_embeddings(

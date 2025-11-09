@@ -177,16 +177,19 @@ class AnalysisResult:
 _METRIC_ANALYZE_LATENCY = Histogram(
     "karen_analyzer_latency_seconds",
     "Latency for comprehensive analyzer",
+    ["component"]
 ).labels(component="spacy_analyzer")
 
 _METRIC_ANALYZE_ERRORS = Counter(
     "karen_analyzer_errors_total",
     "Total errors in comprehensive analyzer",
+    ["component"]
 ).labels(component="spacy_analyzer")
 
 _METRIC_REQUESTS = Counter(
     "karen_analyzer_requests_total",
     "Total requests to comprehensive analyzer",
+    ["component"]
 ).labels(component="spacy_analyzer")
 
 

@@ -3,11 +3,14 @@
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
+import {
+  Controller,
+  FormProvider,
   useFormContext,
   type ControllerProps,
   type FieldPath,
   type FieldValues,
-import { } from "react-hook-form"
+} from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 // Base types for form compound components
@@ -48,13 +51,9 @@ export type FormItemContextValue = {
 }
 
 // Form contexts
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
+const FormFieldContext = React.createContext<FormFieldContextValue | undefined>(undefined)
 
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
+const FormItemContext = React.createContext<FormItemContextValue | undefined>(undefined)
 
 // Form Root Component
 const FormRoot = FormProvider
@@ -78,16 +77,16 @@ FormField.displayName = "FormField"
 // Custom hook for form field
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
-
-  const fieldState = getFieldState(fieldContext.name, formState)
-
   if (!fieldContext) {
     throw new Error("useFormField should be used within <FormField>")
   }
 
-  const { id } = itemContext
+  const itemContext = React.useContext(FormItemContext)
+  const formContext = useFormContext()
+  const { getFieldState, formState } = formContext
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  const id = itemContext?.id ?? fieldContext.name
 
   return {
     id,
@@ -282,9 +281,22 @@ const Form = {
   Legend: FormLegend,
 }
 
+const FormDefault = Form
+
 export {
+  Form,
+  FormRoot,
+  FormField,
+  FormGroup,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormError,
+  FormActions,
+  FormSection,
+  FormLegend,
   useFormField,
 }
 
-export type {
-}
+export default FormDefault;

@@ -55,13 +55,6 @@ interface ISpeechRecognition extends EventTarget {
   onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => ISpeechRecognition;
-    webkitSpeechRecognition?: new () => ISpeechRecognition;
-  }
-}
-
 export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   isRecording,
   isEnabled,
@@ -85,7 +78,8 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   // SSR guard
   const getSR = useCallback(() => {
     if (typeof window === "undefined") return undefined;
-    return window.SpeechRecognition || window.webkitSpeechRecognition;
+    const win = window as any;
+    return win.SpeechRecognition || win.webkitSpeechRecognition;
   }, []);
 
   // Initialize SpeechRecognition

@@ -229,15 +229,281 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   }
 
   async colorContrast(): Promise<ColorContrastReport> {
-    // Implement the colorContrast testing logic
+    if (typeof window === 'undefined') {
+      return {
+        passed: true,
+        failedElements: [],
+        averageRatio: 4.5,
+      };
+    }
+
+    const elements = Array.from(this.container.querySelectorAll<HTMLElement>('*'));
+    const failedElements: ColorContrastReport['failedElements'] = [];
+    let totalRatio = 0;
+    let sampled = 0;
+
+    elements.slice(0, 200).forEach((element) => {
+      const styles = window.getComputedStyle(element);
+      const foreground = styles.color || '#000000';
+      const background = styles.backgroundColor || '#ffffff';
+      const ratio = this.calculateContrastRatio(foreground, background);
+
+      totalRatio += ratio;
+      sampled += 1;
+
+      const required = styles.fontWeight === 'bold' || parseFloat(styles.fontSize) >= 18 ? 3 : 4.5;
+      if (ratio < required) {
+        failedElements.push({
+          element: this.getElementSelector(element),
+          foreground,
+          background,
+          ratio,
+          required,
+          level: required >= 4.5 ? 'AA' : 'AAA',
+        });
+      }
+    });
+
+    const averageRatio = sampled > 0 ? totalRatio / sampled : 4.5;
+
     return {
-      passed: true,
-      failedElements: [],
-      averageRatio: 4.5,
+      passed: failedElements.length === 0,
+      failedElements,
+      averageRatio,
     };
   }
 
-  // Add methods for focusManagement and aria testing...
+  async focusManagement(): Promise<FocusManagementReport> {
+    if (typeof document === 'undefined') {
+      return {
+        passed: true,
+        focusTraps: [],
+        focusRestoration: [],
+        focusIndicators: [],
+      };
+    }
+
+    const focusableSelectors = [
+      'a[href]',
+      'button:not([disabled])',
+      'textarea:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+      '[role="button"]',
+      '[role="link"]',
+    ];
+
+    const focusTrapCandidates = Array.from(
+      this.container.querySelectorAll('[data-focus-trap], [aria-modal="true"], [role="dialog"]')
+    ) as HTMLElement[];
+
+    const focusTraps = focusTrapCandidates.map((element) => {
+      const innerFocusable = element.querySelectorAll(focusableSelectors.join(', '));
+      const working = innerFocusable.length > 0;
+      const issues = working ? [] : ['No focusable elements inside focus trap'];
+      return {
+        element: this.getElementSelector(element),
+        working,
+        issues,
+      };
+    });
+
+    const restoreTargets = Array.from(
+      this.container.querySelectorAll('[data-focus-restore], [data-focus-restoration]')
+    ) as HTMLElement[];
+
+    const focusRestoration = restoreTargets.map((element) => ({
+      element: this.getElementSelector(element),
+      working: element.hasAttribute('data-focus-restore') || element.hasAttribute('data-focus-restoration'),
+    }));
+
+    const focusableElements = Array.from(
+      this.container.querySelectorAll(focusableSelectors.join(', '))
+    ) as HTMLElement[];
+
+    const focusIndicators = focusableElements.slice(0, 25).map((element) => {
+      if (typeof window === 'undefined') {
+        return {
+          element: this.getElementSelector(element),
+          visible: false,
+          contrast: 0,
+        };
+      }
+      const styles = window.getComputedStyle(element);
+      const outlineVisible = styles.outlineStyle !== 'none' && styles.outlineWidth !== '0px';
+      const borderVisible = styles.borderStyle !== 'none' && styles.borderWidth !== '0px';
+      const visible = outlineVisible || borderVisible;
+      const contrast = visible
+        ? this.calculateContrastRatio(
+            styles.outlineColor || styles.borderColor || '#000000',
+            styles.backgroundColor || '#ffffff'
+          )
+        : 0;
+      return {
+        element: this.getElementSelector(element),
+        visible,
+        contrast,
+      };
+    });
+
+    const passed =
+      focusTraps.every((trap) => trap.working && trap.issues.length === 0) &&
+      focusIndicators.some((indicator) => indicator.visible);
+
+    return {
+      passed,
+      focusTraps,
+      focusRestoration,
+      focusIndicators,
+    };
+  }
+
+  async aria(): Promise<AriaReport> {
+    if (typeof document === 'undefined') {
+      return {
+        passed: true,
+        invalidAttributes: [],
+        missingAttributes: [],
+        incorrectRoles: [],
+        brokenReferences: [],
+      };
+    }
+    const allowedAriaAttributes = new Set([
+      'aria-activedescendant',
+      'aria-atomic',
+      'aria-autocomplete',
+      'aria-busy',
+      'aria-checked',
+      'aria-colcount',
+      'aria-colindex',
+      'aria-colspan',
+      'aria-controls',
+      'aria-current',
+      'aria-describedby',
+      'aria-details',
+      'aria-disabled',
+      'aria-expanded',
+      'aria-flowto',
+      'aria-haspopup',
+      'aria-hidden',
+      'aria-invalid',
+      'aria-keyshortcuts',
+      'aria-label',
+      'aria-labelledby',
+      'aria-level',
+      'aria-live',
+      'aria-modal',
+      'aria-multiline',
+      'aria-multiselectable',
+      'aria-orientation',
+      'aria-owns',
+      'aria-placeholder',
+      'aria-posinset',
+      'aria-pressed',
+      'aria-readonly',
+      'aria-relevant',
+      'aria-required',
+      'aria-roledescription',
+      'aria-rowcount',
+      'aria-rowindex',
+      'aria-rowspan',
+      'aria-selected',
+      'aria-setsize',
+      'aria-sort',
+      'aria-valuemax',
+      'aria-valuemin',
+      'aria-valuenow',
+      'aria-valuetext',
+    ]);
+
+    const validRoles = new Set([
+      'button',
+      'checkbox',
+      'dialog',
+      'heading',
+      'link',
+      'list',
+      'listitem',
+      'menu',
+      'menubar',
+      'menuitem',
+      'navigation',
+      'none',
+      'presentation',
+      'progressbar',
+      'radio',
+      'radiogroup',
+      'region',
+      'slider',
+      'status',
+      'switch',
+      'tab',
+      'tablist',
+      'tabpanel',
+      'textbox',
+      'tooltip',
+      'img',
+    ]);
+
+    const invalidAttributes = new Set<string>();
+    const missingAttributes = new Set<string>();
+    const incorrectRoles = new Set<string>();
+    const brokenReferences = new Set<string>();
+
+    const allElements = Array.from(this.container.querySelectorAll('*')) as HTMLElement[];
+    const scopeDocument =
+      this.container instanceof Document ? this.container : this.container.ownerDocument || document;
+
+    allElements.forEach((element) => {
+      const attrNames = element.getAttributeNames();
+      attrNames.forEach((attr) => {
+        if (attr.startsWith('aria-') && !allowedAriaAttributes.has(attr)) {
+          invalidAttributes.add(`${this.getElementSelector(element)}: ${attr}`);
+        }
+
+        if (/(describedby|labelledby|controls|owns|activedescendant)$/.test(attr)) {
+          const value = element.getAttribute(attr);
+          if (value) {
+            value.split(/\s+/).forEach((id) => {
+              if (!scopeDocument.getElementById(id)) {
+                brokenReferences.add(`${this.getElementSelector(element)} references missing #${id}`);
+              }
+            });
+          }
+        }
+      });
+
+      const role = element.getAttribute('role');
+      if (role && !validRoles.has(role.toLowerCase())) {
+        incorrectRoles.add(`${this.getElementSelector(element)}: ${role}`);
+      }
+
+      if (role === 'img') {
+        const hasLabel =
+          element.hasAttribute('aria-label') ||
+          element.hasAttribute('aria-labelledby') ||
+          element.hasAttribute('alt');
+        if (!hasLabel) {
+          missingAttributes.add(`${this.getElementSelector(element)} missing aria-label/labelledby/alt`);
+        }
+      }
+    });
+
+    const passed =
+      invalidAttributes.size === 0 &&
+      missingAttributes.size === 0 &&
+      incorrectRoles.size === 0 &&
+      brokenReferences.size === 0;
+
+    return {
+      passed,
+      invalidAttributes: Array.from(invalidAttributes),
+      missingAttributes: Array.from(missingAttributes),
+      incorrectRoles: Array.from(incorrectRoles),
+      brokenReferences: Array.from(brokenReferences),
+    };
+  }
 
   private processAxeResults(results: AxeResults, duration: number): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map((violation: any) => ({
@@ -305,9 +571,53 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     return element.tagName.toLowerCase();
   }
 
+  private parseColor(color: string): { r: number; g: number; b: number } {
+    if (!color) {
+      return { r: 0, g: 0, b: 0 };
+    }
+
+    if (color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      const normalized = hex.length === 3
+        ? hex.split('').map((c) => c + c).join('')
+        : hex.padEnd(6, '0');
+      const value = parseInt(normalized, 16);
+      return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255,
+      };
+    }
+
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (match) {
+      return {
+        r: parseInt(match[1], 10),
+        g: parseInt(match[2], 10),
+        b: parseInt(match[3], 10),
+      };
+    }
+
+    return { r: 0, g: 0, b: 0 };
+  }
+
+  private relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+    const srgb = [r, g, b].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+
+    return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+  }
+
   private calculateContrastRatio(foreground: string, background: string): number {
-    // Placeholder contrast ratio calculation (simplified for now)
-    return 4.5;
+    const fg = this.parseColor(foreground);
+    const bg = this.parseColor(background);
+    const l1 = this.relativeLuminance(fg);
+    const l2 = this.relativeLuminance(bg);
+    const brighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return Number(((brighter + 0.05) / (darker + 0.05)).toFixed(2));
   }
 }
 

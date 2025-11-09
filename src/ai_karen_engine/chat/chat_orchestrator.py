@@ -1232,9 +1232,12 @@ class ChatOrchestrator:
                 logger.debug(f"Failed to get contextual suggestions: {e}")
             
             return response
-            
+
         except Exception as e:
-            logger.error(f"User's chosen LLM ({provider}:{model}) failed: {e}")
+            logger.warning(
+                f"User's chosen LLM ({provider}:{model}) failed: {e}. "
+                "Will attempt system default LLMs as fallback."
+            )
             return None
     
     async def _try_system_default_llms(
@@ -1289,12 +1292,19 @@ class ChatOrchestrator:
             logger.info("Trying generic LLM routing as final system default")
             response = orchestrator.route(enhanced_prompt, skill="conversation")
             return response
-            
+
         except Exception as e:
-            logger.error(f"All system default LLMs failed: {e}")
-            
+            logger.error(
+                f"All system default LLMs failed: {e}. "
+                "Attempted providers: openai, gemini, deepseek, huggingface. "
+                "The LLM orchestrator will fall back to local models or degraded mode."
+            )
+
         # Try local model fallback as final attempt
-        logger.info("Attempting local model fallback with TinyLlama")
+        logger.info(
+            "Attempting local model fallback with TinyLlama. "
+            "This is the final attempt before entering degraded mode."
+        )
         return await self._try_local_model_fallback(enhanced_prompt, message, parsed_message, integrated_context, active_instructions)
     
     async def _try_local_model_fallback(

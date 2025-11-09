@@ -331,7 +331,21 @@ export function useAnimationPerformance() {
 }
 
 // Hook for performance-aware animations
-export function usePerformanceAwareAnimation(reducedMotion: boolean = false) {
+export interface AnimationPerformanceOptions {
+  reducedMotion?: boolean;
+  enableHardwareDetection?: boolean;
+}
+
+export type PerformanceMetrics = AnimationMetrics;
+
+export function usePerformanceAwareAnimation(
+  options: boolean | AnimationPerformanceOptions = {}
+) {
+  const normalizedOptions =
+    typeof options === 'boolean' ? { reducedMotion: options } : options;
+  const { reducedMotion = false, enableHardwareDetection = true } =
+    normalizedOptions;
+
   const variants = reducedMotion ? reducedMotionVariants : performanceAnimationVariants;
   
   const [shouldUseGPU, setShouldUseGPU] = React.useState(true);
@@ -339,7 +353,7 @@ export function usePerformanceAwareAnimation(reducedMotion: boolean = false) {
 
   // Detect performance capabilities
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!enableHardwareDetection || typeof window === 'undefined') return;
 
     // Simple performance detection
     const canvas = document.createElement('canvas');
@@ -365,7 +379,7 @@ export function usePerformanceAwareAnimation(reducedMotion: boolean = false) {
     } else if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
       setAnimationQuality('medium');
     }
-  }, []);
+  }, [enableHardwareDetection]);
 
   const getOptimizedVariant = React.useCallback((variantName: keyof typeof performanceAnimationVariants) => {
     const baseVariant = variants[variantName] as any;

@@ -423,7 +423,7 @@ async def stream_chat_sse(
         )
 
 
-@router.get("/models/events/sse")
+@router.get("/models/events/sse", response_model=None)
 async def model_events_sse(
     http_request: Request,
     job_id: Optional[str] = Query(None, description="Specific job ID to track"),
