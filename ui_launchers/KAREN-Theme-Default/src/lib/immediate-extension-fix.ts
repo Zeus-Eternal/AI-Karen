@@ -7,12 +7,11 @@
  * - Safe in SSR, safe under HMR, reversible via window.__KAREN_BACKEND_PATCH__
  */
 
+import type { KarenBackendPatchState } from './karen-backend-direct-patch';
+
 declare global {
   interface Window {
-    __KAREN_BACKEND_PATCH__?: {
-      earlyFetchPatched?: boolean;
-      earlyOriginalFetch?: typeof fetch;
-    };
+    __KAREN_BACKEND_PATCH__?: KarenBackendPatchState;
   }
 }
 
