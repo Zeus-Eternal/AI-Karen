@@ -2,7 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 import {
   Card,
   CardContent,
@@ -11,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -81,8 +84,20 @@ export interface PerformanceAnalyticsDashboardProps {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 
 /* ------------------------------- Component ------------------------------- */
+
+const PerformanceAnalyticsFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="space-y-2 p-4">
+    <p className="font-medium">Failed to load performance analytics.</p>
+    <Button variant="outline" size="sm" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
 
 export const PerformanceAnalyticsDashboard: React.FC<
   PerformanceAnalyticsDashboardProps
@@ -135,7 +150,9 @@ export const PerformanceAnalyticsDashboard: React.FC<
     setComparisons(performanceProfiler.getPerformanceComparisons());
   }, []);
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = (
+    severity: Bottleneck["priority"] | Bottleneck["severity"]
+  ): BadgeVariant => {
     switch (severity) {
       case "critical":
       case "high":
@@ -148,7 +165,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
+  const getPriorityIcon = (priority: Bottleneck["priority"]) => {
     switch (priority) {
       case "critical":
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
@@ -241,7 +258,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
   /* -------------------------------- Render -------------------------------- */
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in PerformanceAnalyticsDashboard</div>}>
+    <ErrorBoundary fallback={PerformanceAnalyticsFallback}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -493,7 +510,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
                                   <h4 className="font-medium">{bottleneck.location}</h4>
-                                  <Badge variant={getSeverityColor(bottleneck.priority) as any}>
+                                  <Badge variant={getSeverityColor(bottleneck.priority)}>
                                     {getPriorityIcon(bottleneck.priority)} {bottleneck.priority}
                                   </Badge>
                                 </div>

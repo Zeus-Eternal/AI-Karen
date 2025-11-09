@@ -161,7 +161,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
   const loadBackups = useCallback(async () => {
     try {
       const backupsData = await memoryService.getMemoryBackups(userId);
-      const formattedBackups: MemoryBackup[] = backupsData.map(backup => ({
+      const formattedBackups = backupsData.map<MemoryBackup>((backup) => ({
         ...backup,
         description: `Memory backup from ${backup.timestamp.toLocaleDateString()}`,
         userId,
@@ -171,7 +171,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
       }));
       setBackups(formattedBackups);
     } catch (error) {
-      console.error('Failed to load backups:', error);
+      console.error("Failed to load backups:", error);
       setBackups([]);
     }
   }, [userId, memoryService]);
