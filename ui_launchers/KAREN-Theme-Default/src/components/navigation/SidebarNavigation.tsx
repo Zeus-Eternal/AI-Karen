@@ -434,7 +434,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
   return (
     <li>
       <Button
-        ref={itemRef as React.RefObject<HTMLButtonElement>}
+        ref={itemRef ?? undefined}
         className={cn(
           "w-full flex items-center gap-[var(--space-sm)] px-[var(--space-md)] py-[var(--space-sm)]",
           "text-left text-[var(--text-sm)] font-medium",

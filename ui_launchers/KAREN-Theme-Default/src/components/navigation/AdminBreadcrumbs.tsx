@@ -82,7 +82,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
       const lastIdx = customItems.length - 1;
       return customItems.map((c, i) => ({
         ...c,
-        isActive: c.isActive ?? i === lastIdx && !c.href,
+        isActive: c.isActive ?? (i === lastIdx && !c.href),
       }));
     }
 

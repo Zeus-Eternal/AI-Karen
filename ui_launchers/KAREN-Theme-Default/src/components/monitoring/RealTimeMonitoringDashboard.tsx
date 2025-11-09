@@ -9,7 +9,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 
 import type { SystemHealth, MonitoringConfig } from "./types";
 import { ConnectionStatusIndicator } from "./ConnectionStatusIndicator";
@@ -251,8 +254,17 @@ export const RealTimeMonitoringDashboard: React.FC<
     </div>
   );
 
+  const RealTimeDashboardFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+    <div className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm" role="alert">
+      <p className="font-semibold text-destructive">Something went wrong in RealTimeMonitoringDashboard.</p>
+      <Button variant="outline" onClick={resetError} size="sm">
+        Retry
+      </Button>
+    </div>
+  );
+
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in RealTimeMonitoringDashboard</div>}>
+    <ErrorBoundary fallback={RealTimeDashboardFallback}>
       {isLoading && !systemHealth ? (
         LoadingView
       ) : !systemHealth ? (

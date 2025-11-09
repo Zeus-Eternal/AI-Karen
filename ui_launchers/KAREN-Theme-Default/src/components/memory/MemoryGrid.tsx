@@ -307,7 +307,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   /* ----- Grid Events ----- */
   const onGridReady = (params: GridReadyEvent<MemoryGridRow>) => {
-    params.api.setDomLayout("normal");
+    params.api.setGridOption("domLayout", "normal");
     params.api.sizeColumnsToFit({
       defaultMinWidth: 90,
       columnLimits: [{ key: "content", minWidth: 220 }],

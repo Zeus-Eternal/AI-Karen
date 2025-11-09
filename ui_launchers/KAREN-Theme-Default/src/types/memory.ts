@@ -123,6 +123,7 @@ export interface MemorySearchOptions {
   clusters?: string[];
   sortBy?: 'relevance' | 'date' | 'confidence' | 'access_count';
   sortOrder?: 'asc' | 'desc';
+  tenantId?: string;
 }
 
 export interface MemorySearchResult {

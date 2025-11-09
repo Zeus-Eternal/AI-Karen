@@ -94,6 +94,7 @@ export interface MemoryQuery {
   time_range?: [Date, Date];
   top_k?: number;
   similarity_threshold?: number;
+  tenant_id?: string;
 }
 // Plugin service types
 export interface PluginInfo {
@@ -1098,10 +1099,14 @@ class KarenBackendService {
     }
     return null;
   }
-  async getMemoryStats(userId?: string): Promise<Record<string, any>> {
+  async getMemoryStats(userId?: string, tenantId?: string): Promise<Record<string, any>> {
     try {
-      const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
-      return await this.makeRequest<Record<string, any>>(`/api/memory/stats${params}`, {}, true);
+      const query = new URLSearchParams();
+      if (userId) query.set('user_id', userId);
+      if (tenantId) query.set('tenant_id', tenantId);
+      const params = query.toString();
+      const url = params ? `/api/memory/stats?${params}` : '/api/memory/stats';
+      return await this.makeRequest<Record<string, any>>(url, {}, true);
     } catch (error) {
       if (error instanceof APIError) {
         if (error.details?.type === 'SERVICE_UNAVAILABLE') {

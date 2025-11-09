@@ -13,6 +13,7 @@ export interface MemorySearchOptions {
   tags?: string[];
   timeRange?: [Date, Date];
   includeMetadata?: boolean;
+  tenantId?: string;
 }
 
 export interface MemoryStats {
@@ -104,6 +105,7 @@ export class MemoryService {
         top_k: options.topK || 10,
         similarity_threshold: options.similarityThreshold || 0.6,
         time_range: options.timeRange,
+        tenant_id: options.tenantId,
       };
 
       const memories = await this.backend.queryMemories(memoryQuery);
@@ -175,9 +177,9 @@ export class MemoryService {
   /**
    * Get memory statistics for a user
    */
-  async getMemoryStats(userId?: string): Promise<MemoryStats> {
+  async getMemoryStats(userId?: string, tenantId?: string): Promise<MemoryStats> {
     try {
-      const stats = await this.backend.getMemoryStats(userId);
+      const stats = await this.backend.getMemoryStats(userId, tenantId);
       
       return {
         totalMemories: stats.total_memories || 0,
@@ -206,6 +208,7 @@ export class MemoryService {
     filters: {
       userId?: string;
       sessionId?: string;
+      tenantId?: string;
       tags?: string[];
       dateRange?: [Date, Date];
       contentType?: string;
@@ -223,6 +226,7 @@ export class MemoryService {
       const memories = await this.queryMemories(searchTerm, {
         userId: filters.userId,
         sessionId: filters.sessionId,
+        tenantId: filters.tenantId,
         tags: filters.tags,
         timeRange: filters.dateRange,
         topK: filters.maxResults || 20,
@@ -373,6 +377,7 @@ export class MemoryService {
       query,
       options.userId || 'anon',
       options.sessionId || 'none',
+      options.tenantId || 'global',
       JSON.stringify(options.tags || []),
       options.topK || 10,
       options.similarityThreshold || 0.6,

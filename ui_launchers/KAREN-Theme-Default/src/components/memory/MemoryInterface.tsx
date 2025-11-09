@@ -271,7 +271,13 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
       charts.push({
         title: { text: "Memory Types Distribution" },
         data: typeData,
-        series: [{ type: "pie", angleKey: "count", labelKey: "type" }],
+        series: [
+          {
+            type: "pie",
+            angleKey: "count",
+            calloutLabelKey: "type",
+          },
+        ],
       });
     }
 
@@ -284,7 +290,14 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           { type: "category", position: "bottom" },
           { type: "number", position: "left" },
         ],
-        series: [{ type: "column", xKey: "range", yKey: "count" }],
+        series: [
+          {
+            type: "bar",
+            direction: "vertical",
+            xKey: "range",
+            yKey: "count",
+          },
+        ],
       });
     }
 

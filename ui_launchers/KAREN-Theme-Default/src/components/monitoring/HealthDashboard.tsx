@@ -13,7 +13,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 import {
   getHealthMonitor,
   HealthEventType,
@@ -64,6 +67,15 @@ export interface BackendHealthData {
     total_services: number;
   };
 }
+
+const HealthDashboardFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+  <div className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm" role="alert">
+    <p className="font-semibold text-destructive">Something went wrong in HealthDashboard.</p>
+    <Button variant="outline" onClick={resetError} size="sm">
+      Retry
+    </Button>
+  </div>
+);
 
 const HealthDashboard: React.FC<HealthDashboardProps> = ({
   className = "",
@@ -201,9 +213,9 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
 
   const formatTimestamp = (timestamp: string) => new Date(timestamp).toLocaleTimeString();
 
-  return (
-    <ErrorBoundary fallback={<div>Something went wrong in HealthDashboard</div>}>
-      <div className={`space-y-6 ${className}`}>
+    return (
+      <ErrorBoundary fallback={HealthDashboardFallback}>
+        <div className={`space-y-6 ${className}`}>
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Health Dashboard</h2>

@@ -190,6 +190,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
 
         const result = await memoryService.searchMemories(q, {
           userId,
+          tenantId,
           tags: searchOptions.tags,
           dateRange: searchOptions.timeRange,
           minSimilarity: searchOptions.similarityThreshold,

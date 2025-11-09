@@ -299,7 +299,8 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Recent Alerts</h3>
             {alerts.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleClearAlerts} >
+              <Button variant="outline" size="sm" onClick={handleClearAlerts}>
+                Clear alerts
               </Button>
             )}
           </div>
@@ -331,6 +332,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                         <p className="text-sm md:text-base lg:text-lg">{alert.message}</p>
                         {alert.acknowledged && (
                           <Badge variant="outline" className="mt-1">
+                            Acknowledged
                           </Badge>
                         )}
                       </div>
@@ -340,6 +342,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
                           size="sm"
                           onClick={() => handleAcknowledgeAlert(alert.id)}
                         >
+                          Acknowledge
                         </Button>
                       )}
                     </div>
