@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 
 import {
   AlertTriangle,
@@ -81,38 +82,113 @@ export interface QualityGate {
   actual: number;
   description: string;
 }
+
+interface QualityGateSummary {
+  overallScore: number;
+  coverage?: number;
+  passRate?: number;
+  accessibility?: number;
+  security?: number;
+  maintainability?: number;
+}
+
+interface QualityGatesApiResponse {
+  success?: boolean;
+  generated_at?: string;
+  gates?: QualityGate[];
+  metrics_summary?: QualityGateSummary;
+  overrides?: Record<string, unknown>;
+}
 export function QualityAssuranceDashboard() {
   const [metrics, setMetrics] = useState<QualityMetrics | null>(null);
   const [trends, setTrends] = useState<QualityTrend[]>([]);
   const [qualityGates, setQualityGates] = useState<QualityGate[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [qualityGateSummary, setQualityGateSummary] = useState<QualityGateSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadQualityMetrics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [metricsResult, trendsResult, gatesResult] = await Promise.allSettled([
+        enhancedApiClient.get<QualityMetrics>('/api/qa/metrics', {
+          headers: { 'Cache-Control': 'no-cache' },
+        }),
+        enhancedApiClient.get<QualityTrend[]>('/api/qa/trends', {
+          headers: { 'Cache-Control': 'no-cache' },
+        }),
+        enhancedApiClient.get<QualityGatesApiResponse>('/api/qa/quality-gates', {
+          headers: { 'Cache-Control': 'no-cache' },
+        }),
+      ]);
+
+      let errorMessage: string | null = null;
+      let updatedAt: Date | null = null;
+
+      if (metricsResult.status === 'fulfilled') {
+        setMetrics(metricsResult.value.data);
+        updatedAt = new Date();
+      } else {
+        console.error('Failed to load quality metrics:', metricsResult.reason);
+        setMetrics(null);
+        errorMessage = 'Failed to load quality metrics.';
+      }
+
+      if (trendsResult.status === 'fulfilled') {
+        const trendPayload = trendsResult.value.data;
+        setTrends(Array.isArray(trendPayload) ? trendPayload : []);
+      } else {
+        console.error('Failed to load quality trends:', trendsResult.reason);
+        setTrends([]);
+      }
+
+      if (gatesResult.status === 'fulfilled') {
+        const gatesPayload = gatesResult.value.data;
+        const gates = Array.isArray(gatesPayload)
+          ? gatesPayload
+          : gatesPayload?.gates ?? [];
+        setQualityGates(gates);
+        if (!Array.isArray(gatesPayload) && gatesPayload && typeof gatesPayload === 'object') {
+          setQualityGateSummary(gatesPayload.metrics_summary ?? null);
+        } else {
+          setQualityGateSummary(null);
+        }
+      } else {
+        console.error('Failed to load quality gates:', gatesResult.reason);
+        setQualityGates([]);
+        setQualityGateSummary(null);
+        if (!errorMessage) {
+          errorMessage = 'Failed to load quality gate information.';
+        }
+      }
+
+      if (updatedAt) {
+        setLastUpdated(updatedAt);
+      }
+
+      if (errorMessage) {
+        setError(errorMessage);
+      }
+    } catch (err) {
+      console.error('Unexpected quality metrics error:', err);
+      setMetrics(null);
+      setTrends([]);
+      setQualityGates([]);
+      setQualityGateSummary(null);
+      setError('Unable to refresh quality assurance data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadQualityMetrics();
     const interval = setInterval(loadQualityMetrics, 300000); // Update every 5 minutes
     return () => clearInterval(interval);
-  }, []);
-  const loadQualityMetrics = async () => {
-    try {
-      setLoading(true);
-      // Load current metrics
-      const metricsResponse = await fetch('/api/qa/metrics');
-      const metricsData = await metricsResponse.json();
-      setMetrics(metricsData);
-      // Load trends
-      const trendsResponse = await fetch('/api/qa/trends');
-      const trendsData = await trendsResponse.json();
-      setTrends(trendsData);
-      // Load quality gates
-      const gatesResponse = await fetch('/api/qa/quality-gates');
-      const gatesData = await gatesResponse.json();
-      setQualityGates(gatesData);
-      setLastUpdated(new Date());
-    } catch (error) {
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadQualityMetrics]);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'passed': return 'text-green-600';
@@ -160,7 +236,7 @@ export function QualityAssuranceDashboard() {
       console.error('Failed to export report:', error);
     }
   };
-  if (loading || !metrics) {
+  if (loading) {
     return (
       <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
         <div className="flex items-center justify-center h-64">
@@ -170,15 +246,33 @@ export function QualityAssuranceDashboard() {
       </ErrorBoundary>
     );
   }
-  const overallQualityScore = Math.round(
-    (metrics.testCoverage.overall + 
-     (metrics.testResults.passed / metrics.testResults.total * 100) +
+  if (!metrics) {
+    return (
+      <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
+        <Alert variant="destructive" className="mx-auto w-full max-w-2xl">
+          <AlertTitle>Quality Metrics Unavailable</AlertTitle>
+          <AlertDescription>
+            {error ?? 'Quality assurance metrics could not be retrieved. Please try refreshing the page.'}
+          </AlertDescription>
+        </Alert>
+      </ErrorBoundary>
+    );
+  }
+  const overallQualityScore = qualityGateSummary?.overallScore ?? Math.round(
+    (metrics.testCoverage.overall +
+     (metrics.testResults.passed / Math.max(metrics.testResults.total, 1) * 100) +
      metrics.accessibility.score +
      metrics.security.score +
      metrics.codeQuality.maintainabilityIndex) / 5
   );
   return (
     <div className="space-y-6" data-testid="qa-dashboard">
+      {error && (
+        <Alert variant="destructive" data-testid="qa-error">
+          <AlertTitle>Data refresh issue</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
