@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 /**
  * Enhanced Authentication Types and Interfaces (barrel + config)
  *
@@ -214,7 +216,7 @@ export interface EnhancedLoginFormProps {
 }
 
 export interface EnhancedAuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   config?: Partial<AuthSystemConfig>;
   onAuthEvent?: (event: AuthEvent) => void;
   enableDevMode?: boolean;
