@@ -7,14 +7,8 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-  role?: string;
-  'aria-label'?: string;
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: string;
-  onClick?: () => void;
 }
 
 export interface CardHeaderProps {
@@ -42,21 +36,20 @@ export interface CardFooterProps {
   className?: string;
 }
 
-export const Card: React.FC<CardProps> = ({ 
-  children, 
-  className = '', 
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
+  children,
+  className = '',
   style,
-  role,
-  'aria-label': ariaLabel,
   variant,
-  onClick 
-}) => {
+  ...props
+}, ref) => {
   const variantClasses = variant === 'glass'
     ? 'backdrop-blur-md bg-[color-mix(in srgb,var(--component-card-background) 70%,transparent)]'
     : 'bg-[var(--component-card-background)]';
 
   return (
     <div
+      ref={ref}
       className={cn(
         'relative flex flex-col rounded-[var(--component-card-border-radius,var(--radius-lg))]',
         'border border-[var(--component-card-border)] shadow-[var(--component-card-shadow)]',
@@ -67,14 +60,13 @@ export const Card: React.FC<CardProps> = ({
         className,
       )}
       style={style}
-      role={role}
-      aria-label={ariaLabel}
-      onClick={onClick}
+      {...props}
     >
       {children}
     </div>
   );
-};
+});
+Card.displayName = 'Card';
 
 export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => {
   return (

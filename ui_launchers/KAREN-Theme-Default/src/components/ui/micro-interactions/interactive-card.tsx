@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { InteractiveCardProps } from './types';
+import type { InteractiveCardProps } from './types';
 import { animationVariants, reducedMotionVariants } from './animation-variants';
 import { triggerHapticFeedback } from './haptic-feedback';
 import { useMicroInteractions } from './micro-interaction-provider';
@@ -21,11 +21,15 @@ export const InteractiveCard = React.forwardRef<HTMLDivElement, InteractiveCardP
   }, ref) => {
     const { reducedMotion, enableHaptics } = useMicroInteractions();
     
-    const variants = hoverEffect === 'none' 
-      ? undefined 
-      : reducedMotion 
-        ? reducedMotionVariants.card[hoverEffect as keyof typeof reducedMotionVariants.card]
-        : animationVariants.card[hoverEffect as keyof typeof animationVariants.card];
+    type CardHoverVariant = Exclude<NonNullable<InteractiveCardProps['hoverEffect']>, 'none'>;
+    const hoverVariant: CardHoverVariant | undefined =
+      hoverEffect && hoverEffect !== 'none' ? hoverEffect : undefined;
+
+    const variants = hoverVariant
+      ? (reducedMotion
+          ? reducedMotionVariants.card[hoverVariant]
+          : animationVariants.card[hoverVariant])
+      : undefined;
 
     const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
       if (!interactive) return;
@@ -37,18 +41,6 @@ export const InteractiveCard = React.forwardRef<HTMLDivElement, InteractiveCardP
       
       onClick?.(event);
     };
-
-    // Filter out props that conflict with Framer Motion
-    const { 
-      onDrag, 
-      onDragEnd, 
-      onDragStart, 
-      draggable,
-      onAnimationStart,
-      onAnimationEnd,
-      onAnimationIteration,
-      ...filteredProps 
-    } = props;
 
     return (
       <motion.div
@@ -70,7 +62,7 @@ export const InteractiveCard = React.forwardRef<HTMLDivElement, InteractiveCardP
         whileHover={interactive ? "hover" : "idle"}
         whileTap={interactive && clickEffect === 'press' ? "tap" : "idle"}
         onClick={handleClick}
-        {...filteredProps}
+        {...props}
       >
         {children}
       </motion.div>
