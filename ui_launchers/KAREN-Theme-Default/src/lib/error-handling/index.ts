@@ -4,7 +4,7 @@
  * Centralized export hub for error-handling utilities and types.
  */
 
-export { ErrorAnalytics, default as ErrorAnalytics } from './error-analytics';
+export { ErrorAnalytics } from './error-analytics';
 export type { ErrorAnalyticsConfig, ErrorBreadcrumb, PerformanceMetrics, ErrorMetrics } from './error-analytics';
 
 export { ErrorRecoveryManager } from './error-recovery-manager';

@@ -1,4 +1,4 @@
-import { ErrorInfo } from 'react';
+import type { ErrorInfo } from 'react';
 
 export interface ErrorAnalyticsConfig {
   enabled: boolean;
@@ -139,6 +139,8 @@ export class ErrorAnalytics {
 
     const errorId = this.generateErrorId(error, errorInfo);
     const timestamp = Date.now();
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : 'unknown';
     const metrics: ErrorMetrics = {
       errorId,
       timestamp,
@@ -147,8 +149,8 @@ export class ErrorAnalytics {
       section: context.section || this.config.section,
       severity: this.determineSeverity(error, context),
       category: this.categorizeError(error),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
+      userAgent,
+      url: currentUrl,
       userId: context.userId,
       sessionId: this.getSessionId(),
       recoveryAttempts: context.recoveryAttempts || 0,
@@ -243,13 +245,20 @@ export class ErrorAnalytics {
   }
 
   private getCurrentMemoryUsage(): number {
+    if (typeof performance === 'undefined') {
+      return 0;
+    }
+
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize;
+      return (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0;
     }
     return 0;
   }
 
   private measureRenderTime(): number {
+    if (typeof performance === 'undefined') {
+      return 0;
+    }
     const paintEntries = performance.getEntriesByType('paint');
     if (paintEntries.length > 0) {
       const lastPaint = paintEntries[paintEntries.length - 1];
@@ -259,6 +268,9 @@ export class ErrorAnalytics {
   }
 
   private getAverageNetworkLatency(): number {
+    if (typeof performance === 'undefined') {
+      return 0;
+    }
     const navigationEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
     if (navigationEntries.length > 0) {
       const nav = navigationEntries[0];
@@ -268,6 +280,9 @@ export class ErrorAnalytics {
   }
 
   private getBundleSize(): number {
+    if (typeof performance === 'undefined') {
+      return 0;
+    }
     const resourceEntries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
     return resourceEntries
       .filter(entry => entry.name.includes('.js') || entry.name.includes('.css'))
@@ -275,6 +290,9 @@ export class ErrorAnalytics {
   }
 
   private getComponentCount(): number {
+    if (typeof document === 'undefined') {
+      return 0;
+    }
     const elements = document.querySelectorAll('*');
     let componentCount = 0;
     elements.forEach(element => {
@@ -288,6 +306,9 @@ export class ErrorAnalytics {
 
   private getBreadcrumbs(): ErrorBreadcrumb[] {
     try {
+      if (typeof localStorage === 'undefined') {
+        return [];
+      }
       const storedReports = localStorage.getItem('error_breadcrumbs');
       if (storedReports) {
         return JSON.parse(storedReports).slice(-10);
@@ -298,9 +319,13 @@ export class ErrorAnalytics {
   }
 
   private getSessionId(): string {
+    if (typeof sessionStorage === 'undefined') {
+      return `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    }
+
     let sessionId = sessionStorage.getItem('analytics_session_id');
     if (!sessionId) {
-      sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       sessionStorage.setItem('analytics_session_id', sessionId);
     }
     return sessionId;
@@ -330,9 +355,14 @@ export class ErrorAnalytics {
         },
       });
     }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const analyticsEndpoint = process.env.NEXT_PUBLIC_ANALYTICS_ENDPOINT;
     if (analyticsEndpoint) {
-      fetch(analyticsEndpoint, {
+      window.fetch(analyticsEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
