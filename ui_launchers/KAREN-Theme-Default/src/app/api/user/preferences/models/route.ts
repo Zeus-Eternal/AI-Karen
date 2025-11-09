@@ -21,7 +21,7 @@ const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 
 // ---- Helpers ----------------------------------------------------------------
 
-function okJson(data: unknown, init?: number | ResponseInit) {
+function okJson(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }
 

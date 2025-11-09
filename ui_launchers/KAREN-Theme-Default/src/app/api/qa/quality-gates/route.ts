@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
+import {
+  QualityMetricsCollector,
+  QualityMetrics,
+  QualityGateOverrideRecord,
+} from '@/lib/qa/quality-metrics-collector';
 
 const collector = new QualityMetricsCollector();
 
@@ -15,17 +19,50 @@ function json(data: any, status = 200, extraHeaders: Record<string, string> = {}
   });
 }
 
+function computeOverallScore(metrics: QualityMetrics): number {
+  const coverageOverall = Number(metrics?.testCoverage?.overall ?? 0);
+  const passed = Number(metrics?.testResults?.passed ?? 0);
+  const total = Math.max(1, Number(metrics?.testResults?.total ?? 1));
+  const passPct = (passed / total) * 100;
+  const accessibility = Number(metrics?.accessibility?.score ?? 0);
+  const security = Number(metrics?.security?.score ?? 0);
+  const maintainability = Number(metrics?.codeQuality?.maintainabilityIndex ?? 0);
+
+  return Math.max(
+    0,
+    Math.min(100, Math.round((coverageOverall + passPct + accessibility + security + maintainability) / 5)),
+  );
+}
+
+function summarizeMetrics(metrics: QualityMetrics) {
+  const total = Number(metrics?.testResults?.total ?? 0);
+  const passed = Number(metrics?.testResults?.passed ?? 0);
+  const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+  return {
+    overallScore: computeOverallScore(metrics),
+    coverage: Number(metrics?.testCoverage?.overall ?? 0),
+    passRate,
+    accessibility: Number(metrics?.accessibility?.score ?? 0),
+    security: Number(metrics?.security?.score ?? 0),
+    maintainability: Number(metrics?.codeQuality?.maintainabilityIndex ?? 0),
+    performanceLoadTime: Number(metrics?.performance?.loadTime ?? 0),
+  };
+}
+
 export async function GET(_request: NextRequest) {
   try {
     const metrics = await collector.collectAllMetrics();
     const qualityGates = await collector.generateQualityGates(metrics);
+    const overrides = await collector.getGateOverrides();
 
     return json(
       {
         success: true,
         generated_at: new Date().toISOString(),
         gates: qualityGates,
-        metrics_summary: metrics?.summary ?? null,
+        metrics_summary: summarizeMetrics(metrics),
+        overrides,
       },
       200
     );
@@ -45,6 +82,8 @@ type PostBody = {
   gateId?: string;
   action?: 'override' | 'recalculate';
   note?: string;
+  status?: 'passed' | 'failed' | 'warning';
+  overriddenBy?: string | null;
 };
 
 export async function POST(request: NextRequest) {
@@ -74,14 +113,22 @@ export async function POST(request: NextRequest) {
       }
 
       // Perform the override
-      await collector.overrideGate(gateId, { note });
+      const actor = body.overriddenBy ?? request.headers.get('x-actor') ?? request.headers.get('x-user-email');
+      const overrideRecord: QualityGateOverrideRecord = await collector.overrideGate(gateId, {
+        note,
+        status: body.status,
+        overriddenBy: actor ?? null,
+      });
 
+      const metrics = await collector.collectAllMetrics();
       return json({
         success: true,
         message: `Quality gate "${gateId}" overridden`,
         gateId,
-        note: note ?? null,
+        override: overrideRecord,
         timestamp: new Date().toISOString(),
+        gates: await collector.generateQualityGates(metrics),
+        metrics_summary: summarizeMetrics(metrics),
       });
     }
 
@@ -93,6 +140,7 @@ export async function POST(request: NextRequest) {
         message: 'Quality gates recalculated',
         generated_at: new Date().toISOString(),
         gates: qualityGates,
+        metrics_summary: summarizeMetrics(metrics),
       });
     }
 

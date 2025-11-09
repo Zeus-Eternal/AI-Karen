@@ -12,6 +12,7 @@ import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware'
 import { securityManager } from '@/lib/security/security-manager';
 import { ipSecurityManager } from '@/lib/security/ip-security-manager';
 import type { AdminApiResponse } from '@/types/admin';
+import type { BlockedIpEntry } from '@/lib/database/admin-utils';
 
 interface LoginRequest {
   email: string;
@@ -70,8 +71,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const userAgent = request.headers.get('user-agent') || undefined;
 
   // IP block check
-  const blockedIps = ipSecurityManager.getBlockedIps();
-  const blockInfo = blockedIps.find((b: any) => b.ip === ipAddress);
+  const blockedIps = await ipSecurityManager.getBlockedIps().catch<BlockedIpEntry[]>(() => []);
+  const blockInfo = blockedIps.find((entry) => entry.ipAddress === ipAddress);
   if (blockInfo) {
     return NextResponse.json(
       {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           message: 'IP address is temporarily blocked',
           details: {
             ip_address: ipAddress,
-            blocked_until: blockInfo?.blockedUntil,
+            blocked_until: blockInfo?.expiresAt,
             reason: blockInfo?.reason,
           },
         },
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       email: user.email,
       full_name: user.full_name,
       role: user.role,
-      two_factor_enabled: user.two_factor_enabled,
+      two_factor_enabled: Boolean(user.two_factor_enabled),
     },
     session_token: sessionToken,
     expires_at: expiresAt.toISOString(),

@@ -94,9 +94,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Collect data
+    const metricsPromise = collector.collectAllMetrics();
     const [metrics, qualityGates, trends] = await Promise.all([
-      collector.collectAllMetrics(),
-      collector.generateQualityGates(await collector.collectAllMetrics().catch(() => ({}) as any)),
+      metricsPromise,
+      metricsPromise.then((data) => collector.generateQualityGates(data)),
       collector.generateTrends(30),
     ]);
 
@@ -111,7 +112,10 @@ export async function POST(request: NextRequest) {
 
     if (format === 'pdf') {
       const pdfBuffer = await generatePdfReport(reportData);
-      return new NextResponse(pdfBuffer, {
+      const pdfBytes = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer);
+      const pdfArrayBuffer: ArrayBuffer = Uint8Array.from(pdfBytes).buffer;
+
+      return new NextResponse(pdfArrayBuffer, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
@@ -183,11 +187,11 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
     // Summary
     const s = reportData.summary;
     doc.fontSize(12).text('Summary', { underline: true }).moveDown(0.5);
-    const summaryRows = [
-      ['Overall Quality Score', `${s.overallScore}%`],
-      ['Quality Gates Passed', `${s.passedGates} / ${s.totalGates}`],
-      ['Critical Issues', String(s.criticalIssues)],
-    ];
+      const summaryRows: Array<[string, string]> = [
+        ['Overall Quality Score', `${s.overallScore}%`],
+        ['Quality Gates Passed', `${s.passedGates} / ${s.totalGates}`],
+        ['Critical Issues', String(s.criticalIssues)],
+      ];
     drawKeyValueTable(doc, summaryRows);
     doc.moveDown(1);
 

@@ -10,6 +10,7 @@
  */
 
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
+import type { BlockedIpEntry, IpWhitelistEntry } from '@/lib/database/admin-utils';
 import type { User, SecurityEvent } from '@/types/admin';
 
 /* =========================
@@ -36,17 +37,6 @@ export interface IpAccessRecord {
   is_blocked: boolean;
 }
 
-export interface IpWhitelistEntry {
-  id: string;
-  ip_or_cidr: string;          // supports single IP or CIDR
-  description: string;
-  user_id?: string;            // optional: whitelisting scoped to a user
-  role_restriction?: 'super_admin' | 'admin';
-  created_by: string;
-  created_at: Date;
-  is_active: boolean;
-}
-
 export interface IpSecurityConfig {
   super_admin_whitelist_enabled: boolean;
   admin_whitelist_enabled: boolean;
@@ -65,6 +55,16 @@ export interface IpSecurityResult {
   throttleRemaining?: number;
   isWhitelisted?: boolean;
   isBlocked?: boolean;
+}
+
+export interface IpAccessStatistics {
+  totalUniqueIps: number;
+  topAccessedIps: Array<{
+    ip: string;
+    accessCount: number;
+    uniqueUsers: number;
+    lastAccess?: Date;
+  }>;
 }
 
 /* =========================
@@ -719,6 +719,78 @@ export class IpSecurityManager {
     }
   }
 
+  async getBlockedIps(options: { limit?: number; offset?: number } = {}): Promise<BlockedIpEntry[]> {
+    try {
+      const adminUtils = getAdminDatabaseUtils();
+      const result = await adminUtils.getBlockedIPs({
+        limit: options.limit ?? 50,
+        offset: options.offset ?? 0,
+      });
+      return result.data;
+    } catch (error) {
+      throw new IpSecurityError('Failed to retrieve blocked IPs', 'getBlockedIps', undefined, error);
+    }
+  }
+
+  async getWhitelistEntries(options: { includeInactive?: boolean } = {}): Promise<IpWhitelistEntry[]> {
+    try {
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
+
+      const includeInactive = options.includeInactive === true;
+      const entries: IpWhitelistEntry[] = [];
+      for (const entry of this.ipWhitelist.values()) {
+        if (!includeInactive && entry.is_active === false) {
+          continue;
+        }
+        entries.push({ ...entry });
+      }
+
+      return entries;
+    } catch (error) {
+      throw new IpSecurityError('Failed to load whitelist entries', 'getWhitelistEntries', undefined, error);
+    }
+  }
+
+  async getIpStatistics(): Promise<IpAccessStatistics> {
+    try {
+      const records = Array.from(this.ipAccessRecords.values());
+      if (!records.length) {
+        return { totalUniqueIps: 0, topAccessedIps: [] };
+      }
+
+      const byIp = new Map<string, { accessCount: number; users: Set<string>; lastAccess?: Date }>();
+      for (const record of records) {
+        const key = record.ip_address;
+        const existing = byIp.get(key) ?? { accessCount: 0, users: new Set<string>(), lastAccess: undefined };
+        existing.accessCount += record.access_count;
+        existing.users.add(record.user_id);
+        if (!existing.lastAccess || record.last_seen > existing.lastAccess) {
+          existing.lastAccess = record.last_seen;
+        }
+        byIp.set(key, existing);
+      }
+
+      const summaries = Array.from(byIp.entries())
+        .map(([ip, info]) => ({
+          ip,
+          accessCount: info.accessCount,
+          uniqueUsers: info.users.size,
+          lastAccess: info.lastAccess,
+        }))
+        .sort((a, b) => b.accessCount - a.accessCount)
+        .slice(0, 20);
+
+      return {
+        totalUniqueIps: byIp.size,
+        topAccessedIps: summaries,
+      };
+    } catch (error) {
+      throw new IpSecurityError('Failed to compute IP statistics', 'getIpStatistics', undefined, error);
+    }
+  }
+
   private async isIpCurrentlyBlocked(ipRaw: string): Promise<boolean> {
     try {
       const ip = normalizeIp(ipRaw);
@@ -815,6 +887,82 @@ export class IpSecurityManager {
         ipOrCidr,
         error
       );
+    }
+  }
+
+  private async loadConfiguration(): Promise<void> {
+    try {
+      const adminUtils = this.adminUtils;
+      if (!adminUtils || typeof adminUtils.getSecuritySettings !== 'function') {
+        return;
+      }
+
+      const settings = await adminUtils.getSecuritySettings().catch(() => null);
+      if (!settings) return;
+
+      if (settings.ipRestrictions) {
+        this.config = {
+          ...this.config,
+          max_failed_attempts_per_ip: settings.ipRestrictions.maxFailedAttempts ?? this.config.max_failed_attempts_per_ip,
+          ip_lockout_duration: (settings.ipRestrictions.lockoutMinutes ?? this.config.ip_lockout_duration / 60000) * 60 * 1000,
+          auto_block_suspicious_ips: Boolean(settings.ipRestrictions.enabled ?? this.config.auto_block_suspicious_ips),
+        };
+      }
+
+      if (settings.sessionSecurity) {
+        this.config = {
+          ...this.config,
+          throttle_window_ms: (settings.sessionSecurity.adminTimeoutMinutes ?? this.config.throttle_window_ms / 60000) * 60 * 1000,
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load IP security configuration:', error);
+    }
+  }
+
+  private async loadWhitelist(): Promise<void> {
+    try {
+      const adminUtils = this.adminUtils;
+      if (!adminUtils || typeof adminUtils.getIpWhitelistEntries !== 'function') {
+        return;
+      }
+
+      const entries = await adminUtils.getIpWhitelistEntries();
+      this.ipWhitelist.clear();
+      for (const entry of entries) {
+        this.ipWhitelist.set(entry.id, { ...entry });
+      }
+    } catch (error) {
+      console.warn('Failed to load IP whitelist entries:', error);
+    }
+  }
+
+  private async rehydrateBlocks(): Promise<void> {
+    try {
+      const adminUtils = this.adminUtils;
+      if (!adminUtils) {
+        return;
+      }
+
+      const result = await adminUtils.getBlockedIPs({ limit: 200 });
+      this.blockedIps.clear();
+      for (const entry of result.data) {
+        try {
+          const key = normalizeIp(entry.ipAddress);
+          this.blockedIps.set(key, {
+            ip: key,
+            reason: entry.reason || 'policy_violation',
+            blockedUntil: entry.expiresAt
+              ? new Date(entry.expiresAt)
+              : new Date(Date.now() + this.config.ip_lockout_duration),
+            blockedBy: entry.blockedBy || undefined,
+          });
+        } catch (error) {
+          console.warn('Failed to normalize blocked IP entry:', entry.ipAddress, error);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to rehydrate blocked IPs:', error);
     }
   }
 

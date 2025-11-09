@@ -22,7 +22,7 @@ import { securityManager } from '@/lib/security/security-manager';
 import { sessionTimeoutManager } from '@/lib/security/session-timeout-manager';
 import { ipSecurityManager } from '@/lib/security/ip-security-manager';
 import { mfaManager } from '@/lib/security/mfa-manager';
-import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
+import { getAdminDatabaseUtils, type BlockedIpEntry, type IpWhitelistEntry } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
 
 const MAX_LIMIT = 100;
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const dashboardData: SecurityDashboardData = {
           overview: await getSecurityOverview(adminUtils, todayStart, hourAgo),
           session_statistics: getSessionStatistics(),
-          ip_security: getIpSecurityData(),
+          ip_security: await getIpSecurityData(),
           mfa_statistics: await getMfaStatistics(adminUtils),
           security_events: await getRecentSecurityEvents(adminUtils, limit, offset),
           recent_activities: await getRecentSecurityActivities(adminUtils, todayStart, limit, offset),
@@ -200,7 +200,12 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
     expiringSoon: 0,
   });
 
-  const blockedIps = safe(() => ipSecurityManager.getBlockedIps(), []);
+  let blockedIps: BlockedIpEntry[] = [];
+  try {
+    blockedIps = await ipSecurityManager.getBlockedIps();
+  } catch {
+    blockedIps = [];
+  }
   const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
   const todayEvents = securityEvents.filter((e: any) => toDate(e.created_at) >= todayStart);
 
@@ -263,13 +268,14 @@ function getSessionStatistics() {
   };
 }
 
-function getIpSecurityData() {
-  const stats = safe(() => ipSecurityManager.getIpStatistics(), {
-    totalUniqueIps: 0,
-    topAccessedIps: [],
-  });
-  const blockedIps = safe(() => ipSecurityManager.getBlockedIps(), []);
-  const whitelistEntries = safe(() => ipSecurityManager.getWhitelistEntries(), []);
+async function getIpSecurityData() {
+  const stats = await ipSecurityManager
+    .getIpStatistics()
+    .catch(() => ({ totalUniqueIps: 0, topAccessedIps: [] }));
+  const blockedIps = await ipSecurityManager.getBlockedIps().catch(() => [] as BlockedIpEntry[]);
+  const whitelistEntries = await ipSecurityManager
+    .getWhitelistEntries()
+    .catch(() => [] as IpWhitelistEntry[]);
   const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
 
   const suspiciousActivities = securityEvents
@@ -286,18 +292,18 @@ function getIpSecurityData() {
 
   return {
     unique_ips_today: stats.totalUniqueIps,
-    whitelisted_ips: whitelistEntries.length,
-    blocked_ips: blockedIps.map((b: any) => ({
-      ip: b.ip,
-      reason: b.reason,
-      blocked_until: toDate(b.blockedUntil).toISOString(),
-      failed_attempts: b.failed_attempts,
+    whitelisted_ips: whitelistEntries.filter((entry) => entry.is_active !== false).length,
+    blocked_ips: blockedIps.map((entry) => ({
+      ip: entry.ipAddress,
+      reason: entry.reason || 'policy_violation',
+      blocked_until: entry.expiresAt ? toDate(entry.expiresAt).toISOString() : '',
+      failed_attempts: entry.failedAttempts,
     })),
-    top_accessed_ips: (stats.topAccessedIps || []).map((ip: any) => ({
-      ip: ip.ip,
-      access_count: ip.accessCount || 0,
-      users: ip.users || 0,
-      last_access: new Date().toISOString(), // If you have exact timestamps, wire them here
+    top_accessed_ips: (stats.topAccessedIps || []).map((summary) => ({
+      ip: summary.ip,
+      access_count: summary.accessCount,
+      users: summary.uniqueUsers,
+      last_access: summary.lastAccess?.toISOString() || new Date().toISOString(),
     })),
     suspicious_activities: suspiciousActivities,
   };

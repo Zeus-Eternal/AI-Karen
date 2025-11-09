@@ -8,7 +8,7 @@ async function handleCopilotRequest(request: NextRequest) {
   try {
     const backendUrl = `${BACKEND_URL}/copilot/assist`;
     // Get request body
-    let body = undefined;
+    let body: string | undefined = undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();

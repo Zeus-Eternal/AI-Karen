@@ -41,7 +41,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
     // Log the request for debugging
     // Get request body if it exists
-    let body = undefined;
+    let body: string | undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();
