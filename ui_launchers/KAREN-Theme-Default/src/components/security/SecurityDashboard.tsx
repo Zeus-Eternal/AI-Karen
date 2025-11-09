@@ -126,19 +126,19 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
     data: metrics,
     isLoading: metricsLoading,
     refetch: refetchMetrics,
-  } = useQuery({
+  } = useQuery<SecurityMetrics>({
     queryKey: ["security", "metrics", timeframe],
     queryFn: () => getSecurityMetrics(timeframe),
     refetchInterval: 30_000,
   });
 
-  const { data: alerts, refetch: refetchAlerts } = useQuery({
+  const { data: alerts, refetch: refetchAlerts } = useQuery<SecurityAlert[]>({
     queryKey: ["security", "alerts"],
     queryFn: () => getSecurityAlerts(),
     refetchInterval: 10_000,
   });
 
-  const { data: threats, refetch: refetchThreats } = useQuery({
+  const { data: threats, refetch: refetchThreats } = useQuery<ThreatIntelligence[]>({
     queryKey: ["security", "threat-intelligence"],
     queryFn: () => getThreatIntelligence(),
     refetchInterval: 60_000,

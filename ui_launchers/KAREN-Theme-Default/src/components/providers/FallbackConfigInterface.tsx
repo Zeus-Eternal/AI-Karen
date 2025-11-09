@@ -1,19 +1,32 @@
 // ui_launchers/KAREN-Theme-Default/src/components/providers/FallbackConfigInterface.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { Shield, Plus, Trash2, ArrowUp, ArrowDown, Edit, Activity, CheckCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import {
+  Shield,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  Settings,
+  Clock,
+} from 'lucide-react';
+import type {
+  FallbackAnalytics,
+  FallbackChain,
+  FallbackConfig,
+  FallbackEvent,
+  FallbackProvider,
+} from '@/types/providers';
 
 /**
  * Fallback Configuration Interface
@@ -57,11 +70,10 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     try {
       const response = await fetch('/api/fallback/configs');
       if (!response.ok) throw new Error('Failed to load fallback configs');
-      const data = await response.json();
-      setConfigs(data.configs || []);
-      if (data.configs.length > 0 && !selectedConfig) {
-        setSelectedConfig(data.configs[0]);
-      }
+      const data = (await response.json()) as { configs?: FallbackConfig[] };
+      const configList = data.configs ?? [];
+      setConfigs(configList);
+      setSelectedConfig(prev => prev ?? (configList[0] ?? null));
     } catch (error) {
       toast({
         title: 'Error',
@@ -77,8 +89,8 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     try {
       const response = await fetch('/api/fallback/analytics');
       if (!response.ok) throw new Error('Failed to load analytics');
-      const data = await response.json();
-      setAnalytics(data.analytics);
+      const data = (await response.json()) as { analytics?: FallbackAnalytics };
+      setAnalytics(data.analytics ?? null);
     } catch (error) {}
   };
 
@@ -86,8 +98,8 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     try {
       const response = await fetch('/api/fallback/events?limit=20');
       if (!response.ok) throw new Error('Failed to load events');
-      const data = await response.json();
-      setRecentEvents(data.events || []);
+      const data = (await response.json()) as { events?: FallbackEvent[] };
+      setRecentEvents(data.events ?? []);
     } catch (error) {}
   };
 
@@ -100,9 +112,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         body: JSON.stringify(config),
       });
       if (!response.ok) throw new Error('Failed to save config');
-      const savedConfig = await response.json();
+      const savedConfig = (await response.json()) as FallbackConfig;
       if (config.id) {
-        setConfigs(prev => prev.map(c => c.id === config.id ? savedConfig : c));
+        setConfigs(prev => prev.map(c => (c.id === config.id ? savedConfig : c)));
       } else {
         setConfigs(prev => [...prev, savedConfig]);
       }
@@ -128,10 +140,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete config');
-      setConfigs(prev => prev.filter(c => c.id !== configId));
-      if (selectedConfig?.id === configId) {
-        setSelectedConfig(configs.length > 1 ? configs.find(c => c.id !== configId) || null : null);
-      }
+      setConfigs(prev => {
+        const updated = prev.filter(c => c.id !== configId);
+        if (selectedConfig?.id === configId) {
+          setSelectedConfig(updated[0] ?? null);
+        }
+        return updated;
+      });
       toast({
         title: 'Configuration Deleted',
         description: 'Fallback configuration has been deleted',
@@ -155,7 +170,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         body: JSON.stringify({ chainId }),
       });
       if (!response.ok) throw new Error('Failed to test fallback');
-      const result = await response.json();
+      const result = (await response.json()) as TestResult;
       setTestResults(prev => [...prev.filter(r => r.chainId !== chainId), result]);
       toast({
         title: 'Test Complete',
@@ -230,7 +245,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     chain?: FallbackChain; 
     onSave: (chain: FallbackChain) => void 
   }> = ({ chain, onSave }) => {
-    const [formData, setFormData] = useState<FallbackChain>(chain || { id: '', name: '', priority: 1, providers: [], conditions: [] });
+    const [formData, setFormData] = useState<FallbackChain>(
+      chain || { id: '', name: '', priority: 1, providers: [], conditions: [] },
+    );
 
     const addProvider = () => {
       setFormData(prev => ({
@@ -454,7 +471,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={className ? `space-y-6 ${className}` : 'space-y-6'}>
       {/* Header */}
       <Card>
         <CardHeader>
