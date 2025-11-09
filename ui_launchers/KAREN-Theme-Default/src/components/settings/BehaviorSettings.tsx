@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
-
-import { } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch'; // Added Switch import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { KarenSettings, MemoryDepth, PersonalityTone, PersonalityVerbosity } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
-import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 /**
