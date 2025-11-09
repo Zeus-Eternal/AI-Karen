@@ -1,634 +1,315 @@
-// ui_launchers/KAREN-Theme-Default/src/components/plugins/PluginMarketplace.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React from "react";
+import { Activity, AlertTriangle, Cpu, Database, Gauge, HardDrive, RefreshCw } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PluginMarketplaceEntry } from "@/types/plugins";
+import type { PluginInfo, PluginMetrics as PluginMetricsType } from "@/types/plugins";
 
-/**
- * Plugin Marketplace Component
- * 
- * Browse and install plugins from the marketplace with search, ratings, and installation.
- */
-
-import { CheckCircle, Award, Star, Heart, Share, ExternalLink, Eye, Download, SortAsc, SortDesc, Grid, List, Search } from "lucide-react";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-
-export interface PluginMarketplaceProps {
-  onClose: () => void;
-  onInstall: (plugin: PluginMarketplaceEntry) => void;
+export interface PluginMetricsProps {
+  plugin: PluginInfo;
+  /** Override metrics when live data is fetched separately */
+  metrics?: PluginMetricsType | null;
+  /** Trigger a metrics refresh from the parent */
+  onRefresh?: () => Promise<void> | void;
+  /** External loading flag, falls back to internal state when undefined */
+  isRefreshing?: boolean;
 }
 
-// Mock marketplace data
-const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
-  {
-    id: 'slack-integration',
-    name: 'Slack Integration',
-    description: 'Connect with Slack workspaces and manage messages through AI chat interface',
-    version: '1.0.0',
-    author: { name: 'Kari AI Team', verified: true },
-    category: 'integration',
-    tags: ['slack', 'messaging', 'team', 'communication'],
-    downloads: 1250,
-    rating: 4.5,
-    reviewCount: 23,
-    featured: true,
-    verified: true,
-    screenshots: [],
-    compatibility: {
-      minVersion: '1.0.0',
-      platforms: ['node'],
-    },
-    pricing: { type: 'free' },
-    installUrl: 'https://marketplace.kari.ai/plugins/slack-integration',
-    manifest: {
-      id: 'slack-integration',
-      name: 'Slack Integration',
-      version: '1.0.0',
-      description: 'Connect with Slack workspaces and manage messages through AI chat interface',
-      author: { name: 'Kari AI Team', email: 'plugins@kari.ai' },
-      license: 'MIT',
-      homepage: 'https://docs.kari.ai/plugins/slack',
-      repository: 'https://github.com/kari-ai/slack-plugin',
-      keywords: ['slack', 'messaging', 'team'],
-      category: 'integration',
-      runtime: { platform: ['node'], nodeVersion: '>=16.0.0' },
-      dependencies: [],
-      systemRequirements: {},
-      permissions: [],
-      sandboxed: true,
-      securityPolicy: {
-        allowNetworkAccess: true,
-        allowFileSystemAccess: false,
-        allowSystemCalls: false,
-      },
-      configSchema: [],
-      apiVersion: '1.0',
-    },
-  },
-  {
-    id: 'database-connector',
-    name: 'Database Connector',
-    description: 'Connect to various databases and execute queries through natural language',
-    version: '2.1.0',
-    author: { name: 'Community Developer', verified: false },
-    category: 'integration',
-    tags: ['database', 'sql', 'query', 'data'],
-    downloads: 890,
-    rating: 4.2,
-    reviewCount: 15,
-    featured: false,
-    verified: false,
-    screenshots: [],
-    compatibility: {
-      minVersion: '1.0.0',
-      platforms: ['node'],
-    },
-    pricing: { type: 'free' },
-    installUrl: 'https://marketplace.kari.ai/plugins/database-connector',
-    manifest: {
-      id: 'database-connector',
-      name: 'Database Connector',
-      version: '2.1.0',
-      description: 'Connect to various databases and execute queries through natural language',
-      author: { name: 'Community Developer' },
-      license: 'Apache-2.0',
-      keywords: ['database', 'sql', 'query'],
-      category: 'integration',
-      runtime: { platform: ['node'], nodeVersion: '>=14.0.0' },
-      dependencies: [],
-      systemRequirements: {},
-      permissions: [],
-      sandboxed: false,
-      securityPolicy: {
-        allowNetworkAccess: true,
-        allowFileSystemAccess: true,
-        allowSystemCalls: false,
-      },
-      configSchema: [],
-      apiVersion: '1.0',
-    },
-  },
-  {
-    id: 'weather-service',
-    name: 'Weather Service',
-    description: 'Get current weather information and forecasts for any location',
-    version: '1.3.0',
-    author: { name: 'Weather Corp', verified: true },
-    category: 'utility',
-    tags: ['weather', 'forecast', 'location', 'api'],
-    downloads: 2150,
-    rating: 4.8,
-    reviewCount: 45,
-    featured: true,
-    verified: true,
-    screenshots: [],
-    compatibility: {
-      minVersion: '1.0.0',
-      platforms: ['node'],
-    },
-    pricing: { type: 'freemium', price: 9.99, currency: 'USD' },
-    installUrl: 'https://marketplace.kari.ai/plugins/weather-service',
-    manifest: {
-      id: 'weather-service',
-      name: 'Weather Service',
-      version: '1.3.0',
-      description: 'Get current weather information and forecasts for any location',
-      author: { name: 'Weather Corp' },
-      license: 'Commercial',
-      keywords: ['weather', 'forecast'],
-      category: 'utility',
-      runtime: { platform: ['node'] },
-      dependencies: [],
-      systemRequirements: {},
-      permissions: [],
-      sandboxed: true,
-      securityPolicy: {
-        allowNetworkAccess: true,
-        allowFileSystemAccess: false,
-        allowSystemCalls: false,
-      },
-      configSchema: [],
-      apiVersion: '1.0',
-    },
-  },
-  {
-    id: 'email-automation',
-    name: 'Email Automation',
-    description: 'Automate email workflows with AI-powered responses and scheduling',
-    version: '1.1.0',
-    author: { name: 'AutoMail Inc', verified: true },
-    category: 'automation',
-    tags: ['email', 'automation', 'scheduling', 'ai'],
-    downloads: 567,
-    rating: 4.3,
-    reviewCount: 12,
-    featured: false,
-    verified: true,
-    screenshots: [],
-    compatibility: {
-      minVersion: '1.0.0',
-      platforms: ['node'],
-    },
-    pricing: { type: 'paid', price: 19.99, currency: 'USD' },
-    installUrl: 'https://marketplace.kari.ai/plugins/email-automation',
-    manifest: {
-      id: 'email-automation',
-      name: 'Email Automation',
-      version: '1.1.0',
-      description: 'Automate email workflows with AI-powered responses and scheduling',
-      author: { name: 'AutoMail Inc' },
-      license: 'Commercial',
-      keywords: ['email', 'automation'],
-      category: 'workflow',
-      runtime: { platform: ['node'] },
-      dependencies: [],
-      systemRequirements: {},
-      permissions: [],
-      sandboxed: true,
-      securityPolicy: {
-        allowNetworkAccess: true,
-        allowFileSystemAccess: false,
-        allowSystemCalls: false,
-      },
-      configSchema: [],
-      apiVersion: '1.0',
-    },
-  },
-];
+const numberFormatter = new Intl.NumberFormat();
+const percentFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, style: "percent" });
 
-export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
-  onClose,
-  onInstall,
+const formatNumber = (value?: number | null) => numberFormatter.format(value ?? 0);
+
+const formatPercent = (value?: number | null) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return percentFormatter.format(0);
+  }
+  return percentFormatter.format(Math.min(Math.max(value, 0), 1));
+};
+
+const formatDuration = (seconds?: number | null) => {
+  if (!seconds || Number.isNaN(seconds)) {
+    return "—";
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) {
+    return `${seconds.toFixed(0)}s`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 1) {
+    return `${minutes}m ${Math.floor(seconds % 60)}s`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 1) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  return `${days}d ${hours % 24}h`;
+};
+
+const healthConfig: Record<PluginMetricsType["health"]["status"], { label: string; badgeVariant: "secondary" | "outline" | "destructive" }> = {
+  healthy: { label: "Healthy", badgeVariant: "secondary" },
+  warning: { label: "Warning", badgeVariant: "outline" },
+  critical: { label: "Critical", badgeVariant: "destructive" },
+};
+
+export const PluginMetrics: React.FC<PluginMetricsProps> = ({
+  plugin,
+  metrics: metricsOverride,
+  onRefresh,
+  isRefreshing,
 }) => {
-  const [plugins, setPlugins] = useState<PluginMarketplaceEntry[]>(mockMarketplacePlugins);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'recent' | 'name'>('popular');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedPlugin, setSelectedPlugin] = useState<PluginMarketplaceEntry | null>(null);
-  const [showOnlyFree, setShowOnlyFree] = useState(false);
-  const [showOnlyVerified, setShowOnlyVerified] = useState(false);
+  const [internalRefreshing, setInternalRefreshing] = React.useState(false);
+  const metrics = metricsOverride ?? plugin.metrics;
+  const refreshInProgress = isRefreshing ?? internalRefreshing;
 
-  // Get unique categories
-  const categories = React.useMemo(() => {
-    const cats = Array.from(new Set(plugins.map((p) => p.category)));
-    return ['all', ...cats.sort()];
-  }, [plugins]);
+  const successRate = React.useMemo(() => {
+    const errorRate = metrics?.performance?.errorRate ?? 0;
+    const rate = Math.max(0, Math.min(1, 1 - errorRate));
+    return rate;
+  }, [metrics?.performance?.errorRate]);
 
-  // Filter and sort plugins
-  const filteredPlugins = React.useMemo(() => {
-    let filtered = plugins;
+  const lastExecution = metrics?.performance?.lastExecution ?? null;
+  const lastHealthCheck = metrics?.health?.lastHealthCheck ?? null;
 
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((plugin) =>
-        plugin.name.toLowerCase().includes(query) ||
-        plugin.description.toLowerCase().includes(query) ||
-        plugin.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-        plugin.author.name.toLowerCase().includes(query)
-      );
+  const handleRefresh = React.useCallback(async () => {
+    if (!onRefresh) {
+      return;
     }
 
-    // Category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((plugin) => plugin.category === selectedCategory);
+    if (isRefreshing === undefined) {
+      setInternalRefreshing(true);
     }
 
-    // Free only filter
-    if (showOnlyFree) {
-      filtered = filtered.filter((plugin) => plugin.pricing.type === 'free');
-    }
-
-    // Verified only filter
-    if (showOnlyVerified) {
-      filtered = filtered.filter((plugin) => plugin.verified);
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
-
-      switch (sortBy) {
-        case 'popular':
-          aValue = a.downloads;
-          bValue = b.downloads;
-          break;
-        case 'rating':
-          aValue = a.rating;
-          bValue = b.rating;
-          break;
-        case 'recent':
-          aValue = a.version; // Mock: use version as proxy for recency
-          bValue = b.version;
-          break;
-        case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
-    });
-
-    return filtered;
-  }, [plugins, searchQuery, selectedCategory, sortBy, sortOrder, showOnlyFree, showOnlyVerified]);
-
-  const handleRefresh = async () => {
-    setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // In real implementation, fetch from marketplace API
+      await onRefresh();
     } finally {
-      setLoading(false);
+      if (isRefreshing === undefined) {
+        setInternalRefreshing(false);
+      }
     }
-  };
+  }, [isRefreshing, onRefresh]);
 
-  const handleInstall = (plugin: PluginMarketplaceEntry) => {
-    onInstall(plugin);
-    onClose();
-  };
+  const healthStatus = metrics?.health?.status ?? "warning";
+  const healthMeta = healthConfig[healthStatus];
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`w-3 h-3 ${
-          i < Math.floor(rating) 
-            ? 'text-yellow-500 fill-current' 
-            : i < rating 
-            ? 'text-yellow-500 fill-current opacity-50' 
-            : 'text-gray-300'
-        }`}
-      />
-    ));
-  };
-
-  const renderPluginCard = (plugin: PluginMarketplaceEntry) => (
-    <Card key={plugin.id} className="hover:shadow-md transition-shadow cursor-pointer">
-      <CardContent className="p-4 sm:p-4 md:p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-lg">{plugin.name}</h3>
-              {plugin.verified && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <CheckCircle className="w-4 h-4 text-blue-600 " />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Verified plugin</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {plugin.featured && (
-                <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                  <Award className="w-3 h-3 mr-1 " />
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground mb-2 line-clamp-2 md:text-base lg:text-lg">
-              {plugin.description}
-            </p>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-1">
-                {renderStars(plugin.rating)}
-                <span className="text-xs text-muted-foreground ml-1 sm:text-sm md:text-base">
-                  {plugin.rating} ({plugin.reviewCount})
-                </span>
-              </div>
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                {plugin.downloads.toLocaleString()} downloads
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-              {plugin.category}
-            </Badge>
-            <Badge 
-              variant={plugin.pricing.type === 'free' ? 'secondary' : 'default'} 
-              className="text-xs sm:text-sm md:text-base"
-            >
-              {plugin.pricing.type === 'free' ? 'Free' : 
-               plugin.pricing.type === 'freemium' ? 'Freemium' : 
-               `$${plugin.pricing.price}`}
-            </Badge>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPlugin(plugin);
-              }}
-            >
-              <Eye className="w-3 h-3 " />
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleInstall(plugin);
-              }}
-            >
-              <Download className="w-3 h-3 mr-1 " />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 mt-3">
-          {plugin.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
-              {tag}
-            </Badge>
-          ))}
-          {plugin.tags.length > 3 && (
-            <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              +{plugin.tags.length - 3} more
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const issues = Array.isArray(metrics?.health?.issues) ? metrics?.health?.issues : [];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft className="w-4 h-4 mr-2 " />
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Plugin Marketplace</h1>
-          <p className="text-muted-foreground">Discover and install plugins to extend Kari AI</p>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground " />
-                <input
-                  placeholder="Search plugins..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} aria-label="Select option">
-                <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
-                  </option>
-                ))}
-              </select>
-              
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Select option">
-                <option value="popular">Popular</option>
-                <option value="rating">Rating</option>
-                <option value="recent">Recent</option>
-                <option value="name">Name</option>
-              </select>
-              
-              <Button variant="outline" size="sm" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
-                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4 " /> : <SortDesc className="w-4 h-4 " />}
-              </Button>
-              
-              <Separator orientation="vertical" className="h-6" />
-              
-              <div className="flex items-center border rounded-md">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-r-none"
-                >
-                  <Grid className="w-4 h-4 " />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="rounded-l-none"
-                >
-                  <List className="w-4 h-4 " />
-                </Button>
-              </div>
-              
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-            {filteredPlugins.length} plugin{filteredPlugins.length !== 1 ? 's' : ''} found
+          <h2 className="text-2xl font-semibold">Operational metrics</h2>
+          <p className="text-sm text-muted-foreground">
+            Real-time health and performance indicators for {plugin.name}.
           </p>
         </div>
-
-        {filteredPlugins.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50 " />
-              <h3 className="text-lg font-medium mb-2">No plugins found</h3>
-              <p className="text-muted-foreground">
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}>
-            {filteredPlugins.map((plugin) => (viewMode === 'grid' ? renderPluginCard(plugin) : renderPluginList(plugin)))}
-          </div>
+        {onRefresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshInProgress}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshInProgress ? "animate-spin" : ""}`} />
+            {refreshInProgress ? "Refreshing" : "Refresh metrics"}
+          </Button>
         )}
       </div>
 
-      {/* Plugin Detail Dialog */}
-      <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          {selectedPlugin && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center ">
-                    <Package className="w-6 h-6 text-muted-foreground " />
-                  </div>
-                  <div>
-                    <DialogTitle className="flex items-center gap-2">
-                      {selectedPlugin.name}
-                      {selectedPlugin.verified && <CheckCircle className="w-5 h-5 text-blue-600 " />}
-                      {selectedPlugin.featured && (
-                        <Badge variant="default" className="text-xs sm:text-sm md:text-base">
-                          Featured
-                        </Badge>
-                      )}
-                    </DialogTitle>
-                    <DialogDescription>by {selectedPlugin.author.name} • v{selectedPlugin.version}</DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm md:text-base lg:text-lg">{selectedPlugin.description}</p>
-                </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card>
+          <CardHeader className="space-y-1 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total executions</CardTitle>
+            <CardDescription className="text-2xl font-semibold text-foreground">
+              {formatNumber(metrics?.performance?.totalExecutions)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Activity className="h-4 w-4 text-primary" />
+            Last run {lastExecution instanceof Date ? lastExecution.toLocaleString() : "never"}
+          </CardContent>
+        </Card>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Rating</h4>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">{renderStars(selectedPlugin.rating)}</div>
-                      <span className="ml-1">{selectedPlugin.rating}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground md:text-base lg:text-lg">
-                      {selectedPlugin.reviewCount} reviews
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm md:text-base lg:text-lg">Downloads</h4>
-                    <p className="text-sm md:text-base lg:text-lg">{selectedPlugin.downloads.toLocaleString()}</p>
-                  </div>
-                </div>
+        <Card>
+          <CardHeader className="space-y-1 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Average execution time</CardTitle>
+            <CardDescription className="text-2xl font-semibold text-foreground">
+              {formatNumber(metrics?.performance?.averageExecutionTime)} ms
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Error rate {formatPercent(metrics?.performance?.errorRate)}
+          </CardContent>
+        </Card>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm md:text-base lg:text-lg">Pricing</h4>
-                  <Badge
-                    variant={selectedPlugin.pricing.type === "free" ? "secondary" : "default"}
-                    className="text-xs sm:text-sm md:text-base"
-                  >
-                    {selectedPlugin.pricing.type === "free"
-                      ? "Free"
-                      : selectedPlugin.pricing.type === "freemium"
-                      ? "Freemium"
-                      : `$${selectedPlugin.pricing.price}`}
-                  </Badge>
-                </div>
+        <Card>
+          <CardHeader className="space-y-1 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Uptime</CardTitle>
+            <CardDescription className="text-2xl font-semibold text-foreground">
+              {formatDuration(metrics?.health?.uptime)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Last health check {lastHealthCheck instanceof Date ? lastHealthCheck.toLocaleString() : "—"}
+          </CardContent>
+        </Card>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm md:text-base lg:text-lg">Category</h4>
-                  <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-                    {selectedPlugin.category}
-                  </Badge>
-                </div>
+        <Card>
+          <CardHeader className="space-y-1 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Success rate</CardTitle>
+            <CardDescription className="text-2xl font-semibold text-foreground">
+              {formatPercent(successRate)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <Progress value={successRate * 100} />
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-primary" />
+              <span>Consistent execution reliability</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm md:text-base lg:text-lg">Tags</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedPlugin.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs sm:text-sm md:text-base">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Heart className="w-4 h-4 mr-2 " />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Share className="w-4 h-4 mr-2 " />
-                    </Button>
-                    {selectedPlugin.manifest.homepage && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={selectedPlugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2 " />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-
-                  <Button onClick={() => handleInstall(selectedPlugin)}>
-                    <Download className="w-4 h-4 mr-2 " />
-                  </Button>
-                </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Performance profile</CardTitle>
+                <CardDescription>Execution performance metrics aggregated in real time.</CardDescription>
               </div>
-            </>
+              <Badge variant={healthMeta.badgeVariant}>{healthMeta.label}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Throughput</span>
+                  <Activity className="h-4 w-4 text-primary" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold">
+                  {formatNumber(metrics?.performance?.totalExecutions)}
+                </p>
+                <p className="text-xs text-muted-foreground">Total invocations</p>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Average latency</span>
+                  <Gauge className="h-4 w-4 text-primary" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold">
+                  {formatNumber(metrics?.performance?.averageExecutionTime)} ms
+                </p>
+                <p className="text-xs text-muted-foreground">Moving average</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <span>Error rate {formatPercent(metrics?.performance?.errorRate)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-emerald-500" />
+                <span>
+                  Last execution {lastExecution instanceof Date ? lastExecution.toLocaleString() : "no data"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Resource utilization</CardTitle>
+            <CardDescription>Current resource consumption reported by the runtime.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <ResourceUsage
+                label="CPU"
+                icon={<Cpu className="h-4 w-4 text-primary" />}
+                value={metrics?.resources?.cpuUsage ?? 0}
+              />
+              <ResourceUsage
+                label="Memory"
+                icon={<Database className="h-4 w-4 text-primary" />}
+                value={metrics?.resources?.memoryUsage ?? 0}
+              />
+              <ResourceUsage
+                label="Disk"
+                icon={<HardDrive className="h-4 w-4 text-primary" />}
+                value={metrics?.resources?.diskUsage ?? 0}
+              />
+              <ResourceUsage
+                label="Network"
+                icon={<Activity className="h-4 w-4 text-primary" />}
+                value={metrics?.resources?.networkUsage ?? 0}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Health insights</CardTitle>
+          <CardDescription>Latest diagnostic signals and outstanding issues.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {issues.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Activity className="h-4 w-4 text-emerald-500" />
+              No open issues detected.
+            </div>
+          ) : (
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              {issues.map((issue, index) => (
+                <li key={`${issue}-${index}`} className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                  <span>{issue}</span>
+                </li>
+              ))}
+            </ul>
           )}
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default PluginMarketplace;
+interface ResourceUsageProps {
+  label: string;
+  icon: React.ReactNode;
+  value: number;
+}
+
+const ResourceUsage: React.FC<ResourceUsageProps> = ({ label, icon, value }) => {
+  const normalized = Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span>{label}</span>
+        </div>
+        <span>{normalized.toFixed(0)}%</span>
+      </div>
+      <Progress value={normalized} className="mt-2" />
+    </div>
+  );
+};
+
+export default PluginMetrics;

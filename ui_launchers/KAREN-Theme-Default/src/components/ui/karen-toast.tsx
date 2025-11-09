@@ -127,7 +127,7 @@ const KarenToastProgress = React.forwardRef<
   const resolvedVariant: KarenToastVariant = variant ?? "default";
   const progressClassName =
     PROGRESS_COLOR_BY_VARIANT[resolvedVariant] ??
-    PROGRESS_COLOR_BY_VARIANT.default;
+    PROGRESS_COLOR_BY_VARIIANT.default;
 
   return (
     <div

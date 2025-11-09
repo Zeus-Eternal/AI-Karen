@@ -27,7 +27,7 @@ export type {
 
 // Plugin Metrics
 export { default as PluginMetrics } from "./PluginMetrics";
-export type { PluginMarketplaceProps as PluginMetricsProps } from "./PluginMetrics";
+export type { PluginMetricsProps } from "./PluginMetrics";
 
 // Plugin Overview Page
 export { default as PluginOverviewPage } from "./PluginOverviewPage";
