@@ -110,6 +110,9 @@ export interface MetricsCollectorConfig {
   };
 }
 
+type NormalizedCommands = Required<NonNullable<MetricsCollectorConfig['commands']>>;
+type NormalizedPaths = Required<NonNullable<MetricsCollectorConfig['paths']>>;
+
 /* -----------------------------
  * Helpers
  * --------------------------- */
@@ -164,8 +167,8 @@ export class QualityMetricsCollector {
   private projectRoot: string;
   private metricsCache = new Map<string, CacheEntry<any>>();
   private cacheTimeout: number;
-  private commands: Required<MetricsCollectorConfig['commands']>;
-  private paths: Required<MetricsCollectorConfig['paths']>;
+  private commands: NormalizedCommands;
+  private paths: NormalizedPaths;
 
   constructor(cfg: MetricsCollectorConfig = {}) {
     this.projectRoot = cfg.projectRoot ?? process.cwd();
@@ -357,7 +360,7 @@ export class QualityMetricsCollector {
     if (cached) return cached;
 
     // Run coverage (best-effort)
-    safeExec(this.commands.coverage!, this.projectRoot);
+    safeExec(this.commands.coverage, this.projectRoot);
 
     const unitCoverage = this.extractCoverageFromReport(this.paths.unitCoverage);
     const integrationCoverage = this.extractCoverageFromReport(this.paths.integrationCoverage);
@@ -418,7 +421,7 @@ export class QualityMetricsCollector {
     const cached = this.getCachedMetric<QualityMetrics['testResults']>(cacheKey);
     if (cached) return cached;
 
-    const { ok, out } = safeExec(this.commands.tests!, this.projectRoot);
+    const { ok, out } = safeExec(this.commands.tests, this.projectRoot);
     const testData = ok ? tryJson<any>(out) : null;
 
     const total = Number(testData?.numTotalTests ?? 0);
@@ -501,7 +504,7 @@ export class QualityMetricsCollector {
     const cached = this.getCachedMetric<QualityMetrics['accessibility']>(cacheKey);
     if (cached) return cached;
 
-    const { ok, out } = safeExec(this.commands.accessibility!, this.projectRoot);
+    const { ok, out } = safeExec(this.commands.accessibility, this.projectRoot);
     const a11yData = ok ? tryJson<any>(out) : null;
 
     const accessibility = {
@@ -520,7 +523,7 @@ export class QualityMetricsCollector {
     const cached = this.getCachedMetric<QualityMetrics['security']>(cacheKey);
     if (cached) return cached;
 
-    const { ok, out } = safeExec(this.commands.audit!, this.projectRoot);
+    const { ok, out } = safeExec(this.commands.audit, this.projectRoot);
     const auditData = ok ? tryJson<any>(out) : null;
 
     const vulnerabilities = {

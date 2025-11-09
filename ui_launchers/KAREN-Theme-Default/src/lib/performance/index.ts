@@ -13,11 +13,13 @@
 /* ----------------------------------------
  * HTTP Connection Pool (static re-exports)
  * -------------------------------------- */
-export {
+import {
   getHttpConnectionPool,
   initializeHttpConnectionPool,
   shutdownHttpConnectionPool,
 } from './http-connection-pool';
+
+export { getHttpConnectionPool, initializeHttpConnectionPool, shutdownHttpConnectionPool };
 
 export type {
   ConnectionPoolConfig,
@@ -29,11 +31,13 @@ export type {
 /* ----------------------------------------
  * Request/Response Cache (static re-exports)
  * -------------------------------------- */
-export {
+import {
   getRequestResponseCache,
   initializeRequestResponseCache,
   shutdownRequestResponseCache,
 } from './request-response-cache';
+
+export { getRequestResponseCache, initializeRequestResponseCache, shutdownRequestResponseCache };
 
 export type {
   CacheConfig,
@@ -45,11 +49,13 @@ export type {
 /* ----------------------------------------
  * Database Query Optimizer (static re-exports)
  * -------------------------------------- */
-export {
+import {
   getDatabaseQueryOptimizer,
   initializeDatabaseQueryOptimizer,
   shutdownDatabaseQueryOptimizer,
 } from './database-query-optimizer';
+
+export { getDatabaseQueryOptimizer, initializeDatabaseQueryOptimizer, shutdownDatabaseQueryOptimizer };
 
 export type {
   QueryOptimizationConfig,
@@ -62,11 +68,13 @@ export type {
 /* ----------------------------------------
  * Performance Optimizer (integration layer)
  * -------------------------------------- */
-export {
+import {
   getPerformanceOptimizer,
   initializePerformanceOptimizer,
   shutdownPerformanceOptimizer,
 } from './performance-optimizer';
+
+export { getPerformanceOptimizer, initializePerformanceOptimizer, shutdownPerformanceOptimizer };
 
 export type {
   PerformanceConfig,
