@@ -6,7 +6,20 @@ import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
-import { } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Cpu,
+  HardDrive,
+  Info,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Square,
+  Trash2
+} from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
 export interface BasicTrainingPreset {
