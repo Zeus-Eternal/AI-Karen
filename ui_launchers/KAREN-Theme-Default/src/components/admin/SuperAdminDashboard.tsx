@@ -116,8 +116,11 @@ export default function SuperAdminDashboard({ className = "" }: SuperAdminDashbo
 
   const loadSystemHealth = useCallback(async (signal: AbortSignal) => {
     // Load system health
-    const sysHealth = await fetchJSON<SystemHealth>("/api/admin/system/health", signal);
-    if (sysHealth) setSystemHealth(sysHealth);
+    const sysHealth = await fetchJSON<{ success: boolean; data: SystemHealth }>(
+      "/api/admin/system/health",
+      signal
+    );
+    if (sysHealth?.data) setSystemHealth(sysHealth.data);
 
     // Load cognitive health from new cognitive API
     const cogHealth = await fetchJSON<CognitiveHealth>("/api/cognitive/health", signal);
