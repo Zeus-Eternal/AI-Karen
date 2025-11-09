@@ -205,6 +205,18 @@ export class PerformanceOptimizer {
     return { ...this.metrics };
   }
 
+  getConfig(): OptimizationConfig {
+    return {
+      bundleSplitting: { ...this.config.bundleSplitting },
+      imageOptimization: { ...this.config.imageOptimization },
+      caching: {
+        ...this.config.caching,
+        preloadStrategies: [...this.config.caching.preloadStrategies],
+      },
+      memoryManagement: { ...this.config.memoryManagement },
+    };
+  }
+
   generateRecommendations(): OptimizationRecommendation[] {
     // Always re-evaluate from current signals
     this.recommendations = [];
