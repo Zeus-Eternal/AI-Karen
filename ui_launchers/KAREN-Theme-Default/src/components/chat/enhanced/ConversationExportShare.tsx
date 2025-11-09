@@ -48,37 +48,15 @@ import {
 } from "lucide-react";
 
 /* ---------- Types ---------- */
-/** If you already have these in `@/types/enhanced-chat`, remove these local defs and import them. */
+import type { 
+  ConversationExport, 
+  ConversationShare, 
+  ConversationThread 
+} from "@/types/enhanced-chat";
+
+// Local type aliases for easier usage
 type ExportFormat = "json" | "markdown" | "pdf" | "html";
 type ShareType = "private" | "team" | "public";
-
-export interface ConversationExport {
-  format: ExportFormat;
-  includeMetadata: boolean;
-  includeReasoning: boolean;
-  includeAttachments: boolean;
-}
-
-export interface ConversationShare {
-  shareId: string;
-  type: ShareType;
-  permissions: string[];
-  allowComments: boolean;
-  allowDownload: boolean;
-  password?: string;
-  expiresAt?: Date;
-}
-
-export interface ConversationThread {
-  id: string;
-  title: string;
-  createdAt: string | number | Date;
-  participants: Array<{ id: string; name?: string }>;
-  metadata: {
-    messageCount: number;
-    complexity: string;
-  };
-}
 
 interface ConversationExportShareProps {
   thread: ConversationThread;

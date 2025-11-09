@@ -798,6 +798,23 @@ class LLMOrchestrator:
                 model_id, model = self._select_model(skill)
 
             if not model or model_id in attempted_models:
+                # Enhanced logging for no models available scenario
+                if not attempted_models:
+                    with self.registry._lock:
+                        total_models = len(self.registry._models)
+                        ready_models = sum(
+                            1 for mid, m in self.registry._models.items()
+                            if self._model_ready(mid, m)
+                        )
+                    logger.error(
+                        "No LLM models available for routing. Registry status: "
+                        f"{ready_models}/{total_models} models ready, skill={skill}, mode={mode}"
+                    )
+                    if total_models == 0:
+                        logger.critical(
+                            "LLM Registry is empty! No models have been registered. "
+                            "Please ensure model discovery has run or models are manually registered."
+                        )
                 break
 
             attempted_models.append(model_id)
@@ -1277,11 +1294,27 @@ class LLMOrchestrator:
 
         reason = str(last_error) if last_error else "Unknown provider failure"
         attempted = attempted_models or ["<none>"]
-        logger.error(
-            "All providers failed; entering degraded mode. Attempted: %s | Reason: %s",
-            attempted,
-            reason,
-        )
+
+        # Enhanced error logging with registry status
+        with self.registry._lock:
+            total_models = len(self.registry._models)
+            active_models = sum(
+                1 for m in self.registry._models.values()
+                if m.status == ModelStatus.ACTIVE
+            )
+
+        if not attempted_models:
+            logger.error(
+                "Entering degraded mode - NO MODELS ATTEMPTED. Registry status: "
+                f"{active_models}/{total_models} active models. "
+                "This indicates the model registry is empty or no models are ready."
+            )
+        else:
+            logger.error(
+                "All providers failed; entering degraded mode. "
+                f"Attempted: {attempted} | Reason: {reason} | "
+                f"Registry status: {active_models}/{total_models} active models"
+            )
 
         event = {
             "timestamp": time.time(),
@@ -1335,19 +1368,37 @@ class LLMOrchestrator:
         """Create a deterministic acknowledgement message as ultimate fallback."""
 
         summary = textwrap.shorten(" ".join(prompt.split()), width=200, placeholder="…") if prompt else "(empty request)"
-        attempted = ", ".join(attempted_models)
-        guidance = [
-            "Retry in a few minutes or switch to a different provider in settings.",
-            "Review provider API keys and quotas to ensure availability.",
-        ]
+        attempted = ", ".join(attempted_models) if attempted_models else "none (no models available)"
+
+        # Determine the specific issue and provide appropriate guidance
+        if not attempted_models:
+            # No models were even attempted - registry is likely empty
+            guidance = [
+                "Initialize the system using: python -m ai_karen_engine.initialize_kire_kro",
+                "Ensure model discovery has run to detect available models",
+                "Verify that at least one LLM provider is configured and accessible",
+                "Check logs for model registration errors"
+            ]
+            issue_description = "No language models are currently available in the system registry"
+        else:
+            # Models were attempted but all failed
+            guidance = [
+                "Retry in a few minutes or switch to a different provider in settings",
+                "Review provider API keys and quotas to ensure availability",
+                "Check network connectivity to LLM provider endpoints",
+                "Verify that provider services are not experiencing outages"
+            ]
+            issue_description = "I couldn't reach the configured language models"
 
         return (
-            "⚠️ I'm in degraded mode because I couldn't reach the configured language models.\n"
+            f"⚠️ I'm in degraded mode because {issue_description}.\n"
             f"Models attempted: {attempted}.\n"
             f"Last error: {reason}.\n\n"
-            "Here's what I can offer right now:\n"
+            "Troubleshooting steps:\n"
             f"- {guidance[0]}\n"
-            f"- {guidance[1]}\n\n"
+            f"- {guidance[1]}\n"
+            f"- {guidance[2]}\n"
+            f"- {guidance[3]}\n\n"
             f"Your request summary: {summary}"
         )
 

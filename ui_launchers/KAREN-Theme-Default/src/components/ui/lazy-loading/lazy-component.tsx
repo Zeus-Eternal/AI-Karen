@@ -114,7 +114,8 @@ export const LazyComponent: React.FC<LazyComponentProps> = ({
 };
 // Utility function to create lazy components with options
 export function createLazyComponent<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>, options: LazyLoadOptions = {} from "@/lib/placeholder";
+  importFn: () => Promise<{ default: T }>,
+  options: LazyLoadOptions = {}
 ): LazyExoticComponent<T> {
   const LazyComp = React.lazy(() => {
     // Add artificial delay if specified (useful for testing)
@@ -123,9 +124,10 @@ export function createLazyComponent<T extends ComponentType<any>>(
         setTimeout(() => {
           importFn().then(resolve);
         }, options.delay);
-
+      });
     }
     return importFn();
+  });
 
   // Return a wrapped component that includes error boundary and fallback
   return React.lazy(() =>
@@ -146,7 +148,7 @@ export function useLazyPreload() {
   const preloadComponent = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
       // Preload the component by calling the import function
-      importFn().catch(error => { }); from "@/components/ui/placeholder";
+      importFn().catch(error => { });
     },
     []
   );

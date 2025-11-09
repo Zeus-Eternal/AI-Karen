@@ -10,16 +10,17 @@ export * from './karen-alerts';
 
 // --- Authentication & Authorization ---
 export * from './auth';
-export * from './auth-enhanced';
-export * from './auth-feedback';
-export * from './auth-form';
-export * from './auth-utils';
+// Note: auth-enhanced, auth-feedback, auth-form, and auth-utils are imported by auth.ts
+// to avoid duplicate exports and conflicts
 
 // --- Admin Management System Types ---
 export * from './admin';
 
 // --- Chat & Conversation Types ---
 export * from './chat';
+
+// --- Copilot & AI Assistant Types ---
+export * from './copilot';
 
 // --- Model & Provider Types ---
 export * from './models';

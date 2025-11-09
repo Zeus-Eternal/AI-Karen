@@ -106,3 +106,6 @@ htmlcov/
 
 ui_launchers/KAREN-Theme-Default/.gitattributes
 ui_launchers/KAREN-Theme-Default/.gitignore
+/.env_kari
+ui_launchers/KAREN-Theme-Default/.next/cache/tsbuildinfo
+/ui_launchers/KAREN-Theme-Default/.next

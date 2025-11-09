@@ -48,7 +48,7 @@ const KarenToastProgress = React.forwardRef<
       setProgress((prev) => {
         const newProgress = prev - (100 / (duration / 100));
         return newProgress <= 0 ? 0 : newProgress;
-
+      });
     }, 100);
 
     return () => clearInterval(interval);
@@ -96,6 +96,7 @@ const KarenToastProgress = React.forwardRef<
       />
     </div>
   );
+});
 
 KarenToastProgress.displayName = "KarenToastProgress";
 
@@ -146,7 +147,8 @@ const KarenToast = React.forwardRef<
             {/* Expandable content */}
             {alert?.expandableContent && (
               <div className="mt-2">
-                <Button
+                <button
+                  type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity sm:text-sm md:text-base"
                   aria-expanded={isExpanded}
@@ -158,7 +160,7 @@ const KarenToast = React.forwardRef<
                   ) : (
                     <ChevronDown className="h-3 w-3 " />
                   )}
-                </Button>
+                </button>
                 
                 {isExpanded && (
                   <div
@@ -177,15 +179,16 @@ const KarenToast = React.forwardRef<
         {alert?.actions && alert.actions.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2 border-t border-current/10">
             {alert.actions.map((action, index) => (
-              <Button
+              <button
                 key={index}
+                type="button"
                 onClick={() => {
                   action.action();
                   onActionClick?.(action);
                 }}
                 className={cn(
                   "inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                  action.variant === "destructive" 
+                  action.variant === "destructive"
                     ? "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
                     : action.variant === "outline"
                     ? "border border-current/20 bg-transparent hover:bg-current/10 focus:ring-current"
@@ -194,7 +197,7 @@ const KarenToast = React.forwardRef<
               >
                 {action.icon && <span className="mr-1">{action.icon}</span>}
                 {action.label}
-              </Button>
+              </button>
             ))}
           </div>
         )}
@@ -209,6 +212,7 @@ const KarenToast = React.forwardRef<
       <KarenToastClose />
     </ToastPrimitives.Root>
   );
+});
 
 KarenToast.displayName = "KarenToast";
 
@@ -243,6 +247,7 @@ const KarenToastAction = React.forwardRef<
       {...props}
     />
   );
+});
 
 KarenToastAction.displayName = "KarenToastAction";
 
@@ -337,6 +342,7 @@ const KarenToastViewport = React.forwardRef<
       {...props}
     />
   );
+});
 
 KarenToastViewport.displayName = "KarenToastViewport";
 
@@ -349,5 +355,12 @@ export type KarenToastActionElement = React.ReactElement<typeof KarenToastAction
 export {
   type KarenToastProps,
   type KarenToastActionElement,
+  KarenToastProvider,
+  KarenToastViewport,
+  KarenToast,
+  KarenToastTitle,
+  KarenToastDescription,
+  KarenToastClose,
+  KarenToastAction,
   karenToastVariants,
 };

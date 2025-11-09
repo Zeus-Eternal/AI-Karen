@@ -73,6 +73,7 @@ interface FileMetadataGridProps {
   enableSelection?: boolean;
   enableFiltering?: boolean;
   enableSorting?: boolean;
+  viewMode?: 'grid' | 'list';
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -235,7 +236,8 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
   height = 400,
   enableSelection = true,
   enableFiltering = true,
-  enableSorting = true
+  enableSorting = true,
+  viewMode = 'grid'
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<FileMetadata[]>([]);
   const gridRef = useRef<AgGridReact<FileMetadata>>(null);
@@ -331,7 +333,6 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     },
     {
       headerName: 'Features',
-      field: 'features',
       width: 140,
       sortable: false,
       filter: false,
@@ -420,7 +421,8 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     enableCellTextSelection: true,
     suppressMenuHide: true,
     suppressMovableColumns: false,
-  }), [enableSelection, getRowStyle]);
+    rowHeight: viewMode === 'list' ? 44 : 64,
+  }), [enableSelection, getRowStyle, viewMode]);
 
   // Statistics
   const stats = useMemo(() => {

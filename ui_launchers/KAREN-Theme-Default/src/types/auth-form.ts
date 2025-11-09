@@ -8,6 +8,9 @@ import type {
   ValidationConfig,
 } from "./auth";
 
+// Re-export the imported types to avoid conflicts
+export type { ValidationErrors, ValidationRule };
+
 /**
  * Authentication Form Types, Defaults, Reducers & Utilities (production‑grade)
  * - Complete, compile‑safe module with zero placeholder code

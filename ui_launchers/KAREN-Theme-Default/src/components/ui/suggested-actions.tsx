@@ -17,8 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-
-import { } from 'lucide-react';
+import { CheckSquare, Pin, ExternalLink, Download, Search, MessageSquare, Sparkles, Loader2, X, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActionRegistry } from '@/hooks/use-action-registry';
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
@@ -74,7 +73,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         onActionComplete(action, result);
       }
     }
-
+  });
   const [executingActions, setExecutingActions] = useState<Set<string>>(new Set());
   const [completedActions, setCompletedActions] = useState<Set<string>>(new Set());
 
@@ -99,7 +98,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
             const newSet = new Set(prev);
             newSet.delete(actionKey);
             return newSet;
-
+          });
         }, 3000);
       }
     } finally {
@@ -107,7 +106,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         const newSet = new Set(prev);
         newSet.delete(actionKey);
         return newSet;
-
+      });
     }
   };
 

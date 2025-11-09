@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
 import { Filter, X, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -275,7 +275,13 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   }, [isAddDialogOpen]);
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in DashboardFilters</div>}>
+    <ErrorBoundary fallback={({ error, resetError }) => (
+      <div className="p-4 text-center">
+        <p className="text-destructive">Something went wrong in DashboardFilters</p>
+        <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+        <Button onClick={resetError} className="mt-4">Try Again</Button>
+      </div>
+    )}>
       <div className={cn("space-y-3", className)}>
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -363,7 +369,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                     <Label htmlFor="filter-value">Filter Value</Label>
                     {renderFilterInput(
                       newFilter.value,
-                      (value) => setNewFilter((prev) => ({ ...prev, value })),
+                      (value) => setNewFilter((prev) => ({ ...prev, value: value as DashboardFilter['value'] })),
                       getFilterTypeConfig(newFilter.type)!
                     )}
                   </div>

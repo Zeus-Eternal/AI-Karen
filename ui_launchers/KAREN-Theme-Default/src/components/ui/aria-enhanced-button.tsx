@@ -7,13 +7,13 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-
-  createAriaLabel, 
-  createInteractiveAria, 
+import {
+  createAriaLabel,
+  createInteractiveAria,
   createLoadingAria,
   mergeAriaProps,
   type AriaProps,
-import { } from "@/utils/aria";
+} from "@/utils/aria";
 import { AriaStatus } from "./aria-live-region";
 
 const buttonVariants = cva(

@@ -167,6 +167,45 @@ export function useGracefulBackend<T>(
 }
 
 // Global error handler for automatic feature flag management
+// Hook for graceful degradation state management
+export function useGracefulDegradation(featureName: string) {
+  const featureFlag = useFeatureFlag(featureName);
+  const [showDegradedBanner, setShowDegradedBanner] = React.useState(false);
+
+  const dismissBanner = React.useCallback(() => {
+    setShowDegradedBanner(false);
+  }, []);
+
+  const forceRetry = React.useCallback(() => {
+    featureFlagManager.handleServiceRecovery(featureName);
+    setShowDegradedBanner(false);
+  }, [featureName]);
+
+  React.useEffect(() => {
+    if (!featureFlag.enabled) {
+      setShowDegradedBanner(true);
+    }
+  }, [featureFlag.enabled]);
+
+  return {
+    isEnabled: featureFlag.enabled,
+    fallbackBehavior: featureFlag.fallbackBehavior,
+    showDegradedBanner,
+    dismissBanner,
+    forceRetry
+  };
+}
+
+// Hook for model providers with graceful degradation
+export function useModelProviders(options: UseGracefulBackendOptions = {}) {
+  return useGracefulBackend<any[]>('/api/models/providers', {
+    ...options,
+    cacheKey: 'model-providers',
+    fallbackData: [],
+    serviceName: 'Model Providers'
+  });
+}
+
 export function setupGlobalErrorHandling() {
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {

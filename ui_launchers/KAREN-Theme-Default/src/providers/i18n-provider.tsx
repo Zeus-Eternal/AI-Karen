@@ -19,7 +19,7 @@ export interface I18nContextValue {
   t: (key: string, options?: InterpolationOptions & PluralOptions & { ns?: string }) => string;
   // Formatting functions
   formatNumber: (value: number, options?: FormatOptions) => string;
-  formatDate: (date: Date, options?: FormatOptions) => string;
+  formatDate: (date: Date | string | number, options?: FormatOptions) => string;
   formatRelativeTime: (value: number, unit: Intl.RelativeTimeFormatUnit, options?: FormatOptions) => string;
   // Locale management
   changeLocale: (locale: string) => void;

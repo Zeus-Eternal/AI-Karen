@@ -16,6 +16,8 @@ export interface CardActionsProps extends BaseComponentProps {
   justify?: "start" | "center" | "end" | "between"
 }
 
+export type CardProps = CardRootProps
+
 // Modal compound component types
 export interface ModalRootProps {
   open?: boolean
@@ -35,6 +37,8 @@ export interface ModalContentProps extends React.HTMLAttributes<HTMLDivElement> 
 export interface ModalActionsProps extends BaseComponentProps {
   justify?: "start" | "center" | "end" | "between"
 }
+
+export type ModalProps = ModalContentProps & Partial<ModalRootProps>
 
 // Form compound component types
 export interface FormFieldProps<

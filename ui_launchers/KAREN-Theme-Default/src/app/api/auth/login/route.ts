@@ -1,12 +1,13 @@
 // app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import {
-  makeBackendRequest,
-  getTimeoutConfig,
-  getRetryPolicy,
-  checkBackendHealth,
-  getConnectionStatus,
-} from "@/app/api/_utils/backend";
+// Temporarily disable complex backend utilities that may have client-side dependencies
+// import {
+//   makeBackendRequest,
+//   getTimeoutConfig,
+//   getRetryPolicy,
+//   checkBackendHealth,
+//   getConnectionStatus,
+// } from "@/app/api/_utils/backend";
 import { isSimpleAuthEnabled } from "@/lib/auth/env";
 import { ConnectionError } from "@/lib/connection/connection-manager";
 
@@ -37,8 +38,9 @@ interface ErrorResponse {
 }
 
 const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
-const timeoutConfig = getTimeoutConfig();
-const retryPolicy = getRetryPolicy();
+// Use simple timeout and retry config
+const timeoutConfig = { authentication: 15000 };
+const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
 
 // ---- Attempt tracking (in-memory) ----
@@ -74,16 +76,21 @@ function isRateLimited(email: string, ipAddress: string): boolean {
 async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
   const start = Date.now();
   try {
-    const healthy = await checkBackendHealth();
+    // Simple health check using direct fetch
+    const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/health`, { 
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
     const ms = Date.now() - start;
-    if (healthy) {
+    if (response.ok) {
       return { isConnected: true, responseTime: ms, timestamp: new Date() };
     }
-    const status = await getConnectionStatus();
     return {
       isConnected: false,
       responseTime: ms,
-      error: `Backend health check failed. Circuit breaker state: ${status.circuitBreakerState || "unknown"}`,
+      error: `Backend health check failed with status ${response.status}`,
       timestamp: new Date(),
     };
   } catch (e: any) {
@@ -175,38 +182,34 @@ export async function POST(request: NextRequest) {
   };
 
   try {
+    // Simple direct backend request
+    const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
+    
     // Primary endpoint
-    let result = await makeBackendRequest(
-      "/api/auth/login",
-      {
+    let response = await fetch(`${backendUrl}/api/auth/login`, {
+      method: "POST",
+      headers: baseHeaders,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutConfig.authentication)
+    });
+
+    // Fallback to simple-auth mount only on 404/405 AND when simple auth is enabled
+    if (
+      SIMPLE_AUTH_ENABLED &&
+      (response.status === 404 || response.status === 405)
+    ) {
+      response = await fetch(`${backendUrl}/auth/login`, {
         method: "POST",
         headers: baseHeaders,
         body: JSON.stringify(body),
-      },
-      connectionOptions
-    );
-
-    // Fallback to simple-auth mount only on 404/405 AND when simple auth is enabled
-    // (fix: removed stray "&&" that broke compilation)
-    if (
-      SIMPLE_AUTH_ENABLED &&
-      (result.status === 404 || result.status === 405)
-    ) {
-      result = await makeBackendRequest(
-        "/auth/login",
-        {
-          method: "POST",
-          headers: baseHeaders,
-          body: JSON.stringify(body),
-        },
-        connectionOptions
-      );
+        signal: AbortSignal.timeout(timeoutConfig.authentication)
+      });
     }
 
     const totalResponseTime = Date.now() - startTime;
-    retryCount = (result as any).retryCount || 0;
-    const data = result.data;
-    const status = result.status ?? 200;
+    retryCount = 0; // Simple implementation without retry tracking
+    const data = await response.json();
+    const status = response.status;
 
     // Log success
     logAuthenticationAttempt({
@@ -231,16 +234,11 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Forward Set-Cookie headers (array or string)
+    // Forward Set-Cookie headers from response
     try {
-      const h = (result.headers || {}) as Record<string, any>;
-      const raw = h["set-cookie"] ?? h["Set-Cookie"];
-      if (raw) {
-        if (Array.isArray(raw)) {
-          for (const c of raw) nextResponse.headers.append("Set-Cookie", c);
-        } else {
-          nextResponse.headers.set("Set-Cookie", raw);
-        }
+      const setCookieHeader = response.headers.get("set-cookie");
+      if (setCookieHeader) {
+        nextResponse.headers.set("Set-Cookie", setCookieHeader);
       }
     } catch {
       /* ignore */
@@ -280,24 +278,17 @@ export async function POST(request: NextRequest) {
     let statusCode = 500;
     let retryable = true;
 
-    if (error instanceof ConnectionError) {
-      statusCode = error.statusCode || 500;
-      retryCount = error.retryCount || 0;
-      retryable = error.retryable;
-
-      switch (error.category) {
-        case "timeout_error":
-          errorType = "timeout";
-          break;
-        case "network_error":
-          errorType = "network";
-          break;
-        case "http_error":
-          errorType = statusCode === 401 || statusCode === 403 ? "credentials" : "server";
-          break;
-        default:
-          errorType = "server";
-      }
+    // Simple error mapping
+    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      errorType = "timeout";
+      statusCode = 504;
+    } else if (error.message?.includes('fetch') || error.message?.includes('network')) {
+      errorType = "network";
+      statusCode = 502;
+    } else if (error.status === 401 || error.status === 403) {
+      errorType = "credentials";
+      statusCode = error.status;
+      retryable = false;
     }
 
     // Log failure

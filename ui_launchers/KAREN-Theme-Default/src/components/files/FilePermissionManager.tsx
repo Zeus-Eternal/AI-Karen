@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import { ErrorBoundary, type ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, SelectionChangedEvent } from "ag-grid-community";
@@ -166,6 +166,25 @@ const formatDate = (dateString: string): string => {
     return dateString;
   }
 };
+
+const PermissionManagerFallback: React.FC<ErrorFallbackProps> = ({
+  error,
+  resetError,
+}) => (
+  <Card className="border-destructive/30 bg-destructive/5">
+    <CardHeader>
+      <CardTitle className="text-destructive text-lg">Permissions unavailable</CardTitle>
+      <p className="text-sm text-muted-foreground">
+        {error.message || "Failed to render the permission manager."}
+      </p>
+    </CardHeader>
+    <CardContent className="flex items-center gap-3">
+      <Button size="sm" variant="outline" onClick={resetError}>
+        Retry
+      </Button>
+    </CardContent>
+  </Card>
+);
 
 /* ----------------------------------------------------------------------------
  * Cell Renderers
@@ -436,7 +455,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
   }, [currentPermissions]);
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in FilePermissionManager.</div>}>
+    <ErrorBoundary fallback={PermissionManagerFallback}>
       <div className={cn("w-full space-y-6", className)}>
         {/* Header */}
         <Card>

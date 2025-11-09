@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_URL =
   process.env.KAREN_BACKEND_URL ||
+  process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'http://127.0.0.1:8000';
+  'http://localhost:8000';
 async function handleCopilotRequest(request: NextRequest) {
   try {
     const backendUrl = `${BACKEND_URL}/copilot/assist`;
     // Get request body
-    let body = undefined;
+    let body: string | undefined = undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();

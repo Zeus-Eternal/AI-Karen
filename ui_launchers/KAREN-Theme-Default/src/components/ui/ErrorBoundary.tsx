@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       errorInfo,
       fallbackResponse
-
+    });
   }
   handleRetry = async () => {
     if (this.state.retryCount >= this.maxRetries) {
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
         error: null,
         errorInfo: null,
         fallbackResponse: null
-
+      });
     }, 1000);
   };
   handleReset = () => {
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo: null,
       fallbackResponse: null,
       retryCount: 0
-
+    });
   };
   componentWillUnmount() {
     if (this.retryTimeout) {
@@ -122,15 +122,17 @@ export class ErrorBoundary extends Component<Props, State> {
             <h3>Something went wrong</h3>
             <p>{componentName} encountered an error and couldn't be displayed.</p>
             {enableRetry && retryCount < this.maxRetries && (
-              <Button 
+              <Button
                 onClick={this.handleRetry}
                 className="retry-button"
-                disabled={retryCount  aria-label="Button">= this.maxRetries}
+                disabled={retryCount >= this.maxRetries}
+                aria-label="Retry Button"
               >
                 Retry ({retryCount}/{this.maxRetries})
               </Button>
             )}
-            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            <Button onClick={this.handleReset} className="reset-button" aria-label="Reset Button">
+              Reset
             </Button>
           </div>
         </div>

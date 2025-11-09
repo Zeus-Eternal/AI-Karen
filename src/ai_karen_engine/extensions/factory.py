@@ -36,7 +36,8 @@ class ExtensionServiceConfig:
         auto_discover_on_init: bool = True,
         auto_load_extensions: bool = False,
     ):
-        self.extension_root = extension_root or Path("extensions")
+        # Points to src/extensions/ (parent.parent of this file)
+        self.extension_root = extension_root or (Path(__file__).parent.parent.parent / "extensions")
 
         self.enable_marketplace = enable_marketplace
         self.enable_resource_monitoring = enable_resource_monitoring

@@ -3,11 +3,34 @@ import logging
 from typing import List, Tuple
 from tqdm import tqdm
 
-import torch
-import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoTokenizer, AutoModel
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
+    # Create dummy types/functions for type hints when torch is not available
+    class AutoTokenizer:  # type: ignore
+        pass
+    class AutoModel:  # type: ignore
+        pass
+    class F:  # type: ignore
+        pass
 
 logger = logging.getLogger(__name__)
+
+# Conditional decorator for torch.no_grad()
+def conditional_no_grad():
+    """Decorator that uses torch.no_grad() if available, otherwise does nothing"""
+    if TORCH_AVAILABLE and torch is not None:
+        return torch.no_grad()
+    else:
+        # Return identity decorator when torch not available
+        def identity_decorator(func):
+            return func
+        return identity_decorator
 
 
 def load_jsonl(path: str) -> List[dict]:
@@ -38,15 +61,15 @@ def extract_pairs(items: List[dict], key_field: str, value_field: str) -> List[T
     return pairs
 
 
-@torch.no_grad()
+@conditional_no_grad()
 def embed_texts(
     texts: List[str],
-    tokenizer: AutoTokenizer,
-    model: AutoModel,
-    device: torch.device,
+    tokenizer,  # AutoTokenizer type hint removed for compatibility
+    model,  # AutoModel type hint removed for compatibility
+    device,  # torch.device type hint removed for compatibility
     batch_size: int = 64,
     max_length: int = 256,
-) -> torch.Tensor:
+):
     vecs = []
     model.eval()
     for i in tqdm(range(0, len(texts), batch_size), desc="Embedding"):

@@ -1,46 +1,41 @@
+/**
+ * Graceful degradation initialization
+ */
+import { featureFlagManager } from '@/lib/graceful-degradation';
+
 export interface GracefulDegradationConfig {
-  enableNetworkFallbacks?: boolean;
-  enableTelemetry?: boolean;
-  retryDelayMs?: number;
+  enableCaching?: boolean;
+  enableGlobalErrorHandling?: boolean;
+  developmentMode?: boolean;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  featureFlags?: Record<string, {
+    enabled: boolean;
+    fallbackBehavior: 'hide' | 'disable' | 'cache' | 'mock';
+  }>;
 }
 
-export interface GracefulDegradationApi {
-  isOffline: () => boolean;
-  markOffline: () => void;
-  markOnline: () => void;
-}
+export function initGracefulDegradation(config: GracefulDegradationConfig = {}) {
+  const {
+    enableCaching = true,
+    enableGlobalErrorHandling = true,
+    developmentMode = false,
+    logLevel = 'warn',
+    featureFlags = {}
+  } = config;
 
-const defaultState = {
-  offline: false,
-};
+  // Initialize feature flags
+  Object.entries(featureFlags).forEach(([name, flag]) => {
+    featureFlagManager.setFlag(name, flag.enabled, flag.fallbackBehavior);
+  });
 
-export function initGracefulDegradation(
-  config: GracefulDegradationConfig = {}
-): GracefulDegradationApi {
-  const state = { ...defaultState };
-  const retryDelay = config.retryDelayMs ?? 1_000;
+  // Setup global error handling if enabled
+  if (enableGlobalErrorHandling) {
+    const { setupGlobalErrorHandling } = require('@/lib/graceful-degradation/use-graceful-backend');
+    setupGlobalErrorHandling();
+  }
 
-  const markOffline = () => {
-    state.offline = true;
-    if (config.enableTelemetry) {
-      console.warn("Graceful degradation enabled: network offline");
-    }
-    if (config.enableNetworkFallbacks) {
-      setTimeout(() => {
-        if (typeof navigator !== "undefined" && navigator.onLine) {
-          state.offline = false;
-        }
-      }, retryDelay);
-    }
-  };
-
-  const markOnline = () => {
-    state.offline = false;
-  };
-
-  return {
-    isOffline: () => state.offline,
-    markOffline,
-    markOnline,
-  };
+  // Log initialization
+  if (developmentMode && logLevel === 'debug') {
+    console.log('Graceful degradation initialized with config:', config);
+  }
 }

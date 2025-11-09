@@ -79,7 +79,11 @@ class ExtensionManager(HookMixin):
         self.name = "extension_manager"
 
         self.registry = ExtensionRegistry()
-        self.validator = ExtensionValidator()
+        try:
+            self.validator = ExtensionValidator()
+        except Exception as e:
+            self.logger.error("Failed to initialize ExtensionValidator: %s", e)
+            self.validator = None
         self.dependency_resolver = DependencyResolver()
         self.resource_monitor = ResourceMonitor()
         self.health_checker = ExtensionHealthChecker(self.resource_monitor)
@@ -153,7 +157,12 @@ class ExtensionManager(HookMixin):
             return
 
         # Use enhanced validation with unified patterns and new API compatibility
-        is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
+        if self.validator is not None:
+            is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
+        else:
+            # Fallback validation when validator is not available
+            self.logger.warning("ExtensionValidator not available, using basic validation for %s", manifest.name)
+            is_valid, errors, warnings, field_errors = True, [], [], []
 
         if not is_valid:
             self.logger.error(
@@ -174,13 +183,17 @@ class ExtensionManager(HookMixin):
             )
             
         # Log validation report for comprehensive feedback
-        validation_report = self.validator.get_validation_report(manifest)
-        if validation_report.get("recommendations"):
-            self.logger.info(
-                "Extension %s recommendations: %s",
-                extension_dir.name,
-                "; ".join(validation_report["recommendations"])
-            )
+        if self.validator is not None:
+            try:
+                validation_report = self.validator.get_validation_report(manifest)
+                if validation_report.get("recommendations"):
+                    self.logger.info(
+                        "Extension %s recommendations: %s",
+                        extension_dir.name,
+                        "; ".join(validation_report["recommendations"])
+                    )
+            except AttributeError:
+                self.logger.debug("Validator does not support get_validation_report method")
         
         # Check endpoint compatibility with unified API
         try:

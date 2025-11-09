@@ -25,13 +25,10 @@ _optimization_enabled: bool = True
 
 
 async def init_database() -> None:
-    """Initialize database connections."""
-    try:
-        # Placeholder for actual DB initialization
-        logger.info("Database initialized")
-    except Exception as e:  # pragma: no cover - defensive
-        logger.error("Database initialization failed: %s", str(e))
-        raise
+    """Initialize database connections - deferred to when actually needed."""
+    # Database initialization is now handled by server/database_config.py
+    # and only happens when database is available
+    logger.debug("Database initialization deferred (lazy loading)")
 
 
 async def init_ai_services(settings: Any) -> None:

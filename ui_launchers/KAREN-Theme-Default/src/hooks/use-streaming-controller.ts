@@ -85,8 +85,8 @@ export const useStreamingController = (): StreamingController => {
   const [state, setState] = useState<StreamState>(INITIAL_STATE);
   const abortControllerRef = useRef<AbortController | null>(null);
   const optionsRef = useRef<StreamOptions | null>(null);
-  const backpressureTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const metricsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const backpressureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const metricsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const telemetryService = getTelemetryService();
 
   // Cleanup on unmount
@@ -106,43 +106,53 @@ export const useStreamingController = (): StreamingController => {
 
   // Apply backpressure when buffer gets too large
   const applyBackpressure = useCallback(async (threshold: number) => {
-    if (state.bufferSize > threshold && !state.isBackpressureActive) {
-      setState(prev => ({ ...prev, isBackpressureActive: true }));
-      
-      telemetryService.track('stream.backpressure.activated', {
+    if (state.bufferSize <= threshold || state.isBackpressureActive) {
+      return;
+    }
+
+    setState(prev => ({ ...prev, isBackpressureActive: true }));
+
+    telemetryService.track(
+      'stream.backpressure.activated',
+      {
         bufferSize: state.bufferSize,
         threshold,
         correlationId: optionsRef.current?.correlationId,
         streamId: optionsRef.current?.streamId,
-      }, optionsRef.current?.correlationId);
+      },
+      optionsRef.current?.correlationId
+    );
 
-      return new Promise<void>(resolve => {
-        backpressureTimeoutRef.current = setTimeout(() => {
-          setState(prev => ({ ...prev, isBackpressureActive: false }));
-          resolve();
-        }, BACKPRESSURE_DELAY);
-
-    }
+    await new Promise<void>(resolve => {
+      backpressureTimeoutRef.current = setTimeout(() => {
+        setState(prev => ({ ...prev, isBackpressureActive: false }));
+        resolve();
+      }, BACKPRESSURE_DELAY);
+    });
   }, [state.bufferSize, state.isBackpressureActive, telemetryService]);
 
   // Update metrics periodically during streaming
   const updateMetrics = useCallback(() => {
     setState(prev => {
+      if (!prev.metrics.startTime) {
+        return prev;
+      }
+
       const now = performance.now();
       const duration = now - prev.metrics.startTime;
       const throughput = duration > 0 ? (prev.metrics.tokenCount / duration) * 1000 : 0;
-      
+
       return {
         ...prev,
         metrics: {
           ...prev.metrics,
           throughput,
-          averageLatency: prev.metrics.firstTokenTime 
-            ? prev.metrics.firstTokenTime - prev.metrics.startTime 
+          averageLatency: prev.metrics.firstTokenTime
+            ? prev.metrics.firstTokenTime - prev.metrics.startTime
             : 0,
         },
       };
-
+    });
   }, []);
 
   // Start streaming
@@ -206,10 +216,11 @@ export const useStreamingController = (): StreamingController => {
         method: options.method || 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...options.headers
+          ...options.headers,
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: combinedSignal
+        signal: combinedSignal,
+      });
 
       clearTimeout(timeoutId);
 

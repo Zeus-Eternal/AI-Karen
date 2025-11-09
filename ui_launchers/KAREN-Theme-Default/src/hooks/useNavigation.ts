@@ -68,9 +68,9 @@ export const useNavigation = () => {
     return true;
   }, [pathname, hasRole]);
 
-  const getBreadcrumbItems = useCallback(() => {
+  const getBreadcrumbItems = useCallback((): Array<{ label: string; path: string; isActive: boolean }> => {
     const segments = pathname.split('/').filter(Boolean);
-    const items = [];
+    const items: Array<{ label: string; path: string; isActive: boolean }> = [];
     let currentPath = '';
     for (const segment of segments) {
       currentPath += `/${segment}`;

@@ -28,7 +28,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Icons
-import { Plus, LayoutGrid, Save, Edit3, Filter as FilterIcon } from "lucide-react";
+import {
+  Plus,
+  LayoutGrid,
+  Save,
+  Edit3,
+  Filter as FilterIcon,
+} from "lucide-react";
 
 // Local widgets & helpers
 import { WidgetBase } from "./WidgetBase";
@@ -94,7 +100,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   const globalTimeRange = useDashboardStore(selectGlobalTimeRange);
   const globalFilters = useDashboardStore(selectGlobalFilters);
   const isEditing = useDashboardStore(selectIsEditing);
-  const templates = useDashboardStore(selectTemplatesForUser(user?.roles || []));
+  const templates = useDashboardStore(
+    selectTemplatesForUser(user?.roles || [])
+  );
 
   // Sync editing state with store
   useEffect(() => {
@@ -107,7 +115,10 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   );
 
   // Memoized widget IDs
-  const widgetIds = useMemo(() => config.widgets.map((w) => w.id), [config.widgets]);
+  const widgetIds = useMemo(
+    () => config.widgets.map((w) => w.id),
+    [config.widgets]
+  );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -130,9 +141,16 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         newWidgets.splice(newIndex, 0, moved);
 
         if (config.id) {
-          reorderWidgets(config.id, newWidgets.map((w) => w.id));
+          reorderWidgets(
+            config.id,
+            newWidgets.map((w) => w.id)
+          );
         } else {
-          onConfigChange({ ...config, widgets: newWidgets, updatedAt: new Date() });
+          onConfigChange({
+            ...config,
+            widgets: newWidgets,
+            updatedAt: new Date(),
+          });
         }
       }
 
@@ -144,7 +162,10 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   const handleAddWidget = useCallback(
     (type: string) => {
       // Compute a simple Y position based on current stack
-      const nextY = Math.max(0, ...config.widgets.map((w) => w.position.y + w.position.h));
+      const nextY = Math.max(
+        0,
+        ...config.widgets.map((w) => w.position.y + w.position.h)
+      );
 
       const newWidget = createWidgetConfig(type, {
         position: { x: 0, y: nextY, w: 1, h: 1 },
@@ -155,7 +176,10 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       } else {
         onConfigChange({
           ...config,
-          widgets: [...config.widgets, { ...newWidget, id: `widget-${Date.now()}` }],
+          widgets: [
+            ...config.widgets,
+            { ...newWidget, id: `widget-${Date.now()}` },
+          ],
           updatedAt: new Date(),
         });
       }
@@ -185,7 +209,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       } else {
         onConfigChange({
           ...config,
-          widgets: config.widgets.map((w) => (w.id === widgetId ? newConfig : w)),
+          widgets: config.widgets.map((w) =>
+            w.id === widgetId ? newConfig : w
+          ),
           updatedAt: new Date(),
         });
       }
@@ -265,7 +291,13 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         onConfigChange({ ...config, filters });
       }
     },
-    [config, onConfigChange, addDashboardFilter, updateDashboardFilter, removeDashboardFilter]
+    [
+      config,
+      onConfigChange,
+      addDashboardFilter,
+      updateDashboardFilter,
+      removeDashboardFilter,
+    ]
   );
 
   const getLayoutClasses = () => {
@@ -304,18 +336,22 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       <WidgetBase
         key={widget.id}
         config={widget}
-        data={data}
+        data={data as any}
         loading={data?.loading}
         error={data?.error}
-        onConfigChange={(newConfig) => handleWidgetConfigChange(widget.id, newConfig)}
+        onConfigChange={(newConfig) =>
+          handleWidgetConfigChange(widget.id, newConfig)
+        }
         onRefresh={() => handleRefreshWidget(widget.id)}
         onRemove={() => handleRemoveWidget(widget.id)}
         isEditing={isEditing}
       >
         <WidgetComponent
           config={widget}
-          data={data}
-          onConfigChange={(newConfig: WidgetConfig) => handleWidgetConfigChange(widget.id, newConfig)}
+          data={data as any}
+          onConfigChange={(newConfig: WidgetConfig) =>
+            handleWidgetConfigChange(widget.id, newConfig)
+          }
           onRefresh={() => handleRefreshWidget(widget.id)}
           onRemove={() => handleRemoveWidget(widget.id)}
           isEditing={isEditing}
@@ -324,10 +360,22 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
     );
   };
 
-  const activeWidget = activeId ? config.widgets.find((w) => w.id === activeId) : null;
+  const activeWidget = activeId
+    ? config.widgets.find((w) => w.id === activeId)
+    : null;
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in DashboardContainer</div>}>
+    <ErrorBoundary
+      fallback={({ error, resetError }) => (
+        <div className="p-4 text-center">
+          <p className="text-destructive">Something went wrong in DashboardContainer</p>
+          <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+          <Button onClick={resetError} className="mt-4">
+            Try Again
+          </Button>
+        </div>
+      )}
+    >
       <div className={cn("w-full", className)}>
         {/* Header */}
         <div className="space-y-4 mb-6">
@@ -335,7 +383,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             <div>
               <h1 className="text-2xl font-bold">{config.name}</h1>
               {config.description ? (
-                <p className="text-muted-foreground mt-1">{config.description}</p>
+                <p className="text-muted-foreground mt-1">
+                  {config.description}
+                </p>
               ) : null}
             </div>
 
@@ -362,9 +412,14 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
                     {getAvailableWidgetTypes().map((type) => {
                       const info = getWidgetInfo(type);
                       return (
-                        <DropdownMenuItem key={type} onClick={() => handleAddWidget(type)}>
+                        <DropdownMenuItem
+                          key={type}
+                          onClick={() => handleAddWidget(type)}
+                        >
                           <div>
-                            <div className="font-medium">{info?.name || type}</div>
+                            <div className="font-medium">
+                              {info?.name || type}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {info?.description || "Add this widget"}
                             </div>
@@ -379,14 +434,26 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
               {/* Layout */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" aria-label="Change layout">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Change layout"
+                  >
                     <LayoutGrid className="h-4 w-4 mr-2" /> Layout
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleLayoutChange("grid")}>Grid</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLayoutChange("masonry")}>Masonry</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLayoutChange("flex")}>Flex</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleLayoutChange("grid")}>
+                    Grid
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleLayoutChange("masonry")}
+                  >
+                    Masonry
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleLayoutChange("flex")}>
+                    Flex
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -397,7 +464,11 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
                 onClick={toggleEditMode}
                 aria-label={isEditing ? "Save layout" : "Edit layout"}
               >
-                {isEditing ? <Save className="h-4 w-4 mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
+                {isEditing ? (
+                  <Save className="h-4 w-4 mr-2" />
+                ) : (
+                  <Edit3 className="h-4 w-4 mr-2" />
+                )}
                 {isEditing ? "Save" : "Edit"}
               </Button>
 
@@ -415,10 +486,16 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
           {/* Time Range + Filters */}
           <div className="flex items-center justify-between">
-            <TimeRangeSelector value={globalTimeRange} onChange={handleTimeRangeChange} />
+            <TimeRangeSelector
+              value={globalTimeRange}
+              onChange={handleTimeRangeChange}
+            />
             {showFilters && (
               <div className="flex-1 ml-6">
-                <DashboardFilters filters={config.filters} onFiltersChange={handleFiltersChange} />
+                <DashboardFilters
+                  filters={config.filters}
+                  onFiltersChange={handleFiltersChange}
+                />
               </div>
             )}
           </div>
@@ -430,7 +507,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             <div className="text-muted-foreground">
               <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No widgets added</h3>
-              <p className="text-sm mb-4">Click Edit to add your first widget.</p>
+              <p className="text-sm mb-4">
+                Click Edit to add your first widget.
+              </p>
               <Button onClick={toggleEditMode} variant="outline">
                 <Plus className="h-4 w-4 mr-2" /> Edit
               </Button>
@@ -458,7 +537,9 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
             </SortableContext>
 
             <DragOverlay>
-              {activeWidget ? <div className="opacity-50">{renderWidget(activeWidget)}</div> : null}
+              {activeWidget ? (
+                <div className="opacity-50">{renderWidget(activeWidget)}</div>
+              ) : null}
             </DragOverlay>
           </DndContext>
         )}

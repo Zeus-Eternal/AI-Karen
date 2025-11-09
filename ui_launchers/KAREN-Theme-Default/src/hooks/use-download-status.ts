@@ -273,4 +273,3 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
 }
 
 // Export the DownloadTask type for use in other components
-export type { DownloadTask };

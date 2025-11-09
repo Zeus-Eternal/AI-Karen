@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import MessageActions from "./MessageActions";
 import type { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
-import { safeDebug } from "@/lib/safe-console";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -16,9 +15,9 @@ interface ChatMessagesProps {
   enableCodeAssistance: boolean;
   settings: ChatSettings;
   onMessageAction: (messageId: string, action: string) => void;
-  onArtifactApprove: (artifactId: string) => void;
-  onArtifactReject: (artifactId: string) => void;
-  onArtifactApply: (artifactId: string) => void;
+  onArtifactApprove?: (artifactId: string) => void;
+  onArtifactReject?: (artifactId: string) => void;
+  onArtifactApply?: (artifactId: string) => void;
   messagesEndRef?: React.RefObject<HTMLDivElement>;
   artifacts?: CopilotArtifact[];
 }
@@ -30,9 +29,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   enableCodeAssistance,
   settings,
   onMessageAction,
-  onArtifactApprove,
-  onArtifactReject,
-  onArtifactApply,
+  onArtifactApprove = () => {},
+  onArtifactReject = () => {},
+  onArtifactApply = () => {},
   messagesEndRef,
   artifacts = [],
 }: ChatMessagesProps) => {
@@ -46,18 +45,25 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         aria-label="Chat messages"
       >
         {messages.length === 0 ? (
-          <div 
+          <div
             className="text-center py-8 text-muted-foreground"
             role="status"
             aria-label="Welcome message"
           >
-            <Bot className="h-12 w-12 mx-auto mb-4 opacity-50 " aria-hidden="true" />
-              <div className="text-lg font-medium mb-2">
-                {useCopilotKit && (
-                  <Badge variant="secondary" className="ml-2 text-xs sm:text-sm md:text-base">
-                  </Badge>
-                )}
-              </div>
+            <Bot
+              className="h-12 w-12 mx-auto mb-4 opacity-50 "
+              aria-hidden="true"
+            />
+            <div className="text-lg font-medium mb-2">
+              {useCopilotKit && (
+                <Badge
+                  variant="secondary"
+                  className="ml-2 text-xs sm:text-sm md:text-base"
+                >
+                  CopilotKit
+                </Badge>
+              )}
+            </div>
             <div className="text-sm md:text-base lg:text-lg">
               suggestions.
               {enableCodeAssistance &&
@@ -78,51 +84,60 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 className="absolute top-2 right-2"
               />
               <EnhancedMessageBubble
-                role={message.role}
-                content={message.content}
-                type={message.type}
-                language={message.language}
-                artifacts={artifacts}
-                meta={{
-                  confidence: message.metadata?.confidence,
-                  latencyMs: message.metadata?.latencyMs,
-                  model: message.metadata?.model,
-                  tokens: message.metadata?.tokens,
-                  cost: message.metadata?.cost,
-                  persona: message.metadata?.persona,
-                  mood: message.metadata?.mood,
-                  intent: message.metadata?.intent,
-                  reasoning: message.metadata?.reasoning,
-                  sources: message.metadata?.sources,
+                message={{
+                  ...message,
+                  type:
+                    message.type === "analysis" ||
+                    message.type === "documentation" ||
+                    message.type === "suggestion"
+                      ? "text"
+                      : message.type,
+                  status:
+                    message.status === "generating" || message.status === "completed"
+                      ? "sent"
+                      : message.status,
+                  metadata: message.metadata
+                    ? {
+                        confidence: message.metadata.confidence,
+                        model: message.metadata.model,
+                        latency: message.metadata.latencyMs,
+                        tokens:
+                          typeof message.metadata.tokens === "number"
+                            ? { total: message.metadata.tokens }
+                            : undefined,
+                      }
+                    : undefined,
                 }}
-                onArtifactAction={(artifactId: string, actionId: string) => {
-                  // Handle artifact actions
-                  safeDebug("Artifact action:", { artifactId, actionId });
-                }}
-                onApprove={onArtifactApprove}
-                onReject={onArtifactReject}
-                onApply={onArtifactApply}
                 onCopy={() => {
                   onMessageAction(message.id, "copy");
                 }}
                 onRegenerate={() => {
                   onMessageAction(message.id, "regenerate");
                 }}
-                theme={settings.theme === "dark" ? "dark" : "light"}
+                showMetadata={true}
+                isDarkMode={settings.theme === "dark"}
               />
             </div>
           ))
         )}
 
         {isTyping && (
-          <div className="flex gap-3 mb-4" role="status" aria-live="polite" id="typing-indicator">
+          <div
+            className="flex gap-3 mb-4"
+            role="status"
+            aria-live="polite"
+            id="typing-indicator"
+          >
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center ">
               <Bot className="h-4 w-4 " aria-hidden="true" />
             </div>
             <div className="flex-1">
               <div className="inline-block p-3 rounded-lg bg-muted border sm:p-4 md:p-6">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin " aria-hidden="true" />
+                  <Loader2
+                    className="h-4 w-4 animate-spin "
+                    aria-hidden="true"
+                  />
                   <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
                     AI is thinking...
                   </span>

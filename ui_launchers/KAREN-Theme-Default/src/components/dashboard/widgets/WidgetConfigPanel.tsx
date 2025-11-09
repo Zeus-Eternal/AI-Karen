@@ -132,7 +132,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   onSave,
   onPreview,
 }) => {
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+
   const schema = useMemo(() => getSchemaForType(config.type), [config.type]);
 
   const form = useForm<WidgetConfig>({
@@ -152,7 +152,6 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   const handlePreview = useCallback(() => {
     const formData = form.getValues();
     onPreview?.(formData);
-    setIsPreviewMode(true);
   }, [form, onPreview]);
 
   // Accessibility: ESC to close when open

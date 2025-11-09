@@ -520,10 +520,12 @@ class ResourceMonitor:
             )
             results.append(result)
             return results
-        
+
         # Suspend optional and background services - Production implementation
         suspended_count = 0
         cpu_freed = 0.0
+
+        registry = self.service_registry
 
         try:
             # Get all services from registry

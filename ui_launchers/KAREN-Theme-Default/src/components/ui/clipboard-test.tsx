@@ -20,7 +20,7 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
       success: result.success,
       error: result.error,
       tested: true,
-
+    });
   };
 
   return (
@@ -29,7 +29,9 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
         <Button
           onClick={handleTestClipboard}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-         aria-label="Button">
+          aria-label="Test Clipboard"
+        >
+          Test Clipboard
         </Button>
         
         {testResult.tested && (

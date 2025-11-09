@@ -50,11 +50,11 @@ def _get_llamacpp_client():
         return llamacpp_inprocess_client
     
     try:
-        from src.marketplace.ai.llm_services.llama.llama_client import llamacpp_inprocess_client
+        from plugins.ai.llm_services.llama.llama_client import llamacpp_inprocess_client
         LLAMACPP_AVAILABLE = True
         return llamacpp_inprocess_client
     except (ImportError, FileNotFoundError, Exception) as e:
-        logger.debug(f"Failed to import from src.marketplace: {e}")
+        logger.debug(f"Failed to import from plugins: {e}")
         try:
             from ai_karen_engine.plugins.llm_services.llama.llama_client import llamacpp_inprocess_client
             LLAMACPP_AVAILABLE = True

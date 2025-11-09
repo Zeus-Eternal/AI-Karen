@@ -26,7 +26,7 @@ export {
   getExtensionAuthRecoveryStrategy,
   isExtensionAuthErrorRetryable,
   type ExtensionAuthError
-import { } from './extension-auth-errors';
+} from './extension-auth-errors';
 // Graceful degradation
 export {
   extensionAuthDegradationManager,
@@ -38,7 +38,7 @@ export {
   type ExtensionDegradationState,
   type ExtensionFeatureConfig,
   type CachedExtensionData
-import { } from './extension-auth-degradation';
+} from './extension-auth-degradation';
 // Error recovery
 export {
   extensionAuthRecoveryManager,
@@ -48,25 +48,25 @@ export {
   type RecoveryAttemptResult,
   type RecoveryContext,
   type RecoveryStatistics
-import { } from './extension-auth-recovery';
+} from './extension-auth-recovery';
 // Authentication manager
 export {
   getExtensionAuthManager,
   initializeExtensionAuthManager
-import { } from './extension-auth-manager';
+} from './extension-auth-manager';
 // Development authentication
 export {
   getDevelopmentAuthManager,
   initializeDevelopmentAuthManager,
   resetDevelopmentAuthManager,
   isDevelopmentFeaturesEnabled
-import { } from './development-auth';
+} from './development-auth';
 // Hot reload authentication
 export {
   getHotReloadAuthManager,
   initializeHotReloadAuthManager,
   resetHotReloadAuthManager
-import { } from './hot-reload-auth';
+} from './hot-reload-auth';
 /**
  * Convenience function to handle extension authentication errors with full recovery
  */

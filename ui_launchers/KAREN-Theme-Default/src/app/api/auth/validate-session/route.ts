@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  makeBackendRequest,
-  getTimeoutConfig,
-  getRetryPolicy,
-  checkBackendHealth,
-  getConnectionStatus,
-} from '@/app/api/_utils/backend';
+// Temporarily disable complex backend utilities that may have client-side dependencies
+// import {
+//   makeBackendRequest,
+//   getTimeoutConfig,
+//   getRetryPolicy,
+//   checkBackendHealth,
+//   getConnectionStatus,
+// } from '@/app/api/_utils/backend';
 import { ConnectionError } from '@/lib/connection/connection-manager';
 
 interface DatabaseConnectivityResult {
@@ -37,8 +38,9 @@ interface ErrorResponse {
   timestamp: string;
 }
 
-const timeoutConfig = getTimeoutConfig();
-const retryPolicy = getRetryPolicy();
+// Use simple timeout and retry config
+const timeoutConfig = { sessionValidation: 10000 };
+const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 
 // In-memory ring buffer of attempts by IP
 const sessionValidationAttempts = new Map<string, SessionValidationAttempt[]>();
@@ -80,14 +82,20 @@ function isRetryableStatus(status: number): boolean {
   return status >= 500 || status === 408 || status === 429;
 }
 
-/** Test database/backend connectivity with circuit-breaker awareness */
+/** Test database/backend connectivity with simple health check */
 async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
   const start = Date.now();
   try {
-    const healthy = await checkBackendHealth();
+    // Simple health check using direct fetch
+    const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/health`, { 
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
     const responseTime = Date.now() - start;
 
-    if (healthy) {
+    if (response.ok) {
       return {
         isConnected: true,
         responseTime,
@@ -95,11 +103,10 @@ async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
       };
     }
 
-    const connectionStatus = await getConnectionStatus();
     return {
       isConnected: false,
       responseTime,
-      error: `Backend health check failed. Circuit breaker state: ${connectionStatus.circuitBreakerState}`,
+      error: `Backend health check failed with status ${response.status}`,
       timestamp: new Date(),
     };
   } catch (error: any) {
@@ -187,11 +194,20 @@ export async function GET(request: NextRequest) {
     };
 
     try {
-      result = await makeBackendRequest(
-        '/api/auth/validate-session',
-        { method: 'GET' },
-        connectionOptions
-      );
+      // Simple direct backend request
+      const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/auth/validate-session`, {
+        method: 'GET',
+        headers,
+        signal: AbortSignal.timeout(timeoutConfig.sessionValidation)
+      });
+      
+      const data = await response.json();
+      result = {
+        data,
+        statusCode: response.status,
+        retryCount: 0
+      };
     } catch (error) {
       const totalResponseTime = Date.now() - startTime;
 
@@ -199,24 +215,17 @@ export async function GET(request: NextRequest) {
       let statusCode = 502;
       let retryable = true;
 
-      if (error instanceof ConnectionError) {
-        retryCount = error.retryCount || 0;
-        statusCode = error.statusCode || 502;
-        retryable = error.retryable;
-
-        switch (error.category) {
-          case 'timeout_error':
-            errorType = 'timeout';
-            break;
-          case 'network_error':
-            errorType = 'network';
-            break;
-          case 'http_error':
-            errorType = statusCode === 401 || statusCode === 403 ? 'credentials' : 'server';
-            break;
-          default:
-            errorType = 'server';
-        }
+      // Simple error mapping
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        errorType = 'timeout';
+        statusCode = 504;
+      } else if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        errorType = 'network';
+        statusCode = 502;
+      } else if (error.status === 401 || error.status === 403) {
+        errorType = 'credentials';
+        statusCode = error.status;
+        retryable = false;
       }
 
       logSessionValidationAttempt({

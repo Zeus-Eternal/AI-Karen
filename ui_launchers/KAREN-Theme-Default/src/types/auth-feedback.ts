@@ -1,5 +1,8 @@
 import type { AuthenticationError, FeedbackMessage, FeedbackMessageType } from './auth';
 
+// Re-export the imported types to avoid conflicts
+export type { FeedbackMessage, FeedbackMessageType };
+
 /**
  * Types and interfaces for authentication feedback components
  */

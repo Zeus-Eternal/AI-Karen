@@ -2,13 +2,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-
-
-import { } from 'lucide-react';
-
-  usePerformanceMonitor, 
-  checkPerformanceBudget,
-import { } from '@/utils/performance-monitor';
+import { usePerformanceMonitor, checkPerformanceBudget } from '@/utils/performance-monitor';
 
 export interface PerformanceDashboardProps {
   className?: string;

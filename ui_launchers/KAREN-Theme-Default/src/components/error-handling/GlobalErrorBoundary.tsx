@@ -9,7 +9,10 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { errorReportingService, type ErrorReport } from "../../utils/error-reporting";
+import {
+  errorReportingService,
+  type ErrorReport,
+} from "../../utils/error-reporting";
 import { ErrorRecoveryManager } from "../../lib/error-handling/error-recovery-manager";
 import { ErrorAnalytics } from "../../lib/error-handling/error-analytics";
 import { ProductionErrorFallback } from "./ProductionErrorFallback";
@@ -80,12 +83,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
       fallbackMode: "full",
     };
 
-    this.recoveryManager = new ErrorRecoveryManager({
-      maxAttempts: this.maxRecoveryAttempts,
-      retryDelay: 1000,
-      exponentialBackoff: true,
-      section: props.section || "unknown",
-    });
+    this.recoveryManager = ErrorRecoveryManager.getInstance();
 
     this.analytics = new ErrorAnalytics({
       enabled: props.enableAnalytics !== false,
@@ -137,12 +135,18 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   /* Report / Analytics                              */
   /* ---------------------------------------------- */
 
-  private async generateErrorReport(error: Error, errorInfo: ErrorInfo): Promise<ErrorReport> {
+  private async generateErrorReport(
+    error: Error,
+    errorInfo: ErrorInfo
+  ): Promise<ErrorReport> {
     const safeWindow = typeof window !== "undefined" ? window : undefined;
-    const safeNavigator = typeof navigator !== "undefined" ? navigator : ({} as Navigator);
+    const safeNavigator =
+      typeof navigator !== "undefined" ? navigator : ({} as Navigator);
 
     const report: ErrorReport = {
-      id: `global-error-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      id: `global-error-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 11)}`,
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo?.componentStack || undefined,
@@ -200,7 +204,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
 
     // Medium severity errors that break components
-    if (message.includes("render") || message.includes("hook") || this.state.recoveryAttempts > 1) {
+    if (
+      message.includes("render") ||
+      message.includes("hook") ||
+      this.state.recoveryAttempts > 1
+    ) {
       return "medium";
     }
 
@@ -211,7 +219,8 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     const message = (error.message || "").toLowerCase();
     const name = (error.name || "").toLowerCase();
 
-    if (message.includes("network") || message.includes("fetch")) return "network";
+    if (message.includes("network") || message.includes("fetch"))
+      return "network";
     if (message.includes("auth") || message.includes("token")) return "auth";
     if (message.includes("chunk") || message.includes("loading")) return "ui";
     if (name.includes("type") || name.includes("reference")) return "ui";
@@ -222,15 +231,22 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     const severity = this.determineSeverity(error);
     const attempts = this.state.recoveryAttempts;
 
-    if (severity === "critical" || attempts >= this.maxRecoveryAttempts) return "minimal";
+    if (severity === "critical" || attempts >= this.maxRecoveryAttempts)
+      return "minimal";
     if (severity === "high" || attempts >= 2) return "degraded";
     return "full";
   }
 
-  private async reportError(error: Error, errorInfo: ErrorInfo, errorReport: ErrorReport) {
+  private async reportError(
+    error: Error,
+    errorInfo: ErrorInfo,
+    errorReport: ErrorReport
+  ) {
     try {
       // Primary reporting
-      await errorReportingService.reportError(error, errorInfo, {
+      await errorReportingService.reportError(error, {
+        componentStack: errorInfo.componentStack || undefined
+      }, {
         section: this.props.section,
         retryCount: this.state.recoveryAttempts,
         level: this.props.level,
@@ -272,7 +288,9 @@ export class GlobalErrorBoundary extends Component<Props, State> {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_ERROR_MONITORING_API_KEY || ""}`,
+            Authorization: `Bearer ${
+              process.env.NEXT_PUBLIC_ERROR_MONITORING_API_KEY || ""
+            }`,
           },
           body: JSON.stringify(errorReport),
         });
@@ -306,11 +324,15 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     this.setState({ isRecovering: true });
 
     try {
-      const strategy = await this.recoveryManager.getRecoveryStrategy(
-        this.state.error!,
-        this.state.errorInfo!,
-        this.state.recoveryAttempts
-      );
+      // Create a simple categorized error for recovery
+      const categorizedError = {
+        originalError: this.state.error!,
+        category: 'ui' as const,
+        severity: 'medium' as const,
+        isRecoverable: true,
+        context: { section: this.props.section || 'unknown' }
+      };
+      const strategy = await this.recoveryManager.attemptRecovery(categorizedError);
 
       await this.executeRecoveryStrategy(strategy);
     } catch {
@@ -356,7 +378,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
   private handleReport = async () => {
     if (this.state.error && this.state.errorInfo && this.state.errorReport) {
-      await this.reportError(this.state.error, this.state.errorInfo, this.state.errorReport);
+      await this.reportError(
+        this.state.error,
+        this.state.errorInfo,
+        this.state.errorReport
+      );
     }
   };
 
@@ -368,7 +394,9 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     if (typeof window === "undefined") return `session-${Date.now()}-ssr`;
     let sessionId = window.sessionStorage.getItem("error_session_id");
     if (!sessionId) {
-      sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      sessionId = `session-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 11)}`;
       window.sessionStorage.setItem("error_session_id", sessionId);
     }
     return sessionId;
@@ -391,15 +419,24 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
   private getPerformanceInfo(): any {
     try {
-      if (typeof performance !== "undefined" && "getEntriesByType" in performance) {
-        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-        const firstPaint = performance.getEntriesByName("first-paint")[0]?.startTime ?? null;
-        const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null;
+      if (
+        typeof performance !== "undefined" &&
+        "getEntriesByType" in performance
+      ) {
+        const nav = performance.getEntriesByType("navigation")[0] as
+          | PerformanceNavigationTiming
+          | undefined;
+        const firstPaint =
+          performance.getEntriesByName("first-paint")[0]?.startTime ?? null;
+        const fcp =
+          performance.getEntriesByName("first-contentful-paint")[0]
+            ?.startTime ?? null;
 
         return nav
           ? {
               loadTime: nav.loadEventEnd - nav.loadEventStart,
-              domContentLoaded: nav.domContentLoadedEventEnd - nav.domContentLoadedEventStart,
+              domContentLoaded:
+                nav.domContentLoadedEventEnd - nav.domContentLoadedEventStart,
               firstPaint,
               firstContentfulPaint: fcp,
             }
@@ -458,7 +495,9 @@ export function withGlobalErrorBoundary<P extends object>(
   );
 
   WithGlobalErrorBoundaryComponent.displayName = `withGlobalErrorBoundary(${
-    (WrappedComponent as any).displayName || WrappedComponent.name || "Component"
+    (WrappedComponent as any).displayName ||
+    WrappedComponent.name ||
+    "Component"
   })`;
 
   return WithGlobalErrorBoundaryComponent;

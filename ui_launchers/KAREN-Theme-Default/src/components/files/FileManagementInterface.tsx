@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import { ErrorBoundary, type ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,6 +95,25 @@ const computeStats = (files: FileMetadata[], apiStats?: any): FileStats => {
 };
 
 const makeTempId = () => `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+const FileManagerErrorFallback: React.FC<ErrorFallbackProps> = ({
+  error,
+  resetError,
+}) => (
+  <Card className="border-destructive/30 bg-destructive/5">
+    <CardHeader>
+      <CardTitle className="text-destructive text-lg">File Manager crashed</CardTitle>
+      <p className="text-sm text-muted-foreground">
+        {error.message || "An unexpected error occurred while rendering files."}
+      </p>
+    </CardHeader>
+    <CardContent className="flex items-center gap-3">
+      <Button size="sm" variant="outline" onClick={resetError}>
+        Try again
+      </Button>
+    </CardContent>
+  </Card>
+);
 
 export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = ({
   conversationId,
@@ -376,7 +395,7 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
   }, []);
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in FileManagementInterface</div>}>
+    <ErrorBoundary fallback={FileManagerErrorFallback}>
       <div className={cn("w-full h-full flex flex-col space-y-6", className)}>
         {/* Header */}
         <Card>
@@ -570,7 +589,6 @@ export const FileManagementInterface: React.FC<FileManagementInterfaceProps> = (
                 onFilesSelected={handleFilesSelectedFromGrid}
                 enableSelection={!readOnly}
                 height={600}
-                viewMode={viewMode}
               />
             </TabsContent>
 

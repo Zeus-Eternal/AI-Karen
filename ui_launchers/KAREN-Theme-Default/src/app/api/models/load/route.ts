@@ -17,6 +17,13 @@ interface LoadModelRequest {
   };
 }
 
+type LoadModelResult = {
+  success?: boolean;
+  memory_usage?: number;
+  message?: string;
+  [key: string]: unknown;
+};
+
 interface LoadModelResponse {
   success: boolean;
   model_id: string;
@@ -175,13 +182,13 @@ async function loadViaService(
   const canLoad = typeof (modelSelectionService as any).loadModel === 'function';
 
   if (canLoad) {
-    const res = await withTimeout(
+    const res = await withTimeout<LoadModelResult>(
       (modelSelectionService as any).loadModel(model_id, {
         provider: provider || target.provider,
         preserveContext: options.preserve_context,
         forceReload: options.force_reload,
         memoryLimit: options.memory_limit,
-      }),
+      }) as Promise<LoadModelResult>,
       LOAD_TIMEOUT_MS,
       'modelSelectionService.loadModel',
     );

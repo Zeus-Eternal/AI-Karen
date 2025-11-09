@@ -228,17 +228,20 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
           )}
           <div className="flex flex-col gap-2">
             {canRetry && (
-              <Button onClick={resetError} className="w-full" aria-label="Button">
-                <RefreshCw className="mr-2 h-4 w-4 " />
+              <Button onClick={resetError} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
               </Button>
             )}
             {!isGlobalError && (
-              <Button variant="outline" onClick={handleGoHome} className="w-full" >
-                <Home className="mr-2 h-4 w-4 " />
+              <Button variant="outline" onClick={handleGoHome} className="w-full">
+                <Home className="mr-2 h-4 w-4" />
+                Go Home
               </Button>
             )}
-            <Button variant="outline" onClick={handleReportBug} className="w-full" >
-              <Bug className="mr-2 h-4 w-4 " />
+            <Button variant="outline" onClick={handleReportBug} className="w-full">
+              <Bug className="mr-2 h-4 w-4" />
+              Report Bug
             </Button>
           </div>
           {process.env.NODE_ENV === 'development' && (

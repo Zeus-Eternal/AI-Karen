@@ -121,13 +121,21 @@ export interface MemoryReference {
 export interface ConversationThread {
   id: string;
   title: string;
-  topic: string;
-  messages: EnhancedChatMessage[];
-  participants: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  status: 'active' | 'archived' | 'deleted';
-  metadata: ThreadMetadata;
+  topic?: string;
+  messages?: EnhancedChatMessage[];
+  participants: Array<{ id: string; name?: string }>;
+  createdAt: string | number | Date;
+  updatedAt?: Date;
+  status?: 'active' | 'archived' | 'deleted';
+  metadata: {
+    messageCount: number;
+    complexity: string;
+    averageResponseTime?: number;
+    topicDrift?: number;
+    sentiment?: 'positive' | 'neutral' | 'negative';
+    tags?: string[];
+    summary?: string;
+  };
 }
 
 export interface ThreadMetadata {

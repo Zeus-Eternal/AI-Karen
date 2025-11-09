@@ -34,6 +34,7 @@ export interface AuthenticationResult {
   user?: User;
   sessionToken?: string;
   mfaRequired?: boolean;
+  mfaVerified?: boolean;
   delay?: number;
   error?: {
     code: string;
@@ -203,7 +204,8 @@ export class EnhancedAuthMiddleware {
         success: true,
         user,
         sessionToken,
-        mfaRequired: false
+        mfaRequired: false,
+        mfaVerified: true
       };
     } catch (error) {
       return {

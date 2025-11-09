@@ -17,6 +17,8 @@ export interface ConversationSession {
   context: Record<string, any>;
   summary?: string;
 }
+export type Toolset = Record<string, (...args: any[]) => unknown>;
+
 export interface ProcessMessageOptions {
   userId?: string;
   sessionId?: string;
@@ -24,6 +26,7 @@ export interface ProcessMessageOptions {
   generateSummary?: boolean;
   preferredLLMProvider?: string;
   preferredModel?: string;
+  tools?: Toolset;
 }
 export class ChatService {
   private backend = getKarenBackend();
@@ -47,7 +50,8 @@ export class ChatService {
           {
             preferredLLMProvider: options.preferredLLMProvider,
             preferredModel: options.preferredModel,
-          }
+          },
+          options.tools
         );
         return response;
       },

@@ -263,7 +263,7 @@ export function useProgressiveData<T>(
         result = await fetcher.fetchWithCache<T>(options.cacheKey, {
           useStaleOnError: options.useStaleOnError,
           maxStaleAge: options.maxStaleAge
-
+        });
       } else {
         result = await fetchFunction();
       }
@@ -347,6 +347,7 @@ export function ProgressiveDataDisplay<T>({
     enableCaching,
     useStaleOnError: true,
     maxStaleAge: 60 * 60 * 1000 // 1 hour
+  });
 
   if (isLoading && !data) {
     return renderLoading ? renderLoading() : (

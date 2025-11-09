@@ -1,1 +1,0 @@
-"""Tests for the consolidated plugin framework."""
