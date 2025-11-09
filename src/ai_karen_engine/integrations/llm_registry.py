@@ -913,6 +913,27 @@ class LLMRegistry:
 
         return ordered
 
+    def get_active(self) -> Optional[LLMProviderBase]:
+        """
+        Get the currently active LLM provider (first healthy provider from default chain).
+
+        This method returns an instance of the first available healthy provider
+        from the default priority chain. If no healthy providers are available,
+        it falls back to the first available provider regardless of health status.
+
+        Returns:
+            LLMProviderBase instance or None if no providers are available
+        """
+        # Try to get first healthy provider
+        chain = self.default_chain(healthy_only=True)
+        if not chain:
+            # Fallback to any provider if no healthy ones
+            chain = self.default_chain(healthy_only=False)
+
+        if chain:
+            return self.get_provider(chain[0])
+        return None
+
     def get_provider_info(self, name: str) -> Optional[Dict[str, Any]]:
         """Get provider registration information."""
         if name not in self._registrations:

@@ -86,15 +86,23 @@ class DatabaseHealthChecker:
         # Database managers
         self.db_manager = get_database_manager()
         self.redis_manager = get_redis_manager()
-        self.milvus_client = MilvusClient()
-        
+        self._milvus_client: Optional[MilvusClient] = None  # Lazy loaded
+
         # Validation services
         self.consistency_validator = get_database_consistency_validator()
         self.migration_validator = get_migration_validator()
-        
+
         # Health check state
         self._start_time = time.time()
         self._last_health_check: Optional[HealthCheckResult] = None
+
+    @property
+    def milvus_client(self) -> MilvusClient:
+        """Lazy load Milvus client only when needed for health checks"""
+        if self._milvus_client is None:
+            logger.info("Lazy loading Milvus client for database health checker")
+            self._milvus_client = MilvusClient()
+        return self._milvus_client
 
     async def check_health(self, include_detailed_validation: bool = False) -> HealthCheckResult:
         """

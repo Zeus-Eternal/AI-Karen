@@ -12,8 +12,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field
-from pydantic import __version__ as pydantic_version
+try:
+    from pydantic import Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import Field
+try:
+    from pydantic import __version__ as pydantic_version
+except ImportError:
+    from ai_karen_engine.pydantic_stub import __version__ as pydantic_version
 
 if pydantic_version.startswith("2"):
     try:
@@ -25,7 +31,10 @@ if pydantic_version.startswith("2"):
         ) from exc
     V2 = True
 else:
-    from pydantic import BaseSettings  # type: ignore
+    try:
+        from pydantic import BaseSettings  # type: ignore
+    except ImportError:
+        from ai_karen_engine.pydantic_stub import BaseSettings  # type: ignore
 
     V2 = False
 

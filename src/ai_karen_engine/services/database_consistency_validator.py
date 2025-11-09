@@ -119,17 +119,17 @@ class DatabaseConsistencyValidator:
         self.data_directory = Path(data_directory)
         self.enable_auto_fix = enable_auto_fix
         self.validation_timeout = validation_timeout
-        
+
         # Database managers
         self.db_manager = get_database_manager()
         self.redis_manager = get_redis_manager()
-        self.milvus_client = MilvusClient()
-        
+        self._milvus_client: Optional[MilvusClient] = None  # Lazy loaded
+
         # Validation state
         self._validation_start_time: Optional[datetime] = None
         self._validation_issues: List[ValidationIssue] = []
         self._database_health: List[DatabaseHealthStatus] = []
-        
+
         # Demo/test data patterns to identify
         self.demo_patterns = {
             "emails": [
@@ -149,6 +149,14 @@ class DatabaseConsistencyValidator:
                 "example",
             ],
         }
+
+    @property
+    def milvus_client(self) -> MilvusClient:
+        """Lazy load Milvus client only when needed for validation"""
+        if self._milvus_client is None:
+            logger.info("Lazy loading Milvus client for database consistency validator")
+            self._milvus_client = MilvusClient()
+        return self._milvus_client
 
     async def validate_all(self) -> ConsistencyReport:
         """

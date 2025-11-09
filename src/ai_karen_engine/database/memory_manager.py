@@ -299,8 +299,8 @@ class MemoryManager:
                     self._metrics.record_memory_commit(
                         status="success", decay_tier="", user_id="", org_id=""
                     )
-                except Exception:
-                    pass
+                except Exception as metrics_err:
+                    logger.warning(f"Failed to record memory commit metrics: {metrics_err}")
 
             return memory_id
 
@@ -311,8 +311,8 @@ class MemoryManager:
                     self._metrics.record_memory_commit(
                         status="error", decay_tier="", user_id="", org_id=""
                     )
-                except Exception:
-                    pass
+                except Exception as metrics_err:
+                    logger.warning(f"Failed to record memory commit error metrics: {metrics_err}")
             raise
 
     async def query_memories(

@@ -609,7 +609,7 @@ class JSONLRecallIndex:
 
         self.path = path
         self.embedder = embedder
-        self._rows: List[Dict[str, any]] = []
+        self._rows: List[Dict[str, Any]] = []
 
         if not os.path.exists(path):
             log.warning("JSONLRecallIndex: file not found: %s", path)
@@ -631,7 +631,7 @@ class JSONLRecallIndex:
         self._plans = [r.get("plan", "") for r in self._rows]
         self._qvecs = self.embedder.embed_texts(self._questions)
 
-    def search(self, task: str, *, top_k: int = 5, min_score: float = 0.0) -> List[Dict[str, any]]:
+    def search(self, task: str, *, top_k: int = 5, min_score: float = 0.0) -> List[Dict[str, Any]]:
         """
         Returns a list of {rank, score, question, plan, line_index, metadata}
         Uses cosine similarity via the embedding client.
@@ -650,7 +650,7 @@ class JSONLRecallIndex:
 
         sims.sort(key=lambda x: x[1], reverse=True)
         top = sims[: max(1, min(top_k, len(sims)))]
-        out: List[Dict[str, any]] = []
+        out: List[Dict[str, Any]] = []
         for rank, (idx, score) in enumerate(top, 1):
             if score < min_score:
                 continue

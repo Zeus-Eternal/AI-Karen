@@ -1,0 +1,458 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
+import { getAdminUtils } from '@/lib/database/admin-utils';
+import { getAuditLogger } from '@/lib/audit/audit-logger';
+
+/**
+ * Security Report API
+ * GET /api/admin/security/report?format=json|csv&days=NUMBER
+ *
+ * - Auth: super_admin required
+ * - Formats: json (default), csv
+ * - Validations: days ∈ [1, 365]
+ * - Observability: audit log emitted on success and error
+ * - Headers: no-store, CSV attachment when requested
+ */
+
+type ReportFormat = 'json' | 'csv';
+
+interface ReportSummary {
+  reportPeriod: {
+    startDate: string;
+    endDate: string;
+    days: number;
+  };
+  securityOverview: {
+    totalAlerts: number;
+    criticalAlerts: number;
+    highAlerts: number;
+    resolvedAlerts: number;
+    blockedIPs: number;
+    failedLogins: number;
+  };
+  userActivity: {
+    totalUsers: number;
+    activeUsers: number;
+    newUsers: number;
+    adminUsers: number;
+  };
+  systemHealth: {
+    overallStatus: string;
+    uptime: string | number;
+    lastIncident: string | null;
+  };
+}
+
+interface ReportData {
+  generatedAt: string;
+  summary: ReportSummary;
+  details: {
+    securityAlerts: any[];
+    alertsByType: Record<string, number>;
+    topBlockedIPs: any[];
+    recentAdminActions: any[];
+    failedLoginTrends: Array<{ date: string; count: number; uniqueIPs: number }>;
+  };
+  recommendations: Array<{
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    category: string;
+    title: string;
+    description: string;
+    action: string;
+  }>;
+}
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+  const ip =
+    request.headers.get('x-forwarded-for') ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+
+  try {
+    // 1) RBAC / Auth
+    const authResult = await adminAuthMiddleware(request, 'super_admin');
+    if (authResult instanceof NextResponse) return authResult;
+
+    const { user: currentUser } = authResult || {};
+    if (!currentUser?.user_id) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
+    }
+
+    // 2) Input parsing / validation
+    const { searchParams } = new URL(request.url);
+    const formatParam = (searchParams.get('format') || 'json').toLowerCase();
+    const format: ReportFormat = formatParam === 'csv' ? 'csv' : 'json';
+
+    const daysRaw = searchParams.get('days') || '30';
+    const daysParsed = Number.parseInt(daysRaw, 10);
+    const days =
+      Number.isFinite(daysParsed) && daysParsed >= 1 && daysParsed <= 365
+        ? daysParsed
+        : 30;
+
+    const adminUtils = getAdminUtils();
+    const auditLogger = getAuditLogger();
+
+    // 3) Build report payload
+    const reportData = await generateSecurityReport(adminUtils, days);
+
+    // 4) Audit log (success)
+    await safeAudit(auditLogger, {
+      userId: currentUser.user_id,
+      event: 'security.report.generate',
+      entityType: 'security_report',
+      details: {
+        format,
+        daysCovered: days,
+        reportSizeBytes: byteLengthOf(reportData),
+        durationMs: Date.now() - startedAt,
+      },
+      ip,
+      request,
+    });
+
+    // 5) Respond
+    const securityHeaders = {
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'",
+      'X-Frame-Options': 'DENY',
+    } as const;
+
+    if (format === 'json') {
+      return NextResponse.json(reportData, { headers: securityHeaders });
+    }
+
+    // CSV
+    const csv = generateCSVReport(reportData);
+    const filename = `security-report-${new Date()
+      .toISOString()
+      .split('T')[0]}.csv`;
+
+    return new NextResponse(csv, {
+      headers: {
+        ...securityHeaders,
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error: any) {
+    // Audit log (error)
+    try {
+      const auditLogger = getAuditLogger();
+      await safeAudit(auditLogger, {
+        userId: 'unknown',
+        event: 'security.report.error',
+        entityType: 'security_report',
+        details: {
+          error: String(error?.message || error),
+        },
+        ip: 'unknown',
+        request,
+      });
+    } catch {
+      // swallow audit failure silently
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to generate security report' },
+      { status: 500 }
+    );
+  }
+}
+
+/** Helpers */
+
+function byteLengthOf(obj: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(obj), 'utf8');
+  } catch {
+    return 0;
+  }
+}
+
+async function safeAudit(
+  auditLogger: any,
+  args: {
+    userId: string;
+    event: string;
+    entityType: string;
+    details: Record<string, unknown>;
+    ip: string;
+    request: NextRequest;
+  }
+) {
+  try {
+    await auditLogger.log(args.userId, args.event, args.entityType, {
+      details: args.details,
+      request: args.request,
+      ip_address: args.ip,
+    });
+  } catch {
+    // ignore audit write failure
+  }
+}
+
+/**
+ * Generate comprehensive security report data
+ */
+async function generateSecurityReport(adminUtils: any, days: number): Promise<ReportData> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const [
+    securityAlerts,
+    blockedIPs,
+    failedLogins,
+    adminActions,
+    userStats,
+    systemHealth,
+  ] = await Promise.all([
+    adminUtils.getSecurityAlerts({ startDate, endDate, limit: 1000 }),
+    adminUtils.getBlockedIPs({ limit: 1000 }),
+    adminUtils.getFailedLoginAttempts({ startDate, endDate }),
+    adminUtils.getAdminActions({ startDate, endDate }),
+    adminUtils.getUserStatistics({ startDate, endDate }),
+    adminUtils.getSystemHealthMetrics(),
+  ]);
+
+  const summary: ReportSummary = {
+    reportPeriod: {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      days,
+    },
+    securityOverview: {
+      totalAlerts: securityAlerts.length,
+      criticalAlerts: securityAlerts.filter((a: any) => a.severity === 'critical').length,
+      highAlerts: securityAlerts.filter((a: any) => a.severity === 'high').length,
+      resolvedAlerts: securityAlerts.filter((a: any) => a.resolved).length,
+      blockedIPs: blockedIPs.length,
+      failedLogins: failedLogins.length,
+    },
+    userActivity: {
+      totalUsers: userStats.totalUsers ?? 0,
+      activeUsers: userStats.activeUsers ?? 0,
+      newUsers: userStats.newUsers ?? 0,
+      adminUsers: userStats.adminUsers ?? 0,
+    },
+    systemHealth: {
+      overallStatus: systemHealth.status ?? 'unknown',
+      uptime: systemHealth.uptime ?? 'unknown',
+      lastIncident: systemHealth.lastIncident ?? null,
+    },
+  };
+
+  const alertsByType: Record<string, number> = securityAlerts.reduce(
+    (acc: Record<string, number>, alert: any) => {
+      const key = String(alert.type ?? 'unknown');
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  const topBlockedIPs = [...blockedIPs]
+    .sort((a: any, b: any) => (b.failedAttempts ?? 0) - (a.failedAttempts ?? 0))
+    .slice(0, 10);
+
+  const recentAdminActions = [...adminActions]
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+    .slice(0, 50);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    summary,
+    details: {
+      securityAlerts: securityAlerts.slice(0, 100), // cap payload
+      alertsByType,
+      topBlockedIPs,
+      recentAdminActions,
+      failedLoginTrends: generateFailedLoginTrends(failedLogins, days),
+    },
+    recommendations: generateSecurityRecommendations(summary, alertsByType, blockedIPs),
+  };
+}
+
+/**
+ * Generate failed login trends per day
+ */
+function generateFailedLoginTrends(
+  failedLogins: Array<{ timestamp: string; ipAddress?: string }>,
+  days: number
+) {
+  const trends: Array<{ date: string; count: number; uniqueIPs: number }> = [];
+  const now = new Date();
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dayFailedLogins = failedLogins.filter((login) => {
+      const loginDate = new Date(login.timestamp);
+      return loginDate >= dayStart && loginDate <= dayEnd;
+    });
+
+    const uniqueIPs = new Set(
+      dayFailedLogins.map((login) => String(login.ipAddress ?? 'unknown'))
+    ).size;
+
+    trends.push({
+      date: dayStart.toISOString().split('T')[0],
+      count: dayFailedLogins.length,
+      uniqueIPs,
+    });
+  }
+
+  return trends;
+}
+
+/**
+ * Heuristic security recommendations
+ */
+function generateSecurityRecommendations(
+  summary: ReportSummary,
+  alertsByType: Record<string, number>,
+  blockedIPs: any[]
+) {
+  const recs: ReportData['recommendations'] = [];
+
+  if (summary.securityOverview.failedLogins > 100) {
+    recs.push({
+      priority: 'high',
+      category: 'authentication',
+      title: 'High Failed Login Activity',
+      description:
+        'Elevated failed logins detected. Consider rate limiting, lockout policies, or CAPTCHA on suspicious patterns.',
+      action: 'Harden authentication controls',
+    });
+  }
+
+  if (blockedIPs.length > 50) {
+    recs.push({
+      priority: 'medium',
+      category: 'network',
+      title: 'High Number of Blocked IPs',
+      description:
+        'Large volume of blocked IPs suggests scanning/credential stuffing. Investigate ASN/geo clustering.',
+      action: 'Analyze blocked IP distribution and add network rules',
+    });
+  }
+
+  if (
+    summary.securityOverview.criticalAlerts >
+    summary.securityOverview.resolvedAlerts
+  ) {
+    recs.push({
+      priority: 'critical',
+      category: 'monitoring',
+      title: 'Unresolved Critical Alerts',
+      description:
+        'There are more critical alerts than resolved items—triage and remediation required.',
+      action: 'Escalate on-call and resolve critical alerts',
+    });
+  }
+
+  if ((alertsByType['admin_action'] ?? 0) > 200) {
+    recs.push({
+      priority: 'low',
+      category: 'audit',
+      title: 'High Admin Activity',
+      description:
+        'Unusually frequent admin actions can mask malicious changes.',
+      action: 'Review admin change logs and correlate with off-hours',
+    });
+  }
+
+  return recs;
+}
+
+/**
+ * CSV generator (escape-safe)
+ */
+function generateCSVReport(report: ReportData): string {
+  const lines: string[] = [];
+  const esc = (v: unknown) => {
+    const s = String(v ?? '');
+    if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+    };
+
+  // Header
+  lines.push(`Security Report Generated,${esc(report.generatedAt)}`);
+  lines.push(
+    `Report Period,${esc(report.summary.reportPeriod.startDate)} to ${esc(
+      report.summary.reportPeriod.endDate
+    )}`
+  );
+  lines.push(`Days,${esc(report.summary.reportPeriod.days)}`);
+  lines.push('');
+
+  // Summary
+  lines.push('SECURITY OVERVIEW');
+  lines.push('Metric,Value');
+  lines.push(`Total Alerts,${esc(report.summary.securityOverview.totalAlerts)}`);
+  lines.push(`Critical Alerts,${esc(report.summary.securityOverview.criticalAlerts)}`);
+  lines.push(`High Alerts,${esc(report.summary.securityOverview.highAlerts)}`);
+  lines.push(`Resolved Alerts,${esc(report.summary.securityOverview.resolvedAlerts)}`);
+  lines.push(`Blocked IPs,${esc(report.summary.securityOverview.blockedIPs)}`);
+  lines.push(`Failed Logins,${esc(report.summary.securityOverview.failedLogins)}`);
+  lines.push('');
+
+  // Alerts by type
+  lines.push('ALERTS BY TYPE');
+  lines.push('Type,Count');
+  for (const [type, count] of Object.entries(report.details.alertsByType)) {
+    lines.push(`${esc(type)},${esc(count)}`);
+  }
+  lines.push('');
+
+  // Top blocked IPs
+  lines.push('TOP BLOCKED IPs');
+  lines.push('IP Address,Failed Attempts,Blocked At,Reason');
+  for (const ip of report.details.topBlockedIPs) {
+    lines.push(
+      [
+        esc(ip.ipAddress),
+        esc(ip.failedAttempts),
+        esc(ip.blockedAt),
+        esc(ip.reason),
+      ].join(',')
+    );
+  }
+  lines.push('');
+
+  // Recommendations
+  lines.push('RECOMMENDATIONS');
+  lines.push('Priority,Category,Title,Description,Action');
+  for (const r of report.recommendations) {
+    lines.push(
+      [esc(r.priority), esc(r.category), esc(r.title), esc(r.description), esc(r.action)].join(',')
+    );
+  }
+
+  // Trends (compact)
+  lines.push('');
+  lines.push('FAILED LOGIN TRENDS');
+  lines.push('Date,Count,Unique IPs');
+  for (const t of report.details.failedLoginTrends) {
+    lines.push([esc(t.date), esc(t.count), esc(t.uniqueIPs)].join(','));
+  }
+
+  return lines.join('\n');
+}

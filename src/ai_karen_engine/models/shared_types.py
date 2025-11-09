@@ -6,7 +6,10 @@ ensuring type consistency across the entire system. These models use Pydantic
 for runtime validation and serialization.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+try:
+    from pydantic import BaseModel, ConfigDict, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum

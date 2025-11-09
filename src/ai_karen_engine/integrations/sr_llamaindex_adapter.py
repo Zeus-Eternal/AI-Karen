@@ -8,7 +8,7 @@ try:
 except Exception as e:  # pragma: no cover
     VectorStoreIndex = None  # type: ignore
 
-from ai_karen_engine.core.reasoning.sr_adapters import SRRetriever
+from ai_karen_engine.core.reasoning.retrieval.adapters import SRRetriever
 
 
 class LlamaIndexSRAdapter(SRRetriever):

@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_serializer
+try:
+    from pydantic import BaseModel, ConfigDict, field_serializer
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, field_serializer
 
 
 class ISO8601Model(BaseModel):

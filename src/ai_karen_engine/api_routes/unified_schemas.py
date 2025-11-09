@@ -21,7 +21,10 @@ except ImportError:
     RequestValidationError = None
     FASTAPI_AVAILABLE = False
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+try:
+    from pydantic import BaseModel, ConfigDict, Field, field_serializer
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, field_serializer
 
 logger = logging.getLogger(__name__)
 

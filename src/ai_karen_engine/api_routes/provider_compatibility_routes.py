@@ -7,7 +7,10 @@ recommendations, and validation.
 
 import logging
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+try:
+    from pydantic import BaseModel
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel
 from typing import Dict, Any, Optional
 
 from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService

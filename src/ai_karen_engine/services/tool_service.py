@@ -17,7 +17,10 @@ from enum import Enum
 import uuid
 import inspect
 
-from pydantic import BaseModel, ConfigDict, Field, validator, create_model
+try:
+    from pydantic import BaseModel, ConfigDict, Field, validator, create_model
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, validator, create_model
 
 logger = logging.getLogger(__name__)
 

@@ -33,6 +33,7 @@ matplotlib
 neo4j
 PyJWT
 markdown
+pymilvus
 pytesseract
 fitz
 bs4
@@ -83,3 +84,4 @@ docx2markdown
 chunkr_ai
 xmltodict
 croniter
+mcp

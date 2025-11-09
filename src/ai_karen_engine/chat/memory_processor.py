@@ -241,7 +241,10 @@ class MemoryProcessor:
                     if memory_id:
                         stored_memories.append(memory)
                 except Exception as e:
-                    logger.warning(f"Failed to store memory: {e}")
+                    logger.warning(
+                        f"Failed to store memory (type={memory.memory_type.value}, "
+                        f"user={user_id}): {e}. Memory content will be skipped."
+                    )
                     continue
             
             processing_time = time.time() - start_time
@@ -253,9 +256,13 @@ class MemoryProcessor:
             )
             
             return stored_memories
-            
+
         except Exception as e:
-            logger.error(f"Memory extraction failed: {e}", exc_info=True)
+            logger.error(
+                f"Memory extraction failed for user {user_id}, conversation {conversation_id}: {e}. "
+                "Chat will continue without memory extraction.",
+                exc_info=True
+            )
             return []
     
     async def get_relevant_context(
@@ -299,7 +306,10 @@ class MemoryProcessor:
             
             # Retrieve memories using semantic search
             if self.memory_manager is None:
-                logger.warning("Memory manager is not available, skipping memory retrieval")
+                logger.warning(
+                    f"Memory manager is not available for user {user_id}. "
+                    "Skipping memory retrieval. Chat will continue without context."
+                )
                 return []
             
             memories = await self.memory_manager.query_memories("default_tenant", query)

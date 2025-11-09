@@ -158,12 +158,15 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # Local LLM Server
+  # Local LLM Server (OPTIONAL - only starts with --profile local-llm)
+  # Download model first: see models/llama-cpp/README.md
   # ──────────────────────────────────────────────────────────────────────────────
   local-llm:
     container_name: ai-karen-local-llm
     image: ghcr.io/ggerganov/llama.cpp:server
     restart: unless-stopped
+    profiles:
+      - local-llm
     ports:
       - "8080:8080"
     volumes:
@@ -235,6 +238,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+      - .env.resource-optimized
     environment:
       # Runtime mode for development (relaxes RBAC + auth strictness)
       ENVIRONMENT: "development"
@@ -278,6 +282,10 @@ services:
       MILVUS_PORT: "19530"
       VECTOR_DB_HOST: "milvus"
       VECTOR_DB_PORT: "19530"
+      # Enable/disable database services (set to false for faster development)
+      KARI_ENABLE_VECTOR_DB: "true"  # Milvus vector database
+      KARI_ENABLE_ELASTICSEARCH: "true"  # Elasticsearch for document search
+      KARI_ENABLE_DUCKDB: "true"  # DuckDB for local analytics
       # Wait for Milvus to report healthy before enabling vector features (seconds)
       MILVUS_HEALTH_WAIT_SECONDS: "180"
       MILVUS_HEALTH_HOST: "milvus"
@@ -307,6 +315,8 @@ services:
       TRANSFORMERS_OFFLINE: "true"
       HF_HUB_OFFLINE: "1"
       TOKENIZERS_PARALLELISM: "false"
+      # Enable heavy NLP helpers (DistilBERT, spaCy, etc.)
+      KARI_ENABLE_DEGRADED_HELPERS: "1"
       # Model Orchestrator Plugin Configuration
       PLUGIN_DIR: "/app/plugin_marketplace"
       MODELS_ROOT: "/app/models"
@@ -335,6 +345,8 @@ services:
       - logs_data:/app/logs
       # Backup volume
       - backup_data:/app/backups
+      # Hugging Face cache for transformers models
+      - "${HOME}/.cache/huggingface/hub:/root/.cache/huggingface/hub:ro"
     depends_on:
       postgres:
         condition: service_healthy
@@ -354,6 +366,20 @@ services:
       retries: 20
       # Allow extended startup time on first boot
       start_period: 480s
+    # Resource limits to prevent memory leaks and excessive resource usage
+    deploy:
+      resources:
+        limits:
+          memory: 2G      # Hard limit at 2GB
+          cpus: '1.0'     # Limit to 1 CPU core
+        reservations:
+          memory: 512M    # Reserve 512MB minimum
+          cpus: '0.25'    # Reserve 0.25 CPU cores
+    # Memory and swap limits for additional protection
+    mem_limit: 2g
+    mem_reservation: 512m
+    memswap_limit: 2g
+    cpus: 1.0
     networks:
       - ai-karen-net
 

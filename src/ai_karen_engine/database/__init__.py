@@ -1,5 +1,14 @@
 # mypy: ignore-errors
-"""Database package for AI-Karen multi-tenant architecture."""
+"""
+Database package for AI-Karen multi-tenant architecture.
+
+Provides production-ready database services:
+- Multi-tenant database client with connection pooling
+- Multi-database support (MySQL, MongoDB, Firestore)
+- Migration management
+- Conversation, memory, and tenant managers
+- Factory for centralized initialization
+"""
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
@@ -15,6 +24,45 @@ from ai_karen_engine.database.models import (
     TenantMemoryItem,
     TenantMemoryEntry,
 )
+
+# Import factory for centralized database initialization
+from ai_karen_engine.database.factory import (
+    DatabaseServiceConfig,
+    DatabaseServiceFactory,
+    get_database_service_factory,
+    get_database_client,
+    get_conversation_manager,
+    get_memory_manager,
+    get_tenant_manager,
+    initialize_database_for_production,
+)
+
+# Import dependencies for FastAPI dependency injection
+from ai_karen_engine.database.dependencies import (
+    get_database_client_dependency,
+    get_conversation_manager_dependency,
+    get_memory_manager_dependency,
+    get_tenant_manager_dependency,
+    get_db_session,
+    get_async_db_session_dependency,
+    get_database_health_check,
+    get_current_tenant_id,
+    DatabaseTransaction,
+    get_database_transaction,
+)
+
+# Import multi-database configuration and factory
+from ai_karen_engine.database.multi_db_config import (
+    DatabaseType,
+    MySQLConfig,
+    MongoDBConfig,
+    FirestoreConfig,
+    MultiDatabaseConfig,
+    MultiDatabaseConfigLoader,
+    load_multi_database_config,
+)
+
+from ai_karen_engine.database.multi_db_factory import DatabaseConnectionFactory
 
 _default_client: Optional[MultiTenantPostgresClient] = None
 _import_error: Optional[Exception] = None
@@ -49,6 +97,7 @@ async def get_postgres_session() -> AsyncGenerator:
 
 
 __all__ = [
+    # Models
     "Base",
     "Tenant",
     "AuthUser",
@@ -56,7 +105,38 @@ __all__ = [
     "TenantMemoryItem",
     "TenantMemoryEntry",
     "AuditLog",
+    # Clients
     "MultiTenantPostgresClient",
     "MigrationManager",
     "get_postgres_session",
+    # Factory
+    "DatabaseServiceConfig",
+    "DatabaseServiceFactory",
+    "get_database_service_factory",
+    # Factory convenience functions
+    "get_database_client",
+    "get_conversation_manager",
+    "get_memory_manager",
+    "get_tenant_manager",
+    "initialize_database_for_production",
+    # Dependencies (FastAPI)
+    "get_database_client_dependency",
+    "get_conversation_manager_dependency",
+    "get_memory_manager_dependency",
+    "get_tenant_manager_dependency",
+    "get_db_session",
+    "get_async_db_session_dependency",
+    "get_database_health_check",
+    "get_current_tenant_id",
+    "DatabaseTransaction",
+    "get_database_transaction",
+    # Multi-Database Support
+    "DatabaseType",
+    "MySQLConfig",
+    "MongoDBConfig",
+    "FirestoreConfig",
+    "MultiDatabaseConfig",
+    "MultiDatabaseConfigLoader",
+    "load_multi_database_config",
+    "DatabaseConnectionFactory",
 ]

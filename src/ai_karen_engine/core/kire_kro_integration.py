@@ -78,7 +78,20 @@ class KIREKROIntegration:
                 # Initialize LLM Registry
                 from ai_karen_engine.integrations.llm_registry import get_registry
                 self.llm_registry = get_registry()
-                logger.info("✓ LLM Registry initialized")
+
+                # Check if registry has any providers
+                try:
+                    providers = self.llm_registry.list_providers()
+                    if not providers:
+                        logger.warning(
+                            "⚠ LLM Registry initialized but no providers are registered. "
+                            "Model discovery will attempt to populate the registry."
+                        )
+                    else:
+                        logger.info(f"✓ LLM Registry initialized with {len(providers)} providers")
+                except Exception as e:
+                    logger.warning(f"Could not check LLM Registry providers: {e}")
+                    logger.info("✓ LLM Registry initialized")
 
                 # Initialize Model Discovery
                 if self.config.enable_model_discovery:
@@ -88,6 +101,14 @@ class KIREKROIntegration:
                         await self.model_discovery.discover_all_models()
                         stats = self.model_discovery.get_discovery_statistics()
                         logger.info(f"✓ Model Discovery initialized: {stats['total_models']} models discovered")
+
+                        # Validate that at least some models were found
+                        if stats.get('total_models', 0) == 0:
+                            logger.warning(
+                                "⚠ Model Discovery completed but found no models. "
+                                "The system will operate in degraded mode. "
+                                "Please ensure models are installed in the models/ directory."
+                            )
                     except Exception as e:
                         logger.warning(f"Model Discovery initialization failed: {e}")
 

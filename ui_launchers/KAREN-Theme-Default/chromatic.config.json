@@ -1,0 +1,45 @@
+{
+  "projectToken": "PROJECT_TOKEN_PLACEHOLDER",
+  "buildScriptName": "build-storybook",
+  "storybookBuildDir": "storybook-static",
+  "exitZeroOnChanges": true,
+  "exitOnceUploaded": true,
+  "allowConsoleErrors": false,
+  "ignoreLastBuildOnBranch": "main",
+  "skip": "dependabot/**",
+  "externals": [
+    "public/**"
+  ],
+  "fileHashing": true,
+  "zip": true,
+  "junitReport": true,
+  "diagnostics": true,
+  "debug": false,
+  "interactive": false,
+  "autoAcceptChanges": false,
+  "onlyChanged": true,
+  "traceChanged": "expanded",
+  "untraced": [
+    "node_modules/**",
+    ".next/**",
+    "coverage/**",
+    "dist/**"
+  ],
+  "delay": 300,
+  "diffThreshold": 0.2,
+  "threshold": 0.2,
+  "viewports": [
+    375,
+    768,
+    1024,
+    1440
+  ],
+  "modes": {
+    "light": {
+      "theme": "light"
+    },
+    "dark": {
+      "theme": "dark"
+    }
+  }
+}

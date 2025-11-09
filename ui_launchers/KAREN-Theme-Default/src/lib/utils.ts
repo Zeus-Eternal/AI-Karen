@@ -1,32 +1,45 @@
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
+export function sanitizeInput(str: string): string {
+  return str.replace(/[&<>"'`]/g, (ch) => {
+    switch (ch) {
+      case '&':
+        return '&amp;'
+      case '<':
+        return '&lt;'
+      case '>':
+        return '&gt;'
+      case '"':
+        return '&quot;'
+      case "'":
+        return '&#39;'
+      case '`':
+        return '&#x60;'
+      default:
+        return ch
+    }
+  })
 }
 
-export function truncate(str: string, length: number): string {
-  if (str.length <= length) return str
-  return str.slice(0, length) + '...'
+export function widgetRefId(tag: string): string {
+  const match = tag.match(/\uE200forecast\uE202(.*?)\uE201/);
+  return match ? match[1] : '';
 }
 
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
+export function computeConfidencePct(value: unknown): number | null {
+  if (typeof value === 'number' && isFinite(value)) {
+    return Math.round(value * 100)
   }
+  if (typeof value === 'string') {
+    const n = Number(value)
+    if (!Number.isNaN(n) && isFinite(n)) {
+      return Math.round(n * 100)
+    }
+  }
+  return null
 }

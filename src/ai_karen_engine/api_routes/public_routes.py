@@ -9,7 +9,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+try:
+    from pydantic import BaseModel
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel
 
 logger = logging.getLogger(__name__)
 

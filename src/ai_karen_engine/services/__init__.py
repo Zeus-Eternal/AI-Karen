@@ -1,6 +1,146 @@
-"""Service utilities for Kari AI (compatibility wrappers, lazy-load, zero circular imports)."""
+"""
+Service utilities for Kari AI
+
+Production-ready service layer with:
+- Comprehensive factory pattern for all services
+- FastAPI dependency injection
+- Intelligent service orchestration
+- Health monitoring and metrics
+- Graceful degradation
+"""
+
+# Import factory and dependencies first
+from ai_karen_engine.services.factory import (
+    ServicesConfig,
+    ServicesFactory,
+    get_services_factory,
+    initialize_services_for_production,
+)
+
+from ai_karen_engine.services.dependencies import (
+    # Factory
+    get_services_factory_dependency,
+    # AI Services
+    get_ai_orchestrator_dependency,
+    get_model_library_dependency,
+    get_model_orchestrator_dependency,
+    get_intelligent_router_dependency,
+    # Memory Services
+    get_memory_service_dependency,
+    get_enhanced_memory_dependency,
+    get_integrated_memory_dependency,
+    # NLP Services
+    get_nlp_manager_dependency,
+    # Knowledge Services
+    get_knowledge_graph_dependency,
+    # Analytics Services
+    get_analytics_service_dependency,
+    get_analytics_dashboard_dependency,
+    get_metrics_service_dependency,
+    # Plugin & Tool Services
+    get_plugin_service_dependency,
+    get_tool_service_dependency,
+    # Database Services
+    get_database_health_dependency,
+    get_database_optimization_dependency,
+    get_database_query_cache_dependency,
+    # Auth & Security Services
+    get_auth_service_dependency,
+    # Cache Services
+    get_production_cache_dependency,
+    get_smart_cache_dependency,
+    get_integrated_cache_dependency,
+    # Monitoring Services
+    get_production_monitoring_dependency,
+    get_performance_monitor_dependency,
+    get_health_checker_dependency,
+    # Error & Recovery Services
+    get_error_recovery_dependency,
+    get_graceful_degradation_dependency,
+    get_fallback_provider_dependency,
+    # Provider Services
+    get_provider_registry_dependency,
+    get_provider_health_monitor_dependency,
+    # Conversation Services
+    get_conversation_service_dependency,
+    get_context_processor_dependency,
+    # User Services
+    get_user_service_dependency,
+    get_persona_service_dependency,
+    # System Services
+    get_settings_manager_dependency,
+    get_secret_manager_dependency,
+    # Health & Metrics
+    get_services_health_check,
+    get_services_metrics,
+    # Composite
+    get_core_services,
+)
 
 __all__ = [
+    # Factory & Dependencies
+    "ServicesConfig",
+    "ServicesFactory",
+    "get_services_factory",
+    "initialize_services_for_production",
+    # FastAPI Dependencies - Factory
+    "get_services_factory_dependency",
+    # FastAPI Dependencies - AI Services
+    "get_ai_orchestrator_dependency",
+    "get_model_library_dependency",
+    "get_model_orchestrator_dependency",
+    "get_intelligent_router_dependency",
+    # FastAPI Dependencies - Memory Services
+    "get_memory_service_dependency",
+    "get_enhanced_memory_dependency",
+    "get_integrated_memory_dependency",
+    # FastAPI Dependencies - NLP Services
+    "get_nlp_manager_dependency",
+    # FastAPI Dependencies - Knowledge Services
+    "get_knowledge_graph_dependency",
+    # FastAPI Dependencies - Analytics Services
+    "get_analytics_service_dependency",
+    "get_analytics_dashboard_dependency",
+    "get_metrics_service_dependency",
+    # FastAPI Dependencies - Plugin & Tool Services
+    "get_plugin_service_dependency",
+    "get_tool_service_dependency",
+    # FastAPI Dependencies - Database Services
+    "get_database_health_dependency",
+    "get_database_optimization_dependency",
+    "get_database_query_cache_dependency",
+    # FastAPI Dependencies - Auth & Security Services
+    "get_auth_service_dependency",
+    # FastAPI Dependencies - Cache Services
+    "get_production_cache_dependency",
+    "get_smart_cache_dependency",
+    "get_integrated_cache_dependency",
+    # FastAPI Dependencies - Monitoring Services
+    "get_production_monitoring_dependency",
+    "get_performance_monitor_dependency",
+    "get_health_checker_dependency",
+    # FastAPI Dependencies - Error & Recovery Services
+    "get_error_recovery_dependency",
+    "get_graceful_degradation_dependency",
+    "get_fallback_provider_dependency",
+    # FastAPI Dependencies - Provider Services
+    "get_provider_registry_dependency",
+    "get_provider_health_monitor_dependency",
+    # FastAPI Dependencies - Conversation Services
+    "get_conversation_service_dependency",
+    "get_context_processor_dependency",
+    # FastAPI Dependencies - User Services
+    "get_user_service_dependency",
+    "get_persona_service_dependency",
+    # FastAPI Dependencies - System Services
+    "get_settings_manager_dependency",
+    "get_secret_manager_dependency",
+    # FastAPI Dependencies - Health & Metrics
+    "get_services_health_check",
+    "get_services_metrics",
+    # FastAPI Dependencies - Composite
+    "get_core_services",
+    # Legacy exports for backward compatibility
     "get_llamacpp_engine",
     "get_deepseek_client",
     "get_openai_service",
@@ -73,6 +213,8 @@ __all__ = [
     "ModelDownloadManager",
     "ModelMetadataService",
 ]
+
+# Legacy compatibility functions
 
 def get_llamacpp_engine():
     from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime

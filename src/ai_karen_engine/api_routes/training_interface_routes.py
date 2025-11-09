@@ -10,7 +10,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.core.response.training_interface import (
     FlexibleTrainingInterface,

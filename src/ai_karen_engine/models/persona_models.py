@@ -8,7 +8,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+try:
+    from pydantic import BaseModel, ConfigDict, Field, field_validator
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field, field_validator
 
 
 class ToneEnum(str, Enum):

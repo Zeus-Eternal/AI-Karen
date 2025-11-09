@@ -522,3 +522,12 @@ def get_automation_manager():
 
 
 # AutomationManager will be created lazily when first accessed
+
+__all__ = [
+    "AutomationManager",
+    "get_automation_manager",
+    "init_secure_db",
+    "encrypt_data",
+    "decrypt_data",
+    "SecureThreadPoolExecutor",
+]

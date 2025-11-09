@@ -1,6 +1,7 @@
 """Production-grade in-memory vector store simulating Milvus for Kari AI."""
 from __future__ import annotations
 
+import logging
 import math
 import os
 import threading
@@ -10,6 +11,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 from ai_karen_engine.core.embedding_manager import record_metric  # type: ignore
 from ai_karen_engine.services.metrics_service import get_metrics_service
@@ -81,8 +84,8 @@ class MilvusClient:
             if self.index_type == "hnsw" and self._index is not None:
                 try:
                     self._index.mark_deleted(rid)
-                except Exception:
-                    pass
+                except Exception as idx_err:
+                    logger.warning(f"Failed to mark index entry {rid} as deleted: {idx_err}")
         if self._cache is not None and expired:
             self._cache.clear()
 

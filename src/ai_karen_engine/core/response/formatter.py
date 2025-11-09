@@ -35,9 +35,9 @@ logger = logging.getLogger(__name__)
 # -------------------------
 # Metrics (optional hooks)
 # -------------------------
-_FMT_LATENCY = Histogram("karen_formatter_latency_seconds", "Latency of DRY formatter").labels(component="dry")
-_FMT_ERRORS = Counter("karen_formatter_errors_total", "Total formatting errors").labels(component="dry")
-_FMT_REQUESTS = Counter("karen_formatter_requests_total", "Total formatting requests").labels(component="dry")
+_FMT_LATENCY = Histogram("karen_formatter_latency_seconds", "Latency of DRY formatter", ["component"]).labels(component="dry")
+_FMT_ERRORS = Counter("karen_formatter_errors_total", "Total formatting errors", ["component"]).labels(component="dry")
+_FMT_REQUESTS = Counter("karen_formatter_requests_total", "Total formatting requests", ["component"]).labels(component="dry")
 
 # -------------------------
 # Data Models

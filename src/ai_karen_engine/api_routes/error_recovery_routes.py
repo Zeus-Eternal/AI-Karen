@@ -9,7 +9,10 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException, Query, Body
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ..services.graceful_degradation_coordinator import (
     graceful_degradation_coordinator,
