@@ -163,9 +163,9 @@ export function filterModels(
     if (filters.healthyOnly && model.health && 'status' in model.health && model.health.status !== 'healthy') {
       return false;
     }
-    
-    return true;
 
+    return true;
+  });
 }
 
 /**
@@ -183,7 +183,7 @@ export function groupModelsByProperty<T extends keyof Model>(
       groups[value] = [];
     }
     groups[value].push(model);
-
+  });
   return groups;
 }
 

@@ -321,8 +321,6 @@ export const EnhancedSelect = React.forwardRef<
       )}
     </div>
   );
+});
 
 EnhancedSelect.displayName = 'EnhancedSelect';
-// Export all components
-export {
-};

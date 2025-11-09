@@ -255,10 +255,10 @@ export const mockErrorBoundary = () => {
     onError?: (error: Error) => void;
   }> = ({ children, onError }) => {
     try {
-      return <>{children}</>;
+      return React.createElement(React.Fragment, null, children);
     } catch (error) {
       onError?.(error as Error);
-      return <div data-testid="error-boundary">Something went wrong</div>;
+      return React.createElement('div', { 'data-testid': 'error-boundary' }, 'Something went wrong');
     }
   };
   return ErrorBoundary;

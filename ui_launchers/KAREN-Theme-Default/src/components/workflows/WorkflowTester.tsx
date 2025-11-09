@@ -85,7 +85,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           message: error instanceof Error ? error.message : 'Unknown error occurred'
         }],
         error: error instanceof Error ? error.message : 'Unknown error occurred'
-
+      });
     } finally {
       setIsRunning(false);
     }

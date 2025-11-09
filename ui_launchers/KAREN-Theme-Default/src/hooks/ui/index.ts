@@ -5,14 +5,14 @@ export {
   useBreakpoint,
   useCurrentBreakpoint,
   useDeviceCapabilities,
-import { } from "../use-media-query"
+} from "../use-media-query";
 
 export {
   useLocalStorage,
   useSessionStorage,
   usePersistentUIState,
   usePersistentForm,
-import { } from "../use-local-storage"
+} from "../use-local-storage";
 
 export {
   useKeyboardShortcuts,
@@ -21,14 +21,16 @@ export {
   useNavigationShortcuts,
   useShortcutDisplay,
   useShortcutHelp,
-import { } from "../use-keyboard-shortcuts"
+} from "../use-keyboard-shortcuts";
 
 export {
   useReducedMotion,
   useAnimationDuration,
   useAnimationVariants,
-import { } from "../use-reduced-motion"
+} from "../use-reduced-motion";
 
 // Types export
 export type {
-import { } from "../use-keyboard-shortcuts"
+  KeyboardShortcut,
+  ShortcutCategory,
+} from "../use-keyboard-shortcuts";
