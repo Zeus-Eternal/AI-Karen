@@ -1,59 +1,58 @@
 // ui_launchers/KAREN-Theme-Default/src/components/performance/ResourceMonitoringDashboard.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 // Resource monitoring services
-import { resourceMonitor } from "@/services/resource-monitor";
-import { Cpu, MemoryStick, Network, HardDrive, AlertTriangle, Activity, CheckCircle, Zap, TrendingUp, TrendingDown } from "lucide-react";
-
-// --- Types for reference
-export interface ResourceMetrics {
-  cpu: { usage: number; cores: number };
-  memory: { percentage: number; used: number; total: number };
-  network: { latency: number; bandwidth: number; connectionType: string; bytesReceived: number };
-  storage: { percentage: number; used: number; total: number };
-}
-
-export interface ResourceAlert {
-  id: string;
-  type: string;
-  severity: string;
-  message: string;
-  timestamp: string;
-  resolved: boolean;
-}
-
-export interface ScalingRecommendation {
-  id: string;
-  type: string;
-  resource: string;
-  title: string;
-  description: string;
-  impact: string;
-  implementation: string;
-  estimatedCost: number;
-  estimatedSavings: number;
-  priority: string;
-  confidence: number;
-}
-
-export interface CapacityPlan {
-  resource: string;
-  currentUsage: number;
-  projectedUsage: number;
-  growthRate: number;
-  costImpact: number;
-  timeframe: string;
-}
+import {
+  resourceMonitor,
+  type ResourceMetrics,
+  type ResourceAlert,
+  type ScalingRecommendation,
+  type CapacityPlan,
+} from "@/services/resource-monitor";
+import {
+  Cpu,
+  MemoryStick,
+  Network,
+  HardDrive,
+  AlertTriangle,
+  Activity,
+  CheckCircle,
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  X,
+} from "lucide-react";
 
 export interface ResourceMonitoringDashboardProps {
   refreshInterval?: number;
@@ -61,6 +60,23 @@ export interface ResourceMonitoringDashboardProps {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+type BadgeVariant = NonNullable<BadgeProps["variant"]>;
+type Timeframe = "1h" | "6h" | "24h" | "7d";
+const TIMEFRAME_OPTIONS: readonly Timeframe[] = ["1h", "6h", "24h", "7d"];
+
+const ResourceMonitoringFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="space-y-2 p-4">
+    <p className="font-medium">Something went wrong in ResourceMonitoringDashboard.</p>
+    <Button variant="outline" size="sm" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
+
+const isTimeframe = (value: string): value is Timeframe =>
+  (TIMEFRAME_OPTIONS as readonly string[]).includes(value);
 
 export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardProps> = ({
   refreshInterval = 5000,
@@ -71,7 +87,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [alerts, setAlerts] = useState<ResourceAlert[]>([]);
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<"1h" | "6h" | "24h" | "7d">("1h");
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
 
   useEffect(() => {
     const updateData = () => {
@@ -98,7 +114,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     };
   }, [refreshInterval, showCapacityPlanning]);
 
-  const filteredHistoricalData = React.useMemo(() => {
+  const filteredHistoricalData = useMemo(() => {
     const timeRanges = {
       "1h": 60 * 60 * 1000,
       "6h": 6 * 60 * 60 * 1000,
@@ -128,12 +144,14 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     );
   };
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = (
+    severity: ResourceAlert["severity"] | ScalingRecommendation["priority"]
+  ): BadgeVariant => {
     switch (severity) {
       case "critical":
         return "destructive";
       case "high":
-        return "destructive";
+        return "secondary";
       case "medium":
         return "secondary";
       case "low":
@@ -143,7 +161,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
+  const getSeverityIcon = (severity: ResourceAlert["severity"]) => {
     switch (severity) {
       case "critical":
         return <AlertTriangle className="h-4 w-4 text-red-500 " />;
@@ -158,7 +176,9 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     }
   };
 
-  const getResourceIcon = (resource: string) => {
+  const getResourceIcon = (
+    resource: ResourceAlert["type"] | ScalingRecommendation["resource"]
+  ) => {
     switch (resource) {
       case "cpu":
         return <Cpu className="h-4 w-4 " />;
@@ -173,7 +193,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     }
   };
 
-  const getRecommendationIcon = (type: string) => {
+  const getRecommendationIcon = (type: ScalingRecommendation["type"]) => {
     switch (type) {
       case "scale-up":
         return <TrendingUp className="h-4 w-4 text-green-500 " />;
@@ -202,7 +222,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   };
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in ResourceMonitoringDashboard</div>}>
+    <ErrorBoundary fallback={ResourceMonitoringFallback}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -213,7 +233,11 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
           <div className="flex items-center space-x-2">
             <Tabs
               value={selectedTimeframe}
-              onValueChange={(value: any) => setSelectedTimeframe(value)}
+              onValueChange={(value) => {
+                if (isTimeframe(value)) {
+                  setSelectedTimeframe(value);
+                }
+              }}
             >
               <TabsList>
                 <TabsTrigger value="1h">1H</TabsTrigger>
@@ -327,7 +351,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                               <AlertTitle className="flex items-center space-x-2">
                                 {getResourceIcon(alert.type)}
                                 <span>{alert.type.toUpperCase()} Alert</span>
-                                <Badge variant={getSeverityColor(alert.severity) as any}>
+                                <Badge variant={getSeverityColor(alert.severity)}>
                                   {alert.severity}
                                 </Badge>
                               </AlertTitle>
@@ -475,7 +499,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-1">
                                 <h4 className="font-medium">{rec.title}</h4>
-                                <Badge variant={getSeverityColor(rec.priority) as any}>
+                                <Badge variant={getSeverityColor(rec.priority)}>
                                   {rec.priority}
                                 </Badge>
                               </div>
