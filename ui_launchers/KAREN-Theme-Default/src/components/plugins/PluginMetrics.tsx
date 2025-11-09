@@ -42,6 +42,7 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
     reviewCount: 23,
     featured: true,
     verified: true,
+    screenshots: [],
     compatibility: {
       minVersion: '1.0.0',
       platforms: ['node'],
@@ -86,6 +87,7 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
     reviewCount: 15,
     featured: false,
     verified: false,
+    screenshots: [],
     compatibility: {
       minVersion: '1.0.0',
       platforms: ['node'],
@@ -128,6 +130,7 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
     reviewCount: 45,
     featured: true,
     verified: true,
+    screenshots: [],
     compatibility: {
       minVersion: '1.0.0',
       platforms: ['node'],
@@ -170,6 +173,7 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
     reviewCount: 12,
     featured: false,
     verified: true,
+    screenshots: [],
     compatibility: {
       minVersion: '1.0.0',
       platforms: ['node'],
@@ -626,3 +630,5 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
     </div>
   );
 };
+
+export default PluginMarketplace;

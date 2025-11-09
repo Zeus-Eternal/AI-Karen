@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { ButtonProps } from '@/components/ui/button';
 import { InputProps } from '@/components/ui/input';
 import { Variants } from 'framer-motion';

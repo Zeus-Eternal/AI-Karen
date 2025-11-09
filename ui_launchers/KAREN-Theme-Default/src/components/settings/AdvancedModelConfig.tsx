@@ -18,12 +18,12 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  Settings, Save, RotateCcw, Loader2, BarChart3, TrendingUp, Tag, 
-  Cpu, Zap, Gauge, Clock, MemoryStick, Target, Star, Edit3, 
+import {
+  Settings, Save, RotateCcw, Loader2, BarChart3, TrendingUp, Tag,
+  Cpu, Zap, Gauge, Clock, MemoryStick, Target, Star, Edit3,
   CheckCircle2, AlertTriangle, Info, Download, Upload, Copy,
   Trash2, Plus, Minus, Eye, EyeOff, Brain, Shield, Network,
-  Database, HardDrive, Layers, Cogs, Rocket, TestTube
+  Database, HardDrive, Layers, Cogs, Rocket, TestTube, RefreshCw
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';

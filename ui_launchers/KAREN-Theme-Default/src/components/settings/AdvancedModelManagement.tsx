@@ -7,6 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertCircle,
+  Briefcase,
+  CheckCircle2,
+  Database,
+  HardDrive,
+  Info,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash2,
+  Upload,
+  Zap
+} from 'lucide-react';
 
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';

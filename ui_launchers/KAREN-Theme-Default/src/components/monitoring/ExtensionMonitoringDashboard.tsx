@@ -2,7 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -528,9 +531,21 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
   );
 };
 
+const ExtensionMonitoringFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+  <div
+    className="rounded-md border border-destructive/40 bg-destructive/10 p-4"
+    role="alert"
+  >
+    <p className="font-semibold">Something went wrong in ExtensionMonitoringDashboard</p>
+    <Button variant="outline" size="sm" className="mt-2" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
+
 const ExtensionMonitoringDashboard: React.FC = () => {
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in ExtensionMonitoringDashboard</div>}>
+    <ErrorBoundary fallback={ExtensionMonitoringFallback}>
       <ExtensionMonitoringDashboardInner />
     </ErrorBoundary>
   );

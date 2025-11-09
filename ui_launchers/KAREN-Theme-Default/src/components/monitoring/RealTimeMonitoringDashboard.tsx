@@ -9,7 +9,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 
 import type { SystemHealth, MonitoringConfig } from "./types";
 import { ConnectionStatusIndicator } from "./ConnectionStatusIndicator";
@@ -28,6 +31,15 @@ export interface RealTimeMonitoringDashboardProps {
   className?: string;
   onHealthChange?: (health: SystemHealth) => void;
 }
+
+const MonitoringDashboardFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4" role="alert">
+    <p className="font-semibold">Something went wrong in RealTimeMonitoringDashboard</p>
+    <Button variant="outline" size="sm" className="mt-2" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
 
 export const RealTimeMonitoringDashboard: React.FC<
   RealTimeMonitoringDashboardProps
@@ -252,7 +264,7 @@ export const RealTimeMonitoringDashboard: React.FC<
   );
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in RealTimeMonitoringDashboard</div>}>
+    <ErrorBoundary fallback={MonitoringDashboardFallback}>
       {isLoading && !systemHealth ? (
         LoadingView
       ) : !systemHealth ? (

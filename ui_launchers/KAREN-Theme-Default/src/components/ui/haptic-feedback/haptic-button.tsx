@@ -1,10 +1,12 @@
 "use client";
 
 import React from 'react';
-import { useHaptic } from './use-haptic';
-import { HapticButtonProps } from './types';
+
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Button } from './button';  // Assuming the Button component is imported like this
+
+import { useHaptic } from './use-haptic';
+import type { HapticButtonProps } from './types';
 
 export function HapticButton({
   children,
@@ -12,7 +14,7 @@ export function HapticButton({
   hapticEnabled = true,
   onClick,
   className,
-  ariaLabel = 'Haptic Button',  // Added a default for aria-label
+  ariaLabel = 'Haptic button',
   ...props
 }: HapticButtonProps) {
   const { triggerHaptic } = useHaptic();
@@ -36,7 +38,7 @@ export function HapticButton({
         className
       )}
       onClick={handleClick}
-      aria-label={ariaLabel}  // Ensures the button is accessible
+      aria-label={ariaLabel}
       {...props}
     >
       {children}

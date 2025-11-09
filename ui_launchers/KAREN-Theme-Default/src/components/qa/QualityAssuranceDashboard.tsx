@@ -9,7 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-import { } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bug,
+  CheckCircle,
+  Download,
+  Eye,
+  RefreshCw,
+  Shield,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
 export interface QualityMetrics {
   testCoverage: {
     unit: number;
@@ -150,12 +162,12 @@ export function QualityAssuranceDashboard() {
   };
   if (loading || !metrics) {
     return (
-    <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin " />
-        <span className="ml-2">Loading quality metrics...</span>
-      </div>
-    </ErrorBoundary>
+      <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin " />
+          <span className="ml-2">Loading quality metrics...</span>
+        </div>
+      </ErrorBoundary>
     );
   }
   const overallQualityScore = Math.round(
