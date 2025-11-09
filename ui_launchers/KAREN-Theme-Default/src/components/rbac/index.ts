@@ -33,11 +33,15 @@ export type {
 
 // Re-export RBAC provider and hook
 export { RBACProvider, useRBAC } from '@/providers/rbac-provider';
+export type { RBACContextValue } from '@/providers/rbac-provider';
 
 // Re-export RBAC types
 export type {
   Role,
   Permission,
   User,
-  RBACContext,
+  AccessContext,
+  PermissionCheckResult,
+  RoleHierarchy,
+  Restriction,
 } from '@/types/rbac';

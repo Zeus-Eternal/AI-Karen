@@ -404,7 +404,6 @@ class MultiModalService {
             prompt,
             parameters,
           }),
-          // @ts-expect-error fetch-compatible options pass-through
           signal: controller?.signal,
         }
       );

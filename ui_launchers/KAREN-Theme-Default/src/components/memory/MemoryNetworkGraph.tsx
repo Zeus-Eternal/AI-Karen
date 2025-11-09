@@ -197,7 +197,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           source: nodes[a].id,
           target: nodes[b].id,
           weight: Math.random(),
-          type: edgeTypes[Math.floor(Math.random() * edgeTypes.length)] as any,
+          type: edgeTypes[Math.floor(Math.random() * edgeTypes.length)],
           confidence: 0.3 + Math.random() * 0.7,
         };
         edges.push(e);

@@ -204,11 +204,21 @@ const HealthDashboard: React.FC<HealthDashboardProps> = ({
 
   const formatTimestamp = (timestamp: string) => new Date(timestamp).toLocaleTimeString();
 
-  const DashboardErrorFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+  const DashboardErrorFallback: React.FC<ErrorFallbackProps> = ({
+    resetError,
+    error,
+    errorId,
+    retryCount,
+    errorInfo: _errorInfo,
+  }) => (
     <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4" role="alert">
       <p className="font-semibold">Something went wrong in HealthDashboard</p>
+      <p className="text-sm text-muted-foreground">
+        {error.message}
+        {errorId ? ` (ref: ${errorId})` : ""}
+      </p>
       <Button variant="outline" size="sm" className="mt-2" onClick={resetError}>
-        Retry
+        Retry attempt {retryCount + 1}
       </Button>
     </div>
   );

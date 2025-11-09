@@ -4,6 +4,8 @@
  * Type definitions for copilot actions, chat context, and AI assistance features.
  */
 
+import type { ComponentType } from 'react';
+
 export interface ChatContext {
   selectedText?: string;
   currentFile?: string;
@@ -31,7 +33,7 @@ export interface CopilotAction {
   description: string;
   prompt: string;
   category: string;
-  icon?: React.ComponentType<{ className?: string }> | string;
+  icon?: ComponentType<{ className?: string }> | string;
   shortcut?: string;
   requiresSelection?: boolean;
   contextTypes?: string[];
@@ -52,7 +54,7 @@ export interface ChatModeOption {
   id: string;
   name: string;
   description: string;
-  icon?: React.ComponentType<{ className?: string }> | string;
+  icon?: ComponentType<{ className?: string }> | string;
   enabled: boolean;
   settings?: Record<string, unknown>;
 }

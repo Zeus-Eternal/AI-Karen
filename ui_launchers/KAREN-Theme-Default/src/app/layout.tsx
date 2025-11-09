@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import '@fontsource/inter'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic'
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="en">
