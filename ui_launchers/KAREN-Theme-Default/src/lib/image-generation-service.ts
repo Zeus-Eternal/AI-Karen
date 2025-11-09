@@ -67,6 +67,28 @@ export interface GenerationError {
 
 export type GenerationResponse = GenerationResult | GenerationError;
 
+function isErrorResponse(response: GenerationResponse): response is GenerationError {
+  return response.ok === false;
+}
+
+export interface TraceEvent {
+  phase: 'start' | 'attempt' | 'success' | 'failure' | 'fallback' | 'done' | 'timeout';
+  provider?: Provider;
+  correlation_id: string;
+  attempt?: number;
+  status?: number;
+  error?: string;
+  data?: unknown;
+  elapsed_ms: number;
+  duration_ms?: number;
+  providers?: Provider[];
+  code?: string;
+}
+
+type TraceExtras = Partial<Omit<TraceEvent, 'phase' | 'correlation_id' | 'elapsed_ms'>> & {
+  elapsed_ms?: number;
+};
+
 export interface ServiceConfig {
   // Backend proxy endpoints (all server-side key handling)
   endpoints: {
@@ -85,16 +107,7 @@ export interface ServiceConfig {
   // Optional hook for global headers (e.g., auth cookie not needed; use same-origin)
   buildHeaders?: () => HeadersInit;
   // Observability hooks
-  onTrace?: (event: {
-    phase: 'start'|'attempt'|'success'|'failure'|'fallback'|'done'|'timeout';
-    provider?: Provider;
-    correlation_id: string;
-    attempt?: number;
-    status?: number;
-    error?: string;
-    data?: any;
-    elapsed_ms: number;
-  }) => void;
+  onTrace?: (event: TraceEvent) => void;
 }
 
 export class ImageGenerationService {
@@ -131,7 +144,7 @@ export class ImageGenerationService {
     const correlation = input.correlation_id ?? this.newCorrelationId();
     const providers = this.buildPlan(preferredProvider ?? this.cfg.default_provider);
 
-    this.trace('start', correlation, { providers });
+    this.trace('start', correlation, { providers, elapsed_ms: 0 });
 
     const controller = new AbortController();
     const outerTimer = setTimeout(() => controller.abort(), this.cfg.hard_timeout_ms);
@@ -140,12 +153,19 @@ export class ImageGenerationService {
     try {
       for (const provider of providers) {
         const result = await this.tryProviderWithRetries(provider, input, correlation, combinedSignal, started);
-        if (result.ok) {
-          this.trace('done', correlation, { provider, duration_ms: Date.now() - started });
+        if (!isErrorResponse(result)) {
+          const totalDuration = Date.now() - started;
+          this.trace('done', correlation, { provider, duration_ms: totalDuration, elapsed_ms: totalDuration });
           return result;
         }
+        const errorResult = result;
         // Log and continue to next provider in chain
-        this.trace('fallback', correlation, { provider, error: result.message, code: result.code });
+        this.trace('fallback', correlation, {
+          provider,
+          error: errorResult.message,
+          code: errorResult.code,
+          elapsed_ms: Date.now() - started
+        });
       }
 
       return {
@@ -199,28 +219,47 @@ export class ImageGenerationService {
     while (attempt < this.cfg.max_attempts_per_provider) {
       attempt++;
       const t0 = Date.now();
-      this.trace('attempt', correlation_id, { provider, attempt });
+      this.trace('attempt', correlation_id, { provider, attempt, elapsed_ms: Date.now() - started });
 
       try {
         const res = await this.invokeProvider(provider, input, correlation_id, signal);
         const elapsed = Date.now() - t0;
 
-        if (res.ok) {
-          this.trace('success', correlation_id, { provider, attempt, elapsed_ms: elapsed });
-          return { ...res, duration_ms: Date.now() - started };
+        if (!isErrorResponse(res)) {
+          const totalDuration = Date.now() - started;
+          this.trace('success', correlation_id, {
+            provider,
+            attempt,
+            elapsed_ms: elapsed,
+            duration_ms: totalDuration
+          });
+          return { ...res, duration_ms: totalDuration };
         }
+        const errorResponse = res;
 
         // Retry only for transient classes
-        if (this.isTransient(res.status, res.code)) {
-          this.trace('failure', correlation_id, { provider, attempt, status: res.status, error: res.message });
+        if (this.isTransient(errorResponse.status, errorResponse.code)) {
+          this.trace('failure', correlation_id, {
+            provider,
+            attempt,
+            status: errorResponse.status,
+            error: errorResponse.message,
+            elapsed_ms: elapsed
+          });
           await this.sleep(backoff, signal);
           backoff = Math.min(backoff * 2, this.cfg.max_backoff_ms);
           continue;
         }
 
         // Non-transient → stop retrying this provider
-        this.trace('failure', correlation_id, { provider, attempt, status: res.status, error: res.message });
-        return { ...res, duration_ms: Date.now() - started };
+        this.trace('failure', correlation_id, {
+          provider,
+          attempt,
+          status: errorResponse.status,
+          error: errorResponse.message,
+          elapsed_ms: elapsed
+        });
+        return { ...errorResponse, duration_ms: Date.now() - started };
       } catch (err: any) {
         const elapsed = Date.now() - t0;
         if (err?.name === 'AbortError') {
@@ -235,7 +274,10 @@ export class ImageGenerationService {
         }
         // Treat as transient and retry
         this.trace('failure', correlation_id, {
-          provider, attempt, error: String(err), elapsed_ms: elapsed
+          provider,
+          attempt,
+          error: String(err),
+          elapsed_ms: elapsed
         });
         await this.sleep(backoff, signal);
         backoff = Math.min(backoff * 2, this.cfg.max_backoff_ms);
@@ -328,6 +370,23 @@ export class ImageGenerationService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private trace(phase: TraceEvent['phase'], correlationId: string, extra: TraceExtras = {}): void {
+    if (!this.cfg.onTrace) return;
+    const { elapsed_ms = 0, phase: _ignoredPhase, correlation_id: _ignoredCorrelation, ...rest } = extra as TraceExtras & {
+      phase?: TraceEvent['phase'];
+      correlation_id?: string;
+    };
+
+    const event: TraceEvent = {
+      phase,
+      correlation_id: correlationId,
+      elapsed_ms,
+      ...(rest as Partial<Omit<TraceEvent, 'phase' | 'correlation_id' | 'elapsed_ms'>>)
+    };
+
+    this.cfg.onTrace(event);
   }
 
   private buildPayload(provider: Provider, input: GenerationInput): Record<string, any> {

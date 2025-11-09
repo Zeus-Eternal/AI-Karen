@@ -12,16 +12,20 @@
 
 export type AnyFn = (...args: any[]) => any;
 
+export type KarenBackendPatchState = {
+  earlyFetchPatched?: boolean;
+  earlyOriginalFetch?: typeof fetch;
+  fetchPatched?: boolean;
+  originalFetch?: typeof fetch;
+  backendPatched?: boolean;
+  originalMakeRequest?: AnyFn;
+};
+
 declare global {
   interface Window {
     karenBackend?: { makeRequest?: AnyFn };
     getKarenBackend?: () => { makeRequest?: AnyFn } | undefined;
-    __KAREN_BACKEND_PATCH__?: {
-      fetchPatched: boolean;
-      originalFetch?: typeof fetch;
-      backendPatched: boolean;
-      originalMakeRequest?: AnyFn;
-    };
+    __KAREN_BACKEND_PATCH__?: KarenBackendPatchState;
   }
 }
 

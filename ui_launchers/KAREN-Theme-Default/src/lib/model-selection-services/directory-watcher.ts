@@ -85,15 +85,15 @@ export class DirectoryWatcher
   private debouncedNotify: (event: FileSystemChangeEvent) => void;
   private config: DirectoryWatcherConfig;
 
-  private readonly DEFAULT_DEBOUNCE_MS = 500;
-  private readonly DEFAULT_POLLING_INTERVAL = 15_000;
+  private readonly WATCHER_DEFAULT_DEBOUNCE_MS = 500;
+  private readonly WATCHER_DEFAULT_POLLING_INTERVAL = 15_000;
 
   constructor(config: Partial<DirectoryWatcherConfig> = {}) {
     super("DirectoryWatcher");
 
     this.config = {
-      debounceMs: config.debounceMs ?? this.DEFAULT_DEBOUNCE_MS,
-      pollingInterval: config.pollingInterval ?? this.DEFAULT_POLLING_INTERVAL,
+      debounceMs: config.debounceMs ?? this.WATCHER_DEFAULT_DEBOUNCE_MS,
+      pollingInterval: config.pollingInterval ?? this.WATCHER_DEFAULT_POLLING_INTERVAL,
       maxWatchedDirectories: config.maxWatchedDirectories ?? 10,
       enableRecursiveWatching:
         config.enableRecursiveWatching ?? this.supportsRecursiveWatch(),
