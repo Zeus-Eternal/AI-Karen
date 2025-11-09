@@ -1,36 +1,42 @@
 import argparse, json, sys
 import logging
-from typing import List, Tuple
+from typing import Any, List, Tuple
+
 from tqdm import tqdm
 
 try:
     import torch
     import torch.nn.functional as F
-    from transformers import AutoTokenizer, AutoModel
+    from transformers import AutoModel, AutoTokenizer
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    torch = None
-    # Create dummy types/functions for type hints when torch is not available
-    class AutoTokenizer:  # type: ignore
-        pass
-    class AutoModel:  # type: ignore
-        pass
-    class F:  # type: ignore
-        pass
+    torch = None  # type: ignore[assignment]
+    F = None  # type: ignore[assignment]
+    AutoTokenizer = AutoModel = Any  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
+def _ensure_torch_available() -> None:
+    if not TORCH_AVAILABLE or torch is None:
+        raise RuntimeError(
+            "Torch and transformers are required for embedding operations, but they are "
+            "not installed. Install optional ML dependencies to enable this feature."
+        )
+
+
 # Conditional decorator for torch.no_grad()
 def conditional_no_grad():
-    """Decorator that uses torch.no_grad() if available, otherwise does nothing"""
+    """Decorator that uses torch.no_grad() if available, otherwise does nothing."""
+
     if TORCH_AVAILABLE and torch is not None:
         return torch.no_grad()
-    else:
-        # Return identity decorator when torch not available
-        def identity_decorator(func):
-            return func
-        return identity_decorator
+
+    def identity_decorator(func):
+        return func
+
+    return identity_decorator
 
 
 def load_jsonl(path: str) -> List[dict]:
@@ -64,12 +70,14 @@ def extract_pairs(items: List[dict], key_field: str, value_field: str) -> List[T
 @conditional_no_grad()
 def embed_texts(
     texts: List[str],
-    tokenizer,  # AutoTokenizer type hint removed for compatibility
-    model,  # AutoModel type hint removed for compatibility
-    device,  # torch.device type hint removed for compatibility
+    tokenizer,
+    model,
+    device,
     batch_size: int = 64,
     max_length: int = 256,
 ):
+    _ensure_torch_available()
+
     vecs = []
     model.eval()
     for i in tqdm(range(0, len(texts), batch_size), desc="Embedding"):
@@ -83,7 +91,12 @@ def embed_texts(
             e = out.pooler_output
         else:
             e = out.last_hidden_state[:, 0, :]
-        e = F.normalize(e, p=2, dim=1)  
+        if F is None:
+            raise RuntimeError(
+                "torch.nn.functional is unavailable; install optional ML dependencies to "
+                "normalize embeddings."
+            )
+        e = F.normalize(e, p=2, dim=1)
         vecs.append(e.cpu())
     return torch.cat(vecs, dim=0)
 
@@ -97,6 +110,8 @@ def retrieve(
     top_k: int = 5,
     max_length: int = 256,
 ) -> List[dict]:
+    _ensure_torch_available()
+
     if device_str == "cpu":
         device = torch.device("cpu")
     elif device_str == "cuda" and torch.cuda.is_available():
