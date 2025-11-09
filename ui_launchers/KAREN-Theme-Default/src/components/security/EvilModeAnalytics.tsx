@@ -115,12 +115,12 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
     [timeframe],
   );
 
-  const { data: stats, isLoading: isLoadingStats } = useQuery({
+  const { data: stats, isLoading: isLoadingStats } = useQuery<EvilModeStats>({
     queryKey: ["evil-mode", "analytics", dateRange],
     queryFn: () => getEvilModeStats(dateRange),
   });
 
-  const { data: sessions, isLoading: isLoadingSessions } = useQuery({
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<EvilModeSession[]>({
     queryKey: ["evil-mode", "sessions", dateRange],
     queryFn: () => getEvilModeSessions(dateRange),
   });
@@ -863,13 +863,13 @@ async function getEvilModeSessions(dateRange: { start: Date; end: Date }): Promi
     {
       userId: "user-1",
       sessionId: "session-1",
-      startTime: new Date(Date.now() - 3600000).toISOString(),
-      endTime: new Date(Date.now() - 1800000).toISOString(),
+      startTime: new Date(Date.now() - 3_600_000),
+      endTime: new Date(Date.now() - 1_800_000),
       justification: "Emergency system maintenance",
       actions: [
         {
           action: "Modified system configuration",
-          timestamp: new Date(Date.now() - 3000000).toISOString(),
+          timestamp: new Date(Date.now() - 3_000_000),
           resource: "system.config",
           impact: "high",
           reversible: true,
@@ -880,13 +880,13 @@ async function getEvilModeSessions(dateRange: { start: Date; end: Date }): Promi
     {
       userId: "user-2",
       sessionId: "session-2",
-      startTime: new Date(Date.now() - 5400000).toISOString(),
+      startTime: new Date(Date.now() - 5_400_000),
       endTime: undefined, // active
       justification: "Incident response",
       actions: [
         {
           action: "Accessed protected data",
-          timestamp: new Date(Date.now() - 1200000).toISOString(),
+          timestamp: new Date(Date.now() - 1_200_000),
           resource: "vault.records",
           impact: "critical",
           reversible: false,
@@ -894,7 +894,7 @@ async function getEvilModeSessions(dateRange: { start: Date; end: Date }): Promi
         },
         {
           action: "Adjusted user role",
-          timestamp: new Date(Date.now() - 900000).toISOString(),
+          timestamp: new Date(Date.now() - 900_000),
           resource: "rbac.roles",
           impact: "high",
           reversible: true,

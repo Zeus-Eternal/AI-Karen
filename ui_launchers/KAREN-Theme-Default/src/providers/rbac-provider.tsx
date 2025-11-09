@@ -3,7 +3,18 @@
 import React, { createContext, useContext, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { } from '@/types/rbac';
+import {
+  AccessContext,
+  EvilModeConfig,
+  EvilModeSession,
+  Permission,
+  PermissionCheckResult,
+  RBACConfig,
+  Role,
+  RoleHierarchy,
+  User,
+  Restriction,
+} from '@/types/rbac';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { useAppStore } from '@/store/app-store';
 
@@ -27,7 +38,7 @@ export interface RBACContextValue {
   // Evil Mode
   isEvilModeEnabled: boolean;
   canEnableEvilMode: boolean;
-  enableEvilMode: (justification: string) => Promise<void>;
+  enableEvilMode: (justification: string, additionalAuth?: string) => Promise<void>;
   disableEvilMode: () => Promise<void>;
   evilModeSession: EvilModeSession | null;
   
@@ -102,23 +113,24 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     if (!userRoles.length) return [];
     
     const permissions = new Set<Permission>();
-    
+
     // Add permissions from roles
     userRoles.forEach(role => {
       role.permissions.forEach(permission => permissions.add(permission));
+    });
 
     // Add direct permissions
     if (currentUser?.directPermissions) {
       currentUser.directPermissions.forEach(permission => permissions.add(permission));
     }
-    
+
     // Apply role hierarchy if enabled
     if (rbacConfig.enableRoleHierarchy && roleHierarchy) {
       roleHierarchy.forEach(hierarchy => {
         hierarchy.effectivePermissions.forEach(permission => permissions.add(permission));
-
+      });
     }
-    
+
     return Array.from(permissions);
   }, [userRoles, currentUser?.directPermissions, rbacConfig.enableRoleHierarchy, roleHierarchy]);
 
@@ -156,9 +168,9 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     }
 
     // Check restrictions
-    const activeRestrictions = [
+    const activeRestrictions: Restriction[] = [
       ...(currentUser.restrictions || []),
-      ...userRoles.flatMap(role => role.restrictions || [])
+      ...userRoles.flatMap(role => role.restrictions || []),
     ].filter(restriction => restriction.active);
 
     // Apply context-based restrictions
@@ -242,8 +254,11 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
 
   // Evil Mode mutations
   const enableEvilModeMutation = useMutation({
-    mutationFn: (justification: string) =>
-      enhancedApiClient.post('/api/rbac/evil-mode/enable', { justification }),
+    mutationFn: ({ justification, additionalAuth }: { justification: string; additionalAuth?: string }) =>
+      enhancedApiClient.post('/api/rbac/evil-mode/enable', {
+        justification,
+        additionalAuth,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rbac', 'evil-mode-session'] });
     }
@@ -269,9 +284,12 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     await removeRoleMutation.mutateAsync({ userId, roleId });
   }, [removeRoleMutation]);
 
-  const enableEvilMode = useCallback(async (justification: string): Promise<void> => {
-    await enableEvilModeMutation.mutateAsync(justification);
-  }, [enableEvilModeMutation]);
+  const enableEvilMode = useCallback(
+    async (justification: string, additionalAuth?: string): Promise<void> => {
+      await enableEvilModeMutation.mutateAsync({ justification, additionalAuth });
+    },
+    [enableEvilModeMutation],
+  );
 
   const disableEvilMode = useCallback(async (): Promise<void> => {
     await disableEvilModeMutation.mutateAsync();

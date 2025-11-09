@@ -44,7 +44,7 @@ export type {
 } from './SecurityDashboard';
 
 // Secure Link (contains duplicate security dashboard types)
-export { default as SecureLink } from './SecureLink';
+export { SecurityDashboard as SecureLink } from './SecureLink';
 export type {
   SecurityDashboardProps as SecureLinkSecurityDashboardProps,
   SecurityMetrics as SecureLinkSecurityMetrics,
