@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { useChatMessages } from "./useChatMessages";
 import type { ChatMessage, ChatSettings } from "../types";
 import { canSendMessage } from "../utils/messageUtils";

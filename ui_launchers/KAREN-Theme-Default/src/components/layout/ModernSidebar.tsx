@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Home,
   MessageSquare,
@@ -22,8 +22,8 @@ import {
   Search,
   Command,
   LucideIcon,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export interface NavItem {
   icon: LucideIcon;
@@ -40,34 +40,37 @@ export interface NavSection {
 
 const navigationStructure: NavSection[] = [
   {
-    section: 'Core',
+    section: "Core",
     items: [
-      { icon: Home, label: 'Dashboard', href: '/', shortcut: 'Ctrl+D' },
-      { icon: MessageSquare, label: 'Chat Studio', href: '/chat', shortcut: 'Ctrl+K' },
+      { icon: Home, label: "Dashboard", href: "/", shortcut: "Ctrl+D" },
+      {
+        icon: MessageSquare,
+        label: "Chat Studio",
+        href: "/chat",
+        shortcut: "Ctrl+K",
+      },
     ],
   },
   {
-    section: 'AI Management',
+    section: "AI Management",
     items: [
-      { icon: Brain, label: 'Memory Lab', href: '/memory', badge: 'New' },
-      { icon: Cpu, label: 'Model Manager', href: '/models' },
-      { icon: Zap, label: 'Agent Forge', href: '/agents' },
-      { icon: Puzzle, label: 'Plugin Hub', href: '/plugins' },
+      { icon: Brain, label: "Memory Lab", href: "/memory", badge: "New" },
+      { icon: Cpu, label: "Model Manager", href: "/models" },
+      { icon: Zap, label: "Agent Forge", href: "/agents" },
+      { icon: Puzzle, label: "Plugin Hub", href: "/plugins" },
     ],
   },
   {
-    section: 'Operations',
+    section: "Operations",
     items: [
-      { icon: BarChart3, label: 'Analytics Lab', href: '/analytics' },
-      { icon: Activity, label: 'Performance', href: '/performance' },
-      { icon: Shield, label: 'Security', href: '/security' },
+      { icon: BarChart3, label: "Analytics Lab", href: "/analytics" },
+      { icon: Activity, label: "Performance", href: "/performance" },
+      { icon: Shield, label: "Security", href: "/security" },
     ],
   },
   {
-    section: 'System',
-    items: [
-      { icon: Settings, label: 'Settings', href: '/settings' },
-    ],
+    section: "System",
+    items: [{ icon: Settings, label: "Settings", href: "/settings" }],
   },
 ];
 
@@ -82,8 +85,8 @@ export function ModernSidebar({ className }: ModernSidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r border-border bg-card transition-all duration-300 ease-in-out',
-        collapsed ? 'w-16' : 'w-64',
+        "fixed left-0 top-0 z-40 h-screen border-r border-border bg-card transition-all duration-300 ease-in-out",
+        collapsed ? "w-16" : "w-64",
         className
       )}
     >
@@ -147,18 +150,18 @@ export function ModernSidebar({ className }: ModernSidebarProps) {
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        'group flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200',
-                        'hover:bg-accent hover:text-accent-foreground',
+                        "group flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200",
+                        "hover:bg-accent hover:text-accent-foreground",
                         isActive
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-muted-foreground'
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground"
                       )}
                       title={collapsed ? item.label : undefined}
                     >
                       <item.icon
                         className={cn(
-                          'h-5 w-5 shrink-0 transition-all duration-200',
-                          isActive && 'scale-110'
+                          "h-5 w-5 shrink-0 transition-all duration-200",
+                          isActive && "scale-110"
                         )}
                       />
                       {!collapsed && (

@@ -36,7 +36,7 @@ export const useArtifactManagement = ({
   );
 
   const activeArtifacts = useMemo(
-    () => artifacts.filter((artifact) => artifact.status !== "rejected"),
+    () => artifacts?.filter((artifact) => artifact.status !== "rejected") || [],
     [artifacts]
   );
 

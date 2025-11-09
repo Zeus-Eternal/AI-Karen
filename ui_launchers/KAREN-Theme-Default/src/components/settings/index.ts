@@ -20,7 +20,7 @@ export type {
 // AdvancedModelManagement
 export { default as AdvancedModelManagement } from './AdvancedModelManagement';
 export type {
-  StorageInfo,
+  StorageInfo as AdvancedModelStorageInfo,
   SystemHealth,
 } from './AdvancedModelManagement';
 
@@ -40,7 +40,7 @@ export type {
   ModelCompressionConfig,
   XAIConfig,
   SecurityConfig,
-  AdvancedTrainingConfig,
+  AdvancedTrainingConfig as AdvancedTrainingConfigSchema,
   TrainingMetrics,
   AIAssistanceResponse,
   RealTimeMetrics,
@@ -96,16 +96,16 @@ export type {
 // JobCenter
 export { default as JobCenter } from './JobCenter';
 export type {
-  Job,
+  Job as JobCenterJob,
   JobCenterProps,
 } from './JobCenter';
 
 // JobManager
 export { default as JobManager } from './JobManager';
 export type {
-  Job,
+  Job as JobManagerJob,
   JobStats,
-  StorageInfo,
+  StorageInfo as JobManagerStorageInfo,
   JobManagerProps,
 } from './JobManager';
 
@@ -121,8 +121,8 @@ export type {
 // ModelBrowser
 export { default as ModelBrowser } from './ModelBrowser';
 export type {
-  ModelInfo,
-  LLMProvider,
+  ModelInfo as ModelBrowserModelInfo,
+  LLMProvider as ModelBrowserProvider,
   ModelBrowserProps,
 } from './ModelBrowser';
 
@@ -132,7 +132,7 @@ export { default as ModelCard } from './ModelCard';
 // ModelConfiguration
 export { default as ModelConfiguration } from './ModelConfiguration';
 export type {
-  SystemModelConfig,
+  SystemModelConfig as ModelConfigurationSystemModelConfig,
   SystemModelSummary,
   ModelConfigurationProps,
 } from './ModelConfiguration';
@@ -150,7 +150,7 @@ export type {
 // ModelLibrary
 export { default as ModelLibrary } from './ModelLibrary';
 export type {
-  ModelInfo,
+  ModelInfo as ModelLibraryModelInfo,
   ModelMetadata,
   ModelLibraryStats,
   SortOption,
@@ -168,7 +168,7 @@ export type {
 export { default as ModelUploadInterface } from './ModelUploadInterface';
 export type {
   UploadJob,
-  ConversionJob,
+  ConversionJob as ModelUploadConversionJob,
   ModelUploadInterfaceProps,
 } from './ModelUploadInterface';
 
@@ -176,7 +176,7 @@ export type {
 export { default as ModelUploadManager } from './ModelUploadManager';
 export type {
   UploadFile,
-  ConversionJob,
+  ConversionJob as UploadManagerConversionJob,
   ModelUploadManagerProps,
 } from './ModelUploadManager';
 
@@ -195,8 +195,8 @@ export { default as PrivacySettings } from './PrivacySettings';
 // ProfileManager
 export { default as ProfileManager } from './ProfileManager';
 export type {
-  LLMProvider,
-  LLMProfile,
+  LLMProvider as ProfileManagerLLMProvider,
+  LLMProfile as ProfileManagerLLMProfile,
   ProfileManagerProps,
 } from './ProfileManager';
 
@@ -220,8 +220,8 @@ export type {
 export { default as ProviderManagement } from './ProviderManagement';
 export type {
   ModelRecommendationsProps,
-  LLMProvider,
-  ProviderStats,
+  LLMProvider as ProviderManagementLLMProvider,
+  ProviderStats as ProviderManagementStats,
   ApiKeyValidationResult,
   ProviderManagementProps,
 } from './ProviderManagement';
@@ -229,7 +229,7 @@ export type {
 // ProviderNotificationSystem
 export { default as ProviderNotificationSystem } from './ProviderNotificationSystem';
 export type {
-  NotificationSettings,
+  NotificationSettings as ProviderNotificationSettings,
   ProviderNotification,
   ProviderNotificationSystemProps,
 } from './ProviderNotificationSystem';
@@ -271,12 +271,11 @@ export type {
 // TransformerModelConfig
 export { default as TransformerModelConfig } from './TransformerModelConfig';
 export type {
-  TransformerConfig,
-  HardwareRecommendations,
+  TransformerConfig as TransformerModelTransformerConfig,
+  HardwareRecommendations as TransformerModelHardwareRecommendations,
   MultiGpuConfig,
   TransformerModelConfigProps,
 } from './TransformerModelConfig';
 
 // VoiceSettings
 export { default as VoiceSettings } from './VoiceSettings';
-

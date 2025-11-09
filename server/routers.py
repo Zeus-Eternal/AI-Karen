@@ -59,6 +59,7 @@ from ai_karen_engine.api_routes.model_orchestrator_routes import router as model
 from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
 from ai_karen_engine.api_routes.model_organization_routes import router as model_organization_router
+from ai_karen_engine.api_routes.user_preferences_routes import router as user_preferences_router
 
 # Multi-modal and AI enhancement routes
 try:
@@ -180,6 +181,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, prefix="/api/performance", tags=["performance"])
     app.include_router(model_organization_router, tags=["model-organization"])
+    app.include_router(user_preferences_router, tags=["user-preferences"])
     app.include_router(settings_router)
     
     # Multi-modal and AI enhancement routes

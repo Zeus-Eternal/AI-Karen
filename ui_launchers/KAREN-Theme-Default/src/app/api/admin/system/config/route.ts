@@ -171,4 +171,4 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
       }
     } as AdminApiResponse<never>, { status: 500 });
   }
-});
+}

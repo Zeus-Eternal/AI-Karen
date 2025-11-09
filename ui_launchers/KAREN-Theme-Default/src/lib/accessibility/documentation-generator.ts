@@ -267,6 +267,7 @@ export class AccessibilityDocumentationGenerator {
           analysis.hooks.add(path.node.callee.name);
         }
       }
+    });
 
     return analysis;
   }

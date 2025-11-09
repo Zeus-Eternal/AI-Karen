@@ -5,7 +5,7 @@ import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Maximize2, Minimize2, Settings, Sparkles } from "lucide-react";
-import ModelSelector from "@/components/chat/ModelSelector";
+import ModelSelector from "@/components/chat/ModelSelector.production";
 import ExportShareHandler from "./ExportShareHandler";
 import type { ChatSettings, ChatMessage } from "../types";
 
@@ -51,9 +51,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <Sparkles className="h-5 w-5 " />
           {useCopilotKit && (
             <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+              CopilotKit
             </Badge>
           )}
           <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+            Enhanced Chat
           </Badge>
         </CardTitle>
 

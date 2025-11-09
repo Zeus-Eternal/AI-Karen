@@ -77,7 +77,7 @@ export function KeyboardNavigationProvider({
           }, 1000);
         }
       }
-    },
+    }
   });
 
   const registerNavigationContainer = React.useCallback((element: HTMLElement) => {

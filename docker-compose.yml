@@ -238,6 +238,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+      - .env.resource-optimized
     environment:
       # Runtime mode for development (relaxes RBAC + auth strictness)
       ENVIRONMENT: "development"
@@ -365,6 +366,20 @@ services:
       retries: 20
       # Allow extended startup time on first boot
       start_period: 480s
+    # Resource limits to prevent memory leaks and excessive resource usage
+    deploy:
+      resources:
+        limits:
+          memory: 2G      # Hard limit at 2GB
+          cpus: '1.0'     # Limit to 1 CPU core
+        reservations:
+          memory: 512M    # Reserve 512MB minimum
+          cpus: '0.25'    # Reserve 0.25 CPU cores
+    # Memory and swap limits for additional protection
+    mem_limit: 2g
+    mem_reservation: 512m
+    memswap_limit: 2g
+    cpus: 1.0
     networks:
       - ai-karen-net
 

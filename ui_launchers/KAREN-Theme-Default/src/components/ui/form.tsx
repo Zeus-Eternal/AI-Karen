@@ -7,7 +7,14 @@ import { Slot } from "@radix-ui/react-slot";
   type ControllerProps,
   type FieldPath,
   type FieldValues,
-import { } from "react-hook-form"
+import {
+  Controller,
+  FormProvider,
+  useFormContext,
+  type ControllerProps,
+  type FieldPath,
+  type FieldValues,
+} from "react-hook-form"
 
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -69,6 +76,7 @@ const FormItemContext = React.createContext<FormItemContextValue>(
 )
 
 const FormItem = React.forwardRef<
+  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const id = React.useId()
@@ -121,6 +129,7 @@ const FormControl = React.forwardRef<
 FormControl.displayName = "FormControl"
 
 const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => {
   const { formDescriptionId } = useFormField()
@@ -137,6 +146,7 @@ const FormDescription = React.forwardRef<
 FormDescription.displayName = "FormDescription"
 
 const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
@@ -161,4 +171,11 @@ FormMessage.displayName = "FormMessage"
 
 export {
   useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
 }

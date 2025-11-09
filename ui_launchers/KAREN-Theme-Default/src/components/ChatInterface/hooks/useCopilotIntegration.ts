@@ -20,7 +20,7 @@ export const useCopilotIntegration = ({
   context,
 }: UseCopilotIntegrationOptions) => {
   const availableActions = useMemo(() => {
-    if (!enabled) return [] as CopilotAction[];
+    if (!enabled || !actions) return [] as CopilotAction[];
     return filterActionsForSelection(normalizeCopilotActions(actions), context);
   }, [actions, context, enabled]);
 
@@ -28,7 +28,7 @@ export const useCopilotIntegration = ({
   const supportsCode = enabled && settings.enableCodeAnalysis;
 
   const lastAssistantMessage = useMemo(
-    () => messages.slice().reverse().find((message) => message.role === "assistant"),
+    () => messages?.slice().reverse().find((message) => message.role === "assistant"),
     [messages]
   );
 

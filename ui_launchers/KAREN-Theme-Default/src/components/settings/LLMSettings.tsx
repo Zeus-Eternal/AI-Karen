@@ -200,10 +200,13 @@ export default function LLMSettings() {
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // Auto-save tab preference when it changes
-  useEffect(() => {
-    saveTabPreference();
-  }, [activeTab, saveTabPreference]);
+  const saveTabPreference = useCallback(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.tabPreference, activeTab);
+    } catch {
+      /* ignore */
+    }
+  }, [activeTab]);
 
   const loadSavedPreferences = () => {
     try {
@@ -216,13 +219,10 @@ export default function LLMSettings() {
     }
   };
 
-  const saveTabPreference = useCallback(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.tabPreference, activeTab);
-    } catch {
-      /* ignore */
-    }
-  }, [activeTab]);
+  // Auto-save tab preference when it changes
+  useEffect(() => {
+    saveTabPreference();
+  }, [activeTab, saveTabPreference]);
 
   const loadSettings = async () => {
     try {

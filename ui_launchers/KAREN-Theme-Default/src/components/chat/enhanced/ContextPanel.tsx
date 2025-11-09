@@ -22,7 +22,6 @@ import { format, formatDistanceToNow } from "date-fns";
 // Pull canonical shapes from your shared types
 import type {
   ContextPanelProps,
-  Conversation,
   ConversationThread,
   MemoryReference,
   ContextSuggestion,
@@ -44,14 +43,15 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   className = "",
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"threads" | "memory" | "suggestions" | "patterns">(
-    "threads"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "threads" | "memory" | "suggestions" | "patterns"
+  >("threads");
   // filterType can match thread.status, thread.metadata.complexity, or memory.type
   const [filterType, setFilterType] = useState<string>("all");
 
   // ---- Helpers
-  const safeDate = (d: Date | string): Date => (d instanceof Date ? d : new Date(d));
+  const safeDate = (d: Date | string | number): Date =>
+    d instanceof Date ? d : new Date(d);
 
   // ---- Filters
   const filteredThreads = useMemo<ConversationThread[]>(() => {
@@ -60,7 +60,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
       const matchesSearch =
         q.length === 0 ||
         thread.title.toLowerCase().includes(q) ||
-        thread.topic.toLowerCase().includes(q);
+        (thread.topic && thread.topic.toLowerCase().includes(q));
 
       const matchesFilter =
         filterType === "all" ||
@@ -73,11 +73,15 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 
   const filteredMemories = useMemo<MemoryReference[]>(() => {
     const q = searchQuery.trim().toLowerCase();
-    return (conversation?.memoryContext?.relevantMemories ?? []).filter((memory) => {
-      const matchesSearch = q.length === 0 || memory.content.toLowerCase().includes(q);
-      const matchesFilter = filterType === "all" || memory.type === filterType;
-      return matchesSearch && matchesFilter;
-    });
+    return (conversation?.memoryContext?.relevantMemories ?? []).filter(
+      (memory) => {
+        const matchesSearch =
+          q.length === 0 || memory.content.toLowerCase().includes(q);
+        const matchesFilter =
+          filterType === "all" || memory.type === filterType;
+        return matchesSearch && matchesFilter;
+      }
+    );
   }, [conversation?.memoryContext?.relevantMemories, searchQuery, filterType]);
 
   const topSuggestions = useMemo<ContextSuggestion[]>(() => {
@@ -100,15 +104,23 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           <h4 className="font-medium text-sm truncate flex-1 md:text-base lg:text-lg">
             {thread.title}
           </h4>
-          <Badge variant="outline" className="text-xs ml-2 sm:text-sm md:text-base">
+          <Badge
+            variant="outline"
+            className="text-xs ml-2 sm:text-sm md:text-base"
+          >
             {thread.metadata?.messageCount ?? 0}
           </Badge>
         </div>
 
         <div className="flex items-center gap-2 mb-2">
-          <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
-            {thread.topic}
-          </Badge>
+          {thread.topic && (
+            <Badge
+              variant="secondary"
+              className="text-xs sm:text-sm md:text-base"
+            >
+              {thread.topic}
+            </Badge>
+          )}
           <Badge
             variant={
               thread.metadata?.complexity === "complex"
@@ -126,12 +138,21 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {formatDistanceToNow(safeDate(thread.updatedAt), { addSuffix: true })}
+            {formatDistanceToNow(
+              safeDate(thread.updatedAt || thread.createdAt),
+              {
+                addSuffix: true,
+              }
+            )}
           </span>
           <span className="flex items-center gap-1">
             <TrendingUp className="h-3 w-3" />
             {Math.round(
-              thread.metadata?.sentiment === "positive" ? 85 : thread.metadata?.sentiment === "negative" ? 35 : 60
+              thread.metadata?.sentiment === "positive"
+                ? 85
+                : thread.metadata?.sentiment === "negative"
+                ? 35
+                : 60
             )}
             %
           </span>
@@ -185,9 +206,14 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         <div className="flex items-start gap-2 w-full p-3 sm:p-4 md:p-6">
           <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium md:text-base lg:text-lg">{suggestion.text}</p>
+            <p className="text-sm font-medium md:text-base lg:text-lg">
+              {suggestion.text}
+            </p>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+              <Badge
+                variant="secondary"
+                className="text-xs sm:text-sm md:text-base"
+              >
                 {suggestion.type}
               </Badge>
               <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
@@ -204,7 +230,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const renderUserPattern = useCallback((pattern: UserPattern) => {
     const last = safeDate(pattern.lastSeen);
     return (
-      <div key={`${pattern.type}-${pattern.pattern}`} className="p-2 border rounded sm:p-4 md:p-6">
+      <div
+        key={`${pattern.type}-${pattern.pattern}`}
+        className="p-2 border rounded sm:p-4 md:p-6"
+      >
         <div className="flex items-center justify-between mb-1">
           <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
             {pattern.type}
@@ -215,7 +244,8 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         </div>
         <p className="text-sm md:text-base lg:text-lg">{pattern.pattern}</p>
         <p className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">
-          Used {pattern.frequency} times • Last: {formatDistanceToNow(last, { addSuffix: true })}
+          Used {pattern.frequency} times • Last:{" "}
+          {formatDistanceToNow(last, { addSuffix: true })}
         </p>
       </div>
     );
@@ -262,21 +292,37 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
       </CardHeader>
 
       <CardContent className="flex-1 p-0 sm:p-4 md:p-6">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="h-full flex flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+          className="h-full flex flex-col"
+        >
           <TabsList className="grid w-full grid-cols-4 mx-4">
-            <TabsTrigger value="threads" className="text-xs sm:text-sm md:text-base">
+            <TabsTrigger
+              value="threads"
+              className="text-xs sm:text-sm md:text-base"
+            >
               <MessageSquare className="h-3 w-3 mr-1" />
               Threads
             </TabsTrigger>
-            <TabsTrigger value="memory" className="text-xs sm:text-sm md:text-base">
+            <TabsTrigger
+              value="memory"
+              className="text-xs sm:text-sm md:text-base"
+            >
               <Brain className="h-3 w-3 mr-1" />
               Memory
             </TabsTrigger>
-            <TabsTrigger value="suggestions" className="text-xs sm:text-sm md:text-base">
+            <TabsTrigger
+              value="suggestions"
+              className="text-xs sm:text-sm md:text-base"
+            >
               <Lightbulb className="h-3 w-3 mr-1" />
               Suggestions
             </TabsTrigger>
-            <TabsTrigger value="patterns" className="text-xs sm:text-sm md:text-base">
+            <TabsTrigger
+              value="patterns"
+              className="text-xs sm:text-sm md:text-base"
+            >
               <Users className="h-3 w-3 mr-1" />
               Patterns
             </TabsTrigger>
@@ -288,8 +334,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <ScrollArea className="h-full px-4">
                 <div className="space-y-3 pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm md:text-base lg:text-lg">Related Conversations</h3>
-                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                    <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                      Related Conversations
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs sm:text-sm md:text-base"
+                    >
                       {filteredThreads.length}
                     </Badge>
                   </div>
@@ -297,7 +348,9 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   {filteredThreads.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm md:text-base lg:text-lg">No related conversations found</p>
+                      <p className="text-sm md:text-base lg:text-lg">
+                        No related conversations found
+                      </p>
                     </div>
                   ) : (
                     filteredThreads.map(renderThreadItem)
@@ -311,8 +364,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <ScrollArea className="h-full px-4">
                 <div className="space-y-3 pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm md:text-base lg:text-lg">Relevant Memories</h3>
-                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                    <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                      Relevant Memories
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs sm:text-sm md:text-base"
+                    >
                       {filteredMemories.length}
                     </Badge>
                   </div>
@@ -321,22 +379,33 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <div className="p-2 bg-muted rounded text-center sm:p-4 md:p-6">
                       <div className="text-lg font-bold">
-                        {conversation?.memoryContext?.memoryStats?.totalMemories ?? 0}
+                        {conversation?.memoryContext?.memoryStats
+                          ?.totalMemories ?? 0}
                       </div>
-                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Total</div>
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
+                        Total
+                      </div>
                     </div>
                     <div className="p-2 bg-muted rounded text-center sm:p-4 md:p-6">
                       <div className="text-lg font-bold">
-                        {Math.round((conversation?.memoryContext?.memoryStats?.averageRelevance ?? 0) * 100)}%
+                        {Math.round(
+                          (conversation?.memoryContext?.memoryStats
+                            ?.averageRelevance ?? 0) * 100
+                        )}
+                        %
                       </div>
-                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">Avg Relevance</div>
+                      <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
+                        Avg Relevance
+                      </div>
                     </div>
                   </div>
 
                   {filteredMemories.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm md:text-base lg:text-lg">No relevant memories found</p>
+                      <p className="text-sm md:text-base lg:text-lg">
+                        No relevant memories found
+                      </p>
                     </div>
                   ) : (
                     filteredMemories.map(renderMemoryItem)
@@ -350,8 +419,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <ScrollArea className="h-full px-4">
                 <div className="space-y-3 pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm md:text-base lg:text-lg">Smart Suggestions</h3>
-                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                    <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                      Smart Suggestions
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs sm:text-sm md:text-base"
+                    >
                       {topSuggestions.length}
                     </Badge>
                   </div>
@@ -359,10 +433,14 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   {topSuggestions.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm md:text-base lg:text-lg">No suggestions available</p>
+                      <p className="text-sm md:text-base lg:text-lg">
+                        No suggestions available
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">{topSuggestions.map(renderSuggestionItem)}</div>
+                    <div className="space-y-2">
+                      {topSuggestions.map(renderSuggestionItem)}
+                    </div>
                   )}
                 </div>
               </ScrollArea>
@@ -373,8 +451,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <ScrollArea className="h-full px-4">
                 <div className="space-y-3 pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm md:text-base lg:text-lg">User Patterns</h3>
-                    <Badge variant="secondary" className="text-xs sm:text-sm md:text-base">
+                    <h3 className="font-medium text-sm md:text-base lg:text-lg">
+                      User Patterns
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs sm:text-sm md:text-base"
+                    >
                       {conversation?.userPatterns?.length ?? 0}
                     </Badge>
                   </div>
@@ -382,7 +465,9 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                   {(conversation?.userPatterns?.length ?? 0) === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm md:text-base lg:text-lg">No patterns detected yet</p>
+                      <p className="text-sm md:text-base lg:text-lg">
+                        No patterns detected yet
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-2">

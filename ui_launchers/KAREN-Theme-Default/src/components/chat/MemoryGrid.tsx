@@ -158,4 +158,3 @@ export default function MemoryGrid({
 }
 
 export { MemoryGrid };
-export type { MemoryRow };

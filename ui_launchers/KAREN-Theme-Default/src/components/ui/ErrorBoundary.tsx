@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       errorInfo,
       fallbackResponse
-
+    });
   }
   handleRetry = async () => {
     if (this.state.retryCount >= this.maxRetries) {
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
         error: null,
         errorInfo: null,
         fallbackResponse: null
-
+      });
     }, 1000);
   };
   handleReset = () => {
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo: null,
       fallbackResponse: null,
       retryCount: 0
-
+    });
   };
   componentWillUnmount() {
     if (this.retryTimeout) {

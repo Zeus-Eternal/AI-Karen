@@ -289,7 +289,7 @@ class ResourceManager:
         # Cleanup services until resources are under limits
         cleaned_count = 0
         for service, idle_time in services_to_cleanup:
-            if idle_time > 60:  # Only cleanup services idle for more than 1 minute
+            if idle_time > 60:  # Only cleanup services idle for more than 1 minute - balanced approach
                 await service.cleanup()
                 cleaned_count += 1
                 
@@ -311,7 +311,16 @@ class LazyServiceRegistry:
     
     def __init__(self):
         self._services: Dict[str, LazyService] = {}
-        self._resource_manager = ResourceManager()
+        # Configure resource manager with balanced limits
+        max_memory = float(os.getenv("KAREN_MAX_MEMORY_MB", "1536"))  # Default 1.5GB - balanced approach
+        max_cpu = float(os.getenv("KAREN_MAX_CPU_PERCENT", "60.0"))   # Default 60% - less aggressive
+        check_interval = float(os.getenv("KAREN_RESOURCE_CHECK_INTERVAL", "30.0"))  # Check every 30s - less frequent
+        
+        self._resource_manager = ResourceManager(
+            max_memory_mb=max_memory,
+            max_cpu_percent=max_cpu,
+            check_interval=check_interval
+        )
         self._initialized = False
     
     async def initialize(self) -> None:
@@ -431,28 +440,33 @@ async def setup_lazy_services():
     """Setup all lazy services with appropriate configurations."""
     await lazy_registry.initialize()
     
-    # Register NLP services (low priority, longer timeout since expensive to initialize)
+    # Get timeout configurations from environment - balanced cleanup
+    nlp_timeout = float(os.getenv("KAREN_NLP_IDLE_TIMEOUT", "120.0"))  # 2 minutes - balanced
+    orchestrator_timeout = float(os.getenv("KAREN_ORCHESTRATOR_IDLE_TIMEOUT", "60.0"))  # 1 minute - balanced
+    analytics_timeout = float(os.getenv("KAREN_ANALYTICS_IDLE_TIMEOUT", "30.0"))  # 30 seconds - balanced
+    
+    # Register NLP services (low priority, shorter timeout for memory efficiency)
     lazy_registry.register(
         name="nlp_service",
         factory=create_nlp_service_factory(),
-        idle_timeout=600.0,  # 10 minutes
+        idle_timeout=nlp_timeout,
         priority=2,
-        max_memory_mb=512
+        max_memory_mb=256  # Reduced from 512MB
     )
     
-    # Register AI orchestrator (medium priority)
+    # Register AI orchestrator (medium priority, aggressive cleanup)
     lazy_registry.register(
         name="ai_orchestrator",
         factory=create_ai_orchestrator_factory(),
-        idle_timeout=300.0,  # 5 minutes
+        idle_timeout=orchestrator_timeout,
         priority=3
     )
     
-    # Register analytics service (low priority, can be recreated easily)
+    # Register analytics service (low priority, very aggressive cleanup)
     lazy_registry.register(
         name="analytics_service",
         factory=create_analytics_service_factory(),
-        idle_timeout=180.0,  # 3 minutes
+        idle_timeout=analytics_timeout,
         priority=1
     )
     

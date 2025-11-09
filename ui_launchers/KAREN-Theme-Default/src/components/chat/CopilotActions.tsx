@@ -28,38 +28,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-export interface ChatContext {
-  selectedText?: string;
-  currentFile?: string;
-  language?: string;
-  recentMessages: Array<{
-    role: string;
-    content: string;
-    timestamp: Date;
-  }>;
-  codeContext: {
-    hasCode: boolean;
-    language?: string;
-    errorCount: number;
-  };
-  conversationContext: {
-    topic?: string;
-    intent?: string;
-    complexity: "simple" | "medium" | "complex";
-  };
-}
-
-export interface CopilotAction {
-  id: string;
-  title: string;
-  description: string;
-  prompt: string;
-  category: string;
-  icon?: React.ComponentType<{ className?: string }> | string;
-  shortcut?: string;
-  requiresSelection?: boolean;
-  contextTypes?: string[];
-}
+import type { ChatContext, CopilotAction } from "@/types/copilot";
 
 interface CopilotActionsProps {
   actions?: CopilotAction[];
@@ -196,11 +165,14 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   }, [actions, context?.selectedText]);
 
   const groupedActions = useMemo(() => {
-    return filteredActions.reduce<Record<string, CopilotAction[]>>((acc, action) => {
-      const key = action.category ?? "general";
-      acc[key] = acc[key] ? [...acc[key], action] : [action];
-      return acc;
-    }, {});
+    return filteredActions.reduce<Record<string, CopilotAction[]>>(
+      (acc, action) => {
+        const key = action.category ?? "general";
+        acc[key] = acc[key] ? [...acc[key], action] : [action];
+        return acc;
+      },
+      {}
+    );
   }, [filteredActions]);
 
   const renderActionLabel = (action: CopilotAction) => {
@@ -239,28 +211,29 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
           Copilot Actions
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {Object.entries(groupedActions).map(([category, categoryActions], index) => (
-          <React.Fragment key={category}>
-            {index > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {category}
-            </DropdownMenuLabel>
-            {categoryActions.map((action) => (
-              <DropdownMenuItem
-                key={action.id}
-                onSelect={() => onActionTriggered(action)}
-                className="text-sm md:text-base lg:text-lg"
-              >
-                {renderActionLabel(action)}
-              </DropdownMenuItem>
-            ))}
-          </React.Fragment>
-        ))}
+        {Object.entries(groupedActions).map(
+          ([category, categoryActions], index) => (
+            <React.Fragment key={category}>
+              {index > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {category}
+              </DropdownMenuLabel>
+              {categoryActions.map((action) => (
+                <DropdownMenuItem
+                  key={action.id}
+                  onSelect={() => onActionTriggered(action)}
+                  className="text-sm md:text-base lg:text-lg"
+                >
+                  {renderActionLabel(action)}
+                </DropdownMenuItem>
+              ))}
+            </React.Fragment>
+          )
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
 export const DEFAULT_COPILOT_ACTIONS = defaultActions;
-export type { CopilotAction, ChatContext };
 export default CopilotActions;

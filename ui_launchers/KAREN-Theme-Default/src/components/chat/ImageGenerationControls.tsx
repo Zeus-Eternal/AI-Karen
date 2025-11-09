@@ -200,4 +200,3 @@ export default function ImageGenerationControls({
 }
 
 export { ImageGenerationControls };
-export type { ImageGenerationParams };

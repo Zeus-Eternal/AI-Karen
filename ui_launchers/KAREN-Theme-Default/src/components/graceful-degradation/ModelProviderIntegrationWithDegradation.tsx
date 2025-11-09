@@ -2,8 +2,14 @@
 "use client";
 
 import React from "react";
-import { DegradedModeBanner, ServiceUnavailable } from "./fallback-ui";
-import { useModelProviders, useGracefulDegradation } from "./use-graceful-backend";
+import {
+  DegradedModeBanner,
+  ServiceUnavailable,
+} from "@/lib/graceful-degradation/fallback-ui";
+import {
+  useModelProviders,
+  useGracefulDegradation,
+} from "@/lib/graceful-degradation/use-graceful-backend";
 import { Button } from "@/components/ui/button";
 
 /**

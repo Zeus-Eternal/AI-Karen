@@ -169,4 +169,3 @@ export default function EnhancedModelSelector({
 }
 
 export { EnhancedModelSelector };
-export type { Model };

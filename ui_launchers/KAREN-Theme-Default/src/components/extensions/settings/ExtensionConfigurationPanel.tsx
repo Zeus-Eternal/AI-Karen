@@ -578,6 +578,7 @@ export function ExtensionConfigurationPanel({
             <CardHeader>
               <CardTitle>Advanced Configuration</CardTitle>
               <CardDescription>
+                Access diagnostics, metadata, and low-level tools for this extension
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

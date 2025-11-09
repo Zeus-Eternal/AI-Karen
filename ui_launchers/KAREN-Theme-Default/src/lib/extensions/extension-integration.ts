@@ -983,6 +983,10 @@ export class ExtensionIntegrationService {
       memory: Math.max(0, base.memory + (Math.random() - 0.5) * base.memory * variance),
       network: Math.max(0, base.network + (Math.random() - 0.5) * base.network * variance),
       storage: Math.max(0, base.storage + (Math.random() - 0.5) * base.storage * variance),
+      responseTime: Math.max(
+        80,
+        base.cpu * 4 + base.memory * 0.25 + (Math.random() - 0.5) * 150
+      ),
     };
     // NOTE: replace synthetic with real telemetry when backend exposes it.
   }

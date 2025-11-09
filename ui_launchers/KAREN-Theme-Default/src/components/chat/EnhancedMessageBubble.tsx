@@ -179,19 +179,12 @@ export default function EnhancedMessageBubble({
             )}
           >
             {isCode && message.language ? (
-              <SyntaxHighlighter
+              <CodeBlock
                 language={message.language}
-                style={isDarkMode ? vscDarkPlus : vs}
-                customStyle={{
-                  margin: 0,
-                  padding: '12px',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                }}
                 showLineNumbers
               >
                 {message.content}
-              </SyntaxHighlighter>
+              </CodeBlock>
             ) : (
               <div className="whitespace-pre-wrap break-words">
                 {message.content}
@@ -301,4 +294,3 @@ export default function EnhancedMessageBubble({
 }
 
 // Export commonly used types and the component
-export type { Message, MessageMetadata };

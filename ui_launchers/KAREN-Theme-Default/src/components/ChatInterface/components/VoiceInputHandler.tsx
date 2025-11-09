@@ -54,12 +54,7 @@ interface SpeechRecognition extends EventTarget {
   onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
+
 
 const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   isRecording,
@@ -79,7 +74,8 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const win = window as any;
+    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
     setIsSupported(Boolean(SpeechRecognition));
 
     if (!SpeechRecognition) {

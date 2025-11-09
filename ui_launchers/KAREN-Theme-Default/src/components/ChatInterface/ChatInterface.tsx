@@ -16,7 +16,7 @@ import { useVoiceInput } from "./hooks/useVoiceInput";
 import { useArtifactManagement } from "./hooks/useArtifactManagement";
 import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ChatInterfaceProps, CopilotAction } from "./types";
+import type { ChatInterfaceProps, CopilotAction, CopilotArtifact, ChatContext } from "./types";
 import { DEFAULT_CHAT_HEIGHT, DEFAULT_PLACEHOLDER } from "./constants";
 import { safeDebug } from "@/lib/safe-console";
 
@@ -85,7 +85,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const { settings, updateSettings, resetSettings } = useChatSettings(onSettingsChange);
 
   // Analytics management
-  const { analytics, updateAnalytics, resetAnalytics } = useChatAnalytics(
+  const { analytics, resetAnalytics } = useChatAnalytics(
     messages,
     sessionStartTime,
     onAnalyticsUpdate
@@ -94,9 +94,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Message handling
   const {
     sendMessage,
-    regenerateMessage,
-    handleVoiceTranscript,
-    handleCodeSubmit,
     handleMessageAction,
   } = useChatMessages(
     messages,
@@ -117,26 +114,56 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   );
 
   // CopilotKit integration
-  const { copilotActions, handleCopilotAction } = useCopilotIntegration(
-    useCopilotKit,
-    enableCodeAssistance,
-    enableContextualHelp,
-    enableDocGeneration
-  );
+  const { isCopilotReady, supportsCode, availableActions, lastAssistantMessage } = useCopilotIntegration({
+    enabled: useCopilotKit,
+    actions: [],
+    messages,
+    settings,
+    context: {
+      selectedText,
+      currentFile: undefined,
+      language: settings.language,
+      recentMessages: messages.slice(-5).map((m) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+      })),
+      codeContext: {
+        hasCode: messages.some((m) => m.type === "code"),
+        language: messages.find((m) => m.language)?.language,
+        errorCount: messages.filter((m) => m.status === "error").length,
+      },
+      conversationContext: {
+        topic: messages.length > 0 ? "ongoing" : undefined,
+        intent: "chat",
+        complexity: messages.length > 10 ? "complex" : messages.length > 3 ? "medium" : "simple",
+      },
+    },
+  });
 
   // Voice input handling
-  const { startRecording, stopRecording } = useVoiceInput(
-    enableVoiceInput,
-    setIsRecording,
-    handleVoiceTranscript
-  );
+  const { isVoiceSupported, handleVoiceStart, handleVoiceStop } = useVoiceInput({
+    enabled: enableVoiceInput,
+    isRecording,
+    startRecording: async () => setIsRecording(true),
+    stopRecording: () => setIsRecording(false),
+  });
 
   // Artifact management
-  const { handleArtifactApprove, handleArtifactReject, handleArtifactApply } =
-    useArtifactManagement(copilotArtifacts, setCopilotArtifacts);
+  const { artifacts, approveArtifact, rejectArtifact, applyArtifact, removeArtifact } = useArtifactManagement({
+    artifacts: copilotArtifacts,
+    updateArtifact: (artifactId: string, updates: Partial<CopilotArtifact>) => {
+      setCopilotArtifacts(prev => prev.map(artifact => 
+        artifact.id === artifactId ? { ...artifact, ...updates } : artifact
+      ));
+    },
+    removeArtifact: (artifactId: string) => {
+      setCopilotArtifacts(prev => prev.filter(artifact => artifact.id !== artifactId));
+    },
+  });
 
   // Chat context for CopilotActions
-  const chatContext = {
+  const chatContext: ChatContext = {
     selectedText,
     currentFile: undefined,
     language: settings.language,
@@ -182,9 +209,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Handle copilot action
   const onCopilotAction = useCallback(
     (action: CopilotAction) => {
-      handleCopilotAction(action, chatContext);
+      safeDebug("Copilot action triggered:", action);
+      // Handle the copilot action by sending it as a message
+      sendMessage(action.prompt, "text", { context: chatContext });
     },
-    [handleCopilotAction, chatContext]
+    [sendMessage, chatContext]
   );
 
   // Export handler
@@ -216,12 +245,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <ErrorBoundary
-      fallback={
+      fallback={({ resetError }) => (
         <div className="p-4 text-center">
           <p className="text-destructive">An error occurred in the chat interface.</p>
           <p className="text-sm text-muted-foreground mt-2">Please refresh the page to try again.</p>
+          <button 
+            onClick={resetError}
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          >
+            Try Again
+          </button>
         </div>
-      }
+      )}
     >
       <Card
         className={`flex flex-col overflow-hidden ${className}`}
@@ -230,22 +265,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       >
         {showHeader && (
           <ChatHeader
-            activeTab={activeTab}
-            isFullscreen={isFullscreen}
-            showRoutingHistory={showRoutingHistory}
-            showCodePreview={showCodePreview}
-            showSettings={showSettings}
+            showHeader={showHeader}
+            useCopilotKit={useCopilotKit}
+            selectedMessages={new Set<string>()}
             enableExport={enableExport}
             enableSharing={enableSharing}
+            showSettings={showSettings}
             settings={settings}
-            analytics={analytics}
-            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-            onToggleRoutingHistory={() => setShowRoutingHistory(!showRoutingHistory)}
-            onToggleCodePreview={() => setShowCodePreview(!showCodePreview)}
+            isFullscreen={isFullscreen}
+            messages={messages}
             onSettingsChange={updateSettings}
-            onResetSettings={resetSettings}
             onExport={handleExport}
             onShare={handleShare}
+            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+            onShowRoutingHistory={() => setShowRoutingHistory(!showRoutingHistory)}
           />
         )}
 
@@ -270,30 +303,36 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 enableFileUpload={enableFileUpload}
                 settings={settings}
                 chatContext={chatContext}
-                artifacts={copilotArtifacts}
-                copilotActions={copilotActions}
+                artifacts={artifacts}
+                copilotActions={availableActions}
                 onInputChange={setInputValue}
                 onCopilotAction={onCopilotAction}
-                onVoiceStart={startRecording}
-                onVoiceStop={stopRecording}
+                onVoiceStart={handleVoiceStart}
+                onVoiceStop={handleVoiceStop}
                 onSubmit={handleSubmit}
                 onQuickAction={handleQuickAction}
                 onMessageAction={handleMessageAction}
-                onArtifactApprove={handleArtifactApprove}
-                onArtifactReject={handleArtifactReject}
-                onArtifactApply={handleArtifactApply}
+                onArtifactApprove={approveArtifact}
+                onArtifactReject={rejectArtifact}
+                onArtifactApply={applyArtifact}
               />
             </TabsContent>
 
             {enableCodeAssistance && (
               <TabsContent value="code" className="flex-1 flex flex-col mt-0">
                 <ChatCodeTab
-                  code={codeValue}
-                  language={settings.language}
-                  isAnalyzing={isAnalyzing}
+                  codeValue={codeValue}
                   onCodeChange={setCodeValue}
-                  onSubmit={handleCodeSubmit}
-                  messages={messages}
+                  settings={settings}
+                  onSettingsChange={updateSettings}
+                  isTyping={isTyping}
+                  showCodePreview={showCodePreview}
+                  onPreviewToggle={() => setShowCodePreview(!showCodePreview)}
+                  onCodeSubmit={(code: string) => sendMessage(code, "code")}
+                  useCopilotKit={useCopilotKit}
+                  enableDocGeneration={enableDocGeneration}
+                  isAnalyzing={isAnalyzing}
+                  onQuickAction={handleQuickAction}
                 />
               </TabsContent>
             )}
@@ -317,18 +356,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             enableFileUpload={enableFileUpload}
             settings={settings}
             chatContext={chatContext}
-            artifacts={copilotArtifacts}
-            copilotActions={copilotActions}
+            artifacts={artifacts}
+            copilotActions={availableActions}
             onInputChange={setInputValue}
             onCopilotAction={onCopilotAction}
-            onVoiceStart={startRecording}
-            onVoiceStop={stopRecording}
+            onVoiceStart={handleVoiceStart}
+            onVoiceStop={handleVoiceStop}
             onSubmit={handleSubmit}
             onQuickAction={handleQuickAction}
             onMessageAction={handleMessageAction}
-            onArtifactApprove={handleArtifactApprove}
-            onArtifactReject={handleArtifactReject}
-            onArtifactApply={handleArtifactApply}
+            onArtifactApprove={approveArtifact}
+            onArtifactReject={rejectArtifact}
+            onArtifactApply={applyArtifact}
           />
         )}
       </Card>

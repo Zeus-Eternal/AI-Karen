@@ -114,7 +114,6 @@ export default function CopilotArtifacts({
                     {artifact.type === 'code' && artifact.language ? (
                       <CodeBlock
                         language={artifact.language}
-                        theme="dark"
                         showLineNumbers
                         className="text-sm"
                       >
@@ -202,4 +201,3 @@ export default function CopilotArtifacts({
 }
 
 export { CopilotArtifacts };
-export type { Artifact };

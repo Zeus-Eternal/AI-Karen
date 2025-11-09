@@ -121,6 +121,39 @@ const BLOCKED_MODEL_NAMES = new Set([
   "cache",
   "tmp",
   "temp",
+  "logs",
+  "log",
+  "backup",
+  "backups",
+  "old",
+  "archive",
+  "archives",
+  "test",
+  "tests",
+  "debug",
+  "readme",
+  "readme.md",
+  "readme.txt",
+  "license",
+  "license.txt",
+  "license.md",
+  "changelog",
+  "changelog.md",
+  "changelog.txt",
+  "version",
+  "version.txt",
+  "config",
+  "config.json",
+  "config.yaml",
+  "config.yml",
+  "settings",
+  "settings.json",
+  "metadata",
+  "metadata.json",
+  "index",
+  "index.json",
+  "manifest",
+  "manifest.json",
 ]);
 
 const TASK_CAPABILITY_KEYWORDS: Record<ModelSelectorTask, string[]> = {
@@ -257,10 +290,74 @@ const isBlockedName = (name: string | undefined) => {
   if (!name) return true;
   const normalized = name.trim().toLowerCase();
   if (!normalized) return true;
+  
+  // Check exact matches
   if (BLOCKED_MODEL_NAMES.has(normalized)) return true;
+  
+  // Block hidden files and system files
   if (normalized.startsWith(".")) return true;
   if (normalized.startsWith("__")) return true;
+  if (normalized.startsWith("~")) return true;
+  
+  // Block common file extensions that aren't models
+  const fileExtensions = ['.txt', '.md', '.json', '.yaml', '.yml', '.log', '.bak', '.tmp', '.old'];
+  if (fileExtensions.some(ext => normalized.endsWith(ext))) return true;
+  
+  // Block common non-model patterns
+  const blockedPatterns = [
+    /^temp/,
+    /^tmp/,
+    /^cache/,
+    /^log/,
+    /^backup/,
+    /^old/,
+    /^test/,
+    /^debug/,
+    /^sample/,
+    /^example/,
+    /^demo/,
+    /readme/,
+    /license/,
+    /changelog/,
+    /version/,
+    /config/,
+    /settings/,
+    /metadata/,
+    /manifest/,
+    /index/,
+    /^\..*/, // Any file starting with dot
+    /.*\.lock$/, // Lock files
+    /.*\.pid$/, // Process ID files
+    /.*\.swp$/, // Swap files
+    /.*\.bak$/, // Backup files
+  ];
+  
+  if (blockedPatterns.some(pattern => pattern.test(normalized))) return true;
+  
   return false;
+};
+
+const isValidModel = (model: ModelInfo): boolean => {
+  // Must have a name
+  if (!model.name || !model.name.trim()) return false;
+  
+  // Must have a valid status
+  if (!["local", "downloading", "available", "error"].includes(model.status)) return false;
+  
+  // Must have some indication it's a model (size, provider, or capabilities)
+  const hasModelIndicators = !!(
+    model.size || 
+    model.provider || 
+    (model.capabilities && model.capabilities.length > 0) ||
+    model.metadata?.parameters
+  );
+  
+  if (!hasModelIndicators) return false;
+  
+  // If it has a size, it should be reasonable for a model (> 1MB)
+  if (model.size && model.size < 1024 * 1024) return false;
+  
+  return true;
 };
 
 const isModelCompatibleWithTask = (
@@ -424,6 +521,9 @@ export const ProductionModelSelector: React.FC<ModelSelectorProps> = ({
 
     for (const model of models) {
       if (!model) continue;
+
+      // Validate it's actually a model
+      if (!isValidModel(model)) continue;
 
       // production-eligible statuses only
       if (!["local", "downloading", "available"].includes(model.status)) continue;

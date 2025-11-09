@@ -47,6 +47,39 @@ const BLOCKED_MODEL_NAMES = new Set(
     "cache",
     "tmp",
     "temp",
+    "logs",
+    "log",
+    "backup",
+    "backups",
+    "old",
+    "archive",
+    "archives",
+    "test",
+    "tests",
+    "debug",
+    "readme",
+    "readme.md",
+    "readme.txt",
+    "license",
+    "license.txt",
+    "license.md",
+    "changelog",
+    "changelog.md",
+    "changelog.txt",
+    "version",
+    "version.txt",
+    "config",
+    "config.json",
+    "config.yaml",
+    "config.yml",
+    "settings",
+    "settings.json",
+    "metadata",
+    "metadata.json",
+    "index",
+    "index.json",
+    "manifest",
+    "manifest.json",
   ].map((name) => name.toLowerCase())
 );
 
@@ -156,7 +189,75 @@ function sortByStatusThenName(a: Model, b: Model): number {
 
 function isModelNameBlocked(model: Model): boolean {
   const name = model.name?.toLowerCase() ?? "";
-  return BLOCKED_MODEL_NAMES.has(name);
+  if (!name) return true;
+  
+  // Check exact matches
+  if (BLOCKED_MODEL_NAMES.has(name)) return true;
+  
+  // Block hidden files and system files
+  if (name.startsWith(".")) return true;
+  if (name.startsWith("__")) return true;
+  if (name.startsWith("~")) return true;
+  
+  // Block common file extensions that aren't models
+  const fileExtensions = ['.txt', '.md', '.json', '.yaml', '.yml', '.log', '.bak', '.tmp', '.old'];
+  if (fileExtensions.some(ext => name.endsWith(ext))) return true;
+  
+  // Block common non-model patterns
+  const blockedPatterns = [
+    /^temp/,
+    /^tmp/,
+    /^cache/,
+    /^log/,
+    /^backup/,
+    /^old/,
+    /^test/,
+    /^debug/,
+    /^sample/,
+    /^example/,
+    /^demo/,
+    /readme/,
+    /license/,
+    /changelog/,
+    /version/,
+    /config/,
+    /settings/,
+    /metadata/,
+    /manifest/,
+    /index/,
+    /^\..*/, // Any file starting with dot
+    /.*\.lock$/, // Lock files
+    /.*\.pid$/, // Process ID files
+    /.*\.swp$/, // Swap files
+    /.*\.bak$/, // Backup files
+  ];
+  
+  if (blockedPatterns.some(pattern => pattern.test(name))) return true;
+  
+  return false;
+}
+
+function isValidModel(model: Model): boolean {
+  // Must have a name
+  if (!model.name || !model.name.trim()) return false;
+  
+  // Must have a valid status
+  if (!["local", "downloading", "available", "error"].includes(model.status)) return false;
+  
+  // Must have some indication it's a model (size, provider, or capabilities)
+  const hasModelIndicators = !!(
+    model.size || 
+    model.provider || 
+    (model.capabilities && model.capabilities.length > 0) ||
+    model.metadata?.parameters
+  );
+  
+  if (!hasModelIndicators) return false;
+  
+  // If it has a size, it should be reasonable for a model (> 1MB)
+  if (model.size && model.size < 1024 * 1024) return false;
+  
+  return true;
 }
 
 function isModelCompatible(model: Model, task: ModelSelectorTask): boolean {
@@ -171,7 +272,7 @@ function isModelCompatible(model: Model, task: ModelSelectorTask): boolean {
   }
 
   const typePreferences = TASK_TYPE_PREFERENCES[task];
-  if (typePreferences && typePreferences.includes(model.type || "")) {
+  if (typePreferences && model.type && typePreferences.includes(model.type)) {
     return true;
   }
 
@@ -301,7 +402,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
 
     const compatible = models.filter((model) => {
-      if (!model || isModelNameBlocked(model)) {
+      if (!model || !isValidModel(model) || isModelNameBlocked(model)) {
         return false;
       }
 
