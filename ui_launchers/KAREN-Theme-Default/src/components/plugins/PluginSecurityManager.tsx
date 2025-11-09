@@ -51,13 +51,9 @@ const isolationLevelCopy: Record<IsolationLevel, string> = {
 };
 
 const computeInitialPolicy = (plugin: PluginInfo): SecurityPolicy => {
-  const manifestPolicy = plugin.manifest.securityPolicy ?? {
-    allowNetworkAccess: false,
-    allowFileSystemAccess: false,
-    allowSystemCalls: false,
-    resourceLimits: undefined,
-    timeouts: undefined
-  };
+  const manifestPolicy =
+    (plugin.manifest.securityPolicy as Partial<SecurityPolicy> | undefined) ??
+    {};
 
   return {
     allowNetworkAccess: manifestPolicy.allowNetworkAccess ?? false,
@@ -572,3 +568,5 @@ const NumberField: React.FC<NumberFieldProps> = ({
     />
   </div>
 );
+
+export default PluginSecurityManager;
