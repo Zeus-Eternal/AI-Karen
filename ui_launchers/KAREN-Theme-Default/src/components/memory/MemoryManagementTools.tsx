@@ -147,7 +147,6 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
       setError(null);
       const result = await memoryService.searchMemories("", {
         userId,
-        tenantId,
         maxResults: 200,
       });
       setMemories(result.memories || []);

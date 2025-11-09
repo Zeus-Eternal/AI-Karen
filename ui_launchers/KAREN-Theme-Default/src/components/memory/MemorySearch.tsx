@@ -99,16 +99,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  /* ----------------------------- Suggestions UX ---------------------------- */
-
-  useEffect(() => {
-    if (query.trim().length > 2) {
-      generateSuggestions(query);
-    } else {
-      setSuggestions([]);
-    }
-  }, [query, generateSuggestions]);
-
   const loadSearchHistory = useCallback(async () => {
     try {
       const memoryService = getMemoryService();
@@ -158,6 +148,16 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     },
     [searchHistory]
   );
+
+  /* ----------------------------- Suggestions UX ---------------------------- */
+
+  useEffect(() => {
+    if (query.trim().length > 2) {
+      generateSuggestions(query);
+    } else {
+      setSuggestions([]);
+    }
+  }, [query, generateSuggestions]);
 
   /* -------------------------------- Search -------------------------------- */
 
