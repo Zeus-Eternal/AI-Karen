@@ -13,7 +13,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from ai_karen_engine.chat.summarizer import summarize_conversation
-from ai_karen_engine.clients.database.milvus_client import recall_vectors, store_vector
+from ai_karen_engine.core.milvus_client import recall_vectors, store_vector
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.embedding_manager import record_metric
 from ai_karen_engine.core.logging import get_logger

@@ -1,187 +1,96 @@
-/**
- * UI Components Index - Production Grade
- *
- * Centralized export hub for all UI components and types.
- * Auto-generated barrel export for comprehensive type safety.
- */
+// Auto-generated consolidated UI exports
+// This file re-exports all UI components and utilities for ease of import.
+// Please ensure new components add an index.ts or follow naming conventions.
 
-// ============================================================================
-// Core Shadcn/UI Components
-// ============================================================================
-
-export { Button } from './button';
-export type { ButtonProps } from './button';
-
-export type { InputProps } from './input';
-
-export { CardTitle, CardContent, CardHeader, Card, CardFooter, CardDescription } from './card';
-export type { CardContentProps, CardTitleProps, CardFooterProps, CardHeaderProps, CardProps, CardDescriptionProps } from './card';
-
-export { Badge } from './badge';
-export type { BadgeProps } from './badge';
-
-export type { AlertProps } from './alert';
-
-
-
-
-
-
-
-
-
-
-
-export type { CalendarProps } from './calendar';
-
-export type { CarouselApi, CarouselProps, CarouselContextProps } from './carousel';
-
-export type { ChartConfig, ChartContextProps } from './chart';
-
-
-export type { FormItemContextValue, FormFieldContextValue } from './form';
-
-
-
-
-
-
-export type { SheetContentProps } from './sheet';
-
-
-
-
-export type { TextareaProps } from './textarea';
-
-export { ToastDescription, ToastProvider, ToastAction, ToastTitle, ToastClose, Toast, ToastViewport } from './toast';
-export type { ToastActionElement, ToastProps } from './toast';
-
-export { Toaster } from './toaster';
-
-
-
-export type { ResizablePanelProps, ResizablePanelGroupProps, ResizableHandleProps } from './resizable';
-
-
-// ============================================================================
-// Enhanced & Custom Components
-// ============================================================================
-
-export { ErrorBoundary } from './ErrorBoundary';
-export type { State, Props } from './ErrorBoundary';
-export { AccessibilityReport, AccessibilityTester, default as AccessibilityTesting } from './accessibility-testing';
-export type { AccessibilityTestResult, AccessibilityTesterProps, AccessibilityReportProps, AccessibilityTestSuite } from './accessibility-testing';
-export { AnimatedNumber, default as AnimatedNumber } from './animated-number';
-export type { AnimatedNumberProps } from './animated-number';
-export { SlideAnimation, BounceAnimation, ScaleAnimation, SpinnerAnimation, CollapseAnimation, PulseAnimation, AnimationFallback, FadeAnimation } from './animation-fallbacks';
-export type { BounceProps, FadeProps, CollapseProps, SlideProps, ScaleProps, PulseProps, AnimationFallbackProps, SpinnerProps } from './animation-fallbacks';
-export { MenuButton, ToggleButton } from './aria-enhanced-button';
-export type { MenuButtonProps, AriaEnhancedButtonProps, ToggleButtonProps } from './aria-enhanced-button';
-export type { FormItemContextValue, AriaFormSectionProps, FormFieldContextValue, AriaFormFieldsetProps } from './aria-enhanced-form';
-export { PasswordInput, SearchInput } from './aria-enhanced-input';
-export type { AriaEnhancedInputProps, PasswordInputProps, SearchInputProps } from './aria-enhanced-input';
-export { AriaAnnouncer, AriaLiveRegion, AriaProgress, AriaStatus, default as AriaLiveRegion } from './aria-live-region';
-export type { AriaStatusProps, AriaProgressProps, AriaLiveRegionProps, UseAriaAnnouncementsOptions, AriaAnnouncerProps } from './aria-live-region';
-export { AriaNavItem, AriaBreadcrumbItem, AriaNavList, AriaTabPanel, AriaNavLink, AriaBreadcrumb, AriaTabList, AriaNavigation, AriaTab } from './aria-navigation';
-export type { AriaNavigationProps, AriaTabProps, AriaTabListProps, AriaBreadcrumbItemProps, AriaNavListProps, AriaBreadcrumbProps, AriaNavLinkProps, AriaNavItemProps, AriaTabPanelProps } from './aria-navigation';
-export { ClipboardTest, default as ClipboardTest } from './clipboard-test';
-export type { ClipboardTestProps } from './clipboard-test';
-export { DeactivateUserConfirmation, BulkOperationConfirmation, DeleteUserConfirmation, ConfirmationDialog, default as ConfirmationDialog } from './confirmation-dialog';
-export type { ConfirmationDialogProps } from './confirmation-dialog';
-export { ContextualHelp, QuickStartHelp, HelpCallout } from './contextual-help';
-export type { HelpCalloutProps, ContextualHelpProps, QuickStartHelpProps } from './contextual-help';
-export { default as DegradedModeBanner } from './degraded-mode-banner';
-export { ErrorBoundary } from './error-boundary';
-export type { ErrorBoundaryState, ErrorBoundaryProps } from './error-boundary';
-export { ErrorToast, ErrorDisplay, ErrorBoundary, default as ErrorDisplay } from './error-display';
-export type { ErrorDisplayProps, ErrorBoundaryState, ErrorBoundaryProps, ErrorToastProps } from './error-display';
-export { FocusableArea, FocusIndicator, FocusRing, default as FocusIndicators } from './focus-indicators';
-export type { FocusableAreaProps, FocusIndicatorProps, FocusRingProps } from './focus-indicators';
-export { ModalFocusTrap, FocusTrapWithGuards, FocusTrap, FocusGuard, default as FocusTrap } from './focus-trap';
-export type { FocusTrapWithGuardsProps, ModalFocusTrapProps, FocusTrapProps } from './focus-trap';
-export { ValidatedFormField, FormField, PasswordStrength, default as FormField } from './form-field';
-export type { ValidatedFormFieldProps, PasswordStrengthProps, FormFieldProps } from './form-field';
-export { GlassCard, default as GlassCard } from './glass-card';
-export type { GlassCardProps } from './glass-card';
-export { HealthStatusBadge } from './health-status-badge';
-export type { HealthStatus } from './health-status-badge';
-export { HelpSection, HelpTooltip, QuickHelp } from './help-tooltip';
-export type { QuickHelpProps, HelpTooltipProps, HelpSectionProps } from './help-tooltip';
-export type { KarenToastProps, KarenToastActionElement } from './karen-toast';
-export { KarenToaster } from './karen-toaster';
-export type { LoadingProps } from './loading';
-export type { PulseLoaderProps, ShimmerProps, LoadingCardProps, FloatingDotsProps, ProgressBarProps, SkeletonProps, LoadingOverlayProps, LoadingSpinnerProps } from './loading-states';
-export { MetricCard, default as MetricCard } from './metric-card';
-export type { MetricCardProps } from './metric-card';
-export { PanelContent, PanelSection } from './panel-content';
-export type { PanelContentProps, PanelSectionProps } from './panel-content';
-export { PanelHeader } from './panel-header';
-export type { PanelHeaderProps } from './panel-header';
-export type { TransitionDirection, TransitionType } from './panel-transitions';
-export { SimpleProgressBar, ProgressIndicator, default as ProgressIndicator } from './progress-indicator';
-export type { BulkOperationProgress, ProgressIndicatorProps, SimpleProgressBarProps, ProgressStep } from './progress-indicator';
-export { ProgressiveLoader } from './progressive-loader';
-export type { ProgressiveLoaderProps } from './progressive-loader';
-export { default as ResponsiveCardGrid } from './responsive-card-grid';
-export type { ResponsiveCardGridProps } from './responsive-card-grid';
-export type { RetryButtonProps, RetryBannerProps, RetryCardProps, InlineRetryProps, RetryWrapperProps, LoadingRetryProps } from './retry-components';
-export { RightPanelNavigation, RightPanelHeader, RightPanelContent, RightPanel } from './right-panel';
-export type { RightPanelProps, RightPanelHeaderProps, RightPanelView, RightPanelNavigationProps, RightPanelContentProps } from './right-panel';
-export { ScreenReaderOnly, VisuallyHidden, LoadingAnnouncement, StatusMessage, LandmarkRegion, InteractionDescription, ScreenReaderAnnouncer, DescriptiveText, ScreenReaderTestHelper, HeadingStructure, default as ScreenReader } from './screen-reader';
-export type { DescriptiveTextProps, StatusMessageProps, ScreenReaderAnnouncerProps, ScreenReaderOnlyProps, LoadingAnnouncementProps, LandmarkRegionProps, InteractionDescriptionProps, HeadingStructureProps } from './screen-reader';
-export type { SidebarProps, SidebarMenuButtonProps, SidebarTriggerProps, SidebarContextValue, SidebarProviderProps } from './sidebar';
-export { DEFAULT_SKIP_LINKS, SkipToContent, MainContent, SkipLinks, default as SkipLinks } from './skip-links';
-export type { SkipToContentProps, SkipLinksProps, SkipLink, MainContentProps } from './skip-links';
-export { Sparkline, default as Sparkline } from './sparkline';
-export type { SparklineProps } from './sparkline';
-export { StatusIndicator, default as StatusIndicator } from './status-indicator';
-export type { StatusIndicatorProps } from './status-indicator';
-export { SuggestedActions, default as SuggestedActions } from './suggested-actions';
-export type { SuggestedActionsProps } from './suggested-actions';
-export { TextSelectionProvider, default as TextSelectionProvider } from './text-selection-provider';
-export type { TextSelectionProviderProps } from './text-selection-provider';
-export { default as ThemeToggle } from './theme-toggle';
-export type { SwipeableCardProps, TouchMenuProps, TouchSliderProps, FloatingActionButtonProps, TouchButtonProps, PullToRefreshProps } from './touch-interactions';
-export type { PulseLoaderProps, ComponentSize, AsyncState, KeyboardHandler, ProgressBarProps, LoadingOverlayProps, PullToRefreshProps, ClickHandler, InteractiveComponentProps, AccessibilityProps, LoadingState, LoadingCardProps, TouchSliderProps, SizeVariant, ResponsiveProps, NotificationProps, ColorVariant, FloatingActionButtonProps, ChangeHandler, SuggestedActionsProps, LoadingSpinnerProps, FocusHandler, BaseComponentProps, LoadingProps, ComponentColor, ErrorBoundaryProps, FormFieldProps, VariantType, TouchButtonProps, AnimationProps, ComponentVariant, FormComponentProps, SkeletonProps, ErrorBoundaryState, SwipeableCardProps, ShimmerProps, FloatingDotsProps, ModalProps, TouchMenuProps } from './types';
-export { RetryBoundary } from './with-retry';
-export type { RetryBoundaryProps, WithRetryProps, WithRetryState, RetryBoundaryState, WithRetryOptions } from './with-retry';
-
-// ============================================================================
-// UI Subdirectory Exports
-// ============================================================================
-
-// Enhanced Components
-export * from './enhanced';
-
-// Layout System
-export * from './layout';
-
-// Animation System
-export * from './animation';
-
-// Performance Optimizations
-export * from './performance';
-
-// Lazy Loading
-export * from './lazy-loading';
-
-// Accessibility
+export * from './ErrorBoundary';
 export * from './accessibility';
-
-// Micro Interactions
-export * from './micro-interactions';
-
-// Page Transitions
-export * from './page-transitions';
-
-// Polymorphic Components
-export * from './polymorphic';
-
-// Compound Components
+export * from './accessibility-testing';
+export * from './accordion';
+export * from './alert-dialog';
+export * from './alert';
+export * from './animated-number';
+export * from './animation';
+export * from './animation-fallbacks';
+export * from './aria-enhanced-button';
+export * from './aria-enhanced-form';
+export * from './aria-enhanced-input';
+export * from './aria-live-region';
+export * from './aria-navigation';
+export * from './avatar';
+export * from './badge';
+export * from './button';
+export * from './calendar';
+export * from './card';
+export * from './carousel';
+export * from './chart';
+export * from './checkbox';
+export * from './clipboard-test';
+export * from './collapsible';
 export * from './compound';
-
-// Haptic Feedback
+export * from './confirmation-dialog';
+export * from './contextual-help';
+export * from './degraded-mode-banner';
+export * from './dialog';
+export * from './dropdown-menu';
+export * from './enhanced';
+export * from './error-boundary';
+export * from './error-display';
+export * from './focus-indicators';
+export * from './focus-trap';
+export * from './form-field';
+export * from './form';
+export * from './glass-card';
 export * from './haptic-feedback';
-
-// Skeleton Components
+export * from './health-status-badge';
+export * from './help-tooltip';
+export * from './input';
+export * from './karen-toast';
+export * from './karen-toaster';
+export * from './label';
+export * from './layout';
+export * from './lazy-loading';
+export * from './loading-states';
+export * from './loading';
+export * from './menubar';
+export * from './metric-card';
+export * from './micro-interactions';
+export * from './page-transitions';
+export * from './panel-content';
+export * from './panel-header';
+export * from './panel-transitions';
+export * from './performance';
+export * from './polymorphic';
+export * from './popover';
+export * from './progress-indicator';
+export * from './progress';
+export * from './progressive-loader';
+export * from './radio-group';
+export * from './resizable';
+export * from './responsive-card-grid';
+export * from './retry-components';
+export * from './right-panel';
+export * from './screen-reader';
+export * from './scroll-area';
+export * from './select';
+export * from './separator';
+export * from './sheet';
+export * from './sidebar';
 export * from './skeleton';
+export * from './skeleton';
+export * from './skip-links';
+export * from './slider';
+export * from './sparkline';
+export * from './status-indicator';
+export * from './suggested-actions';
+export * from './switch';
+export * from './table';
+export * from './tabs';
+export * from './text-selection-provider';
+export * from './textarea';
+export * from './theme-toggle';
+export * from './toast';
+export * from './toaster';
+export * from './tooltip';
+export * from './touch-interactions';
+export * from './types';
+export * from './with-retry';

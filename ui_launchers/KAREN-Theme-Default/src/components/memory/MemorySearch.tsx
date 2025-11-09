@@ -239,7 +239,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     }, DEBOUNCE_MS);
   }, [performSearch]);
 
-  /* -------------------------------- Facets -------------------------------- */
+  /* ----------------------- Derived Data Generators ----------------------- */
 
   const generateFacets = useCallback((memories: MemoryEntry[]): SearchFacets => {
     const types: Record<string, number> = {};
@@ -328,8 +328,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     return Array.from(new Set(related)).filter((x) => x !== q);
   }, []);
 
-  /* ------------------------------ History/Saved ----------------------------- */
-
   const addToSearchHistory = useCallback(
     (
       searchQuery: string,
@@ -348,6 +346,88 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
     },
     [userId]
   );
+
+  /* -------------------------------- Search -------------------------------- */
+
+  const debounceRef = useRef<number | null>(null);
+  const DEBOUNCE_MS = 150;
+
+  const performSearch = useCallback(
+    async (
+      searchQuery: string = query,
+      searchFilters: SearchFilters = filters
+    ) => {
+      const q = searchQuery.trim();
+      if (!q) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const searchOptions: MemorySearchOptions = {
+          topK: 20,
+          similarityThreshold: 0.5,
+          tags: searchFilters.tags.length > 0 ? searchFilters.tags : undefined,
+          timeRange:
+            searchFilters.dateRange[0] && searchFilters.dateRange[1]
+              ? [searchFilters.dateRange[0]!, searchFilters.dateRange[1]!]
+              : undefined,
+          sortBy: searchFilters.sortBy,
+          sortOrder: searchFilters.sortOrder,
+        };
+
+        const result = await memoryService.searchMemories(q, {
+          userId,
+          tags: searchOptions.tags,
+          dateRange: searchOptions.timeRange,
+          minSimilarity: searchOptions.similarityThreshold,
+          maxResults: searchOptions.topK,
+        });
+
+        const enhancedResult: MemorySearchResult = {
+          memories: result.memories,
+          totalFound: result.totalFound,
+          searchTime: result.searchTime,
+          facets: generateFacets(result.memories),
+          suggestions: generateQuerySuggestions(q),
+          relatedQueries: generateRelatedQueries(q),
+        };
+
+        setSearchResult(enhancedResult);
+        onSearchComplete?.(enhancedResult);
+        addToSearchHistory(q, enhancedResult.totalFound, searchOptions);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Search failed";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+        setShowSuggestions(false);
+      }
+    },
+    [
+      query,
+      filters,
+      userId,
+      memoryService,
+      onSearchComplete,
+      generateFacets,
+      generateQuerySuggestions,
+      generateRelatedQueries,
+      addToSearchHistory,
+    ]
+  );
+
+  // Debounced search trigger (useful for "Enter" or explicit button click only)
+  const triggerSearch = useCallback(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      performSearch();
+      debounceRef.current = null;
+    }, DEBOUNCE_MS);
+  }, [performSearch]);
+
+  /* ------------------------------ History/Saved ----------------------------- */
 
   const saveSearch = useCallback(async (name: string) => {
     if (!query.trim()) return;

@@ -8,9 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { HelpCircle, ExternalLink } from 'lucide-react';
 import { getHelpContent, type HelpContent } from '@/lib/help-content';
 
-import { } from '@/components/ui/tooltip';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-import { } from '@/components/ui/dialog';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 export interface HelpTooltipProps {
   helpKey: string;
   category?: 'modelLibrary' | 'llmSettings';
@@ -33,6 +45,18 @@ export function HelpTooltip({
   const [dialogOpen, setDialogOpen] = useState(false);
   const helpContent = getHelpContent(helpKey, category);
 
+  // Focus management for accessibility
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && dialogOpen) {
+        setDialogOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [dialogOpen]);
+
   if (!helpContent) {
     return null;
   }
@@ -42,20 +66,6 @@ export function HelpTooltip({
   const TriggerComponent = () => {
     switch (variant) {
       case 'text':
-
-  // Focus management for accessibility
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // Handle escape key
-        onClose?.();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
         return (
           <Button variant="link" size="sm" className={`p-0 h-auto text-xs text-muted-foreground ${className}`} >
             <HelpCircle className={`${iconSize} mr-1`} />

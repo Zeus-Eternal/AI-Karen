@@ -12,7 +12,6 @@ export { default as IntelligentModelSelector } from './IntelligentModelSelector'
 export type {
   ModelOption,
   ContextAnalysis,
-  UserPreferences,
   ModelRecommendation,
   IntelligentModelSelectorProps,
 } from './IntelligentModelSelector';
@@ -27,8 +26,6 @@ export type {
 export { default as CostTrackingSystem } from './CostTrackingSystem';
 export type {
   CostEntry,
-  BudgetConfig,
-  CostSummary,
   CostTrackingSystemProps,
 } from './CostTrackingSystem';
 

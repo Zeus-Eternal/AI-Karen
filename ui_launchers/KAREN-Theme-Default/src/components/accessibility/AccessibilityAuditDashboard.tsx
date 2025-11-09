@@ -78,8 +78,15 @@ interface AccessibilityMetrics {
     ruleId: string;
     description: string;
     count: number;
-    impact: string;
+    impact: "minor" | "moderate" | "serious" | "critical";
   }>;
+}
+
+interface AuditRecommendation {
+  priority: "low" | "medium" | "high" | "critical";
+  category: string;
+  description: string;
+  actions: string[];
 }
 interface AccessibilityAuditDashboardProps {
   className?: string;
@@ -175,9 +182,9 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  const generateRecommendations = () => {
-    if (!metrics) return [];
-    const recommendations = [];
+    const generateRecommendations = (): AuditRecommendation[] => {
+      if (!metrics) return [];
+      const recommendations: AuditRecommendation[] = [];
     if (metrics.complianceScore.wcag2aa < 90) {
       recommendations.push({
         priority: 'high',
@@ -202,16 +209,19 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
     }
     return recommendations;
   };
-  const getImpactColor = (impact: string) => {
-    switch (impact) {
-      case 'critical': return 'destructive';
-      case 'serious': return 'destructive';
-      case 'moderate': return 'secondary';
-      case 'minor': return 'outline';
-      default: return 'outline';
-    }
-  };
-  const getComplianceColor = (score: number) => {
+    const getImpactColor = (impact: AccessibilityViolation["impact"]) => {
+      switch (impact) {
+        case 'critical':
+        case 'serious':
+          return 'destructive';
+        case 'moderate':
+          return 'secondary';
+        case 'minor':
+        default:
+          return 'outline';
+      }
+    };
+    const getComplianceColor = (score: number) => {
     if (score >= 95) return 'text-green-600';
     if (score >= 85) return 'text-yellow-600';
     return 'text-red-600';

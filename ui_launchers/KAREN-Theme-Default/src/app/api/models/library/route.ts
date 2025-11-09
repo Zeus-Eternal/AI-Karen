@@ -304,28 +304,31 @@ export async function GET(request: NextRequest) {
   try {
     logger.warn('Backend unavailable; attempting fallback scan', { requestId });
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-    let models = await modelSelectionService.scanLocalDirectories({
-      forceRefresh: true,
-      includeHealth: false,
-    });
+      const fallbackModels = await modelSelectionService.scanLocalDirectories({
+        forceRefresh: true,
+        includeHealth: false,
+      });
 
-    models = (models || []).map((m: any) => ({
-      ...m,
-      type: m.type || 'unknown',
-      last_scanned: new Date().toISOString(),
-    }));
+      const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: any) => ({
+        ...m,
+        type: m.type || 'unknown',
+        last_scanned: new Date().toISOString(),
+      }));
 
-    if (modelType) models = models.filter((m) => (m.type || '').includes(modelType));
-    if (providerFilter) models = models.filter((m) => (m.provider || '') === providerFilter);
+      const filteredModels = normalizedModels.filter((model) => {
+        const matchesType = modelType ? (model.type || '').includes(modelType) : true;
+        const matchesProvider = providerFilter ? (model.provider || '') === providerFilter : true;
+        return matchesType && matchesProvider;
+      });
 
-    const response: LibraryResponse = {
-      models,
-      total_count: models.length,
-      local_count: models.filter((m) => m.status === 'local').length,
-      available_count: models.filter((m) => m.status === 'available').length,
-      source: 'fallback_scan',
-      message: 'Backend unavailable, using local directory scanning',
-    };
+      const response: LibraryResponse = {
+        models: filteredModels,
+        total_count: filteredModels.length,
+        local_count: filteredModels.filter((m) => m.status === 'local').length,
+        available_count: filteredModels.filter((m) => m.status === 'available').length,
+        source: 'fallback_scan',
+        message: 'Backend unavailable, using local directory scanning',
+      };
 
     logger.warn('Fallback scan succeeded', {
       requestId,

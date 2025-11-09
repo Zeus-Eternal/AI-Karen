@@ -1,10 +1,13 @@
 "use client";
 
 import React from 'react';
-import { useHaptic } from './use-haptic';
-import { HapticSettingsProps, HapticPattern } from './types';
-import { getHapticPatternInfo } from './haptic-utils';
+
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+import { getHapticPatternInfo } from './haptic-utils';
+import { useHaptic } from './use-haptic';
+import type { HapticPattern, HapticSettingsProps } from './types';
 
 const testPatterns: HapticPattern[] = ['light', 'medium', 'heavy', 'success', 'warning', 'error'];
 
@@ -61,7 +64,9 @@ export function HapticSettings({
             'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
             enabled ? 'bg-primary' : 'bg-muted'
           )}
-         aria-label="Button">
+          aria-label={enabled ? 'Disable haptic feedback' : 'Enable haptic feedback'}
+          type="button"
+        >
           <span
             className={cn(
               'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
@@ -86,6 +91,8 @@ export function HapticSettings({
                     'p-3 text-left border rounded-lg hover:bg-muted/50 transition-colors',
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
                   )}
+                  aria-label={`Trigger ${info.name} haptic feedback`}
+                  type="button"
                 >
                   <div className="font-medium text-sm md:text-base lg:text-lg">{info.name}</div>
                   <div className="text-xs text-muted-foreground mt-1 sm:text-sm md:text-base">

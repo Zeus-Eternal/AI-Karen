@@ -54,10 +54,10 @@ export const SkipLinks = React.forwardRef<HTMLDivElement, SkipLinksProps>(
         }
 
         // Scroll to the element
-        targetElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
-
+        targetElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
     };
 
@@ -152,12 +152,12 @@ export const SkipToContent = React.forwardRef<HTMLAnchorElement, SkipToContentPr
         targetElement.focus();
         
         // Scroll to the element
-        targetElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
-
+        targetElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
-      
+
       onClick?.(e);
     };
 
@@ -236,12 +236,12 @@ export const useSkipLinks = () => {
       // Check if link already exists
       const exists = prev.some(existing => existing.id === link.id);
       if (exists) {
-        return prev.map(existing => 
+        return prev.map(existing =>
           existing.id === link.id ? link : existing
         );
       }
       return [...prev, link];
-
+    });
   }, []);
 
   const removeSkipLink = React.useCallback((id: string) => {

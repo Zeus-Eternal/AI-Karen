@@ -1,42 +1,48 @@
 /**
  * Extension Debugger Component
- * 
+ *
  * Comprehensive debugging and diagnostic tools for extensions including
  * logs, metrics, performance monitoring, and troubleshooting utilities.
  */
 "use client";
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Badge } from '../../ui/badge';
-import { Button } from '../../ui/button';
+import { useState, useCallback, useEffect, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 
-import { 
-  RefreshCw, 
-  Square, 
-  Play, 
-  FileText, 
-  BarChart3, 
-  Activity, 
-  Bug, 
-  AlertTriangle, 
-  Info, 
-  Download, 
-  Trash2, 
-  Search, 
-  Copy, 
-  TrendingUp, 
-  TrendingDown, 
-  CheckCircle, 
-  Terminal, 
-  Settings, 
-  ExternalLink 
-} from 'lucide-react';
+import {
+  RefreshCw,
+  Square,
+  Play,
+  FileText,
+  BarChart3,
+  Activity,
+  Bug,
+  AlertTriangle,
+  Info,
+  Download,
+  Trash2,
+  Search,
+  Copy,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle,
+  Terminal,
+  Settings,
+  ExternalLink,
+} from "lucide-react";
 interface LogEntry {
   id: string;
   timestamp: string;
-  level: '' | 'warning' | 'error';
+  level: "" | "warning" | "error" | "info" | "debug";
   message: string;
   source: string;
   metadata?: Record<string, any>;
@@ -67,18 +73,20 @@ interface ExtensionDebuggerProps {
 export function ExtensionDebugger({
   extensionId,
   extensionName,
-  className
+  className,
 }: ExtensionDebuggerProps) {
-  const [activeTab, setActiveTab] = useState('logs');
+  const [activeTab, setActiveTab] = useState("logs");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metrics, setMetrics] = useState<MetricData[]>([]);
-  const [performanceProfile, setPerformanceProfile] = useState<PerformanceProfile[]>([]);
+  const [performanceProfile, setPerformanceProfile] = useState<
+    PerformanceProfile[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [logFilter, setLogFilter] = useState({
-    level: 'all',
-    search: '',
-    source: 'all'
+    level: "all",
+    search: "",
+    source: "all",
   });
 
   // Load debugging data
@@ -89,49 +97,54 @@ export function ExtensionDebugger({
     setLoading(true);
     try {
       // Simulate loading debugging data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // 
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      //
       const sampleLogs: LogEntry[] = [
         {
-          id: '1',
+          id: "1",
           timestamp: new Date(Date.now() - 5000).toISOString(),
-          level: 'info',
-          message: 'Extension initialized successfully',
-          source: 'core'
+          level: "info",
+          message: "Extension initialized successfully",
+          source: "core",
         },
         {
-          id: '2',
+          id: "2",
           timestamp: new Date(Date.now() - 4000).toISOString(),
-          level: 'debug',
-          message: 'Loading configuration from /config/settings.json',
-          source: 'config',
-          metadata: { configPath: '/config/settings.json', size: 1024 }
+          level: "debug",
+          message: "Loading configuration from /config/settings.json",
+          source: "config",
+          metadata: { configPath: "/config/settings.json", size: 1024 },
         },
         {
-          id: '3',
+          id: "3",
           timestamp: new Date(Date.now() - 3000).toISOString(),
-          level: 'warning',
-          message: 'API rate limit approaching (80% of quota used)',
-          source: 'api',
-          metadata: { quota: 1000, used: 800, remaining: 200 }
+          level: "warning",
+          message: "API rate limit approaching (80% of quota used)",
+          source: "api",
+          metadata: { quota: 1000, used: 800, remaining: 200 },
         },
         {
-          id: '4',
+          id: "4",
           timestamp: new Date(Date.now() - 2000).toISOString(),
-          level: 'error',
-          message: 'Failed to connect to external service',
-          source: 'network',
-          metadata: { url: 'https://api.example.com', statusCode: 503 },
-          stackTrace: 'Error: Connection timeout\n  at fetch (/extension/api.js:45:12)\n  at processRequest (/extension/handler.js:23:8)'
+          level: "error",
+          message: "Failed to connect to external service",
+          source: "network",
+          metadata: { url: "https://api.example.com", statusCode: 503 },
+          stackTrace:
+            "Error: Connection timeout\n  at fetch (/extension/api.js:45:12)\n  at processRequest (/extension/handler.js:23:8)",
         },
         {
-          id: '5',
+          id: "5",
           timestamp: new Date(Date.now() - 1000).toISOString(),
-          level: 'info',
-          message: 'Background task completed successfully',
-          source: 'tasks',
-          metadata: { taskId: 'daily-sync', duration: 2.5, recordsProcessed: 150 }
-        }
+          level: "info",
+          message: "Background task completed successfully",
+          source: "tasks",
+          metadata: {
+            taskId: "daily-sync",
+            duration: 2.5,
+            recordsProcessed: 150,
+          },
+        },
       ];
       // Sample metrics data
       const sampleMetrics = Array.from({ length: 30 }, (_, i) => ({
@@ -141,78 +154,88 @@ export function ExtensionDebugger({
         network: Math.random() * 1000 + 100,
         requests: Math.floor(Math.random() * 50 + 10),
         errors: Math.floor(Math.random() * 5),
-        responseTime: Math.random() * 500 + 100
+        responseTime: Math.random() * 500 + 100,
       }));
       // Sample performance profile
       const sampleProfile: PerformanceProfile[] = [
         {
-          function: 'processRequest',
+          function: "processRequest",
           calls: 1250,
           totalTime: 15.6,
           avgTime: 12.5,
           maxTime: 45.2,
-          minTime: 2.1
+          minTime: 2.1,
         },
         {
-          function: 'validateInput',
+          function: "validateInput",
           calls: 1250,
           totalTime: 3.2,
           avgTime: 2.6,
           maxTime: 8.1,
-          minTime: 0.5
+          minTime: 0.5,
         },
         {
-          function: 'fetchData',
+          function: "fetchData",
           calls: 890,
           totalTime: 22.1,
           avgTime: 24.8,
           maxTime: 120.5,
-          minTime: 5.2
+          minTime: 5.2,
         },
         {
-          function: 'renderResponse',
+          function: "renderResponse",
           calls: 1180,
           totalTime: 8.9,
           avgTime: 7.5,
           maxTime: 25.3,
-          minTime: 1.2
-        }
+          minTime: 1.2,
+        },
       ];
       setLogs(sampleLogs);
       setMetrics(sampleMetrics);
       setPerformanceProfile(sampleProfile);
     } catch (error) {
-      console.error('Failed to load debugging data:', error);
+      console.error("Failed to load debugging data:", error);
     } finally {
       setLoading(false);
     }
   }, [extensionId]);
   const filteredLogs = useMemo(() => {
-    return logs.filter(log => {
-      if (logFilter.level !== 'all' && log.level !== logFilter.level) return false;
-      if (logFilter.source !== 'all' && log.source !== logFilter.source) return false;
-      if (logFilter.search && !log.message.toLowerCase().includes(logFilter.search.toLowerCase())) return false;
+    return logs.filter((log) => {
+      if (logFilter.level !== "all" && log.level !== logFilter.level)
+        return false;
+      if (logFilter.source !== "all" && log.source !== logFilter.source)
+        return false;
+      if (
+        logFilter.search &&
+        !log.message.toLowerCase().includes(logFilter.search.toLowerCase())
+      )
+        return false;
       return true;
     });
   }, [logs, logFilter]);
   const logSources = useMemo(() => {
-    const sources = new Set(logs.map(log => log.source));
+    const sources = new Set(logs.map((log) => log.source));
     return Array.from(sources);
   }, [logs]);
   const handleExportLogs = useCallback(() => {
-    const logData = filteredLogs.map(log => ({
+    const logData = filteredLogs.map((log) => ({
       timestamp: log.timestamp,
       level: log.level,
       source: log.source,
       message: log.message,
       metadata: log.metadata,
-      stackTrace: log.stackTrace
+      stackTrace: log.stackTrace,
     }));
-    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(logData, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${extensionId}-logs-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${extensionId}-logs-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -240,17 +263,27 @@ export function ExtensionDebugger({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Extension Debugger</h1>
-          <p className="text-gray-600 mt-1">Debug and monitor {extensionName}</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Extension Debugger
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Debug and monitor {extensionName}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={toggleStreaming}
-            className={`flex items-center gap-2 ${streaming ? 'text-red-600' : 'text-green-600'}`}
+            className={`flex items-center gap-2 ${
+              streaming ? "text-red-600" : "text-green-600"
+            }`}
           >
-            {streaming ? <Square className="h-4 w-4 " /> : <Play className="h-4 w-4 " />}
-            {streaming ? 'Stop' : 'Start'} Live Monitoring
+            {streaming ? (
+              <Square className="h-4 w-4 " />
+            ) : (
+              <Play className="h-4 w-4 " />
+            )}
+            {streaming ? "Stop" : "Start"} Live Monitoring
           </Button>
           <Button
             variant="outline"
@@ -262,7 +295,11 @@ export function ExtensionDebugger({
         </div>
       </div>
       {/* Debug Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="logs">
             <FileText className="h-4 w-4 mr-2 " />
@@ -311,35 +348,16 @@ interface LogsPanelProps {
   onExport: () => void;
   onClear: () => void;
 }
-function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport, onClear }: LogsPanelProps) {
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'error':
-        return 'bg-red-100 text-red-800';
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'info':
-        return 'bg-blue-100 text-blue-800';
-      case 'debug':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  const getLevelIcon = (level: string) => {
-    switch (level) {
-      case 'error':
-        return <AlertTriangle className="h-4 w-4 " />;
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 " />;
-      case 'info':
-        return <Info className="h-4 w-4 " />;
-      case 'debug':
-        return <Bug className="h-4 w-4 " />;
-      default:
-        return <Info className="h-4 w-4 " />;
-    }
-  };
+function LogsPanel({
+  logs,
+  filter,
+  sources,
+  streaming,
+  onFilterChange,
+  onExport,
+  onClear,
+}: LogsPanelProps) {
+
   return (
     <div className="space-y-4">
       {/* Log Controls */}
@@ -367,13 +385,17 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
                 type="text"
                 placeholder="Search logs..."
                 value={filter.search}
-                onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
+                onChange={(e) =>
+                  onFilterChange({ ...filter, search: e.target.value })
+                }
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <select
               value={filter.level}
-              onChange={(e) => onFilterChange({ ...filter, level: e.target.value })}
+              onChange={(e) =>
+                onFilterChange({ ...filter, level: e.target.value })
+              }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Levels</option>
@@ -384,12 +406,16 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
             </select>
             <select
               value={filter.source}
-              onChange={(e) => onFilterChange({ ...filter, source: e.target.value })}
+              onChange={(e) =>
+                onFilterChange({ ...filter, source: e.target.value })
+              }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Sources</option>
-              {sources.map(source => (
-                <option key={source} value={source}>{source}</option>
+              {sources.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
               ))}
             </select>
           </div>
@@ -412,7 +438,7 @@ function LogsPanel({ logs, filter, sources, streaming, onFilterChange, onExport,
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {logs.map(log => (
+                {logs.map((log) => (
                   <LogEntry key={log.id} log={log} />
                 ))}
               </div>
@@ -427,36 +453,39 @@ function LogEntry({ log }: { log: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'error':
-        return 'bg-red-100 text-red-800';
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'info':
-        return 'bg-blue-100 text-blue-800';
-      case 'debug':
-        return 'bg-gray-100 text-gray-800';
+      case "error":
+        return "bg-red-100 text-red-800";
+      case "warning":
+        return "bg-yellow-100 text-yellow-800";
+      case "info":
+        return "bg-blue-100 text-blue-800";
+      case "debug":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
   return (
     <div className="p-4 hover:bg-gray-50 sm:p-4 md:p-6">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-1">
-          <Badge className={getLevelColor(log.level)}>
-            {log.level}
-          </Badge>
+          <Badge className={getLevelColor(log.level)}>{log.level}</Badge>
         </div>
         <div className="flex-1 min-w-0 ">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-mono text-gray-500 md:text-base lg:text-lg">
               {new Date(log.timestamp).toLocaleTimeString()}
             </span>
-            <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
+            <Badge
+              variant="outline"
+              className="text-xs sm:text-sm md:text-base"
+            >
               {log.source}
             </Badge>
           </div>
-          <p className="text-sm text-gray-900 mb-2 md:text-base lg:text-lg">{log.message}</p>
+          <p className="text-sm text-gray-900 mb-2 md:text-base lg:text-lg">
+            {log.message}
+          </p>
           {(log.metadata || log.stackTrace) && (
             <Button
               size="sm"
@@ -464,14 +493,16 @@ function LogEntry({ log }: { log: LogEntry }) {
               onClick={() => setExpanded(!expanded)}
               className="text-xs sm:text-sm md:text-base"
             >
-              {expanded ? 'Hide' : 'Show'} Details
+              {expanded ? "Hide" : "Show"} Details
             </Button>
           )}
           {expanded && (
             <div className="mt-3 space-y-2">
               {log.metadata && (
                 <div>
-                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">Metadata:</h5>
+                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">
+                    Metadata:
+                  </h5>
                   <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto sm:text-sm md:text-base">
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
@@ -479,7 +510,9 @@ function LogEntry({ log }: { log: LogEntry }) {
               )}
               {log.stackTrace && (
                 <div>
-                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">Stack Trace:</h5>
+                  <h5 className="text-xs font-medium text-gray-700 mb-1 sm:text-sm md:text-base">
+                    Stack Trace:
+                  </h5>
                   <pre className="text-xs bg-red-50 p-2 rounded overflow-x-auto text-red-800 sm:text-sm md:text-base">
                     {log.stackTrace}
                   </pre>
@@ -491,7 +524,9 @@ function LogEntry({ log }: { log: LogEntry }) {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => navigator.clipboard.writeText(JSON.stringify(log, null, 2))}
+          onClick={() =>
+            navigator.clipboard.writeText(JSON.stringify(log, null, 2))
+          }
         >
           <Copy className="h-3 w-3 " />
         </Button>
@@ -507,73 +542,109 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">CPU Usage</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              CPU Usage
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{latestMetrics?.cpu.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">
+              {latestMetrics?.cpu.toFixed(1)}%
+            </div>
             <div className="flex items-center mt-1">
               <TrendingUp className="h-3 w-3 text-green-500 mr-1 " />
-              <span className="text-xs text-green-600 sm:text-sm md:text-base">Normal</span>
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">
+                Normal
+              </span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">Memory</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              Memory
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round(latestMetrics?.memory || 0)}MB</div>
+            <div className="text-2xl font-bold">
+              {Math.round(latestMetrics?.memory || 0)}MB
+            </div>
             <div className="flex items-center mt-1">
               <TrendingUp className="h-3 w-3 text-yellow-500 mr-1 " />
-              <span className="text-xs text-yellow-600 sm:text-sm md:text-base">Moderate</span>
+              <span className="text-xs text-yellow-600 sm:text-sm md:text-base">
+                Moderate
+              </span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">Network</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              Network
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round(latestMetrics?.network || 0)} KB/s</div>
+            <div className="text-2xl font-bold">
+              {Math.round(latestMetrics?.network || 0)} KB/s
+            </div>
             <div className="flex items-center mt-1">
               <TrendingDown className="h-3 w-3 text-green-500 mr-1 " />
-              <span className="text-xs text-green-600 sm:text-sm md:text-base">Low</span>
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">
+                Low
+              </span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">Requests</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              Requests
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{latestMetrics?.requests || 0}</div>
+            <div className="text-2xl font-bold">
+              {latestMetrics?.requests || 0}
+            </div>
             <div className="flex items-center mt-1">
               <TrendingUp className="h-3 w-3 text-blue-500 mr-1 " />
-              <span className="text-xs text-blue-600 sm:text-sm md:text-base">Active</span>
+              <span className="text-xs text-blue-600 sm:text-sm md:text-base">
+                Active
+              </span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">Errors</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              Errors
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{latestMetrics?.errors || 0}</div>
+            <div className="text-2xl font-bold">
+              {latestMetrics?.errors || 0}
+            </div>
             <div className="flex items-center mt-1">
               <CheckCircle className="h-3 w-3 text-green-500 mr-1 " />
-              <span className="text-xs text-green-600 sm:text-sm md:text-base">Good</span>
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">
+                Good
+              </span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm md:text-base lg:text-lg">Response Time</CardTitle>
+            <CardTitle className="text-sm md:text-base lg:text-lg">
+              Response Time
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round(latestMetrics?.responseTime || 0)}ms</div>
+            <div className="text-2xl font-bold">
+              {Math.round(latestMetrics?.responseTime || 0)}ms
+            </div>
             <div className="flex items-center mt-1">
               <TrendingUp className="h-3 w-3 text-green-500 mr-1 " />
-              <span className="text-xs text-green-600 sm:text-sm md:text-base">Fast</span>
+              <span className="text-xs text-green-600 sm:text-sm md:text-base">
+                Fast
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -582,14 +653,20 @@ function MetricsPanel({ metrics }: { metrics: MetricData[] }) {
       <Card>
         <CardHeader>
           <CardTitle>Performance Trends</CardTitle>
-          <CardDescription>Resource usage over the last 30 minutes</CardDescription>
+          <CardDescription>
+            Resource usage over the last 30 minutes
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
               <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4 " />
-              <p className="text-gray-600">Metrics chart would be rendered here</p>
-              <p className="text-sm text-gray-500 md:text-base lg:text-lg">Integration with charting library needed</p>
+              <p className="text-gray-600">
+                Metrics chart would be rendered here
+              </p>
+              <p className="text-sm text-gray-500 md:text-base lg:text-lg">
+                Integration with charting library needed
+              </p>
             </div>
           </div>
         </CardContent>
@@ -603,7 +680,9 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
       <Card>
         <CardHeader>
           <CardTitle>Function Performance Profile</CardTitle>
-          <CardDescription>Performance breakdown by function calls</CardDescription>
+          <CardDescription>
+            Performance breakdown by function calls
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -621,12 +700,24 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
               <tbody>
                 {profile.map((func, index) => (
                   <tr key={index} className="border-b border-gray-100">
-                    <td className="py-2 font-mono text-blue-600">{func.function}</td>
-                    <td className="text-right py-2">{func.calls.toLocaleString()}</td>
-                    <td className="text-right py-2">{func.totalTime.toFixed(2)}</td>
-                    <td className="text-right py-2">{func.avgTime.toFixed(2)}</td>
-                    <td className="text-right py-2 text-red-600">{func.maxTime.toFixed(2)}</td>
-                    <td className="text-right py-2 text-green-600">{func.minTime.toFixed(2)}</td>
+                    <td className="py-2 font-mono text-blue-600">
+                      {func.function}
+                    </td>
+                    <td className="text-right py-2">
+                      {func.calls.toLocaleString()}
+                    </td>
+                    <td className="text-right py-2">
+                      {func.totalTime.toFixed(2)}
+                    </td>
+                    <td className="text-right py-2">
+                      {func.avgTime.toFixed(2)}
+                    </td>
+                    <td className="text-right py-2 text-red-600">
+                      {func.maxTime.toFixed(2)}
+                    </td>
+                    <td className="text-right py-2 text-green-600">
+                      {func.minTime.toFixed(2)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -637,59 +728,59 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
     </div>
   );
 }
-function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
+function DiagnosticsPanel({ }: { extensionId: string }) {
   const [diagnostics, setDiagnostics] = useState({
-    health: 'healthy',
-    dependencies: 'ok',
-    permissions: 'granted',
-    configuration: 'valid',
-    connectivity: 'connected'
+    health: "healthy",
+    dependencies: "ok",
+    permissions: "granted",
+    configuration: "valid",
+    connectivity: "connected",
   });
 
   const runDiagnostics = useCallback(async () => {
     // Simulate running diagnostics
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     setDiagnostics({
-      health: Math.random() > 0.2 ? 'healthy' : 'warning',
-      dependencies: Math.random() > 0.1 ? 'ok' : 'missing',
-      permissions: Math.random() > 0.05 ? 'granted' : 'denied',
-      configuration: Math.random() > 0.1 ? 'valid' : 'invalid',
-      connectivity: Math.random() > 0.15 ? 'connected' : 'disconnected'
+      health: Math.random() > 0.2 ? "healthy" : "warning",
+      dependencies: Math.random() > 0.1 ? "ok" : "missing",
+      permissions: Math.random() > 0.05 ? "granted" : "denied",
+      configuration: Math.random() > 0.1 ? "valid" : "invalid",
+      connectivity: Math.random() > 0.15 ? "connected" : "disconnected",
     });
   }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy':
-      case 'ok':
-      case 'granted':
-      case 'valid':
-      case 'connected':
-        return 'text-green-600 bg-green-100';
-      case 'warning':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'missing':
-      case 'denied':
-      case 'invalid':
-      case 'disconnected':
-        return 'text-red-600 bg-red-100';
+      case "healthy":
+      case "ok":
+      case "granted":
+      case "valid":
+      case "connected":
+        return "text-green-600 bg-green-100";
+      case "warning":
+        return "text-yellow-600 bg-yellow-100";
+      case "missing":
+      case "denied":
+      case "invalid":
+      case "disconnected":
+        return "text-red-600 bg-red-100";
       default:
-        return 'text-gray-600 bg-gray-100';
+        return "text-gray-600 bg-gray-100";
     }
   };
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy':
-      case 'ok':
-      case 'granted':
-      case 'valid':
-      case 'connected':
+      case "healthy":
+      case "ok":
+      case "granted":
+      case "valid":
+      case "connected":
         return <CheckCircle className="h-4 w-4 " />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="h-4 w-4 " />;
-      case 'missing':
-      case 'denied':
-      case 'invalid':
-      case 'disconnected':
+      case "missing":
+      case "denied":
+      case "invalid":
+      case "disconnected":
         return <AlertTriangle className="h-4 w-4 " />;
       default:
         return <Info className="h-4 w-4 " />;
@@ -702,7 +793,9 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>System Diagnostics</CardTitle>
-              <CardDescription>Check extension health and configuration</CardDescription>
+              <CardDescription>
+                Check extension health and configuration
+              </CardDescription>
             </div>
             <Button onClick={runDiagnostics}>
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -713,25 +806,32 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
         <CardContent>
           <div className="space-y-4">
             {Object.entries(diagnostics).map(([check, status]) => (
-              <div key={check} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg sm:p-4 md:p-6">
+              <div
+                key={check}
+                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg sm:p-4 md:p-6"
+              >
                 <div className="flex items-center gap-3">
                   <div className={`p-1 rounded ${getStatusColor(status)}`}>
                     {getStatusIcon(status)}
                   </div>
                   <div>
-                    <h4 className="font-medium capitalize">{check.replace('_', ' ')}</h4>
+                    <h4 className="font-medium capitalize">
+                      {check.replace("_", " ")}
+                    </h4>
                     <p className="text-sm text-gray-600 md:text-base lg:text-lg">
-                      {check === 'health' && 'Overall extension health status'}
-                      {check === 'dependencies' && 'Required dependencies and plugins'}
-                      {check === 'permissions' && 'System permissions and access rights'}
-                      {check === 'configuration' && 'Extension configuration validity'}
-                      {check === 'connectivity' && 'Network connectivity and API access'}
+                      {check === "health" && "Overall extension health status"}
+                      {check === "dependencies" &&
+                        "Required dependencies and plugins"}
+                      {check === "permissions" &&
+                        "System permissions and access rights"}
+                      {check === "configuration" &&
+                        "Extension configuration validity"}
+                      {check === "connectivity" &&
+                        "Network connectivity and API access"}
                     </p>
                   </div>
                 </div>
-                <Badge className={getStatusColor(status)}>
-                  {status}
-                </Badge>
+                <Badge className={getStatusColor(status)}>{status}</Badge>
               </div>
             ))}
           </div>
@@ -740,7 +840,9 @@ function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common debugging and troubleshooting actions</CardDescription>
+          <CardDescription>
+            Common debugging and troubleshooting actions
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

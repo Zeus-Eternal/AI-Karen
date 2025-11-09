@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { getKarenBackend } from "@/lib/karen-backend";
 import {
   Loader2,
   Library,
@@ -21,15 +22,6 @@ import {
   Info,
   ExternalLink,
 } from "lucide-react";
-import { string } from "zod";
-import { T } from "vitest/dist/reporters-w_64AS5f.js";
-// Temporary stub until karen-backend.ts syntax errors are fixed
-const getKarenBackend = () => ({
-  makeRequestPublic: async <T>(endpoint: string): Promise<T> => {
-    // Stub implementation
-    return {} as T;
-  }
-});
 
 export interface ProviderModelSuggestions {
   provider: string;

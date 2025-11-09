@@ -812,3 +812,5 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
     </div>
   );
 };
+
+export default PluginAuditLogger;

@@ -95,14 +95,13 @@ from .iterative_refiner import (
 # Autonomous learning loop
 from .autonomous_learner import (
     # Enums
-    FeedbackType,
-    LearningSignal,
-    AdaptationStrategy,
+    LearningDataType,
+    TrainingStatus,
     # Data structures
-    ResponseFeedback,
-    LearningPattern,
-    AdaptationDecision,
-    LearningConfig,
+    ConversationMetadata,
+    TrainingExample,
+    ValidationResult,
+    LearningCycleResult,
     # Main class
     AutonomousLearner,
     # Factory

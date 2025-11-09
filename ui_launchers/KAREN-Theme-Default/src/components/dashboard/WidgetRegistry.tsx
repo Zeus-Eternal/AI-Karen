@@ -79,6 +79,7 @@ export const widgetRegistry = {
       size: "small",
       position: { x: 0, y: 0, w: 1, h: 1 },
       config: {
+        type: "metric",
         metric: "cpu_usage",
         unit: "%",
         format: "percentage",
@@ -99,6 +100,7 @@ export const widgetRegistry = {
       size: "small",
       position: { x: 0, y: 0, w: 1, h: 1 },
       config: {
+        type: "status",
         service: "api",
         showDetails: true,
       },
@@ -117,6 +119,7 @@ export const widgetRegistry = {
       size: "medium",
       position: { x: 0, y: 0, w: 2, h: 1 },
       config: {
+        type: "chart",
         chartType: "line",
         dataSource: "metrics",
         timeRange: "1h",
@@ -136,6 +139,7 @@ export const widgetRegistry = {
       size: "large",
       position: { x: 0, y: 0, w: 2, h: 2 },
       config: {
+        type: "log",
         source: "application",
         level: "info",
         maxEntries: 100,
@@ -155,6 +159,7 @@ export const widgetRegistry = {
       size: "medium",
       position: { x: 0, y: 0, w: 2, h: 1 },
       config: {
+        type: "table",
         dataSource: "api",
         columns: [],
         pagination: true,

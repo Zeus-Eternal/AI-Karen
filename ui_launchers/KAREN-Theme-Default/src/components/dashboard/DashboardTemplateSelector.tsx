@@ -159,7 +159,13 @@ export const DashboardTemplateSelector: React.FC<
   };
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in DashboardTemplateSelector</div>}>
+    <ErrorBoundary fallback={({ error, resetError }) => (
+      <div className="p-4 text-center">
+        <p className="text-destructive">Something went wrong in DashboardTemplateSelector</p>
+        <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+        <Button onClick={resetError} className="mt-4">Try Again</Button>
+      </div>
+    )}>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" className={className} aria-label="Open Dashboard Templates">

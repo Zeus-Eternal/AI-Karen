@@ -22,6 +22,7 @@ export interface ResourceUsage {
   memory: number; // MB
   network: number; // KB/s
   storage: number; // MB
+  responseTime?: number; // ms
 }
 
 // Health status

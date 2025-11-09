@@ -271,38 +271,7 @@ def run_server(args: Optional[argparse.Namespace] = None, settings: Optional[Set
     # Disable SSL for development
     ssl_context = None
     
-    # Use custom uvicorn server with enhanced protocol-level error handling
-    from ai_karen_engine.server.custom_server import create_custom_server
-
-    # Create custom server with enhanced protocol-level error handling using settings
-    custom_server = create_custom_server(
-        app="server.app:create_app",
-        host=args.host,
-        port=args.port,
-        debug=args.debug,
-        ssl_context=ssl_context,
-        workers=args.workers,
-        reload=args.reload,
-        log_level=args.log_level,
-        # Enhanced configuration for protocol-level error handling from settings
-        max_invalid_requests_per_connection=settings.max_invalid_requests_per_connection,
-        enable_protocol_error_handling=settings.enable_protocol_error_handling,
-        log_invalid_requests=settings.log_invalid_requests,
-        # Production-ready limits to prevent resource exhaustion
-        limit_concurrency=200,
-        limit_max_requests=10000,
-        backlog=4096,
-        timeout_keep_alive=30,
-        timeout_graceful_shutdown=30,
-        access_log=False,
-        # Use httptools for better error handling
-        http="httptools",
-        loop="auto",
-        server_header=False,
-        date_header=False,
-    )
-
-    # Run the custom server
+    # Use standard uvicorn for now to avoid potential hanging issues
     logger.info(
         "🚀 Starting Kari AI server on %s:%s (workers=%s, reload=%s, log_level=%s)",
         args.host,
@@ -311,7 +280,16 @@ def run_server(args: Optional[argparse.Namespace] = None, settings: Optional[Set
         args.reload,
         args.log_level,
     )
-    custom_server.run()
+
+    import uvicorn
+    uvicorn.run(
+        "server.app:create_app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        log_level=args.log_level.lower(),
+        access_log=False,
+    )
 
 
 if __name__ == "__main__":

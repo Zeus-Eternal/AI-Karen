@@ -4,8 +4,7 @@ import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-import { } from 'lucide-react';
+import { Play, Square, Brain, Database, Plug, GitBranch, RotateCcw, Settings, CheckCircle, AlertCircle } from 'lucide-react';
 
 export interface WorkflowNodeData {
   label: string;
@@ -143,5 +142,6 @@ export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, 
       ))}
     </Card>
   );
+});
 
 WorkflowNodeComponent.displayName = 'WorkflowNodeComponent';

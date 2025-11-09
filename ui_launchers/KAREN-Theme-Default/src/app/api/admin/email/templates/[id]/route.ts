@@ -331,7 +331,24 @@ export async function POST(
     }
 
     // Render preview
-    const render: TemplateRenderResult = await TemplateEngine.render(template, variables || {});
+      let render: TemplateRenderResult;
+      try {
+        const appliedVariables = variables || {};
+        render = {
+          html: TemplateEngine.render(template.html_content, appliedVariables),
+          text: TemplateEngine.render(template.text_content, appliedVariables),
+          subject: TemplateEngine.render(template.subject, appliedVariables),
+          success: true,
+        };
+      } catch (error) {
+        render = {
+          html: '',
+          text: '',
+          subject: template.subject,
+          success: false,
+          error: error instanceof Error ? error.message : 'Template rendering failed',
+        };
+      }
     // Audit the preview (no data export; informational)
     await auditLogger.log(
       gate.auth.user?.user_id || 'unknown',

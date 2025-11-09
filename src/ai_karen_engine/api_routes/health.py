@@ -611,40 +611,6 @@ async def degraded_mode_status_compat() -> Dict[str, Any]:
     return _build_compatibility_response(status)
 
 
-@router.get("/{service_name}")
-async def service_health(service_name: str, request: Request) -> Dict[str, Any]:
-    """Return health status for a specific service."""
-    start = time.time()
-    correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
-    manager = get_connection_health_manager()
-
-    try:
-        result = await manager.check_service_health(service_name)
-        status = {
-            "status": result.status.value,
-            "last_check": result.last_check.isoformat(),
-            "response_time_ms": result.response_time_ms,
-            "degraded_features": result.degraded_features,
-        }
-        code = 200
-    except Exception as exc:
-        status = {"status": "unknown", "error": str(exc)}
-        code = 404
-
-    duration_ms = (time.time() - start) * 1000
-    _record_metrics(service_name, duration_ms)
-
-    get_structured_logging_service().log_api_request(
-        method="GET",
-        endpoint=f"/api/health/{service_name}",
-        status_code=code,
-        duration_ms=duration_ms,
-        correlation_id=correlation_id,
-    )
-
-    return {"service": service_name, "result": status, "correlation_id": correlation_id}
-
-
 @router.get("/extensions")
 async def extension_system_health(request: Request) -> Dict[str, Any]:
     """Return comprehensive extension system health status."""
@@ -796,6 +762,40 @@ async def individual_extension_health(extension_name: str, request: Request) -> 
             "timestamp": time.time(),
             "check_duration_ms": duration_ms
         }
+
+
+@router.get("/{service_name}")
+async def service_health(service_name: str, request: Request) -> Dict[str, Any]:
+    """Return health status for a specific service."""
+    start = time.time()
+    correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
+    manager = get_connection_health_manager()
+
+    try:
+        result = await manager.check_service_health(service_name)
+        status = {
+            "status": result.status.value,
+            "last_check": result.last_check.isoformat(),
+            "response_time_ms": result.response_time_ms,
+            "degraded_features": result.degraded_features,
+        }
+        code = 200
+    except Exception as exc:
+        status = {"status": "unknown", "error": str(exc)}
+        code = 404
+
+    duration_ms = (time.time() - start) * 1000
+    _record_metrics(service_name, duration_ms)
+
+    get_structured_logging_service().log_api_request(
+        method="GET",
+        endpoint=f"/api/health/{service_name}",
+        status_code=code,
+        duration_ms=duration_ms,
+        correlation_id=correlation_id,
+    )
+
+    return {"service": service_name, "result": status, "correlation_id": correlation_id}
 
 
 __all__ = ["router"]

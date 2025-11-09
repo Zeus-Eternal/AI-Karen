@@ -242,7 +242,7 @@ export interface PluginLogEntry {
   id: string;
   pluginId: string;
   timestamp: Date;
-  level: '' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   context?: Record<string, any>;
   source: string;

@@ -387,6 +387,7 @@ export const RightPanel = forwardRef<HTMLElement, RightPanelProps>(
       overlayOnMobile,
       touchGestures,
       onGestureClose: onClose,
+    });
 
     // Panel backdrop for mobile overlay
     const { showBackdrop, backdropProps } = usePanelBackdrop(isOpen, onClose);

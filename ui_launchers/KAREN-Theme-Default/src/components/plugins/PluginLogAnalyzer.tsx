@@ -937,3 +937,5 @@ export const PluginLogAnalyzer: React.FC<{
     </div>
   );
 };
+
+export default PluginLogAnalyzer;

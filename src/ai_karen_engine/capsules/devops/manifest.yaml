@@ -1,11 +1,31 @@
-# DevOps Capsule Manifest - Kari AI
-name: devops
-version: "1.0"
+# DevOps Capsule Manifest - Kari AI Production Standard
+id: "capsule.devops"
+name: "DevOps Capsule"
+version: "1.0.0"
 description: |
   Nuclear-grade DevOps capsule for secure, hardware-isolated, zero-trust task execution.
+  Enforces military-grade RBAC with JWT validation and cryptographic audit trails.
+
+# Security: Required roles for execution (zero-trust enforcement)
 required_roles:
-  - devops_admin
-  - sysop
+  - "system.admin"
+  - "capsule.devops"
+
+# Security: Allowed tool interfaces (whitelist-only)
+allowed_tools:
+  - "llm.generate_text"
+  - "monitor.metrics"
+  - "neuro_vault.query"
+
+# Security: Isolation and sandboxing policies
+security_policy:
+  allow_network_access: false
+  allow_file_system_access: false
+  allow_system_calls: false
+  require_hardware_isolation: true
+  max_execution_time: 60  # seconds
+
+# Capabilities: DevOps operations (for documentation)
 capabilities:
   - provision_infrastructure
   - restart_service
@@ -14,9 +34,18 @@ capabilities:
   - run_compliance_scan
   - view_audit_log
   - manage_rbac
+
+# Observability: Audit and monitoring
 auditable: true
+sandboxed: true
+prometheus_enabled: true
+
+# Execution: LLM configuration
 prompt_type: jinja2
-timeout: 60  # seconds
 max_tokens: 256
-author: Evil Twin
-date: 2025-07-03
+temperature: 0.7
+
+# Metadata
+author: "Zeus - Chief Architect"
+created: "2025-07-03"
+updated: "2025-11-08"

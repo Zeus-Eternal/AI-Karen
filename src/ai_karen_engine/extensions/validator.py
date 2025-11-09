@@ -23,7 +23,7 @@ try:
         ErrorType
     )
     UNIFIED_VALIDATION_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError) as e:
     UNIFIED_VALIDATION_AVAILABLE = False
     # Fallback FieldError for when unified schemas are not available
     class FieldError:
@@ -40,6 +40,27 @@ except ImportError:
                 "code": self.code,
                 "invalid_value": self.invalid_value
             }
+    
+    # Fallback ValidationUtils for when unified schemas are not available
+    class ValidationUtils:
+        @staticmethod
+        def validate_text_content(text: str, min_length: int = 1, max_length: int = 1000) -> bool:
+            if not isinstance(text, str):
+                raise ValueError("Text content must be a string")
+            if len(text) < min_length:
+                raise ValueError(f"Text must be at least {min_length} characters")
+            if len(text) > max_length:
+                raise ValueError(f"Text must be no more than {max_length} characters")
+            return True
+        
+        @staticmethod
+        def validate_tags(tags: List[str]) -> bool:
+            if not isinstance(tags, list):
+                raise ValueError("Tags must be a list")
+            for tag in tags:
+                if not isinstance(tag, str) or not tag.strip():
+                    raise ValueError("Each tag must be a non-empty string")
+            return True
 
 
 class ValidationError(Exception):

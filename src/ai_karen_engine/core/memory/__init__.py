@@ -28,7 +28,6 @@ from ai_karen_engine.core.memory.ag_ui_manager import (
 )
 from ai_karen_engine.core.memory.manager import (
     _METRICS,
-    flush_duckdb_to_postgres,
     get_metrics,
     init_memory,
     recall_context,
@@ -108,7 +107,6 @@ __all__ = [
     # Original memory system
     "recall_context",
     "update_memory",
-    "flush_duckdb_to_postgres",
     "get_metrics",
     "_METRICS",
     "init_memory",

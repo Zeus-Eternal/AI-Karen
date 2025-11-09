@@ -45,7 +45,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
   const handleCodeAnalysis = async () => {
     if (!codeValue.trim() || isAnalyzing) return;
     
-    const analysisPrompt = `Analyze this ${settings.language} code for issues, performance, and best practices:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``;
+    const analysisPrompt = `Analyze this ${settings?.language || 'code'} code for issues, performance, and best practices:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``;
     // Since onQuickAction is optional, we need to handle it safely
     if (onQuickAction) {
       await onQuickAction("analyze", analysisPrompt, "analysis");
@@ -60,11 +60,11 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
           <Code className="h-4 w-4 " />
           <span className="font-medium">Code Assistant</span>
           {useCopilotKit && <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] font-semibold">AI</span>}
-          <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] font-semibold">{settings.model || 'model'}</span>
+          <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] font-semibold">{settings?.model || 'model'}</span>
         </div>
         <div className="flex items-center gap-2">
           <select
-            value={settings.language}
+            value={settings?.language || 'javascript'}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSettingsChange({ language: e.target.value })}
             className="px-2 py-1 border rounded-md text-xs sm:text-sm md:text-base"
             aria-label="Select programming language"
@@ -123,10 +123,10 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
             <Button variant="outline" onClick={handleCodeAnalysis} disabled={!codeValue.trim() || isTyping || isAnalyzing}>
               {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertCircle className="h-4 w-4 mr-2" />}
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("optimize", `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
+            <Button variant="outline" onClick={() => onQuickAction?.("optimize", `Optimize this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
               <Zap className="h-4 w-4 mr-2" />
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("docs", `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
+            <Button variant="outline" onClick={() => onQuickAction?.("docs", `Generate documentation for this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
               <FileText className="h-4 w-4 mr-2" />
             </Button>
           </div>
@@ -142,8 +142,8 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
 
       {/* Status bar */}
       <div className="px-3 py-2 text-[11px] md:text-xs text-muted-foreground border-t flex items-center gap-3">
-        <span>Language: {settings.language}</span>
-        <span>Model: {settings.model}</span>
+        <span>Language: {settings?.language || 'javascript'}</span>
+        <span>Model: {settings?.model || 'model'}</span>
         {isTyping && (
           <span className="inline-flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" /> generating…

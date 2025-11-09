@@ -5,18 +5,18 @@
  * and other database operations specific to the admin management system.
  */
 
-import { 
-  User, 
-  AuditLog, 
-  SystemConfig, 
-  Permission, 
-  RolePermission, 
-  UserListFilter, 
-  AuditLogFilter, 
-  PaginationParams, 
-  PaginatedResponse, 
-  AuditLogEntry, 
-  RoleBasedQuery 
+import {
+  User,
+  AuditLog,
+  SystemConfig,
+  Permission,
+  RolePermission,
+  UserListFilter,
+  AuditLogFilter,
+  PaginationParams,
+  PaginatedResponse,
+  AuditLogEntry,
+  RoleBasedQuery
 } from '@/types/admin';
 import { DatabaseClient, getDatabaseClient } from './client';
 
@@ -51,6 +51,157 @@ export class PermissionDeniedError extends AdminDatabaseError {
 /**
  * Role-based query utilities
  */
+interface AdminInvitationRecord {
+  id: string;
+  email: string;
+  token: string;
+  invited_by: string;
+  message?: string | null;
+  expires_at: Date;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface AdminInvitation {
+  id: string;
+  email: string;
+  token: string;
+  invitedBy: string;
+  message: string | null;
+  expiresAt: Date;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface SecurityAlertRecord {
+  id: string;
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  metadata?: Record<string, any> | null;
+  detected_at: Date;
+  resolved_at?: Date | null;
+  resolved_by?: string | null;
+  resolution_note?: string | null;
+}
+
+export interface SecurityAlert {
+  id: string;
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  metadata: Record<string, any> | null;
+  detectedAt: string;
+  resolved: boolean;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  resolutionNote?: string | null;
+}
+
+interface BlockedIpRecord {
+  id: string;
+  ip_address: string;
+  reason?: string | null;
+  failed_attempts: number;
+  blocked_at: Date;
+  blocked_by?: string | null;
+  expires_at?: Date | null;
+}
+
+export interface BlockedIpEntry {
+  id: string;
+  ipAddress: string;
+  reason: string | null;
+  failedAttempts: number;
+  blockedAt: string;
+  blockedBy?: string | null;
+  expiresAt?: string | null;
+}
+
+interface IpWhitelistRecord {
+  id: string;
+  ip_or_cidr: string;
+  description?: string | null;
+  user_id?: string | null;
+  role_restriction?: 'super_admin' | 'admin' | null;
+  created_by: string;
+  created_at: Date;
+  updated_at?: Date | null;
+  is_active?: boolean | null;
+}
+
+export interface IpWhitelistEntry {
+  id: string;
+  ip_or_cidr: string;
+  description: string;
+  user_id?: string;
+  role_restriction?: 'super_admin' | 'admin';
+  created_by: string;
+  created_at: Date;
+  updated_at?: Date;
+  is_active: boolean;
+}
+
+export interface SecuritySettings {
+  mfaEnforcement: {
+    enabled: boolean;
+    gracePeriodDays: number;
+  };
+  sessionSecurity: {
+    adminTimeoutMinutes: number;
+    userTimeoutMinutes: number;
+    maxConcurrentSessions: number;
+    requireSecureCookies?: boolean;
+    sameSite?: 'strict' | 'lax' | 'none';
+  };
+  ipRestrictions: {
+    enabled: boolean;
+    maxFailedAttempts: number;
+    lockoutMinutes?: number;
+    allowedRanges?: string[];
+    blockedRanges?: string[];
+  };
+  monitoring: {
+    alertThresholds?: {
+      failedLogins: number;
+      suspiciousActivity: number;
+    };
+    logRetentionDays: number;
+    emitMetrics?: boolean;
+  };
+}
+
+const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
+  mfaEnforcement: {
+    enabled: true,
+    gracePeriodDays: 7,
+  },
+  sessionSecurity: {
+    adminTimeoutMinutes: 30,
+    userTimeoutMinutes: 60,
+    maxConcurrentSessions: 3,
+    requireSecureCookies: true,
+    sameSite: 'strict',
+  },
+  ipRestrictions: {
+    enabled: false,
+    maxFailedAttempts: 5,
+    lockoutMinutes: 30,
+    allowedRanges: [],
+    blockedRanges: [],
+  },
+  monitoring: {
+    alertThresholds: {
+      failedLogins: 10,
+      suspiciousActivity: 5,
+    },
+    logRetentionDays: 90,
+    emitMetrics: true,
+  },
+};
+
 export class AdminDatabaseUtils {
   private readonly DEFAULT_PAGE_SIZE = 20;
   private readonly DEFAULT_AUDIT_LOG_SIZE = 50;
@@ -75,6 +226,47 @@ export class AdminDatabaseUtils {
         error
       );
     }
+  }
+
+  private mapInvitation(row: AdminInvitationRecord): AdminInvitation {
+    return {
+      id: row.id,
+      email: row.email,
+      token: row.token,
+      invitedBy: row.invited_by,
+      message: row.message ?? null,
+      expiresAt: new Date(row.expires_at),
+      status: row.status,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    };
+  }
+
+  private mapSecurityAlert(row: SecurityAlertRecord): SecurityAlert {
+    return {
+      id: row.id,
+      type: row.type,
+      severity: row.severity,
+      message: row.message,
+      metadata: (row.metadata as Record<string, any> | null) ?? null,
+      detectedAt: new Date(row.detected_at).toISOString(),
+      resolved: Boolean(row.resolved_at),
+      resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
+      resolvedBy: row.resolved_by ?? null,
+      resolutionNote: row.resolution_note ?? null,
+    };
+  }
+
+  private mapBlockedIp(row: BlockedIpRecord): BlockedIpEntry {
+    return {
+      id: row.id,
+      ipAddress: row.ip_address,
+      reason: row.reason ?? null,
+      failedAttempts: row.failed_attempts,
+      blockedAt: new Date(row.blocked_at).toISOString(),
+      blockedBy: row.blocked_by ?? null,
+      expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+    };
   }
 
   /**
@@ -518,11 +710,99 @@ export class AdminDatabaseUtils {
   }
 
   /**
+   * Retrieve structured security settings (with sane defaults)
+   */
+  async getSecuritySettings(): Promise<SecuritySettings> {
+    try {
+      const rows = await this.getSystemConfig('security');
+      const map = new Map(rows.map((row) => [row.key, row.value]));
+
+      const settings: SecuritySettings = {
+        mfaEnforcement: {
+          enabled: this.coerceBoolean(map.get('security.mfa.enabled'), DEFAULT_SECURITY_SETTINGS.mfaEnforcement.enabled),
+          gracePeriodDays: this.coerceNumber(
+            map.get('security.mfa.grace_period_days'),
+            DEFAULT_SECURITY_SETTINGS.mfaEnforcement.gracePeriodDays,
+            { min: 0, max: 30 },
+          ),
+        },
+        sessionSecurity: {
+          adminTimeoutMinutes: this.coerceNumber(
+            map.get('security.session.admin_timeout_minutes'),
+            DEFAULT_SECURITY_SETTINGS.sessionSecurity.adminTimeoutMinutes,
+            { min: 5, max: 480 },
+          ),
+          userTimeoutMinutes: this.coerceNumber(
+            map.get('security.session.user_timeout_minutes'),
+            DEFAULT_SECURITY_SETTINGS.sessionSecurity.userTimeoutMinutes,
+            { min: 5, max: 1440 },
+          ),
+          maxConcurrentSessions: this.coerceNumber(
+            map.get('security.session.max_concurrent_sessions'),
+            DEFAULT_SECURITY_SETTINGS.sessionSecurity.maxConcurrentSessions,
+            { min: 1, max: 10 },
+          ),
+          requireSecureCookies: this.coerceBoolean(
+            map.get('security.session.require_secure_cookies'),
+            DEFAULT_SECURITY_SETTINGS.sessionSecurity.requireSecureCookies ?? true,
+          ),
+          sameSite:
+            (map.get('security.session.same_site') as SecuritySettings['sessionSecurity']['sameSite']) ||
+            DEFAULT_SECURITY_SETTINGS.sessionSecurity.sameSite,
+        },
+        ipRestrictions: {
+          enabled: this.coerceBoolean(
+            map.get('security.ip.enabled'),
+            DEFAULT_SECURITY_SETTINGS.ipRestrictions.enabled,
+          ),
+          maxFailedAttempts: this.coerceNumber(
+            map.get('security.ip.max_failed_attempts'),
+            DEFAULT_SECURITY_SETTINGS.ipRestrictions.maxFailedAttempts,
+            { min: 3, max: 20 },
+          ),
+          lockoutMinutes: this.coerceNumber(
+            map.get('security.ip.lockout_minutes'),
+            DEFAULT_SECURITY_SETTINGS.ipRestrictions.lockoutMinutes ?? 30,
+            { min: 1, max: 1440 },
+          ),
+          allowedRanges: this.coerceStringArray(
+            map.get('security.ip.allowed_ranges'),
+            DEFAULT_SECURITY_SETTINGS.ipRestrictions.allowedRanges ?? [],
+          ),
+          blockedRanges: this.coerceStringArray(
+            map.get('security.ip.blocked_ranges'),
+            DEFAULT_SECURITY_SETTINGS.ipRestrictions.blockedRanges ?? [],
+          ),
+        },
+        monitoring: {
+          alertThresholds: this.coerceAlertThresholds(
+            map.get('security.monitoring.alert_thresholds'),
+            DEFAULT_SECURITY_SETTINGS.monitoring.alertThresholds ?? { failedLogins: 10, suspiciousActivity: 5 },
+          ),
+          logRetentionDays: this.coerceNumber(
+            map.get('security.monitoring.log_retention_days'),
+            DEFAULT_SECURITY_SETTINGS.monitoring.logRetentionDays,
+            { min: 7, max: 365 },
+          ),
+          emitMetrics: this.coerceBoolean(
+            map.get('security.monitoring.emit_metrics'),
+            DEFAULT_SECURITY_SETTINGS.monitoring.emitMetrics ?? true,
+          ),
+        },
+      };
+
+      return settings;
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to fetch security settings', 'getSecuritySettings', error);
+    }
+  }
+
+  /**
    * Update system configuration value
    */
   async updateSystemConfig(
-    key: string, 
-    value: string | number | boolean, 
+    key: string,
+    value: string | number | boolean | Record<string, unknown> | Array<unknown>,
     updatedBy: string,
     description?: string
   ): Promise<void> {
@@ -530,8 +810,9 @@ export class AdminDatabaseUtils {
       throw new AdminDatabaseError('Missing required parameters for config update', 'updateSystemConfig');
     }
 
-    const valueType = typeof value;
-    const valueStr = valueType === 'object' ? JSON.stringify(value) : String(value);
+    const isJson = typeof value === 'object' && value !== null;
+    const valueType = isJson ? 'json' : typeof value;
+    const valueStr = isJson ? JSON.stringify(value) : String(value);
     
     const query = description 
       ? `UPDATE system_config SET value = $1, value_type = $2, updated_by = $3, updated_at = NOW(), description = $5 WHERE key = $4`
@@ -549,6 +830,82 @@ export class AdminDatabaseUtils {
         'updateSystemConfig',
         error
       );
+    }
+  }
+
+  async updateSecuritySettings(settings: Partial<SecuritySettings>, updatedBy: string): Promise<void> {
+    if (!updatedBy) {
+      throw new AdminDatabaseError('Missing user information for security settings update', 'updateSecuritySettings');
+    }
+
+    const updates: Array<{ key: string; value: unknown }> = [];
+
+    if (settings.mfaEnforcement) {
+      if (typeof settings.mfaEnforcement.enabled === 'boolean') {
+        updates.push({ key: 'security.mfa.enabled', value: settings.mfaEnforcement.enabled });
+      }
+      if (typeof settings.mfaEnforcement.gracePeriodDays === 'number') {
+        updates.push({ key: 'security.mfa.grace_period_days', value: settings.mfaEnforcement.gracePeriodDays });
+      }
+    }
+
+    if (settings.sessionSecurity) {
+      const session = settings.sessionSecurity;
+      if (typeof session.adminTimeoutMinutes === 'number') {
+        updates.push({ key: 'security.session.admin_timeout_minutes', value: session.adminTimeoutMinutes });
+      }
+      if (typeof session.userTimeoutMinutes === 'number') {
+        updates.push({ key: 'security.session.user_timeout_minutes', value: session.userTimeoutMinutes });
+      }
+      if (typeof session.maxConcurrentSessions === 'number') {
+        updates.push({ key: 'security.session.max_concurrent_sessions', value: session.maxConcurrentSessions });
+      }
+      if (typeof session.requireSecureCookies === 'boolean') {
+        updates.push({ key: 'security.session.require_secure_cookies', value: session.requireSecureCookies });
+      }
+      if (session.sameSite) {
+        updates.push({ key: 'security.session.same_site', value: session.sameSite });
+      }
+    }
+
+    if (settings.ipRestrictions) {
+      const ip = settings.ipRestrictions;
+      if (typeof ip.enabled === 'boolean') {
+        updates.push({ key: 'security.ip.enabled', value: ip.enabled });
+      }
+      if (typeof ip.maxFailedAttempts === 'number') {
+        updates.push({ key: 'security.ip.max_failed_attempts', value: ip.maxFailedAttempts });
+      }
+      if (typeof ip.lockoutMinutes === 'number') {
+        updates.push({ key: 'security.ip.lockout_minutes', value: ip.lockoutMinutes });
+      }
+      if (ip.allowedRanges) {
+        updates.push({ key: 'security.ip.allowed_ranges', value: ip.allowedRanges });
+      }
+      if (ip.blockedRanges) {
+        updates.push({ key: 'security.ip.blocked_ranges', value: ip.blockedRanges });
+      }
+    }
+
+    if (settings.monitoring) {
+      const monitoring = settings.monitoring;
+      if (monitoring.alertThresholds) {
+        updates.push({ key: 'security.monitoring.alert_thresholds', value: monitoring.alertThresholds });
+      }
+      if (typeof monitoring.logRetentionDays === 'number') {
+        updates.push({ key: 'security.monitoring.log_retention_days', value: monitoring.logRetentionDays });
+      }
+      if (typeof monitoring.emitMetrics === 'boolean') {
+        updates.push({ key: 'security.monitoring.emit_metrics', value: monitoring.emitMetrics });
+      }
+    }
+
+    if (updates.length === 0) {
+      return;
+    }
+
+    for (const update of updates) {
+      await this.updateSystemConfig(update.key, update.value as any, updatedBy);
     }
   }
 
@@ -818,6 +1175,7 @@ export class AdminDatabaseUtils {
         return isNaN(num) ? value : num;
       case 'boolean':
         return value.toLowerCase() === 'true' || value === '1';
+      case 'object':
       case 'json':
         try {
           return JSON.parse(value);
@@ -827,6 +1185,93 @@ export class AdminDatabaseUtils {
       default:
         return value;
     }
+  }
+
+  private coerceBoolean(value: unknown, fallback: boolean): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'on', 'enabled'].includes(normalized)) return true;
+      if (['false', '0', 'no', 'off', 'disabled'].includes(normalized)) return false;
+    }
+    return fallback;
+  }
+
+  private coerceNumber(value: unknown, fallback: number, options: { min?: number; max?: number } = {}): number {
+    const numeric =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+        ? Number.parseFloat(value)
+        : NaN;
+
+    if (!Number.isFinite(numeric)) {
+      return fallback;
+    }
+
+    let result = numeric;
+    if (typeof options.min === 'number') {
+      result = Math.max(options.min, result);
+    }
+    if (typeof options.max === 'number') {
+      result = Math.min(options.max, result);
+    }
+    return result;
+  }
+
+  private coerceStringArray(value: unknown, fallback: string[] = []): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === 'string');
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return [...fallback];
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item): item is string => typeof item === 'string');
+        }
+      } catch {
+        return trimmed
+          .split(',')
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0);
+      }
+    }
+
+    return [...fallback];
+  }
+
+  private coerceAlertThresholds(
+    value: unknown,
+    fallback: { failedLogins: number; suspiciousActivity: number },
+  ): { failedLogins: number; suspiciousActivity: number } {
+    if (typeof value === 'object' && value !== null) {
+      const obj = value as Record<string, unknown>;
+      return {
+        failedLogins: this.coerceNumber(obj.failedLogins, fallback.failedLogins, { min: 0 }),
+        suspiciousActivity: this.coerceNumber(obj.suspiciousActivity, fallback.suspiciousActivity, { min: 0 }),
+      };
+    }
+
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === 'object' && parsed !== null) {
+          const obj = parsed as Record<string, unknown>;
+          return {
+            failedLogins: this.coerceNumber(obj.failedLogins, fallback.failedLogins, { min: 0 }),
+            suspiciousActivity: this.coerceNumber(obj.suspiciousActivity, fallback.suspiciousActivity, { min: 0 }),
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return { ...fallback };
   }
 
   /**
@@ -1020,14 +1465,309 @@ export class AdminDatabaseUtils {
   async getActiveUserCount(): Promise<number> {
     try {
       const query = `
-        SELECT COUNT(*) as count 
-        FROM auth_users 
+        SELECT COUNT(*) as count
+        FROM auth_users
         WHERE last_login_at >= NOW() - INTERVAL '24 hours' AND is_active = true
       `;
       const result = await this.executeQuery<{ count: string }>('getActiveUserCount', query);
       return parseInt(result[0]?.count || '0');
     } catch (error) {
       throw new AdminDatabaseError('Failed to get active user count', 'getActiveUserCount', error);
+    }
+  }
+
+  /**
+   * Create a new admin invitation record
+   */
+  async createAdminInvitation(payload: {
+    email: string;
+    token: string;
+    invitedBy: string;
+    expiresAt: Date;
+    message?: string;
+  }): Promise<AdminInvitation> {
+    const query = `
+      INSERT INTO admin_invitations (
+        email,
+        token,
+        invited_by,
+        message,
+        expires_at,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, 'pending')
+      RETURNING id, email, token, invited_by, message, expires_at, status, created_at, updated_at
+    `;
+
+    try {
+      const rows = await this.executeQuery<AdminInvitationRecord>('createAdminInvitation', query, [
+        payload.email,
+        payload.token,
+        payload.invitedBy,
+        payload.message ?? null,
+        payload.expiresAt,
+      ]);
+
+      const record = rows[0];
+      if (!record) {
+        throw new Error('Invitation insert returned no rows');
+      }
+
+      return this.mapInvitation(record);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to create admin invitation', 'createAdminInvitation', error);
+    }
+  }
+
+  /**
+   * Count unresolved security alerts
+   */
+  async getSecurityAlertsCount(): Promise<number> {
+    const query = `
+      SELECT COUNT(*) AS count
+      FROM security_alerts
+      WHERE resolved_at IS NULL
+    `;
+
+    try {
+      const rows = await this.executeQuery<{ count: string }>('getSecurityAlertsCount', query);
+      return parseInt(rows[0]?.count || '0', 10);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to count security alerts', 'getSecurityAlertsCount', error);
+    }
+  }
+
+  /**
+   * List security alerts with pagination and optional filters
+   */
+  async getSecurityAlerts(params: {
+    limit: number;
+    offset: number;
+    severity?: string;
+    resolved?: boolean;
+  }): Promise<{ data: SecurityAlert[]; total: number }> {
+    const filters: string[] = [];
+    const values: any[] = [];
+
+    if (params.severity) {
+      values.push(params.severity);
+      filters.push(`severity = $${values.length}`);
+    }
+
+    if (typeof params.resolved === 'boolean') {
+      values.push(params.resolved);
+      filters.push(`(resolved_at IS ${params.resolved ? 'NOT NULL' : 'NULL'})`);
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const baseQuery = `
+      SELECT id, type, severity, message, metadata, detected_at, resolved_at, resolved_by, resolution_note
+      FROM security_alerts
+      ${whereClause}
+      ORDER BY detected_at DESC
+      LIMIT $${values.length + 1}
+      OFFSET $${values.length + 2}
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM security_alerts
+      ${whereClause}
+    `;
+
+    try {
+      const [rows, countRows] = await Promise.all([
+        this.executeQuery<SecurityAlertRecord>('getSecurityAlerts', baseQuery, [...values, params.limit, params.offset]),
+        this.executeQuery<{ count: string }>('getSecurityAlertsCountTotal', countQuery, values),
+      ]);
+
+      return {
+        data: rows.map((row) => this.mapSecurityAlert(row)),
+        total: parseInt(countRows[0]?.count || '0', 10),
+      };
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to load security alerts', 'getSecurityAlerts', error);
+    }
+  }
+
+  /**
+   * Fetch single security alert
+   */
+  async getSecurityAlert(alertId: string): Promise<SecurityAlert | null> {
+    if (!alertId) {
+      return null;
+    }
+
+    const query = `
+      SELECT id, type, severity, message, metadata, detected_at, resolved_at, resolved_by, resolution_note
+      FROM security_alerts
+      WHERE id = $1
+    `;
+
+    try {
+      const rows = await this.executeQuery<SecurityAlertRecord>('getSecurityAlert', query, [alertId]);
+      return rows[0] ? this.mapSecurityAlert(rows[0]) : null;
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to load security alert', 'getSecurityAlert', error);
+    }
+  }
+
+  /**
+   * Resolve a security alert
+   */
+  async resolveSecurityAlert(alertId: string, resolvedBy: string, resolutionNote?: string): Promise<void> {
+    const query = `
+      UPDATE security_alerts
+      SET resolved_at = NOW(), resolved_by = $2, resolution_note = $3
+      WHERE id = $1 AND resolved_at IS NULL
+    `;
+
+    try {
+      await this.db.query(query, [alertId, resolvedBy, resolutionNote ?? null]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to resolve security alert', 'resolveSecurityAlert', error);
+    }
+  }
+
+  /**
+   * List blocked IP addresses
+   */
+  async getBlockedIPs(params: { limit?: number; offset?: number }): Promise<PaginatedResponse<BlockedIpEntry>> {
+    const limit = Math.max(1, Math.min(params.limit ?? 50, 200));
+    const offset = Math.max(0, params.offset ?? 0);
+
+    const dataQuery = `
+      SELECT id, ip_address, reason, failed_attempts, blocked_at, blocked_by, expires_at
+      FROM blocked_ips
+      ORDER BY blocked_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const countQuery = `SELECT COUNT(*) AS count FROM blocked_ips`;
+
+    try {
+      const [rows, countRows] = await Promise.all([
+        this.executeQuery<BlockedIpRecord>('getBlockedIPs', dataQuery, [limit, offset]),
+        this.executeQuery<{ count: string }>('getBlockedIPsCount', countQuery),
+      ]);
+
+      const total = parseInt(countRows[0]?.count || '0', 10);
+      const page = Math.floor(offset / limit) + 1;
+      const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+
+      return {
+        data: rows.map((row) => this.mapBlockedIp(row)),
+        pagination: {
+          page,
+          limit,
+          total,
+          total_pages: totalPages,
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
+      };
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to fetch blocked IPs', 'getBlockedIPs', error);
+    }
+  }
+
+  /**
+   * Fetch a single blocked IP entry
+   */
+  async getBlockedIP(id: string): Promise<BlockedIpEntry | null> {
+    if (!id) {
+      return null;
+    }
+
+    const query = `
+      SELECT id, ip_address, reason, failed_attempts, blocked_at, blocked_by, expires_at
+      FROM blocked_ips
+      WHERE id = $1
+    `;
+
+    try {
+      const rows = await this.executeQuery<BlockedIpRecord>('getBlockedIP', query, [id]);
+      return rows[0] ? this.mapBlockedIp(rows[0]) : null;
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to load blocked IP', 'getBlockedIP', error);
+    }
+  }
+
+  /**
+   * Remove a blocked IP entry
+   */
+  async unblockIP(id: string): Promise<void> {
+    const query = `DELETE FROM blocked_ips WHERE id = $1`;
+
+    try {
+      await this.db.query(query, [id]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to unblock IP', 'unblockIP', error);
+    }
+  }
+
+  async getIpWhitelistEntries(): Promise<IpWhitelistEntry[]> {
+    const query = `
+      SELECT id, ip_or_cidr, description, user_id, role_restriction, created_by, created_at, updated_at, is_active
+      FROM ip_whitelist
+      ORDER BY created_at DESC
+    `;
+
+    try {
+      const rows = await this.executeQuery<IpWhitelistRecord>('getIpWhitelistEntries', query);
+      return rows.map((row) => ({
+        id: row.id,
+        ip_or_cidr: row.ip_or_cidr,
+        description: row.description ?? '',
+        user_id: row.user_id ?? undefined,
+        role_restriction: row.role_restriction ?? undefined,
+        created_by: row.created_by,
+        created_at: new Date(row.created_at),
+        updated_at: row.updated_at ? new Date(row.updated_at) : undefined,
+        is_active: row.is_active !== false,
+      }));
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to fetch whitelist entries', 'getIpWhitelistEntries', error);
+    }
+  }
+
+  async upsertIpWhitelist(entry: IpWhitelistEntry): Promise<void> {
+    const query = `
+      INSERT INTO ip_whitelist (id, ip_or_cidr, description, user_id, role_restriction, created_by, created_at, updated_at, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+      ON CONFLICT (id) DO UPDATE SET
+        ip_or_cidr = EXCLUDED.ip_or_cidr,
+        description = EXCLUDED.description,
+        user_id = EXCLUDED.user_id,
+        role_restriction = EXCLUDED.role_restriction,
+        is_active = EXCLUDED.is_active,
+        updated_at = NOW()
+    `;
+
+    try {
+      await this.db.query(query, [
+        entry.id,
+        entry.ip_or_cidr,
+        entry.description ?? null,
+        entry.user_id ?? null,
+        entry.role_restriction ?? null,
+        entry.created_by,
+        entry.created_at,
+        entry.is_active !== false,
+      ]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to upsert whitelist entry', 'upsertIpWhitelist', error);
+    }
+  }
+
+  async removeIpWhitelist(id: string): Promise<void> {
+    const query = `DELETE FROM ip_whitelist WHERE id = $1`;
+
+    try {
+      await this.db.query(query, [id]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to remove whitelist entry', 'removeIpWhitelist', error);
     }
   }
 }

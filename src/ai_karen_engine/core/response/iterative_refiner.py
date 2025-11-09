@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 # Import unified types from reasoning module
 from ai_karen_engine.core.reasoning.synthesis.self_refine import (
     SelfRefiner,
-    RefinementCriteria,
+    RefinementConfig,
     RefinementResult,
 )
 from ai_karen_engine.core.reasoning.synthesis.metacognition import (
@@ -417,11 +417,7 @@ class IterativeRefinementPipeline:
         start_time = time.time()
 
         # Use SelfRefiner for coherence check
-        criteria = RefinementCriteria(
-            check_coherence=True,
-            check_relevance=True,
-            check_completeness=True,
-        )
+        criteria = ["coherence", "relevance", "completeness"]
 
         result = self.self_refiner.refine(
             query=request.user_text,

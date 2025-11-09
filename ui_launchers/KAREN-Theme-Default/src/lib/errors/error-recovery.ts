@@ -112,10 +112,10 @@ export class ErrorRecoveryManager {
               description: 'Verify network connectivity',
               execute: async () => {
                 try {
-                  const response = await fetch('/api/health', { 
+                  const response = await fetch('/api/health', {
                     method: 'HEAD',
                     signal: AbortSignal.timeout(5000)
-
+                  });
                   return response.ok;
                 } catch {
                   return false;
@@ -257,7 +257,7 @@ export class ErrorRecoveryManager {
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include'
-
+      });
       return response.ok;
     } catch {
       return false;
@@ -278,7 +278,7 @@ export class ErrorRecoveryManager {
       const response = await fetch('/api/health/database', {
         method: 'GET',
         signal: AbortSignal.timeout(10000)
-
+      });
       return response.ok;
     } catch {
       return false;

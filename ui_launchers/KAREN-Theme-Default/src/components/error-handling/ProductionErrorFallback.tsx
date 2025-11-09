@@ -13,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ErrorFallbackProps } from './GlobalErrorBoundary';
 export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
   error,
-  errorInfo,
+  errorInfo: _errorInfo,
   errorReport,
   onRetry,
   onRecover,
@@ -91,7 +91,8 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             className="w-full"
             size="lg"
           >
-            <RefreshCw className="w-4 h-4 mr-2 " />
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reload Page
           </Button>
           <div className="text-center">
             <Button 
@@ -124,6 +125,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             <div>
               <CardTitle className="text-lg">Component Error</CardTitle>
               <CardDescription>
+                This component encountered an error and is temporarily unavailable.
               </CardDescription>
             </div>
           </div>
@@ -153,16 +155,16 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             <Button 
               onClick={onRetry} 
               disabled={isRecovering || autoRetryCountdown !== null}
-              className="flex-1"
-             aria-label="Button">
+              className="flex-1">
               {isRecovering ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                   Recovering...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 " />
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
                 </>
               )}
             </Button>
@@ -269,16 +271,16 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
             <Button 
               onClick={onRetry} 
               disabled={isRecovering || autoRetryCountdown !== null}
-              size="lg"
-             aria-label="Button">
+              size="lg">
               {isRecovering ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin " />
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                   Recovering...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 " />
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
                 </>
               )}
             </Button>
@@ -287,6 +289,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
               onClick={() => window.location.reload()}
               size="lg"
             >
+              Reload Page
             </Button>
           </div>
           {recoveryAttempts < maxRecoveryAttempts && (
@@ -296,6 +299,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
               disabled={isRecovering || autoRetryCountdown !== null}
               className="w-full"
              >
+              Smart Recovery
             </Button>
           )}
           <Collapsible open={showDetails} onOpenChange={setShowDetails}>
@@ -366,6 +370,7 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
                     }
                   }}
                 >
+                  Copy Details
                 </Button>
               </div>
             </CollapsibleContent>

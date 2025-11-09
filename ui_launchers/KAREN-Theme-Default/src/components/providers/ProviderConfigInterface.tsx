@@ -62,14 +62,28 @@ export interface ProviderConfigField {
   options?: SelectOption[];
   advanced?: boolean;
   dependsOn?: string;
-  condition?: (data: FormData) => boolean;
+  condition?: (data: ProviderFormData) => boolean;
 }
 
 export interface ValidationRule {
   field: string;
   rule: 'required' | 'pattern' | 'custom';
   message: string;
-  validator?: (value: any, formData: FormData) => boolean;
+  validator?: (value: any, formData: ProviderFormData) => boolean;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export interface FieldValidation {
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
 }
 
 export interface ProviderHealth {
@@ -125,10 +139,10 @@ export interface AdvancedConfigSection {
   title: string;
   description: string;
   fields: string[];
-  condition?: (data: FormData) => boolean;
+  condition?: (data: ProviderFormData) => boolean;
 }
 
-export interface FormData {
+export interface ProviderFormData {
   [key: string]: any;
 }
 
@@ -389,7 +403,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
   const [selectedType, setSelectedType] = useState<ProviderType | null>(null);
-  const [formData, setFormData] = useState<FormData>({});
+  const [formData, setFormData] = useState<ProviderFormData>({});
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState(false);
@@ -454,7 +468,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   }, []);
 
   // Enhanced validation with business rules
-  const validateForm = (type: ProviderType, data: FormData): ValidationError[] => {
+  const validateForm = (type: ProviderType, data: ProviderFormData): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     // Field-level validation
@@ -503,7 +517,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     return errors;
   };
 
-  const validateField = (field: ProviderConfigField, value: any, formData: FormData): ValidationError[] => {
+  const validateField = (field: ProviderConfigField, value: any, formData: ProviderFormData): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     if (field.required && (value === undefined || value === '' || value === null)) {
@@ -588,7 +602,11 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     return errors;
   };
 
-  const validateCompliance = (type: ProviderType, data: FormData, requirements: ComplianceInfo): ValidationError[] => {
+  const validateCompliance = (
+    type: ProviderType,
+    data: ProviderFormData,
+    requirements: ComplianceInfo,
+  ): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     if (requirements.gdpr && type.category === 'cloud') {
@@ -622,7 +640,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     });
   };
 
-  const shouldShowField = (field: ProviderConfigField, formData: FormData): boolean => {
+  const shouldShowField = (field: ProviderConfigField, formData: ProviderFormData): boolean => {
     if (field.advanced && !enableAdvancedFeatures) return false;
     if (!field.dependsOn) return true;
     if (field.condition) return field.condition(formData);

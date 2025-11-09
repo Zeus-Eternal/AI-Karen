@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Zap, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
-import { Button } from '@/components/ui/button'; // Ensure Button is imported
+import { Button } from '@/components/ui/button';
+import { useAnimationPerformance } from '@/utils/animation-performance';
 
 const ANIMATION_PERFORMANCE_THRESHOLDS = {
   EXCELLENT_FPS: 60,

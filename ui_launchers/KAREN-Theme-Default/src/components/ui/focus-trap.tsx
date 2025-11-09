@@ -49,6 +49,7 @@ export const FocusTrap = React.forwardRef<HTMLDivElement, FocusTrapProps>(
       excludeFromTrap,
       onFocusEnter,
       onFocusLeave,
+    });
 
     // Merge refs - combine the external ref with the focus trap's container ref
     const mergedRef = React.useCallback((node: HTMLDivElement | null) => {

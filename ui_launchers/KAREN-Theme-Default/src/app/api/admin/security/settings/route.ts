@@ -2,48 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
+import type { SecuritySettings } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
-
-/**
- * Types for security settings (server-side contract)
- * Keep in sync with client DTOs.
- */
-type MFAEnforcement = {
-  enabled: boolean;
-  gracePeriodDays: number; // 0-30
-};
-
-type SessionSecurity = {
-  adminTimeoutMinutes: number; // 5-480
-  userTimeoutMinutes: number;  // 5-1440
-  maxConcurrentSessions: number; // 1-10
-  requireSecureCookies?: boolean;
-  sameSite?: 'strict' | 'lax' | 'none';
-};
-
-type IPRestrictions = {
-  enabled: boolean;
-  maxFailedAttempts: number; // 3-20
-  lockoutMinutes?: number;   // 5-1440 (optional)
-  allowedRanges?: string[];  // IPv4 or CIDR
-  blockedRanges?: string[];  // optional deny list
-};
-
-type MonitoringSettings = {
-  alertThresholds?: {
-    failedLogins: number;        // 5-100
-    suspiciousActivity: number;  // 3-50
-  };
-  logRetentionDays: number;       // 30-365
-  emitMetrics?: boolean;          // default true
-};
-
-export type SecuritySettings = {
-  mfaEnforcement: MFAEnforcement;
-  sessionSecurity: SessionSecurity;
-  ipRestrictions: IPRestrictions;
-  monitoring: MonitoringSettings;
-};
 
 /**
  * GET /api/admin/security/settings
@@ -98,8 +58,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const payload = incoming as Partial<SecuritySettings>;
+
     // Validate
-    const validation = validateSecuritySettings(incoming as Partial<SecuritySettings>);
+    const validation = validateSecuritySettings(payload);
     if (!validation.valid) {
       return NextResponse.json(
         { error: validation.error },
@@ -114,10 +76,10 @@ export async function PUT(request: NextRequest) {
     const currentSettings = await adminUtils.getSecuritySettings();
 
     // Apply update
-    await adminUtils.updateSecuritySettings(incoming);
+    await adminUtils.updateSecuritySettings(payload, currentUser.user_id);
 
     // Compute change set
-    const changes = getSettingsChanges(currentSettings, incoming);
+    const changes = getSettingsChanges(currentSettings, payload);
 
     // Audit (only if anything actually changed)
     if (changes.length > 0) {

@@ -5,13 +5,16 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-
-  createNavigationAria, 
-  createAriaLabel, 
+import {
+  createNavigationAria,
+  createAriaLabel,
   mergeAriaProps,
   generateAriaId,
   type AriaProps,
-import { } from "@/utils/aria";
+} from "@/utils/aria";
+import { ARIA_ROLES } from "@/utils/aria";
+import { Button } from "@/components/ui/button";
+import { CheckSquare, Pin, ExternalLink, Download, Search, MessageSquare, Sparkles, Loader2, X, ChevronRight } from 'lucide-react';
 
 /**
  * Navigation Container - Main navigation wrapper
@@ -434,7 +437,7 @@ export const AriaTab = React.forwardRef<HTMLButtonElement, AriaTabProps>(
         )}
         role={ARIA_ROLES.TAB}
         tabIndex={selected ? 0 : -1}
-        {...(() = aria-label="Button"> {
+        {...(() => {
           const merged = mergeAriaProps(tabProps, ariaProps);
           const { 'aria-relevant': _, ...safeProps } = merged;
           return safeProps;
@@ -496,6 +499,3 @@ export const AriaTabPanel = React.forwardRef<HTMLDivElement, AriaTabPanelProps>(
 );
 
 AriaTabPanel.displayName = "AriaTabPanel";
-
-export {
-};
