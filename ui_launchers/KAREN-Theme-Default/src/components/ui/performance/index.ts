@@ -1,15 +1,20 @@
 // Performance monitoring components and utilities
-export { default as PerformanceDashboard } from './performance-dashboard';
-export { 
-  default as PerformanceProvider, 
+export { PerformanceDashboard } from './performance-dashboard';
+export type { PerformanceDashboardProps } from './performance-dashboard';
+
+export {
+  PerformanceProvider,
   usePerformanceContext,
   withPerformanceMeasurement,
   useComponentPerformance,
-  useInteractionPerformance
+  useInteractionPerformance,
 } from './performance-provider';
+export type { PerformanceProviderProps, PerformanceContextValue } from './performance-provider';
 
 // Re-export performance utilities
 export {
+  PerformanceMonitor,
+  PERFORMANCE_THRESHOLDS,
   performanceMonitor,
   usePerformanceMonitor,
   checkPerformanceBudget,
@@ -17,7 +22,10 @@ export {
 
 // Re-export types
 export type {
-  PerformanceMetrics,
-  PerformanceConfig,
-  PerformanceBudget,
+  CustomMetric,
+  MetricSummary,
+  NavigationTimingSummary,
+  PerformanceSummary,
+  ResourceTimingSummary,
+  WebVitalsMetric,
 } from '@/utils/performance-monitor';

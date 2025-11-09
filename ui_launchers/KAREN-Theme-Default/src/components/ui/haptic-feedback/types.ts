@@ -1,8 +1,10 @@
-export type HapticPattern = 
-  | 'light' 
-  | 'medium' 
-  | 'heavy' 
-  | 'success' 
+import React from 'react';
+
+export type HapticPattern =
+  | 'light'
+  | 'medium'
+  | 'heavy'
+  | 'success'
   | 'warning' 
   | 'error'
   | 'notification'
@@ -23,6 +25,7 @@ export interface HapticButtonProps extends React.ButtonHTMLAttributes<HTMLButton
   hapticPattern?: HapticPattern;
   hapticEnabled?: boolean;
   children: React.ReactNode;
+  ariaLabel?: string;
 }
 
 export interface HapticSettingsProps {
