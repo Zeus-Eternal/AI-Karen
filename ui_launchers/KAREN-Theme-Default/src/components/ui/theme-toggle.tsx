@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { useTheme } from '@/providers/theme-provider';
 import { cn } from '@/lib/utils';
 
@@ -38,10 +38,12 @@ export default function ThemeToggle({
     lg: 'h-10 w-10',
   }[size];
 
+  const buttonSize: ButtonProps['size'] = showLabel ? size : 'icon';
+
   return (
     <Button
       variant={variant}
-      size={showLabel ? 'default' : 'icon'}
+      size={buttonSize}
       onClick={toggleTheme}
       className={cn(
         !showLabel && sizeClass,

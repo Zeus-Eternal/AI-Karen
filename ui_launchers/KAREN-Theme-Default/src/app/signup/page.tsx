@@ -46,12 +46,15 @@ export default function SignupPage() {
               <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse" />
             </div>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-            </CardDescription>
-          </div>
+            <div className="space-y-2">
+              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                Create your Karen account
+              </CardTitle>
+              <CardDescription className="text-base text-muted-foreground">
+                Registration is currently restricted. Contact an administrator to request
+                access to the platform.
+              </CardDescription>
+            </div>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -134,19 +137,22 @@ export default function SignupPage() {
             </div>
             
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                <a 
-                  href="/login" 
-                  className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
-                >
-                </a>
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground/70">
-              </p>
-            </div>
+                <p className="text-sm text-muted-foreground">
+                  <a
+                    href="/login"
+                    className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
+                  >
+                    Return to sign in
+                  </a>
+                </p>
+              </div>
+
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground/70">
+                  Need help? Reach out to your system administrator to enable account
+                  provisioning.
+                </p>
+              </div>
           </div>
         </CardContent>
       </Card>

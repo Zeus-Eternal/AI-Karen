@@ -66,6 +66,17 @@ export interface PerformanceThresholds {
 
 export type AlertListener = (alert: PerformanceAlert) => void;
 
+export interface PerformanceMetrics {
+  vitals: Partial<WebVitalsMetrics>;
+  metrics: PerformanceMetric[];
+  alerts: PerformanceAlert[];
+  resourceUsage: ResourceUsage;
+}
+
+export type PerformanceEvent =
+  | { type: 'metric'; metric: PerformanceMetric }
+  | { type: 'alert'; alert: PerformanceAlert };
+
 export class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
   private alerts: PerformanceAlert[] = [];
@@ -200,11 +211,12 @@ export class PerformanceMonitor {
         const navigationObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             const nav = entry as PerformanceNavigationTiming;
-            const pageLoadTime = nav.loadEventEnd - nav.navigationStart;
+            const navigationStart = typeof nav.startTime === 'number' ? nav.startTime : 0;
+            const pageLoadTime = nav.loadEventEnd - navigationStart;
             this.recordMetric('page-load', pageLoadTime, {
-              domContentLoaded: nav.domContentLoadedEventEnd - nav.navigationStart,
-              firstByte: nav.responseStart - nav.navigationStart,
-              domComplete: nav.domComplete - nav.navigationStart,
+              domContentLoaded: nav.domContentLoadedEventEnd - navigationStart,
+              firstByte: nav.responseStart - navigationStart,
+              domComplete: nav.domComplete - navigationStart,
             });
             this.checkThreshold('pageLoad', pageLoadTime);
           }
@@ -259,6 +271,13 @@ export class PerformanceMonitor {
   }
 
   getCurrentResourceUsage(): ResourceUsage {
+    if (!isBrowser) {
+      return {
+        memory: { used: 0, total: 0, percentage: 0 },
+        network: { downlink: 0, effectiveType: 'unknown', rtt: 0 },
+      };
+    }
+
     const perf: any = performance as any;
     const memory = perf?.memory;
     const conn: any = (navigator as any).connection;
@@ -304,6 +323,15 @@ export class PerformanceMonitor {
   getAlerts(limit?: number): PerformanceAlert[] {
     const sorted = [...this.alerts].sort((a, b) => b.timestamp - a.timestamp);
     return limit ? sorted.slice(0, limit) : sorted;
+  }
+
+  getPerformanceMetrics(limit: number = 100): PerformanceMetrics {
+    return {
+      vitals: this.getWebVitalsMetrics(),
+      metrics: this.getMetrics(undefined, limit),
+      alerts: this.getAlerts(limit),
+      resourceUsage: this.getCurrentResourceUsage(),
+    };
   }
 
   onAlert(callback: AlertListener): () => void {

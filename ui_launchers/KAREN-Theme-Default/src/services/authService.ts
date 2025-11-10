@@ -90,8 +90,8 @@ export class AuthService {
   }
   async uploadAvatar(file: File): Promise<string> {
     try {
-      const response = await this.apiClient.uploadFile('/api/users/me/avatar', file);
-      return response.data.avatar_url as string;
+      const response = await this.apiClient.upload<{ avatar_url: string }>('/api/users/me/avatar', file);
+      return response.data.avatar_url;
     } catch (error: any) {
       throw new Error(`Failed to upload avatar: ${error.message}`);
     }

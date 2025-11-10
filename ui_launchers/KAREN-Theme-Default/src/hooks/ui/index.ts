@@ -32,5 +32,4 @@ export {
 // Types export
 export type {
   KeyboardShortcut,
-  ShortcutCategory,
 } from "../use-keyboard-shortcuts";

@@ -535,15 +535,19 @@ export class EnhancedApiClient {
       });
     }
     // Fallback to regular request
-    return this.request<T>(endpoint, {
+    const requestConfig: EnhancedRequestConfig = {
       ...config,
       method: "POST",
       body: formData,
-      headers: {
-        ...config?.headers,
-        "Content-Type": undefined, // Let browser set it for FormData
-      },
-    });
+    };
+
+    if (config?.headers) {
+      const headers = new Headers(config.headers as HeadersInit);
+      headers.delete("Content-Type");
+      requestConfig.headers = headers;
+    }
+
+    return this.request<T>(endpoint, requestConfig);
   }
   // Default retry condition
   private defaultRetryCondition = (

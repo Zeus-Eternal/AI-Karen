@@ -21,6 +21,6 @@ export class AuditService {
 
   async getAuditLogs(limit = 50): Promise<AuditLogEntry[]> {
     const response = await this.apiClient.get<AuditLogEntry[]>(`/api/audit/logs?limit=${limit}`);
-    return response;
+    return response.data ?? [];
   }
 }

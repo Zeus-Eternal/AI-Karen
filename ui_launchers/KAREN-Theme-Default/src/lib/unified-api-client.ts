@@ -11,12 +11,14 @@
  * - Correlation IDs propagated on responses
  */
 
-import { getApiClient, type ApiResponse, type ApiError } from './api-client';
+import { getApiClient, type ApiResponse, type ApiError, type ApiClient } from './api-client';
 import { safeError } from './safe-console';
 import { getConfigManager } from './endpoint-config';
 
-// Optional toast—left unused here on purpose (UI layer should decide how to display)
-import { useToast } from '@/hooks/use-toast';
+type InstrumentedApiClient = ApiClient & {
+  getEndpointStats?: () => Record<string, unknown>;
+  clearCaches?: () => void;
+};
 
 export interface UnifiedApiClientConfig {
   enableFallback: boolean;
@@ -119,7 +121,7 @@ export type EndpointKey = keyof ConsolidatedEndpoints;
  * Unified API Client
  */
 export class UnifiedApiClient {
-  private apiClient = getApiClient();
+  private apiClient: InstrumentedApiClient = getApiClient() as InstrumentedApiClient;
   private configManager = getConfigManager();
   private config: UnifiedApiClientConfig;
   private endpoints: ConsolidatedEndpoints;
@@ -309,8 +311,9 @@ export class UnifiedApiClient {
     };
   }
 
-  getEndpointStats() {
-    return this.apiClient.getEndpointStats?.();
+  getEndpointStats(): ReturnType<NonNullable<InstrumentedApiClient['getEndpointStats']>> | undefined {
+    const fn = this.apiClient.getEndpointStats;
+    return typeof fn === 'function' ? fn.call(this.apiClient) : undefined;
   }
 
   clearCaches(): void {

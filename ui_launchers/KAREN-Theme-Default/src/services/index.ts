@@ -9,7 +9,7 @@
 // ============================================================================
 
 export { auditLogger } from './audit-logger';
-export type { Timer } from './audit-logger';
+export type { Timer as AuditLoggerTimer } from './audit-logger';
 
 export { AuditService } from './auditService';
 export type { AuditLogEntry } from './auditService';
@@ -30,30 +30,76 @@ export type { PluginMetrics, PluginValidationResult, PluginCategory, PluginExecu
 // ============================================================================
 
 export { PerformanceMonitor, performanceMonitor } from './performance-monitor';
-export type { PerformanceMetric, AlertListener, PerformanceThresholds, PerformanceAlert, WebVitalsMetrics, ResourceUsage } from './performance-monitor';
+export type {
+  PerformanceMetric,
+  PerformanceMetrics,
+  PerformanceEvent,
+  AlertListener,
+  PerformanceThresholds,
+  PerformanceAlert,
+  WebVitalsMetrics,
+  ResourceUsage,
+} from './performance-monitor';
 
 export { PerformanceOptimizer, performanceOptimizer } from './performance-optimizer';
-export type { OptimizationMetrics, OptimizationConfig, Listener, Priority, OptimizationRecommendation } from './performance-optimizer';
+export type {
+  OptimizationMetrics,
+  OptimizationConfig,
+  Listener as PerformanceOptimizerListener,
+  Priority,
+  OptimizationRecommendation,
+} from './performance-optimizer';
 
 export { performanceProfiler, PerformanceProfiler } from './performance-profiler';
-export type { Bottleneck, OptimizationSuggestion, PerformanceComparison, PerformanceProfile, Listener, PerformanceMetrics, RegressionTest } from './performance-profiler';
+export type {
+  Bottleneck,
+  OptimizationSuggestion,
+  PerformanceComparison,
+  PerformanceProfile,
+  Listener as PerformanceProfilerListener,
+  PerformanceMetrics as PerformanceProfilerMetrics,
+  RegressionTest,
+} from './performance-profiler';
 
 // ============================================================================
 // WebSocket Services
 // ============================================================================
 
-export { useEnhancedWebSocket, EnhancedWebSocketService, enhancedWebSocketService, useEnhancedWebSocketSubscription } from './enhanced-websocket-service';
-export type { Timer, Subscription, WebSocketMessage, QueuedMessage, ConnectionMetrics, Interval, ConnectionState, WebSocketEventType } from './enhanced-websocket-service';
+export {
+  useEnhancedWebSocket,
+  EnhancedWebSocketService,
+  enhancedWebSocketService,
+  useEnhancedWebSocketSubscription,
+} from './enhanced-websocket-service';
+export type {
+  Timer as EnhancedWebSocketTimer,
+  Subscription,
+  WebSocketMessage as EnhancedWebSocketMessage,
+  QueuedMessage,
+  ConnectionMetrics,
+  Interval,
+  ConnectionState as EnhancedWebSocketConnectionState,
+  WebSocketEventType as EnhancedWebSocketEventType,
+} from './enhanced-websocket-service';
 
 export { useWebSocket, useWebSocketSubscription, WebSocketService, websocketService } from './websocket-service';
-export type { ConnectionState, WebSocketEventType, WebSocketMessage } from './websocket-service';
+export type {
+  ConnectionState as LegacyWebSocketConnectionState,
+  WebSocketEventType as LegacyWebSocketEventType,
+  WebSocketMessage as LegacyWebSocketMessage,
+} from './websocket-service';
 
 // ============================================================================
 // Extension Services
 // ============================================================================
 
 export { AuthenticatedExtensionService, getAuthenticatedExtensionService, initializeAuthenticatedExtensionService } from './extensions/authenticatedExtensionService';
-export type { ExtensionInfo, ExtensionEvent, BackgroundTask, ServiceState } from './extensions/authenticatedExtensionService';
+export type {
+  ExtensionInfo as AuthenticatedExtensionInfo,
+  ExtensionEvent as AuthenticatedExtensionEvent,
+  BackgroundTask,
+  ServiceState,
+} from './extensions/authenticatedExtensionService';
 
 export { getCacheConfig, setCacheConfig } from './extensions/cacheService';
 
@@ -82,7 +128,10 @@ export { createUserFriendlyError, getServiceErrorHandler, ServiceErrorHandler, i
 export type { RetryOptions, ServiceError, ErrorHandlerConfig } from './errorHandler';
 
 export { getExtensionService, initializeExtensionService, ExtensionService } from './extensionService';
-export type { ExtensionInfo, ExtensionEvent } from './extensionService';
+export type {
+  ExtensionInfo as ExtensionServiceInfo,
+  ExtensionEvent as ExtensionServiceEvent,
+} from './extensionService';
 
 export { reasoningService } from './reasoningService';
 export type { ReasoningResponse, ReasoningRequest, FetchOptions } from './reasoningService';

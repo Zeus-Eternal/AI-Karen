@@ -73,7 +73,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
 
   // RBAC: Only show to admins by default
   const isAdmin =
-    !requireAdminAccess || hasRole?.("admin") || hasRole?.("super_admin");
+    !requireAdminAccess || hasRole("admin") || hasRole("super_admin");
 
   const breadcrumbs = useMemo<BreadcrumbItem[]>(() => {
     // Custom items take full control
@@ -82,7 +82,7 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
       const lastIdx = customItems.length - 1;
       return customItems.map((c, i) => ({
         ...c,
-        isActive: c.isActive ?? i === lastIdx && !c.href,
+        isActive: c.isActive ?? (i === lastIdx && !c.href),
       }));
     }
 

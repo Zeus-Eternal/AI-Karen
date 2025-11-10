@@ -107,19 +107,29 @@ export type { State, Toast, ToasterToast, ActionType, Action } from './use-toast
 export { useCopilotApi, useUnifiedApi, useMemoryApi } from './use-unified-api';
 export type { UseUnifiedApiReturn, UseUnifiedApiOptions, CacheEntry } from './use-unified-api';
 
-export { useAdminErrorHandler, useBulkOperationErrors, useSystemConfigErrors, useUserManagementErrors, useAuditLogErrors, default as useAdminErrorHandler } from './useAdminErrorHandler';
+export {
+  useAdminErrorHandler,
+  useBulkOperationErrors,
+  useSystemConfigErrors,
+  useUserManagementErrors,
+  useAuditLogErrors,
+} from './useAdminErrorHandler';
+export { default as useAdminErrorHandlerHook } from './useAdminErrorHandler';
 export type { UseAdminErrorHandlerOptions, UseAdminErrorHandlerReturn, ErrorState } from './useAdminErrorHandler';
 
-export { useChatPerformance, default as useChatPerformance } from './useChatPerformance';
+export { useChatPerformance } from './useChatPerformance';
+export { default as useChatPerformanceHook } from './useChatPerformance';
 export type { ChatPerformanceMetrics } from './useChatPerformance';
 
-export { useDeviceDetection, useTouchGestures, useResponsiveDesign, default as useDeviceDetection } from './useDeviceDetection';
+export { useDeviceDetection, useTouchGestures, useResponsiveDesign } from './useDeviceDetection';
+export { default as useDeviceDetectionHook } from './useDeviceDetection';
 export type { DeviceInfo } from './useDeviceDetection';
 
 export { useFirstRunSetupWithRedirect, useFirstRunSetup, firstRunSetupStorage, useSetupCompletion, shouldBypassFirstRunCheck, useFirstRunSetupProvider } from './useFirstRunSetup';
 export type { UseFirstRunSetupState, UseFirstRunSetupReturn } from './useFirstRunSetup';
 
-export { useInfiniteScroll, default as useInfiniteScroll } from './useInfiniteScroll';
+export { useInfiniteScroll } from './useInfiniteScroll';
+export { default as useInfiniteScrollHook } from './useInfiniteScroll';
 export type { UseInfiniteScrollOptions } from './useInfiniteScroll';
 
 export { useModelActions, useModelSelection } from './useModelSelection';
@@ -131,10 +141,12 @@ export type { NavigationOptions } from './useNavigation';
 export { usePerformanceMonitor, useWebVitals } from './usePerformanceMonitor';
 export type { PerformanceMetrics } from './usePerformanceMonitor';
 
-export { useProviderNotifications, default as useProviderNotifications } from './useProviderNotifications';
+export { useProviderNotifications } from './useProviderNotifications';
+export { default as useProviderNotificationsHook } from './useProviderNotifications';
 export type { ProviderNotification, NotificationSettings, UseProviderNotificationsOptions } from './useProviderNotifications';
 
-export { useReasoning, default as useReasoning } from './useReasoning';
+export { useReasoning } from './useReasoning';
+export { default as useReasoningHook } from './useReasoning';
 export type { UseReasoningReturn } from './useReasoning';
 
 export { useHasPermission, useIsSuperAdmin, useHasRole, useIsAdmin, useRole } from './useRole';

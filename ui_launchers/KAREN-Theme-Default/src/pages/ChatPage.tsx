@@ -3,14 +3,15 @@ import { Send, Loader2 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { useChatStore } from '../stores/chatStore'
 import { chatAPI } from '../lib/api'
-import { toast } from 'sonner'
 import { cn, formatDate } from '../lib/utils'
+import { useToast } from '@/hooks/use-toast'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 export default function ChatPage() {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
 
   const {
     conversations,
@@ -45,8 +46,10 @@ export default function ChatPage() {
       }
     },
     onError: (error: any) => {
-      toast.error('Failed to send message', {
+      toast({
+        title: 'Failed to send message',
         description: error.response?.data?.detail || error.message,
+        variant: 'destructive',
       })
     },
   })

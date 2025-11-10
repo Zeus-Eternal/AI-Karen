@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/components/ui/toaster'
 import { useThemeStore } from './stores/themeStore'
 import Layout from './components/Layout'
 import ChatPage from './pages/ChatPage'

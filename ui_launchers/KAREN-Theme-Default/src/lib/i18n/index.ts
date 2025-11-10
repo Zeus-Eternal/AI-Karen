@@ -42,6 +42,8 @@ export interface PluralOptions {
 export interface InterpolationOptions {
   [key: string]: string | number | boolean;
 }
+
+type TranslationOptions = InterpolationOptions & Partial<PluralOptions> & { ns?: string };
 export const DEFAULT_CONFIG: I18nConfig = {
   defaultLocale: 'en',
   locales: ['en', 'es', 'fr', 'de', 'ja', 'zh', 'ar', 'ru'],
@@ -62,6 +64,46 @@ export class I18nManager {
   constructor(config: Partial<I18nConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.currentLocale = this.config.defaultLocale;
+  }
+  /**
+   * Return a copy of the current configuration
+   */
+  getConfig(): I18nConfig {
+    return {
+      ...this.config,
+      interpolation: { ...this.config.interpolation },
+      locales: [...this.config.locales],
+    };
+  }
+  /**
+   * Merge additional configuration values into the manager
+   */
+  configure(config: Partial<I18nConfig>): void {
+    const previousConfig = this.getConfig();
+    this.config = {
+      ...this.config,
+      ...config,
+      interpolation: {
+        ...this.config.interpolation,
+        ...(config.interpolation ?? {}),
+      },
+    };
+
+    if (config.defaultLocale && config.defaultLocale !== previousConfig.defaultLocale) {
+      this.currentLocale = config.defaultLocale;
+    }
+
+    if (config.locales && config.locales.length > 0) {
+      const normalizedLocales = [...new Set(config.locales)];
+      this.config = {
+        ...this.config,
+        locales: normalizedLocales,
+      };
+
+      if (!normalizedLocales.includes(this.currentLocale)) {
+        this.currentLocale = normalizedLocales[0] ?? this.config.defaultLocale;
+      }
+    }
   }
   /**
    * Initialize the i18n system with resources
@@ -107,7 +149,7 @@ export class I18nManager {
   /**
    * Translate a key
    */
-  t(key: string, options: InterpolationOptions & PluralOptions & { ns?: string } = {}): string {
+  t(key: string, options: TranslationOptions = {}): string {
     const { ns = 'common', count, ...interpolationOptions } = options;
     // Handle pluralization
     if (this.config.pluralization && typeof count === 'number') {

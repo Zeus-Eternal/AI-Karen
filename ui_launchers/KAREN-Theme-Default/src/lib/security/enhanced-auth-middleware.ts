@@ -427,7 +427,7 @@ export class EnhancedAuthMiddleware {
       { success: false, error: { code, message } } as AdminApiResponse<never>,
       { status: 401 }
     );
-    }
+  }
 
   private forbiddenResponse(code: string, message: string): NextResponse {
     return NextResponse.json(
