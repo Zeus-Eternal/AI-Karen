@@ -23,7 +23,7 @@ interface ChatTabsProps {
   onSettingsChange: (settings: Partial<ChatSettings>) => void;
   onCodeChange: (value: string) => void;
   onPreviewToggle: () => void;
-  onCodeSubmit: () => void;
+  onCodeSubmit: (code: string) => void | Promise<void>;
   renderChatTab: () => React.ReactNode;
 }
 
@@ -84,7 +84,7 @@ export const ChatTabs: React.FC<ChatTabsProps> = ({
           onCodeChange={onCodeChange}
           onPreviewToggle={onPreviewToggle}
           onCodeSubmit={onCodeSubmit}
-          onQuickAction={() => undefined}
+          onQuickAction={async () => undefined}
         />
       </TabsContent>
 
