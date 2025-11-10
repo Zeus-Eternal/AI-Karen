@@ -8,7 +8,7 @@
 
 import React, { Suspense, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { extensionIntegration, ExtensionRoute } from './extension-integration';
+import { ExtensionRoute } from './extension-integration';
 import { useExtensionRoutes } from './hooks';
 import { safeError, safeLog } from '../safe-console';
 import { Button } from '@/components/ui/button';

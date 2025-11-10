@@ -361,9 +361,15 @@ export async function fetchWithRecovery(
       lastError = error;
 
       if (attempt < maxRetries) {
+        const errorMessage = lastError instanceof Error
+          ? lastError.message
+          : lastError
+            ? String(lastError)
+            : 'Unknown error';
+
         const rr = await enhancedErrorHandler.handleNetworkError(
           url,
-          String(lastError.message || lastError),
+          errorMessage,
           operation,
           { attempt, maxRetries }
         );
