@@ -1,4 +1,4 @@
-declare module '@/components/ui/alert' {
+declare module '@/components/ui/alert' {  
   import type {
     FC,
     HTMLAttributes,

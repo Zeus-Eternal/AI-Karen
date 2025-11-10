@@ -24,7 +24,7 @@ export type { CopilotAction, ChatContext, CopilotArtifact } from "@/components/C
 
 // Export AG-UI components
 export { ConversationGrid } from "./ConversationGrid";
-export type { ConversationRow } from "./ConversationGrid";
+export type { ConversationSummaryRow } from "@/types/chat-ui";
 
 export { ChatAnalyticsChart } from "./ChatAnalyticsChart";
 export type { ChatAnalyticsData } from "./ChatAnalyticsChart";
