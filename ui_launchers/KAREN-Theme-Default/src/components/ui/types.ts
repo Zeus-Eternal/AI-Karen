@@ -5,7 +5,13 @@
  * maintaining consistency with React and Next.js patterns
  */
 
-import { ReactNode, ErrorInfo } from 'react';
+import type {
+  ReactNode,
+  ErrorInfo,
+  MouseEvent,
+  KeyboardEvent,
+  FocusEvent,
+} from 'react';
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
 
 // Loading Component Types
@@ -208,9 +214,9 @@ export interface AccessibilityProps {
 }
 
 // Event Handler Types
-export type ClickHandler = (event: React.MouseEvent) => void;
-export type KeyboardHandler = (event: React.KeyboardEvent) => void;
-export type FocusHandler = (event: React.FocusEvent) => void;
+export type ClickHandler = (event: MouseEvent) => void;
+export type KeyboardHandler = (event: KeyboardEvent) => void;
+export type FocusHandler = (event: FocusEvent) => void;
 export type ChangeHandler<T = any> = (value: T) => void;
 
 // Component State Types
