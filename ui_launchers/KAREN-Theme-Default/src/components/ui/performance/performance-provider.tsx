@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useCallback, useEffect } from 'react';
 import { performanceMonitor } from '@/utils/performance-monitor';
-import { useToast } from "@/hooks/use-toast";
 
 // Context for performance monitoring
 export interface PerformanceContextValue {
@@ -10,12 +9,12 @@ export interface PerformanceContextValue {
     name: string;
     value: number;
     type: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }) => void;
   measureFunction: (name: string, fn: () => any) => any;
   measureAsyncFunction: (name: string, fn: () => Promise<any>) => Promise<any>;
   startMeasure: (name: string) => void;
-  endMeasure: (name: string, metadata?: Record<string, any>) => void;
+  endMeasure: (name: string, metadata?: Record<string, unknown>) => void;
   monitor: typeof performanceMonitor;
 }
 
@@ -31,13 +30,11 @@ export function PerformanceProvider({
   children,
   enableReporting = true,
 }: PerformanceProviderProps) {
-  const { toast } = useToast();
-
   const recordMetric = useCallback((metric: {
     name: string;
     value: number;
     type: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }) => {
     performanceMonitor.recordMetric(metric.name, metric.value, metric.metadata);
     if (enableReporting) {
@@ -58,7 +55,7 @@ export function PerformanceProvider({
     performanceMonitor.startMeasure(name);
   }, []);
 
-  const endMeasure = useCallback((name: string, metadata?: Record<string, any>) => {
+  const endMeasure = useCallback((name: string, metadata?: Record<string, unknown>) => {
     performanceMonitor.endMeasure(name, metadata);
   }, []);
 
@@ -151,7 +148,8 @@ export function useComponentPerformance(componentName: string) {
     measureRender,
     measureAsync,
     startMeasure: (name: string) => startMeasure(`${componentName}-${name}`),
-    endMeasure: (name: string, metadata?: Record<string, any>) => endMeasure(`${componentName}-${name}`, metadata),
+    endMeasure: (name: string, metadata?: Record<string, unknown>) =>
+      endMeasure(`${componentName}-${name}`, metadata),
   };
 }
 
@@ -213,7 +211,7 @@ async function reportToAnalytics(metric: {
   name: string;
   value: number;
   type: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
     // This would integrate with your analytics service

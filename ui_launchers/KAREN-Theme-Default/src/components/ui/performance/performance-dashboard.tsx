@@ -1,7 +1,17 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { usePerformanceMonitor, checkPerformanceBudget } from '@/utils/performance-monitor';
+
+import React, { useState, useEffect, useMemo } from "react";
+import { Activity, Clock, TrendingUp, Zap } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import { usePerformanceMonitor, checkPerformanceBudget } from "@/utils/performance-monitor";
+import type {
+  CustomMetric,
+  PerformanceSummary,
+  WebVitalsMetric,
+} from "@/utils/performance-monitor";
 
 export interface PerformanceDashboardProps {
   className?: string;
@@ -10,8 +20,16 @@ export interface PerformanceDashboardProps {
   refreshInterval?: number;
 }
 
+type BudgetRating = ReturnType<typeof checkPerformanceBudget>["rating"];
+
+const STATUS_STYLES: Record<BudgetRating, string> = {
+  good: "border-green-200 bg-green-50 text-green-900",
+  "needs-improvement": "border-amber-200 bg-amber-50 text-amber-900",
+  poor: "border-red-200 bg-red-50 text-red-900",
+};
+
 const WEB_VITALS: Array<{
-  key: keyof PerformanceSummary["webVitals"];
+  key: WebVitalsMetric["name"];
   label: string;
   unit: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -21,6 +39,26 @@ const WEB_VITALS: Array<{
   { key: "CLS", label: "Cumulative Layout Shift", unit: "", icon: TrendingUp },
   { key: "FCP", label: "First Contentful Paint", unit: "ms", icon: Zap },
 ];
+
+const createBudgetCandidate = (name: WebVitalsMetric["name"], value: number): WebVitalsMetric => ({
+  name,
+  value,
+  rating: "good",
+  delta: 0,
+  id: `${name}-latest`,
+  navigationType: "navigate",
+});
+
+const formatMetricValue = (value: number | undefined, unit: string) => {
+  if (value == null) return "N/A";
+  if (!unit) {
+    return value.toFixed(2);
+  }
+  return `${Math.round(value)}${unit}`;
+};
+
+const formatThreshold = (value: number, unit: string) =>
+  unit ? `${Math.round(value)}${unit}` : value.toFixed(2);
 
 export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
   className,
@@ -72,32 +110,29 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
         </header>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {WEB_VITALS.map(({ key, label, unit, icon: Icon }) => {
-            const value = summary.webVitals[key];
-            const thresholds = PERFORMANCE_THRESHOLDS[key as keyof typeof PERFORMANCE_THRESHOLDS];
-            let status: "good" | "needs-improvement" | "poor" = "good";
-            if (value != null && thresholds) {
-              if (value > thresholds.poor) status = "poor";
-              else if (value > thresholds.good) status = "needs-improvement";
-            }
-
-            const colors: Record<typeof status, string> = {
-              good: "border-green-200 bg-green-50 text-green-900",
-              "needs-improvement": "border-amber-200 bg-amber-50 text-amber-900",
-              poor: "border-red-200 bg-red-50 text-red-900",
-            };
+            const metric = summary.webVitals[key];
+            const value = metric?.value;
+            const budget =
+              value != null ? checkPerformanceBudget(createBudgetCandidate(key, value)) : null;
+            const status: BudgetRating = budget?.rating ?? "good";
+            const cardTone =
+              value != null ? STATUS_STYLES[status] : "border-muted bg-muted/10 text-muted-foreground";
 
             return (
-              <Card key={key} className={cn("border", colors[status])}>
+              <Card key={key} className={cn("border", cardTone)}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium uppercase tracking-wide">{key}</CardTitle>
                   <Icon className="h-4 w-4" />
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-1">
-                    <p className="text-2xl font-bold">
-                      {value != null ? `${Math.round(value)}${unit}` : "N/A"}
-                    </p>
+                    <p className="text-2xl font-bold">{formatMetricValue(value, unit)}</p>
                     <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {budget?.threshold
+                        ? `Target ≤ ${formatThreshold(budget.threshold.good, unit)} · Alert ≥ ${formatThreshold(budget.threshold.poor, unit)}`
+                        : "No performance budget configured."}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
