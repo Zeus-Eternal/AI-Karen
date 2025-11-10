@@ -63,6 +63,10 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 type Timeframe = "1h" | "6h" | "24h" | "7d";
 const TIMEFRAME_OPTIONS: readonly Timeframe[] = ["1h", "6h", "24h", "7d"];
+type AlertBoxProps = React.ComponentPropsWithoutRef<"div"> & {
+  variant?: "default" | "destructive";
+};
+const AlertBox = Alert as React.ComponentType<AlertBoxProps>;
 
 const ResourceMonitoringFallback: React.FC<ErrorFallbackProps> = ({
   resetError,
@@ -343,7 +347,10 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                     .filter((a) => !a.resolved)
                     .slice(0, 10)
                     .map((alert) => (
-                      <Alert key={alert.id} variant={alert.severity === "critical" ? "destructive" : "default"}>
+                      <AlertBox
+                        key={alert.id}
+                        variant={alert.severity === "critical" ? "destructive" : "default"}
+                      >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start space-x-2">
                             {getSeverityIcon(alert.severity)}
@@ -372,7 +379,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                             <X className="h-4 w-4 " />
                           </Button>
                         </div>
-                      </Alert>
+                      </AlertBox>
                     ))}
                 </div>
               </ScrollArea>
@@ -588,14 +595,14 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
                         </div>
 
                         {plan.projectedUsage > 80 && (
-                          <Alert className="mt-4">
+                          <AlertBox className="mt-4">
                             <AlertTriangle className="h-4 w-4 " />
                             <AlertTitle>Capacity Warning</AlertTitle>
                             <AlertDescription>
-                              Projected {plan.resource} usage will exceed 80% in {plan.timeframe}. 
+                              Projected {plan.resource} usage will exceed 80% in {plan.timeframe}.
                               Consider scaling up resources.
                             </AlertDescription>
-                          </Alert>
+                          </AlertBox>
                         )}
                       </div>
                     ))}

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 import { Activity, AlertTriangle, CheckCircle, XCircle, Clock, RefreshCw, Bell, BellOff, TrendingUp, Zap, Server } from 'lucide-react';
 import { getHealthMonitor, type HealthMetrics, type Alert as HealthAlert } from '@/lib/health-monitor';
@@ -127,7 +128,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
 
   if (!metrics) {
     return (
-      <div className={`flex items-center justify-center p-8 ${className}`}>
+      <div className={cn('flex items-center justify-center p-8', className)}>
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 " />
           <p>Loading health metrics...</p>
@@ -137,7 +138,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={cn('space-y-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -189,11 +190,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
             <div className="text-2xl font-bold">
               {(metrics.errorRate * 100).toFixed(1)}%
             </div>
-            <Progress 
-              value={metrics.errorRate * 100} 
-              className="mt-2"
-              max={100}
-            />
+            <Progress value={metrics.errorRate * 100} className="mt-2" />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
               {metrics.failedRequests} of {metrics.totalRequests} requests failed
             </p>
@@ -209,10 +206,9 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
             <div className="text-2xl font-bold">
               {metrics.averageResponseTime.toFixed(0)}ms
             </div>
-            <Progress 
-              value={Math.min((metrics.averageResponseTime / 5000) * 100, 100)} 
+            <Progress
+              value={Math.min((metrics.averageResponseTime / 5000) * 100, 100)}
               className="mt-2"
-              max={100}
             />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
             </p>
