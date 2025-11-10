@@ -109,3 +109,5 @@ ui_launchers/KAREN-Theme-Default/.gitignore
 /.env_kari
 ui_launchers/KAREN-Theme-Default/.next/cache/tsbuildinfo
 /ui_launchers/KAREN-Theme-Default/.next
+data/users.json
+data/users.json

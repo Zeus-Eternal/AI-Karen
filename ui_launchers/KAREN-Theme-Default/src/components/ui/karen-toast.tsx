@@ -39,6 +39,7 @@ const karenToastVariants = cva(
  * Enhanced progress indicator for timed alerts with smooth animations
  */
 const KarenToastProgress = React.forwardRef<
+  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     duration?: number;
     variant?: VariantProps<typeof karenToastVariants>["variant"];
@@ -75,36 +76,19 @@ const KarenToastProgress = React.forwardRef<
       default:
         return "bg-gradient-to-r from-primary/80 to-primary shadow-sm";
     }
+  };
 
-    const getProgressColor = () => {
-      switch (variant) {
-        case "karen-success":
-          return "bg-gradient-to-r from-green-400 to-green-600 shadow-sm shadow-green-200 dark:shadow-green-900/20";
-        case "karen-info":
-          return "bg-gradient-to-r from-blue-400 to-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/20";
-        case "karen-warning":
-          return "bg-gradient-to-r from-amber-400 to-amber-600 shadow-sm shadow-amber-200 dark:shadow-amber-900/20";
-        case "karen-error":
-          return "bg-gradient-to-r from-red-400 to-red-600 shadow-sm shadow-red-200 dark:shadow-red-900/20";
-        case "karen-system":
-          return "bg-gradient-to-r from-purple-400 to-purple-600 shadow-sm shadow-purple-200 dark:shadow-purple-900/20";
-        default:
-          return "bg-gradient-to-r from-primary/80 to-primary shadow-sm";
-      }
-    };
-
-    return (
-      <div
-        className={cn(
-          "h-full transition-all duration-100 ease-linear motion-reduce:transition-none",
-          getProgressColor()
-        )}
-        style={{ 
-          width: `${progress}%`,
-          '--duration': `${duration}ms`
-        } as React.CSSProperties}
-      />
-    </div>
+  return (
+    <div
+      className={cn(
+        "h-full transition-all duration-100 ease-linear motion-reduce:transition-none",
+        getProgressColor()
+      )}
+      style={{ 
+        width: `${progress}%`,
+        '--duration': `${duration}ms`
+      } as React.CSSProperties}
+    />
   );
 });
       
@@ -203,9 +187,8 @@ const KarenToast = React.forwardRef<React.ElementRef<typeof ToastPrimitives.Root
             ))}
           </div>
         )}
-      </div>
-      
-      {/* Progress indicator */}
+        
+        {/* Progress indicator */}
       {showProgress && alert?.duration && (
         <KarenToastProgress duration={alert.duration} variant={variant} />
       )}
@@ -215,20 +198,6 @@ const KarenToast = React.forwardRef<React.ElementRef<typeof ToastPrimitives.Root
     </ToastPrimitives.Root>
   );
 });
-
-        {showProgress && resolvedDuration ? (
-          <KarenToastProgress
-            duration={resolvedDuration}
-            variant={alert?.variant ?? variant}
-            enableAnimations
-          />
-        ) : null}
-
-        <KarenToastClose />
-      </ToastPrimitives.Root>
-    );
-  }
-);
 KarenToast.displayName = "KarenToast";
 
 const KarenToastAction = React.forwardRef<
@@ -335,8 +304,6 @@ export type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
 export type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
 
 export {
-  type KarenToastProps,
-  type KarenToastActionElement,
   KarenToastProvider,
   KarenToastViewport,
   KarenToast,
@@ -344,13 +311,6 @@ export {
   KarenToastDescription,
   KarenToastClose,
   KarenToastAction,
-  karenToastVariants,
-  KarenToast,
-  KarenToastAction,
-  KarenToastClose,
-  KarenToastDescription,
   KarenToastProgress,
-  KarenToastProvider,
-  KarenToastTitle,
-  KarenToastViewport,
+  karenToastVariants,
 };
