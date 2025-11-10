@@ -23,6 +23,8 @@
     "tsBuildInfoFile": ".next/cache/tsbuildinfo",
     "baseUrl": ".",
     "types": [
+      "react",
+      "react-dom",
       "vitest/globals",
       "@testing-library/jest-dom"
     ],
@@ -46,6 +48,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "react.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",

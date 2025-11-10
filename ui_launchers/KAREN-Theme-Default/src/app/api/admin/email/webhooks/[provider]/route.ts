@@ -32,9 +32,10 @@ const TEXT_ENCODER = new TextEncoder();
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const provider = String(params?.provider || '').toLowerCase() as Provider;
+  const resolvedParams = await params;
+  const provider = String(resolvedParams?.provider || '').toLowerCase() as Provider;
 
   if (!SUPPORTED_PROVIDERS.includes(provider)) {
     return jsonError('Unsupported email provider', 400);
@@ -129,9 +130,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const provider = String(params?.provider || '').toLowerCase() as Provider;
+  const resolvedParams = await params;
+  const provider = String(resolvedParams?.provider || '').toLowerCase() as Provider;
 
   if (!SUPPORTED_PROVIDERS.includes(provider)) {
     return jsonError('Unsupported email provider', 400);

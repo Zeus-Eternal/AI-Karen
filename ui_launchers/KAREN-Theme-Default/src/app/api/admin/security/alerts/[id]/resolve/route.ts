@@ -22,7 +22,7 @@ function getIp(request: NextRequest): string {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // RBAC: super_admin required
@@ -36,7 +36,8 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
-    const alertId = params?.id;
+    const resolvedParams = await params;
+    const alertId = resolvedParams?.id;
     if (!alertId || typeof alertId !== 'string') {
       return NextResponse.json({ error: 'Alert ID is required' }, { status: 400 });
     }

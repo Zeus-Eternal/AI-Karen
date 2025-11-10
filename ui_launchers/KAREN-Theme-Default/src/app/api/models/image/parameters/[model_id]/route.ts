@@ -245,10 +245,11 @@ function buildImageModelLimitations(model: any): ImageModelParameters['limitatio
 
 export async function GET(
   _request: NextRequest,
-  ctx: { params: { model_id: string } },
+  ctx: { params: Promise<{ model_id: string }> },
 ) {
   try {
-    const modelId = ctx?.params?.model_id;
+    const resolvedParams = await ctx.params;
+    const modelId = resolvedParams?.model_id;
     if (!modelId) {
       return NextResponse.json({ error: 'Missing model_id parameter' }, { status: 400 });
     }

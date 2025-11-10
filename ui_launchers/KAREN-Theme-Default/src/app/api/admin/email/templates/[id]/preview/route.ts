@@ -119,7 +119,7 @@ function isVariablesRecord(v: unknown): v is EmailTemplateVariables {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const started = performance.now();
   const correlationId = request.headers.get('x-correlation-id') || randomUUID();
@@ -145,7 +145,8 @@ export async function POST(
     const currentUserId: string = authResult.user?.user_id || 'unknown';
 
     // Params
-    const templateId = params?.id;
+    const resolvedParams = await params;
+    const templateId = resolvedParams?.id;
     if (!templateId) {
       return badRequest('Missing path parameter: id', correlationId);
     }

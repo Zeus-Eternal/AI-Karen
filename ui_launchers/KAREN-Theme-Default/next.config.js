@@ -1,3 +1,11 @@
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 let withBundleAnalyzer = (config) => config;
 try {
   if (process.env.ANALYZE === 'true') {
@@ -13,7 +21,7 @@ try {
 const nextConfig = {
   // Remove asset prefix that's causing MIME type issues
   // assetPrefix: process.env.NODE_ENV === 'development' ? 'http://localhost:8010' : '',
-  
+
   // Explicitly set the root directory to prevent Next.js from looking at parent directories
   experimental: {
     // Other experimental features can go here
@@ -43,12 +51,12 @@ const nextConfig = {
 
   // Suppress hydration warnings in development
   reactStrictMode: false,
-  
+
   // Disable source maps for faster builds
   productionBrowserSourceMaps: false,
-  
+
   // Performance optimizations - swcMinify and optimizeFonts are now default in Next.js 15
-  
+
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
@@ -91,7 +99,7 @@ const nextConfig = {
       },
     ];
   },
-  
+
   webpack: (config, { isServer, dev }) => {
     // Fix chunk loading issues in development
     if (dev && !isServer) {
@@ -101,7 +109,7 @@ const nextConfig = {
         hotUpdateChunkFilename: 'static/webpack/[id].[fullhash].hot-update.js',
       };
     }
-    
+
     if (isServer) {
       // Node's runtime expects server chunks to live alongside webpack-runtime.js
       // so we force id-based filenames to keep them flat (e.g. "5611.js").
@@ -135,11 +143,9 @@ const nextConfig = {
     // Fix lodash module resolution for slate-react (used by CopilotKit)
     config.resolve.alias = {
       ...config.resolve.alias,
-      'lodash/debounce': require.resolve('lodash.debounce'),
-      'lodash/throttle': require.resolve('lodash.throttle'),
       // Fix refractor/core module resolution for older react-syntax-highlighter versions
-      'refractor/core': require.resolve('refractor'),
-      'refractor/core.js': require.resolve('refractor'),
+      'refractor/core': 'refractor',
+      'refractor/core.js': 'refractor',
       // Redirect problematic async imports to safe fallbacks
       'react-syntax-highlighter/dist/esm/async-languages/prism': false,
       'react-syntax-highlighter/dist/esm/prism-async-light': false,
@@ -169,254 +175,21 @@ const nextConfig = {
         })
       );
 
-      // Add fallbacks for missing refractor modules
+      // Add fallbacks for missing refractor modules - simplified
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        'refractor/abap': false,
-        'refractor/abnf': false,
-        'refractor/actionscript': false,
-        'refractor/ada': false,
-        'refractor/agda': false,
-        'refractor/al': false,
-        'refractor/antlr4': false,
-        'refractor/apache': false,
-        'refractor/apex': false,
-        'refractor/apl': false,
-        'refractor/applescript': false,
-        'refractor/aql': false,
-        'refractor/arduino': false,
-        'refractor/arff': false,
-        'refractor/asciidoc': false,
-        'refractor/aspnet': false,
-        'refractor/asm6502': false,
-        'refractor/autohotkey': false,
-        'refractor/autoit': false,
-        'refractor/bash': false,
-        'refractor/basic': false,
-        'refractor/batch': false,
-        'refractor/bbcode': false,
-        'refractor/birb': false,
-        'refractor/bison': false,
-        'refractor/bnf': false,
-        'refractor/brainfuck': false,
-        'refractor/brightscript': false,
-        'refractor/bro': false,
-        'refractor/bsl': false,
-        'refractor/c': false,
-        'refractor/clike': false,
-        'refractor/cmake': false,
-        'refractor/cobol': false,
-        'refractor/coffeescript': false,
-        'refractor/concurnas': false,
-        'refractor/cpp': false,
-        'refractor/crystal': false,
-        'refractor/csharp': false,
-        'refractor/csp': false,
-        'refractor/css': false,
-        'refractor/cypher': false,
-        'refractor/d': false,
-        'refractor/dart': false,
-        'refractor/dataweave': false,
-        'refractor/dax': false,
-        'refractor/dhall': false,
-        'refractor/diff': false,
-        'refractor/django': false,
-        'refractor/dns-zone-file': false,
-        'refractor/docker': false,
-        'refractor/dot': false,
-        'refractor/ebnf': false,
-        'refractor/editorconfig': false,
-        'refractor/eiffel': false,
-        'refractor/ejs': false,
-        'refractor/elixir': false,
-        'refractor/elm': false,
-        'refractor/erb': false,
-        'refractor/erlang': false,
-        'refractor/etlua': false,
-        'refractor/excel-formula': false,
-        'refractor/factor': false,
-        'refractor/false': false,
-        'refractor/firestore-security-rules': false,
-        'refractor/flow': false,
-        'refractor/fortran': false,
-        'refractor/fsharp': false,
-        'refractor/ftl': false,
-        'refractor/gcode': false,
-        'refractor/gdscript': false,
-        'refractor/gedcom': false,
-        'refractor/gherkin': false,
-        'refractor/git': false,
-        'refractor/glsl': false,
-        'refractor/gml': false,
-        'refractor/go': false,
-        'refractor/graphql': false,
-        'refractor/groovy': false,
-        'refractor/haml': false,
-        'refractor/handlebars': false,
-        'refractor/haskell': false,
-        'refractor/haxe': false,
-        'refractor/hcl': false,
-        'refractor/hlsl': false,
-        'refractor/hpkp': false,
-        'refractor/hsts': false,
-        'refractor/http': false,
-        'refractor/ichigojam': false,
-        'refractor/icon': false,
-        'refractor/icu-message-format': false,
-        'refractor/idris': false,
-        'refractor/ignore': false,
-        'refractor/inform7': false,
-        'refractor/ini': false,
-        'refractor/io': false,
-        'refractor/j': false,
-        'refractor/java': false,
+        // Add only the most common refractor modules as fallbacks
         'refractor/javascript': false,
-        'refractor/jexl': false,
-        'refractor/jolie': false,
-        'refractor/jq': false,
-        'refractor/jsdoc': false,
-        'refractor/js-extras': false,
-        'refractor/json': false,
-        'refractor/json5': false,
-        'refractor/jsonp': false,
-        'refractor/jsstacktrace': false,
-        'refractor/js-templates': false,
-        'refractor/julia': false,
-        'refractor/keyman': false,
-        'refractor/kotlin': false,
-        'refractor/kumir': false,
-        'refractor/latex': false,
-        'refractor/latte': false,
-        'refractor/less': false,
-        'refractor/lilypond': false,
-        'refractor/liquid': false,
-        'refractor/lisp': false,
-        'refractor/livescript': false,
-        'refractor/llvm': false,
-        'refractor/log': false,
-        'refractor/lolcode': false,
-        'refractor/lua': false,
-        'refractor/makefile': false,
-        'refractor/markdown': false,
-        'refractor/markup': false,
-        'refractor/markup-templating': false,
-        'refractor/matlab': false,
-        'refractor/mel': false,
-        'refractor/mizar': false,
-        'refractor/mongodb': false,
-        'refractor/monkey': false,
-        'refractor/moonscript': false,
-        'refractor/n1ql': false,
-        'refractor/n4js': false,
-        'refractor/nand2tetris-hdl': false,
-        'refractor/naniscript': false,
-        'refractor/nasm': false,
-        'refractor/neon': false,
-        'refractor/nginx': false,
-        'refractor/nim': false,
-        'refractor/nix': false,
-        'refractor/nsis': false,
-        'refractor/objectivec': false,
-        'refractor/ocaml': false,
-        'refractor/opencl': false,
-        'refractor/openqasm': false,
-        'refractor/oz': false,
-        'refractor/parigp': false,
-        'refractor/parser': false,
-        'refractor/pascal': false,
-        'refractor/pascaligo': false,
-        'refractor/pcaxis': false,
-        'refractor/peoplecode': false,
-        'refractor/perl': false,
-        'refractor/php': false,
-        'refractor/phpdoc': false,
-        'refractor/php-extras': false,
-        'refractor/plsql': false,
-        'refractor/powerquery': false,
-        'refractor/powershell': false,
-        'refractor/processing': false,
-        'refractor/prolog': false,
-        'refractor/properties': false,
-        'refractor/protobuf': false,
-        'refractor/pug': false,
-        'refractor/puppet': false,
-        'refractor/pure': false,
-        'refractor/purebasic': false,
-        'refractor/purescript': false,
-        'refractor/python': false,
-        'refractor/q': false,
-        'refractor/qml': false,
-        'refractor/qore': false,
-        'refractor/r': false,
-        'refractor/racket': false,
-        'refractor/reason': false,
-        'refractor/regex': false,
-        'refractor/renpy': false,
-        'refractor/rest': false,
-        'refractor/rip': false,
-        'refractor/roboconf': false,
-        'refractor/robotframework': false,
-        'refractor/ruby': false,
-        'refractor/rust': false,
-        'refractor/sas': false,
-        'refractor/sass': false,
-        'refractor/scala': false,
-        'refractor/scheme': false,
-        'refractor/scss': false,
-        'refractor/shell-session': false,
-        'refractor/smali': false,
-        'refractor/smalltalk': false,
-        'refractor/smarty': false,
-        'refractor/sml': false,
-        'refractor/solidity': false,
-        'refractor/solution-file': false,
-        'refractor/soy': false,
-        'refractor/sparql': false,
-        'refractor/splunk-spl': false,
-        'refractor/sqf': false,
-        'refractor/sql': false,
-        'refractor/squirrel': false,
-        'refractor/stan': false,
-        'refractor/stylus': false,
-        'refractor/swift': false,
-        'refractor/systemd': false,
-        'refractor/t4-cs': false,
-        'refractor/t4-templating': false,
-        'refractor/t4-vb': false,
-        'refractor/tap': false,
-        'refractor/tcl': false,
-        'refractor/textile': false,
-        'refractor/toml': false,
-        'refractor/tsx': false,
-        'refractor/tt2': false,
-        'refractor/turtle': false,
-        'refractor/twig': false,
         'refractor/typescript': false,
-        'refractor/typoscript': false,
-        'refractor/unrealscript': false,
-        'refractor/uri': false,
-        'refractor/v': false,
-        'refractor/vala': false,
-        'refractor/vbnet': false,
-        'refractor/velocity': false,
-        'refractor/verilog': false,
-        'refractor/vhdl': false,
-        'refractor/vim': false,
-        'refractor/visual-basic': false,
-        'refractor/warpscript': false,
-        'refractor/wasm': false,
-        'refractor/wiki': false,
-        'refractor/wolfram': false,
-        'refractor/xeora': false,
-        'refractor/xml-doc': false,
-        'refractor/xojo': false,
-        'refractor/xquery': false,
-        'refractor/yaml': false,
-        'refractor/yang': false,
-        'refractor/zig': false,
+        'refractor/python': false,
+        'refractor/java': false,
+        'refractor/css': false,
+        'refractor/json': false,
+        'refractor/markdown': false,
+        'refractor/bash': false,
       };
     }
-    
+
     // Fix module resolution for CommonJS/ESM hybrid packages
     config.module.rules.push({
       test: /\.m?js$/,
@@ -424,17 +197,15 @@ const nextConfig = {
         fullySpecified: false,
       },
     });
-    
+
     // Improve module resolution for better client manifest generation
     config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json'];
-    
+
     // Ensure proper module format handling
     config.experiments = {
       ...config.experiments,
       topLevelAwait: true,
     };
-
-    // Let Next.js handle minification automatically
 
     // Bundle optimization for production
     if (!dev && !isServer) {
@@ -519,8 +290,6 @@ const nextConfig = {
         minimize: true,
       };
 
-      // Tree shaking optimization - removed problematic aliases
-
       // Enable advanced optimizations
       config.optimization.usedExports = true;
       config.optimization.providedExports = true;
@@ -528,7 +297,7 @@ const nextConfig = {
 
       // Add webpack plugins for optimization
       const webpack = require('webpack');
-      
+
       config.plugins.push(
         // Ignore moment.js locales to reduce bundle size
         new webpack.IgnorePlugin({
@@ -541,10 +310,8 @@ const nextConfig = {
           __DEV__: false,
         })
       );
-
-      // Next.js already handles CSS extraction/minification; rely on built-in pipeline
     }
-    
+
     // Development optimizations
     if (dev) {
       // Faster rebuilds in development
@@ -554,7 +321,7 @@ const nextConfig = {
           config: [__filename],
         },
       };
-      
+
       // Configure watch options to prevent EMFILE errors
       if (!isServer) {
         config.watchOptions = {
@@ -585,10 +352,10 @@ const nextConfig = {
         };
       }
     }
-    
+
     return config;
   },
-  
+
   // Add transpilation for problematic packages
   transpilePackages: ['@mui/material', '@mui/system', '@mui/utils', '@copilotkit/react-textarea', 'lucide-react'],
 
@@ -599,4 +366,4 @@ const nextConfig = {
   // Remove rewrite rules to avoid conflicts with custom API route implementations
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+export default withBundleAnalyzer(nextConfig);
