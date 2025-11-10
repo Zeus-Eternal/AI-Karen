@@ -182,13 +182,12 @@ export async function POST(
         template_name: template.name,
         has_custom_variables: Boolean(customVariables && Object.keys(customVariables).length > 0),
         correlation_id: correlationId,
+        request_meta: {
+          method: request.method,
+          path: `/api/admin/email/templates/${templateId}/preview`,
+        },
       },
-      request: {
-        ip: request.headers.get('x-forwarded-for') || 'unknown',
-        user_agent: request.headers.get('user-agent') || 'unknown',
-        method: request.method,
-        path: `/api/admin/email/templates/${templateId}/preview`,
-      },
+      request,
     });
 
     // Build response

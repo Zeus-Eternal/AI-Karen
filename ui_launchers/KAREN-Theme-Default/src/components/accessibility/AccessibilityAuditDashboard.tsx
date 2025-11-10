@@ -27,7 +27,8 @@ import {
   Eye,
   Keyboard,
   Volume2,
-  TrendingUp
+  TrendingUp,
+  Palette,
 } from 'lucide-react';
 // Types for accessibility audit data
 interface AccessibilityViolation {

@@ -1,11 +1,21 @@
 declare module '@/components/ui/button' {
-  import type { ButtonHTMLAttributes, DetailedHTMLProps, FC, ReactNode } from 'react';
+  import type {
+    ButtonHTMLAttributes,
+    DetailedHTMLProps,
+    ForwardRefExoticComponent,
+    ReactNode,
+    RefAttributes,
+  } from 'react'
 
-  export type ButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> & {
-    variant?: string;
-    size?: string;
-    icon?: ReactNode;
-  };
+  export interface ButtonProps
+    extends DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> {
+    variant?: string
+    size?: string
+    asChild?: boolean
+    icon?: ReactNode
+  }
 
-  export const Button: FC<ButtonProps>;
+  export const buttonVariants: Record<string, unknown>
+
+  export const Button: ForwardRefExoticComponent<ButtonProps & RefAttributes<HTMLButtonElement>>
 }
