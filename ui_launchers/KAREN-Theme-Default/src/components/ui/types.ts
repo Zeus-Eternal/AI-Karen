@@ -5,13 +5,7 @@
  * maintaining consistency with React and Next.js patterns
  */
 
-import type {
-  ReactNode,
-  ErrorInfo,
-  MouseEvent,
-  KeyboardEvent,
-  FocusEvent,
-} from 'react';
+import type React from "react";
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
 
 // Loading Component Types
@@ -25,9 +19,9 @@ export interface LoadingProps {
 
 // Error Boundary Types
 export interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
   showDetails?: boolean;
   enableRecovery?: boolean;
   className?: string;
@@ -36,7 +30,7 @@ export interface ErrorBoundaryProps {
 export interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
+  errorInfo: React.ErrorInfo | null;
   showDetails: boolean;
   retryCount: number;
 }
@@ -54,7 +48,7 @@ export interface SuggestedActionsProps {
 
 // Touch Interaction Types
 export interface TouchButtonProps {
-  children: ReactNode;
+  children: React.ReactNode;
   onClick?: () => void;
   onLongPress?: () => void;
   disabled?: boolean;
@@ -65,7 +59,7 @@ export interface TouchButtonProps {
 }
 
 export interface SwipeableCardProps {
-  children: ReactNode;
+  children: React.ReactNode;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   swipeThreshold?: number;
@@ -73,7 +67,7 @@ export interface SwipeableCardProps {
 }
 
 export interface PullToRefreshProps {
-  children: ReactNode;
+  children: React.ReactNode;
   onRefresh: () => Promise<void>;
   refreshThreshold?: number;
   className?: string;
@@ -81,7 +75,7 @@ export interface PullToRefreshProps {
 
 export interface FloatingActionButtonProps {
   onClick: () => void;
-  icon: ReactNode;
+  icon: React.ReactNode;
   label?: string;
   position?: 'bottom-right' | 'bottom-left' | 'bottom-center';
   size?: 'sm' | 'md' | 'lg';
@@ -100,10 +94,10 @@ export interface TouchSliderProps {
 }
 
 export interface TouchMenuProps {
-  trigger: ReactNode;
+  trigger: React.ReactNode;
   items: Array<{
     label: string;
-    icon?: ReactNode;
+    icon?: React.ReactNode;
     onClick: () => void;
     destructive?: boolean;
   }>;
@@ -129,13 +123,13 @@ export interface PulseLoaderProps {
 
 export interface ShimmerProps {
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export interface LoadingCardProps {
   title?: string;
   description?: string;
-  icon?: ReactNode;
+  icon?: React.ReactNode;
   className?: string;
 }
 
@@ -160,7 +154,7 @@ export interface LoadingOverlayProps {
 // Common UI Types
 export interface BaseComponentProps {
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export interface InteractiveComponentProps extends BaseComponentProps {
@@ -214,9 +208,15 @@ export interface AccessibilityProps {
 }
 
 // Event Handler Types
-export type ClickHandler = (event: MouseEvent) => void;
-export type KeyboardHandler = (event: KeyboardEvent) => void;
-export type FocusHandler = (event: FocusEvent) => void;
+export type ClickHandler<TElement = HTMLElement> = (
+  event: React.MouseEvent<TElement>,
+) => void;
+export type KeyboardHandler<TElement = HTMLElement> = (
+  event: React.KeyboardEvent<TElement>,
+) => void;
+export type FocusHandler<TElement = HTMLElement> = (
+  event: React.FocusEvent<TElement>,
+) => void;
 export type ChangeHandler<T = any> = (value: T) => void;
 
 // Component State Types
