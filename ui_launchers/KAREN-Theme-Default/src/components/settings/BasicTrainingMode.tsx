@@ -298,6 +298,8 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Training Configuration</CardTitle>
               <CardDescription>
+                Define the dataset, base model and metadata for this quick training session.
+                These values seed the preset you choose below.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -340,6 +342,8 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Training Presets</CardTitle>
               <CardDescription>
+                Select a curated configuration tuned for common workloads. You can still
+                adjust individual parameters after choosing a preset.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -589,6 +593,8 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>System Backup & Reset</CardTitle>
               <CardDescription>
+                Capture the current lightweight training state or roll back to the last
+                known good baseline. Use this after large experiments or before upgrades.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -607,6 +613,8 @@ const BasicTrainingMode: React.FC = () => {
             <CardHeader>
               <CardTitle>Available Backups</CardTitle>
               <CardDescription>
+                Restore or remove previously captured snapshots. Each entry includes its
+                creation time, size and description for fast triage.
               </CardDescription>
             </CardHeader>
             <CardContent>

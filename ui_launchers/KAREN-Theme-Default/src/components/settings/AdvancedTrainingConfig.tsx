@@ -726,7 +726,12 @@ const AdvancedTrainingConfig: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Enhanced AI suggestions display */}
+                  <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
+                    Real-time optimization tips will appear here once the trainer has
+                    gathered enough telemetry for this run. The assistant analyses loss
+                    curves, gradient health and hardware utilisation to propose safe,
+                    production-ready adjustments.
+                  </p>
                 </CardContent>
               </Card>
               {renderComplexityAnalysis}

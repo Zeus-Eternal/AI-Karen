@@ -3,6 +3,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import type { ErrorFallbackProps } from '@/components/error-handling/ErrorBoundary';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,32 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 const LOCAL_STORAGE_KEY = 'googleApiKey';
+
+const ApiKeyManagerFallback: React.FC<ErrorFallbackProps> = ({ error, resetError, retryCount }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-lg">Unable to load API key manager</CardTitle>
+      <CardDescription>
+        {retryCount > 0
+          ? 'The interface failed to recover automatically. Try again or reload the page.'
+          : 'An unexpected error occurred while initialising the API key controls.'}
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3 text-sm text-muted-foreground">
+      {error && <p className="font-mono break-words">{error.message}</p>}
+      <p>
+        Your saved browser key is unaffected. Select retry to re-render this panel. If the
+        error persists, confirm browser storage is available and the backend is reachable.
+      </p>
+    </CardContent>
+    <CardFooter className="flex flex-wrap gap-2">
+      <Button size="sm" onClick={resetError}>Try again</Button>
+      <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+        Reload page
+      </Button>
+    </CardFooter>
+  </Card>
+);
 /**
  * @file ApiKeyManager.tsx
  * @description Component for managing the Google AI API key.
@@ -79,7 +106,7 @@ export default function ApiKeyManager() {
   const currentApiKeyIsSaved = !!(savedKey !== null && typeof apiKey === 'string' && apiKey.trim() === savedKey);
   const displayApiKey = typeof apiKey === 'string' ? apiKey : "";
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in ApiKeyManager</div>}>
+    <ErrorBoundary fallback={ApiKeyManagerFallback}>
       <Card>
       <CardHeader>
         <CardTitle className="text-lg">Google AI API Key</CardTitle>

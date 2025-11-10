@@ -30,6 +30,7 @@ export interface ModelCardProps {
   selected?: boolean;
   onSelect?: (modelId: string) => void;
   onViewDetails?: (modelId: string) => void;
+  footerContent?: React.ReactNode;
   className?: string;
 }
 
@@ -38,6 +39,7 @@ export default function ModelCard({
   selected = false,
   onSelect,
   onViewDetails,
+  footerContent,
   className,
 }: ModelCardProps) {
   const getSpeedColor = (speed?: string) => {
@@ -138,7 +140,9 @@ export default function ModelCard({
         )}
       </CardContent>
 
-      <CardFooter className="gap-2">
+      {(onSelect || onViewDetails || footerContent) && (
+        <CardFooter className="gap-2 flex-wrap">
+          {footerContent}
         {onSelect && (
           <Button
             variant={selected ? 'default' : 'outline'}
@@ -158,7 +162,8 @@ export default function ModelCard({
             Details
           </Button>
         )}
-      </CardFooter>
+        </CardFooter>
+      )}
     </Card>
   );
 }
