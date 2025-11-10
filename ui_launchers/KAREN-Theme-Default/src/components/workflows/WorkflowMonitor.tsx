@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,13 +74,13 @@ export function WorkflowMonitor({
   onExportLogs,
   className = '',
 }: WorkflowMonitorProps) {
-  const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | ExecutionStatus>('all');
-  const [logLevelFilter, setLogLevelFilter] = useState<LogLevelFilter>('all');
-  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
+  const [selectedExecution, setSelectedExecution] = React.useState<WorkflowExecution | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | ExecutionStatus>('all');
+  const [logLevelFilter, setLogLevelFilter] = React.useState<LogLevelFilter>('all');
+  const [isLoading, setIsLoading] = React.useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (executions.length === 0) {
       setSelectedExecution(null);
       return;
@@ -95,7 +95,7 @@ export function WorkflowMonitor({
     });
   }, [executions]);
 
-  const filteredExecutions = useMemo(() => {
+  const filteredExecutions = React.useMemo(() => {
     return executions.filter(execution => {
       const workflow = workflows.find(w => w.id === execution.workflowId);
       const workflowName = workflow?.name || 'Unknown';
@@ -106,7 +106,7 @@ export function WorkflowMonitor({
     });
   }, [executions, workflows, searchTerm, statusFilter]);
 
-  const executionStats = useMemo<ExecutionStats>(() => {
+  const executionStats = React.useMemo<ExecutionStats>(() => {
     const stats: ExecutionStats = {
       total: executions.length,
       running: 0,
@@ -135,7 +135,7 @@ export function WorkflowMonitor({
     return stats;
   }, [executions]);
 
-  const handleExecutionAction = useCallback(async (
+  const handleExecutionAction = React.useCallback(async (
     action: 'pause' | 'resume' | 'cancel' | 'retry',
     executionId: string
   ) => {
@@ -201,13 +201,15 @@ export function WorkflowMonitor({
               type="text"
               placeholder="Search executions..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(event.target.value)}
               className="px-3 py-2 border border-input rounded-md text-sm w-64 "
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | ExecutionStatus)}
+            onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+              setStatusFilter(event.target.value as 'all' | ExecutionStatus)
+            }
             className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>
@@ -447,15 +449,15 @@ export interface ExecutionDetailsPanelProps {
   onClose: () => void;
 }
 
-function ExecutionDetailsPanel({ 
-  execution, 
-  workflow, 
-  logLevelFilter, 
-  onLogLevelFilterChange, 
-  onClose 
+function ExecutionDetailsPanel({
+  execution,
+  workflow,
+  logLevelFilter,
+  onLogLevelFilterChange,
+  onClose
 }: ExecutionDetailsPanelProps) {
-  const filteredLogs = useMemo(() => {
-    return execution.logs.filter(log => 
+  const filteredLogs = React.useMemo(() => {
+    return execution.logs.filter(log =>
       logLevelFilter === 'all' || log.level === logLevelFilter
     );
   }, [execution.logs, logLevelFilter]);
@@ -488,7 +490,9 @@ function ExecutionDetailsPanel({
                 <Filter className="h-4 w-4 text-muted-foreground " />
                 <select
                   value={logLevelFilter}
-                  onChange={(e) => onLogLevelFilterChange(e.target.value as LogLevelFilter)}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                    onLogLevelFilterChange(event.target.value as LogLevelFilter)
+                  }
                   className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
                 >
                   <option value="all">All Levels</option>

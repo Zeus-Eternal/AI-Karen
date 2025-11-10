@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Box, Cpu, Database, GitBranch, Output, Puzzle, Rocket } from 'lucide-react';
+import { Search, Box, Cpu, Database, GitBranch, Puzzle, Rocket, Share2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { NodePort, NodeTemplate } from '@/types/workflows';
@@ -82,7 +82,7 @@ const defaultNodeTemplates: NodeTemplate[] = [
     name: 'JSON Output',
     description: 'Formats and emits workflow results as structured JSON.',
     category: 'output',
-    icon: 'Output',
+    icon: 'Share2',
     inputs: [createPort('payload', 'Payload', 'object', true)],
     outputs: [],
     config: {
@@ -140,9 +140,9 @@ const iconLibrary: Record<string, LucideIcon> = {
   Cpu,
   Database,
   GitBranch,
-  Output,
   Puzzle,
   Rocket,
+  Share2,
 };
 
 const categoryIcons: Partial<Record<NodeTemplate['category'], LucideIcon>> = {
@@ -150,7 +150,7 @@ const categoryIcons: Partial<Record<NodeTemplate['category'], LucideIcon>> = {
   ai: Cpu,
   processing: Puzzle,
   control: GitBranch,
-  output: Output,
+  output: Share2,
   integration: Database,
 };
 
@@ -165,17 +165,17 @@ function createPort(id: string, name: string, type: NodePort['type'], required =
 }
 
 export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | NodeTemplate['category']>('all');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState<'all' | NodeTemplate['category']>('all');
 
   // Categories derived from node templates
-  const categories = useMemo(() => {
+  const categories = React.useMemo(() => {
     const cats = Array.from(new Set(defaultNodeTemplates.map(node => node.category)));
     return ['all', ...cats] as const;
   }, []);
 
   // Filter nodes based on search term and selected category
-  const filteredNodes = useMemo(() => {
+  const filteredNodes = React.useMemo(() => {
     return defaultNodeTemplates.filter(node => {
       const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            node.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -184,7 +184,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
     });
   }, [searchTerm, selectedCategory]);
 
-  const handleCategoryChange = useCallback((value: string) => {
+  const handleCategoryChange = React.useCallback((value: string) => {
     if (value === 'all') {
       setSelectedCategory('all');
       return;
@@ -195,7 +195,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
     }
   }, []);
 
-  const onDragStart = (event: React.DragEvent, nodeTemplate: NodeTemplate) => {
+  const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeTemplate: NodeTemplate) => {
     if (readOnly) {
       event.preventDefault();
       return;
@@ -212,13 +212,13 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
         <input
           placeholder="Search nodes..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(event.target.value)}
           className="pl-10"
         />
       </div>
 
       {/* Category Tabs */}
-      <Tabs value={selectedCategory} onValueChange={handleCategoryChange}>
+      <Tabs value={selectedCategory} onValueChange={(value) => handleCategoryChange(value)}>
         <TabsList className="grid w-full grid-cols-3">
           {categories.map(category => (
             <TabsTrigger key={category} value={category} className="text-xs sm:text-sm md:text-base">
