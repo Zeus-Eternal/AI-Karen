@@ -30,4 +30,6 @@ declare module '@/components/ui/button' {
     size?: ButtonSize;
     className?: string;
   }) => string;
+
+  export const Button: ForwardRefExoticComponent<ButtonProps & RefAttributes<HTMLButtonElement>>;
 }

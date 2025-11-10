@@ -22,5 +22,8 @@ declare module '@/components/ui/toast' {
   export const ToastAction: (props: { altText: string; children?: ReactNode }) => ReactNode;
   export const ToastClose: (props: { children?: ReactNode }) => ReactNode;
   export const ToastViewport: (props: ToastViewportProps) => ReactNode;
+  export const ToastProvider: (props: { children?: ReactNode }) => ReactNode;
+  export const ToastTitle: (props: { className?: string; children?: ReactNode }) => ReactNode;
+  export const ToastDescription: (props: { className?: string; children?: ReactNode }) => ReactNode;
   export const Toaster: (props?: { children?: ReactNode }) => ReactNode;
 }
