@@ -577,7 +577,10 @@ export function ProviderConfigurationGuide({
           <Card>
             <CardHeader>
               <CardTitle>Common Issues &amp; Solutions</CardTitle>
-              <CardDescription />
+              <CardDescription>
+                Field-tested fixes for configuration pitfalls reported by operators. Follow these
+                steps before escalating to infrastructure support.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {guide.common_issues.map((issue, index) => (
@@ -595,7 +598,10 @@ export function ProviderConfigurationGuide({
           <Card>
             <CardHeader>
               <CardTitle>Additional Resources</CardTitle>
-              <CardDescription />
+              <CardDescription>
+                Official documentation, tutorials and community channels for deep dives into
+                each provider integration.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

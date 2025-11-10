@@ -83,6 +83,7 @@ const LOCAL_STORAGE_KEYS = {
 };
 export type SortOption = 'name' | 'size' | 'parameters' | 'provider' | 'status';
 export type SortOrder = 'asc' | 'desc';
+type ModelAction = 'download' | 'delete' | 'cancel' | 'pause' | 'resume';
 // Debounce hook for search
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -320,18 +321,18 @@ export default function ModelLibrary() {
       setRefreshing(false);
     }
   };
-  const setModelActionLoading = (modelId: string, action: string, loading: boolean) => {
+  const setModelActionLoading = (modelId: string, action: ModelAction, loading: boolean) => {
     const key = `${modelId}_${action}`;
     setActionLoading(prev => ({
       ...prev,
       [key]: loading
     }));
   };
-  const isModelActionLoading = (modelId: string, action: string): boolean => {
+  const isModelActionLoading = (modelId: string, action: ModelAction): boolean => {
     const key = `${modelId}_${action}`;
     return actionLoading[key] || false;
   };
-  const handleModelAction = async (modelId: string, action: 'download' | 'delete' | 'cancel' | 'pause' | 'resume') => {
+  const handleModelAction = async (modelId: string, action: ModelAction) => {
     const model = models.find(m => m.id === modelId);
     const modelName = model?.name || modelId;
     // For destructive actions, show confirmation dialog
@@ -364,7 +365,7 @@ export default function ModelLibrary() {
     // For non-destructive actions, execute directly
     await executeModelAction(modelId, action, modelName);
   };
-  const executeModelAction = async (modelId: string, action: string, modelName: string) => {
+  const executeModelAction = async (modelId: string, action: ModelAction, modelName: string) => {
     setModelActionLoading(modelId, action, true);
     try {
       switch (action) {
@@ -429,6 +430,59 @@ export default function ModelLibrary() {
     } finally {
       setModelActionLoading(modelId, action, false);
     }
+  };
+  const renderModelActions = (model: ModelInfo) => {
+    const buttons: React.ReactNode[] = [];
+    const downloadTask = downloadTasks.find(task => task.modelId === model.id);
+    const buildButton = (
+      label: string,
+      action: ModelAction,
+      variant: React.ComponentProps<typeof Button>['variant'] = 'outline'
+    ) => (
+      <Button
+        key={`${model.id}-${action}`}
+        size="sm"
+        variant={variant}
+        onClick={() => handleModelAction(model.id, action)}
+        disabled={isModelActionLoading(model.id, action)}
+      >
+        {isModelActionLoading(model.id, action) ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          label
+        )}
+      </Button>
+    );
+
+    switch (model.status) {
+      case 'available':
+        buttons.push(buildButton('Download', 'download', 'default'));
+        break;
+      case 'downloading': {
+        const taskStatus = downloadTask?.status;
+        if (taskStatus === 'paused') {
+          buttons.push(buildButton('Resume', 'resume', 'default'));
+        } else {
+          buttons.push(buildButton('Pause', 'pause'));
+        }
+        buttons.push(buildButton('Cancel', 'cancel', 'destructive'));
+        break;
+      }
+      case 'local':
+        buttons.push(buildButton('Remove', 'delete', 'destructive'));
+        break;
+      case 'error':
+        buttons.push(buildButton('Retry download', 'download', 'default'));
+        break;
+      default:
+        break;
+    }
+
+    if (buttons.length === 0) {
+      return null;
+    }
+
+    return <div className="flex flex-wrap gap-2">{buttons}</div>;
   };
   // Helper functions for search and filtering
   const clearAllFilters = () => {
@@ -1019,7 +1073,7 @@ export default function ModelLibrary() {
                   <ModelCard
                     key={model.id}
                     model={model}
-                    onAction={handleModelAction}
+                    footerContent={renderModelActions(model)}
                   />
                 ))
               )}
@@ -1044,7 +1098,7 @@ export default function ModelLibrary() {
                 <ModelCard
                   key={model.id}
                   model={model}
-                  onAction={handleModelAction}
+                  footerContent={renderModelActions(model)}
                 />
               ))}
             </CardContent>
@@ -1067,7 +1121,7 @@ export default function ModelLibrary() {
                 <ModelCard
                   key={model.id}
                   model={model}
-                  onAction={handleModelAction}
+                  footerContent={renderModelActions(model)}
                 />
               ))}
             </CardContent>

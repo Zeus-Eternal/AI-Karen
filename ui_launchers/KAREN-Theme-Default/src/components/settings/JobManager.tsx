@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import type { ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -111,6 +112,36 @@ function formatFileSizeGB(gb: number) {
   if (gb < 1) return `${(gb * 1024).toFixed(1)} MB`;
   return `${gb.toFixed(1)} GB`;
 }
+
+const JobManagerFallback: React.FC<ErrorFallbackProps> = ({ error, resetError, retryCount }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <AlertCircle className="h-5 w-5 text-destructive" />
+        Job dashboard unavailable
+      </CardTitle>
+      <CardDescription>
+        {retryCount > 0
+          ? 'We attempted to recover the job dashboard but the request continued to fail.'
+          : 'An unexpected error prevented the scheduler status from loading.'}
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3 text-sm text-muted-foreground">
+      {error && <p className="font-mono break-words">{error.message}</p>}
+      <p>
+        Refresh the view to retry the API call or inspect server logs if the backend remains
+        unreachable. Actions such as cancelling jobs are not executed while this pane is in an
+        error state.
+      </p>
+    </CardContent>
+    <CardFooter className="flex flex-wrap gap-2">
+      <Button size="sm" onClick={resetError}>Retry loading jobs</Button>
+      <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+        Reload page
+      </Button>
+    </CardFooter>
+  </Card>
+);
 
 export default function JobManager({ onJobUpdate }: JobManagerProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -334,7 +365,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
 
   if (loading) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in JobManager</div>}>
+      <ErrorBoundary fallback={JobManagerFallback}>
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center space-y-4">
@@ -350,7 +381,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
   }
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in JobManager</div>}>
+    <ErrorBoundary fallback={JobManagerFallback}>
       <div className="space-y-6">
         {/* Header with Stats */}
         <Card>
@@ -361,7 +392,10 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                   <Activity className="h-5 w-5" />
                   Job Manager
                 </CardTitle>
-                <CardDescription></CardDescription>
+                <CardDescription>
+                  Track conversion, download and training jobs in real time. Controls below
+                  let you pause, resume or cancel tasks without leaving the admin console.
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -728,7 +762,10 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                 <Card>
                   <CardHeader>
                     <CardTitle>Storage Overview</CardTitle>
-                    <CardDescription></CardDescription>
+                    <CardDescription>
+                      Summarises disk usage for model artifacts managed by the scheduler,
+                      helping you anticipate capacity issues before deployments.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -789,7 +826,10 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
                   <Card>
                     <CardHeader>
                       <CardTitle>Storage Cleanup</CardTitle>
-                      <CardDescription></CardDescription>
+                      <CardDescription>
+                        Review temporary files and oversized checkpoints flagged for removal.
+                        Removing unused assets frees capacity for new training runs.
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
