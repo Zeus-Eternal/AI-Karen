@@ -4,6 +4,10 @@ import React, {
   Suspense,
   type ComponentType,
   type LazyExoticComponent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -165,6 +169,41 @@ export function createLazyComponent<T extends ComponentType<any>>(
       default: WrappedComponent as unknown as T,
     };
   });
+}
+
+export function useLazyPreload<T extends ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>,
+  options: { preloadOnMount?: boolean } = {}
+) {
+  const { preloadOnMount = false } = options;
+  const importFnRef = useRef(importFn);
+  const [isPreloaded, setIsPreloaded] = useState(false);
+
+  useEffect(() => {
+    importFnRef.current = importFn;
+  }, [importFn]);
+
+  const preload = useCallback(() => {
+    if (isPreloaded) {
+      return;
+    }
+
+    void importFnRef.current()
+      .then(() => {
+        setIsPreloaded(true);
+      })
+      .catch(() => {
+        // ignore preload errors; they'll surface during actual render
+      });
+  }, [isPreloaded]);
+
+  useEffect(() => {
+    if (preloadOnMount) {
+      preload();
+    }
+  }, [preload, preloadOnMount]);
+
+  return { preload, isPreloaded };
 }
 
 export default LazyComponent;

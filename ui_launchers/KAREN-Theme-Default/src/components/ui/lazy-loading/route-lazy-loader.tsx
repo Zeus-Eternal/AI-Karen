@@ -136,7 +136,7 @@ export function createLazyRoute<T extends ComponentType<any>>(
     </RouteLazyLoader>
   );
 
-  Wrapped.displayName = `LazyRoute(${LazyComponent.displayName ?? LazyComponent.name ?? "Component"})`;
+  Wrapped.displayName = "LazyRouteWrapper";
   return Wrapped;
 }
 

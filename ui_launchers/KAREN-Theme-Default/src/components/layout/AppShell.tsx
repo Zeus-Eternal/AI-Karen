@@ -421,15 +421,12 @@ AppShellHeader.displayName = "AppShellHeader";
 
 // -------------------- Main --------------------
 
-export const appShellMainVariants = cva(
-  [
-    "flex-1 min-h-0",
-    "p-[var(--space-lg)]",
-    "bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-950)]",
-    "transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
-  ],
-  {}
-);
+export const appShellMainVariants = cva([
+  "flex-1 min-h-0",
+  "p-[var(--space-lg)]",
+  "bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-950)]",
+  "transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
+]);
 
 export type AppShellMainVariants = VariantProps<typeof appShellMainVariants>;
 

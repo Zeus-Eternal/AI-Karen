@@ -62,6 +62,9 @@ export interface SecurityDashboardProps {
   className?: string;
 }
 
+const destructiveAlertClassName =
+  "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive";
+
 export interface SecurityMetrics {
   overallSecurityScore: number;
   threatLevel: "low" | "medium" | "high" | "critical";
@@ -568,7 +571,9 @@ function ThreatMonitoring({ alerts, threats }: ThreatMonitoringProps) {
               {threatAlerts.slice(0, 5).map((alert) => (
                 <Alert
                   key={alert.id}
-                  variant={alert.severity === "critical" ? "destructive" : "default"}
+                  className={
+                    alert.severity === "critical" ? destructiveAlertClassName : undefined
+                  }
                 >
                   <AlertTriangle className="h-4 w-4 " />
                   <AlertDescription>

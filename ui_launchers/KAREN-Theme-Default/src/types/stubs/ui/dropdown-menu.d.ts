@@ -25,13 +25,14 @@ declare module '@/components/ui/dropdown-menu' {
   }
 
   export interface DropdownMenuContentProps {
-    children?: ReactNode
-    className?: string
-    align?: DropdownAlign
-    alignOffset?: number
-    side?: DropdownSide
-    sideOffset?: number
-    onClick?: (event: MouseEvent<HTMLElement>) => void
+    children?: ReactNode;
+    className?: string;
+    align?: DropdownAlign;
+    alignOffset?: number;
+    side?: DropdownSide;
+    sideOffset?: number;
+    forceMount?: boolean;
+    onClick?: (event: MouseEvent<HTMLElement>) => void;
   }
 
   export interface DropdownMenuItemProps {

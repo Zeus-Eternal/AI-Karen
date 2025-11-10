@@ -370,6 +370,8 @@ export default function IntelligentModelSelector({
   }, [contextAnalysis, models, userPreferences, qualityWeight, speedWeight, costWeight]);
 
   const topRecommendation = recommendations[0];
+  const lowConfidenceRecommendation =
+    topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
@@ -579,11 +581,12 @@ export default function IntelligentModelSelector({
         )}
 
         {/* Warning for low confidence */}
-        {topRecommendation && topRecommendation.confidence < 60 && (
+        {lowConfidenceRecommendation && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Low confidence recommendation ({topRecommendation.confidence}%). Consider manually reviewing options or providing more context.
+              Low confidence recommendation ({lowConfidenceRecommendation.confidence}%). Consider manually
+              reviewing options or providing more context.
             </AlertDescription>
           </Alert>
         )}

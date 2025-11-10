@@ -5,12 +5,18 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export interface LicenseInfo { model: string; license: string; compliance: 'compliant' | 'review' | 'violation'; restrictions: string[]; }
 export interface LicenseCompliancePanelProps { licenses: LicenseInfo[]; className?: string; }
+
+const complianceVariantMap: Record<LicenseInfo['compliance'], NonNullable<BadgeProps['variant']>> = {
+  compliant: 'default',
+  review: 'secondary',
+  violation: 'destructive',
+};
 
 export default function LicenseCompliancePanel({ licenses, className = '' }: LicenseCompliancePanelProps) {
   const violations = licenses.filter(l => l.compliance === 'violation');
@@ -42,7 +48,7 @@ export default function LicenseCompliancePanel({ licenses, className = '' }: Lic
                   <div className="text-xs text-muted-foreground mt-1">{l.restrictions.join(', ')}</div>
                 )}
               </div>
-              <Badge variant={l.compliance === 'compliant' ? 'default' : l.compliance === 'review' ? 'secondary' : 'destructive'}>
+                <Badge variant={complianceVariantMap[l.compliance]}>
                 {l.compliance === 'compliant' && <CheckCircle2 className="h-3 w-3 mr-1" />}
                 {l.compliance}
               </Badge>
