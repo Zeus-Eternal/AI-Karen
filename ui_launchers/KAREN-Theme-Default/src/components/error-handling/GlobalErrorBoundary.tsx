@@ -16,6 +16,11 @@ import {
 import { ErrorRecoveryManager } from "../../lib/error-handling/error-recovery-manager";
 import { ErrorAnalytics } from "../../lib/error-handling/error-analytics";
 import { ProductionErrorFallback } from "./ProductionErrorFallback";
+import {
+  ErrorCategory,
+  ErrorSeverity,
+  type CategorizedError,
+} from "../../lib/errors/error-categories";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -324,15 +329,28 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     this.setState({ isRecovering: true });
 
     try {
-      // Create a simple categorized error for recovery
-      const categorizedError = {
-        originalError: this.state.error!,
-        category: 'ui' as const,
-        severity: 'medium' as const,
-        isRecoverable: true,
-        context: { section: this.props.section || 'unknown' }
+      // Create a categorized error that matches the recovery manager contract
+      const categorizedError: CategorizedError = {
+        category: ErrorCategory.UNKNOWN,
+        severity: ErrorSeverity.MEDIUM,
+        code: "UI_RECOVERY_ATTEMPT",
+        message: this.state.error?.message || "Unknown UI error",
+        userMessage: "Attempting automatic recovery",
+        retryable: true,
+        maxRetries: this.maxRecoveryAttempts,
+        backoffStrategy: "exponential",
+        fallbackAction: "UI_RECOVERY",
+        timestamp: new Date(),
+        correlationId: this.state.errorReport?.id ?? undefined,
+        context: {
+          section: this.props.section || "unknown",
+          level: this.props.level || "component",
+          isRecoverable: true,
+        },
       };
-      const strategy = await this.recoveryManager.attemptRecovery(categorizedError);
+      const strategy = await this.recoveryManager.attemptRecovery(
+        categorizedError
+      );
 
       await this.executeRecoveryStrategy(strategy);
     } catch {

@@ -178,7 +178,8 @@ export class ErrorAnalytics {
 
   private generateErrorId(error: Error, errorInfo: ErrorInfo): string {
     const message = error.message.replace(/[^a-zA-Z0-9]/g, '');
-    const component = errorInfo.componentStack.split('\n')[1]?.trim() || 'unknown';
+    const componentStack = errorInfo.componentStack ?? '';
+    const component = componentStack.split('\n')[1]?.trim() || 'unknown';
     const hash = this.simpleHash(`${message}-${component}`);
     return `error-${hash}-${Date.now()}`;
   }
