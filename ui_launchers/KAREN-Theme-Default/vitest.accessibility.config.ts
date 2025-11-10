@@ -25,11 +25,7 @@ export default defineConfig({
     testTimeout: 15000,
     // Run tests serially to avoid conflicts
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    maxWorkers: 1,
   },
   resolve: {
     alias: {

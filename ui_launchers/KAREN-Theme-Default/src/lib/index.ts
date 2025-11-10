@@ -9,85 +9,85 @@
 // Authentication & Authorization
 // ============================================================================
 
-export * from './auth';
+export * as Auth from './auth';
 
 // ============================================================================
 // Data & Storage
 // ============================================================================
 
-export * from './cache';
-export * from './database';
+export * as Cache from './cache';
+export * as Database from './database';
 
 // ============================================================================
 // Communication
 // ============================================================================
 
-export * from './email';
-export * from './i18n';
+export * as Email from './email';
+export * as I18n from './i18n';
 
 // ============================================================================
 // Monitoring & Logging
 // ============================================================================
 
-export * from './audit';
-export * from './logging';
-export * from './monitoring';
+export * as Audit from './audit';
+export * as Logging from './logging';
+export * as Monitoring from './monitoring';
 
 // ============================================================================
 // Performance & Optimization
 // ============================================================================
 
-export * from './optimization';
-export * from './performance';
+export * as Optimization from './optimization';
+export * as Performance from './performance';
 
 // ============================================================================
 // Error Handling
 // ============================================================================
 
-export * from './error-handling';
-export * from './errors';
-export * from './graceful-degradation';
+export * as ErrorHandling from './error-handling';
+export * as Errors from './errors';
+export * as GracefulDegradation from './graceful-degradation';
 
 // ============================================================================
 // Security
 // ============================================================================
 
-export * from './security';
+export * as Security from './security';
 
 // ============================================================================
 // Accessibility
 // ============================================================================
 
-export * from './accessibility';
+export * as Accessibility from './accessibility';
 
 // ============================================================================
 // Extensions & Plugins
 // ============================================================================
 
-export * from './extensions';
+export * as Extensions from './extensions';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-export * from './config';
-export * from './connection';
+export * as Config from './config';
+export * as Connection from './connection';
 
 // ============================================================================
 // Middleware
 // ============================================================================
 
-export * from './middleware';
+export * as Middleware from './middleware';
 
 // ============================================================================
 // Services
 // ============================================================================
 
-export * from './model-selection-services';
+export * as ModelSelectionServices from './model-selection-services';
 
 // ============================================================================
 // Quality Assurance
 // ============================================================================
 
-export * from './qa';
+export * as QualityAssurance from './qa';
 
