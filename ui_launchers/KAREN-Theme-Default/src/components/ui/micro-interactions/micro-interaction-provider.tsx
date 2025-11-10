@@ -1,7 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { MicroInteractionConfig } from './types';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import type { MicroInteractionConfig } from './types';
 
 export interface MicroInteractionContextType extends MicroInteractionConfig {
   updateConfig: (config: Partial<MicroInteractionConfig>) => void;
@@ -22,38 +30,54 @@ export interface MicroInteractionProviderProps {
   defaultConfig?: Partial<MicroInteractionConfig>;
 }
 
-export function MicroInteractionProvider({ 
-  children, 
-  defaultConfig = {} 
+export function MicroInteractionProvider({
+  children,
+  defaultConfig = {},
 }: MicroInteractionProviderProps) {
-  const [config, setConfig] = useState<MicroInteractionConfig>({
+  const [config, setConfig] = useState<MicroInteractionConfig>(() => ({
     reducedMotion: false,
     enableHaptics: true,
     animationDuration: 'normal',
-    ...defaultConfig
-  });
+    ...defaultConfig,
+  }));
 
   useEffect(() => {
-    // Check for reduced motion preference
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return undefined;
+    }
+
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setConfig(prev => ({ ...prev, reducedMotion: e.matches }));
+
+    const updateReducedMotion = (matches: boolean) => {
+      setConfig(prev => ({ ...prev, reducedMotion: matches }));
     };
 
-    setConfig(prev => ({ ...prev, reducedMotion: mediaQuery.matches }));
-    mediaQuery.addEventListener('change', handleChange);
+    updateReducedMotion(mediaQuery.matches);
 
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const handleChange = (event: MediaQueryListEvent) => {
+      updateReducedMotion(event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
   }, []);
 
-  const updateConfig = (newConfig: Partial<MicroInteractionConfig>) => {
+  const updateConfig = useCallback((newConfig: Partial<MicroInteractionConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
-  };
+  }, []);
 
-  const value = {
-    ...config,
-    updateConfig
-  };
+  const value = useMemo(
+    () => ({
+      ...config,
+      updateConfig,
+    }),
+    [config, updateConfig]
+  );
 
   return (
     <MicroInteractionContext.Provider value={value}>
