@@ -178,13 +178,13 @@ export const ERROR_CLASSIFICATIONS: Record<AuthenticationErrorType, ErrorClassif
 export function createAuthError(
   type: AuthenticationErrorType,
   message?: string,
-  details?: ErrorDetails,
+  details?: ErrorDetails | null,
   retryAfter?: number
 ): AuthenticationError {
   return {
     type,
     message: message || ERROR_MESSAGES[type].message,
-    details,
+    details: details ?? undefined,
     retryAfter,
     timestamp: new Date(),
     requestId: generateRequestId()

@@ -5,49 +5,22 @@
  * Ensures modular organization while preventing circular imports.
  */
 
-// --- Karen Alert System Types ---
+// --- Core domains with unique type names ---
 export * from './karen-alerts';
-
-// --- Authentication & Authorization ---
 export * from './auth';
-// Note: auth-enhanced, auth-feedback, auth-form, and auth-utils are imported by auth.ts
-// to avoid duplicate exports and conflicts
-
-// --- Admin Management System Types ---
-export * from './admin';
-
-// --- Chat & Conversation Types ---
 export * from './chat';
-
-// --- Copilot & AI Assistant Types ---
 export * from './copilot';
-
-// --- Model & Provider Types ---
 export * from './models';
-
-// --- File Management Types ---
 export * from './files';
-
-// --- Dashboard Types ---
 export * from './dashboard';
-
-// --- Memory System Types ---
 export * from './memory';
-
-// --- Audit & Logging Types ---
 export * from './audit';
+export * from './chat-ui';
 
-// --- Enhanced Chat Types ---
-export * from './enhanced-chat';
-
-// --- Plugin System Types ---
-export * from './plugins';
-
-// --- Provider Types ---
-export * from './providers';
-
-// --- RBAC (Role-Based Access Control) Types ---
-export * from './rbac';
-
-// --- Workflow System Types ---
-export * from './workflows';
+// --- Modules that share type names are exposed via namespaces to avoid conflicts ---
+export * as EnhancedChatTypes from './enhanced-chat';
+export * as AdminTypes from './admin';
+export * as PluginTypes from './plugins';
+export * as ProviderTypes from './providers';
+export * as RBACTypes from './rbac';
+export * as WorkflowTypes from './workflows';

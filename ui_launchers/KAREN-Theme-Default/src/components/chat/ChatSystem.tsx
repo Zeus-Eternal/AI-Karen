@@ -4,10 +4,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
 import { CopilotChat } from '@copilotkit/react-ui';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridReadyEvent } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,37 +14,17 @@ import { MessageSquare, Grid3X3, BarChart3, Sparkles, Brain, Bot, Zap, Database 
 import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getChatService } from '@/services/chatService';
+import { chatUiService } from '@/services/chat/chat-ui-service';
 import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { safeError } from '@/lib/safe-console';
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-  confidence?: number;
-  aiData?: {
-    keywords?: string[];
-    reasoning?: string;
-    sources?: string[];
-  };
-}
-
-interface ConversationData {
-  id: string;
-  title: string;
-  messageCount: number;
-  lastActivity: Date;
-  status: 'active' | 'archived';
-  sentiment: 'positive' | 'neutral' | 'negative';
-}
+import type { UiChatMessage, ConversationSummaryRow, ChatSystemView } from '@/types/chat-ui';
+import type { HandleUserMessageResult } from '@/lib/types';
 
 interface ChatSystemProps {
   className?: string;
-  defaultView?: 'chat' | 'conversations' | 'analytics';
+  defaultView?: ChatSystemView;
 }
 
 export const ChatSystem: React.FC<ChatSystemProps> = ({
@@ -54,25 +33,24 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
 }) => {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const chatService = getChatService();
-  
-  const [activeView, setActiveView] = useState(defaultView);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [conversations, setConversations] = useState<ConversationData[]>([]);
+
+  const [activeView, setActiveView] = useState<ChatSystemView>(defaultView);
+  const [messages, setMessages] = useState<UiChatMessage[]>([]);
+  const [conversations, setConversations] = useState<ConversationSummaryRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<AgGridReact>(null);
+  const gridRef = useRef<AgGridReact<ConversationSummaryRow>>(null);
 
   // Initialize chat session
   useEffect(() => {
     const initializeChat = async () => {
       if (user && !sessionId && !conversationId) {
         try {
-          const { conversationId: newConversationId, sessionId: newSessionId } = 
-            await chatService.createConversationSession(user.userId);
+          const { conversationId: newConversationId, sessionId: newSessionId } =
+            await chatUiService.createConversationSession(user.userId);
           setSessionId(newSessionId);
           setConversationId(newConversationId);
         } catch (error) {
@@ -87,9 +65,9 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     };
 
     if (isAuthenticated) {
-      initializeChat();
+      void initializeChat();
     }
-  }, [user, isAuthenticated, sessionId, conversationId, chatService, toast]);
+  }, [user, isAuthenticated, sessionId, conversationId, toast]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -101,33 +79,28 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     const loadConversations = async () => {
       if (user && activeView === 'conversations') {
         try {
-          const userConversations = await chatService.getUserConversations(user.userId);
-          const conversationData: ConversationData[] = userConversations.map(conv => ({
-            id: conv.sessionId,
-            title: `Conversation ${conv.sessionId.slice(0, 8)}`,
-            messageCount: conv.messages.length,
-            lastActivity: conv.updatedAt,
-            status: 'active' as const,
-            sentiment: 'neutral' as const
-          }));
-          setConversations(conversationData);
+          const conversationRows = await chatUiService.getUserConversations(user.userId);
+          setConversations(conversationRows);
         } catch (error) {
           safeError('Failed to load conversations:', error);
         }
       }
     };
 
-    loadConversations();
-  }, [user, activeView, chatService]);
+    void loadConversations();
+  }, [user, activeView]);
 
   // Handle message submission
   const handleSubmit = useCallback(async (message: string) => {
-    if (!message.trim() || !user || !conversationId) return;
+    if (!message.trim() || !user || !conversationId) {
+      return;
+    }
 
-    const userMessage: ChatMessage = {
+    const trimmed = message.trim();
+    const userMessage: UiChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: 'user',
-      content: message.trim(),
+      content: trimmed,
       timestamp: new Date()
     };
 
@@ -135,18 +108,17 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     setIsLoading(true);
 
     try {
-      // Add message to conversation
-      await chatService.addMessageToConversation(conversationId, userMessage);
+      await chatUiService.addMessageToConversation(conversationId, userMessage);
 
-      // Process message with AI
-      const result = await chatService.processUserMessage(
-        message,
-        messages,
-        {} as any, // Preferences not available in simplified mode
+      const history: UiChatMessage[] = [...messages, userMessage];
+      const result: HandleUserMessageResult = await chatUiService.processUserMessage(
+        trimmed,
+        history,
+        {},
         { userId: user.userId, sessionId: sessionId || undefined }
       );
 
-      const assistantMessage: ChatMessage = {
+      const assistantMessage: UiChatMessage = {
         id: `msg_${Date.now()}_assistant`,
         role: 'assistant',
         content: result.finalResponse,
@@ -154,13 +126,15 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         confidence: result.aiDataForFinalResponse?.confidence,
         aiData: {
           keywords: result.aiDataForFinalResponse?.keywords,
-          reasoning: (result.aiDataForFinalResponse as any)?.reasoning,
+          knowledgeGraphInsights: result.aiDataForFinalResponse?.knowledgeGraphInsights,
+          confidence: result.aiDataForFinalResponse?.confidence,
+          reasoning: (result.aiDataForFinalResponse as Record<string, unknown> | undefined)?.reasoning as string | undefined,
           sources: ['AI Karen Engine', 'Knowledge Base']
         }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      await chatService.addMessageToConversation(conversationId, assistantMessage);
+      await chatUiService.addMessageToConversation(conversationId, assistantMessage);
 
     } catch (error) {
       safeError('Failed to process message:', error);
@@ -172,15 +146,15 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [user, conversationId, sessionId, messages, chatService, toast]);
+  }, [user, conversationId, sessionId, messages, toast]);
 
   // AG-Grid column definitions for conversations
-  const conversationColumns: ColDef[] = [
+  const conversationColumns: ColDef<ConversationSummaryRow>[] = [
     {
       headerName: 'Conversation',
       field: 'title',
       flex: 2,
-      cellRenderer: (params: any) => (
+      cellRenderer: (params: ICellRendererParams<ConversationSummaryRow, string>) => (
         <div className="flex items-center gap-2 py-1">
           <MessageSquare className="h-4 w-4 text-muted-foreground " />
           <span className="font-medium">{params.value}</span>
@@ -191,17 +165,17 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       headerName: 'Messages',
       field: 'messageCount',
       width: 100,
-      cellRenderer: (params: any) => (
-        <Badge variant="secondary">{params.value}</Badge>
+      cellRenderer: (params: ICellRendererParams<ConversationSummaryRow, number>) => (
+        <Badge variant="secondary">{params.value ?? 0}</Badge>
       )
     },
     {
       headerName: 'Last Activity',
       field: 'lastActivity',
       flex: 1,
-      cellRenderer: (params: any) => (
+      cellRenderer: (params: ICellRendererParams<ConversationSummaryRow, Date>) => (
         <span className="text-sm text-muted-foreground md:text-base lg:text-lg">
-          {format(new Date(params.value), 'MMM dd, HH:mm')}
+          {params.value ? format(new Date(params.value), 'MMM dd, HH:mm') : ''}
         </span>
       )
     },
@@ -209,7 +183,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       headerName: 'Status',
       field: 'status',
       width: 100,
-      cellRenderer: (params: any) => (
+      cellRenderer: (params: ICellRendererParams<ConversationSummaryRow, ConversationSummaryRow['status']>) => (
         <Badge variant={params.value === 'active' ? 'default' : 'secondary'}>
           {params.value}
         </Badge>
@@ -219,7 +193,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       headerName: 'Sentiment',
       field: 'sentiment',
       width: 100,
-      cellRenderer: (params: any) => {
+      cellRenderer: (params: ICellRendererParams<ConversationSummaryRow, ConversationSummaryRow['sentiment']>) => {
         const colors = {
           positive: 'bg-green-100 text-green-800',
           neutral: 'bg-gray-100 text-gray-800',
@@ -236,7 +210,15 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
 
 return (
     <div className={`flex flex-col h-full ${className}`}>
-      <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'chat' | 'conversations' | 'analytics')} className="flex-1 flex flex-col">
+      <Tabs
+        value={activeView}
+        onValueChange={(value) => {
+          if (value === 'chat' || value === 'conversations' || value === 'analytics') {
+            setActiveView(value);
+          }
+        }}
+        className="flex-1 flex flex-col"
+      >
         <div className="border-b">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex items-center gap-2">
@@ -286,7 +268,11 @@ return (
                             key={message.id}
                             role={message.role}
                             content={message.content}
-                            meta={{ confidence: message.confidence }}
+                            meta={{
+                              confidence: message.confidence ?? message.aiData?.confidence,
+                              reasoning: message.aiData?.reasoning,
+                              sources: message.aiData?.sources,
+                            }}
                           />
                         ))
                       )}
