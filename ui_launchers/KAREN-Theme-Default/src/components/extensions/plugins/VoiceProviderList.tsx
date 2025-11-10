@@ -1,6 +1,5 @@
 "use client";
 
-import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,9 @@ export default function VoiceProviderList() {
     ]);
   }, []);
 
-  const handlePreview = (text: string) => {
+  const handlePreview = (text?: string) => {
+    if (!text) return;
+
     if (typeof window !== "undefined" && window.speechSynthesis) {
       const utterance = new SpeechSynthesisUtterance(text);
       window.speechSynthesis.speak(utterance);
@@ -40,7 +41,13 @@ export default function VoiceProviderList() {
           </CardHeader>
           {p.previewText && (
             <CardContent>
-              <Button size="sm" variant="outline" onClick={() => p.previewText && handlePreview(p.previewText)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handlePreview(p.previewText)}
+                className="flex items-center gap-1"
+              >
+                Preview
               </Button>
             </CardContent>
           )}

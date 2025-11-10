@@ -6,18 +6,38 @@
  */
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 
-import { Settings, Shield, Eye, EyeOff, Info, Database, Globe, Key, RefreshCw, RotateCcw, Save, AlertTriangle, Copy, FileText, Code, Zap } from 'lucide-react';
+import {
+  Settings,
+  Shield,
+  Eye,
+  EyeOff,
+  Info,
+  Database,
+  Globe,
+  Key,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  AlertTriangle,
+  Copy,
+  FileText,
+  Code,
+  Zap
+} from 'lucide-react';
+
+type SettingPrimitive = string | number | boolean;
+type SettingValue = SettingPrimitive | SettingPrimitive[] | Record<string, unknown> | null;
 
 interface SettingFieldProps {
   setting: ExtensionSetting;
   showSensitive: boolean;
-  onChange: (value: any) => void;
+  onChange: (value: SettingValue) => void;
   onToggleSensitive: () => void;
 }
 
@@ -26,15 +46,15 @@ interface ExtensionSetting {
   label: string;
   description?: string;
   type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect' | 'password' | 'json' | 'array';
-  value: any;
-  defaultValue: any;
+  value: SettingValue;
+  defaultValue: SettingValue;
   validation?: {
     required?: boolean;
     min?: number;
     max?: number;
     step?: number;
     pattern?: string;
-    options?: { value: any; label: string }[];
+    options?: { value: SettingPrimitive; label: string }[];
   };
   group?: string;
   sensitive?: boolean;
@@ -52,13 +72,35 @@ interface ExtensionConfigurationPanelProps {
   extensionId: string;
   extensionName: string;
   className?: string;
-  onSave?: (settings: Record<string, any>) => Promise<void>;
+  onSave?: (settings: Record<string, SettingValue>) => Promise<void>;
   onReset?: () => Promise<void>;
   onPermissionChange?: (permission: string, granted: boolean) => Promise<void>;
 }
 
 // Helper functions
+function valueToString(value: SettingValue): string {
+  if (value == null) return '';
+  if (Array.isArray(value)) {
+    return value.map((item) => valueToString(item)).join(', ');
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return '';
+    }
+  }
+  return String(value);
+}
+
+function isPrimitiveArray(value: SettingValue): value is SettingPrimitive[] {
+  return Array.isArray(value) && value.every((item) => ['string', 'number', 'boolean'].includes(typeof item));
+}
+
 function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: SettingFieldProps) {
+  const textValue = valueToString(setting.value);
+  const defaultPlaceholder = typeof setting.defaultValue === 'string' ? setting.defaultValue : undefined;
+
   const renderInput = () => {
     switch (setting.type) {
       case 'string':
@@ -67,11 +109,11 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
           <div className="relative">
             <input
               type={setting.type === 'password' && !showSensitive ? 'password' : 'text'}
-              value={setting.value || ''}
+              value={textValue}
               onChange={(e) => onChange(e.target.value)}
               disabled={setting.readonly}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-              placeholder={setting.defaultValue}
+              placeholder={defaultPlaceholder}
             />
             {setting.sensitive && (
               <Button
@@ -90,7 +132,7 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
         return (
           <input
             type="number"
-            value={setting.value || ''}
+            value={typeof setting.value === 'number' ? setting.value : ''}
             onChange={(e) => onChange(Number(e.target.value))}
             disabled={setting.readonly}
             min={setting.validation?.min}
@@ -99,36 +141,124 @@ function SettingField({ setting, showSensitive, onChange, onToggleSensitive }: S
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
         );
-      case 'boolean':
+      case 'boolean': {
+        const booleanValue = typeof setting.value === 'boolean' ? setting.value : Boolean(setting.value);
         return (
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={setting.value || false}
+              checked={booleanValue}
               onChange={(e) => onChange(e.target.checked)}
               disabled={setting.readonly}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <span className="ml-2 text-sm text-gray-700 md:text-base lg:text-lg">
-              {setting.value ? 'Enabled' : 'Disabled'}
+              {booleanValue ? 'Enabled' : 'Disabled'}
             </span>
           </label>
         );
-      case 'select':
+      }
+      case 'select': {
+        const options = setting.validation?.options ?? [];
+        const selectedValue = (() => {
+          if (typeof setting.value === 'string' || typeof setting.value === 'number') {
+            return setting.value;
+          }
+          if (typeof setting.value === 'boolean') {
+            return setting.value ? 'true' : 'false';
+          }
+          return '';
+        })();
+
+        const toRawValue = (raw: string): SettingValue => {
+          const match = options.find((option) => {
+            const optionString = typeof option.value === 'boolean'
+              ? (option.value ? 'true' : 'false')
+              : option.value.toString();
+            return optionString === raw;
+          });
+
+          if (!match) {
+            return raw;
+          }
+
+          if (typeof match.value === 'boolean') {
+            return match.value;
+          }
+
+          if (typeof match.value === 'number') {
+            return match.value;
+          }
+
+          return match.value;
+        };
+
         return (
           <select
-            value={setting.value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            value={selectedValue}
+            onChange={(e) => onChange(toRawValue(e.target.value))}
             disabled={setting.readonly}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           >
-            {setting.validation?.options?.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {options.map((option) => {
+              const optionValue = typeof option.value === 'boolean'
+                ? option.value ? 'true' : 'false'
+                : option.value.toString();
+              return (
+                <option key={`${setting.key}-${optionValue}`} value={optionValue}>
+                  {option.label}
+                </option>
+              );
+            })}
           </select>
         );
+      }
+      case 'multiselect': {
+        const options = setting.validation?.options ?? [];
+        const selectedValues = isPrimitiveArray(setting.value)
+          ? setting.value.map((item) => (typeof item === 'boolean' ? (item ? 'true' : 'false') : item.toString()))
+          : [];
+
+        const mapRawValues = (rawValues: string[]): SettingPrimitive[] =>
+          rawValues.map((raw) => {
+            const match = options.find((option) => {
+              const optionValue = typeof option.value === 'boolean'
+                ? option.value ? 'true' : 'false'
+                : option.value.toString();
+              return optionValue === raw;
+            });
+
+            if (!match) {
+              return raw;
+            }
+
+            return match.value;
+          });
+
+        return (
+          <select
+            multiple
+            value={selectedValues}
+            onChange={(e) => {
+              const values = Array.from(e.target.selectedOptions, (option) => option.value);
+              onChange(mapRawValues(values));
+            }}
+            disabled={setting.readonly}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+          >
+            {options.map((option) => {
+              const optionValue = typeof option.value === 'boolean'
+                ? option.value ? 'true' : 'false'
+                : option.value.toString();
+              return (
+                <option key={`${setting.key}-${optionValue}`} value={optionValue}>
+                  {option.label}
+                </option>
+              );
+            })}
+          </select>
+        );
+      }
       default:
         return null;
     }
@@ -391,8 +521,8 @@ export function ExtensionConfigurationPanel({
       setLoading(false);
     }
   }, [extensionId]);
-  const handleSettingChange = useCallback((key: string, value: any) => {
-    setSettings(prev => prev.map(setting => 
+  const handleSettingChange = useCallback((key: string, value: SettingValue) => {
+    setSettings(prev => prev.map(setting =>
       setting.key === key ? { ...setting, value } : setting
     ));
     setHasChanges(true);
@@ -412,10 +542,10 @@ export function ExtensionConfigurationPanel({
     setSaving(true);
     setError(null);
     try {
-      const settingsObject = settings.reduce((acc, setting) => {
+      const settingsObject = settings.reduce<Record<string, SettingValue>>((acc, setting) => {
         acc[setting.key] = setting.value;
         return acc;
-      }, {} as Record<string, any>);
+      }, {});
       if (onSave) {
         await onSave(settingsObject);
       }

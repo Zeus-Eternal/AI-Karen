@@ -1,19 +1,21 @@
 "use client";
 
-import React from 'react';
-
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 import ExtensionBreadcrumbs from "./ExtensionBreadcrumbs";
 import ExtensionStats from "./ExtensionStats";
 import { useExtensionContext } from "@/extensions/ExtensionContext";
+import type { ExtensionCategory } from "@/extensions";
 
 export default function ExtensionHeader() {
   const {
     state: { currentCategory, level },
     dispatch,
   } = useExtensionContext();
+
+  const isExtensionCategory = (value: string): value is ExtensionCategory =>
+    value === "Plugins" || value === "Extensions";
 
   return (
     <div className="space-y-2">
@@ -26,7 +28,11 @@ export default function ExtensionHeader() {
       </div>
       <Tabs
         value={currentCategory}
-        onValueChange={(val) => dispatch({ type: "SET_CATEGORY", category: val as any })}
+        onValueChange={(val) => {
+          if (isExtensionCategory(val)) {
+            dispatch({ type: "SET_CATEGORY", category: val });
+          }
+        }}
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-2">

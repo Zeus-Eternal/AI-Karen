@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useExtensionContext, navigationActions } from "@/extensions";
 import {
   getPluginService,
@@ -29,6 +29,16 @@ export default function SidebarNavigation() {
   const [pluginErr, setPluginErr] = useState<string | null>(null);
   const [extErr, setExtErr] = useState<string | null>(null);
 
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === "object" && error !== null && "message" in error && typeof (error as { message?: unknown }).message === "string") {
+      return (error as { message: string }).message;
+    }
+    return fallback;
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -36,8 +46,10 @@ export default function SidebarNavigation() {
       try {
         const cats = await getPluginService().getPluginsByCategory();
         if (active) setPluginCategories(cats ?? []);
-      } catch (e: any) {
-        if (active) setPluginErr(e?.message ?? "Failed to load plugins.");
+      } catch (error) {
+        if (active) {
+          setPluginErr(getErrorMessage(error, "Failed to load plugins."));
+        }
       } finally {
         if (active) setLoadingPlugins(false);
       }
@@ -47,8 +59,10 @@ export default function SidebarNavigation() {
       try {
         const exts = await getExtensionService().getInstalledExtensions();
         if (active) setExtensions(exts ?? []);
-      } catch (e: any) {
-        if (active) setExtErr(e?.message ?? "Failed to load extensions.");
+      } catch (error) {
+        if (active) {
+          setExtErr(getErrorMessage(error, "Failed to load extensions."));
+        }
       } finally {
         if (active) setLoadingExts(false);
       }
@@ -57,7 +71,7 @@ export default function SidebarNavigation() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [getErrorMessage]);
 
   const handleOpenPlugin = useCallback(
     (categoryName: string, pluginName: string) => {

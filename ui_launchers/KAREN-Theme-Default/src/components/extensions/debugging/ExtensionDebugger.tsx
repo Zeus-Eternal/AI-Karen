@@ -39,14 +39,24 @@ import {
   Settings,
   ExternalLink,
 } from "lucide-react";
+type LogLevel = "warning" | "error" | "info" | "debug";
+
 interface LogEntry {
   id: string;
   timestamp: string;
-  level: "" | "warning" | "error" | "info" | "debug";
+  level: LogLevel;
   message: string;
   source: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   stackTrace?: string;
+}
+
+type LogFilterLevel = LogLevel | "all";
+
+interface LogFilter {
+  level: LogFilterLevel;
+  search: string;
+  source: "all" | string;
 }
 interface MetricData {
   timestamp: string;
@@ -83,16 +93,12 @@ export function ExtensionDebugger({
   >([]);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
-  const [logFilter, setLogFilter] = useState({
+  const [logFilter, setLogFilter] = useState<LogFilter>({
     level: "all",
     search: "",
     source: "all",
   });
 
-  // Load debugging data
-  useEffect(() => {
-    loadDebuggingData();
-  }, [extensionId]);
   const loadDebuggingData = useCallback(async () => {
     setLoading(true);
     try {
@@ -200,6 +206,15 @@ export function ExtensionDebugger({
       setLoading(false);
     }
   }, [extensionId]);
+
+  // Load debugging data
+  useEffect(() => {
+    loadDebuggingData();
+  }, [loadDebuggingData]);
+
+  const updateLogFilter = useCallback((update: Partial<LogFilter>) => {
+    setLogFilter((prev) => ({ ...prev, ...update }));
+  }, []);
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (logFilter.level !== "all" && log.level !== logFilter.level)
@@ -245,9 +260,9 @@ export function ExtensionDebugger({
     setLogs([]);
   }, []);
   const toggleStreaming = useCallback(() => {
-    setStreaming(!streaming);
+    setStreaming((prev) => !prev);
     // In real implementation, this would start/stop log streaming
-  }, [streaming]);
+  }, []);
   if (loading) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
@@ -321,7 +336,7 @@ export function ExtensionDebugger({
             filter={logFilter}
             sources={logSources}
             streaming={streaming}
-            onFilterChange={setLogFilter}
+            onFilterChange={updateLogFilter}
             onExport={handleExportLogs}
             onClear={handleClearLogs}
           />
@@ -341,10 +356,10 @@ export function ExtensionDebugger({
 }
 interface LogsPanelProps {
   logs: LogEntry[];
-  filter: any;
+  filter: LogFilter;
   sources: string[];
   streaming: boolean;
-  onFilterChange: (filter: any) => void;
+  onFilterChange: (update: Partial<LogFilter>) => void;
   onExport: () => void;
   onClear: () => void;
 }
@@ -386,7 +401,7 @@ function LogsPanel({
                 placeholder="Search logs..."
                 value={filter.search}
                 onChange={(e) =>
-                  onFilterChange({ ...filter, search: e.target.value })
+                  onFilterChange({ search: e.target.value })
                 }
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -394,7 +409,7 @@ function LogsPanel({
             <select
               value={filter.level}
               onChange={(e) =>
-                onFilterChange({ ...filter, level: e.target.value })
+                onFilterChange({ level: e.target.value as LogFilterLevel })
               }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
@@ -407,7 +422,7 @@ function LogsPanel({
             <select
               value={filter.source}
               onChange={(e) =>
-                onFilterChange({ ...filter, source: e.target.value })
+                onFilterChange({ source: e.target.value })
               }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
@@ -451,7 +466,7 @@ function LogsPanel({
 }
 function LogEntry({ log }: { log: LogEntry }) {
   const [expanded, setExpanded] = useState(false);
-  const getLevelColor = (level: string) => {
+  const getLevelColor = (level: LogLevel) => {
     switch (level) {
       case "error":
         return "bg-red-100 text-red-800";
@@ -728,8 +743,23 @@ function PerformancePanel({ profile }: { profile: PerformanceProfile[] }) {
     </div>
   );
 }
-function DiagnosticsPanel({ }: { extensionId: string }) {
-  const [diagnostics, setDiagnostics] = useState({
+function DiagnosticsPanel({ extensionId }: { extensionId: string }) {
+  type DiagnosticCategory = "health" | "dependencies" | "permissions" | "configuration" | "connectivity";
+  type DiagnosticStatus =
+    | "healthy"
+    | "ok"
+    | "granted"
+    | "valid"
+    | "connected"
+    | "warning"
+    | "missing"
+    | "denied"
+    | "invalid"
+    | "disconnected";
+
+  type DiagnosticsState = Record<DiagnosticCategory, DiagnosticStatus>;
+
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsState>({
     health: "healthy",
     dependencies: "ok",
     permissions: "granted",
@@ -748,7 +778,7 @@ function DiagnosticsPanel({ }: { extensionId: string }) {
       connectivity: Math.random() > 0.15 ? "connected" : "disconnected",
     });
   }, []);
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: DiagnosticStatus) => {
     switch (status) {
       case "healthy":
       case "ok":
@@ -767,7 +797,7 @@ function DiagnosticsPanel({ }: { extensionId: string }) {
         return "text-gray-600 bg-gray-100";
     }
   };
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: DiagnosticStatus) => {
     switch (status) {
       case "healthy":
       case "ok":
@@ -794,7 +824,7 @@ function DiagnosticsPanel({ }: { extensionId: string }) {
             <div>
               <CardTitle>System Diagnostics</CardTitle>
               <CardDescription>
-                Check extension health and configuration
+                Check extension health and configuration for {extensionId}
               </CardDescription>
             </div>
             <Button onClick={runDiagnostics}>

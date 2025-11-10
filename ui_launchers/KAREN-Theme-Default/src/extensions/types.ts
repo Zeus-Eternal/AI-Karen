@@ -443,6 +443,23 @@ export interface ErrorHandlingConfig {
   fallback_action?: string;
 }
 
+export type ExtensionTaskExecutionStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed';
+
+export interface ExtensionTaskHistoryEntry {
+  execution_id: string;
+  task_name: string;
+  status: ExtensionTaskExecutionStatus;
+  started_at?: string;
+  completed_at?: string;
+  duration_seconds?: number;
+  error?: string;
+  result?: unknown;
+}
+
 // Navigation types
 export type ExtensionCategory = 'Plugins' | 'Extensions';
 

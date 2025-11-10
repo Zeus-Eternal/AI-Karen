@@ -58,6 +58,8 @@ interface MarketplaceExtension {
   installed?: boolean;
   installing?: boolean;
 }
+type MarketplaceSortOption = 'popular' | 'recent' | 'rating' | 'name';
+
 interface ExtensionMarketplaceProps {
   className?: string;
   onInstall?: (extensionId: string) => Promise<void>;
@@ -70,7 +72,7 @@ export function ExtensionMarketplace({
 }: ExtensionMarketplaceProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'rating' | 'name'>('popular');
+  const [sortBy, setSortBy] = useState<MarketplaceSortOption>('popular');
   const [showFilters, setShowFilters] = useState(false);
   const [installingExtensions, setInstallingExtensions] = useState<Set<string>>(new Set());
   //  - in real implementation, this would come from API
@@ -320,7 +322,7 @@ export function ExtensionMarketplace({
           </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as MarketplaceSortOption)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="popular">Most Popular</option>

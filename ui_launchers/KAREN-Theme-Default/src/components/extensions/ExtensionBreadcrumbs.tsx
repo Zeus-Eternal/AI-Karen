@@ -9,20 +9,13 @@ import React, { memo, useCallback } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useExtensionContext } from "@/extensions";
+import type { BreadcrumbItem } from "@/extensions";
 
-export type Crumb = {
-  id: string | number;
-  name: string;
-};
+export type Crumb = BreadcrumbItem;
 
 function _ExtensionBreadcrumbs() {
-  const {
-    state: { breadcrumbs },
-    dispatch,
-  } = useExtensionContext() as {
-    state: { breadcrumbs: Crumb[] };
-    dispatch: (action: { type: "SET_LEVEL"; level: number }) => void;
-  };
+  const { state, dispatch } = useExtensionContext();
+  const { breadcrumbs } = state;
 
   if (!Array.isArray(breadcrumbs) || breadcrumbs.length === 0) return null;
 
@@ -43,10 +36,11 @@ function _ExtensionBreadcrumbs() {
         role="list"
         className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg"
       >
-        {breadcrumbs.map((crumb, idx) => {
+        {breadcrumbs.map((crumb: BreadcrumbItem, idx) => {
           const isLast = idx === breadcrumbs.length - 1;
+          const key = crumb.id ?? `${crumb.level}-${crumb.name}-${idx}`;
           return (
-            <li key={crumb.id} className="flex items-center">
+            <li key={key} className="flex items-center">
               <Button
                 type="button"
                 variant="ghost"

@@ -6,10 +6,11 @@
 
 "use client";
 
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useExtensionNavigation } from "@/lib/extensions/hooks";
+import type { ExtensionNavItem } from "@/lib/extensions/extension-integration";
 import { Badge } from "../ui/badge";
 
 import {
@@ -24,13 +25,14 @@ import {
   Shield,
   Beaker,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export interface ExtensionNavigationProps {
   className?: string;
   compact?: boolean;
 }
 
-const iconMap: Record<string, React.ComponentType<any>> = {
+const iconMap: Record<string, LucideIcon> = {
   puzzle: Puzzle,
   activity: Activity,
   settings: Settings,
@@ -51,7 +53,7 @@ export function ExtensionNavigation({
   const navItems = useExtensionNavigation();
 
   const groupedNavItems = useMemo(() => {
-    const groups: Record<string, typeof navItems> = {};
+    const groups: Record<string, ExtensionNavItem[]> = {};
 
     navItems.forEach((item) => {
       // Group by extension ID or category
@@ -96,16 +98,7 @@ export function ExtensionNavigation({
 
 export interface ExtensionNavGroupProps {
   extensionId: string;
-  items: Array<{
-    id: string;
-    extensionId: string;
-    label: string;
-    path: string;
-    icon?: string;
-    permissions?: string[];
-    order?: number;
-    parent?: string;
-  }>;
+  items: ExtensionNavItem[];
   currentPath: string;
   compact: boolean;
 }
@@ -130,7 +123,7 @@ function ExtensionNavGroup({
   return (
     <div className="space-y-1">
       {parentItems.map((item) => (
-        <ExtensionNavItem
+        <ExtensionNavItemRow
           key={item.id}
           item={item}
           currentPath={currentPath}
@@ -143,31 +136,13 @@ function ExtensionNavGroup({
 }
 
 export interface ExtensionNavItemProps {
-  item: {
-    id: string;
-    extensionId: string;
-    label: string;
-    path: string;
-    icon?: string;
-    permissions?: string[];
-    order?: number;
-    parent?: string;
-  };
+  item: ExtensionNavItem;
   currentPath: string;
   compact: boolean;
-  children?: Array<{
-    id: string;
-    extensionId: string;
-    label: string;
-    path: string;
-    icon?: string;
-    permissions?: string[];
-    order?: number;
-    parent?: string;
-  }>;
+  children?: ExtensionNavItem[];
 }
 
-function ExtensionNavItem({
+function ExtensionNavItemRow({
   item,
   currentPath,
   compact,
@@ -226,33 +201,36 @@ function ExtensionNavItem({
       {/* Child items */}
       {hasChildren && !compact && (
         <div className="ml-6 mt-1 space-y-1">
-          {children.map((child) => (
-            <Link
-              key={child.id}
-              href={child.path}
-              className={`
-                group flex items-center px-3 py-1 text-sm rounded-md transition-colors
-                ${
-                  currentPath === child.path
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }
-              `}
-            >
-              {child.icon && iconMap[child.icon] ? (
-                React.createElement(iconMap[child.icon], {
-                  className: `flex-shrink-0 h-3 w-3 mr-2 ${
-                    currentPath === child.path
-                      ? "text-blue-500"
-                      : "text-gray-400"
-                  }`,
-                })
-              ) : (
-                <div className="w-3 h-3 mr-2 " />
-              )}
-              <span className="truncate">{child.label}</span>
-            </Link>
-          ))}
+          {children.map((child) => {
+            const ChildIcon = child.icon ? iconMap[child.icon] : undefined;
+            const childIsActive = currentPath === child.path;
+
+            return (
+              <Link
+                key={child.id}
+                href={child.path}
+                className={`
+                  group flex items-center px-3 py-1 text-sm rounded-md transition-colors
+                  ${
+                    childIsActive
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }
+                `}
+              >
+                {ChildIcon ? (
+                  <ChildIcon
+                    className={`flex-shrink-0 h-3 w-3 mr-2 ${
+                      childIsActive ? "text-blue-500" : "text-gray-400"
+                    }`}
+                  />
+                ) : (
+                  <div className="w-3 h-3 mr-2 " />
+                )}
+                <span className="truncate">{child.label}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -303,7 +281,7 @@ export function ExtensionNavigationBreadcrumbs({
       </Link>
 
       {breadcrumbs.map((crumb, index) => (
-        <React.Fragment key={crumb.path}>
+        <Fragment key={crumb.path}>
           <span>/</span>
           {crumb.isLast ? (
             <span className="text-gray-900 font-medium">{crumb.label}</span>
@@ -312,7 +290,7 @@ export function ExtensionNavigationBreadcrumbs({
               {crumb.label}
             </Link>
           )}
-        </React.Fragment>
+        </Fragment>
       ))}
     </nav>
   );
