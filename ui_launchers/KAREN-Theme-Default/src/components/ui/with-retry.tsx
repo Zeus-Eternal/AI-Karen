@@ -1,26 +1,21 @@
 "use client";
 
-import React, {
-  ComponentType,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import * as React from "react";
+
 import {
-  retryMechanism,
   fetchWithTimeout,
+  retryMechanism,
   type RetryConfig,
 } from "@/utils/retry-mechanisms";
-import { RetryCard, LoadingRetry } from "./retry-components";
+
+import { LoadingRetry, RetryCard } from "./retry-components";
 
 export interface WithRetryOptions extends Partial<RetryConfig> {
   retryOnMount?: boolean;
   showLoadingState?: boolean;
   showRetryCard?: boolean;
-  loadingComponent?: ReactNode;
-  errorComponent?: (error: Error, retry: () => void) => ReactNode;
+  loadingComponent?: React.ReactNode;
+  errorComponent?: (error: Error, retry: () => void) => React.ReactNode;
   retryKey?: string;
 }
 
@@ -36,20 +31,20 @@ export interface WithRetryState {
   hasRetried: boolean;
 }
 
-/**
- * Higher-order component that adds retry functionality to any component.
- * It does not assume what the wrapped component does; it simply exposes retry controls + state.
- */
+export interface WithRetryInjectedProps {
+  retryState: WithRetryState;
+  onRetry: () => void;
+}
+
 export function withRetry<P extends object>(
-  WrappedComponent: ComponentType<P>,
-  defaultOptions: WithRetryOptions = {}
+  WrappedComponent: React.ComponentType<P & WithRetryInjectedProps>,
+  defaultOptions: WithRetryOptions = {},
 ) {
   return function WithRetryComponent(props: P & WithRetryProps) {
-    const { retryConfig = {}, ...componentProps } = props as WithRetryProps & P;
+    const { retryConfig = {}, ...rest } = props;
 
-    const options: WithRetryOptions = useMemo(
+    const options = React.useMemo<WithRetryOptions>(
       () => ({
-        // sensible visual defaults
         showLoadingState: true,
         showRetryCard: true,
         maxAttempts: 3,
@@ -58,10 +53,10 @@ export function withRetry<P extends object>(
         ...defaultOptions,
         ...retryConfig,
       }),
-      [defaultOptions, retryConfig]
+      [defaultOptions, retryConfig],
     );
 
-    const [state, setState] = useState<WithRetryState>({
+    const [state, setState] = React.useState<WithRetryState>({
       error: null,
       isLoading: options.retryOnMount ?? false,
       isRetrying: false,
@@ -69,20 +64,15 @@ export function withRetry<P extends object>(
       hasRetried: false,
     });
 
-    /**
-     * This "operation" is intentionally generic. In practice, use the
-     * `useAsyncRetry` hook below for concrete async work; this HOC mainly
-     * gives you a consistent visual + control surface for retries.
-     */
-    const retryOperation = useCallback(async () => {
+    const retryOperation = React.useCallback(async () => {
       setState((prev) => ({
         ...prev,
         isLoading: true,
         error: null,
         isRetrying: prev.hasRetried,
       }));
+
       try {
-        // tiny async tick to simulate work; real work belongs in wrapped component logic
         await new Promise((resolve) => setTimeout(resolve, 100));
         setState((prev) => ({
           ...prev,
@@ -91,10 +81,10 @@ export function withRetry<P extends object>(
           error: null,
         }));
       } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
+        const resolvedError = error instanceof Error ? error : new Error(String(error));
         setState((prev) => ({
           ...prev,
-          error: err,
+          error: resolvedError,
           isLoading: false,
           isRetrying: false,
           attempt: prev.attempt + 1,
@@ -103,21 +93,21 @@ export function withRetry<P extends object>(
       }
     }, []);
 
-    const handleRetry = useCallback(() => {
+    const handleRetry = React.useCallback(() => {
       void retryOperation();
     }, [retryOperation]);
 
-    useEffect(() => {
+    React.useEffect(() => {
       if (options.retryOnMount) {
         void retryOperation();
       }
     }, [options.retryOnMount, retryOperation]);
 
-    // Loading presentation
     if (state.isLoading && options.showLoadingState) {
       if (options.loadingComponent) {
         return <>{options.loadingComponent}</>;
       }
+
       return (
         <LoadingRetry
           isLoading={state.isLoading}
@@ -130,11 +120,11 @@ export function withRetry<P extends object>(
       );
     }
 
-    // Error presentation
     if (state.error && options.showRetryCard) {
       if (options.errorComponent) {
         return <>{options.errorComponent(state.error, handleRetry)}</>;
       }
+
       const maxAttempts = options.maxAttempts ?? 3;
       return (
         <RetryCard
@@ -148,10 +138,9 @@ export function withRetry<P extends object>(
       );
     }
 
-    // Render wrapped component with retry controls injected
     return (
       <WrappedComponent
-        {...(componentProps as P)}
+        {...(rest as P)}
         retryState={state}
         onRetry={handleRetry}
       />
@@ -159,36 +148,29 @@ export function withRetry<P extends object>(
   };
 }
 
-/**
- * Hook for adding retry functionality to async operations.
- * Uses retryMechanism.withRetry for backoff, caps, and onRetry callbacks.
- */
 export function useAsyncRetry<T>(
   asyncOperation: () => Promise<T>,
-  options: WithRetryOptions = {}
+  options: WithRetryOptions = {},
 ) {
-  const merged: WithRetryOptions = {
-    maxAttempts: 3,
-    baseDelay: 1000,
-    backoffFactor: 2,
-    ...options,
-  };
+  const merged: WithRetryOptions = React.useMemo(
+    () => ({
+      maxAttempts: 3,
+      baseDelay: 1000,
+      backoffFactor: 2,
+      ...options,
+    }),
+    [options],
+  );
 
-  const [state, setState] = useState<{
-    data: T | null;
-    error: Error | null;
-    isLoading: boolean;
-    isRetrying: boolean;
-    attempt: number;
-  }>({
-    data: null,
-    error: null,
+  const [state, setState] = React.useState({
+    data: null as T | null,
+    error: null as Error | null,
     isLoading: false,
     isRetrying: false,
     attempt: 0,
   });
 
-  const execute = useCallback(async () => {
+  const execute = React.useCallback(async () => {
     setState((prev) => ({
       ...prev,
       isLoading: true,
@@ -214,48 +196,41 @@ export function useAsyncRetry<T>(
             merged.onRetry?.(error, attempt, nextDelayMs);
           },
         },
-        merged.retryKey
+        merged.retryKey,
       );
 
-      setState((prev) => ({
-        ...prev,
+      setState({
         data: result,
+        error: null,
         isLoading: false,
         isRetrying: false,
-        error: null,
-      }));
+        attempt: 0,
+      });
       return result;
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const resolvedError = error instanceof Error ? error : new Error(String(error));
       setState((prev) => ({
         ...prev,
-        error: err,
+        error: resolvedError,
         isLoading: false,
         isRetrying: false,
         attempt: prev.attempt + 1,
       }));
-      throw err;
+      throw resolvedError;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asyncOperation, merged.maxAttempts, merged.baseDelay, merged.backoffFactor, merged.jitter, merged.retryKey]);
+  }, [asyncOperation, merged]);
 
-  const retry = useCallback(() => execute(), [execute]);
+  const retry = React.useCallback(() => execute(), [execute]);
 
-  const reset = useCallback(() => {
-    setState({
-      data: null,
-      error: null,
-      isLoading: false,
-      isRetrying: false,
-      attempt: 0,
-    });
+  const reset = React.useCallback(() => {
+    setState({ data: null, error: null, isLoading: false, isRetrying: false, attempt: 0 });
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (merged.retryOnMount) {
       void execute();
     }
-  }, [merged.retryOnMount, execute]);
+  }, [execute, merged.retryOnMount]);
 
   return {
     ...state,
@@ -266,13 +241,9 @@ export function useAsyncRetry<T>(
   };
 }
 
-/**
- * Component that wraps children with automatic retry on error boundaries.
- * Useful for rendering-time crashes that hooks can't intercept.
- */
 export interface RetryBoundaryProps {
-  children: ReactNode;
-  fallback?: (error: Error, retry: () => void) => ReactNode;
+  children: React.ReactNode;
+  fallback?: (error: Error, retry: () => void) => React.ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
   maxRetries?: number;
   retryDelay?: number;
@@ -311,12 +282,16 @@ export class RetryBoundary extends React.Component<
   }
 
   componentWillUnmount() {
-    if (this.retryTimeoutId) clearTimeout(this.retryTimeoutId);
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+    }
   }
 
   handleRetry = () => {
     const maxRetries = this.props.maxRetries ?? 3;
-    if (this.state.retryCount >= maxRetries) return;
+    if (this.state.retryCount >= maxRetries) {
+      return;
+    }
 
     this.setState({ isRetrying: true });
     const delay = this.props.retryDelay ?? 1000;
@@ -360,32 +335,29 @@ export class RetryBoundary extends React.Component<
   }
 }
 
-/**
- * Hook for creating retry-enabled fetch operations.
- * Wraps fetchWithTimeout with retryMechanism-based backoff handling.
- */
 export function useRetryFetch(
   url: string,
   options: RequestInit = {},
-  retryOptions: WithRetryOptions = {}
+  retryOptions: WithRetryOptions = {},
 ) {
-  const mergedOptions: WithRetryOptions = {
-    ...retryOptions,
-    retryKey: retryOptions.retryKey ?? `fetch-${url}`,
-  };
+  const mergedOptions = React.useMemo<WithRetryOptions>(
+    () => ({
+      ...retryOptions,
+      retryKey: retryOptions.retryKey ?? `fetch-${url}`,
+    }),
+    [retryOptions, url],
+  );
 
   return useAsyncRetry(
     async () => {
       const response = await fetchWithTimeout(
         url,
         options,
-        mergedOptions.timeoutMs ?? 0
+        mergedOptions.timeoutMs ?? 0,
       );
 
       if (!response.ok) {
-        const error = new Error(
-          `HTTP ${response.status}: ${response.statusText}`
-        );
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
         (error as Error & { status?: number }).status = response.status;
         (error as Error & { response?: Response }).response = response;
         throw error;
@@ -393,6 +365,6 @@ export function useRetryFetch(
 
       return response;
     },
-    mergedOptions
+    mergedOptions,
   );
 }
