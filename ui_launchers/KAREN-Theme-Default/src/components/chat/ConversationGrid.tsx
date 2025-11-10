@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridReadyEvent, CellValueChangedEvent, RowSelectedEvent } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent, ICellRendererParams, SelectionChangedEvent } from 'ag-grid-community';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,32 +14,23 @@ import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { safeDebug } from '@/lib/safe-console';
-
-export interface ConversationRow {
-  id: string;
-  title: string;
-  lastMessage: string;
-  timestamp: Date;
-  messageCount: number;
-  participants: string[];
-  tags: string[];
-  sentiment: 'positive' | 'neutral' | 'negative';
-  aiInsights?: string[];
-}
+import type { ConversationSummaryRow } from '@/types/chat-ui';
 
 interface ConversationGridProps {
-  conversations?: ConversationRow[];
-  onConversationSelect?: (conversation: ConversationRow) => void;
+  conversations?: ConversationSummaryRow[];
+  onConversationSelect?: (conversation: ConversationSummaryRow) => void;
   onRefresh?: () => Promise<void>;
   className?: string;
 }
 
 // Custom cell renderers for AG-Grid
-const SentimentRenderer = (params: any) => {
+const SentimentRenderer = (
+  params: ICellRendererParams<ConversationSummaryRow, ConversationSummaryRow['sentiment']>
+) => {
   const sentiment = params.value;
-  const variant = sentiment === 'positive' ? 'default' : 
+  const variant = sentiment === 'positive' ? 'default' :
                   sentiment === 'negative' ? 'destructive' : 'secondary';
-  
+
   return (
     <Badge variant={variant} className="text-xs sm:text-sm md:text-base">
       {sentiment}
@@ -47,11 +38,13 @@ const SentimentRenderer = (params: any) => {
   );
 };
 
-const TagsRenderer = (params: any) => {
-  const tags = params.value || [];
+const TagsRenderer = (
+  params: ICellRendererParams<ConversationSummaryRow, string[] | undefined>
+) => {
+  const tags = params.value ?? [];
   return (
     <div className="flex flex-wrap gap-1">
-      {tags.slice(0, 2).map((tag: string, index: number) => (
+      {tags.slice(0, 2).map((tag, index) => (
         <Badge key={index} variant="outline" className="text-xs sm:text-sm md:text-base">
           {tag}
         </Badge>
@@ -65,13 +58,17 @@ const TagsRenderer = (params: any) => {
   );
 };
 
-const TimestampRenderer = (params: any) => {
+const TimestampRenderer = (
+  params: ICellRendererParams<ConversationSummaryRow, Date | undefined>
+) => {
   const timestamp = params.value;
   return timestamp ? format(new Date(timestamp), 'MMM dd, HH:mm') : '';
 };
 
-const ParticipantsRenderer = (params: any) => {
-  const participants = params.value || [];
+const ParticipantsRenderer = (
+  params: ICellRendererParams<ConversationSummaryRow, string[] | undefined>
+) => {
+  const participants = params.value ?? [];
   return participants.join(', ');
 };
 
@@ -85,10 +82,10 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
   const { triggerHooks, registerGridHook } = useHooks();
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRows, setSelectedRows] = useState<ConversationRow[]>([]);
+  const [selectedRows, setSelectedRows] = useState<ConversationSummaryRow[]>([]);
 
   // Column definitions for AG-Grid
-  const columnDefs: ColDef[] = useMemo(() => [
+  const columnDefs: ColDef<ConversationSummaryRow>[] = useMemo(() => [
     {
       field: 'title',
       headerName: 'Conversation',
@@ -110,7 +107,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       } as any
     },
     {
-      field: 'timestamp',
+      field: 'lastActivity',
       headerName: 'Last Activity',
       width: 140,
       sortable: true,
@@ -168,7 +165,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
     animateRows: true,
     enableRangeSelection: true,
     suppressMenuHide: true,
-    getRowId: (params: any) => params.data.id
+    getRowId: (params: { data: ConversationSummaryRow }) => params.data.id
   }), []);
 
   // Register grid hooks on mount
@@ -208,12 +205,13 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
   }, [triggerHooks, conversations.length, user?.userId]);
 
   // Handle row selection
-  const onSelectionChanged = useCallback(async (event: any) => {
+  const onSelectionChanged = useCallback(async (event: SelectionChangedEvent<ConversationSummaryRow>) => {
     const selectedNodes = event.api.getSelectedNodes();
-    const selectedData = selectedNodes.map((node: any) => node.data);
+    const selectedData = selectedNodes
+      .map(node => node.data)
+      .filter((row): row is ConversationSummaryRow => Boolean(row));
     setSelectedRows(selectedData);
 
-    // Trigger hooks for each selected row
     for (const rowData of selectedData) {
       await triggerHooks('grid_conversations_rowSelected', {
         gridId: 'conversations',
@@ -238,14 +236,16 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
   // Filter conversations based on search text
   const filteredConversations = useMemo(() => {
     if (!searchText) return conversations;
-    
+
     const searchLower = searchText.toLowerCase();
-    return conversations.filter(conv => 
-      conv.title?.toLowerCase().includes(searchLower) ||
-      conv.lastMessage?.toLowerCase().includes(searchLower) ||
-      conv.participants?.some(p => p?.toLowerCase().includes(searchLower)) ||
-      conv.tags?.some(t => t?.toLowerCase().includes(searchLower))
-    );
+    return conversations.filter(conv => {
+      const titleMatch = conv.title?.toLowerCase().includes(searchLower);
+      const lastMessageMatch = (conv.lastMessage?.toLowerCase() ?? '').includes(searchLower);
+      const participantMatch = conv.participants?.some(participant => participant.toLowerCase().includes(searchLower));
+      const tagMatch = conv.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+
+      return Boolean(titleMatch || lastMessageMatch || participantMatch || tagMatch);
+    });
   }, [conversations, searchText]);
 
   return (
@@ -273,7 +273,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
         <div className="flex items-center gap-2 mt-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground " />
-            <input
+            <Input
               placeholder="Search conversations..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
