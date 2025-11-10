@@ -73,7 +73,7 @@ export { usePersistentUIState, usePersistentForm, useSessionStorage, useLocalSto
 
 export { useMediaQueries, useCurrentBreakpoint, useDeviceCapabilities, useMediaQuery, useBreakpoint } from './use-media-query';
 
-export { useIsMobile } from './use-mobilex';
+export { useIsMobile } from './use-mobile';
 
 export { useMonitoring } from './use-monitoring';
 export type { MonitoringState, UseMonitoringReturn } from './use-monitoring';
