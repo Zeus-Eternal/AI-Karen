@@ -121,6 +121,11 @@ class RetryMechanismService {
     return true;
   }
 
+  public shouldRetry(error: any, attempt?: number): boolean {
+    void attempt;
+    return this.defaultRetryCondition(error);
+  }
+
   // --------------------------- Public API ----------------------------------
   public async withRetry<T>(
     operation: () => Promise<T>,
@@ -482,7 +487,7 @@ export function useRetryFetch(
             // prefer 429/5xx/timeouts; avoid 4xx except 408/429
             const status = error?.status ?? error?.response?.status;
             if (status === 429 || status === 408) return true;
-            return retryMechanism["defaultRetryCondition" as any]?.(error) ?? true;
+            return retryMechanism.shouldRetry(error, attempt);
           },
         },
         opId

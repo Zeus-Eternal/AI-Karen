@@ -127,7 +127,11 @@ const KarenToastProgress = React.forwardRef<
   const resolvedVariant: KarenToastVariant = variant ?? "default";
   const progressClassName =
     PROGRESS_COLOR_BY_VARIANT[resolvedVariant] ??
-    PROGRESS_COLOR_BY_VARIIANT.default; // fallback is guaranteed
+    PROGRESS_COLOR_BY_VARIIANT_FALLBACK();
+
+  function PROGRESS_COLOR_BY_VARIANT_FALLBACK() {
+    return PROGRESS_COLOR_BY_VARIANT.default;
+  }
 
   return (
     <div
@@ -151,9 +155,7 @@ const KarenToastProgress = React.forwardRef<
   );
 });
 
-// Fix: PROGRESS_COLOR_BY_VARIANT reference
-// (The above line used PROGRESS_COLOR_BY_VARIIANT; correct it:)
-(KarenToastProgress as any).displayName = "KarenToastProgress";
+KarenToastProgress.displayName = "KarenToastProgress";
 
 /* ----------------------------------------------------------------------------
  * Root Toast

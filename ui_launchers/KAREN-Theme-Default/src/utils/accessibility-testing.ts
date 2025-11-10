@@ -8,6 +8,12 @@
 
 import axeCore, { type AxeResults, type RunOptions } from "axe-core";
 
+type ExtendedRunOptions = RunOptions & {
+  timeout?: number;
+  include?: string[][];
+  exclude?: string[][];
+};
+
 // ============================================================================
 // TYPES AND INTERFACES
 // ============================================================================
@@ -100,7 +106,7 @@ export async function runAccessibilityTest(
   const startTime = (typeof performance !== "undefined" ? performance.now() : Date.now());
 
   // Configure axe-core options
-  const axeOptions: RunOptions = {
+  const axeOptions: ExtendedRunOptions = {
     rules: {
       // Sensible defaults; caller can override via options.rules
       "color-contrast": { enabled: true },
@@ -128,11 +134,11 @@ export async function runAccessibilityTest(
     },
   };
 
-  if (options.include?.length) (axeOptions as any).include = options.include.map((s) => [s]);
-  if (options.exclude?.length) (axeOptions as any).exclude = options.exclude.map((s) => [s]);
+  if (options.include?.length) axeOptions.include = options.include.map((selector) => [selector]);
+  if (options.exclude?.length) axeOptions.exclude = options.exclude.map((selector) => [selector]);
 
   try {
-    const node = (element as unknown) as Node;
+    const node = element as unknown as Node;
     const results = (await axeCore.run(node, axeOptions)) as AxeResults;
     const endTime = (typeof performance !== "undefined" ? performance.now() : Date.now());
 
