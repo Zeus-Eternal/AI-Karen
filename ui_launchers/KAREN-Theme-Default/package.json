@@ -103,6 +103,7 @@
     "ag-charts-react": "^11.1.0",
     "ag-grid-community": "^32.3.3",
     "ag-grid-react": "^32.3.3",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
