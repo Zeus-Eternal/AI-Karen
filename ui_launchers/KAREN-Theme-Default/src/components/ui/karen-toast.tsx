@@ -127,7 +127,7 @@ const KarenToastProgress = React.forwardRef<
   const resolvedVariant: KarenToastVariant = variant ?? "default";
   const progressClassName =
     PROGRESS_COLOR_BY_VARIANT[resolvedVariant] ??
-    PROGRESS_COLOR_BY_VARIIANT.default;
+    PROGRESS_COLOR_BY_VARIANT.default;
 
   return (
     <div
@@ -154,10 +154,6 @@ const KarenToastProgress = React.forwardRef<
     </div>
   );
 });
-
-// local fallback accessor; avoids typo issues if extended
-const PROGRESS_COLOR_BY_VARIANT_DEFAULT =
-  PROGRESS_COLOR_BY_VARIANT.default;
 
 (KarenToastProgress as any).displayName = "KarenToastProgress";
 
@@ -319,6 +315,7 @@ const KarenToast = React.forwardRef<
                   key={`${action.label}-${index}`}
                   variant={variantKey}
                   onClick={() => handleActionClick(action)}
+                  altText={action.altText ?? action.label}
                 >
                   {action.icon ? (
                     <span className="mr-1 inline-flex items-center">
@@ -358,7 +355,7 @@ const KarenToastAction = React.forwardRef<
     variant?: "default" | "destructive" | "outline";
   }
 >(function KarenToastAction(
-  { className, variant = "default", ...props },
+  { className, variant = "default", altText, ...props },
   ref
 ) {
   const variantStyles: Record<
@@ -379,8 +376,9 @@ const KarenToastAction = React.forwardRef<
       className={cn(
         "inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
         variantStyles[variant],
-        className
+      className
       )}
+      altText={altText ?? "Perform toast action"}
       {...props}
     />
   );
@@ -537,5 +535,4 @@ export {
   KarenToastClose,
   KarenToastAction,
   KarenToastProgress,
-  karenToastVariants,
 };

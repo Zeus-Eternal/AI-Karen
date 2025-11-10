@@ -15,11 +15,17 @@ export {
 
 // Card components
 export {
-  cardVariants,
-  type CardProps,
-  type CardHeaderProps,
-  type CardContentProps,
-  type CardFooterProps,
+  cardEnhancedVariants,
+  CardEnhanced,
+  CardHeaderEnhanced,
+  CardContentEnhanced,
+  CardFooterEnhanced,
+  CardTitleEnhanced,
+  CardDescriptionEnhanced,
+  type CardEnhancedComponentProps,
+  type CardHeaderEnhancedProps,
+  type CardContentEnhancedProps,
+  type CardFooterEnhancedProps,
 } from './card-enhanced';
 
 // Input components
