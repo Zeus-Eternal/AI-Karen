@@ -5,6 +5,7 @@ declare module '@/components/ui/button' {
     variant?: string;
     size?: string;
     icon?: ReactNode;
+    asChild?: boolean;
   };
 
   export const Button: FC<ButtonProps>;
