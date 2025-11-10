@@ -118,9 +118,12 @@ export class DatabaseQueryOptimizer {
 
       let preparedStatement: PreparedStatement | null = null;
       if (this.config.enablePreparedStatements) {
-        preparedStatement = this.getPreparedStatement(query);
-        if (preparedStatement) {
-          this.metrics.preparedStatementHits++;
+        const resolved = this.resolvePreparedStatement(query, params);
+        if (resolved) {
+          preparedStatement = resolved.statement;
+          if (resolved.hit) {
+            this.metrics.preparedStatementHits++;
+          }
         }
       }
 
@@ -169,7 +172,7 @@ export class DatabaseQueryOptimizer {
   /**
    * Logging the error for future analysis
    */
-  private logError(query: string, error: any) {
+  private logError(query: string, error: unknown) {
     console.error('Database Query Execution Failed:', {
       query,
       error,
@@ -220,7 +223,7 @@ export class DatabaseQueryOptimizer {
    * Generate a unique cache key based on query and parameters
    */
   private generateCacheKey(query: string, params: any[]): string {
-    const normalizedQuery = query.replace(/\s+/g, ' ').trim();
+    const normalizedQuery = this.normalizeQuery(query);
     const paramsStr = JSON.stringify(params);
     return `${normalizedQuery}|${paramsStr}`;
   }
@@ -295,6 +298,99 @@ export class DatabaseQueryOptimizer {
     this.queryCache.clear();
     this.preparedStatements.clear();
     this.queryPlans.clear();
+    this.metrics = {
+      totalQueries: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      averageQueryTime: 0,
+      slowQueries: 0,
+      preparedStatementHits: 0,
+      connectionPoolUtilization: 0,
+    };
+  }
+
+  invalidateUserCache(userId: string): void {
+    if (!userId) return;
+    for (const [key, entry] of this.queryCache.entries()) {
+      const matchesUser = entry.params.some(param => {
+        if (param == null) return false;
+        if (typeof param === 'string' || typeof param === 'number') {
+          return String(param) === userId;
+        }
+        if (typeof param === 'object') {
+          const candidate = (param as Record<string, unknown>).userId ?? (param as Record<string, unknown>).id;
+          return typeof candidate === 'string' && candidate === userId;
+        }
+        return false;
+      });
+
+      if (matchesUser) {
+        this.queryCache.delete(key);
+      }
+    }
+  }
+
+  updateConfig(config: Partial<QueryOptimizationConfig>): void {
+    this.config = { ...this.config, ...config };
+    if (this.cleanupInterval) {
+      this.stopCleanupTimer();
+      this.startCleanupTimer();
+    }
+  }
+
+  shutdown(): void {
+    this.stopCleanupTimer();
+    this.queryCache.clear();
+    this.preparedStatements.clear();
+    this.queryPlans.clear();
+  }
+
+  private normalizeQuery(query: string): string {
+    return query.replace(/\s+/g, ' ').trim();
+  }
+
+  private resolvePreparedStatement(
+    query: string,
+    params: any[]
+  ): { statement: PreparedStatement; hit: boolean } | null {
+    const normalizedQuery = this.normalizeQuery(query);
+    const existing = this.preparedStatements.get(normalizedQuery);
+    if (existing) {
+      return { statement: existing, hit: true };
+    }
+
+    const statement: PreparedStatement = {
+      id: `stmt_${Math.random().toString(36).slice(2)}`,
+      query: normalizedQuery,
+      parameterTypes: params.map(param => typeof param),
+      createdAt: Date.now(),
+      useCount: 0,
+      averageExecutionTime: 0,
+    };
+
+    this.preparedStatements.set(normalizedQuery, statement);
+    return { statement, hit: false };
+  }
+
+  private startCleanupTimer(): void {
+    if (this.cleanupInterval) return;
+    const interval = Math.max(this.config.queryCacheTtl, 1000);
+    this.cleanupInterval = setInterval(() => this.cleanupExpiredEntries(), interval);
+  }
+
+  private stopCleanupTimer(): void {
+    if (!this.cleanupInterval) return;
+    clearInterval(this.cleanupInterval);
+    this.cleanupInterval = null;
+  }
+
+  private cleanupExpiredEntries(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.queryCache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.queryCache.delete(key);
+      }
+    }
   }
 }
 
@@ -304,9 +400,25 @@ let instance: DatabaseQueryOptimizer | null = null;
 /**
  * Get or create the singleton DatabaseQueryOptimizer instance
  */
-export function getDatabaseQueryOptimizer(config?: QueryOptimizationConfig): DatabaseQueryOptimizer {
+export function getDatabaseQueryOptimizer(config?: Partial<QueryOptimizationConfig>): DatabaseQueryOptimizer {
   if (!instance) {
     instance = new DatabaseQueryOptimizer(config);
+  } else if (config) {
+    instance.updateConfig(config);
   }
   return instance;
+}
+
+export function initializeDatabaseQueryOptimizer(
+  config?: Partial<QueryOptimizationConfig>
+): DatabaseQueryOptimizer {
+  instance = getDatabaseQueryOptimizer(config);
+  return instance;
+}
+
+export function shutdownDatabaseQueryOptimizer(): void {
+  if (instance) {
+    instance.shutdown();
+    instance = null;
+  }
 }
