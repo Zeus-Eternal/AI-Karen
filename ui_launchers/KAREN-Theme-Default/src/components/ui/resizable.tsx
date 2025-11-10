@@ -1,15 +1,17 @@
-"use client"
+"use client";
 
 import * as React from "react";
+
 import { cn } from "@/lib/utils";
+
 export interface ResizablePanelGroupProps extends React.HTMLAttributes<HTMLDivElement> {
-  direction?: "horizontal" | "vertical"
+  direction?: "horizontal" | "vertical";
 }
 
 export interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement> {
-  defaultSize?: number
-  minSize?: number
-  maxSize?: number
+  defaultSize?: number;
+  minSize?: number;
+  maxSize?: number;
 }
 
 export interface ResizableHandleProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -27,8 +29,9 @@ const ResizablePanelGroup = React.forwardRef<
     )}
     {...props}
   />
-))
-ResizablePanelGroup.displayName = "ResizablePanelGroup"
+));
+
+ResizablePanelGroup.displayName = "ResizablePanelGroup";
 
 const ResizablePanel = React.forwardRef<
   HTMLDivElement,
@@ -39,8 +42,9 @@ const ResizablePanel = React.forwardRef<
     className={cn("flex-1", className)}
     {...props}
   />
-))
-ResizablePanel.displayName = "ResizablePanel"
+));
+
+ResizablePanel.displayName = "ResizablePanel";
 
 const ResizableHandle = React.forwardRef<
   HTMLDivElement,
@@ -54,7 +58,8 @@ const ResizableHandle = React.forwardRef<
     )}
     {...props}
   />
-))
-ResizableHandle.displayName = "ResizableHandle"
+));
 
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
+ResizableHandle.displayName = "ResizableHandle";
+
+export { ResizablePanelGroup, ResizablePanel, ResizableHandle };

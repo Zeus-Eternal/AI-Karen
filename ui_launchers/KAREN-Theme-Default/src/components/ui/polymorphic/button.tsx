@@ -2,95 +2,116 @@
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cn } from "@/lib/utils";
-import { ImageIcon, AlertCircle } from 'lucide-react';
 
-// Button component variants and sizes
-export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+import { cn } from "@/lib/utils";
+
+import type {
+  CreatePolymorphicComponent,
+  PolymorphicPropsWithRef,
+  PolymorphicRef,
+} from "../compound/types";
+
+export type ButtonVariant =
+  | "default"
+  | "destructive"
+  | "outline"
+  | "secondary"
+  | "ghost"
+  | "link";
+
 export type ButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-export interface ButtonProps {
+type ButtonBaseProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
   asChild?: boolean;
   fullWidth?: boolean;
-  children: React.ReactNode;
-}
+  children?: React.ReactNode;
+  className?: string;
+};
 
-// Polymorphic Button Component
-const Button = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement> & { as?: React.ElementType }
->(
-  (
+export type ButtonProps<T extends React.ElementType = "button"> =
+  PolymorphicPropsWithRef<T, ButtonBaseProps>;
+
+type ButtonComponent = CreatePolymorphicComponent<"button", ButtonBaseProps>;
+
+const variantClasses: Record<ButtonVariant, string> = {
+  default: "bg-primary text-primary-foreground hover:bg-primary/90",
+  destructive:
+    "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+  outline:
+    "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  ghost: "hover:bg-accent hover:text-accent-foreground",
+  link: "text-primary underline-offset-4 hover:underline",
+};
+
+const sizeClasses: Record<ButtonSize, string> = {
+  xs: "h-7 px-2 text-xs",
+  sm: "h-8 px-3 text-sm",
+  md: "h-10 px-4 py-2",
+  lg: "h-11 px-8",
+  xl: "h-12 px-10 text-lg",
+};
+
+const iconSizeClasses: Record<ButtonSize, string> = {
+  xs: "h-7 w-7",
+  sm: "h-8 w-8",
+  md: "h-10 w-10",
+  lg: "h-11 w-11",
+  xl: "h-12 w-12",
+};
+
+const Button = React.forwardRef(
+  <T extends React.ElementType = "button">(
     {
       as,
+      asChild = false,
       className,
       variant = "default",
       size = "md",
       loading = false,
-      disabled = false,
-      asChild = false,
+      disabled,
       fullWidth = false,
       children,
       ...props
-    },
-    ref
+    }: ButtonProps<T>,
+    ref: PolymorphicRef<T>
   ) => {
-    const Component = asChild ? Slot : (as || "button");
-    const isDisabled = disabled || loading;
+    const Component = asChild ? Slot : (as ?? "button");
+    const isButtonElement = typeof Component === "string" && Component === "button";
+    const isDisabled = (disabled ?? false) || loading;
 
     return (
       <Component
         ref={ref}
         className={cn(
-          // Base styles
           "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
           "ring-offset-background transition-colors duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
-          
-          // Variant styles
-          {
-            "bg-primary text-primary-foreground hover:bg-primary/90": variant === "default",
-            "bg-destructive text-destructive-foreground hover:bg-destructive/90": variant === "destructive",
-            "border border-input bg-background hover:bg-accent hover:text-accent-foreground": variant === "outline",
-            "bg-secondary text-secondary-foreground hover:bg-secondary/80": variant === "secondary",
-            "hover:bg-accent hover:text-accent-foreground": variant === "ghost",
-            "text-primary underline-offset-4 hover:underline": variant === "link",
-          },
-          
-          // Size styles
-          {
-            "h-7 px-2 text-xs": size === "xs",
-            "h-8 px-3 text-sm": size === "sm",
-            "h-10 px-4 py-2": size === "md",
-            "h-11 px-8": size === "lg",
-            "h-12 px-10 text-lg": size === "xl",
-          },
-          
-          // Full width
-          {
-            "w-full": fullWidth,
-          },
-          
-          // Loading state
-          {
-            "cursor-not-allowed": loading,
-          },
-          
+          variantClasses[variant],
+          sizeClasses[size],
+          fullWidth && "w-full",
+          loading && "cursor-not-allowed",
           className
         )}
-        disabled={isDisabled}
+        aria-busy={loading || undefined}
+        disabled={isButtonElement ? isDisabled : undefined}
+        data-variant={variant}
+        data-size={size}
         {...props}
       >
         {loading && (
           <svg
-            className="animate-spin -ml-1 mr-2 h-4 w-4 "
+            className="-ml-1 mr-2 h-4 w-4 animate-spin"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
           >
             <circle
               className="opacity-25"
@@ -102,8 +123,8 @@ const Button = React.forwardRef<
             />
             <path
               className="opacity-75"
+              d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938z"
               fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
         )}
@@ -111,73 +132,85 @@ const Button = React.forwardRef<
       </Component>
     );
   }
-);
+) as ButtonComponent;
 
 Button.displayName = "Button";
 
-// Predefined button components for common use cases
-const IconButton = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: React.ReactNode; "aria-label": string }
->(({ icon, children, className, size = "md", ...props }, ref) => (
-  <Button
-    ref={ref}
-    size={size}
-    className={cn(
-      "aspect-square p-0",
-      {
-        "h-7 w-7": size === "xs",
-        "h-8 w-8": size === "sm", 
-        "h-10 w-10": size === "md",
-        "h-11 w-11": size === "lg",
-        "h-12 w-12": size === "xl",
-      },
-      className
-    )}
-    {...props}
-    aria-label="Button"
-  >
-    {icon}
-    {children && <span className="sr-only">{children}</span>}
-  </Button>
-));
+type IconButtonProps = ButtonProps & {
+  icon: React.ReactNode;
+  "aria-label": string;
+};
+
+const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ icon, children, className, size = "md", ...props }, ref) => (
+    <Button
+      ref={ref}
+      size={size}
+      className={cn("aspect-square p-0", iconSizeClasses[size], className)}
+      {...props}
+    >
+      {icon}
+      {children && <span className="sr-only">{children}</span>}
+    </Button>
+  )
+);
+
 IconButton.displayName = "IconButton";
 
-const LinkButton = React.forwardRef<
-  any,
-  ButtonProps & { href: string; as?: React.ElementType; [key: string]: any }
->(({ as = "a", variant = "link", children, ...props }, ref) => (
-  <Button as={as} ref={ref} variant={variant} {...props}>
-    {children}
-  </Button>
-));
+type LinkButtonProps<T extends React.ElementType = "a"> = ButtonProps<T> & {
+  href?: string;
+};
+
+const LinkButton = React.forwardRef(
+  <T extends React.ElementType = "a">(
+    {
+      as,
+      variant = "link",
+      children,
+      ...props
+    }: LinkButtonProps<T>,
+    ref: PolymorphicRef<T>
+  ) => (
+    <Button as={as ?? ("a" as T)} ref={ref} variant={variant} {...props}>
+      {children}
+    </Button>
+  )
+) as CreatePolymorphicComponent<"a", ButtonBaseProps & { href?: string }>;
+
 LinkButton.displayName = "LinkButton";
 
-const SubmitButton = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ type = "submit", variant = "default", ...props }, ref) => (
-  <Button ref={ref} type={type} variant={variant} {...props} />
-));
+const SubmitButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ type = "submit", variant = "default", ...props }, ref) => (
+    <Button ref={ref} type={type} variant={variant} {...props} />
+  )
+);
+
 SubmitButton.displayName = "SubmitButton";
 
-const ResetButton = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ type = "reset", variant = "outline", ...props }, ref) => (
-  <Button ref={ref} type={type} variant={variant} {...props} />
-));
+const ResetButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ type = "reset", variant = "outline", ...props }, ref) => (
+    <Button ref={ref} type={type} variant={variant} {...props} />
+  )
+);
+
 ResetButton.displayName = "ResetButton";
 
-const CancelButton = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ variant = "ghost", ...props }, ref) => (
-  <Button ref={ref} variant={variant} {...props} />
-));
+const CancelButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = "ghost", children = "Cancel", ...props }, ref) => (
+    <Button ref={ref} variant={variant} {...props}>
+      {children}
+    </Button>
+  )
+);
+
 CancelButton.displayName = "CancelButton";
 
-const DestructiveButton = React.forwardRef<
-  ButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ variant = "destructive", ...props }, ref) => (
-  <Button ref={ref} variant={variant} {...props} />
-));
+const DestructiveButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = "destructive", ...props }, ref) => (
+    <Button ref={ref} variant={variant} {...props} />
+  )
+);
+
 DestructiveButton.displayName = "DestructiveButton";
 
 export {
@@ -187,9 +220,7 @@ export {
   SubmitButton,
   ResetButton,
   CancelButton,
-  DestructiveButton
+  DestructiveButton,
 };
 
-export type {
-  ButtonProps
-};
+export type { ButtonProps };

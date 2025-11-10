@@ -12,6 +12,9 @@
 import React from 'react';
 import { X, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
 export interface ProgressStep {
   id: string;
   label: string;
@@ -56,32 +59,36 @@ export function ProgressIndicator({
   showDetails = true
 }: ProgressIndicatorProps) {
   const [showErrorDetails, setShowErrorDetails] = React.useState(false);
-  
-  const overallProgress = progress.totalItems > 0 
+
+  const overallProgress = progress.totalItems > 0
     ? Math.round((progress.processedItems / progress.totalItems) * 100)
     : 0;
 
   const isCompleted = progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled';
-  const duration = progress.endTime 
+  const duration = progress.endTime
     ? Math.round((progress.endTime.getTime() - progress.startTime.getTime()) / 1000)
     : Math.round((Date.now() - progress.startTime.getTime()) / 1000);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (
+    status: ProgressStep['status'] | BulkOperationProgress['status']
+  ) => {
     switch (status) {
       case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-600 " />;
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-600" />;
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-600 " />;
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
       case 'failed':
-        return <XCircle className="h-5 w-5 text-red-600 " />;
+        return <XCircle className="h-5 w-5 text-red-600" />;
       case 'cancelled':
-        return <AlertCircle className="h-5 w-5 text-yellow-600 " />;
+        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
       default:
-        return <div className="h-5 w-5 rounded-full bg-gray-300 " />;
+        return <div className="h-5 w-5 rounded-full bg-gray-300" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (
+    status: ProgressStep['status'] | BulkOperationProgress['status']
+  ) => {
     switch (status) {
       case 'running':
         return 'text-blue-600';
@@ -104,7 +111,12 @@ export function ProgressIndicator({
   };
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg shadow-lg ${className}`}>
+    <div
+      className={cn(
+        'bg-white border border-gray-200 rounded-lg shadow-lg',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 sm:p-4 md:p-6">
         <div className="flex items-center space-x-3">
@@ -122,20 +134,24 @@ export function ProgressIndicator({
         <div className="flex items-center space-x-2">
           {progress.canCancel && progress.status === 'running' && onCancel && (
             <Button
+              type="button"
               onClick={onCancel}
               className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 md:text-base lg:text-lg"
               aria-label="Cancel operation"
             >
+              Cancel
             </Button>
           )}
-          
+
           {isCompleted && onClose && (
             <Button
+              type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
               aria-label="Close progress indicator"
             >
-              <X className="h-5 w-5 " />
+              <X className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">Close</span>
             </Button>
           )}
         </div>
@@ -145,6 +161,7 @@ export function ProgressIndicator({
       <div className="p-4 sm:p-4 md:p-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700 md:text-base lg:text-lg">
+            Overall progress
           </span>
           <span className="text-sm text-gray-600 md:text-base lg:text-lg">
             {overallProgress}%
@@ -153,13 +170,14 @@ export function ProgressIndicator({
         
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
-            className={`h-2 rounded-full transition-all duration-300 ${
-              progress.status === 'completed' 
-                ? 'bg-green-600' 
+            className={cn(
+              'h-2 rounded-full transition-all duration-300',
+              progress.status === 'completed'
+                ? 'bg-green-600'
                 : progress.status === 'failed' || progress.status === 'cancelled'
-                ? 'bg-red-600'
-                : 'bg-blue-600'
-            }`}
+                  ? 'bg-red-600'
+                  : 'bg-blue-600'
+            )}
             style={{ width: `${overallProgress}%` }}
             role="progressbar"
             aria-valuenow={overallProgress}
@@ -205,6 +223,7 @@ export function ProgressIndicator({
         <div className="border-t border-gray-200">
           <div className="p-4 sm:p-4 md:p-6">
             <h4 className="text-sm font-medium text-gray-900 mb-3 md:text-base lg:text-lg">
+              Steps
             </h4>
             <div className="space-y-2">
               {progress.steps.map((step) => (
@@ -244,6 +263,7 @@ export function ProgressIndicator({
         <div className="border-t border-gray-200">
           <div className="p-4 sm:p-4 md:p-6">
             <Button
+              type="button"
               onClick={() => setShowErrorDetails(!showErrorDetails)}
               className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
             >
@@ -314,13 +334,13 @@ export function SimpleProgressBar({
   showPercentage = true,
   className = ''
 }: SimpleProgressBarProps) {
-  const sizeClasses = {
+  const sizeClasses: Record<'sm' | 'md' | 'lg', string> = {
     sm: 'h-1',
     md: 'h-2',
     lg: 'h-3'
   };
 
-  const colorClasses = {
+  const colorClasses: Record<'blue' | 'green' | 'red' | 'yellow', string> = {
     blue: 'bg-blue-600',
     green: 'bg-green-600',
     red: 'bg-red-600',
@@ -344,9 +364,13 @@ export function SimpleProgressBar({
         </div>
       )}
       
-      <div className={`w-full bg-gray-200 rounded-full ${sizeClasses[size]}`}>
+      <div className={cn('w-full bg-gray-200 rounded-full', sizeClasses[size])}>
         <div
-          className={`${sizeClasses[size]} rounded-full transition-all duration-300 ${colorClasses[color]}`}
+          className={cn(
+            sizeClasses[size],
+            'rounded-full transition-all duration-300',
+            colorClasses[color]
+          )}
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           role="progressbar"
           aria-valuenow={progress}
