@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -11,6 +11,11 @@ export interface ErrorBoundaryState {
 export interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+}
+
+export interface ErrorFallbackProps {
+  error?: Error;
+  resetError?: () => void;
 }
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {

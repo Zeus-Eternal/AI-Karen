@@ -3,7 +3,7 @@
  */
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Zap, TrendingUp } from 'lucide-react';
 

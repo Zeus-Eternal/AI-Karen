@@ -8,7 +8,7 @@
  * - Clean observer lifecycle + singleton + React hook that doesn't re-register
  */
 
-import React from 'react';
+import * as React from 'react';
 
 // ===== Types =====
 export interface WebVitalsMetric {
@@ -94,9 +94,10 @@ function navType(): WebVitalsMetric['navigationType'] {
   const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   if (!nav) return 'navigate';
   // Some browsers report 'back_forward' vs 'back-forward'
-  const t = (nav.type as any) || 'navigate';
-  if (t === 'back_forward') return 'back-forward';
-  return t;
+  const type = nav.type || 'navigate';
+  if (type === 'back_forward') return 'back-forward';
+  if (type === 'prerender') return 'navigate';
+  return type as 'reload' | 'navigate' | 'back-forward' | 'back-forward-cache';
 }
 
 function ratingFor(name: WebVitalsMetric['name'], value: number): WebVitalsMetric['rating'] {
@@ -155,7 +156,9 @@ export class PerformanceMonitor {
     this.observers.forEach((obs) => {
       try {
         obs.disconnect();
-      } catch {}
+      } catch (error) {
+        console.debug('PerformanceObserver disconnect failed', error);
+      }
     });
     this.observers.clear();
     this.webVitalsSummary.clear();
@@ -251,14 +254,14 @@ export class PerformanceMonitor {
 
     // LCP
     this.observe('largest-contentful-paint', (entries) => {
-      const last = entries[entries.length - 1] as any;
+      const last = entries[entries.length - 1] as PerformanceEntry | undefined;
       if (!last) return;
       this.dispatchVital('LCP', last.startTime);
     });
 
     // FCP
     this.observe('paint', (entries) => {
-      const fcp = entries.find((e: any) => (e as PerformanceEntry).name === 'first-contentful-paint') as any;
+      const fcp = entries.find((e) => (e as PerformanceEntry).name === 'first-contentful-paint') as PerformanceEntry | undefined;
       if (fcp) this.dispatchVital('FCP', fcp.startTime);
     });
 
@@ -272,8 +275,9 @@ export class PerformanceMonitor {
     // CLS
     this.clsValue = 0;
     this.observe('layout-shift', (entries) => {
-      entries.forEach((entry: any) => {
-        if (!entry.hadRecentInput) this.clsValue += entry.value || 0;
+      entries.forEach((entry) => {
+        const shift = entry as LayoutShift;
+        if (!shift.hadRecentInput) this.clsValue += shift.value || 0;
       });
       this.dispatchVital('CLS', this.clsValue);
     });
@@ -282,21 +286,25 @@ export class PerformanceMonitor {
     // If INP unavailable, fall back to FID via 'first-input'
     let inpSupported = false;
     try {
-      // @ts-ignore
-      const types = PerformanceObserver.supportedEntryTypes || [];
+      const observerCtor = PerformanceObserver as typeof PerformanceObserver & {
+        supportedEntryTypes?: readonly string[];
+      };
+      const types = observerCtor.supportedEntryTypes ?? [];
       inpSupported = types.includes('event') || types.includes('event-timing');
-    } catch {}
+    } catch (error) {
+      console.debug('PerformanceObserver supportedEntryTypes check failed', error);
+    }
     if (inpSupported) {
       this.observe('event', (entries) => {
-        // @ts-ignore
-        const et = entries as any[];
-        et.forEach((e) => {
-          // INP is max duration across all interactions (excluding continuous like scroll)
-          // @ts-ignore
-          const dur = e.duration || 0;
-          // Filter common continuous types; keep taps/clicks/keypress
-          const name = (e.name || '').toLowerCase();
-          const continuous = name.includes('scroll') || name.includes('drag') || name.includes('mousemove') || name.includes('pointermove');
+        const eventEntries = entries as PerformanceEventTiming[];
+        eventEntries.forEach((entry) => {
+          const dur = entry.duration || 0;
+          const name = (entry.name || '').toLowerCase();
+          const continuous =
+            name.includes('scroll') ||
+            name.includes('drag') ||
+            name.includes('mousemove') ||
+            name.includes('pointermove');
           if (!continuous) {
             this.inpCandidate = Math.max(this.inpCandidate, dur);
           }
@@ -308,7 +316,7 @@ export class PerformanceMonitor {
     } else {
       // Fallback: FID
       this.observe('first-input', (entries) => {
-        const first = entries[0] as any;
+        const first = entries[0] as PerformanceEventTiming | undefined;
         if (!first) return;
         const fid = first.processingStart - first.startTime;
         this.dispatchVital('FID', fid);
@@ -343,14 +351,15 @@ export class PerformanceMonitor {
   private monitorResourceLoading(): void {
     if (!hasPO) return;
     this.observe('resource', (entries) => {
-      entries.forEach((entry: any) => {
-        const loadTime = entry.responseEnd - entry.startTime;
-        const type = entry.initiatorType || 'other';
+      entries.forEach((entry) => {
+        const resource = entry as PerformanceResourceTiming;
+        const loadTime = resource.responseEnd - resource.startTime;
+        const type = resource.initiatorType || 'other';
         this.recordMetric(`resource-load-${type}`, loadTime, {
           type: 'resource-loading',
-          url: entry.name,
-          size: entry.transferSize,
-          cached: entry.transferSize === 0,
+          url: resource.name,
+          size: resource.transferSize,
+          cached: resource.transferSize === 0,
         });
       });
     });
@@ -359,15 +368,24 @@ export class PerformanceMonitor {
   private monitorNavigation(): void {
     if (!hasPO) return;
     this.observe('navigation', (entries) => {
-      const e = entries[0] as any;
-      if (!e) return;
+      const entry = entries[0] as PerformanceNavigationTiming | undefined;
+      if (!entry) return;
 
       // Overall
-      this.recordMetric('navigation-total', e.loadEventEnd - e.startTime, { type: 'navigation', navigationType: e.type });
+      this.recordMetric('navigation-total', entry.loadEventEnd - entry.startTime, {
+        type: 'navigation',
+        navigationType: entry.type,
+      });
       // Timing slices
-      this.recordMetric('navigation-dns', e.domainLookupEnd - e.domainLookupStart, { type: 'navigation-timing' });
-      this.recordMetric('navigation-connect', e.connectEnd - e.connectStart, { type: 'navigation-timing' });
-      this.recordMetric('navigation-ttfb', e.responseStart - e.requestStart, { type: 'navigation-timing' });
+      this.recordMetric('navigation-dns', entry.domainLookupEnd - entry.domainLookupStart, {
+        type: 'navigation-timing',
+      });
+      this.recordMetric('navigation-connect', entry.connectEnd - entry.connectStart, {
+        type: 'navigation-timing',
+      });
+      this.recordMetric('navigation-ttfb', entry.responseStart - entry.requestStart, {
+        type: 'navigation-timing',
+      });
     });
   }
 
@@ -377,10 +395,10 @@ export class PerformanceMonitor {
       const observer = new PerformanceObserver((list) => {
         cb(list.getEntries());
       });
-      observer.observe({ type: entryType as any, buffered: true } as any);
+      observer.observe({ type: entryType, buffered: true });
       this.observers.set(entryType, observer);
-    } catch {
-      // Silently ignore unsupported entry types
+    } catch (error) {
+      console.debug('PerformanceObserver observe failed', error);
     }
   }
 
@@ -396,6 +414,17 @@ export class PerformanceMonitor {
     };
     this.webVitalsSummary.set(name, metric);
     this.reportCallback?.(metric);
+  }
+
+  public tapReportCallback(tap: (metric: WebVitalsMetric | CustomMetric) => void): () => void {
+    const previous = this.reportCallback;
+    this.reportCallback = (metric) => {
+      previous?.(metric);
+      tap(metric);
+    };
+    return () => {
+      this.reportCallback = previous;
+    };
   }
 
   // ---- Summaries ----
@@ -445,7 +474,7 @@ export class PerformanceMonitor {
   private handlePageShow = (ev: PageTransitionEvent) => {
     // If restored from BFCache, re-emit navigation context & keep observers alive
     // Consumers can detect via navigationType === 'back-forward'
-    if ((ev as any).persisted) {
+    if (ev.persisted) {
       // Make a small synthetic mark so downstream can associate new session slice
       this.recordMetric('bf-cache-restore', 0, { type: 'lifecycle' });
     }
@@ -475,20 +504,19 @@ export function usePerformanceMonitor() {
     // Wire a one-time reporter to update state snapshots (without re-registering observers)
     const reporter = (metric: WebVitalsMetric | CustomMetric) => {
       // For custom metrics, update the local Map snapshot
-      if ((metric as CustomMetric).timestamp != null) {
+      if ('timestamp' in metric && metric.timestamp != null) {
         setMetrics(new Map(performanceMonitor.getMetrics()));
       }
       // Optionally, send Web Vitals to analytics here.
       // Example:
-      // if ('gtag' in window) (window as any).gtag('event', 'web_vital', { name: (metric as any).name, value: metric.value });
+      // if ('gtag' in window) (window as Window & { gtag?: (...args: unknown[]) => void }).gtag?.('event', 'web_vital', {
+      //   name: metric.name,
+      //   value: metric.value,
+      // });
     };
 
     // Temporarily replace the monitor’s callback so this hook can receive updates too.
-    const original = (performanceMonitor as any).reportCallback;
-    (performanceMonitor as any).reportCallback = (m: any) => {
-      original?.(m);
-      reporter(m);
-    };
+    const restoreReport = performanceMonitor.tapReportCallback(reporter);
 
     performanceMonitor.startMonitoring();
     setIsMonitoring(true);
@@ -498,7 +526,7 @@ export function usePerformanceMonitor() {
 
     return () => {
       // Restore original callback and stop monitor
-      (performanceMonitor as any).reportCallback = original;
+      restoreReport();
       performanceMonitor.stopMonitoring();
       setIsMonitoring(false);
     };
@@ -540,7 +568,8 @@ export function checkPerformanceBudget(
   rating: 'good' | 'needs-improvement' | 'poor';
   threshold: { good: number; poor: number } | null;
 } {
-  const threshold = PERFORMANCE_THRESHOLDS[(metric as any).name as keyof typeof PERFORMANCE_THRESHOLDS];
+  const thresholds = PERFORMANCE_THRESHOLDS as Record<string, { good: number; poor: number }>;
+  const threshold = thresholds[metric.name];
   if (!threshold) {
     return { withinBudget: true, rating: 'good', threshold: null };
   }

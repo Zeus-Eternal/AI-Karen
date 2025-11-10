@@ -1,10 +1,14 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ErrorBoundary, type ErrorFallbackProps } from "@/components/ui/error-boundary";
+
+const ProfileManagerErrorFallback: React.FC<ErrorFallbackProps> = ({ error }) => (
+  <div>Something went wrong in ProfileManager: {error?.message}</div>
+);
 
 export interface LLMProvider {
   name: string;
@@ -69,7 +73,7 @@ export default function ProfileManager({
   }, [onClose]);
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in ProfileManager</div>}>
+    <ErrorBoundary fallback={<ProfileManagerErrorFallback />}>
       <Card>
         <CardHeader>
           <CardTitle>Profiles</CardTitle>

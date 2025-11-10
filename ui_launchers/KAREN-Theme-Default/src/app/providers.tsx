@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorProvider } from '@/contexts/ErrorProvider';
@@ -11,6 +11,9 @@ import { ExtensionIntegrationProvider } from '@/lib/extensions/extension-initial
 import { AccessibilityProvider } from '@/providers/accessibility-provider';
 import { AccessibilityEnhancementsProvider } from '@/components/accessibility';
 import { I18nProvider } from '@/providers/i18n-provider';
+import { ThemeProvider } from '@/providers/theme-provider';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/query-client';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -43,51 +46,55 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, [toast]);
   return (
-    <GlobalErrorBoundary
-      showIntelligentResponse={process.env.NODE_ENV === 'production'}
-      enableSessionRecovery
-      fallback={(error, errorInfo, retry) => (
-        <SimpleErrorFallback
-          error={error}
-          resetErrorBoundary={retry}
-          showDetails={process.env.NODE_ENV !== 'production'}
-        />
-      )}
-      onError={(error, errorInfo) => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('Global error captured', error, errorInfo);
-        }
-      }}
-    >
-      <ErrorProvider
-        options={{
-          autoAnalyze: true,
-          useAiAnalysis: true,
-          debounceMs: 500,
-          maxRetries: 3,
-        }}
-        onErrorAnalyzed={(analysis) => {
-        }}
-        onAnalysisError={(error) => {
-        }}
-        maxGlobalErrors={10}
-      >
-        <AuthProvider>
-          <HookProvider>
-            <I18nProvider>
-              <AccessibilityProvider>
-                <AccessibilityEnhancementsProvider>
-                  <ExtensionIntegrationProvider>
-                    <CopilotKitProvider>
-                      {children}
-                    </CopilotKitProvider>
-                  </ExtensionIntegrationProvider>
-                </AccessibilityEnhancementsProvider>
-              </AccessibilityProvider>
-            </I18nProvider>
-          </HookProvider>
-        </AuthProvider>
-      </ErrorProvider>
-    </GlobalErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <GlobalErrorBoundary
+          showIntelligentResponse={process.env.NODE_ENV === 'production'}
+          enableSessionRecovery
+          fallback={(error, errorInfo, retry) => (
+            <SimpleErrorFallback
+              error={error}
+              resetErrorBoundary={retry}
+              showDetails={process.env.NODE_ENV !== 'production'}
+            />
+          )}
+          onError={(error, errorInfo) => {
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('Global error captured', error, errorInfo);
+            }
+          }}
+        >
+          <ErrorProvider
+            options={{
+              autoAnalyze: true,
+              useAiAnalysis: true,
+              debounceMs: 500,
+              maxRetries: 3,
+            }}
+            onErrorAnalyzed={(analysis) => {
+            }}
+            onAnalysisError={(error) => {
+            }}
+            maxGlobalErrors={10}
+          >
+            <AuthProvider>
+              <HookProvider>
+                <I18nProvider>
+                  <AccessibilityProvider>
+                    <AccessibilityEnhancementsProvider>
+                      <ExtensionIntegrationProvider>
+                        <CopilotKitProvider>
+                          {children}
+                        </CopilotKitProvider>
+                      </ExtensionIntegrationProvider>
+                    </AccessibilityEnhancementsProvider>
+                  </AccessibilityProvider>
+                </I18nProvider>
+              </HookProvider>
+            </AuthProvider>
+          </ErrorProvider>
+        </GlobalErrorBoundary>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }

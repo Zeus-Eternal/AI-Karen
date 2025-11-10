@@ -240,7 +240,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
     // Auto-expand active sections
     useEffect(() => {
-      const activeItem = findActiveItem(items, pathname);
+      const activeItem = findActiveItem(items, pathname || '/');
       if (activeItem?.parent) {
         setExpandedItems((prev) => new Set([...prev, activeItem.parent!]));
       }
@@ -404,7 +404,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
                 key={item.id}
                 item={item}
                 isExpanded={expandedItems.has(item.id)}
-                isActive={isItemActive(item, pathname)}
+                isActive={isItemActive(item, pathname || '/')}
                 isCollapsed={sidebarCollapsed}
                 onToggle={() => toggleExpanded(item.id)}
                 onClick={handleItemClick}
@@ -544,7 +544,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
               key={child.id}
               item={child}
               isExpanded={false}
-              isActive={isItemActive(child, pathname)}
+              isActive={isItemActive(child, pathname || '/')}
               isCollapsed={false}
               onToggle={() => {}}
               onClick={() => onClick(child)}

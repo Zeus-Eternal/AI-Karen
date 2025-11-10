@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

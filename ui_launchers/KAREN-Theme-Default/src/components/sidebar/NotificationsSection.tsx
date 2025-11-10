@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

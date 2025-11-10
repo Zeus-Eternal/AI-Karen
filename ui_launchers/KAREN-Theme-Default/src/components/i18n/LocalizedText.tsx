@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { useI18n } from '../../providers/i18n-provider';
 import type { InterpolationOptions, PluralOptions } from '../../lib/i18n';
 

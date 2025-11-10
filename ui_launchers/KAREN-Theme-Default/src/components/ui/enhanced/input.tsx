@@ -4,7 +4,7 @@
  * Extended input component with design token integration and modern styling.
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
-import React from 'react';
+import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 // Enhanced input variants using design tokens

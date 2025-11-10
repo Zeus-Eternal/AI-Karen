@@ -17,6 +17,17 @@ import React from "react";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+type RetryError = {
+  status?: number;
+  response?: { status?: number };
+  name?: string;
+};
+
+type HttpRetryError = Error & {
+  status: number;
+  response: Response;
+};
+
 export interface RetryConfig {
   maxAttempts: number; // total tries including the first
   baseDelay: number; // ms
@@ -24,10 +35,10 @@ export interface RetryConfig {
   backoffFactor: number; // exponential factor
   jitter: boolean | "full" | "centered"; // strategy
   timeoutMs?: number; // for fetch helper
-  retryCondition?: (error: any, attempt: number) => boolean;
-  onRetry?: (error: any, attempt: number, nextDelayMs: number) => void;
-  onSuccess?: (result: any, attempt: number) => void;
-  onFailure?: (error: any, attempts: number) => void;
+  retryCondition?: (error: RetryError, attempt: number) => boolean;
+  onRetry?: (error: RetryError, attempt: number, nextDelayMs: number) => void;
+  onSuccess?: (result: unknown, attempt: number) => void;
+  onFailure?: (error: RetryError, attempts: number) => void;
 }
 
 export interface RetryState {
@@ -70,9 +81,6 @@ class Emitter<T = void> {
   }
 }
 
-// SSR guard
-const isBrowser = typeof window !== "undefined";
-
 // ---------------------------------------------------------------------------
 // Core Service
 // ---------------------------------------------------------------------------
@@ -88,7 +96,7 @@ class RetryMechanismService {
     maxDelay: 30000,
     backoffFactor: 2,
     jitter: "centered",
-    retryCondition: (error: any) => this.defaultRetryCondition(error),
+    retryCondition: (error: RetryError) => this.defaultRetryCondition(error),
   };
 
   private defaultCircuitBreakerConfig: CircuitBreakerConfig = {
@@ -103,9 +111,9 @@ class RetryMechanismService {
   }
 
   // --------------------------- Policies -----------------------------------
-  private defaultRetryCondition(error: any): boolean {
-    const status = (error?.status ?? error?.response?.status) as number | undefined;
-    const name = error?.name as string | undefined;
+  private defaultRetryCondition(error: RetryError): boolean {
+    const status = error.status ?? error.response?.status;
+    const name = error.name;
 
     // Network-like classes
     if (name === "NetworkError" || name === "TimeoutError") return true;
@@ -121,9 +129,16 @@ class RetryMechanismService {
     return true;
   }
 
-  public shouldRetry(error: any, attempt?: number): boolean {
+  public shouldRetry(error: unknown, attempt?: number): boolean {
     void attempt;
-    return this.defaultRetryCondition(error);
+    return this.defaultRetryCondition(this.normalizeError(error));
+  }
+
+  private normalizeError(error: unknown): RetryError {
+    if (typeof error === "object" && error !== null) {
+      return error as RetryError;
+    }
+    return {};
   }
 
   // --------------------------- Public API ----------------------------------
@@ -160,7 +175,7 @@ class RetryMechanismService {
     operationId: string
   ): Promise<T> {
     const state = this.activeRetries.get(operationId)!;
-    let lastError: any;
+    let lastError: unknown = new Error("Retry aborted before failure");
 
     for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
       state.attempt = attempt;
@@ -170,8 +185,8 @@ class RetryMechanismService {
       try {
         // Circuit check
         if (!this.canExecute(operationId)) {
-          const err = new Error("Circuit breaker is open");
-          (err as any).name = "CircuitOpenError";
+        const err = new Error("Circuit breaker is open");
+        err.name = "CircuitOpenError";
           throw err;
         }
 
@@ -181,15 +196,16 @@ class RetryMechanismService {
         this.recordSuccess(operationId);
         config.onSuccess?.(result, attempt);
         return result;
-      } catch (error: any) {
+      } catch (error: unknown) {
         lastError = error;
         state.lastError = error instanceof Error ? error : new Error(String(error));
 
         // failure → tick breaker
         this.recordFailure(operationId);
 
+        const normalizedError = this.normalizeError(error);
         const canRetry =
-          attempt < config.maxAttempts && (config.retryCondition?.(error, attempt) ?? true);
+          attempt < config.maxAttempts && (config.retryCondition?.(normalizedError, attempt) ?? true);
 
         if (!canRetry) break;
 
@@ -197,7 +213,7 @@ class RetryMechanismService {
         state.nextRetryIn = delayMs;
         state.isRetrying = true;
         this.updated.emit({ id: operationId, state: { ...state } });
-        config.onRetry?.(error, attempt, delayMs);
+        config.onRetry?.(normalizedError, attempt, delayMs);
 
         await this.delay(delayMs);
         state.isRetrying = false;
@@ -205,8 +221,12 @@ class RetryMechanismService {
       }
     }
 
-    config.onFailure?.(lastError, (this.activeRetries.get(operationId)?.attempt ?? 0));
-    throw lastError;
+    const failureError = lastError;
+    config.onFailure?.(
+      this.normalizeError(failureError),
+      this.activeRetries.get(operationId)?.attempt ?? 0
+    );
+    throw failureError;
   }
 
   private calculateDelay(attempt: number, config: RetryConfig): number {
@@ -342,7 +362,7 @@ export const retryMechanism = new RetryMechanismService();
 export function useRetry<T>(
   operation: () => Promise<T>,
   config: Partial<RetryConfig> = {},
-  dependencies: any[] = []
+  dependencies: React.DependencyList = []
 ) {
   const [state, setState] = React.useState<{
     data: T | null;
@@ -406,7 +426,7 @@ export function useRetry<T>(
         canRetry: true,
       }));
       return result;
-    } catch (e: any) {
+    } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e));
       setState((prev) => ({
         ...prev,
@@ -476,10 +496,10 @@ export function useRetryFetch(
         async () => {
           const response = await fetchWithTimeout(url, options, timeout);
           if (!response.ok) {
-            const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-            (error as any).status = response.status;
-            (error as any).response = response;
-            throw error;
+            const httpError = new Error(`HTTP ${response.status}: ${response.statusText}`) as HttpRetryError;
+            httpError.status = response.status;
+            httpError.response = response;
+            throw httpError;
           }
           return response;
         },

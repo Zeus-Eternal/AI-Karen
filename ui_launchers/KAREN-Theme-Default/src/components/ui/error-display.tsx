@@ -8,7 +8,7 @@
  */
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { AlertTriangle, RefreshCw, X, Info, AlertCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { AdminError } from '@/lib/errors/admin-error-handler';

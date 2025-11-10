@@ -178,7 +178,7 @@ export function unique<T, K = T>(
  * @example
  * deepMerge({a: {b: 1}}, {a: {c: 2}}) // => {a: {b: 1, c: 2}}
  */
-export function deepMerge<T extends Record<string, any>>(
+export function deepMerge<T extends Record<string, unknown>>(
   target: T,
   source: Partial<T>
 ): T {
@@ -197,7 +197,7 @@ export function deepMerge<T extends Record<string, any>>(
         typeof targetValue === 'object' &&
         !Array.isArray(targetValue)
       ) {
-        result[key] = deepMerge(targetValue, sourceValue) as T[Extract<keyof T, string>];
+        result[key] = deepMerge(targetValue as Record<string, unknown>, sourceValue) as T[Extract<keyof T, string>];
       } else {
         result[key] = sourceValue as T[Extract<keyof T, string>];
       }
@@ -217,7 +217,7 @@ export function deepMerge<T extends Record<string, any>>(
  * @example
  * pick({a: 1, b: 2, c: 3}, ['a', 'c']) // => {a: 1, c: 3}
  */
-export function pick<T extends Record<string, any>, K extends keyof T>(
+export function pick<T extends Record<string, unknown>, K extends keyof T>(
   obj: T,
   keys: K[]
 ): Pick<T, K> {
@@ -240,7 +240,7 @@ export function pick<T extends Record<string, any>, K extends keyof T>(
  * @example
  * omit({a: 1, b: 2, c: 3}, ['b']) // => {a: 1, c: 3}
  */
-export function omit<T extends Record<string, any>, K extends keyof T>(
+export function omit<T extends Record<string, unknown>, K extends keyof T>(
   obj: T,
   keys: K[]
 ): Omit<T, K> {
@@ -319,7 +319,7 @@ export function isValidHex(hex: string): boolean {
  * isEmpty({}) // => true
  * isEmpty('hello') // => false
  */
-export function isEmpty(value: any): boolean {
+export function isEmpty(value: unknown): boolean {
   if (value == null) return true;
   if (typeof value === 'string') return value.trim() === '';
   if (Array.isArray(value)) return value.length === 0;
@@ -499,7 +499,7 @@ export function sleep(ms: number): Promise<void> {
  * @example
  * const debouncedSearch = debounce((query) => search(query), 300);
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number
 ): (...args: Parameters<T>) => void {
@@ -520,7 +520,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * @example
  * const throttledScroll = throttle((e) => handleScroll(e), 100);
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   fn: T,
   limit: number
 ): (...args: Parameters<T>) => void {

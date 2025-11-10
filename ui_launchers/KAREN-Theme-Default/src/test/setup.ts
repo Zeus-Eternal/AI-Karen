@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 
-import React from 'react';
+import * as React from 'react';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 

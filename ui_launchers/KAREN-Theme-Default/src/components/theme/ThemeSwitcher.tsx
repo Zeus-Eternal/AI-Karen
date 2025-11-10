@@ -5,7 +5,7 @@
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
 
-import React from 'react';
+import * as React from 'react';
 import { Monitor, Moon, Sun, Settings } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { EnhancedButton } from '../ui/enhanced/button';

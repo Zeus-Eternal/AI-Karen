@@ -10,7 +10,7 @@ export interface PerformanceMetrics {
 }
 
 export function usePerformanceMonitor(name: string, enabled = process.env.NODE_ENV === 'development') {
-  const startTimeRef = useRef<number>();
+  const startTimeRef = useRef<number | null>(null);
   const metricsRef = useRef<PerformanceMetrics[]>([]);
 
   // Start performance measurement
@@ -45,7 +45,7 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
       });
     }
 
-    startTimeRef.current = undefined;
+    startTimeRef.current = null;
   };
 
   // Measure a function's execution time synchronously

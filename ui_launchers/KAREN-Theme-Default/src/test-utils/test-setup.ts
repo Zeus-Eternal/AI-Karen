@@ -6,7 +6,7 @@
  * and prevents test interference.
  */
 
-import React from 'react';
+import * as React from 'react';
 import { cleanup } from '@testing-library/react';
 
 // Vitest globals (vi, beforeEach, afterEach, beforeAll, afterAll) are available via configured types.

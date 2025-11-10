@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { WorkflowDefinition, WorkflowValidationResult, ValidationError, ValidationWarning } from '@/types/workflows';
 

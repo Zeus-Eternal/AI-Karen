@@ -5,7 +5,7 @@
  */
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import Link from 'next/link';
 import { useExtensionRoutes } from '@/lib/extensions/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';

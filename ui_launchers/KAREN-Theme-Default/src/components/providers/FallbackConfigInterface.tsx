@@ -321,7 +321,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     };
 
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in FallbackConfigInterface</div>}>
+      <ErrorBoundary fallback={({ error }) => <div>Something went wrong in FallbackConfigInterface: {error?.message}</div>}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>{chain ? 'Edit Fallback Chain' : 'Create Fallback Chain'}</DialogTitle>

@@ -10,7 +10,7 @@
  * - Critical polyfills (Promise/Object.assign/fetch) auto-load on init (browser only)
  */
 
-import React from 'react';
+import * as React from 'react';
 import { featureDetection } from './feature-detection';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -27,6 +27,7 @@ export interface PolyfillConfig {
   arrayIncludes: boolean;
   stringIncludes: boolean;
   cssCustomProperties: boolean;
+  [key: string]: boolean | undefined;
 }
 
 export interface PolyfillLoadResult {
@@ -100,10 +101,10 @@ class PolyfillLoaderService {
     await Promise.allSettled(loads);
 
     // mark skipped (requested but not needed or already loaded)
-    Object.keys(config).forEach((k) => {
-      const key = k as KnownPolyfill;
-      if ((config as any)[key] && !needed.includes(key) && this.isSatisfied(key)) {
-        result.skipped.push(key);
+    Object.entries(config).forEach(([key, value]) => {
+      const polyfill = key as KnownPolyfill;
+      if (value && !needed.includes(polyfill) && this.isSatisfied(polyfill)) {
+        result.skipped.push(polyfill);
       }
     });
 
@@ -112,7 +113,9 @@ class PolyfillLoaderService {
 
   public async loadPolyfillsForFeatures(features: KnownPolyfill[], scriptOptions?: ScriptLoadOptions): Promise<PolyfillLoadResult> {
     const cfg: Partial<PolyfillConfig> = {};
-    features.forEach((f) => ((cfg as any)[f] = true));
+    features.forEach((f) => {
+      cfg[f] = true;
+    });
     return this.loadPolyfills(cfg, scriptOptions);
   }
 
@@ -138,7 +141,7 @@ class PolyfillLoaderService {
     const need: KnownPolyfill[] = [];
     const f = this.safeGetFeatures();
 
-    const want = (k: keyof PolyfillConfig) => Boolean((config as any)[k]);
+    const want = (k: KnownPolyfill) => Boolean(config[k]);
 
     if (want('intersectionObserver') && !this.hasIntersectionObserver(f)) need.push('intersectionObserver');
     if (want('resizeObserver') && !this.hasResizeObserver(f)) need.push('resizeObserver');

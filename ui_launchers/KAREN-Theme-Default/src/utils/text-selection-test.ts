@@ -140,6 +140,7 @@ export function testElementSelection(element: HTMLElement): boolean {
     }
     return false;
   } catch (error) {
+    console.error('Element selection test failed', error);
     return false;
   }
 }
@@ -215,11 +216,17 @@ export async function logTextSelectionTest() {
     testResult.errors.forEach(error => console.error(error));
     console.groupEnd();
   }
+  console.group('⚙️ Browser Capability Summary');
+  console.info('Text selection info', info);
+  console.groupEnd();
   if (testResult.isSupported && testResult.canSelect) {
     if (testResult.canCopy) {
+      console.log('Clipboard copy is available.');
     } else {
+      console.warn('Clipboard copy is unavailable.');
     }
   } else {
+    console.warn('Text selection is not fully supported in this environment.');
   }
   console.groupEnd();
 }
@@ -227,7 +234,14 @@ export async function logTextSelectionTest() {
  * Manual test function for development
  * Call this from browser console: window.testTextSelection()
  */
+declare global {
+  interface Window {
+    testTextSelection?: () => Promise<void>;
+    testClipboard?: () => Promise<{success: boolean; error?: string}>;
+  }
+}
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).testTextSelection = logTextSelectionTest;
-  (window as any).testClipboard = testClipboardWithUserInteraction;
+  window.testTextSelection = logTextSelectionTest;
+  window.testClipboard = testClipboardWithUserInteraction;
 }

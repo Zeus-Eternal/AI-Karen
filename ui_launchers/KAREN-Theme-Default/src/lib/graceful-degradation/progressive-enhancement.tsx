@@ -2,7 +2,7 @@
  * Progressive enhancement system for extension features
  */
 
-import React from 'react';
+import * as React from 'react';
 import { featureFlagManager, useFeatureFlag } from './feature-flags';
 import { extensionCache, CacheAwareDataFetcher } from './cache-manager';
 import { ServiceUnavailable, ExtensionUnavailable, LoadingWithFallback } from './fallback-ui';

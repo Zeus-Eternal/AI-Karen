@@ -2,7 +2,7 @@
  * Animation performance optimization utilities
  */
 
-import React from 'react';
+import * as React from 'react';
 
 // Performance-aware animation variants for Framer Motion
 export const performanceAnimationVariants = {

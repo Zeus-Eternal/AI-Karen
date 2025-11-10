@@ -18,7 +18,7 @@ export interface ErrorReport {
   retryCount: number;
   severity: 'low' | 'medium' | 'high' | 'critical';
   category: 'ui' | 'network' | 'server' | 'database' | 'auth' | 'unknown';
-  context?: Record<string, any>;
+  context?: ErrorReportContext;
   breadcrumbs?: ErrorBreadcrumb[];
 }
 
@@ -27,7 +27,7 @@ export interface ErrorBreadcrumb {
   category: 'navigation' | 'user' | 'http' | 'console' | 'dom';
   message: string;
   level: 'info' | 'warning' | 'error';
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 export interface ErrorReportingConfig {
@@ -43,6 +43,23 @@ export interface ErrorReportingConfig {
 }
 
 export type ReactErrorInfoLike = { componentStack?: string };
+
+export interface ErrorReportContext extends Record<string, unknown> {
+  section?: string;
+  retryCount?: number;
+  userId?: string;
+  category?: ErrorReport['category'];
+}
+
+interface XHRErrorMetadata {
+  method: string;
+  url: string;
+  startTime: number;
+}
+
+type EnhancedXMLHttpRequest = XMLHttpRequest & {
+  _errorReportingData?: XHRErrorMetadata;
+};
 
 function safeNowISO() {
   try {
@@ -64,9 +81,8 @@ function coerceError(err: unknown): Error {
 
 function getEnvNodeEnv(): string | undefined {
   try {
-    // Bundlers often inline this; guards keep SSR/tools happy.
-    // @ts-ignore
-    return typeof process !== 'undefined' ? process.env?.NODE_ENV : undefined;
+    const nodeProcess = (globalThis as { process?: { env?: Record<string, string> } }).process;
+    return nodeProcess?.env?.NODE_ENV;
   } catch {
     return undefined;
   }
@@ -128,7 +144,7 @@ class ErrorReportingService {
       const originalError = console.error.bind(console);
       const originalWarn = console.warn.bind(console);
 
-      console.error = (...args: any[]) => {
+      console.error = (...args: unknown[]) => {
         try {
           this.addBreadcrumb({
             category: 'console',
@@ -143,7 +159,7 @@ class ErrorReportingService {
         }
       };
 
-      console.warn = (...args: any[]) => {
+      console.warn = (...args: unknown[]) => {
         try {
           this.addBreadcrumb({
             category: 'console',
@@ -225,12 +241,13 @@ class ErrorReportingService {
         username?: string | null,
         password?: string | null
       ) {
-        (this as any)._errorReportingData = { method, url: String(url), startTime: Date.now() };
-        return originalXHROpen.call(this, method, url, async, username as any, password as any);
+        const enhanced = this as EnhancedXMLHttpRequest;
+        enhanced._errorReportingData = { method, url: String(url), startTime: Date.now() };
+        return originalXHROpen.call(this, method, url, async, username, password);
       };
 
       XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-        const xhr = this as XMLHttpRequest & { _errorReportingData?: any };
+        const xhr = this as EnhancedXMLHttpRequest;
         const data = xhr._errorReportingData;
         const done = (statusLabel: 'info' | 'error') => {
           try {
@@ -277,7 +294,7 @@ class ErrorReportingService {
           }
         });
 
-        return originalXHRSend.call(this, body as any);
+        return originalXHRSend.call(this, body);
       };
     }
   }
@@ -398,12 +415,7 @@ class ErrorReportingService {
   public async reportError(
     rawError: unknown,
     errorInfo?: ReactErrorInfoLike,
-    context?: {
-      section?: string;
-      retryCount?: number;
-      userId?: string;
-      [key: string]: any;
-    }
+    context?: ErrorReportContext
   ): Promise<void> {
     if (!this.config.enabled) return;
     // Sampling
@@ -454,7 +466,7 @@ class ErrorReportingService {
     }
   }
 
-  private determineSeverity(error: Error, context?: any): ErrorReport['severity'] {
+  private determineSeverity(error: Error, context?: ErrorReportContext): ErrorReport['severity'] {
     const message = (error.message || '').toLowerCase();
     const stack = (error.stack || '').toLowerCase();
 
@@ -525,7 +537,7 @@ class ErrorReportingService {
       signal: controller?.signal,
     });
 
-    if (id) clearTimeout(id as any);
+    if (id) clearTimeout(id);
 
     if (!resp.ok) {
       throw new Error(`Failed to send error report: ${resp.status}`);
@@ -536,7 +548,8 @@ class ErrorReportingService {
     if (typeof window === 'undefined') return;
 
     // Google Analytics (gtag)
-    const gtag = (window as any).gtag;
+    const win = window as Window & { gtag?: (...args: unknown[]) => void };
+    const gtag = win.gtag;
     if (typeof gtag === 'function') {
       gtag('event', 'exception', {
         description: `${report.section || 'Unknown'}: ${report.message}`,
@@ -591,10 +604,12 @@ export const errorReportingService = new ErrorReportingService({
   beforeSend: (report) => {
     // Scrub obvious secrets
     if (report.context) {
-      delete (report.context as any).password;
-      delete (report.context as any).token;
-      delete (report.context as any).apiKey;
-      delete (report.context as any).authorization;
+      const sensitiveKeys = ['password', 'token', 'apiKey', 'authorization'] as const;
+      sensitiveKeys.forEach((key) => {
+        if (key in report.context!) {
+          delete report.context![key];
+        }
+      });
     }
     // Truncate overly long messages to keep payloads lean
     if (report.message && report.message.length > 2000) {
@@ -611,23 +626,22 @@ if (typeof window !== 'undefined') {
     try {
       const reason = (event as PromiseRejectionEvent).reason;
       const err = coerceError(reason);
-      errorReportingService.reportError(err, undefined, { section: 'global', category: 'promise' });
+      errorReportingService.reportError(err, undefined, { section: 'global', category: 'unknown' });
     } catch {
       // swallow
     }
   });
 
   // Global errors
-  window.addEventListener('error', (event: Event) => {
+  window.addEventListener('error', (event: ErrorEvent) => {
     try {
-      const e = event as ErrorEvent;
-      const err = e.error ? coerceError(e.error) : new Error(e.message || 'Unknown error');
+      const err = event.error ? coerceError(event.error) : new Error(event.message || 'Unknown error');
       errorReportingService.reportError(err, undefined, {
         section: 'global',
-        category: 'global',
-        filename: (e as any).filename,
-        lineno: (e as any).lineno,
-        colno: (e as any).colno,
+        category: 'unknown',
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
       });
     } catch {
       // swallow

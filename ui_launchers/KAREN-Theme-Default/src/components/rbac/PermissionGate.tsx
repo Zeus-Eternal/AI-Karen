@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Permission, AccessContext } from '@/types/rbac';
 import { useRBAC } from '@/providers/rbac-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';

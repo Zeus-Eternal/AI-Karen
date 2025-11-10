@@ -4,7 +4,7 @@
  * enabling graceful degradation and progressive enhancement.
  */
 
-import React from 'react';
+import * as React from 'react';
 
 export interface FeatureSupport {
   // CSS Features
@@ -63,18 +63,27 @@ export interface FeatureSupport {
 
 export type Callback = (features: FeatureSupport) => void;
 
+type MediaQueryListWithLegacy = MediaQueryList & {
+  addListener?: (listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void;
+};
+
+function getCSS(): typeof CSS | undefined {
+  return (globalThis as { CSS?: typeof CSS }).CSS;
+}
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
 function supportsCSS(): boolean {
-  // Some environments define CSS undefined during SSR
-  return typeof (globalThis as any).CSS !== 'undefined' && typeof CSS.supports === 'function';
+  const css = getCSS();
+  return typeof css !== 'undefined' && typeof css.supports === 'function';
 }
 
 function safeCSSSupports(prop: string, value: string): boolean {
   try {
-    return supportsCSS() ? CSS.supports(prop as any, value as any) : false;
+    const css = getCSS();
+    return css ? css.supports(prop, value) : false;
   } catch {
     return false;
   }
@@ -84,7 +93,8 @@ function safeCSSSupportsSyntax(syntax: string): boolean {
   // CSS.supports(property, value) form is more widely supported;
   // this helper is here if we ever need CSS.supports('(condition)') form.
   try {
-    return supportsCSS() ? (CSS as any).supports(syntax) : false;
+    const css = getCSS();
+    return css ? css.supports(syntax) : false;
   } catch {
     return false;
   }
@@ -94,8 +104,9 @@ function canUseStorage(storage: 'localStorage' | 'sessionStorage'): boolean {
   if (!isBrowser()) return false;
   try {
     const key = '__fd_test__';
-    (window as any)[storage].setItem(key, key);
-    (window as any)[storage].removeItem(key);
+    const target = window[storage];
+    target.setItem(key, key);
+    target.removeItem(key);
     return true;
   } catch {
     return false;
@@ -184,7 +195,7 @@ class FeatureDetectionService {
 
       // Performance Features
       performanceObserver: isBrowser() ? 'PerformanceObserver' in window : false,
-      performanceTiming: isBrowser() ? !!(window.performance && (performance as any).timing) : false,
+      performanceTiming: isBrowser() ? 'timing' in performance : false,
 
       // Accessibility Features
       reducedMotion: this.mq('(prefers-reduced-motion: reduce)'),
@@ -203,8 +214,11 @@ class FeatureDetectionService {
         const rm = window.matchMedia('(prefers-reduced-motion: reduce)');
         if (typeof rm.addEventListener === 'function') {
           rm.addEventListener('change', this.syncReducedMotion);
-        } else if (typeof (rm as any).addListener === 'function') {
-          (rm as any).addListener(this.syncReducedMotion);
+        } else {
+          const legacy = rm as MediaQueryListWithLegacy;
+          if (typeof legacy.addListener === 'function') {
+            legacy.addListener(this.syncReducedMotion);
+          }
         }
       } catch {
         /* noop */
@@ -243,7 +257,9 @@ class FeatureDetectionService {
     if (!isBrowser()) return false;
     try {
       const canvas = document.createElement('canvas');
-      return !!(canvas.getContext('webgl') || (canvas as any).getContext?.('experimental-webgl'));
+      const webgl1 = canvas.getContext('webgl') as WebGLRenderingContext | null;
+      const experimental = canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+      return !!(webgl1 || experimental);
     } catch {
       return false;
     }
@@ -286,7 +302,7 @@ class FeatureDetectionService {
       };
       // Setting referrerPolicy avoids some noisy console warnings in strict sites
       try {
-        (img as any).referrerPolicy = 'no-referrer';
+        img.referrerPolicy = 'no-referrer';
       } catch {
         /* noop */
       }

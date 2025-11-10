@@ -9,7 +9,7 @@
 
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { X, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';

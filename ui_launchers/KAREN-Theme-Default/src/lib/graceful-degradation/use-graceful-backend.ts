@@ -2,7 +2,7 @@
  * React hook for using the backend service with graceful degradation
  * This integrates with the existing KarenBackendService to handle 4xx/5xx errors
  */
-import React from 'react';
+import * as React from 'react';
 import { featureFlagManager, useFeatureFlag } from './feature-flags';
 import { extensionCache } from './cache-manager';
 import { EnhancedBackendService } from './enhanced-backend-service';

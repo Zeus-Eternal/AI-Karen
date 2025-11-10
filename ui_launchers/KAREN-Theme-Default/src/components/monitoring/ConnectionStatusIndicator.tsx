@@ -2,7 +2,7 @@
  * Connection status indicator component
  */
 
-import React from 'react';
+import * as React from 'react';
 import { ConnectionStatus } from './types';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';

@@ -65,6 +65,7 @@
     "Theme sample/**",
     "e2e/**",
     "test-sidebar.tsx",
+    "test-button-import.ts",
     "src/components/accessibility/AccessibilitySettings.tsx",
     "src/components/admin/SuperAdminDashboard.tsx",
     "src/components/auth/LoginForm.tsx",
@@ -72,6 +73,13 @@
     "src/components/chat/AdaptiveChatInterface.tsx",
     "**/__tests__/**",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "**/*.stories.tsx",
+    "src/components/ui/lazy-loading/route-lazy-loader.tsx",
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/pages/**",
+    "vite.config.ts",
+    "index.html"
   ]
 }

@@ -2,7 +2,7 @@
  * Integration example showing how to fix the ModelProviderIntegration 4xx/5xx errors
  * This demonstrates the practical application of the graceful degradation system
  */
-import React from 'react';
+import * as React from 'react';
 import { useModelProviders, useGracefulDegradation } from './use-graceful-backend';
 import { DegradedModeBanner, ServiceUnavailable } from './fallback-ui';
 import { Button } from '@/components/ui/button';

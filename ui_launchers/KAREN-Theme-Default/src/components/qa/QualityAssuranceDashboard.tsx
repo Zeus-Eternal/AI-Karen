@@ -238,7 +238,7 @@ export function QualityAssuranceDashboard() {
   };
   if (loading) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
+      <ErrorBoundary fallback={({ error }) => <div>Something went wrong in QualityAssuranceDashboard: {error?.message}</div>}>
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="h-8 w-8 animate-spin " />
           <span className="ml-2">Loading quality metrics...</span>
@@ -248,7 +248,7 @@ export function QualityAssuranceDashboard() {
   }
   if (!metrics) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in QualityAssuranceDashboard</div>}>
+      <ErrorBoundary fallback={({ error }) => <div>Something went wrong in QualityAssuranceDashboard: {error?.message}</div>}>
         <Alert variant="destructive" className="mx-auto w-full max-w-2xl">
           <AlertTitle>Quality Metrics Unavailable</AlertTitle>
           <AlertDescription>

@@ -254,7 +254,7 @@ export class TreeShakingAnalyzer {
   }
 
   private isTokenUsed(content: string, token: string): boolean {
-    const re = new RegExp(`(^|[^A-Za-z0-9_\$])${token}(?![A-Za-z0-9_\$])`);
+    const re = new RegExp(`(^|[^A-Za-z0-9_$])${token}(?![A-Za-z0-9_$])`);
     return re.test(content);
   }
 

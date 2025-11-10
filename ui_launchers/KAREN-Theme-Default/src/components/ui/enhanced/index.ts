@@ -9,8 +9,8 @@
 
 // Button components
 export {
-  buttonVariants,
-  type ButtonProps,
+  buttonVariants as buttonEnhancedVariants,
+  type ButtonProps as ButtonEnhancedProps,
 } from './button-enhanced';
 
 // Card components

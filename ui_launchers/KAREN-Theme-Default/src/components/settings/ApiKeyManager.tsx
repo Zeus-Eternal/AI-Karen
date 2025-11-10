@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import type { ErrorFallbackProps } from '@/components/error-handling/ErrorBoundary';

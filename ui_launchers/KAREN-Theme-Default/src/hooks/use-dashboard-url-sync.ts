@@ -44,7 +44,7 @@ export const useDashboardUrlSync = () => {
 
   // Parse URL parameters into dashboard state
   const parseUrlState = useCallback((): DashboardUrlState => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     const state: DashboardUrlState = {};
 
     // Dashboard ID
@@ -91,7 +91,7 @@ export const useDashboardUrlSync = () => {
 
   // Update URL with current dashboard state
   const updateUrl = useCallback((updates: Partial<DashboardUrlState>) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
 
     // Update dashboard ID
     if (updates.dashboardId !== undefined) {
@@ -314,7 +314,7 @@ export const useDashboardUrlSync = () => {
   }, [updateUrl]);
 
   const clearUrlState = useCallback(() => {
-    router.replace(pathname, { scroll: false });
+    router.replace(pathname || '/', { scroll: false });
   }, [router, pathname]);
 
   return {
@@ -329,7 +329,7 @@ export const useDashboardUrlSync = () => {
     clearUrlState,
     // Utility to generate shareable URL
     generateShareableUrl: useCallback(() => {
-      return `${window.location.origin}${pathname}?${searchParams.toString()}`;
+      return `${window.location.origin}${pathname || '/'}?${searchParams?.toString() || ''}`;
     }, [pathname, searchParams])
   };
 };

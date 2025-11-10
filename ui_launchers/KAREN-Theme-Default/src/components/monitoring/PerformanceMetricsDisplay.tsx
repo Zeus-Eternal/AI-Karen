@@ -2,7 +2,7 @@
  * Performance metrics display component
  */
 
-import React from 'react';
+import * as React from 'react';
 import { PerformanceMetrics } from './types';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';

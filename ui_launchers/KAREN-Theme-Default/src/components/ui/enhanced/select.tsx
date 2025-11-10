@@ -4,7 +4,7 @@
  * Extended select component with design token integration and modern styling.
  * Based on requirements: 1.1, 1.2, 1.3, 11.4
  */
-import React from 'react';
+import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';

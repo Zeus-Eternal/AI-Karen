@@ -11,7 +11,7 @@
  * - Customizable variants
  */
 
-import React from 'react';
+import * as React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Bot, Sparkles, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';

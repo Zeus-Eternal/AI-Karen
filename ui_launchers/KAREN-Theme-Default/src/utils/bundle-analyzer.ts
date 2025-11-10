@@ -103,7 +103,13 @@ const clampScore = (n: number) => Math.max(0, Math.min(100, n));
 function findDuplicates(values: string[]): string[] {
   const seen = new Set<string>();
   const dups = new Set<string>();
-  for (const v of values) (seen.has(v) ? dups.add(v) : seen.add(v));
+  for (const v of values) {
+    if (seen.has(v)) {
+      dups.add(v);
+    } else {
+      seen.add(v);
+    }
+  }
   return [...dups];
 }
 
@@ -280,6 +286,12 @@ export class BundleAnalyzer {
           `High gzip ratio (${Math.round(ratio * 100)}%). Verify minification/treeshaking; consider Brotli for static hosting`
         );
       }
+    }
+
+    if (warnings.length > 0) {
+      recommendations.push(
+        `Investigate ${warnings.length} bundle warning${warnings.length === 1 ? '' : 's'} for additional inflation risks`
+      );
     }
 
     // Bundle-level flags

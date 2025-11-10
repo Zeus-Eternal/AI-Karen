@@ -174,7 +174,7 @@ export const BreadcrumbNavigation = React.forwardRef<
     // Generate breadcrumb items from current route
     const generatedItems = React.useMemo(() => {
       if (items && items.length) return items;
-      return generateBreadcrumbsFromRoute(pathname, routeConfig, showHome);
+      return generateBreadcrumbsFromRoute(pathname || '/', routeConfig, showHome);
     }, [pathname, routeConfig, showHome, items]);
 
     // Truncate items if needed
@@ -393,7 +393,7 @@ export function useBreadcrumbs(routeConfig?: RouteConfig) {
 
   const breadcrumbs = React.useMemo(() => {
     return generateBreadcrumbsFromRoute(
-      pathname,
+      pathname || '/',
       routeConfig || defaultRouteConfig,
       true
     );

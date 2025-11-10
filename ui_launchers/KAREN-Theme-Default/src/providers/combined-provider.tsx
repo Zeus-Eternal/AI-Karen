@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { ThemeProvider } from './theme-provider';
 import { PreferencesProvider } from './preferences-provider';
 import { MotionProvider } from './motion-provider';

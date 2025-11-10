@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { useEffect, useState } from "react";
 // Temporarily commented out recharts imports due to lodash dependency issues
 // 

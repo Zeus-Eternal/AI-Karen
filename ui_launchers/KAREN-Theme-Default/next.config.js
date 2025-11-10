@@ -29,9 +29,11 @@ const nextConfig = {
     forceSwcTransforms: true,
   },
 
+  // Add turbopack config to silence the warning
+  turbopack: {},
+
   // These are now top-level config options in Next.js 15
   skipTrailingSlashRedirect: true,
-  skipMiddlewareUrlNormalize: true,
 
   // Cross-origin configuration handled in headers
 
@@ -41,10 +43,10 @@ const nextConfig = {
   // Explicitly set the output file tracing root to prevent workspace detection issues
   outputFileTracingRoot: __dirname,
 
-  // TypeScript configuration - disable for faster builds
+  // TypeScript configuration - enable for production readiness
   typescript: {
-    // Skip type checking during build for speed
-    ignoreBuildErrors: true,
+    // Enable type checking during build for production readiness
+    ignoreBuildErrors: false,
   },
 
   // Font optimization is enabled by default in Next.js 15
@@ -63,11 +65,7 @@ const nextConfig = {
   },
 
   // ESLint configuration - disable for faster builds
-  eslint: {
-    // Skip ESLint during builds for speed
-    ignoreDuringBuilds: true,
-    dirs: ['src'],
-  },
+  // Note: eslint config moved to .eslintrc files
 
   // Security headers
   async headers() {

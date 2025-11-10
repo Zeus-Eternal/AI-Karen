@@ -6,7 +6,7 @@
  * 
  * Requirements: 7.3, 7.5
  */
-import React from 'react';
+import * as React from 'react';
 import type {  PerformanceMetric, DatabaseQueryMetric, ApiResponseMetric, ComponentRenderMetric, PerformanceReport } from '@/types/admin';
 // Performance metrics storage
 class PerformanceMetricsStore {

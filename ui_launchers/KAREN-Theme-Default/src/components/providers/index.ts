@@ -23,7 +23,7 @@ export type {
   ProviderMetadata,
   ComplianceInfo,
   AdvancedConfigSection,
-  FormData as ProviderFormData,
+  ProviderFormData,
   ValidationError as ProviderValidationError,
   ProviderConfigInterfaceProps,
 } from './ProviderConfigInterface';

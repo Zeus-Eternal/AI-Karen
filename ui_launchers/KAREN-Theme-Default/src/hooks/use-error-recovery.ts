@@ -42,7 +42,7 @@ export function useErrorRecovery(
     lastRetryAt: null,
   });
   
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { setError, clearError } = useUIStore(selectErrorState(key));
   
   const calculateDelay = useCallback((retryCount: number) => {

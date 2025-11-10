@@ -865,6 +865,17 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     }
   };
 
+  // Handle field changes
+  const handleFieldChange = useCallback((fieldName: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+    
+    // Clear validation error for this field
+    setValidationErrors(prev => prev.filter(error => error.field !== fieldName));
+  }, []);
+
   // Enhanced field rendering with conditional logic
   const renderField = (field: ProviderConfigField) => {
     if (!shouldShowField(field, formData)) return null;
@@ -978,13 +989,14 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
 
   return (
     <ErrorBoundary 
-      fallback={
+      fallback={({ error }) => (
         <div className="p-4 text-center">
           <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-red-500" />
           <h3 className="text-lg font-medium">Configuration Error</h3>
           <p className="text-gray-600">Please refresh the page and try again.</p>
+          {error && <p className="text-sm text-gray-500 mt-2">{error.message}</p>}
         </div>
-      }
+      )}
     >
       <div className={`space-y-6 ${className}`}>
         {/* Enhanced provider interface implementation */}

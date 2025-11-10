@@ -6,7 +6,7 @@
 
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import ExtensionDashboard from '@/components/extensions/ExtensionDashboard';
 import { DynamicExtensionRouter } from '@/lib/extensions/dynamic-router';
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { Bot, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

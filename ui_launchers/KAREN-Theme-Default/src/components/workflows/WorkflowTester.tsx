@@ -20,7 +20,7 @@ export interface WorkflowTesterProps {
   className?: string;
 }
 
-interface TestInput {
+export interface TestInput {
   nodeId: string;
   inputId: string;
   name: string;

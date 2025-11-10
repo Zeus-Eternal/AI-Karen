@@ -243,7 +243,4 @@ export {
 
 export type {
   CardEnhancedProps as CardEnhancedComponentProps,
-  CardHeaderEnhancedProps,
-  CardContentEnhancedProps,
-  CardFooterEnhancedProps,
 };

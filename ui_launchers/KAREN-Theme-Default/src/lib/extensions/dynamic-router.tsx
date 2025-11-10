@@ -34,7 +34,7 @@ export function DynamicExtensionRouter({ children, fallback: Fallback }: Dynamic
 
     // Find prefix matches
     const prefixMatches = routes.filter(route => 
-      !route.exact && pathname.startsWith(route.path)
+      !route.exact && pathname?.startsWith(route.path)
     ).sort((a, b) => b.path.length - a.path.length); // Longest match first
 
     return prefixMatches[0] || null;
@@ -214,7 +214,7 @@ export function useIsExtensionRoute() {
 
   return useMemo(() => {
     return routes.some(route => 
-      route.exact ? route.path === pathname : pathname.startsWith(route.path)
+      route.exact ? route.path === pathname : pathname?.startsWith(route.path)
     );
   }, [pathname, routes]);
 }
@@ -233,7 +233,7 @@ export function useCurrentExtensionRoute() {
     }
 
     const prefixMatches = routes.filter(route => 
-      !route.exact && pathname.startsWith(route.path)
+      !route.exact && pathname?.startsWith(route.path)
     ).sort((a, b) => b.path.length - a.path.length);
 
     return prefixMatches[0] || null;

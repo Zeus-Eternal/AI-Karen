@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import * as React from 'react';
 import { Bot, User } from 'lucide-react';
 import { MetaBar } from './MetaBar';
 import { webUIConfig } from '@/lib/config';
