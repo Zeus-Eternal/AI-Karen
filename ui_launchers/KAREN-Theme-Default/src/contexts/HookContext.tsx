@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
+import type { FC, ReactNode } from 'react';
 
 // Hook types for AG-UI and chat enhancement
 export interface HookRegistration {
@@ -68,7 +69,7 @@ export interface HookProviderProps {
   children: ReactNode;
 }
 
-export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
+export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   const [hooks, setHooks] = useState<Map<string, HookRegistration>>(new Map());
 
   const registerHook = useCallback((
