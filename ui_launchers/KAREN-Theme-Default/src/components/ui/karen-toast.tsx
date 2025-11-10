@@ -127,15 +127,15 @@ const KarenToastProgress = React.forwardRef<
   const resolvedVariant: KarenToastVariant = variant ?? "default";
   const progressClassName =
     PROGRESS_COLOR_BY_VARIANT[resolvedVariant] ??
-    PROGRESS_COLOR_BY_VARIIANT_FALLBACK();
-
-  function PROGRESS_COLOR_BY_VARIANT_FALLBACK() {
-    return PROGRESS_COLOR_BY_VARIANT.default;
-  }
+    PROGRESS_COLOR_BY_VARIIANT.default;
 
   return (
     <div
       ref={ref}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress)}
       className={cn(
         "relative mt-3 h-1 w-full overflow-hidden rounded-full bg-current/15 dark:bg-white/10",
         className
@@ -155,7 +155,11 @@ const KarenToastProgress = React.forwardRef<
   );
 });
 
-KarenToastProgress.displayName = "KarenToastProgress";
+// local fallback accessor; avoids typo issues if extended
+const PROGRESS_COLOR_BY_VARIANT_DEFAULT =
+  PROGRESS_COLOR_BY_VARIANT.default;
+
+(KarenToastProgress as any).displayName = "KarenToastProgress";
 
 /* ----------------------------------------------------------------------------
  * Root Toast
@@ -196,7 +200,8 @@ const KarenToast = React.forwardRef<
     typeof alert?.duration === "number" ? alert.duration : duration;
 
   const hasCustomChildren = React.Children.count(children) > 0;
-  const hasActions = Boolean(alert?.actions && alert.actions.length > 0);
+  const hasActions =
+    Boolean(alert?.actions && alert.actions.length > 0);
 
   const handleActionClick = React.useCallback(
     (action: AlertAction) => {
@@ -222,7 +227,10 @@ const KarenToast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      className={cn(karenToastVariants({ variant: resolvedVariant }), className)}
+      className={cn(
+        karenToastVariants({ variant: resolvedVariant }),
+        className
+      )}
       duration={resolvedDuration}
       {...props}
     >
@@ -269,7 +277,9 @@ const KarenToast = React.forwardRef<
                       : "karen-toast-expandable"
                   }
                 >
-                  <span>{isExpanded ? "Show less" : "Show more"}</span>
+                  <span>
+                    {isExpanded ? "Show less" : "Show more"}
+                  </span>
                   {isExpanded ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
@@ -351,7 +361,10 @@ const KarenToastAction = React.forwardRef<
   { className, variant = "default", ...props },
   ref
 ) {
-  const variantStyles: Record<"default" | "destructive" | "outline", string> = {
+  const variantStyles: Record<
+    "default" | "destructive" | "outline",
+    string
+  > = {
     destructive:
       "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500",
     outline:
@@ -420,7 +433,11 @@ const KarenToastTitle = React.forwardRef<
       {...props}
     >
       {emoji ? (
-        <span className="mr-2" role="img" aria-label="Alert indicator">
+        <span
+          className="mr-2"
+          role="img"
+          aria-label="Alert indicator"
+        >
           {emoji}
         </span>
       ) : null}
@@ -434,7 +451,10 @@ KarenToastTitle.displayName = "KarenToastTitle";
 const KarenToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(function KarenToastDescription({ className, ...props }, ref) {
+>(function KarenToastDescription(
+  { className, ...props },
+  ref
+) {
   return (
     <ToastPrimitives.Description
       ref={ref}
@@ -468,9 +488,14 @@ const KarenToastViewport = React.forwardRef<
   { className, position = "top-right", ...props },
   ref
 ) {
-  const positionClasses: Record<KarenToastViewportPosition, string> = {
-    "top-left": "top-0 left-0 flex-col sm:top-4 sm:left-4",
-    "top-right": "top-0 right-0 flex-col sm:top-4 sm:right-4",
+  const positionClasses: Record<
+    KarenToastViewportPosition,
+    string
+  > = {
+    "top-left":
+      "top-0 left-0 flex-col sm:top-4 sm:left-4",
+    "top-right":
+      "top-0 right-0 flex-col sm:top-4 sm:right-4",
     "bottom-left":
       "bottom-0 left-0 flex-col-reverse sm:bottom-4 sm:left-4",
     "bottom-right":
@@ -498,8 +523,10 @@ const KarenToastProvider = ToastPrimitives.Provider;
  * Types & Exports
  * ------------------------------------------------------------------------- */
 
-export type KarenToastProps = React.ComponentPropsWithoutRef<typeof KarenToast>;
-export type KarenToastActionElement = React.ReactElement<typeof KarenToastAction>;
+export type KarenToastProps =
+  React.ComponentPropsWithoutRef<typeof KarenToast>;
+export type KarenToastActionElement =
+  React.ReactElement<typeof KarenToastAction>;
 
 export {
   KarenToastProvider,

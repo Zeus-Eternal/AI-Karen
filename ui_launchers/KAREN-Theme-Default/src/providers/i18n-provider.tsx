@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { i18n, type I18nManager, type FormatOptions, type InterpolationOptions, type PluralOptions } from '../lib/i18n';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { i18n, type FormatOptions, type InterpolationOptions, type PluralOptions } from '../lib/i18n';
 import { defaultResources } from '../lib/i18n/resources';
 export interface I18nContextValue {
   // Current locale
@@ -39,55 +39,70 @@ export function I18nProvider({
 }: I18nProviderProps) {
   const [locale, setLocale] = useState(defaultLocale);
   const [isLoading, setIsLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  // Initialize i18n system
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+
     const initI18n = async () => {
       try {
-        // Configure i18n with provided options
-        i18n.config = {
-          ...i18n.config,
+        i18n.configure({
           defaultLocale,
           locales,
-        };
-        // Initialize with default resources
+        });
+
         await i18n.init(defaultResources);
-        // Set initial locale
+
+        if (!active) {
+          return;
+        }
+
         setLocale(i18n.getCurrentLocale());
-        // Listen for locale changes
-        const unsubscribe = i18n.onLocaleChange((newLocale) => {
+        unsubscribe = i18n.onLocaleChange((newLocale) => {
+          if (!active) {
+            return;
+          }
+
           setLocale(newLocale);
-          // Update document attributes
+
           if (typeof document !== 'undefined') {
             document.documentElement.lang = newLocale;
             document.documentElement.dir = i18n.getTextDirection();
           }
         });
-        setIsLoading(false);
-        setMounted(true);
-        return unsubscribe;
       } catch (error) {
         console.error('[I18nProvider] Failed to initialize i18n:', error);
-        setIsLoading(false);
-        setMounted(true);
-        // Return a no-op unsubscribe function
-        return () => {};
+      } finally {
+        if (active) {
+          setIsInitialized(true);
+          setIsLoading(false);
+        }
       }
     };
-    const cleanup = initI18n();
+
+    setIsLoading(true);
+    setIsInitialized(false);
+    void initI18n();
+
     return () => {
-      cleanup?.then(unsubscribe => unsubscribe?.());
+      active = false;
+      unsubscribe?.();
     };
   }, [defaultLocale, locales]);
-  // Update document attributes when locale changes
+
   useEffect(() => {
-    if (!mounted) return;
+    if (!isInitialized) {
+      return;
+    }
+
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale;
       document.documentElement.dir = i18n.getTextDirection();
     }
-  }, [locale, mounted]);
-  const contextValue: I18nContextValue = {
+  }, [locale, isInitialized]);
+
+  const contextValue: I18nContextValue = useMemo(() => ({
     locale,
     locales: i18n.getAvailableLocales(),
     localeInfo: i18n.getLocaleInfo(),
@@ -97,7 +112,7 @@ export function I18nProvider({
     formatRelativeTime: i18n.formatRelativeTime.bind(i18n),
     changeLocale: i18n.changeLocale.bind(i18n),
     isLoading,
-  };
+  }), [locale, isLoading]);
   return (
     <I18nContext.Provider value={contextValue}>
       {children}
@@ -115,7 +130,12 @@ export function useI18n() {
 export function useTranslation(namespace?: string) {
   const { t } = useI18n();
   const translate = (key: string, options?: InterpolationOptions & PluralOptions) => {
-    return t(key, { ...options, ns: namespace });
+    const enrichedOptions =
+      namespace !== undefined
+        ? ({ ...(options ?? {}), ns: namespace } as InterpolationOptions &
+            PluralOptions & { ns: string })
+        : options;
+    return t(key, enrichedOptions);
   };
   return { t: translate };
 }

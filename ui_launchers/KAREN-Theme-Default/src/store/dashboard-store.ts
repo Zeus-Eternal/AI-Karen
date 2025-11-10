@@ -151,7 +151,11 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'CPU Usage',
           size: 'small',
           position: { x: 0, y: 0, w: 1, h: 1 },
-          config: { metric: 'cpu_usage', threshold: { warning: 70, critical: 90 } },
+          config: {
+            type: 'metric',
+            metric: 'cpu_usage',
+            threshold: { warning: 70, critical: 90 },
+          },
           enabled: true,
         },
         {
@@ -160,7 +164,11 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'Memory Usage',
           size: 'small',
           position: { x: 1, y: 0, w: 1, h: 1 },
-          config: { metric: 'memory_usage', threshold: { warning: 80, critical: 95 } },
+          config: {
+            type: 'metric',
+            metric: 'memory_usage',
+            threshold: { warning: 80, critical: 95 },
+          },
           enabled: true,
         },
         {
@@ -169,7 +177,10 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'System Health',
           size: 'medium',
           position: { x: 2, y: 0, w: 2, h: 1 },
-          config: { components: ['api', 'database', 'cache', 'storage'] },
+          config: {
+            type: 'status',
+            components: ['api', 'database', 'cache', 'storage'],
+          },
           enabled: true,
         },
         {
@@ -179,6 +190,7 @@ const defaultTemplates: DashboardTemplate[] = [
           size: 'large',
           position: { x: 0, y: 1, w: 4, h: 2 },
           config: {
+            type: 'chart',
             metrics: ['cpu_usage', 'memory_usage', 'response_time'],
             timeRange: '24h',
             chartType: 'line',
@@ -208,7 +220,10 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'Model Status',
           size: 'medium',
           position: { x: 0, y: 0, w: 2, h: 1 },
-          config: { models: ['gpt-4', 'claude-3', 'llama-2'] },
+          config: {
+            type: 'status',
+            models: ['gpt-4', 'claude-3', 'llama-2'],
+          },
           enabled: true,
         },
         {
@@ -217,7 +232,11 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'Inference Rate',
           size: 'small',
           position: { x: 2, y: 0, w: 1, h: 1 },
-          config: { metric: 'inference_rate', unit: 'req/min' },
+          config: {
+            type: 'metric',
+            metric: 'inference_rate',
+            unit: 'req/min',
+          },
           enabled: true,
         },
         {
@@ -226,7 +245,11 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'API Costs',
           size: 'small',
           position: { x: 3, y: 0, w: 1, h: 1 },
-          config: { metric: 'api_costs', format: 'currency' },
+          config: {
+            type: 'metric',
+            metric: 'api_costs',
+            format: 'currency',
+          },
           enabled: true,
         },
         {
@@ -236,6 +259,7 @@ const defaultTemplates: DashboardTemplate[] = [
           size: 'large',
           position: { x: 0, y: 1, w: 4, h: 2 },
           config: {
+            type: 'chart',
             metrics: ['latency', 'success_rate', 'cost_per_token'],
             groupBy: 'provider',
             chartType: 'bar',
@@ -266,7 +290,10 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'Security Status',
           size: 'medium',
           position: { x: 0, y: 0, w: 2, h: 1 },
-          config: { securityChecks: ['auth', 'permissions', 'audit', 'threats'] },
+          config: {
+            type: 'status',
+            securityChecks: ['auth', 'permissions', 'audit', 'threats'],
+          },
           enabled: true,
         },
         {
@@ -275,7 +302,10 @@ const defaultTemplates: DashboardTemplate[] = [
           title: 'Active Users',
           size: 'small',
           position: { x: 2, y: 0, w: 1, h: 1 },
-          config: { metric: 'active_users' },
+          config: {
+            type: 'metric',
+            metric: 'active_users',
+          },
           enabled: true,
         },
         {
@@ -285,6 +315,7 @@ const defaultTemplates: DashboardTemplate[] = [
           size: 'large',
           position: { x: 0, y: 1, w: 3, h: 2 },
           config: {
+            type: 'log',
             logType: 'audit',
             filters: ['security', 'admin'],
             maxEntries: 100,
@@ -298,6 +329,7 @@ const defaultTemplates: DashboardTemplate[] = [
           size: 'medium',
           position: { x: 3, y: 1, w: 1, h: 2 },
           config: {
+            type: 'log',
             logType: 'alerts',
             severity: ['warning', 'error', 'critical'],
           },
