@@ -5,8 +5,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 import type {
-  CreatePolymorphicComponent,
-  PolymorphicPropsWithRef,
+  PolymorphicComponentPropWithRef,
+  PolymorphicComponentWithDisplayName,
   PolymorphicRef,
 } from "../compound/types";
 
@@ -45,9 +45,12 @@ type TextBaseProps = {
 };
 
 export type TextProps<T extends React.ElementType = "span"> =
-  PolymorphicPropsWithRef<T, TextBaseProps>;
+  PolymorphicComponentPropWithRef<T, TextBaseProps>;
 
-type TextComponent = CreatePolymorphicComponent<"span", TextBaseProps>;
+type TextComponent = PolymorphicComponentWithDisplayName<
+  "span",
+  TextBaseProps
+>;
 
 const variantClassMap: Record<TextVariant, string> = {
   default: "text-foreground",
@@ -83,50 +86,61 @@ const alignClassMap: Record<TextAlign, string> = {
   justify: "text-justify",
 };
 
-const Text = React.forwardRef(
-  <T extends React.ElementType = "span">(
-    {
-      as,
-      className,
-      variant = "default",
-      size = "base",
-      weight = "normal",
-      align = "left",
-      truncate = false,
-      italic = false,
-      underline = false,
-      children,
-      ...rest
-    }: TextProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const Component = (as ?? "span") as T;
+function TextInner<T extends React.ElementType = "span">(
+  {
+    as,
+    className,
+    variant = "default",
+    size = "base",
+    weight = "normal",
+    align = "left",
+    truncate = false,
+    italic = false,
+    underline = false,
+    children,
+    ...rest
+  }: TextProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const Component = (as ?? "span") as T;
+  const ComponentToRender = Component as React.ElementType;
 
-    return (
-      <Component
-        ref={ref}
-        className={cn(
-          "transition-colors duration-200",
-          variantClassMap[variant],
-          sizeClassMap[size],
-          weightClassMap[weight],
-          alignClassMap[align],
-          truncate ? "truncate" : undefined,
-          italic ? "italic" : undefined,
-          underline ? "underline" : undefined,
-          className
-        )}
-        {...rest}
-      >
-        {children}
-      </Component>
-    );
-  }
+  return (
+    <ComponentToRender
+      ref={ref as React.Ref<unknown>}
+      className={cn(
+        "transition-colors duration-200",
+        variantClassMap[variant],
+        sizeClassMap[size],
+        weightClassMap[weight],
+        alignClassMap[align],
+        truncate ? "truncate" : undefined,
+        italic ? "italic" : undefined,
+        underline ? "underline" : undefined,
+        className
+      )}
+      {...(rest as TextProps<any>)}
+    >
+      {children}
+    </ComponentToRender>
+  );
+}
+
+const Text = React.forwardRef(
+  TextInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    TextProps<any>
+  >
 ) as TextComponent;
 
 Text.displayName = "Text";
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
+type HeadingComponent = PolymorphicComponentWithDisplayName<
+  HeadingLevel,
+  TextBaseProps
+>;
 
 const headingDefaultSize: Record<HeadingLevel, TextSize> = {
   h1: "4xl",
@@ -137,85 +151,163 @@ const headingDefaultSize: Record<HeadingLevel, TextSize> = {
   h6: "base",
 };
 
-export type HeadingProps<T extends HeadingLevel = "h1"> = TextProps<T> & {
-  as?: T;
-};
+export type HeadingProps<T extends HeadingLevel = "h1"> = TextProps<T>;
+
+function HeadingInner<T extends HeadingLevel = "h1">(
+  { as, size, weight = "bold", ...rest }: HeadingProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const element = as ?? ("h1" as T);
+  const resolvedSize = size ?? headingDefaultSize[element as HeadingLevel];
+  const BaseText = Text as unknown as React.ComponentType<any>;
+
+  return (
+    <BaseText
+      ref={ref as React.Ref<unknown>}
+      as={element}
+      size={resolvedSize}
+      weight={weight}
+      {...(rest as TextProps<any>)}
+    />
+  );
+}
 
 const Heading = React.forwardRef(
-  <T extends HeadingLevel = "h1">(
-    { as, size, weight = "bold", ...rest }: HeadingProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const element = as ?? ("h1" as T);
-    const resolvedSize = size ?? headingDefaultSize[element as HeadingLevel];
-
-    return <Text ref={ref} as={element} size={resolvedSize} weight={weight} {...rest} />;
-  }
-) as CreatePolymorphicComponent<HeadingLevel, TextBaseProps>;
+  HeadingInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    HeadingProps<any>
+  >
+) as HeadingComponent;
 
 Heading.displayName = "Heading";
 
-export type ParagraphProps<T extends React.ElementType = "p"> =
-  TextProps<T> & { as?: T };
+type ParagraphComponent = PolymorphicComponentWithDisplayName<
+  "p",
+  TextBaseProps
+>;
+
+export type ParagraphProps<T extends React.ElementType = "p"> = TextProps<T>;
+
+function ParagraphInner<T extends React.ElementType = "p">(
+  { as, size = "base", ...rest }: ParagraphProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseText = Text as unknown as React.ComponentType<any>;
+  return (
+    <BaseText
+      ref={ref as React.Ref<unknown>}
+      as={(as ?? "p") as T}
+      size={size}
+      {...(rest as TextProps<any>)}
+    />
+  );
+}
 
 const Paragraph = React.forwardRef(
-  <T extends React.ElementType = "p">(
-    { as, size = "base", ...rest }: ParagraphProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Text ref={ref} as={(as ?? "p") as T} size={size} {...rest} />
-) as CreatePolymorphicComponent<"p", TextBaseProps>;
+  ParagraphInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    ParagraphProps<any>
+  >
+) as ParagraphComponent;
 
 Paragraph.displayName = "Paragraph";
 
-export type LabelProps<T extends React.ElementType = "label"> = TextProps<T> & {
-  as?: T;
-};
+type LabelComponent = PolymorphicComponentWithDisplayName<
+  "label",
+  TextBaseProps
+>;
+
+export type LabelProps<T extends React.ElementType = "label"> = TextProps<T>;
+
+function LabelInner<T extends React.ElementType = "label">(
+  { as, size = "sm", weight = "medium", ...rest }: LabelProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseText = Text as unknown as React.ComponentType<any>;
+  return (
+    <BaseText
+      ref={ref as React.Ref<unknown>}
+      as={(as ?? "label") as T}
+      size={size}
+      weight={weight}
+      {...(rest as TextProps<any>)}
+    />
+  );
+}
 
 const Label = React.forwardRef(
-  <T extends React.ElementType = "label">(
-    { as, size = "sm", weight = "medium", ...rest }: LabelProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Text ref={ref} as={(as ?? "label") as T} size={size} weight={weight} {...rest} />
-) as CreatePolymorphicComponent<"label", TextBaseProps>;
+  LabelInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    LabelProps<any>
+  >
+) as LabelComponent;
 
 Label.displayName = "Label";
 
-export type CaptionProps<T extends React.ElementType = "span"> = TextProps<T> & {
-  as?: T;
-};
+type CaptionComponent = PolymorphicComponentWithDisplayName<
+  "span",
+  TextBaseProps
+>;
+
+export type CaptionProps<T extends React.ElementType = "span"> = TextProps<T>;
+
+function CaptionInner<T extends React.ElementType = "span">(
+  { as, size = "xs", variant = "muted", ...rest }: CaptionProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseText = Text as unknown as React.ComponentType<any>;
+  return (
+    <BaseText
+      ref={ref as React.Ref<unknown>}
+      as={(as ?? "span") as T}
+      size={size}
+      variant={variant}
+      {...(rest as TextProps<any>)}
+    />
+  );
+}
 
 const Caption = React.forwardRef(
-  <T extends React.ElementType = "span">(
-    { as, size = "xs", variant = "muted", ...rest }: CaptionProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Text ref={ref} as={(as ?? "span") as T} size={size} variant={variant} {...rest} />
-) as CreatePolymorphicComponent<"span", TextBaseProps>;
+  CaptionInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    CaptionProps<any>
+  >
+) as CaptionComponent;
 
 Caption.displayName = "Caption";
 
-export type CodeProps<T extends React.ElementType = "code"> = TextProps<T> & {
-  as?: T;
-};
+type CodeComponent = PolymorphicComponentWithDisplayName<
+  "code",
+  TextBaseProps
+>;
 
-const Code = React.forwardRef(
-  <T extends React.ElementType = "code">(
-    { as, className, ...rest }: CodeProps<T>,
-    ref: PolymorphicRef<T>
-  ) => (
-    <Text
-      ref={ref}
+export type CodeProps<T extends React.ElementType = "code"> = TextProps<T>;
+
+function CodeInner<T extends React.ElementType = "code">(
+  { as, className, ...rest }: CodeProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseText = Text as unknown as React.ComponentType<any>;
+  return (
+    <BaseText
+      ref={ref as React.Ref<unknown>}
       as={(as ?? "code") as T}
       className={cn(
         "relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold",
         className
       )}
-      {...rest}
+      {...(rest as TextProps<any>)}
     />
-  )
-) as CreatePolymorphicComponent<"code", TextBaseProps>;
+  );
+}
+
+const Code = React.forwardRef(
+  CodeInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    CodeProps<any>
+  >
+) as CodeComponent;
 
 Code.displayName = "Code";
 
 export { Text, Heading, Paragraph, Label, Caption, Code };
-
-export type { TextProps };
