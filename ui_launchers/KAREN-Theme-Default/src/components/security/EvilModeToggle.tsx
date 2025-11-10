@@ -49,6 +49,9 @@ export interface EvilModeToggleProps {
   className?: string;
 }
 
+const destructiveAlertClassName =
+  "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive";
+
 export function EvilModeToggle({ className }: EvilModeToggleProps) {
   const {
     isEvilModeEnabled,
@@ -127,7 +130,7 @@ export function EvilModeToggle({ className }: EvilModeToggleProps) {
   if (!canEnableEvilMode && !isEvilModeEnabled) {
     return (
       <div className={className}>
-        <Alert variant="destructive">
+        <Alert className={destructiveAlertClassName}>
           <Shield className="h-4 w-4" />
           <AlertDescription>
             Your role or environment policy forbids enabling Evil Mode.
@@ -202,7 +205,7 @@ export function EvilModeToggle({ className }: EvilModeToggleProps) {
           <div className="space-y-6">
             {/* Warning Message */}
             {!!evilModeConfig?.warningMessage && (
-              <Alert variant="destructive">
+              <Alert className={destructiveAlertClassName}>
                 <AlertTriangle className="h-4 w-4" aria-hidden />
                 <AlertDescription>
                   {evilModeConfig.warningMessage}
