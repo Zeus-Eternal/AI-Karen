@@ -20,7 +20,7 @@ export interface PerformanceMetrics {
   metadata?: Record<string, any>;
 }
 export interface BaseLogEntry {
-  level: '' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   context: LogContext;
   category: 'connectivity' | 'authentication' | 'performance' | 'error';
@@ -98,7 +98,7 @@ export interface PerformanceLogEntry extends BaseLogEntry {
 export interface LoggerConfig {
   enableConsoleLogging: boolean;
   enableRemoteLogging: boolean;
-  logLevel: '' | 'warn' | 'error';
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
   remoteEndpoint?: string;
   batchSize?: number;
   flushInterval?: number;

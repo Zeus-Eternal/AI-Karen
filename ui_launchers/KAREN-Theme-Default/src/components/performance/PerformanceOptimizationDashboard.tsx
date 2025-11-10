@@ -2,17 +2,65 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  ResponsiveContainer,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+} from "recharts";
 
-import { performanceOptimizer } from "@/services/performance-optimizer"; // Ensure this service exists
-import { AlertTriangle, CheckCircle, Info, Lightbulb, Play, Package, Image, Database, MemoryStick, Zap } from "lucide-react";
+import {
+  performanceOptimizer,
+  type OptimizationConfig,
+  type OptimizationMetrics,
+  type OptimizationRecommendation,
+} from "@/services/performance-optimizer"; // Ensure this service exists
+import {
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  Lightbulb,
+  Play,
+  Package,
+  Image,
+  Database,
+  MemoryStick,
+  Zap,
+  Settings,
+} from "lucide-react";
 
 export interface PerformanceOptimizationDashboardProps {
   autoApply?: boolean;
@@ -20,6 +68,100 @@ export interface PerformanceOptimizationDashboardProps {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+
+const PerformanceOptimizationFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="space-y-2 p-4">
+    <p className="font-medium">Something went wrong in PerformanceOptimizationDashboard.</p>
+    <Button variant="outline" size="sm" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
+
+type BadgeVariant = NonNullable<BadgeProps["variant"]>;
+
+interface OptimizationSettingsProps {
+  config: OptimizationConfig;
+  onConfigUpdate: (config: Partial<OptimizationConfig>) => void;
+}
+
+const SettingToggle: React.FC<{
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}> = ({ label, description, checked, onCheckedChange }) => (
+  <div className="flex items-start justify-between rounded-lg border p-4">
+    <div className="pr-4">
+      <p className="font-medium">{label}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+    <Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />
+  </div>
+);
+
+const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({
+  config,
+  onConfigUpdate,
+}) => {
+  const handleSectionToggle = <K extends keyof OptimizationConfig>(
+    section: K,
+    key: keyof OptimizationConfig[K],
+    value: boolean
+  ) => {
+    const sectionConfig = config[section];
+    onConfigUpdate({
+      [section]: { ...sectionConfig, [key]: value },
+    } as Partial<OptimizationConfig>);
+  };
+
+  return (
+    <div className="space-y-4">
+      <SettingToggle
+        label="Bundle Splitting"
+        description="Enable runtime bundle analysis and dynamic code splitting hints."
+        checked={config.bundleSplitting.enabled}
+        onCheckedChange={(checked) =>
+          handleSectionToggle("bundleSplitting", "enabled", checked)
+        }
+      />
+      <SettingToggle
+        label="Route-based Splitting"
+        description="Prefetch and split bundles on likely navigation paths."
+        checked={config.bundleSplitting.routeBasedSplitting}
+        onCheckedChange={(checked) =>
+          handleSectionToggle("bundleSplitting", "routeBasedSplitting", checked)
+        }
+      />
+      <SettingToggle
+        label="Image Optimization"
+        description="Monitor image payloads and recommend lazy loading / WebP swaps."
+        checked={config.imageOptimization.enabled}
+        onCheckedChange={(checked) =>
+          handleSectionToggle("imageOptimization", "enabled", checked)
+        }
+      />
+      <SettingToggle
+        label="Runtime Caching"
+        description="Apply intelligent caching strategies and preload hints."
+        checked={config.caching.enabled}
+        onCheckedChange={(checked) =>
+          handleSectionToggle("caching", "enabled", checked)
+        }
+      />
+      <SettingToggle
+        label="Memory Management"
+        description="Enable leak detection and component cleanup heuristics."
+        checked={config.memoryManagement.enabled}
+        onCheckedChange={(checked) =>
+          handleSectionToggle("memoryManagement", "enabled", checked)
+        }
+      />
+    </div>
+  );
+};
 
 export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationDashboardProps> = ({
   autoApply = false,
@@ -36,6 +178,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
     const loadData = () => {
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
+      setConfig(performanceOptimizer.getConfig());
     };
     loadData();
     const interval = setInterval(loadData, 10000); // Update every 10 seconds
@@ -69,15 +212,17 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
 
   const handleConfigUpdate = (newConfig: Partial<OptimizationConfig>) => {
     performanceOptimizer.updateConfig(newConfig);
-    setConfig(performanceOptimizer["config"]); // Access private config for display
+    setConfig(performanceOptimizer.getConfig());
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (
+    priority: OptimizationRecommendation["priority"]
+  ): BadgeVariant => {
     switch (priority) {
       case "critical":
         return "destructive";
       case "high":
-        return "destructive";
+        return "secondary";
       case "medium":
         return "secondary";
       case "low":
@@ -87,7 +232,9 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
+  const getPriorityIcon = (
+    priority: OptimizationRecommendation["priority"]
+  ) => {
     switch (priority) {
       case "critical":
         return <AlertTriangle className="h-4 w-4" />;
@@ -102,7 +249,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
     }
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: OptimizationRecommendation["type"]) => {
     switch (type) {
       case "bundle":
         return <Package className="h-4 w-4" />;
@@ -119,7 +266,8 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
 
   // Prepare chart data
   const optimizationImpactData = recommendations.map((rec) => ({
-    name: rec.title.substring(0, 20) + "...",
+    name:
+      rec.title.length > 20 ? `${rec.title.substring(0, 20)}…` : rec.title,
     impact: rec.estimatedGain,
     priority: rec.priority,
   }));
@@ -129,12 +277,23 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
         { name: "Bundle Size", value: metrics.bundleSize.reduction, color: COLORS[0] },
         { name: "Images", value: metrics.imageOptimization.sizeReduction, color: COLORS[1] },
         { name: "Cache Hit Rate", value: metrics.cachePerformance.hitRate, color: COLORS[2] },
-        { name: "Memory Usage", value: 100 - (metrics.memoryUsage.heapUsed / metrics.memoryUsage.heapTotal) * 100, color: COLORS[3] },
+        {
+          name: "Memory Availability",
+          value:
+            metrics.memoryUsage.heapTotal > 0
+              ? Math.max(
+                  0,
+                  100 -
+                    (metrics.memoryUsage.heapUsed / metrics.memoryUsage.heapTotal) * 100
+                )
+              : 0,
+          color: COLORS[3],
+        },
       ]
     : [];
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in PerformanceOptimizationDashboard</div>}>
+    <ErrorBoundary fallback={PerformanceOptimizationFallback}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -143,7 +302,12 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             <p className="text-muted-foreground"></p>
           </div>
           <div className="flex items-center space-x-2">
-            <Button onClick={handleApplyOptimizations} disabled={isOptimizing || recommendations.length === 0} className="flex items-center space-x-2" aria-label="Button">
+            <Button
+              onClick={handleApplyOptimizations}
+              disabled={isOptimizing || recommendations.length === 0}
+              className="flex items-center space-x-2"
+              aria-label="Apply optimizations"
+            >
               <Play className="h-4 w-4" />
               <span>{isOptimizing ? "Optimizing..." : "Apply Optimizations"}</span>
             </Button>
@@ -157,9 +321,20 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Optimization Settings</DialogTitle>
-                    <DialogDescription></DialogDescription>
+                    <DialogDescription>
+                      Toggle runtime performance modules to match your production profile.
+                    </DialogDescription>
                   </DialogHeader>
-                  <OptimizationSettings onConfigUpdate={handleConfigUpdate} />
+                  {config ? (
+                    <OptimizationSettings
+                      config={config}
+                      onConfigUpdate={handleConfigUpdate}
+                    />
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Loading configuration…
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
             )}
@@ -257,7 +432,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
                             <h4 className="font-medium">{recommendation.title}</h4>
-                            <Badge variant={getPriorityColor(recommendation.priority) as any}>
+                            <Badge variant={getPriorityColor(recommendation.priority)}>
                               {recommendation.priority}
                             </Badge>
                           </div>

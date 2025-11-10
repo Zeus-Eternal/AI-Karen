@@ -8,6 +8,7 @@
  */
 
 import { logger } from './logger';
+import type { KarenBackendPatchState } from './karen-backend-direct-patch';
 
 // --- Early/ordering-sensitive runtime guards (execute on import) ---
 import './early-extension-fix';
@@ -26,12 +27,7 @@ import './karen-backend-direct-patch';
 // We call it defensively if available at runtime.
 declare global {
   interface Window {
-    __KAREN_BACKEND_PATCH__?: {
-      fetchPatched?: boolean;
-      backendPatched?: boolean;
-      originalFetch?: typeof fetch;
-      originalMakeRequest?: (...args: any[]) => any;
-    };
+    __KAREN_BACKEND_PATCH__?: KarenBackendPatchState;
     extensionErrorIntegration?: unknown;
     handleKarenBackendError?: unknown;
   }

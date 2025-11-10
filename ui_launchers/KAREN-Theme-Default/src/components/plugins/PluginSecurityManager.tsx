@@ -537,7 +537,7 @@ const PolicyToggle: React.FC<PolicyToggleProps> = ({
     </div>
     <Switch
       checked={checked}
-      onCheckedChange={onCheckedChange}
+      onCheckedChange={(state) => onCheckedChange(state === true)}
       disabled={disabled}
       aria-label={label}
     />

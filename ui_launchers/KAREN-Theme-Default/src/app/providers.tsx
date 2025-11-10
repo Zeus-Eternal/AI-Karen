@@ -13,7 +13,6 @@ import { AccessibilityEnhancementsProvider } from '@/components/accessibility';
 import { I18nProvider } from '@/providers/i18n-provider';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { webUIConfig } from '@/lib/config';
 export function Providers({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const pinged = useRef(false);
@@ -46,12 +45,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <GlobalErrorBoundary
       showIntelligentResponse={process.env.NODE_ENV === 'production'}
-      enableSessionRecovery={true}
+      enableSessionRecovery
       fallback={(error, errorInfo, retry) => (
-        <SimpleErrorFallback error={error} resetError={retry} />
+        <SimpleErrorFallback
+          error={error}
+          resetErrorBoundary={retry}
+          showDetails={process.env.NODE_ENV !== 'production'}
+        />
       )}
       onError={(error, errorInfo) => {
-        // Could integrate with error reporting service here
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Global error captured', error, errorInfo);
+        }
       }}
     >
       <ErrorProvider
