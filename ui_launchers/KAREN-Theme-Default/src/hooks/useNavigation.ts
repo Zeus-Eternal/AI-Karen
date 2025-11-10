@@ -10,7 +10,8 @@ export interface NavigationOptions {
 
 export const useNavigation = () => {
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname ?? '';
   const { user, hasRole, hasPermission } = useAuth();
 
   const getDashboardPath = useCallback(() => {
@@ -116,7 +117,7 @@ export const useNavigation = () => {
     getDashboardPath,
     getBreadcrumbItems,
     isCurrentPathAccessible,
-    currentPath: pathname,
+    currentPath: rawPathname ?? pathname,
     userRole: user?.role,
     canAccessAdmin: hasRole('admin') || hasRole('super_admin'),
     canAccessSuperAdmin: hasRole('super_admin'),
