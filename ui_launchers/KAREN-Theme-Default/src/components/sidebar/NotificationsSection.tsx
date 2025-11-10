@@ -1,16 +1,27 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { MessageSquarePlus } from 'lucide-react'; 
+import { MessageSquarePlus } from 'lucide-react';
 /**
  * @file NotificationsSection.tsx
  * @description Displays dynamically suggested facts from Karen AI in the Comms Center.
  */
+
+declare global {
+  interface WindowEventMap {
+    'karen-suggested-facts-updated': CustomEvent<unknown>;
+  }
+}
+
 export default function NotificationsSection() {
   const [suggestedFacts, setSuggestedFacts] = useState<string[]>([]);
+  const alertStyling = {
+    variant: 'default' as const,
+    className: 'bg-primary/5 border-primary/20',
+  };
   const loadSuggestedFacts = () => {
     try {
       const storedFacts = localStorage.getItem(KAREN_SUGGESTED_FACTS_LS_KEY);
@@ -30,7 +41,9 @@ export default function NotificationsSection() {
         loadSuggestedFacts(); 
       }
     };
-    const handleFactsUpdated = () => loadSuggestedFacts();
+    const handleFactsUpdated = (_event: CustomEvent<unknown>) => {
+      loadSuggestedFacts();
+    };
     window.addEventListener('karen-suggested-facts-updated', handleFactsUpdated);
     window.addEventListener('storage', handleStorageChange);
     return () => {
@@ -47,7 +60,7 @@ export default function NotificationsSection() {
         <p className="text-sm text-muted-foreground md:text-base lg:text-lg">No new facts suggested by Karen recently.</p>
       ) : (
         <>
-          <Alert variant="default" className="bg-primary/5 border-primary/20">
+          <Alert {...alertStyling}>
             <MessageSquarePlus className="h-4 w-4 !text-primary/80 " />
             <AlertTitle className="text-sm font-semibold text-primary md:text-base lg:text-lg">Review Karen's Suggestions</AlertTitle>
             <AlertDescription className="text-xs text-primary/90 sm:text-sm md:text-base">
