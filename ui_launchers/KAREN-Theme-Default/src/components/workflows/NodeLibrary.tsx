@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Box, Cpu, Database, GitBranch, Output, Puzzle, Rocket } from 'lucide-react';
+import { Search, Box, Cpu, Database, GitBranch, FileOutput, Puzzle, Rocket } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { NodePort, NodeTemplate } from '@/types/workflows';
@@ -82,7 +82,7 @@ const defaultNodeTemplates: NodeTemplate[] = [
     name: 'JSON Output',
     description: 'Formats and emits workflow results as structured JSON.',
     category: 'output',
-    icon: 'Output',
+    icon: 'FileOutput',
     inputs: [createPort('payload', 'Payload', 'object', true)],
     outputs: [],
     config: {
@@ -135,22 +135,24 @@ const defaultNodeTemplates: NodeTemplate[] = [
   },
 ];
 
-const iconLibrary: Record<string, LucideIcon> = {
+const iconLibrary = {
   Box,
   Cpu,
   Database,
   GitBranch,
-  Output,
+  FileOutput,
   Puzzle,
   Rocket,
-};
+} satisfies Record<string, LucideIcon>;
+
+type IconName = keyof typeof iconLibrary;
 
 const categoryIcons: Partial<Record<NodeTemplate['category'], LucideIcon>> = {
   input: Box,
   ai: Cpu,
   processing: Puzzle,
   control: GitBranch,
-  output: Output,
+  output: FileOutput,
   integration: Database,
 };
 
@@ -195,6 +197,16 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
     }
   }, []);
 
+  const resolveIcon = useCallback(
+    (icon: string, category: NodeTemplate['category']): LucideIcon => {
+      if ((icon as IconName) in iconLibrary) {
+        return iconLibrary[icon as IconName];
+      }
+      return categoryIcons[category] ?? Puzzle;
+    },
+    []
+  );
+
   const onDragStart = (event: React.DragEvent, nodeTemplate: NodeTemplate) => {
     if (readOnly) {
       event.preventDefault();
@@ -232,7 +244,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
       <ScrollArea className="h-[600px]">
         <div className="space-y-2">
           {filteredNodes.map((node) => {
-            const IconComponent = iconLibrary[node.icon] || categoryIcons[node.category] || Puzzle;
+            const IconComponent = resolveIcon(node.icon, node.category);
             return (
               <div
                 key={node.id}

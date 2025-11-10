@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert as UIAlert, AlertDescription } from '@/components/ui/alert';
 import {
   CheckCircle,
   AlertCircle,
@@ -52,6 +52,19 @@ const taskPriorityColors: Record<AgentPriority, string> = {
   high: 'bg-orange-100 text-orange-700',
   critical: 'bg-red-100 text-red-700',
 };
+
+type AlertVariant = 'default' | 'destructive';
+
+const AlertMessage = UIAlert as unknown as React.FC<{
+  variant?: AlertVariant;
+  className?: string;
+  children: React.ReactNode;
+}>;
+
+const agentStatusOrder: AgentStatus[] = ['idle', 'running', 'paused', 'error', 'stopped'];
+
+const isAgentStatus = (value: string): value is AgentStatus =>
+  agentStatusOrder.includes(value as AgentStatus);
 
 interface AgentDashboardProps {
   agents: Agent[];
@@ -178,11 +191,18 @@ export function AgentDashboard({
               className="w-64"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
-          >
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                const { value } = event.target;
+                if (value === 'all') {
+                  setStatusFilter('all');
+                } else if (isAgentStatus(value)) {
+                  setStatusFilter(value);
+                }
+              }}
+              className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
+            >
             <option value="all">All Status</option>
             <option value="running">Running</option>
             <option value="idle">Idle</option>
@@ -526,7 +546,10 @@ function AgentDetailsPanel({ agent, onClose }: { agent: Agent, onClose: () => vo
                 <Label className="text-sm font-medium md:text-base lg:text-lg">Issues</Label>
                 <div className="mt-2 space-y-2">
                   {agent.health.issues.map((issue) => (
-                    <Alert key={issue.id} variant={issue.severity === 'critical' ? 'destructive' : 'default'}>
+                    <AlertMessage
+                      key={issue.id}
+                      variant={issue.severity === 'critical' ? 'destructive' : 'default'}
+                    >
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
                         <div className="font-medium">{issue.type}</div>
@@ -535,7 +558,7 @@ function AgentDetailsPanel({ agent, onClose }: { agent: Agent, onClose: () => vo
                           {issue.timestamp.toLocaleString()}
                         </div>
                       </AlertDescription>
-                    </Alert>
+                    </AlertMessage>
                   ))}
                 </div>
               </div>

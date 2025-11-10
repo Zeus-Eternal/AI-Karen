@@ -22,8 +22,7 @@ import { WorkflowDefinition, WorkflowNode, WorkflowEdge, NodeTemplate, WorkflowV
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert as UIAlert, AlertDescription } from '@/components/ui/alert';
 
 import { AlertTriangle, CheckCircle, Copy, Eye, EyeOff, Play, Save, Trash2 } from 'lucide-react';
 import { WorkflowNodeComponent } from './WorkflowNodeComponent';
@@ -41,6 +40,14 @@ export interface WorkflowBuilderProps {
 const nodeTypes: NodeTypes = {
   workflowNode: WorkflowNodeComponent,
 };
+
+type AlertVariant = 'default' | 'destructive';
+
+const AlertMessage = UIAlert as unknown as React.FC<{
+  variant?: AlertVariant;
+  className?: string;
+  children: React.ReactNode;
+}>;
 
 export function WorkflowBuilder({
   workflow,
@@ -306,7 +313,7 @@ export function WorkflowBuilder({
               >
                 {showBackground ? <EyeOff className="h-4 w-4 " /> : <Eye className="h-4 w-4 " />}
               </Button>
-              <Separator orientation="vertical" className="h-6" />
+              <div aria-hidden className="h-6 w-px bg-border" />
               <Button
                 aria-label="Validate workflow"
                 variant="outline"
@@ -344,30 +351,30 @@ export function WorkflowBuilder({
           {/* Validation Results */}
           {validationResult && (
             <div className="mt-4">
-              {validationResult.errors.length > 0 && (
-                <Alert variant="destructive" className="mb-2">
-                  <AlertTriangle className="h-4 w-4 " />
-                  <AlertDescription>
-                    {validationResult.errors.length} error(s) found. Please fix them before saving.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {validationResult.warnings.length > 0 && (
-                <Alert className="mb-2">
-                  <AlertTriangle className="h-4 w-4 " />
-                  <AlertDescription>
-                    {validationResult.warnings.length} warning(s) found.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {validationResult.valid && (
-                <Alert className="mb-2">
-                  <CheckCircle className="h-4 w-4 " />
-                  <AlertDescription>
-                    Workflow validation passed successfully.
-                  </AlertDescription>
-                </Alert>
-              )}
+                {validationResult.errors.length > 0 && (
+                  <AlertMessage variant="destructive" className="mb-2">
+                    <AlertTriangle className="h-4 w-4 " />
+                    <AlertDescription>
+                      {validationResult.errors.length} error(s) found. Please fix them before saving.
+                    </AlertDescription>
+                  </AlertMessage>
+                )}
+                {validationResult.warnings.length > 0 && (
+                  <AlertMessage className="mb-2">
+                    <AlertTriangle className="h-4 w-4 " />
+                    <AlertDescription>
+                      {validationResult.warnings.length} warning(s) found.
+                    </AlertDescription>
+                  </AlertMessage>
+                )}
+                {validationResult.valid && (
+                  <AlertMessage className="mb-2">
+                    <CheckCircle className="h-4 w-4 " />
+                    <AlertDescription>
+                      Workflow validation passed successfully.
+                    </AlertDescription>
+                  </AlertMessage>
+                )}
             </div>
           )}
         </div>

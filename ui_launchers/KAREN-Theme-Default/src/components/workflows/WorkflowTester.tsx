@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert as UIAlert, AlertDescription } from '@/components/ui/alert';
 
 import { AlertCircle, CheckCircle, Clock, Download, Eye, Play, RotateCcw, Square } from 'lucide-react';
 
@@ -20,7 +20,15 @@ export interface WorkflowTesterProps {
   className?: string;
 }
 
-interface TestInput {
+type AlertVariant = 'default' | 'destructive';
+
+const AlertMessage = UIAlert as unknown as React.FC<{
+  variant?: AlertVariant;
+  className?: string;
+  children: React.ReactNode;
+}>;
+
+export interface TestInput {
   nodeId: string;
   inputId: string;
   name: string;
@@ -238,14 +246,14 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {testInputFields.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4 " />
-                <AlertDescription>
-                  No test inputs required. This workflow can be tested without input data.
-                </AlertDescription>
-              </Alert>
-            ) : (
+              {testInputFields.length === 0 ? (
+                <AlertMessage>
+                  <AlertCircle className="h-4 w-4 " />
+                  <AlertDescription>
+                    No test inputs required. This workflow can be tested without input data.
+                  </AlertDescription>
+                </AlertMessage>
+              ) : (
               <div className="space-y-4">
                 {testInputFields.map((input) => (
                   <div key={`${input.nodeId}.${input.inputId}`} className="space-y-2">
@@ -301,10 +309,10 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                     </Badge>
                   </div>
                   {testResult.error && (
-                    <Alert variant="destructive">
+                    <AlertMessage variant="destructive">
                       <AlertCircle className="h-4 w-4 " />
                       <AlertDescription>{testResult.error}</AlertDescription>
-                    </Alert>
+                    </AlertMessage>
                   )}
                   <div className="flex gap-2 pt-2">
                     <Button

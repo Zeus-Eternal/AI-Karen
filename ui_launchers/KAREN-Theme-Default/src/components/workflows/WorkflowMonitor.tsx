@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert as UIAlert, AlertDescription } from '@/components/ui/alert';
 
 import {
   Activity,
@@ -63,6 +63,22 @@ const logLevelColors: Record<LogLevel, string> = {
   warn: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   error: 'text-red-600 bg-red-50 border-red-200',
 };
+
+type AlertVariant = 'default' | 'destructive';
+
+const AlertMessage = UIAlert as unknown as React.FC<{
+  variant?: AlertVariant;
+  className?: string;
+  children: React.ReactNode;
+}>;
+
+const executionStatusOrder: ExecutionStatus[] = ['pending', 'running', 'completed', 'failed', 'cancelled'];
+
+const isExecutionStatus = (value: string): value is ExecutionStatus =>
+  executionStatusOrder.includes(value as ExecutionStatus);
+
+const isLogLevel = (value: string): value is LogLevel =>
+  (['debug', 'info', 'warn', 'error'] as const).includes(value as LogLevel);
 
 export function WorkflowMonitor({
   executions,
@@ -205,11 +221,18 @@ export function WorkflowMonitor({
               className="px-3 py-2 border border-input rounded-md text-sm w-64 "
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | ExecutionStatus)}
-            className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
-          >
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                const { value } = event.target;
+                if (value === 'all') {
+                  setStatusFilter('all');
+                } else if (isExecutionStatus(value)) {
+                  setStatusFilter(value);
+                }
+              }}
+              className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
+            >
             <option value="all">All Status</option>
             <option value="running">Running</option>
             <option value="completed">Completed</option>
@@ -337,14 +360,14 @@ export function WorkflowMonitor({
                                 </div>
                               )}
                               {/* Error Message */}
-                              {execution.error && (
-                                <Alert variant="destructive" className="mt-2">
-                                  <AlertCircle className="h-4 w-4 " />
-                                  <AlertDescription className="text-sm md:text-base lg:text-lg">
-                                    {execution.error}
-                                  </AlertDescription>
-                                </Alert>
-                              )}
+                                {execution.error && (
+                                  <AlertMessage variant="destructive" className="mt-2">
+                                    <AlertCircle className="h-4 w-4 " />
+                                    <AlertDescription className="text-sm md:text-base lg:text-lg">
+                                      {execution.error}
+                                    </AlertDescription>
+                                  </AlertMessage>
+                                )}
                             </div>
                             {/* Action Buttons */}
                             <div className="flex flex-col gap-2 ml-4">
@@ -486,11 +509,16 @@ function ExecutionDetailsPanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground " />
-                <select
-                  value={logLevelFilter}
-                  onChange={(e) => onLogLevelFilterChange(e.target.value as LogLevelFilter)}
-                  className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
-                >
+                  <select
+                    value={logLevelFilter}
+                    onChange={(event) => {
+                      const { value } = event.target;
+                      if (value === 'all' || isLogLevel(value)) {
+                        onLogLevelFilterChange(value);
+                      }
+                    }}
+                    className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
+                  >
                   <option value="all">All Levels</option>
                   <option value="debug">Debug</option>
                   <option value="info">Info</option>
