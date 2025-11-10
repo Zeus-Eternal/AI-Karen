@@ -92,6 +92,10 @@ export interface MemoryInterfaceProps {
 
 export type ViewMode = "grid" | "network" | "analytics";
 
+type MemoryFiltersState = Record<string, unknown> & {
+  search_results?: unknown;
+};
+
 /* ============================
  * Utils
  * ========================== */
@@ -122,7 +126,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filters, setFilters] = useState<MemoryFiltersState>({});
 
   const [analytics, setAnalytics] = useState<MemoryAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
@@ -244,7 +248,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
     }
     try {
       setError(null);
-      const data = await safeJsonPost<{ results: any[] }>("/api/memory/search", {
+      const data = await safeJsonPost<{ results: unknown[] }>("/api/memory/search", {
         user_id: userId,
         tenant_id: tenantId,
         query: searchQuery,

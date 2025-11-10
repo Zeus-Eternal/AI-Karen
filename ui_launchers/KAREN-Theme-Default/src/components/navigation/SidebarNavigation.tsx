@@ -426,6 +426,12 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
   const pathname = usePathname();
   const hasChildren = !!(item.children && item.children.length > 0);
   const Icon = item.icon;
+  const resolvedItemRef = useCallback(
+    (el: HTMLButtonElement | null) => {
+      itemRef?.(el);
+    },
+    [itemRef]
+  );
 
   // Indentation for nested levels when sidebar is expanded
   const nestedIndent =
@@ -434,7 +440,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
   return (
     <li>
       <Button
-        ref={itemRef}
+        ref={resolvedItemRef}
         className={cn(
           "w-full flex items-center gap-[var(--space-sm)] px-[var(--space-md)] py-[var(--space-sm)]",
           "text-left text-[var(--text-sm)] font-medium",

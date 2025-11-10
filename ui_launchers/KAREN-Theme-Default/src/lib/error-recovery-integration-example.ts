@@ -14,6 +14,8 @@ import { errorHandler } from "./error-handler";
 import { handleExtensionError } from "./extension-error-integration";
 import "./extension-403-fix"; // keep the hotfix loaded early
 
+type FetchArgs = Parameters<typeof fetch>;
+
 // ---------- Types ----------
 export interface RecoveryResult {
   success: boolean;
@@ -396,8 +398,13 @@ export function integrateWithExistingErrorHandling(): void {
 
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
+  window.fetch = async (...args: FetchArgs) => {
+    const [input, init] = args;
+    const url = typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : (input as Request).url;
 
     try {
       // Use enhanced pipeline for all API calls
@@ -405,7 +412,7 @@ export function integrateWithExistingErrorHandling(): void {
         return await fetchWithRecovery(url, init, "api_call");
       }
       // Non-API → pass through
-      return await originalFetch(input as any, init);
+      return await originalFetch(input, init);
     } catch (error) {
       logger.error("Enhanced fetch failed:", error);
       throw error;

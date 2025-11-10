@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 export default function ChatError({
   error,
   reset,
@@ -13,6 +13,8 @@ export default function ChatError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Surface the error details during development so engineers can debug quickly.
+    console.error('Chat route failed to render', error);
   }, [error]);
   const handleGoHome = () => {
     window.location.href = '/';
@@ -29,6 +31,8 @@ export default function ChatError({
             <div>
               <CardTitle className="text-xl">Chat Loading Error</CardTitle>
               <CardDescription className="mt-1">
+                Something prevented the chat experience from loading correctly. Please
+                try again or return to the dashboard.
               </CardDescription>
             </div>
           </div>
@@ -45,12 +49,15 @@ export default function ChatError({
           <div className="flex flex-col gap-2">
             <Button onClick={reset} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
+              Try again
             </Button>
             <Button variant="outline" onClick={handleReload} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" />
+              Reload page
             </Button>
             <Button variant="outline" onClick={handleGoHome} className="w-full">
               <Home className="h-4 w-4 mr-2" />
+              Go to dashboard
             </Button>
           </div>
           <div className="text-center text-sm text-muted-foreground">

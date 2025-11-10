@@ -78,7 +78,7 @@ export function getExtensionIcon(extension: ExtensionBase): string {
       return (EXTENSION_ICONS as any)[key] ?? EXTENSION_ICONS.plugin ?? defaultIcon;
     }
     case "model":
-      return EXTENSION_ICONS.model ?? EXTENSION_ICONS.plugin ?? defaultIcon;
+      return EXTENSION_ICONS.plugin ?? defaultIcon;
     case "system_extension": {
       const systemExt = extension as SystemExtension;
       const k = (systemExt as any)?.extensionType ?? "extension";
