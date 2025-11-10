@@ -546,7 +546,7 @@ export default function ModelLibrary() {
     Array.from(new Set(models.flatMap(m => m.capabilities))), [models]);
   // Filter and sort models
   const filteredAndSortedModels = useMemo(() => {
-    let filtered = modelsWithDownloadStatus.filter(model => {
+    const filtered = modelsWithDownloadStatus.filter(model => {
       // Search filter (using debounced query)
       const matchesSearch = debouncedSearchQuery === '' || 
         model.name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||

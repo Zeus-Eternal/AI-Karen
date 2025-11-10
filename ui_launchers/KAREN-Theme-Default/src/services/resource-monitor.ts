@@ -233,7 +233,7 @@ export class ResourceMonitor {
     const resEntries = (performance.getEntriesByType?.('resource') ?? []) as PerformanceResourceTiming[];
 
     let bytesReceived = 0;
-    let bytesSent = 0;
+    const bytesSent = 0;
 
     if (navEntries[0]) {
       // transferSize is response bytes on the main doc

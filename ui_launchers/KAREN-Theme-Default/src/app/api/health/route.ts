@@ -62,14 +62,14 @@ interface RequestMetrics {
 }
 
 // Global metrics tracking
-let requestMetrics: RequestMetrics = {
+const requestMetrics: RequestMetrics = {
   total: 0,
   successful: 0,
   failed: 0,
   averageResponseTime: 0
 };
 
-let responseTimes: number[] = [];
+const responseTimes: number[] = [];
 const MAX_RESPONSE_TIMES = 100;
 
 /**

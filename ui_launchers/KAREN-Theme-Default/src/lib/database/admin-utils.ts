@@ -529,8 +529,8 @@ export class AdminDatabaseUtils {
     const page = Math.max(1, pagination.page || 1);
     const limit = Math.min(Math.max(1, pagination.limit || this.DEFAULT_PAGE_SIZE), 1000); // Cap at 1000 for safety
     
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     // Build WHERE conditions based on filter
@@ -755,8 +755,8 @@ export class AdminDatabaseUtils {
     const page = Math.max(1, pagination.page || 1);
     const limit = Math.min(Math.max(1, pagination.limit || this.DEFAULT_AUDIT_LOG_SIZE), 1000);
     
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     // Build WHERE conditions
@@ -887,7 +887,7 @@ export class AdminDatabaseUtils {
       LEFT JOIN auth_users u ON sc.updated_by = u.user_id
     `;
     
-    let queryParams: any[] = [];
+    const queryParams: any[] = [];
     
     if (category) {
       query += ` WHERE sc.category = $1`;

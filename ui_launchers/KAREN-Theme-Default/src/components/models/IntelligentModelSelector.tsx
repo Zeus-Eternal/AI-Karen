@@ -192,7 +192,7 @@ const analyzeContext = (context: string): ContextAnalysis => {
   // Set priorities based on task type
   let quality_priority = 70;
   let speed_priority = 50;
-  let cost_priority = 30;
+  const cost_priority = 30;
 
   if (task_type === 'reasoning' || task_type === 'analysis') {
     quality_priority = 90;
