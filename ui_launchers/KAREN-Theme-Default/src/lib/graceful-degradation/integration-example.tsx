@@ -31,7 +31,8 @@ export function FixedModelProviderIntegration() {
   } = useGracefulDegradation('modelProviderIntegration');
 
   // Show degraded mode banner when appropriate
-  const shouldShowBanner = showDegradedBanner || isStale || isFromCache || error;
+  const shouldShowBanner =
+    showDegradedBanner || isStale || isFromCache || Boolean(error);
 
   return (
     <div className="model-provider-integration">
@@ -213,7 +214,7 @@ export function initializeGracefulDegradationInApp() {
       enableCaching: true,
       enableGlobalErrorHandling: true,
       developmentMode: process.env.NODE_ENV === 'development',
-      logLevel: 'info',
+      logLevel: 'debug',
       featureFlags: {
         modelProviderIntegration: { enabled: true, fallbackBehavior: 'cache' },
         extensionSystem: { enabled: true, fallbackBehavior: 'disable' },
