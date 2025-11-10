@@ -190,7 +190,7 @@ export class EndpointFallbackService {
     const attemptedEndpoints: string[] = [];
     const failedEndpoints: string[] = [];
 
-    let selectedEndpoint = await this.selectBestEndpoint(requestType);
+    const selectedEndpoint = await this.selectBestEndpoint(requestType);
     let wasFailover = false;
 
     // Helper: try one endpoint with retries/backoff

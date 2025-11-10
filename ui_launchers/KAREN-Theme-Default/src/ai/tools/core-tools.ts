@@ -263,7 +263,7 @@ export async function getWeather(
   defaultLocationFromSettings?: string | null
 ): Promise<string> {
   const logs: string[] = [];
-  let locationToUse = (locationFromPrompt || defaultLocationFromSettings || '').trim();
+  const locationToUse = (locationFromPrompt || defaultLocationFromSettings || '').trim();
 
   logs.push(
     `getWeather called with: locationFromPrompt="${locationFromPrompt}", temperatureUnit="${temperatureUnit}", service="${service}", defaultLocationFromSettings="${defaultLocationFromSettings}"`

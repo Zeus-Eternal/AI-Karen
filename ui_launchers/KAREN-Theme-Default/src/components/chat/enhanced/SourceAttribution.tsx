@@ -105,7 +105,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
   const filteredAndSortedSources = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    let filtered = sources.filter((source) => {
+    const filtered = sources.filter((source) => {
       const matchesSearch =
         q === "" ||
         source.title.toLowerCase().includes(q) ||

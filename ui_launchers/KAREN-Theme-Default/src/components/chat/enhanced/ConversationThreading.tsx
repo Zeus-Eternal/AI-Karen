@@ -67,7 +67,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
   const filteredAndSortedThreads = useMemo(() => {
     const q = safeLower(searchQuery);
 
-    let filtered = threads.filter((thread) => {
+    const filtered = threads.filter((thread) => {
       const title = safeLower(thread.title);
       const topic = safeLower(thread.topic);
       const tags = safeTags(thread.metadata?.tags).map((t) => t.toLowerCase());

@@ -291,7 +291,7 @@ class AuditLoggerService {
     try {
       // Split queue into payloads under size limit and by batch size
       const batchSize = this.config?.performance?.batchSize || this.DEFAULT_BATCH_SIZE;
-      let start = 0;
+      const start = 0;
 
       while (start < this.eventQueue.length) {
         const { payload, count } = this.buildPayload(this.eventQueue.slice(start, start + batchSize), this.MAX_PAYLOAD_BYTES);

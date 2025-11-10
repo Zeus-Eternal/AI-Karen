@@ -608,7 +608,7 @@ export const useChatMessages = (
             // Flush any remaining buffered data after stream ends
             const tail = (buffer || "").trim();
             if (tail && tail !== "data: [DONE]") {
-              let data = tail.startsWith("data:")
+              const data = tail.startsWith("data:")
                 ? tail.replace(/^data:\s*/, "")
                 : tail;
               try {

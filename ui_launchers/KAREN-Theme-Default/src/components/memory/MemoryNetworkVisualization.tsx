@@ -113,8 +113,8 @@ const NetworkChart: React.FC<{
             const b = nodes[j];
             const pa = positions.get(a.id)!;
             const pb = positions.get(b.id)!;
-            let dx = pa.x - pb.x;
-            let dy = pa.y - pb.y;
+            const dx = pa.x - pb.x;
+            const dy = pa.y - pb.y;
             let dist = Math.hypot(dx, dy) || 1;
             const minDist = Math.max(a.size, b.size) + 6; // avoid overlap
             if (dist < 1) dist = 1;

@@ -151,7 +151,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
   const filteredAndSortedConversations = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    let filtered = conversations.filter((conv) => {
+    const filtered = conversations.filter((conv) => {
       const matchesSearch =
         q === "" ||
         conv.title.toLowerCase().includes(q) ||

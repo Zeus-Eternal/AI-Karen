@@ -128,8 +128,8 @@ export class AuditCleanupManager {
    * Get cleanup statistics
    */
   async getCleanupStats(policyId?: string): Promise<CleanupStats> {
-    let whereClause = '';
-    let queryParams: any[] = [];
+    const whereClause = '';
+    const queryParams: any[] = [];
 
     if (policyId) {
       // This would require implementing policy-specific filtering
@@ -182,8 +182,8 @@ export class AuditCleanupManager {
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
     try {
-      let whereConditions = ['timestamp < $1'];
-      let queryParams: any[] = [cutoffDate];
+      const whereConditions = ['timestamp < $1'];
+      const queryParams: any[] = [cutoffDate];
       let paramIndex = 2;
 
       // Add resource type filter
@@ -302,8 +302,8 @@ export class AuditCleanupManager {
       // Create archive table if it doesn't exist
       await this.createArchiveTable();
 
-      let whereConditions = ['timestamp < $1'];
-      let queryParams: any[] = [cutoffDate];
+      const whereConditions = ['timestamp < $1'];
+      const queryParams: any[] = [cutoffDate];
       let paramIndex = 2;
 
       // Add filters
