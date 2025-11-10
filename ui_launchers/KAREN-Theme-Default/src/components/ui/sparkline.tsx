@@ -29,7 +29,13 @@ export function Sparkline({
   ...props
 }: SparklineProps) {
   const pathData = useMemo(() => {
-    if (data.length === 0) return '';
+    if (data.length === 0) {
+      return {
+        linePath: '',
+        areaPath: '',
+        points: [] as Array<{ x: number; y: number }>,
+      };
+    }
 
     const max = Math.max(...data);
     const min = Math.min(...data);
@@ -119,7 +125,7 @@ export function Sparkline({
       />
 
       {showDots &&
-        pathData.points?.map((point, index) => (
+        pathData.points.map((point, index) => (
           <circle
             key={index}
             cx={point.x}
@@ -137,7 +143,7 @@ export function Sparkline({
           />
         ))}
 
-      <style jsx>{`
+      <style>{`
         @keyframes sparkline-draw {
           to {
             stroke-dashoffset: 0;

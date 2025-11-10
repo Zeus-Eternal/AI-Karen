@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export type HapticPattern =
   | 'light'
@@ -17,14 +17,14 @@ export interface HapticConfig {
 }
 
 export interface HapticProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultEnabled?: boolean;
 }
 
-export interface HapticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface HapticButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   hapticPattern?: HapticPattern;
   hapticEnabled?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   ariaLabel?: string;
 }
 

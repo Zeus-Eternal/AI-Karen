@@ -134,6 +134,7 @@ FormItem.displayName = "FormItem"
 // Form Label Component
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
+  FormLabelProps
 >(({ className, required = false, children, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 

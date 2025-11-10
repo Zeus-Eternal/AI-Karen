@@ -3,7 +3,8 @@
  * This integrates with the existing KarenBackendService to handle 4xx/5xx errors
  */
 import React from 'react';
-import { featureFlagManager, extensionCache, useFeatureFlag, type FeatureFlag } from './index';
+import { featureFlagManager, useFeatureFlag } from './feature-flags';
+import { extensionCache } from './cache-manager';
 import { EnhancedBackendService } from './enhanced-backend-service';
 
 export interface UseGracefulBackendOptions {

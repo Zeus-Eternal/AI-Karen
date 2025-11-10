@@ -3,7 +3,7 @@
  * Demo usage examples for the comprehensive error handling system
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
-import {  handleError, withErrorHandling, withRetry, ErrorCategory, ErrorSeverity } from './index';
+import { handleError, withErrorHandling, withRetry } from './index';
 /**
  * Example 1: Basic error handling with categorization
  */

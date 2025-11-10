@@ -49,13 +49,14 @@ function ResetPasswordForm() {
               <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse" />
             </div>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              {token ? 'Enter your new password' : 'Enter your email to receive reset instructions'}
-            </CardDescription>
-          </div>
+            <div className="space-y-2">
+              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                Secure password reset
+              </CardTitle>
+              <CardDescription className="text-base text-muted-foreground">
+                {token ? 'Enter your new password' : 'Enter your email to receive reset instructions'}
+              </CardDescription>
+            </div>
         </CardHeader>
         
         <CardContent className="space-y-6">
