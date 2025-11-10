@@ -1,6 +1,6 @@
 "use client";
 
-import React, { forwardRef } from "react";
+import React from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -255,7 +255,7 @@ const PANEL_WIDTH_CLASSES = {
 /**
  * Right Panel Header Component (using reusable PanelHeader)
  */
-export const RightPanelHeader = forwardRef<HTMLElement, RightPanelHeaderProps>(
+export const RightPanelHeader = React.forwardRef<HTMLElement, RightPanelHeaderProps>(
   function RightPanelHeader(props, ref) {
     return <PanelHeader ref={ref} {...props} />;
   }
@@ -264,7 +264,7 @@ export const RightPanelHeader = forwardRef<HTMLElement, RightPanelHeaderProps>(
 /**
  * Right Panel Navigation Component
  */
-export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigationProps>(
+export const RightPanelNavigation = React.forwardRef<HTMLElement, RightPanelNavigationProps>(
   function RightPanelNavigation(
     { views, activeView, onViewChange, className, ...props },
     ref
@@ -346,7 +346,7 @@ export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigation
 /**
  * Right Panel Content Component (using reusable PanelContent)
  */
-export const RightPanelContent = forwardRef<HTMLDivElement, RightPanelContentProps>(
+export const RightPanelContent = React.forwardRef<HTMLDivElement, RightPanelContentProps>(
   function RightPanelContent(props, ref) {
     return <PanelContent ref={ref} {...props} />;
   }
@@ -355,7 +355,7 @@ export const RightPanelContent = forwardRef<HTMLDivElement, RightPanelContentPro
 /**
  * Main Right Panel Component
  */
-export const RightPanel = forwardRef<HTMLElement, RightPanelProps>(
+export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
   function RightPanel(
     {
       activeView,
