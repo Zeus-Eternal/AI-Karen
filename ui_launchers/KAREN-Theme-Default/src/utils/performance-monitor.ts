@@ -24,11 +24,13 @@ export interface CustomMetric {
   name: string;
   value: number;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
+export type WebVitalsSummary = Partial<Record<WebVitalsMetric['name'], WebVitalsMetric>>;
+
 export interface PerformanceSummary {
-  webVitals: Record<string, any>;
+  webVitals: WebVitalsSummary;
   customMetrics: Record<string, MetricSummary>;
   resourceTiming: ResourceTimingSummary;
   navigationTiming: NavigationTimingSummary;
@@ -118,6 +120,7 @@ export class PerformanceMonitor {
   private observers: Map<string, PerformanceObserver> = new Map();
   private isMonitoring = false;
   private reportCallback?: (metric: WebVitalsMetric | CustomMetric) => void;
+  private webVitalsSummary: Map<WebVitalsMetric['name'], WebVitalsMetric> = new Map();
 
   // Internal accumulators for CLS
   private clsValue = 0;
@@ -131,6 +134,8 @@ export class PerformanceMonitor {
   startMonitoring(): void {
     if (this.isMonitoring || !isBrowser) return;
     this.isMonitoring = true;
+
+    this.webVitalsSummary.clear();
 
     this.monitorWebVitals();
     this.monitorCustomMetrics();
@@ -153,13 +158,14 @@ export class PerformanceMonitor {
       } catch {}
     });
     this.observers.clear();
+    this.webVitalsSummary.clear();
 
     window.removeEventListener('pageshow', this.handlePageShow);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
   // ---- Public API for custom metrics ----
-  recordMetric(name: string, value: number, metadata?: Record<string, any>): void {
+  recordMetric(name: string, value: number, metadata?: Record<string, unknown>): void {
     const metric: CustomMetric = {
       name,
       value,
@@ -192,7 +198,7 @@ export class PerformanceMonitor {
     performance.mark(`${name}-start`);
   }
 
-  endMeasure(name: string, metadata?: Record<string, any>): void {
+  endMeasure(name: string, metadata?: Record<string, unknown>): void {
     if (!isBrowser || !('measure' in performance)) return;
     const endMark = `${name}-end`;
     const measureName = `${name}-measure`;
@@ -217,7 +223,7 @@ export class PerformanceMonitor {
 
   getPerformanceSummary(): PerformanceSummary {
     const summary: PerformanceSummary = {
-      webVitals: {}, // left open for caller to aggregate if needed
+      webVitals: Object.fromEntries(this.webVitalsSummary) as WebVitalsSummary,
       customMetrics: {},
       resourceTiming: this.getResourceTimingSummary(),
       navigationTiming: this.getNavigationTimingSummary(),
@@ -388,6 +394,7 @@ export class PerformanceMonitor {
       id: `${name}-${Date.now()}`,
       navigationType: navType(),
     };
+    this.webVitalsSummary.set(name, metric);
     this.reportCallback?.(metric);
   }
 
@@ -498,7 +505,7 @@ export function usePerformanceMonitor() {
   }, []);
 
   const recordMetric = React.useCallback(
-    (name: string, value: number, metadata?: Record<string, any>) => {
+    (name: string, value: number, metadata?: Record<string, unknown>) => {
       performanceMonitor.recordMetric(name, value, metadata);
       setMetrics(new Map(performanceMonitor.getMetrics()));
     },
@@ -513,13 +520,15 @@ export function usePerformanceMonitor() {
     return performanceMonitor.measureAsyncFunction(name, fn);
   }, []);
 
+  const getPerformanceSummary = React.useCallback(() => performanceMonitor.getPerformanceSummary(), []);
+
   return {
     isMonitoring,
     metrics,
     recordMetric,
     measureFunction,
     measureAsyncFunction,
-    getPerformanceSummary: () => performanceMonitor.getPerformanceSummary(),
+    getPerformanceSummary,
   };
 }
 
