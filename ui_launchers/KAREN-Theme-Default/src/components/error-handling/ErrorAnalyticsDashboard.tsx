@@ -8,7 +8,10 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
 
 import {
   RefreshCw,
@@ -53,6 +56,20 @@ interface ErrorAnalyticsDashboardProps {
   refreshInterval?: number;
   enableRealTimeUpdates?: boolean;
 }
+
+const DashboardErrorFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center">
+    <p className="text-sm text-destructive sm:text-base">
+      Error analytics are temporarily unavailable.
+    </p>
+    <Button size="sm" variant="outline" onClick={resetError}>
+      <RefreshCw className="mr-2 h-4 w-4" />
+      Retry loading
+    </Button>
+  </div>
+);
 
 export const ErrorAnalyticsDashboard: React.FC<
   ErrorAnalyticsDashboardProps
@@ -128,11 +145,7 @@ export const ErrorAnalyticsDashboard: React.FC<
   };
 
   return (
-    <ErrorBoundary
-      fallback={() => (
-        <div>Something went wrong in ErrorAnalyticsDashboard</div>
-      )}
-    >
+    <ErrorBoundary fallback={DashboardErrorFallback}>
       {loading && !report ? (
         <div className="flex items-center justify-center h-64">
           <div className="flex items-center gap-2">

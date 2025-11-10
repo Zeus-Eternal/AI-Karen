@@ -9,35 +9,23 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-
-// Error-handling primitives (using the correct path)
-import { ErrorBoundary as GlobalErrorBoundary } from "@/components/error-handling/ErrorBoundary";
-
-// Mock components for demo purposes
-const ApiErrorBoundary: React.FC<{ children: React.ReactNode; showNetworkStatus?: boolean; autoRetry?: boolean; maxRetries?: number }> = ({ children }) => (
-  <div>{children}</div>
-);
-
-const ErrorToastContainer: React.FC<{ toasts: any[]; onRemove: (id: string) => void; position?: string; maxToasts?: number }> = () => (
-  <div />
-);
-
+import GlobalErrorBoundary from "@/components/error/GlobalErrorBoundary";
+import { ApiErrorBoundary } from "@/components/error/ApiErrorBoundary";
+import {
+  ErrorToastContainer,
+  type ErrorToastProps,
+} from "@/components/error/ErrorToast";
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 import { getServiceErrorHandler } from "@/services/errorHandler";
-
-type ToastLevel = "error" | "warning" | "info" | "success";
-
-interface ToastMessage {
-  id: string;
-  message: string;
-  type: ToastLevel;
-  title?: string;
-  enableRetry?: boolean;
-  onRetry?: () => Promise<void> | void;
-}
 
 // Icons
 import { AlertCircle, Network, ShieldX, RefreshCw, CheckCircle2, Info, Bug, Trash2, KeyRound } from "lucide-react";
@@ -73,26 +61,42 @@ const ComponentThatThrows = ({ errorType }: { errorType: string }) => {
 const ErrorHandlingExample: React.FC = () => {
   const [errorType, setErrorType] = useState<string>("none");
   const [showApiError, setShowApiError] = useState(false);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [toasts, setToasts] = useState<ErrorToastProps[]>([]);
 
-  // ---- Mock toast helpers (replace with your useErrorToast / toast hook) ----
-  const pushToast = (payload: Omit<ToastMessage, "id">) =>
-    setToasts((prev) => [...prev, { id: Date.now().toString(), ...payload }]);
-  const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  // ---- Toast helpers (replace with your useErrorToast / toast hook) ----
+  const pushToast = (
+    payload: Omit<ErrorToastProps, "id"> & { id?: string }
+  ) => {
+    const id =
+      payload.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((prev) => [...prev, { ...payload, id }]);
+  };
+  const removeToast = (id: string) =>
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
 
-  const showError = (message: string, options?: Partial<ToastMessage>) =>
-    pushToast({ message, type: "error", ...options });
-  const showServiceError = (error: unknown, options?: Partial<ToastMessage>) =>
+  const showError = (message: string, options?: Partial<ErrorToastProps>) =>
+    pushToast({
+      message,
+      type: "error",
+      ...options,
+    });
+  const showServiceError = (
+    error: unknown,
+    options?: Partial<ErrorToastProps>
+  ) =>
     pushToast({
       message: error instanceof Error ? error.message : "Service error",
       type: "error",
       ...options,
     });
-  const showWarning = (message: string, options?: Partial<ToastMessage>) =>
+  const showWarning = (message: string, options?: Partial<ErrorToastProps>) =>
     pushToast({ message, type: "warning", ...options });
-  const showInfo = (message: string, options?: Partial<ToastMessage>) =>
+  const showInfo = (message: string, options?: Partial<ErrorToastProps>) =>
     pushToast({ message, type: "info", ...options });
-  const showSuccess = (message: string, options?: Partial<ToastMessage>) =>
+  const showSuccess = (
+    message: string,
+    options?: Partial<ErrorToastProps>
+  ) =>
     pushToast({ message, type: "success", ...options });
 
   // -------------------------------------------------------------------------
@@ -119,9 +123,9 @@ const ErrorHandlingExample: React.FC = () => {
 
       showServiceError(serviceError, {
         title: "API Error",
-        enableRetry: true,
-        onRetry: async () => {
-          await handleApiCall(false);
+        actionLabel: "Retry",
+        onAction: () => {
+          void handleApiCall(false);
         },
       });
     }
@@ -148,8 +152,10 @@ const ErrorHandlingExample: React.FC = () => {
     } catch (err) {
       showError("Service call failed after retries", {
         title: "Service Error",
-        error: err instanceof Error ? err : new Error("Unknown error"),
-        showIntelligentResponse: true,
+        actionLabel: "Retry now",
+        onAction: () => {
+          void handleServiceCall();
+        },
       });
     }
   };
@@ -260,10 +266,12 @@ const ErrorHandlingExample: React.FC = () => {
                 onClick={() =>
                   showError("This is an error message", {
                     title: "Error Occurred",
-                    enableRetry: true,
-                    onRetry: async () => {
-                      await new Promise((r) => setTimeout(r, 600));
-                      showSuccess("Retry successful!");
+                    actionLabel: "Retry",
+                    onAction: () => {
+                      void (async () => {
+                        await new Promise((resolve) => setTimeout(resolve, 600));
+                        showSuccess("Retry successful!", { title: "Recovered" });
+                      })();
                     },
                   })
                 }

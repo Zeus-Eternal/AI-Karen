@@ -214,7 +214,9 @@ class RetryMechanismService {
     const capped = Math.min(base, config.maxDelay);
 
     const strategy = config.jitter;
-    if (!strategy || strategy === false) return Math.floor(capped);
+    if (strategy === false || strategy == null) {
+      return Math.floor(capped);
+    }
 
     // Jitter strategies
     if (strategy === "full" || strategy === true) {

@@ -2,8 +2,8 @@
  * Error recovery strategies and fallback actions
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
-import { CategorizedError, ErrorCategory } from './error-categories';
-import { ErrorCategorizer } from './error-categorizer';
+import { CategorizedError, ErrorCategory } from '../errors/error-categories';
+import { ErrorCategorizer } from '../errors/error-categorizer';
 
 export interface RecoveryAction {
   name: string;

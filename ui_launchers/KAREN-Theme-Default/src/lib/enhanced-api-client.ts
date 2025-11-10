@@ -562,7 +562,7 @@ export class EnhancedApiClient {
     return (
       error.code === "NETWORK_ERROR" ||
       error.code === "TIMEOUT" ||
-      (error.status && error.status >= 500)
+      (typeof error.status === "number" && error.status >= 500)
     );
   };
   // Parse response
