@@ -6,8 +6,9 @@
  */
 import React, { ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { vi } from 'vitest';
 import { AuthContext, AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
+
+// Vitest mocking utilities (vi) are provided globally via tsconfig types.
 
 type AuthRole = Parameters<AuthContextType['hasRole']>[0];
 // Enhanced mock user data for testing with complete and realistic data

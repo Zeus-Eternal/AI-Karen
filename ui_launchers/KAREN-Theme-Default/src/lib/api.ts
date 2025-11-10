@@ -1,6 +1,24 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+type ImportMetaWithEnv = ImportMeta & {
+  env?: Record<string, string | undefined>
+}
+
+const resolveBaseUrl = (): string => {
+  const metaEnv = (import.meta as unknown as ImportMetaWithEnv | undefined)?.env?.VITE_API_URL
+  if (metaEnv && metaEnv.length > 0) {
+    return metaEnv
+  }
+
+  const processEnv = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : undefined
+  if (processEnv && processEnv.length > 0) {
+    return processEnv
+  }
+
+  return 'http://localhost:8000'
+}
+
+const BASE_URL = resolveBaseUrl()
 
 // Create axios instance with default config
 export const apiClient: AxiosInstance = axios.create({
