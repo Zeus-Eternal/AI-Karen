@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Send, Inbox, Settings, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
@@ -48,7 +49,7 @@ export default function GmailPluginPage() {
         </div>
       </div>
 
-      <Alert variant="destructive">
+      <Alert className={alertClassName("destructive")}>
         Karen can check unread messages or compose new ones on your behalf.
         <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>About Gmail Integration</AlertTitle>
@@ -148,7 +149,7 @@ export default function GmailPluginPage() {
             <Label htmlFor="email-check-frequency">Check frequency (conceptual)</Label>
             <input id="email-check-frequency" type="text" placeholder="e.g., Every 30 minutes, Hourly" disabled />
           </div>
-           <Alert variant="default" className="bg-background">
+            <Alert className={alertClassName("default", "bg-background")}>
             <Info className="h-4 w-4 " />
             <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Future Feature</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm md:text-base">

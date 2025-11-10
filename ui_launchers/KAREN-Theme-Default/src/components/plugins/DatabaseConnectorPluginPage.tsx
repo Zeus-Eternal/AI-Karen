@@ -5,6 +5,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Info, AlertTriangle, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 
 /**
  * @file DatabaseConnectorPluginPage.tsx
@@ -25,7 +26,7 @@ export default function DatabaseConnectorPluginPage() {
         </div>
       </div>
 
-      <Alert variant="destructive">
+      <Alert className={alertClassName("destructive")}>
         <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Simulated Functionality & How to Use</AlertTitle>
         <AlertDescription>

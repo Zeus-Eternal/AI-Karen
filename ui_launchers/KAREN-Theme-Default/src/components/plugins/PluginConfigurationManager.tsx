@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { alertClassName } from "./utils/alertVariants";
 import {
   Tooltip,
   TooltipContent,
@@ -382,7 +383,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         )}
 
         {error && (
-          <Alert variant="destructive" className="py-2">
+          <Alert className={alertClassName("destructive", "py-2")}>
             <AlertTriangle className="w-4 h-4" />
             <AlertDescription className="text-sm md:text-base lg:text-lg">
               {error.message}
@@ -436,13 +437,13 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           </Alert>
         )}
 
-        {validationErrors.length > 0 && (
-          <Alert variant="destructive">
-            <AlertTriangle className="w-4 h-4" />
-            <AlertDescription>
-              Please fix {validationErrors.length} configuration error
-              {validationErrors.length !== 1 ? "s" : ""} before saving.
-            </AlertDescription>
+          {validationErrors.length > 0 && (
+            <Alert className={alertClassName("destructive")}>
+              <AlertTriangle className="w-4 h-4" />
+              <AlertDescription>
+                Please fix {validationErrors.length} configuration error
+                {validationErrors.length !== 1 ? "s" : ""} before saving.
+              </AlertDescription>
           </Alert>
         )}
 

@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 import { PlugZap, MessageSquare, Info, Settings2, CalendarDays, CloudSun, Database, Facebook, Mail } from "lucide-react";
 /**
  * @file PluginOverviewPage.tsx
@@ -88,7 +89,7 @@ export default function PluginOverviewPage() {
             <li>An AI meta-learning capability for Karen to dynamically understand and decide when to use new tools.</li>
             <li>A secure way to manage and "install" or "register" these plugins.</li>
           </ul>
-          <Alert variant="default" className="bg-background">
+          <Alert className={alertClassName("default", "bg-background")}>
             <Info className="h-4 w-4 " />
             <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Developer Note</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm md:text-base">

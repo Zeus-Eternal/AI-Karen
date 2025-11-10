@@ -22,6 +22,7 @@ import {
   Globe,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 import {
   Select,
   SelectContent,
@@ -196,7 +197,7 @@ export default function DateTimePluginPage() {
       </Card>
 
       {/* Accuracy note */}
-      <Alert variant="destructive">
+      <Alert className={alertClassName("destructive")}>
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Note on Location Accuracy</AlertTitle>
         <AlertDescription>
