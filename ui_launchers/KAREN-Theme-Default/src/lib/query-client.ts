@@ -4,7 +4,12 @@
  * Server state management with caching and error handling.
  * Based on requirements: 12.2, 12.3
  */
-import { QueryClient, DefaultOptions } from '@tanstack/react-query';
+import {
+  QueryClient,
+  DefaultOptions,
+  MutationCache,
+  QueryCache,
+} from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
 // Default query options
 const defaultOptions: DefaultOptions = {
@@ -38,35 +43,47 @@ const defaultOptions: DefaultOptions = {
     retryDelay: 1000,
   },
 };
+const resolveErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  return fallback;
+};
+
 // Create query client with error handling
 export const createQueryClient = () => {
   return new QueryClient({
     defaultOptions,
-    // Global error handler
-    mutationCache: {
-      onError: (error: any, variables, context, mutation) => {
-        // Get the app store to handle global error state
+    mutationCache: new MutationCache({
+      onError: (error, variables, context, _mutation) => {
         const { setError, addNotification } = useAppStore.getState();
-        // Set global error state
-        setError('mutation', error.message || 'An error occurred');
-        // Add error notification
+        const message = resolveErrorMessage(error, 'An error occurred');
+        setError('mutation', message);
         addNotification({
           type: 'error',
           title: 'Operation Failed',
-          message: error.message || 'An unexpected error occurred',
+          message,
         });
       },
-      onSuccess: (data, variables, context, mutation) => {
-        // Clear any existing mutation errors
+      onSuccess: () => {
         const { clearError } = useAppStore.getState();
         clearError('mutation');
       },
-    },
-    queryCache: {
-      onError: (error: any, query) => {
-        // Get the app store to handle global error state
+    }),
+    queryCache: new QueryCache({
+      onError: (error, query) => {
         const { setError, addNotification } = useAppStore.getState();
-        // Only show error notifications for background refetches
+        const message = resolveErrorMessage(error, 'Failed to load data');
+
         if (query.state.fetchStatus === 'fetching' && query.state.data !== undefined) {
           addNotification({
             type: 'warning',
@@ -74,16 +91,14 @@ export const createQueryClient = () => {
             message: 'Unable to refresh data. Using cached version.',
           });
         } else {
-          // Set global error state for initial fetches
-          setError('query', error.message || 'Failed to load data');
+          setError('query', message);
         }
       },
-      onSuccess: (data, query) => {
-        // Clear any existing query errors
+      onSuccess: () => {
         const { clearError } = useAppStore.getState();
         clearError('query');
       },
-    },
+    }),
   });
 };
 // Query keys factory for consistent key management

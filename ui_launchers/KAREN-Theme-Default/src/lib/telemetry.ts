@@ -327,7 +327,6 @@ class TelemetryService {
         ],
         { type: 'application/json' }
       );
-      // @ts-expect-error TS lib doesn’t know sendBeacon returns boolean
       return navigator.sendBeacon(this.config.endpoint!, blob);
     } catch (e) {
       return false;

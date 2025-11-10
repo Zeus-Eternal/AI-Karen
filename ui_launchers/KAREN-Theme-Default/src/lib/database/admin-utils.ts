@@ -1036,7 +1036,7 @@ export class AdminDatabaseUtils {
       failed_login_attempts?: number;
       locked_until?: Date | null;
       two_factor_enabled?: boolean;
-      two_factor_secret?: string;
+      two_factor_secret?: string | null;
       is_active?: boolean;
       preferences?: Record<string, any>;
     }

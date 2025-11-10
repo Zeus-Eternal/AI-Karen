@@ -149,7 +149,10 @@ const CardEnhanced = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant, interactive, padding, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(cardVariants({ variant, interactive, padding, className }))}
+      className={cn(
+        cardVariants({ variant, interactive, padding }),
+        className
+      )}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       {...props}
@@ -162,7 +165,7 @@ const CardHeaderEnhanced = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, padding, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(cardHeaderVariants({ padding, className }))}
+      className={cn(cardHeaderVariants({ padding }), className)}
       {...props}
     />
   )
@@ -203,7 +206,7 @@ const CardContentEnhanced = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, padding, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(cardContentVariants({ padding, className }))}
+      className={cn(cardContentVariants({ padding }), className)}
       {...props}
     />
   )
@@ -214,7 +217,7 @@ const CardFooterEnhanced = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className, padding, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(cardFooterVariants({ padding, className }))}
+      className={cn(cardFooterVariants({ padding }), className)}
       {...props}
     />
   )

@@ -66,7 +66,7 @@ export interface HealthEvent {
 export class HealthMonitor {
   private endpoints: Map<string, BackendEndpoint> = new Map();
   private activeEndpoint: string | null = null;
-  private monitoringInterval: NodeJS.Timeout | null = null;
+  private monitoringInterval: ReturnType<typeof setInterval> | null = null;
   private config: MonitoringConfig;
   private eventListeners: Map<HealthEventType, ((event: HealthEvent) => void)[]> = new Map();
   private responseTimes: number[] = [];

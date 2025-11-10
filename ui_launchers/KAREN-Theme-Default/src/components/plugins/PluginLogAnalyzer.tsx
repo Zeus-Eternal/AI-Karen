@@ -55,6 +55,7 @@ import {
   Bug,
   Info,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import type { PluginInfo, PluginLogEntry } from "@/types/plugins";
 
@@ -69,7 +70,7 @@ export type Source = "api" | "webhook" | "scheduler" | "auth" | "database";
 
 export interface LogFilter {
   levels: LogLevel[];
-  sources: Source[] | [];
+  sources: Source[];
   timeRange: "1h" | "24h" | "7d" | "30d" | "custom";
   startDate?: Date;
   endDate?: Date;
@@ -90,9 +91,30 @@ export interface LogAnalytics {
 }
 
 // ---- Mock generator (replace with API in prod) --------------------------------
+const LOG_LEVELS: readonly LogLevel[] = ["debug", "info", "warn", "error"] as const;
+const LOG_SOURCES: readonly Source[] = ["api", "webhook", "scheduler", "auth", "database"] as const;
+
+const levelIconMap: Record<LogLevel, { icon: LucideIcon; className: string }> = {
+  error: { icon: XCircle, className: "text-red-600" },
+  warn: { icon: AlertTriangle, className: "text-yellow-600" },
+  info: { icon: Info, className: "text-blue-600" },
+  debug: { icon: Bug, className: "text-gray-600" },
+};
+
+const levelClassMap: Record<LogLevel, string> = {
+  error: "text-red-700 bg-red-50 border border-red-200",
+  warn: "text-yellow-700 bg-yellow-50 border border-yellow-200",
+  info: "text-blue-700 bg-blue-50 border border-blue-200",
+  debug: "text-gray-700 bg-gray-50 border border-gray-200",
+};
+
+const isLogLevel = (value: string): value is LogLevel =>
+  (LOG_LEVELS as readonly string[]).includes(value);
+
+const isLogSource = (value: string): value is Source =>
+  (LOG_SOURCES as readonly string[]).includes(value);
+
 const generateMockLogs = (count: number): PluginLogEntry[] => {
-  const levels: LogLevel[] = ["debug", "info", "warn", "error"];
-  const sources: Source[] = ["api", "webhook", "scheduler", "auth", "database"];
   const messages: Record<LogLevel, string[]> = {
     debug: [
       "Processing request with parameters",
@@ -125,8 +147,8 @@ const generateMockLogs = (count: number): PluginLogEntry[] => {
   };
 
   return Array.from({ length: count }, (_, i) => {
-    const level = levels[Math.floor(Math.random() * levels.length)];
-    const source = sources[Math.floor(Math.random() * sources.length)];
+    const level = LOG_LEVELS[Math.floor(Math.random() * LOG_LEVELS.length)];
+    const source = LOG_SOURCES[Math.floor(Math.random() * LOG_SOURCES.length)];
     const messageList = messages[level];
     const message = messageList[Math.floor(Math.random() * messageList.length)];
     const ts = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000);
@@ -179,10 +201,10 @@ export const PluginLogAnalyzer: React.FC<{
     let filtered = logs;
 
     if (filter.levels.length > 0) {
-      filtered = filtered.filter((log) => filter.levels.includes(log.level as LogLevel));
+      filtered = filtered.filter((log) => isLogLevel(log.level) && filter.levels.includes(log.level));
     }
     if (filter.sources.length > 0) {
-      filtered = filtered.filter((log) => filter.sources.includes(log.source as Source));
+      filtered = filtered.filter((log) => isLogSource(log.source) && filter.sources.includes(log.source));
     }
 
     const now = new Date();
@@ -248,14 +270,16 @@ export const PluginLogAnalyzer: React.FC<{
     };
 
     const logsByLevel = filteredLogs.reduce((acc, log) => {
-      const lvl = (log.level as LogLevel) ?? "info";
-      acc[lvl] = (acc[lvl] ?? 0) + 1;
+      if (isLogLevel(log.level)) {
+        acc[log.level] = (acc[log.level] ?? 0) + 1;
+      }
       return acc;
     }, { ...baseLevels });
 
     const logsBySource = filteredLogs.reduce((acc, log) => {
-      const src = (log.source as Source) ?? "api";
-      acc[src] = (acc[src] ?? 0) + 1;
+      if (isLogSource(log.source)) {
+        acc[log.source] = (acc[log.source] ?? 0) + 1;
+      }
       return acc;
     }, { ...baseSources });
 
@@ -325,33 +349,18 @@ export const PluginLogAnalyzer: React.FC<{
   };
 
   const getLevelIcon = (level: string) => {
-    switch (level) {
-      case "error":
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      case "warn":
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-      case "info":
-        return <Info className="w-4 h-4 text-blue-600" />;
-      case "debug":
-        return <Bug className="w-4 h-4 text-gray-600" />;
-      default:
-        return <FileText className="w-4 h-4 text-gray-400" />;
+    if (isLogLevel(level)) {
+      const { icon: Icon, className } = levelIconMap[level];
+      return <Icon className={`w-4 h-4 ${className}`} />;
     }
+    return <FileText className="w-4 h-4 text-gray-400" />;
   };
 
   const getLevelColor = (level: string) => {
-    switch (level) {
-      case "error":
-        return "text-red-700 bg-red-50 border border-red-200";
-      case "warn":
-        return "text-yellow-700 bg-yellow-50 border border-yellow-200";
-      case "info":
-        return "text-blue-700 bg-blue-50 border border-blue-200";
-      case "debug":
-        return "text-gray-700 bg-gray-50 border border-gray-200";
-      default:
-        return "text-gray-700 bg-gray-50 border border-gray-200";
+    if (isLogLevel(level)) {
+      return levelClassMap[level];
     }
+    return "text-gray-700 bg-gray-50 border border-gray-200";
   };
 
   useEffect(() => {

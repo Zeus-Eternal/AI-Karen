@@ -8,56 +8,57 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+import { AlertCircle, CheckCircle, Clock, Download, Eye, Play, RotateCcw, Square } from 'lucide-react';
 
-import { } from 'lucide-react';
-
-
-import { } from '@/types/workflows';
+import { NodePort, WorkflowDefinition, WorkflowTestResult } from '@/types/workflows';
 
 export interface WorkflowTesterProps {
   workflow: WorkflowDefinition;
-  onTest?: (workflow: WorkflowDefinition, testData: Record<string, any>) => Promise<WorkflowTestResult>;
+  onTest?: (workflow: WorkflowDefinition, testData: Record<string, unknown>) => Promise<WorkflowTestResult>;
   className?: string;
 }
 
-export interface TestInput {
+interface TestInput {
   nodeId: string;
   inputId: string;
   name: string;
-  type: string;
-  value: any;
+  type: NodePort['type'];
+  value: unknown;
   required: boolean;
 }
 
 export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTesterProps) {
-  const [testInputs, setTestInputs] = useState<Record<string, any>>({});
+  const [testInputs, setTestInputs] = useState<Record<string, unknown>>({});
   const [testResult, setTestResult] = useState<WorkflowTestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
 
   // Extract input nodes and their required inputs
-  const inputNodes = workflow.nodes.filter(node => 
-    node.type === 'input' || 
-    (node.data.inputs && node.data.inputs.some((input: any) => input.required))
+  const inputNodes = workflow.nodes.filter((node) =>
+    node.type === 'input' ||
+    (node.data.inputs && node.data.inputs.some((input) => input.required))
   );
 
-  const testInputFields: TestInput[] = inputNodes.flatMap(node => 
-    (node.data.inputs || [])
-      .filter((input: any) => input.required || node.type === 'input')
-      .map((input: any) => ({
-        nodeId: node.id,
-        inputId: input.id,
-        name: `${node.data.label} - ${input.name}`,
-        type: input.type,
-        value: testInputs[`${node.id}.${input.id}`] || '',
-        required: input.required || node.type === 'input'
-      }))
+  const testInputFields: TestInput[] = inputNodes.flatMap((node) =>
+    (node.data.inputs ?? [])
+      .filter((input) => input.required || node.type === 'input')
+      .map((input) => {
+        const key = `${node.id}.${input.id}`;
+        const existingValue = testInputs[key] ?? (input.type === 'boolean' ? false : '');
+        return {
+          nodeId: node.id,
+          inputId: input.id,
+          name: `${node.data.label} - ${input.name}`,
+          type: input.type,
+          value: existingValue,
+          required: input.required || node.type === 'input',
+        };
+      })
   );
 
-  const handleInputChange = useCallback((nodeId: string, inputId: string, value: any) => {
+  const handleInputChange = useCallback((nodeId: string, inputId: string, value: unknown) => {
     setTestInputs(prev => ({
       ...prev,
       [`${nodeId}.${inputId}`]: value
@@ -103,71 +104,69 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
   }, []);
 
   const renderInputField = (input: TestInput) => {
-    const key = `${input.nodeId}.${input.inputId}`;
-    
     switch (input.type) {
       case 'string':
         return (
-          <textarea
-            value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
+          <Textarea
+            value={typeof input.value === 'string' ? input.value : String(input.value ?? '')}
+            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
             className="min-h-[80px]"
           />
         );
-      
+
       case 'number':
         return (
-          <input
+          <Input
             type="number"
-            value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, parseFloat(e.target.value) || 0)}
+            value={typeof input.value === 'number' ? input.value : Number(input.value) || 0}
+            onChange={(event) => handleInputChange(input.nodeId, input.inputId, Number(event.target.value))}
             placeholder="0"
           />
         );
-      
+
       case 'boolean':
         return (
           <select
-            value={input.value.toString()}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value === 'true')}
+            value={(Boolean(input.value)).toString()}
+            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value === 'true')}
             className="w-full p-2 border border-input rounded-md sm:p-4 md:p-6"
           >
             <option value="false">False</option>
             <option value="true">True</option>
           </select>
         );
-      
+
       case 'object':
       case 'array':
         return (
-          <textarea
+          <Textarea
             value={typeof input.value === 'string' ? input.value : JSON.stringify(input.value, null, 2)}
-            onChange={(e) => {
+            onChange={(event) => {
               try {
-                const parsed = JSON.parse(e.target.value);
+                const parsed = JSON.parse(event.target.value);
                 handleInputChange(input.nodeId, input.inputId, parsed);
               } catch {
-                handleInputChange(input.nodeId, input.inputId, e.target.value);
+                handleInputChange(input.nodeId, input.inputId, event.target.value);
               }
             }}
             placeholder={input.type === 'array' ? '[]' : '{}'}
             className="min-h-[100px] font-mono text-sm md:text-base lg:text-lg"
           />
         );
-      
+
       default:
         return (
-          <input
-            value={input.value}
-            onChange={(e) => handleInputChange(input.nodeId, input.inputId, e.target.value)}
+          <Input
+            value={typeof input.value === 'string' ? input.value : String(input.value ?? '')}
+            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value)}
             placeholder={`Enter ${input.name.toLowerCase()}...`}
           />
         );
     }
   };
 
-  const getLogLevelColor = (level: string) => {
+  const getLogLevelColor = (level: WorkflowTestResult['logs'][number]['level']) => {
     switch (level) {
       case 'error': return 'text-red-600 bg-red-50';
       case 'warn': return 'text-yellow-600 bg-yellow-50';

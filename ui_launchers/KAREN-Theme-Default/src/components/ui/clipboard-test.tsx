@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { testClipboardWithUserInteraction } from '@/utils/text-selection-test';
 
 export interface ClipboardTestProps {

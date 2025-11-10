@@ -128,6 +128,26 @@ export interface PluginManifest {
   };
   configSchema?: PluginConfigField[];
   apiVersion?: string;
+  endpoints?: Array<{
+    path: string;
+    method: string;
+    description?: string;
+  }>;
+  hooks?: Array<{
+    event: string;
+    handler: string;
+    priority?: number;
+  }>;
+  ui?: {
+    hasSettings?: boolean;
+    hasDashboard?: boolean;
+    hasWidget?: boolean;
+    customRoutes?: Array<{
+      path: string;
+      component: string;
+      title?: string;
+    }>;
+  };
 }
 
 export interface PluginMarketplaceEntry {
@@ -187,6 +207,12 @@ export interface InstallationState {
   installationMessage: string;
   installationError: string | null;
 }
+
+const INSTALLATION_SOURCES = ["marketplace", "file", "url", "git"] as const;
+const isInstallationSource = (
+  value: string
+): value is InstallationState["source"] =>
+  (INSTALLATION_SOURCES as readonly string[]).includes(value);
 
 /* ========= Copy of your mock marketplace data ========= */
 
@@ -319,11 +345,11 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
       endpoints: [
         { path: "/slack/events", method: "POST", description: "Slack event webhook" },
         { path: "/slack/commands", method: "POST", description: "Slack slash commands" },
-      ] as any,
+      ],
       hooks: [
         { event: "message.received", handler: "handleSlackMessage", priority: 1 },
         { event: "user.mentioned", handler: "handleMention", priority: 2 },
-      ] as any,
+      ],
       ui: {
         hasSettings: true,
         hasDashboard: true,
@@ -332,7 +358,7 @@ const mockMarketplacePlugins: PluginMarketplaceEntry[] = [
           { path: "/slack/channels", component: "ChannelManager", title: "Manage Channels" },
           { path: "/slack/users", component: "UserManager", title: "Manage Users" },
         ],
-      } as any,
+      },
     },
   },
   {
@@ -659,14 +685,17 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
       <CardContent className="space-y-4">
         <RadioGroup
           value={state.source}
-          onValueChange={(value) =>
+          onValueChange={(value) => {
+            if (!isInstallationSource(value)) {
+              return;
+            }
             setState((prev) => ({
               ...prev,
-              source: value as any,
+              source: value,
               selectedPlugin: null,
               manifest: null,
-            }))
-          }
+            }));
+          }}
         >
           <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50">
             <RadioGroupItem value="marketplace" id="marketplace" />
@@ -1045,16 +1074,27 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
             />
           );
         case "boolean":
-          return <Checkbox checked={!!value} onCheckedChange={update as any} />;
+          return (
+            <Checkbox
+              checked={value === true}
+              onCheckedChange={(checked) => update(checked === true)}
+            />
+          );
         case "select":
           return (
-            <Select value={String(value)} onValueChange={update}>
+            <Select
+              value={String(value)}
+              onValueChange={(newValue) => {
+                const matched = field.options?.find((opt) => String(opt.value) === newValue);
+                update(matched ? matched.value : newValue);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select an option" />
               </SelectTrigger>
               <SelectContent>
                 {field.options?.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                  <SelectItem key={String(opt.value)} value={String(opt.value)}>
                     {opt.label}
                   </SelectItem>
                 ))}

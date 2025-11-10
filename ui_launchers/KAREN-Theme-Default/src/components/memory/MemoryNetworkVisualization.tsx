@@ -78,13 +78,15 @@ const NetworkChart: React.FC<{
   const calculateLayout = useCallback(
     (nodes: MemoryNetworkNode[], edges: MemoryNetworkEdge[]): Map<string, XY> => {
       const positions = new Map<string, XY>();
-      if (nodes.length === 0) return positions;
+      if (nodes.length === 0) {
+        return positions;
+      }
 
-        const rand = seededRandom(
-          JSON.stringify(nodes.map((n) => n.id)) +
-            "|" +
-            JSON.stringify(edges.map((e) => e.id ?? `${e.source}-${e.target}`))
-        );
+      const rand = seededRandom(
+        JSON.stringify(nodes.map((n) => n.id)) +
+          "|" +
+          JSON.stringify(edges.map((e) => e.id ?? `${e.source}-${e.target}`))
+      );
 
       // Initialize positions
       nodes.forEach((n) => {

@@ -309,6 +309,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                           
                           {action.priority === 'high' && (
                             <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
+                              High priority
                             </Badge>
                           )}
                           

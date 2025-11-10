@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import {
   Shield,
   Plus,
@@ -68,16 +69,23 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   const loadConfigs = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/fallback/configs');
-      if (!response.ok) throw new Error('Failed to load fallback configs');
-      const data = (await response.json()) as { configs?: FallbackConfig[] };
-      const configList = data.configs ?? [];
+      const response = await enhancedApiClient.get<
+        FallbackConfig[] | { configs?: FallbackConfig[] }
+      >('/api/fallback/configs', {
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      const payload = response.data;
+      const configList = Array.isArray(payload) ? payload : payload?.configs ?? [];
       setConfigs(configList);
       setSelectedConfig(prev => prev ?? (configList[0] ?? null));
     } catch (error) {
+      console.error('Failed to load fallback configurations:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load fallback configurations',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load fallback configurations',
         variant: 'destructive',
       });
     } finally {
@@ -87,32 +95,57 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
 
   const loadAnalytics = async () => {
     try {
-      const response = await fetch('/api/fallback/analytics');
-      if (!response.ok) throw new Error('Failed to load analytics');
-      const data = (await response.json()) as { analytics?: FallbackAnalytics };
-      setAnalytics(data.analytics ?? null);
-    } catch (error) {}
+      const response = await enhancedApiClient.get<
+        FallbackAnalytics | { analytics?: FallbackAnalytics }
+      >('/api/fallback/analytics', {
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      const payload = response.data;
+      if (payload && typeof payload === 'object' && 'totalFailovers' in payload) {
+        setAnalytics(payload as FallbackAnalytics);
+      } else if (payload && typeof payload === 'object' && 'analytics' in payload) {
+        const analyticsValue = (payload as { analytics?: FallbackAnalytics }).analytics ?? null;
+        setAnalytics(analyticsValue ?? null);
+      } else {
+        setAnalytics(null);
+      }
+    } catch (error) {
+      console.error('Failed to load fallback analytics:', error);
+      setAnalytics(null);
+    }
   };
 
   const loadRecentEvents = async () => {
     try {
-      const response = await fetch('/api/fallback/events?limit=20');
-      if (!response.ok) throw new Error('Failed to load events');
-      const data = (await response.json()) as { events?: FallbackEvent[] };
-      setRecentEvents(data.events ?? []);
-    } catch (error) {}
+      const response = await enhancedApiClient.get<
+        FallbackEvent[] | { events?: FallbackEvent[] }
+      >('/api/fallback/events?limit=20', {
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      const payload = response.data;
+      const events = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === 'object' && 'events' in payload
+          ? (payload as { events?: FallbackEvent[] }).events ?? []
+          : [];
+      setRecentEvents(events);
+    } catch (error) {
+      console.error('Failed to load fallback events:', error);
+      setRecentEvents([]);
+    }
   };
 
   // Save and delete config
   const saveConfig = async (config: FallbackConfig) => {
     try {
-      const response = await fetch(`/api/fallback/configs${config.id ? `/${config.id}` : ''}`, {
-        method: config.id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      if (!response.ok) throw new Error('Failed to save config');
-      const savedConfig = (await response.json()) as FallbackConfig;
+      const endpoint = config.id ? `/api/fallback/configs/${config.id}` : '/api/fallback/configs';
+      const response = config.id
+        ? await enhancedApiClient.put<FallbackConfig>(endpoint, config)
+        : await enhancedApiClient.post<FallbackConfig>(endpoint, config);
+      const savedConfig = response.data;
+      if (!savedConfig) {
+        throw new Error('Fallback configuration response was empty');
+      }
       if (config.id) {
         setConfigs(prev => prev.map(c => (c.id === config.id ? savedConfig : c)));
       } else {
@@ -125,9 +158,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         description: `Fallback configuration "${config.name}" has been saved`,
       });
     } catch (error) {
+      console.error('Failed to save fallback configuration:', error);
       toast({
         title: 'Save Error',
-        description: 'Failed to save fallback configuration',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to save fallback configuration',
         variant: 'destructive',
       });
     }
@@ -136,10 +173,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   const deleteConfig = async (configId: string) => {
     if (!confirm('Are you sure you want to delete this fallback configuration?')) return;
     try {
-      const response = await fetch(`/api/fallback/configs/${configId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete config');
+      await enhancedApiClient.delete(`/api/fallback/configs/${configId}`);
       setConfigs(prev => {
         const updated = prev.filter(c => c.id !== configId);
         if (selectedConfig?.id === configId) {
@@ -152,9 +186,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         description: 'Fallback configuration has been deleted',
       });
     } catch (error) {
+      console.error('Failed to delete fallback configuration:', error);
       toast({
         title: 'Delete Error',
-        description: 'Failed to delete configuration',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete configuration',
         variant: 'destructive',
       });
     }
@@ -164,23 +202,29 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   const testFallback = async (chainId: string) => {
     setTesting(prev => new Set([...prev, chainId]));
     try {
-      const response = await fetch('/api/fallback/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chainId }),
-      });
-      if (!response.ok) throw new Error('Failed to test fallback');
-      const result = (await response.json()) as TestResult;
-      setTestResults(prev => [...prev.filter(r => r.chainId !== chainId), result]);
+      const response = await enhancedApiClient.post<TestResult>(
+        '/api/fallback/test',
+        { chainId },
+        { timeout: 30000 }
+      );
+      const result = response.data;
+      if (result) {
+        setTestResults(prev => [...prev.filter(r => r.chainId !== chainId), result]);
+      }
       toast({
         title: 'Test Complete',
-        description: result.success ? 'Fallback test successful' : 'Fallback test failed',
-        variant: result.success ? 'default' : 'destructive',
+        description:
+          result?.success ? 'Fallback test successful' : 'Fallback test failed',
+        variant: result?.success ? 'default' : 'destructive',
       });
     } catch (error) {
+      console.error('Failed to execute fallback test:', error);
       toast({
         title: 'Test Error',
-        description: 'Failed to test fallback configuration',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to test fallback configuration',
         variant: 'destructive',
       });
     } finally {
@@ -195,12 +239,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   // Toggle config enabled state
   const toggleConfig = async (configId: string, enabled: boolean) => {
     try {
-      const response = await fetch(`/api/fallback/configs/${configId}/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
-      });
-      if (!response.ok) throw new Error('Failed to toggle config');
+      await enhancedApiClient.post(`/api/fallback/configs/${configId}/toggle`, { enabled });
       setConfigs(prev => prev.map(c => (c.id === configId ? { ...c, enabled } : c)));
       if (selectedConfig?.id === configId) {
         setSelectedConfig(prev => prev ? { ...prev, enabled } : null);
@@ -210,9 +249,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
         description: `Fallback configuration has been ${enabled ? 'enabled' : 'disabled'}`,
       });
     } catch (error) {
+      console.error('Failed to toggle fallback configuration state:', error);
       toast({
         title: 'Toggle Error',
-        description: 'Failed to toggle configuration',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to toggle configuration',
         variant: 'destructive',
       });
     }

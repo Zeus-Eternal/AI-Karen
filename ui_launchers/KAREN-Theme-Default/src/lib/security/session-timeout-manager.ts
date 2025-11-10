@@ -243,6 +243,37 @@ export class SessionTimeoutManager {
     };
   }
 
+  getSessionByToken(sessionToken: string): (AdminSession & { extensionsUsed: number }) | undefined {
+    return this.activeSessions.get(sessionToken);
+  }
+
+  async findSessionByToken(sessionToken: string): Promise<(AdminSession & { extensionsUsed: number }) | null> {
+    const inMemory = this.getSessionByToken(sessionToken);
+    if (inMemory) {
+      return inMemory;
+    }
+
+    try {
+      const adminUtils = this.adminUtils as unknown as {
+        findSessionByToken?: (token: string) => Promise<AdminSession | null>;
+      };
+
+      if (adminUtils.findSessionByToken) {
+        const session = await adminUtils.findSessionByToken(sessionToken);
+        if (session) {
+          return {
+            ...session,
+            extensionsUsed: 0,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to resolve session by token from backend:', error);
+    }
+
+    return null;
+  }
+
   /**
    * Terminate session manually
    */
