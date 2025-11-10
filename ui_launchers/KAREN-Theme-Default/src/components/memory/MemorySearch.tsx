@@ -57,6 +57,103 @@ export interface SearchSuggestion {
   count?: number;
 }
 
+const toDateOrNull = (value: unknown): Date | null => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+const toDateRange = (value: unknown): [Date, Date] | undefined => {
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const start = toDateOrNull(value[0]);
+  const end = toDateOrNull(value[1]);
+  if (!start || !end) return undefined;
+  return [start, end];
+};
+
+const isStringArray = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const items = value.filter((item): item is string => typeof item === "string");
+  return items.length > 0 ? items : undefined;
+};
+
+const isSortBy = (value: unknown): SearchFilters["sortBy"] | undefined => {
+  if (value === "relevance" || value === "date" || value === "confidence" || value === "access_count") {
+    return value;
+  }
+  return undefined;
+};
+
+const isSortOrder = (value: unknown): SearchFilters["sortOrder"] | undefined => {
+  if (value === "asc" || value === "desc") {
+    return value;
+  }
+  return undefined;
+};
+
+const normalizeMemorySearchOptions = (raw: unknown): MemorySearchOptions => {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  const source = raw as Record<string, unknown>;
+  const normalized: MemorySearchOptions = {};
+
+  const tags = isStringArray(source.tags);
+  if (tags) {
+    normalized.tags = tags;
+  }
+
+  const clusters = isStringArray(source.clusters);
+  if (clusters) {
+    normalized.clusters = clusters;
+  }
+
+  if (typeof source.topK === "number") {
+    normalized.topK = source.topK;
+  }
+
+  if (typeof source.similarityThreshold === "number") {
+    normalized.similarityThreshold = source.similarityThreshold;
+  }
+
+  const timeRange = toDateRange(source.timeRange ?? source.dateRange);
+  if (timeRange) {
+    normalized.timeRange = timeRange;
+  }
+
+  if (typeof source.includeMetadata === "boolean") {
+    normalized.includeMetadata = source.includeMetadata;
+  }
+
+  if (typeof source.contentType === "string" && source.contentType.trim().length > 0) {
+    normalized.contentType = source.contentType;
+  }
+
+  if (typeof source.minConfidence === "number") {
+    normalized.minConfidence = source.minConfidence;
+  }
+
+  const sortBy = isSortBy(source.sortBy);
+  if (sortBy) {
+    normalized.sortBy = sortBy;
+  }
+
+  const sortOrder = isSortOrder(source.sortOrder);
+  if (sortOrder) {
+    normalized.sortOrder = sortOrder;
+  }
+
+  return normalized;
+};
+
 export const MemorySearch: React.FC<MemorySearchProps> = ({
   userId,
   tenantId,
@@ -102,7 +199,11 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
   const loadSearchHistory = useCallback(async () => {
     try {
       const history = await memoryService.getSearchHistory(userId, 20);
-      setSearchHistory(history);
+      const normalizedHistory: MemorySearchHistory[] = history.map((entry) => ({
+        ...entry,
+        filters: normalizeMemorySearchOptions(entry.filters),
+      }));
+      setSearchHistory(normalizedHistory);
     } catch (error) {
       console.error("Failed to load search history:", error);
       // Gracefully fail - search history is a nice-to-have feature
@@ -112,7 +213,13 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
   const loadSavedSearches = useCallback(async () => {
     try {
       const searches = await memoryService.getSavedSearches(userId);
-      setSavedSearches(searches);
+      const normalizedSearches: SavedSearch[] = searches.map((saved) => ({
+        ...saved,
+        filters: normalizeMemorySearchOptions(saved.filters),
+        lastUsed: saved.lastUsed ?? saved.createdAt,
+        useCount: typeof saved.useCount === "number" ? saved.useCount : 0,
+      }));
+      setSavedSearches(normalizedSearches);
     } catch (error) {
       console.error("Failed to load saved searches:", error);
       // Gracefully fail - saved searches are a nice-to-have feature
@@ -156,86 +263,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       setSuggestions([]);
     }
   }, [query, generateSuggestions]);
-
-  /* -------------------------------- Search -------------------------------- */
-
-  const debounceRef = useRef<number | null>(null);
-  const DEBOUNCE_MS = 150;
-
-  const performSearch = useCallback(
-    async (
-      searchQuery: string = query,
-      searchFilters: SearchFilters = filters
-    ) => {
-      const q = searchQuery.trim();
-      if (!q) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const searchOptions: MemorySearchOptions = {
-          topK: 20,
-          similarityThreshold: 0.5,
-          tags: searchFilters.tags.length > 0 ? searchFilters.tags : undefined,
-          timeRange:
-            searchFilters.dateRange[0] && searchFilters.dateRange[1]
-              ? [searchFilters.dateRange[0]!, searchFilters.dateRange[1]!]
-              : undefined,
-          sortBy: searchFilters.sortBy,
-          sortOrder: searchFilters.sortOrder,
-        };
-
-        const result = await memoryService.searchMemories(q, {
-          userId,
-          tags: searchOptions.tags,
-          dateRange: searchOptions.timeRange,
-          minSimilarity: searchOptions.similarityThreshold,
-          maxResults: searchOptions.topK,
-        });
-
-        const enhancedResult: MemorySearchResult = {
-          memories: result.memories,
-          totalFound: result.totalFound,
-          searchTime: result.searchTime,
-          facets: generateFacets(result.memories),
-          suggestions: generateQuerySuggestions(q),
-          relatedQueries: generateRelatedQueries(q),
-        };
-
-        setSearchResult(enhancedResult);
-        onSearchComplete?.(enhancedResult);
-        addToSearchHistory(q, enhancedResult.totalFound, searchOptions);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Search failed";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-        setShowSuggestions(false);
-      }
-    },
-    [
-      query,
-      filters,
-      userId,
-      memoryService,
-      onSearchComplete,
-      generateFacets,
-      generateQuerySuggestions,
-      generateRelatedQueries,
-      addToSearchHistory,
-    ]
-  );
-
-  // Debounced search trigger (useful for "Enter" or explicit button click only)
-  const triggerSearch = useCallback(() => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      performSearch();
-      debounceRef.current = null;
-    }, DEBOUNCE_MS);
-  }, [performSearch]);
 
   /* ----------------------- Derived Data Generators ----------------------- */
 
