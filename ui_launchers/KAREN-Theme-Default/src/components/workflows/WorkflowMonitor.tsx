@@ -8,9 +8,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { } from 'lucide-react';
+import {
+  Activity,
+  AlertCircle,
+  BarChart3,
+  Bug,
+  CheckCircle,
+  Clock,
+  Download,
+  Eye,
+  Filter,
+  Pause,
+  Play,
+  RotateCcw,
+  Search,
+  Square,
+  TrendingUp,
+} from 'lucide-react';
 
-import { } from '@/types/workflows';
+import { WorkflowDefinition, WorkflowExecution } from '@/types/workflows';
 
 export interface WorkflowMonitorProps {
   executions: WorkflowExecution[];
@@ -23,7 +39,17 @@ export interface WorkflowMonitorProps {
   className?: string;
 }
 
-const statusColors = {
+type ExecutionStatus = WorkflowExecution['status'];
+type LogLevel = WorkflowExecution['logs'][number]['level'];
+type LogLevelFilter = 'all' | LogLevel;
+
+interface ExecutionStats extends Record<ExecutionStatus, number> {
+  total: number;
+  averageDuration: number;
+  successRate: number;
+}
+
+const statusColors: Record<ExecutionStatus, string> = {
   pending: 'bg-gray-100 text-gray-700 border-gray-200',
   running: 'bg-blue-100 text-blue-700 border-blue-200',
   completed: 'bg-green-100 text-green-700 border-green-200',
@@ -31,7 +57,7 @@ const statusColors = {
   cancelled: 'bg-orange-100 text-orange-700 border-orange-200',
 };
 
-const logLevelColors = {
+const logLevelColors: Record<LogLevel, string> = {
   debug: 'text-gray-600 bg-gray-50 border-gray-200',
   info: 'text-blue-600 bg-blue-50 border-blue-200',
   warn: 'text-yellow-600 bg-yellow-50 border-yellow-200',
@@ -50,9 +76,24 @@ export function WorkflowMonitor({
 }: WorkflowMonitorProps) {
   const [selectedExecution, setSelectedExecution] = useState<WorkflowExecution | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [logLevelFilter, setLogLevelFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | ExecutionStatus>('all');
+  const [logLevelFilter, setLogLevelFilter] = useState<LogLevelFilter>('all');
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (executions.length === 0) {
+      setSelectedExecution(null);
+      return;
+    }
+
+    setSelectedExecution((current) => {
+      if (!current) {
+        return executions[0];
+      }
+
+      return executions.find((execution) => execution.id === current.id) ?? executions[0];
+    });
+  }, [executions]);
 
   const filteredExecutions = useMemo(() => {
     return executions.filter(execution => {
@@ -65,8 +106,8 @@ export function WorkflowMonitor({
     });
   }, [executions, workflows, searchTerm, statusFilter]);
 
-  const executionStats = useMemo(() => {
-    const stats = {
+  const executionStats = useMemo<ExecutionStats>(() => {
+    const stats: ExecutionStats = {
       total: executions.length,
       running: 0,
       completed: 0,
@@ -76,17 +117,21 @@ export function WorkflowMonitor({
       averageDuration: 0,
       successRate: 0,
     };
+
     let totalDuration = 0;
-    let completedCount = 0;
-    executions.forEach(execution => {
-      stats[execution.status]++;
-      if (execution.duration) {
+    let durationSamples = 0;
+
+    executions.forEach((execution) => {
+      stats[execution.status] += 1;
+      if (typeof execution.duration === 'number') {
         totalDuration += execution.duration;
-        completedCount++;
+        durationSamples += 1;
       }
     });
-    stats.averageDuration = completedCount > 0 ? totalDuration / completedCount : 0;
+
+    stats.averageDuration = durationSamples > 0 ? totalDuration / durationSamples : 0;
     stats.successRate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+
     return stats;
   }, [executions]);
 
@@ -117,13 +162,14 @@ export function WorkflowMonitor({
     }
   }, [onPauseExecution, onResumeExecution, onCancelExecution, onRetryExecution]);
 
-  const formatDuration = (duration: number) => {
+  const formatDuration = (duration?: number) => {
+    if (typeof duration !== 'number') return '0ms';
     if (duration < 1000) return `${duration}ms`;
     if (duration < 60000) return `${(duration / 1000).toFixed(1)}s`;
     return `${(duration / 60000).toFixed(1)}m`;
   };
 
-  const getExecutionIcon = (status: string) => {
+  const getExecutionIcon = (status: ExecutionStatus) => {
     switch (status) {
       case 'running':
         return <Activity className="h-4 w-4 animate-pulse " />;
@@ -139,13 +185,6 @@ export function WorkflowMonitor({
         return <Clock className="h-4 w-4 " />;
     }
   };
-
-  const filteredLogs = useMemo(() => {
-    if (!selectedExecution) return [];
-    return selectedExecution.logs.filter(log => 
-      logLevelFilter === 'all' || log.level === logLevelFilter
-    );
-  }, [selectedExecution, logLevelFilter]);
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -168,7 +207,7 @@ export function WorkflowMonitor({
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | ExecutionStatus)}
             className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>
@@ -338,8 +377,8 @@ export function WorkflowMonitor({
                               {execution.status === 'failed' && (
                                 <Button
                                   size="sm"
-                                  onClick={() => {
-                                    e.stopPropagation();
+                                  onClick={(event) => {
+                                    event.stopPropagation();
                                     handleExecutionAction('retry', execution.id);
                                   }}
                                   disabled={isLoading[execution.id]}
@@ -377,11 +416,11 @@ export function WorkflowMonitor({
         {/* Execution Details Panel */}
         <div>
           {selectedExecution ? (
-            <ExecutionDetailsPanel 
+            <ExecutionDetailsPanel
               execution={selectedExecution}
-              workflow={workflows.find(w => w.id === selectedExecution.workflowId)}
+              workflow={workflows.find((workflow) => workflow.id === selectedExecution.workflowId)}
               logLevelFilter={logLevelFilter}
-              onLogLevelFilterChange={setLogLevelFilter}
+              onLogLevelFilterChange={(level) => setLogLevelFilter(level)}
               onClose={() => setSelectedExecution(null)}
             />
           ) : (
@@ -403,8 +442,8 @@ export function WorkflowMonitor({
 export interface ExecutionDetailsPanelProps {
   execution: WorkflowExecution;
   workflow?: WorkflowDefinition;
-  logLevelFilter: string;
-  onLogLevelFilterChange: (level: string) => void;
+  logLevelFilter: LogLevelFilter;
+  onLogLevelFilterChange: (level: LogLevelFilter) => void;
   onClose: () => void;
 }
 
@@ -431,7 +470,7 @@ function ExecutionDetailsPanel({
               {execution.status}
             </Badge>
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose} >
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close execution details">
             ×
           </Button>
         </div>
@@ -449,7 +488,7 @@ function ExecutionDetailsPanel({
                 <Filter className="h-4 w-4 text-muted-foreground " />
                 <select
                   value={logLevelFilter}
-                  onChange={(e) => onLogLevelFilterChange(e.target.value)}
+                  onChange={(e) => onLogLevelFilterChange(e.target.value as LogLevelFilter)}
                   className="px-2 py-1 border border-input rounded text-sm md:text-base lg:text-lg"
                 >
                   <option value="all">All Levels</option>
@@ -465,10 +504,12 @@ function ExecutionDetailsPanel({
             </div>
             <ScrollArea className="h-[400px]">
               <div className="space-y-2">
-                {filteredLogs.map((log, index) => (
-                  <div
-                    key={log.id || index}
-                    className={`p-3 rounded border text-sm ${logLevelColors[log.level]}`}
+                {filteredLogs.map((log, index) => {
+                  const logColor = logLevelColors[log.level] ?? logLevelColors.debug;
+                  return (
+                    <div
+                      key={log.id || index}
+                    className={`p-3 rounded border text-sm ${logColor}`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
@@ -493,8 +534,9 @@ function ExecutionDetailsPanel({
                         </pre>
                       </details>
                     )}
-                  </div>
-                ))}
+                    </div>
+                );
+                })}
                 {filteredLogs.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Bug className="h-6 w-6 mx-auto mb-2 opacity-50 " />

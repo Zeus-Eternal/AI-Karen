@@ -805,7 +805,7 @@ export class AutoScaler {
       const trainingData = this.scalingHistory.slice(-100);
       
       // Generate predictions for next 24 hours in 1-hour intervals
-      const predictions = [];
+      const predictions: PredictiveModel['predictions'] = [];
       const now = Date.now();
       
       for (let i = 1; i <= 24; i++) {

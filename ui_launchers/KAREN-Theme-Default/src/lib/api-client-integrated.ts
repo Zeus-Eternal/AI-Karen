@@ -230,7 +230,7 @@ export class IntegratedApiClient {
     file: File,
     fieldName: string = 'file',
     additionalFields?: Record<string, string>,
-    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body' | 'headers'>
+    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append(fieldName, file);

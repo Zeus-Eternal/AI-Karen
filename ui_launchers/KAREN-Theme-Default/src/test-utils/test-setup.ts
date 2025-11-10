@@ -21,9 +21,11 @@ import {
  * --------------------------------------------------------------------------*/
 
 export const setupTestEnvironment = () => {
+  let restoreGlobals: (() => void) | undefined;
+
   beforeAll(() => {
     // Setup global mocks that are available throughout the test suite
-    setupGlobalMocks();
+    restoreGlobals = setupGlobalMocks();
 
     // Silence console noise in test runs (still restorable)
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -33,6 +35,7 @@ export const setupTestEnvironment = () => {
 
   afterAll(() => {
     // Restore console and any spies
+    restoreGlobals?.();
     vi.restoreAllMocks();
   });
 };

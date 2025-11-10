@@ -1,23 +1,37 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
-  AccessContext,
-  EvilModeConfig,
-  EvilModeSession,
-  Permission,
-  PermissionCheckResult,
-  RBACConfig,
-  Role,
-  RoleHierarchy,
-  Restriction,
-  RBACUser,
-} from '@/types/rbac';
-import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { useAppStore } from '@/store/app-store';
-import type { User as StoreUser } from '@/store/app-store';
+  type AccessContext,
+  type EvilModeConfig,
+  type EvilModeSession,
+  type Permission,
+  type PermissionCheckResult,
+  type RBACConfig,
+  type Role,
+  type RoleHierarchy,
+  type Restriction,
+  type RBACUser,
+} from "@/types/rbac";
+
+import { enhancedApiClient } from "@/lib/enhanced-api-client";
+import { useAppStore } from "@/store/app-store";
+import type { User as StoreUser } from "@/store/app-store";
+
+/* ----------------------------------------------------------------------------
+ * Context Types
+ * ------------------------------------------------------------------------- */
 
 export interface RBACContextValue {
   // Current user and permissions
@@ -26,8 +40,14 @@ export interface RBACContextValue {
   effectivePermissions: Permission[];
 
   // Permission checking
-  hasPermission: (permission: Permission, context?: Partial<AccessContext>) => boolean;
-  checkPermission: (permission: Permission, context?: Partial<AccessContext>) => PermissionCheckResult;
+  hasPermission: (
+    permission: Permission,
+    context?: Partial<AccessContext>
+  ) => boolean;
+  checkPermission: (
+    permission: Permission,
+    context?: Partial<AccessContext>
+  ) => PermissionCheckResult;
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
 
@@ -39,7 +59,10 @@ export interface RBACContextValue {
   // Evil Mode
   isEvilModeEnabled: boolean;
   canEnableEvilMode: boolean;
-  enableEvilMode: (justification: string, additionalAuth?: string) => Promise<void>;
+  enableEvilMode: (
+    justification: string,
+    additionalAuth?: string
+  ) => Promise<void>;
   disableEvilMode: () => Promise<void>;
   evilModeSession: EvilModeSession | null;
 
@@ -47,7 +70,7 @@ export interface RBACContextValue {
   rbacConfig: RBACConfig;
   evilModeConfig: EvilModeConfig;
 
-  // Loading states
+  // Loading / error state
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
@@ -60,11 +83,29 @@ export interface RBACProviderProps {
   config?: Partial<RBACConfig>;
 }
 
+/* ----------------------------------------------------------------------------
+ * Provider
+ * ------------------------------------------------------------------------- */
+
 export function RBACProvider({ children, config }: RBACProviderProps) {
   const queryClient = useQueryClient();
-  const { user: appUser } = useAppStore();
+  const appUser = useAppStore((state) => state.user);
 
-  const currentUser = useMemo(() => normalizeRBACUser(appUser), [appUser]);
+  const currentUser = useMemo(
+    () => normalizeRBACUser(appUser),
+    [appUser]
+  );
+
+  /**
+   * RBAC base config
+   */
+  const baseConfig = useMemo<RBACConfig>(
+    () => ({
+      ...getDefaultRBACConfig(),
+      ...(config ?? {}),
+    }),
+    [config]
+  );
 
   const {
     data: fetchedRBACConfig,
@@ -72,117 +113,168 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     isError: configError,
     error: configErrorData,
   } = useQuery<RBACConfig, Error>({
-    queryKey: ['rbac', 'config'],
+    queryKey: ["rbac", "config"],
     queryFn: async () => {
-      const response = await enhancedApiClient.get<RBACConfig>('/api/rbac/config');
-      return response.data ?? getDefaultRBACConfig();
+      const response =
+        await enhancedApiClient.get<RBACConfig>("/api/rbac/config");
+      return response.data
+        ? { ...baseConfig, ...response.data }
+        : baseConfig;
     },
+    initialData: baseConfig,
     staleTime: 5 * 60 * 1000,
   });
 
-  const rbacConfig = useMemo(() => {
-    const baseConfig = fetchedRBACConfig ?? getDefaultRBACConfig();
-    return {
+  const rbacConfig = useMemo<RBACConfig>(
+    () => ({
       ...baseConfig,
-      ...(config ?? {}),
-    };
-  }, [config, fetchedRBACConfig]);
+      ...(fetchedRBACConfig ?? {}),
+    }),
+    [baseConfig, fetchedRBACConfig]
+  );
 
+  /**
+   * Evil Mode configuration
+   */
   const {
     data: fetchedEvilModeConfig,
     isLoading: evilModeConfigLoading,
     isError: evilModeConfigError,
     error: evilModeConfigErrorData,
   } = useQuery<EvilModeConfig, Error>({
-    queryKey: ['rbac', 'evil-mode-config'],
+    queryKey: ["rbac", "evil-mode-config"],
     queryFn: async () => {
-      const response = await enhancedApiClient.get<EvilModeConfig>('/api/rbac/evil-mode/config');
+      const response =
+        await enhancedApiClient.get<EvilModeConfig>(
+          "/api/rbac/evil-mode/config"
+        );
       return response.data ?? getDefaultEvilModeConfig();
     },
+    initialData: getDefaultEvilModeConfig(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const evilModeConfig = fetchedEvilModeConfig ?? getDefaultEvilModeConfig();
+  const evilModeConfig: EvilModeConfig =
+    fetchedEvilModeConfig ?? getDefaultEvilModeConfig();
 
+  /**
+   * Roles for current user
+   */
   const {
     data: userRoles = [],
     isLoading: rolesLoading,
     isError: rolesError,
     error: rolesErrorData,
   } = useQuery<Role[], Error>({
-    queryKey: ['rbac', 'user-roles', currentUser?.id],
+    queryKey: ["rbac", "user-roles", currentUser?.id],
     queryFn: async () => {
-      if (!currentUser) {
-        return [];
-      }
-
-      const response = await enhancedApiClient.get<Role[]>(`/api/rbac/users/${currentUser.id}/roles`);
+      if (!currentUser?.id) return [];
+      const response =
+        await enhancedApiClient.get<Role[]>(
+          `/api/rbac/users/${currentUser.id}/roles`
+        );
       return response.data ?? [];
     },
     enabled: Boolean(currentUser?.id),
+    initialData: [],
     staleTime: 2 * 60 * 1000,
   });
 
+  /**
+   * Role hierarchy
+   */
   const { data: roleHierarchy = [] } = useQuery<RoleHierarchy[], Error>({
-    queryKey: ['rbac', 'role-hierarchy', buildRoleHierarchyKey(userRoles)],
+    queryKey: [
+      "rbac",
+      "role-hierarchy",
+      ...buildRoleHierarchyKey(userRoles),
+    ],
     queryFn: async () => {
+      if (!userRoles.length) return [];
       const params = new URLSearchParams();
-      userRoles.forEach((role) => params.append('roleIds', role.id));
-      const queryString = params.toString();
-      const endpoint = queryString
-        ? `/api/rbac/role-hierarchy?${queryString}`
-        : '/api/rbac/role-hierarchy';
-      const response = await enhancedApiClient.get<RoleHierarchy[]>(endpoint);
+      for (const role of userRoles) {
+        params.append("roleIds", role.id);
+      }
+      const response =
+        await enhancedApiClient.get<RoleHierarchy[]>(
+          `/api/rbac/role-hierarchy?${params.toString()}`
+        );
       return response.data ?? [];
     },
     enabled: userRoles.length > 0,
+    initialData: [],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: evilModeSession = null } = useQuery<EvilModeSession | null, Error>({
-    queryKey: ['rbac', 'evil-mode-session', currentUser?.id],
+  /**
+   * Evil mode session
+   */
+  const { data: evilModeSession = null } = useQuery<
+    EvilModeSession | null,
+    Error
+  >({
+    queryKey: ["rbac", "evil-mode-session", currentUser?.id],
     queryFn: async () => {
-      if (!currentUser) {
-        return null;
-      }
-
-      const response = await enhancedApiClient.get<EvilModeSession | null>(
-        `/api/rbac/evil-mode/session/${currentUser.id}`
-      );
+      if (!currentUser?.id) return null;
+      const response =
+        await enhancedApiClient.get<EvilModeSession | null>(
+          `/api/rbac/evil-mode/session/${currentUser.id}`
+        );
       return response.data ?? null;
     },
     enabled: Boolean(currentUser?.id),
-    refetchInterval: 30000,
+    initialData: null,
+    refetchInterval: 30_000,
   });
 
-  const effectivePermissions = useMemo(() => {
-    if (!userRoles.length && !currentUser?.directPermissions?.length) {
-      return [];
-    }
+  /**
+   * Effective permissions
+   */
+  const effectivePermissions: Permission[] = useMemo(() => {
+    if (!currentUser && !userRoles.length) return [];
 
     const permissions = new Set<Permission>();
 
-    userRoles.forEach((role) => {
-      role.permissions.forEach((permission) => permissions.add(permission));
-    });
+    for (const role of userRoles) {
+      for (const p of role.permissions ?? []) {
+        permissions.add(p);
+      }
+    }
 
-    currentUser?.directPermissions?.forEach((permission) => permissions.add(permission));
+    if (currentUser?.directPermissions) {
+      for (const p of currentUser.directPermissions) {
+        permissions.add(p);
+      }
+    }
 
     if (rbacConfig.enableRoleHierarchy && roleHierarchy.length) {
-      roleHierarchy.forEach((hierarchy) => {
-        hierarchy.effectivePermissions.forEach((permission) => permissions.add(permission));
-      });
+      for (const hierarchy of roleHierarchy) {
+        for (const p of hierarchy.effectivePermissions ?? []) {
+          permissions.add(p);
+        }
+      }
     }
 
     return Array.from(permissions);
-  }, [currentUser?.directPermissions, rbacConfig.enableRoleHierarchy, roleHierarchy, userRoles]);
+  }, [
+    currentUser,
+    userRoles,
+    rbacConfig.enableRoleHierarchy,
+    roleHierarchy,
+  ]);
 
+  /**
+   * Permission check core
+   */
   const checkPermission = useCallback(
-    (permission: Permission, context?: Partial<AccessContext>): PermissionCheckResult => {
+    (
+      permission: Permission,
+      context?: Partial<AccessContext>
+    ): PermissionCheckResult => {
       if (!currentUser) {
         return {
           granted: false,
-          reason: 'User not authenticated',
+          reason: "User not authenticated",
           appliedRules: [],
           restrictions: [],
         };
@@ -200,113 +292,196 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
       const activeRestrictions: Restriction[] = [
         ...(currentUser.restrictions ?? []),
         ...userRoles.flatMap((role) => role.restrictions ?? []),
-      ].filter((restriction) => restriction.active);
+      ].filter((r) => r.active);
 
-      for (const restriction of activeRestrictions) {
-        if (restriction.type === 'time_limit' && context?.timestamp) {
-          const timeConfig = restriction.config as { startTime: string; endTime: string };
-          const currentTime = context.timestamp.getHours() * 60 + context.timestamp.getMinutes();
-          const startTime = parseTime(timeConfig.startTime);
-          const endTime = parseTime(timeConfig.endTime);
+      // Time window restriction
+      if (context?.timestamp) {
+        for (const restriction of activeRestrictions) {
+          if (restriction.type === "time_limit") {
+            const cfg = restriction
+              .config as { startTime: string; endTime: string };
+            const nowMinutes =
+              context.timestamp.getHours() * 60 +
+              context.timestamp.getMinutes();
+            const start = parseTime(cfg.startTime);
+            const end = parseTime(cfg.endTime);
 
-          if (currentTime < startTime || currentTime > endTime) {
-            return {
-              granted: false,
-              reason: `Access restricted outside allowed time window (${timeConfig.startTime}-${timeConfig.endTime})`,
-              appliedRules: [],
-              restrictions: [restriction],
-            };
-          }
-        }
-
-        if (restriction.type === 'ip_restriction' && context?.ipAddress) {
-          const ipConfig = normalizeIPRestrictionConfig(restriction.config);
-          if (ipConfig.blockedIPs.includes(context.ipAddress)) {
-            return {
-              granted: false,
-              reason: 'Access denied from this IP address',
-              appliedRules: [],
-              restrictions: [restriction],
-            };
+            if (nowMinutes < start || nowMinutes > end) {
+              return {
+                granted: false,
+                reason: `Access restricted outside allowed time window (${cfg.startTime}-${cfg.endTime})`,
+                appliedRules: [],
+                restrictions: [restriction],
+              };
+            }
           }
         }
       }
 
-      const requiresEvilMode = isEvilModePermission(permission);
-      if (requiresEvilMode && !evilModeSession) {
-        return {
-          granted: false,
-          reason: 'Evil Mode required for this operation',
-          appliedRules: [],
-          restrictions: activeRestrictions,
-          requiresElevation: true,
-          elevationReason: 'This operation requires Evil Mode activation',
-        };
+      // IP restriction
+      if (context?.ipAddress) {
+        for (const restriction of activeRestrictions) {
+          if (restriction.type === "ip_restriction") {
+            const ipCfg = normalizeIPRestrictionConfig(
+              restriction.config
+            );
+            if (
+              ipCfg.blockedIPs.includes(context.ipAddress) ||
+              (ipCfg.allowedIPs.length > 0 &&
+                !ipCfg.allowedIPs.includes(context.ipAddress))
+            ) {
+              return {
+                granted: false,
+                reason: "Access denied from this IP address",
+                appliedRules: [],
+                restrictions: [restriction],
+              };
+            }
+          }
+        }
+      }
+
+      // Evil Mode gating
+      if (isEvilModePermission(permission)) {
+        if (!evilModeConfig.enabled) {
+          return {
+            granted: false,
+            reason:
+              "Evil Mode operations are disabled by configuration",
+            appliedRules: [],
+            restrictions: activeRestrictions,
+          };
+        }
+
+        if (!evilModeSession) {
+          return {
+            granted: false,
+            reason: "Evil Mode required for this operation",
+            appliedRules: [],
+            restrictions: activeRestrictions,
+            requiresElevation: true,
+            elevationReason:
+              "This operation requires an active Evil Mode session",
+          };
+        }
       }
 
       return {
         granted: true,
-        reason: 'Permission granted',
+        reason: "Permission granted",
         appliedRules: [],
         restrictions: activeRestrictions,
       };
     },
-    [currentUser, effectivePermissions, evilModeSession, userRoles]
+    [
+      currentUser,
+      effectivePermissions,
+      userRoles,
+      evilModeSession,
+      evilModeConfig.enabled,
+    ]
   );
 
   const hasPermission = useCallback(
-    (permission: Permission, context?: Partial<AccessContext>) => checkPermission(permission, context).granted,
+    (permission: Permission, context?: Partial<AccessContext>): boolean =>
+      checkPermission(permission, context).granted,
     [checkPermission]
   );
 
   const hasAnyPermission = useCallback(
-    (permissions: Permission[]): boolean => permissions.some((permission) => hasPermission(permission)),
+    (permissions: Permission[]): boolean =>
+      permissions.some((p) => hasPermission(p)),
     [hasPermission]
   );
 
   const hasAllPermissions = useCallback(
-    (permissions: Permission[]): boolean => permissions.every((permission) => hasPermission(permission)),
+    (permissions: Permission[]): boolean =>
+      permissions.every((p) => hasPermission(p)),
     [hasPermission]
   );
 
+  /* ----------------------------------------------------------------------------
+   * Mutations: roles & evil mode
+   * ------------------------------------------------------------------------- */
+
   const assignRoleMutation = useMutation({
-    mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) =>
-      enhancedApiClient.post(`/api/rbac/users/${userId}/roles/${roleId}`),
+    mutationFn: async ({
+      userId,
+      roleId,
+    }: {
+      userId: string;
+      roleId: string;
+    }) => {
+      await enhancedApiClient.post(
+        `/api/rbac/users/${userId}/roles/${roleId}`
+      );
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rbac', 'user-roles'] });
+      queryClient.invalidateQueries({
+        queryKey: ["rbac", "user-roles"],
+      });
     },
   });
 
   const removeRoleMutation = useMutation({
-    mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) =>
-      enhancedApiClient.delete(`/api/rbac/users/${userId}/roles/${roleId}`),
+    mutationFn: async ({
+      userId,
+      roleId,
+    }: {
+      userId: string;
+      roleId: string;
+    }) => {
+      await enhancedApiClient.delete(
+        `/api/rbac/users/${userId}/roles/${roleId}`
+      );
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rbac', 'user-roles'] });
+      queryClient.invalidateQueries({
+        queryKey: ["rbac", "user-roles"],
+      });
     },
   });
 
   const enableEvilModeMutation = useMutation({
-    mutationFn: ({ justification, additionalAuth }: { justification: string; additionalAuth?: string }) =>
-      enhancedApiClient.post('/api/rbac/evil-mode/enable', {
-        justification,
-        additionalAuth,
-      }),
+    mutationFn: async (payload: {
+      justification: string;
+      additionalAuth?: string;
+    }) => {
+      await enhancedApiClient.post(
+        "/api/rbac/evil-mode/enable",
+        payload
+      );
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rbac', 'evil-mode-session'] });
+      queryClient.invalidateQueries({
+        queryKey: ["rbac", "evil-mode-session"],
+      });
     },
   });
 
   const disableEvilModeMutation = useMutation({
-    mutationFn: () => enhancedApiClient.post('/api/rbac/evil-mode/disable'),
+    mutationFn: async () => {
+      await enhancedApiClient.post(
+        "/api/rbac/evil-mode/disable"
+      );
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rbac', 'evil-mode-session'] });
+      queryClient.invalidateQueries({
+        queryKey: ["rbac", "evil-mode-session"],
+      });
     },
   });
 
-  const getUserRoles = useCallback(async (userId: string): Promise<Role[]> => {
-    const response = await enhancedApiClient.get<Role[]>(`/api/rbac/users/${userId}/roles`);
-    return response.data ?? [];
-  }, []);
+  const getUserRoles = useCallback(
+    async (userId: string): Promise<Role[]> => {
+      const response =
+        await enhancedApiClient.get<Role[]>(
+          `/api/rbac/users/${userId}/roles`
+        );
+      return response.data ?? [];
+    },
+    []
+  );
 
   const assignRole = useCallback(
     async (userId: string, roleId: string): Promise<void> => {
@@ -323,22 +498,49 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
   );
 
   const enableEvilMode = useCallback(
-    async (justification: string, additionalAuth?: string): Promise<void> => {
-      await enableEvilModeMutation.mutateAsync({ justification, additionalAuth });
+    async (
+      justification: string,
+      additionalAuth?: string
+    ): Promise<void> => {
+      await enableEvilModeMutation.mutateAsync({
+        justification,
+        additionalAuth,
+      });
     },
     [enableEvilModeMutation]
   );
 
-  const disableEvilMode = useCallback(async (): Promise<void> => {
-    await disableEvilModeMutation.mutateAsync();
-  }, [disableEvilModeMutation]);
+  const disableEvilMode = useCallback(
+    async (): Promise<void> => {
+      await disableEvilModeMutation.mutateAsync();
+    },
+    [disableEvilModeMutation]
+  );
+
+  /* ----------------------------------------------------------------------------
+   * Derived flags
+   * ------------------------------------------------------------------------- */
 
   const isEvilModeEnabled = Boolean(evilModeSession);
-  const canEnableEvilMode = hasPermission('security:evil_mode');
+  const canEnableEvilMode = hasPermission("security:evil_mode");
 
-  const isLoading = configLoading || rolesLoading || evilModeConfigLoading;
-  const isError = configError || rolesError || evilModeConfigError;
-  const error = rolesErrorData ?? configErrorData ?? evilModeConfigErrorData ?? null;
+  const isLoading =
+    configLoading ||
+    evilModeConfigLoading ||
+    rolesLoading ||
+    enableEvilModeMutation.isPending ||
+    disableEvilModeMutation.isPending ||
+    assignRoleMutation.isPending ||
+    removeRoleMutation.isPending;
+
+  const isError =
+    configError || evilModeConfigError || rolesError || false;
+
+  const error: Error | null =
+    rolesErrorData ??
+    configErrorData ??
+    evilModeConfigErrorData ??
+    null;
 
   const contextValue: RBACContextValue = {
     currentUser,
@@ -363,24 +565,36 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
     error,
   };
 
-  return <RBACContext.Provider value={contextValue}>{children}</RBACContext.Provider>;
+  return (
+    <RBACContext.Provider value={contextValue}>
+      {children}
+    </RBACContext.Provider>
+  );
 }
 
-export function useRBAC() {
+/* ----------------------------------------------------------------------------
+ * Hook
+ * ------------------------------------------------------------------------- */
+
+export function useRBAC(): RBACContextValue {
   const context = useContext(RBACContext);
   if (!context) {
-    throw new Error('useRBAC must be used within an RBACProvider');
+    throw new Error("useRBAC must be used within an RBACProvider");
   }
   return context;
 }
 
+/* ----------------------------------------------------------------------------
+ * Defaults & Helpers
+ * ------------------------------------------------------------------------- */
+
 function getDefaultRBACConfig(): RBACConfig {
   return {
     enableRoleHierarchy: true,
-    conflictResolution: 'highest_priority',
+    conflictResolution: "highest_priority",
     sessionTimeout: 30 * 60 * 1000,
     requireReauthentication: false,
-    auditLevel: 'detailed',
+    auditLevel: "detailed",
     cachePermissions: true,
     cacheTTL: 5 * 60 * 1000,
   };
@@ -389,42 +603,42 @@ function getDefaultRBACConfig(): RBACConfig {
 function getDefaultEvilModeConfig(): EvilModeConfig {
   return {
     enabled: true,
-    requiredRole: 'security:evil_mode',
+    requiredRole: "security:evil_mode",
     confirmationRequired: true,
     additionalAuthRequired: true,
-    auditLevel: 'comprehensive',
+    auditLevel: "comprehensive",
     restrictions: [],
     warningMessage:
-      'You are about to enable Evil Mode. This grants elevated privileges that can potentially harm the system. Proceed with extreme caution.',
+      "You are about to enable Evil Mode. This grants elevated privileges that can potentially harm the system. Proceed with extreme caution.",
     timeLimit: 60,
   };
 }
 
 function parseTime(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
 function isEvilModePermission(permission: Permission): boolean {
-  const evilModePermissions: Permission[] = ['security:evil_mode', 'system:admin', 'users:admin'];
+  const evilModePermissions: Permission[] = [
+    "security:evil_mode",
+    "system:admin",
+    "users:admin",
+  ];
   return evilModePermissions.includes(permission);
 }
 
 function buildRoleHierarchyKey(userRoles: Role[]): string[] {
-  if (!userRoles.length) {
-    return [];
-  }
-
-  return [...new Set(userRoles.map((role) => role.id))].sort();
+  if (!userRoles.length) return [];
+  return [...new Set(userRoles.map((r) => r.id))].sort();
 }
 
-function normalizeRBACUser(user: StoreUser | RBACUser | null | undefined): RBACUser | null {
-  if (!user) {
-    return null;
-  }
+function normalizeRBACUser(
+  user: StoreUser | RBACUser | null | undefined
+): RBACUser | null {
+  if (!user) return null;
 
   const candidate = user as RBACUser & StoreUser;
-
   const metadata = candidate.metadata ?? {
     createdAt: new Date(),
     isActive: true,
@@ -433,37 +647,53 @@ function normalizeRBACUser(user: StoreUser | RBACUser | null | undefined): RBACU
 
   return {
     id: candidate.id,
-    username: candidate.username ?? candidate.name ?? candidate.email ?? candidate.id,
+    username:
+      candidate.username ??
+      candidate.name ??
+      candidate.email ??
+      candidate.id,
     email: candidate.email,
-    roles: Array.isArray(candidate.roles) ? candidate.roles : [],
+    roles: Array.isArray(candidate.roles)
+      ? candidate.roles
+      : [],
     directPermissions: candidate.directPermissions ?? [],
     restrictions: candidate.restrictions ?? [],
     metadata: {
-      createdAt: metadata.createdAt instanceof Date ? metadata.createdAt : new Date(metadata.createdAt ?? Date.now()),
+      createdAt:
+        metadata.createdAt instanceof Date
+          ? metadata.createdAt
+          : new Date(
+              (metadata as any).createdAt ?? Date.now()
+            ),
       lastLogin:
         metadata.lastLogin instanceof Date
           ? metadata.lastLogin
           : metadata.lastLogin
-          ? new Date(metadata.lastLogin)
+          ? new Date(metadata.lastLogin as any)
           : undefined,
-      isActive: metadata.isActive ?? true,
-      requiresPasswordChange: metadata.requiresPasswordChange ?? false,
+      isActive:
+        typeof metadata.isActive === "boolean"
+          ? metadata.isActive
+          : true,
+      requiresPasswordChange:
+        metadata.requiresPasswordChange ?? false,
     },
   };
 }
 
 function normalizeIPRestrictionConfig(
-  config: Record<string, string | number | boolean>
+  config: Record<string, unknown>
 ): { allowedIPs: string[]; blockedIPs: string[] } {
-  const allowed = Array.isArray((config as Record<string, unknown>).allowedIPs)
-    ? ((config as Record<string, unknown>).allowedIPs as unknown[]).filter((value): value is string => typeof value === 'string')
-    : [];
-  const blocked = Array.isArray((config as Record<string, unknown>).blockedIPs)
-    ? ((config as Record<string, unknown>).blockedIPs as unknown[]).filter((value): value is string => typeof value === 'string')
+  const rawAllowed = (config as any).allowedIPs;
+  const rawBlocked = (config as any).blockedIPs;
+
+  const allowedIPs = Array.isArray(rawAllowed)
+    ? rawAllowed.filter((v): v is string => typeof v === "string")
     : [];
 
-  return {
-    allowedIPs: allowed,
-    blockedIPs: blocked,
-  };
+  const blockedIPs = Array.isArray(rawBlocked)
+    ? rawBlocked.filter((v): v is string => typeof v === "string")
+    : [];
+
+  return { allowedIPs, blockedIPs };
 }

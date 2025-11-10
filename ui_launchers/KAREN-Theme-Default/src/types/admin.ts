@@ -21,7 +21,7 @@ export interface AdminUser extends BaseUser {
   // Admin-specific fields
   failed_login_attempts: number;
   locked_until?: Date;
-  two_factor_secret?: string;
+  two_factor_secret?: string | null;
   created_by?: string; // ID of admin who created this user
 }
 
@@ -376,6 +376,7 @@ export type AuditLogEntry = {
   details?: Record<string, any>;
   ip_address?: string;
   user_agent?: string;
+  created_at?: Date;
 };
 
 // Form validation interfaces

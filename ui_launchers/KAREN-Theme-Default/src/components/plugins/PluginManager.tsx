@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import { ErrorBoundary, type ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,18 @@ import { PluginMarketplace } from "./PluginMarketplace";
  * Main interface for managing plugins with status, version, and metrics display.
  * Based on requirements: 5.1, 5.4
  */
+
+const PluginManagerErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetError }) => (
+  <div className="p-6 space-y-3 text-center">
+    <h3 className="text-lg font-semibold">Plugin manager unavailable</h3>
+    <p className="text-sm text-muted-foreground">
+      {error.message || "An unexpected error occurred while loading plugins."}
+    </p>
+    <Button variant="outline" onClick={resetError}>
+      Retry
+    </Button>
+  </div>
+);
 
 const statusConfig = {
   active: {
@@ -383,7 +395,7 @@ export const PluginManager: React.FC = () => {
     return (
       <PluginMarketplace
         onClose={() => setShowMarketplace(false)}
-        onInstall={() => {
+        onInstall={(_plugin) => {
           setShowMarketplace(false);
           setShowInstallationWizard(true);
         }}
@@ -405,7 +417,7 @@ export const PluginManager: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in PluginManager</div>}>
+    <ErrorBoundary fallback={PluginManagerErrorFallback}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

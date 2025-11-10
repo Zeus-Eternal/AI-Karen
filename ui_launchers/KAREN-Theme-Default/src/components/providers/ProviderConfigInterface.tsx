@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { 
   Settings, Lock, Eye, EyeOff, Activity, CheckCircle, 
   AlertTriangle, XCircle, Plus, Trash2, RefreshCw, 
@@ -411,36 +412,54 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   const [providerHealth, setProviderHealth] = useState<Record<string, ProviderHealth>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [healthPolling, setHealthPolling] = useState<NodeJS.Timeout | null>(null);
+  type ProviderConfigResponse = Omit<ProviderConfig, 'createdAt' | 'updatedAt'> & {
+    createdAt: string | Date;
+    updatedAt: string | Date;
+  };
+
+  const normalizeProvider = (provider: ProviderConfigResponse): ProviderConfig => ({
+    ...provider,
+    createdAt: provider.createdAt instanceof Date
+      ? provider.createdAt
+      : new Date(provider.createdAt),
+    updatedAt: provider.updatedAt instanceof Date
+      ? provider.updatedAt
+      : new Date(provider.updatedAt),
+  });
 
   // Enhanced data loading with retry logic
   const loadProviders = useCallback(async (retryCount = 0) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/providers', {
+      const response = await enhancedApiClient.get<
+        ProviderConfigResponse[] | { providers?: ProviderConfigResponse[] }
+      >('/api/providers', {
         headers: {
           'Cache-Control': 'no-cache',
           'X-Request-ID': `provider-load-${Date.now()}`
         }
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setProviders(data.providers || []);
-      
+
+      const payload = response.data;
+      const providerList = Array.isArray(payload)
+        ? payload
+        : payload?.providers ?? [];
+      const normalizedProviders = providerList.map(normalizeProvider);
+      setProviders(normalizedProviders);
+
       // Validate provider configurations
-      data.providers?.forEach((provider: ProviderConfig) => {
-        const validationErrors = validateProviderConfig(provider);
-        if (validationErrors.length > 0) {
-          console.warn(`Provider ${provider.id} has configuration issues:`, validationErrors);
+      normalizedProviders.forEach((provider) => {
+        const providerValidationErrors = validateProviderConfig(provider);
+        if (providerValidationErrors.length > 0) {
+          console.warn(
+            `Provider ${provider.id} has configuration issues:`,
+            providerValidationErrors
+          );
         }
       });
     } catch (error) {
       console.error('Failed to load providers:', error);
-      
+
       if (retryCount < 3) {
         setTimeout(() => loadProviders(retryCount + 1), 1000 * Math.pow(2, retryCount));
         return;
@@ -458,10 +477,14 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
 
   const loadProviderHealth = useCallback(async () => {
     try {
-      const response = await fetch('/api/providers/health');
-      if (!response.ok) throw new Error('Failed to load provider health');
-      const data = await response.json();
-      setProviderHealth(data.health || {});
+      const response = await enhancedApiClient.get<
+        Record<string, ProviderHealth> | { health?: Record<string, ProviderHealth> }
+      >('/api/providers/health');
+      const payload = response.data;
+      const health = payload && typeof payload === 'object' && 'health' in payload
+        ? (payload as { health?: Record<string, ProviderHealth> }).health ?? {}
+        : (payload as Record<string, ProviderHealth>) ?? {};
+      setProviderHealth(health);
     } catch (error) {
       console.error('Failed to load provider health:', error);
     }
@@ -679,27 +702,34 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         }
       };
 
-      const response = await fetch('/api/providers/test', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Test-ID': testPayload.metadata.testId
-        },
-        body: JSON.stringify(testPayload),
-        signal: AbortSignal.timeout(30000) // 30 second timeout
-      });
+      const response = await enhancedApiClient.post<{
+        success?: boolean;
+        message?: string;
+        details?: unknown;
+      }>(
+        '/api/providers/test',
+        testPayload,
+        {
+          headers: {
+            'X-Test-ID': testPayload.metadata.testId
+          },
+          timeout: 30000
+        }
+      );
 
-      const result = await response.json();
-      
+      const result = response.data ?? {};
+      const success = result.success ?? response.status !== 'error';
+      const message = result.message || (success ? 'Connection successful' : 'Connection failed');
+
       setTestResult({
-        success: response.ok,
-        message: result.message || (response.ok ? 'Connection successful' : 'Connection failed'),
+        success,
+        message,
         details: result.details
       });
 
-      onProviderTested?.(selectedProvider?.id || 'new', response.ok);
+      onProviderTested?.(selectedProvider?.id || 'new', success);
 
-      if (response.ok) {
+      if (success) {
         toast({
           title: 'Test Successful',
           description: 'Provider connection is working correctly',
@@ -785,22 +815,23 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         updatedAt: new Date()
       };
 
-      const response = await fetch(`/api/providers${selectedProvider ? `/${selectedProvider.id}` : ''}`, {
-        method: selectedProvider ? 'PUT' : 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Provider-Version': '2.0.0'
-        },
-        body: JSON.stringify(providerData)
-      });
+      const endpoint = selectedProvider ? `/api/providers/${selectedProvider.id}` : '/api/providers';
+      const response = selectedProvider
+        ? await enhancedApiClient.put<ProviderConfigResponse>(endpoint, providerData, {
+            headers: { 'X-Provider-Version': '2.0.0' }
+          })
+        : await enhancedApiClient.post<ProviderConfigResponse>(endpoint, providerData, {
+            headers: { 'X-Provider-Version': '2.0.0' }
+          });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      const savedProviderResponse = response.data;
+
+      if (!savedProviderResponse) {
+        throw new Error('Provider response did not include configuration data');
       }
 
-      const savedProvider = await response.json();
-      
+      const savedProvider = normalizeProvider(savedProviderResponse);
+
       // Update local state
       if (selectedProvider) {
         setProviders(prev => prev.map(p => p.id === selectedProvider.id ? savedProvider : p));
@@ -933,16 +964,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     loadProviders();
     loadProviderHealth();
 
-    // Start health polling for active providers
     const interval = setInterval(loadProviderHealth, 30000); // Every 30 seconds
-    setHealthPolling(interval);
-
-    return () => {
-      if (healthPolling) {
-        clearInterval(healthPolling);
-      }
-    };
-  }, []);
+    return () => clearInterval(interval);
+  }, [loadProviderHealth, loadProviders]);
 
   // Filter providers by allowed categories
   const filteredProviderTypes = PROVIDER_TYPES.filter(type => 

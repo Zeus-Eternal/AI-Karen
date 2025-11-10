@@ -12,6 +12,8 @@
  */
 
 import React from "react";
+import { featureFlagManager as _ffm } from "./feature-flags";
+import { extensionCache as _extCache } from "./cache-manager";
 
 /* ----------------------------------------
  * Re-exports: Feature Flags
@@ -109,8 +111,7 @@ export function useProgressiveData<T>({
 
   const canRun = React.useMemo(() => {
     if (!flagName) return true;
-    const { featureFlagManager } = require("./feature-flags");
-    return featureFlagManager.isEnabled(flagName);
+    return _ffm.isEnabled(flagName);
   }, [flagName]);
 
   React.useEffect(() => {
@@ -189,9 +190,6 @@ export function useProgressiveData<T>({
 /* ----------------------------------------
  * Integration & Orchestration
  * -------------------------------------- */
-
-import { featureFlagManager as _ffm } from "./feature-flags";
-import { extensionCache as _extCache } from "./cache-manager";
 
 /**
  * Initialize the graceful degradation system.

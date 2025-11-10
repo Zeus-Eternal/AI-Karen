@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  useExtensionStatuses, 
-  useExtensionHealth, 
-  useExtensionPerformance, 
-  useExtensionTaskMonitoring, 
-  useExtensionTasks, 
-  useExtensionWidgets 
+import { Button } from '@/components/ui/button';
+import {
+  useExtensionStatuses,
+  useExtensionHealth,
+  useExtensionPerformance,
+  useExtensionTaskMonitoring,
+  useExtensionTasks
 } from './hooks';
 import { formatResourceUsage, formatUptime, getStatusColorClass } from './extensionUtils';
 import type { ExtensionStatus } from './extension-integration';
@@ -94,7 +94,16 @@ export function ExtensionStatusDashboard() {
 /**
  * Overview Card Component
  */
-const OverviewCard = ({ icon, title, value, subText }) => {
+type OverviewCardIcon = 'total' | 'healthy' | 'active-tasks' | 'avg-cpu';
+
+interface OverviewCardProps {
+  icon: OverviewCardIcon;
+  title: string;
+  value: string | number;
+  subText?: string;
+}
+
+const OverviewCard: React.FC<OverviewCardProps> = ({ icon, title, value, subText }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center">
@@ -118,7 +127,7 @@ const OverviewCard = ({ icon, title, value, subText }) => {
 /**
  * Returns the appropriate icon path based on type
  */
-const getIconPath = (icon) => {
+const getIconPath = (icon: OverviewCardIcon): string => {
   switch (icon) {
     case 'total':
       return "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10";
@@ -138,7 +147,7 @@ const getIconPath = (icon) => {
  */
 export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
   const [expanded, setExpanded] = useState(false);
-  const { executeTask, executing, history } = useExtensionTasks(status.id);
+  const { executeTask, executing } = useExtensionTasks(status.id);
 
   const handleExecuteTask = useCallback(async (taskName: string) => {
     try {
@@ -194,7 +203,11 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
 /**
  * Component to display resource usage
  */
-const ResourceUsage = ({ resourceUsage }) => {
+interface ResourceUsageProps {
+  resourceUsage: ReturnType<typeof formatResourceUsage>;
+}
+
+const ResourceUsage: React.FC<ResourceUsageProps> = ({ resourceUsage }) => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatCard label="CPU" value={resourceUsage.cpu} />
@@ -208,7 +221,12 @@ const ResourceUsage = ({ resourceUsage }) => {
 /**
  * Stat card component
  */
-const StatCard = ({ label, value }) => (
+interface StatCardProps {
+  label: string;
+  value: string | number;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value }) => (
   <div className="bg-gray-50 rounded-lg p-3">
     <p className="text-xs font-medium text-gray-500">{label}</p>
     <p className="text-sm font-semibold text-gray-900">{value}</p>
@@ -218,7 +236,13 @@ const StatCard = ({ label, value }) => (
 /**
  * Component to display background tasks
  */
-const BackgroundTasks = ({ status, handleExecuteTask, executing }) => {
+interface BackgroundTasksProps {
+  status: ExtensionStatus;
+  handleExecuteTask: (taskName: string) => Promise<void>;
+  executing: string[];
+}
+
+const BackgroundTasks: React.FC<BackgroundTasksProps> = ({ status, handleExecuteTask, executing }) => {
   return (
     <div className="bg-gray-50 rounded-lg p-4">
       <h5 className="text-sm font-medium text-gray-900 mb-2">Background Tasks</h5>
@@ -248,7 +272,11 @@ const BackgroundTasks = ({ status, handleExecuteTask, executing }) => {
 /**
  * Component to display health status
  */
-const HealthStatus = ({ status }) => (
+interface HealthStatusProps {
+  status: ExtensionStatus;
+}
+
+const HealthStatus: React.FC<HealthStatusProps> = ({ status }) => (
   <div className="bg-gray-50 rounded-lg p-4">
     <h5 className="text-sm font-medium text-gray-900 mb-2">Health Status</h5>
     <div className="flex items-center justify-between">

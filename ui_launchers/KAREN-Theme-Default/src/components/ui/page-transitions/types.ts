@@ -1,5 +1,5 @@
-import React from 'react';
-import { Variants } from 'framer-motion';
+import type { ReactNode } from 'react';
+import type { HTMLMotionProps } from 'framer-motion';
 
 export type TransitionVariant = 
   | 'fade'
@@ -19,7 +19,7 @@ export interface TransitionConfig {
 }
 
 export interface PageTransitionProps {
-  children: React.ReactNode;
+  children: ReactNode;
   variant?: TransitionVariant;
   duration?: number;
   className?: string;
@@ -27,7 +27,7 @@ export interface PageTransitionProps {
 }
 
 export interface RouteTransitionProps {
-  children: React.ReactNode;
+  children: ReactNode;
   routeKey: string;
   variant?: TransitionVariant;
   duration?: number;
@@ -35,14 +35,18 @@ export interface RouteTransitionProps {
 }
 
 export interface TransitionProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultConfig?: Partial<TransitionConfig>;
 }
 
-export interface TransitionVariants {
-  [key: string]: {
-    initial: Variants['initial'];
-    animate: Variants['animate'];
-    exit: Variants['exit'];
-  };
-}
+type MotionVariants = NonNullable<HTMLMotionProps<'div'>['variants']>;
+type VariantState = NonNullable<MotionVariants[keyof MotionVariants]>;
+
+export type TransitionVariants = Record<
+  string,
+  {
+    initial: VariantState;
+    animate: VariantState;
+    exit: VariantState;
+  }
+>;

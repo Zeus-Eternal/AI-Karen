@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
+import { ErrorBoundary, type ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,18 @@ export interface PluginConfigurationManagerProps {
   onImport?: (config: PluginConfig) => void;
   readOnly?: boolean;
 }
+
+const ConfigurationErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetError }) => (
+  <div className="p-6 space-y-3 text-center">
+    <h3 className="text-lg font-semibold">Configuration panel unavailable</h3>
+    <p className="text-sm text-muted-foreground">
+      {error.message || "An unexpected error occurred while rendering the configuration manager."}
+    </p>
+    <Button variant="outline" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
 
 export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProps> = ({
   plugin,
@@ -323,17 +335,20 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
         {field.type === "multiselect" && field.options && (
           <div className="space-y-2">
             {field.options.map((opt) => {
-              const arr = Array.isArray(value) ? value : [];
-              const checked = arr.includes(opt.value);
+              const selectedValues: unknown[] = Array.isArray(value) ? [...value] : [];
+              const checked = selectedValues.includes(opt.value);
               return (
                 <div key={opt.value.toString()} className="flex items-center space-x-2">
                   <Checkbox
                     id={`${fieldId}-${opt.value}`}
                     checked={checked}
-                    onCheckedChange={(ck) => {
-                      const current = Array.isArray(value) ? [...value] : [];
-                      if (ck) handleFieldChange(field.key, Array.from(new Set([...current, opt.value])));
-                      else handleFieldChange(field.key, current.filter((v: any) => v !== opt.value));
+                    onCheckedChange={(checkedState) => {
+                      const current: unknown[] = Array.isArray(value) ? [...value] : [];
+                      const isChecked = checkedState === true;
+                      const nextValues = isChecked
+                        ? Array.from(new Set([...current, opt.value]))
+                        : current.filter((v) => v !== opt.value);
+                      handleFieldChange(field.key, nextValues);
                     }}
                     disabled={readOnly}
                   />
@@ -381,7 +396,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
   const hasChanges = JSON.stringify(config) !== JSON.stringify(originalConfig);
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong in PluginConfigurationManager.</div>}>
+    <ErrorBoundary fallback={ConfigurationErrorFallback}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

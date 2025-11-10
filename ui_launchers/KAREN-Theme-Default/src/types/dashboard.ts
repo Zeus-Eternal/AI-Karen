@@ -5,6 +5,8 @@
  * layouts, filters, and data structures for visualizations.
  */
 
+import type { ComponentType } from 'react';
+
 /**
  * Supported widget types for dashboard components
  */
@@ -181,7 +183,7 @@ export interface JsonSchema {
  */
 export interface WidgetRegistry {
   [key: string]: {
-    component: React.ComponentType<WidgetProps>;
+    component: ComponentType<WidgetProps>;
     defaultConfig: Partial<WidgetConfig>;
     configSchema?: JsonSchema;
     name: string;

@@ -1,35 +1,51 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 
-import { ButtonProps } from '@/components/ui/button';
-import { InputProps } from '@/components/ui/input';
-import { Variants } from 'framer-motion';
+import type { ButtonProps } from '@/components/ui/button';
+import type { InputProps } from '@/components/ui/input';
+import type { HTMLMotionProps, Variants } from 'framer-motion';
+
+export type AnimationSpeed = 'fast' | 'normal' | 'slow';
+
+export type MicroInteractionType =
+  | 'button'
+  | 'input'
+  | 'card'
+  | 'loading-spinner'
+  | 'progress';
+
+export type ButtonAnimationVariant = 'default' | 'bounce' | 'scale' | 'slide';
+export type InputAnimationVariant = 'default' | 'glow' | 'shake';
+export type CardHoverAnimation = 'lift' | 'glow' | 'scale';
+export type CardHoverEffect = CardHoverAnimation | 'none';
+export type CardClickEffect = 'press' | 'ripple' | 'none';
 
 export interface MicroInteractionConfig {
   reducedMotion: boolean;
   enableHaptics: boolean;
-  animationDuration: 'fast' | 'normal' | 'slow';
+  animationDuration: AnimationSpeed;
 }
 
 export interface InteractiveButtonProps extends ButtonProps {
   loading?: boolean;
   hapticFeedback?: boolean;
-  animationVariant?: 'default' | 'bounce' | 'scale' | 'slide';
+  animationVariant?: ButtonAnimationVariant;
   loadingText?: string;
 }
 
 export interface InteractiveInputProps extends InputProps {
   error?: boolean;
   success?: boolean;
-  animationVariant?: 'default' | 'glow' | 'shake';
+  animationVariant?: InputAnimationVariant;
   hapticFeedback?: boolean;
 }
 
-export interface InteractiveCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface InteractiveCardProps
+  extends Omit<HTMLMotionProps<'div'>, 'children'> {
   interactive?: boolean;
   variant?: 'default' | 'elevated' | 'outlined' | 'glass';
-  hoverEffect?: 'lift' | 'glow' | 'scale' | 'none';
-  clickEffect?: 'press' | 'ripple' | 'none';
-  children: React.ReactNode;
+  hoverEffect?: CardHoverEffect;
+  clickEffect?: CardClickEffect;
+  children: ReactNode;
 }
 
 export interface LoadingSpinnerProps {
@@ -49,20 +65,7 @@ export interface ProgressAnimationProps {
 }
 
 export interface AnimationVariants {
-  button: {
-    default: Variants;
-    bounce: Variants;
-    scale: Variants;
-    slide: Variants;
-  };
-  input: {
-    default: Variants;
-    glow: Variants;
-    shake: Variants;
-  };
-  card: {
-    lift: Variants;
-    glow: Variants;
-    scale: Variants;
-  };
+  button: Record<ButtonAnimationVariant, Variants>;
+  input: Record<InputAnimationVariant, Variants>;
+  card: Record<CardHoverAnimation, Variants>;
 }

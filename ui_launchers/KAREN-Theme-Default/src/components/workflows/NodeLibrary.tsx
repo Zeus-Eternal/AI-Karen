@@ -1,62 +1,199 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search } from 'lucide-react';
+import { Search, Box, Cpu, Database, GitBranch, Output, Puzzle, Rocket } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+import { NodePort, NodeTemplate } from '@/types/workflows';
 
 export interface NodeLibraryProps {
   readOnly?: boolean;
 }
 
-export interface NodeTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  inputs: Array<any>;
-  outputs: Array<any>;
-}
-
-const nodeTemplates: NodeTemplate[] = [
-  // Example Node Templates
-  { id: '1', name: 'Input Node', description: 'Handles input data', category: 'input', inputs: [], outputs: [] },
-  { id: '2', name: 'AI Model', description: 'AI processing node', category: 'ai', inputs: [], outputs: [] },
-  { id: '3', name: 'Output Node', description: 'Handles output data', category: 'output', inputs: [], outputs: [] },
-  { id: '4', name: 'Control Node', description: 'For control logic', category: 'control', inputs: [], outputs: [] },
-  // Add more node templates as necessary
+const defaultNodeTemplates: NodeTemplate[] = [
+  {
+    id: 'input-text',
+    name: 'Text Input',
+    description: 'Captures user provided text or contextual data.',
+    category: 'input',
+    icon: 'Box',
+    inputs: [],
+    outputs: [createPort('text-output', 'Text Output', 'string')],
+    config: {
+      schema: {
+        placeholder: { type: 'string', description: 'UI placeholder for the input field.' },
+      },
+      defaults: {
+        placeholder: 'Enter text...'
+      },
+    },
+  },
+  {
+    id: 'llm-prompt',
+    name: 'LLM Prompt',
+    description: 'Sends structured prompts to the configured language model.',
+    category: 'ai',
+    icon: 'Cpu',
+    inputs: [
+      createPort('prompt', 'Prompt', 'string', true, 'Prompt template or raw text to send to the model.'),
+      createPort('context', 'Context', 'object'),
+    ],
+    outputs: [
+      createPort('response', 'Response', 'string'),
+      createPort('tokens', 'Token Usage', 'object'),
+    ],
+    config: {
+      schema: {
+        model: { type: 'string', enum: ['gpt-4', 'gpt-3.5', 'karen-pro'] },
+        temperature: { type: 'number', minimum: 0, maximum: 1 },
+      },
+      defaults: {
+        model: 'gpt-4',
+        temperature: 0.2,
+      },
+    },
+  },
+  {
+    id: 'branch-control',
+    name: 'Branch Control',
+    description: 'Evaluates a condition and routes execution accordingly.',
+    category: 'control',
+    icon: 'GitBranch',
+    inputs: [createPort('condition', 'Condition', 'boolean', true)],
+    outputs: [
+      createPort('on-true', 'On True', 'any'),
+      createPort('on-false', 'On False', 'any'),
+    ],
+    config: {
+      schema: {
+        evaluation: { type: 'string', description: 'Expression evaluated against runtime variables.' },
+      },
+      defaults: {
+        evaluation: '{{input.value}} === true',
+      },
+    },
+  },
+  {
+    id: 'json-output',
+    name: 'JSON Output',
+    description: 'Formats and emits workflow results as structured JSON.',
+    category: 'output',
+    icon: 'Output',
+    inputs: [createPort('payload', 'Payload', 'object', true)],
+    outputs: [],
+    config: {
+      schema: {
+        pretty: { type: 'boolean', description: 'Pretty print the JSON output.' },
+      },
+      defaults: {
+        pretty: true,
+      },
+    },
+  },
+  {
+    id: 'data-retrieval',
+    name: 'Data Retrieval',
+    description: 'Fetches records from an external data source.',
+    category: 'integration',
+    icon: 'Database',
+    inputs: [
+      createPort('query', 'Query', 'string', true),
+      createPort('parameters', 'Parameters', 'object'),
+    ],
+    outputs: [createPort('records', 'Records', 'array')],
+    config: {
+      schema: {
+        provider: { type: 'string', enum: ['postgres', 'mysql', 'elastic'] },
+      },
+      defaults: {
+        provider: 'postgres',
+      },
+    },
+  },
+  {
+    id: 'webhook-trigger',
+    name: 'Webhook Trigger',
+    description: 'Starts workflows from inbound webhook calls.',
+    category: 'input',
+    icon: 'Rocket',
+    inputs: [],
+    outputs: [createPort('event', 'Event Payload', 'object')],
+    config: {
+      schema: {
+        method: { type: 'string', enum: ['GET', 'POST', 'PUT'] },
+        path: { type: 'string' },
+      },
+      defaults: {
+        method: 'POST',
+        path: '/webhooks/new-event',
+      },
+    },
+  },
 ];
 
-const categoryIcons = {
-  input: 'InputIcon',
-  ai: 'AiIcon',
-  output: 'OutputIcon',
-  control: 'ControlIcon',
-  integration: 'IntegrationIcon',
-  // Add additional icons for more categories
+const iconLibrary: Record<string, LucideIcon> = {
+  Box,
+  Cpu,
+  Database,
+  GitBranch,
+  Output,
+  Puzzle,
+  Rocket,
 };
+
+const categoryIcons: Partial<Record<NodeTemplate['category'], LucideIcon>> = {
+  input: Box,
+  ai: Cpu,
+  processing: Puzzle,
+  control: GitBranch,
+  output: Output,
+  integration: Database,
+};
+
+function createPort(id: string, name: string, type: NodePort['type'], required = false, description?: string): NodePort {
+  return {
+    id,
+    name,
+    type,
+    required,
+    description,
+  };
+}
 
 export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | NodeTemplate['category']>('all');
 
   // Categories derived from node templates
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(nodeTemplates.map(node => node.category)));
-    return ['all', ...cats];
+    const cats = Array.from(new Set(defaultNodeTemplates.map(node => node.category)));
+    return ['all', ...cats] as const;
   }, []);
 
   // Filter nodes based on search term and selected category
   const filteredNodes = useMemo(() => {
-    return nodeTemplates.filter(node => {
+    return defaultNodeTemplates.filter(node => {
       const matchesSearch = node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            node.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || node.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [searchTerm, selectedCategory]);
+
+  const handleCategoryChange = useCallback((value: string) => {
+    if (value === 'all') {
+      setSelectedCategory('all');
+      return;
+    }
+
+    if (defaultNodeTemplates.some(node => node.category === value)) {
+      setSelectedCategory(value as NodeTemplate['category']);
+    }
+  }, []);
 
   const onDragStart = (event: React.DragEvent, nodeTemplate: NodeTemplate) => {
     if (readOnly) {
@@ -81,7 +218,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
       </div>
 
       {/* Category Tabs */}
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+      <Tabs value={selectedCategory} onValueChange={handleCategoryChange}>
         <TabsList className="grid w-full grid-cols-3">
           {categories.map(category => (
             <TabsTrigger key={category} value={category} className="text-xs sm:text-sm md:text-base">
@@ -95,7 +232,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
       <ScrollArea className="h-[600px]">
         <div className="space-y-2">
           {filteredNodes.map((node) => {
-            const IconComponent = categoryIcons[node.category as keyof typeof categoryIcons] || 'DefaultIcon';
+            const IconComponent = iconLibrary[node.icon] || categoryIcons[node.category] || Puzzle;
             return (
               <div
                 key={node.id}
