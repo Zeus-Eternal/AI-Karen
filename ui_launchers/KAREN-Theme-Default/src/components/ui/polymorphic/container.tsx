@@ -5,8 +5,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 import type {
-  CreatePolymorphicComponent,
-  PolymorphicPropsWithRef,
+  PolymorphicComponentPropWithRef,
+  PolymorphicComponentWithDisplayName,
   PolymorphicRef,
 } from "../compound/types";
 
@@ -168,9 +168,12 @@ type ContainerBaseProps = {
 };
 
 export type ContainerProps<T extends React.ElementType = "div"> =
-  PolymorphicPropsWithRef<T, ContainerBaseProps>;
+  PolymorphicComponentPropWithRef<T, ContainerBaseProps>;
 
-type ContainerComponent = CreatePolymorphicComponent<"div", ContainerBaseProps>;
+type ContainerPolymorphicComponent<P = {}> =
+  PolymorphicComponentWithDisplayName<"div", ContainerBaseProps & P>;
+
+type ContainerComponent = ContainerPolymorphicComponent;
 
 const displayClassMap: Record<ContainerDisplay, string> = {
   block: "block",
@@ -388,102 +391,128 @@ const resolveFocusClasses = (focus?: FocusConfig) => {
   );
 };
 
+function ContainerInner<T extends React.ElementType = "div">(
+  {
+    as,
+    className,
+    variant = "default",
+    size = "full",
+    customSize,
+    customMaxSize,
+    display = "block",
+    responsive = true,
+    position = "static",
+    overflow = "visible",
+    shadow = "none",
+    border = "none",
+    background = "transparent",
+    customBackground,
+    rounded = "none",
+    customRounded,
+    zIndex = "auto",
+    opacity = 1,
+    blur = "none",
+    customBlur,
+    animation = "none",
+    animationDelay = 0,
+    animationDuration = 300,
+    hover,
+    focus,
+    breakpoints,
+    children,
+    style,
+    ...rest
+  }: ContainerProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const Component = (as ?? "div") as T;
+  const ComponentToRender = Component as React.ElementType;
+
+  const inlineStyles: React.CSSProperties = {
+    ...(style as React.CSSProperties | undefined),
+    ...(customSize !== undefined && {
+      width: customSize,
+      height: customSize,
+    }),
+    ...(customMaxSize !== undefined && {
+      maxWidth: customMaxSize,
+      maxHeight: customMaxSize,
+    }),
+    ...(customBackground && { backgroundColor: customBackground }),
+    ...(customRounded && { borderRadius: customRounded }),
+    ...(customBlur && { filter: `blur(${customBlur})` }),
+    ...(zIndex !== "auto" ? { zIndex } : undefined),
+    ...(opacity !== undefined && opacity !== 1 ? { opacity } : undefined),
+    ...(animationDelay ? { animationDelay: `${animationDelay}ms` } : undefined),
+    ...(animationDuration !== undefined && animationDuration !== 300
+      ? { animationDuration: `${animationDuration}ms` }
+      : undefined),
+  };
+
+  const responsiveClasses = createResponsiveClasses(breakpoints);
+  const hoverClasses = resolveHoverClasses(hover);
+  const focusClasses = resolveFocusClasses(focus);
+
+  return (
+    <ComponentToRender
+      ref={ref as React.Ref<unknown>}
+      className={cn(
+        "transition-all duration-200 ease-in-out",
+        displayClassMap[display],
+        positionClassMap[position],
+        overflowClassMap[overflow],
+        shadowClassMap[shadow],
+        border !== "custom" ? borderClassMap[border] : undefined,
+        background !== "custom" ? backgroundClassMap[background] : undefined,
+        rounded !== "custom" ? roundedClassMap[rounded] : undefined,
+        blur !== "custom" ? blurClassMap[blur] : undefined,
+        animation !== "custom" ? animationClassMap[animation] : undefined,
+        variantClassMap[variant],
+        responsive ? responsiveSizeMap[size] : staticSizeMap[size],
+        hoverClasses,
+        focusClasses,
+        responsiveClasses,
+        className
+      )}
+      style={inlineStyles}
+      data-variant={variant}
+      {...(rest as ContainerProps<any>)}
+    >
+      {children}
+    </ComponentToRender>
+  );
+}
+
 const Container = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    {
-      as,
-      className,
-      variant = "default",
-      size = "full",
-      customSize,
-      customMaxSize,
-      display = "block",
-      responsive = true,
-      position = "static",
-      overflow = "visible",
-      shadow = "none",
-      border = "none",
-      background = "transparent",
-      customBackground,
-      rounded = "none",
-      customRounded,
-      zIndex = "auto",
-      opacity = 1,
-      blur = "none",
-      customBlur,
-      animation = "none",
-      animationDelay = 0,
-      animationDuration = 300,
-      hover,
-      focus,
-      breakpoints,
-      children,
-      style,
-      ...rest
-    }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const Component = (as ?? "div") as T;
-
-    const inlineStyles: React.CSSProperties = {
-      ...(style as React.CSSProperties | undefined),
-      ...(customSize !== undefined && {
-        width: customSize,
-        height: customSize,
-      }),
-      ...(customMaxSize !== undefined && {
-        maxWidth: customMaxSize,
-        maxHeight: customMaxSize,
-      }),
-      ...(customBackground && { backgroundColor: customBackground }),
-      ...(customRounded && { borderRadius: customRounded }),
-      ...(customBlur && { filter: `blur(${customBlur})` }),
-      ...(zIndex !== "auto" ? { zIndex } : undefined),
-      ...(opacity !== undefined && opacity !== 1 ? { opacity } : undefined),
-      ...(animationDelay ? { animationDelay: `${animationDelay}ms` } : undefined),
-      ...(animationDuration !== undefined && animationDuration !== 300
-        ? { animationDuration: `${animationDuration}ms` }
-        : undefined),
-    };
-
-    const responsiveClasses = createResponsiveClasses(breakpoints);
-    const hoverClasses = resolveHoverClasses(hover);
-    const focusClasses = resolveFocusClasses(focus);
-
-    return (
-      <Component
-        ref={ref}
-        className={cn(
-          "transition-all duration-200 ease-in-out",
-          displayClassMap[display],
-          positionClassMap[position],
-          overflowClassMap[overflow],
-          shadowClassMap[shadow],
-          border !== "custom" ? borderClassMap[border] : undefined,
-          background !== "custom" ? backgroundClassMap[background] : undefined,
-          rounded !== "custom" ? roundedClassMap[rounded] : undefined,
-          blur !== "custom" ? blurClassMap[blur] : undefined,
-          animation !== "custom" ? animationClassMap[animation] : undefined,
-          variantClassMap[variant],
-          responsive
-            ? responsiveSizeMap[size]
-            : staticSizeMap[size],
-          hoverClasses,
-          focusClasses,
-          responsiveClasses,
-          className
-        )}
-        style={inlineStyles}
-        data-variant={variant}
-        {...rest}
-      >
-        {children}
-      </Component>
-    );
-  }
+  ContainerInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    ContainerProps<any>
+  >
 ) as ContainerComponent;
 
 Container.displayName = "Container";
+
+const createVariantContainer = (
+  variant: ContainerVariant,
+  displayName: string
+): ContainerComponent => {
+  const BaseContainer = Container as unknown as React.ComponentType<any>;
+  const Variant = React.forwardRef(
+    (({ variant: providedVariant, ...rest }, ref) => (
+      <BaseContainer
+        ref={ref as React.Ref<unknown>}
+        variant={(providedVariant as ContainerVariant | undefined) ?? variant}
+        {...(rest as ContainerProps<any>)}
+      />
+    )) as unknown as React.ForwardRefRenderFunction<
+      unknown,
+      ContainerProps<any>
+    >
+  ) as ContainerComponent;
+
+  Variant.displayName = displayName;
+  return Variant;
+};
 
 type FlexContainerExtras = {
   direction?: "row" | "column" | "row-reverse" | "column-reverse";
@@ -531,49 +560,55 @@ const flexJustifyClassMap: Record<
   evenly: "justify-evenly",
 };
 
-const FlexContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    {
-      as,
-      display = "flex",
-      direction = "row",
-      align = "start",
-      justify = "start",
-      wrap = false,
-      gap = "none",
-      customGap,
-      className,
-      style,
-      ...rest
-    }: FlexContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const wrapClass =
-      wrap === "reverse" ? "flex-wrap-reverse" : wrap ? "flex-wrap" : "flex-nowrap";
-    const gapClass = gap === "custom" ? undefined : gapClassMap[gap];
+function FlexContainerInner<T extends React.ElementType = "div">(
+  {
+    as,
+    display = "flex",
+    direction = "row",
+    align = "start",
+    justify = "start",
+    wrap = false,
+    gap = "none",
+    customGap,
+    className,
+    style,
+    ...rest
+  }: FlexContainerProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const wrapClass =
+    wrap === "reverse" ? "flex-wrap-reverse" : wrap ? "flex-wrap" : "flex-nowrap";
+  const gapClass = gap === "custom" ? undefined : gapClassMap[gap];
+  const BaseContainer = Container as unknown as React.ComponentType<any>;
 
-    return (
-      <Container
-        ref={ref}
-        as={as}
-        display={display}
-        className={cn(
-          flexDirectionClassMap[direction],
-          flexAlignClassMap[align],
-          flexJustifyClassMap[justify],
-          wrapClass,
-          gapClass,
-          className
-        )}
-        style={{
-          ...(style as React.CSSProperties | undefined),
-          ...(customGap !== undefined ? { gap: customGap } : undefined),
-        }}
-        {...rest}
-      />
-    );
-  }
-) as CreatePolymorphicComponent<"div", ContainerBaseProps & FlexContainerExtras>;
+  return (
+    <BaseContainer
+      ref={ref as React.Ref<unknown>}
+      as={as}
+      display={display}
+      className={cn(
+        flexDirectionClassMap[direction],
+        flexAlignClassMap[align],
+        flexJustifyClassMap[justify],
+        wrapClass,
+        gapClass,
+        className
+      )}
+      style={{
+        ...(style as React.CSSProperties | undefined),
+        ...(customGap !== undefined ? { gap: customGap } : undefined),
+      }}
+      {...(rest as ContainerProps<any>)}
+    />
+  );
+}
+
+const FlexContainer = React.forwardRef(
+  FlexContainerInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    FlexContainerProps<any>
+  >
+) as ContainerPolymorphicComponent<FlexContainerExtras>;
 
 FlexContainer.displayName = "FlexContainer";
 
@@ -597,139 +632,92 @@ export type GridContainerProps<T extends React.ElementType = "div"> =
   ContainerProps<T> &
     GridContainerExtras;
 
+function GridContainerInner<T extends React.ElementType = "div">(
+  {
+    as,
+    display = "grid",
+    columns = "auto",
+    rows = "auto",
+    gap = "md",
+    customGap,
+    autoFlow = "row",
+    areas,
+    template,
+    minItemWidth = "250px",
+    maxItemWidth,
+    className,
+    style,
+    ...rest
+  }: GridContainerProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const computedGap = gap === "custom" ? undefined : gapClassMap[gap];
+  const gridTemplateColumns = template?.columns
+    ? template.columns
+    : columns === "auto-fit"
+      ? `repeat(auto-fit, minmax(${minItemWidth}, ${maxItemWidth || "1fr"}))`
+      : columns === "auto-fill"
+        ? `repeat(auto-fill, minmax(${minItemWidth}, ${maxItemWidth || "1fr"}))`
+        : typeof columns === "number"
+          ? `repeat(${columns}, 1fr)`
+          : columns === "auto"
+            ? undefined
+            : String(columns);
+
+  const gridTemplateRows = template?.rows ?? (rows === "auto" ? undefined : String(rows));
+
+  const gridTemplateAreas = template?.areas
+    ?? (areas && areas.length > 0
+      ? areas.map((area) => `'${area}'`).join(" ")
+      : undefined);
+  const BaseContainer = Container as unknown as React.ComponentType<any>;
+
+  return (
+    <BaseContainer
+      ref={ref as React.Ref<unknown>}
+      as={as}
+      display={display}
+      className={cn(computedGap, className)}
+      style={{
+        ...(style as React.CSSProperties | undefined),
+        ...(customGap !== undefined ? { gap: customGap } : undefined),
+        ...(gridTemplateColumns ? { gridTemplateColumns } : undefined),
+        ...(gridTemplateRows ? { gridTemplateRows } : undefined),
+        ...(gridTemplateAreas ? { gridTemplateAreas } : undefined),
+        ...(autoFlow ? { gridAutoFlow: autoFlow } : undefined),
+      }}
+      {...(rest as ContainerProps<any>)}
+    />
+  );
+}
+
 const GridContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    {
-      as,
-      display = "grid",
-      columns = "auto",
-      rows = "auto",
-      gap = "md",
-      customGap,
-      autoFlow = "row",
-      areas,
-      template,
-      minItemWidth = "250px",
-      maxItemWidth,
-      className,
-      style,
-      ...rest
-    }: GridContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const computedGap = gap === "custom" ? undefined : gapClassMap[gap];
-    const gridTemplateColumns = template?.columns
-      ? template.columns
-      : columns === "auto-fit"
-        ? `repeat(auto-fit, minmax(${minItemWidth}, ${maxItemWidth || "1fr"}))`
-        : columns === "auto-fill"
-          ? `repeat(auto-fill, minmax(${minItemWidth}, ${maxItemWidth || "1fr"}))`
-          : typeof columns === "number"
-            ? `repeat(${columns}, 1fr)`
-            : columns === "auto"
-              ? undefined
-              : String(columns);
-
-    const gridTemplateRows = template?.rows ?? (rows === "auto" ? undefined : String(rows));
-
-    const gridTemplateAreas = template?.areas
-      ?? (areas && areas.length > 0
-        ? areas.map((area) => `'${area}'`).join(" ")
-        : undefined);
-
-    return (
-      <Container
-        ref={ref}
-        as={as}
-        display={display}
-        className={cn(computedGap, className)}
-        style={{
-          ...(style as React.CSSProperties | undefined),
-          ...(customGap !== undefined ? { gap: customGap } : undefined),
-          ...(gridTemplateColumns ? { gridTemplateColumns } : undefined),
-          ...(gridTemplateRows ? { gridTemplateRows } : undefined),
-          ...(gridTemplateAreas ? { gridTemplateAreas } : undefined),
-          ...(autoFlow ? { gridAutoFlow: autoFlow } : undefined),
-        }}
-        {...rest}
-      />
-    );
-  }
-) as CreatePolymorphicComponent<"div", ContainerBaseProps & GridContainerExtras>;
+  GridContainerInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    GridContainerProps<any>
+  >
+) as ContainerPolymorphicComponent<GridContainerExtras>;
 
 GridContainer.displayName = "GridContainer";
 
-const CenteredContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "centered", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
+const CenteredContainer = createVariantContainer("centered", "CenteredContainer");
 
-CenteredContainer.displayName = "CenteredContainer";
+const ConstrainedContainer = createVariantContainer(
+  "constrained",
+  "ConstrainedContainer"
+);
 
-const ConstrainedContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "constrained", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
+const FluidContainer = createVariantContainer("fluid", "FluidContainer");
 
-ConstrainedContainer.displayName = "ConstrainedContainer";
+const HeroContainer = createVariantContainer("hero", "HeroContainer");
 
-const FluidContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "fluid", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
+const SectionContainer = createVariantContainer("section", "SectionContainer");
 
-FluidContainer.displayName = "FluidContainer";
+const CardContainer = createVariantContainer("card", "CardContainer");
 
-const HeroContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "hero", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
+const SidebarContainer = createVariantContainer("sidebar", "SidebarContainer");
 
-HeroContainer.displayName = "HeroContainer";
-
-const SectionContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "section", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
-
-SectionContainer.displayName = "SectionContainer";
-
-const CardContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "card", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
-
-CardContainer.displayName = "CardContainer";
-
-const SidebarContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "sidebar", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
-
-SidebarContainer.displayName = "SidebarContainer";
-
-const ModalContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    { variant = "modal", ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => <Container ref={ref} variant={variant} {...rest} />
-) as ContainerComponent;
-
-ModalContainer.displayName = "ModalContainer";
+const ModalContainer = createVariantContainer("modal", "ModalContainer");
 
 type AspectRatioExtras = {
   ratio?: "1/1" | "4/3" | "16/9" | "21/9" | "9/16" | "custom";
@@ -740,31 +728,39 @@ export type AspectRatioContainerProps<T extends React.ElementType = "div"> =
   ContainerProps<T> &
     AspectRatioExtras;
 
-const AspectRatioContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    {
-      ratio = "16/9",
-      customRatio,
-      className,
-      style,
-      children,
-      ...rest
-    }: AspectRatioContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => (
-    <Container
-      ref={ref}
+function AspectRatioContainerInner<T extends React.ElementType = "div">(
+  {
+    ratio = "16/9",
+    customRatio,
+    className,
+    style,
+    children,
+    ...rest
+  }: AspectRatioContainerProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseContainer = Container as unknown as React.ComponentType<any>;
+  return (
+    <BaseContainer
+      ref={ref as React.Ref<unknown>}
       className={cn("overflow-hidden", className)}
       style={{
         ...(style as React.CSSProperties | undefined),
         aspectRatio: customRatio ?? ratio,
       }}
-      {...rest}
+      {...(rest as ContainerProps<any>)}
     >
       {children}
-    </Container>
-  )
-) as CreatePolymorphicComponent<"div", ContainerBaseProps & AspectRatioExtras>;
+    </BaseContainer>
+  );
+}
+
+const AspectRatioContainer = React.forwardRef(
+  AspectRatioContainerInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    AspectRatioContainerProps<any>
+  >
+) as ContainerPolymorphicComponent<AspectRatioExtras>;
 
 AspectRatioContainer.displayName = "AspectRatioContainer";
 
@@ -778,19 +774,20 @@ export type ScrollContainerProps<T extends React.ElementType = "div"> =
   ContainerProps<T> &
     ScrollContainerExtras;
 
-const ScrollContainer = React.forwardRef(
-  <T extends React.ElementType = "div">(
-    {
-      scrollbar = "auto",
-      snap = "none",
-      snapType = "proximity",
-      className,
-      ...rest
-    }: ScrollContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) => (
-    <Container
-      ref={ref}
+function ScrollContainerInner<T extends React.ElementType = "div">(
+  {
+    scrollbar = "auto",
+    snap = "none",
+    snapType = "proximity",
+    className,
+    ...rest
+  }: ScrollContainerProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseContainer = Container as unknown as React.ComponentType<any>;
+  return (
+    <BaseContainer
+      ref={ref as React.Ref<unknown>}
       className={cn(
         "overflow-auto",
         scrollbar === "thin"
@@ -804,10 +801,17 @@ const ScrollContainer = React.forwardRef(
         snapType === "proximity" ? "snap-proximity" : undefined,
         className
       )}
-      {...rest}
+      {...(rest as ContainerProps<any>)}
     />
-  )
-) as CreatePolymorphicComponent<"div", ContainerBaseProps & ScrollContainerExtras>;
+  );
+}
+
+const ScrollContainer = React.forwardRef(
+  ScrollContainerInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    ScrollContainerProps<any>
+  >
+) as ContainerPolymorphicComponent<ScrollContainerExtras>;
 
 ScrollContainer.displayName = "ScrollContainer";
 
@@ -825,16 +829,4 @@ export {
   ModalContainer,
   AspectRatioContainer,
   ScrollContainer,
-};
-
-export type {
-  ContainerProps,
-  ContainerVariant,
-  ContainerSize,
-  ContainerDisplay,
-  ContainerBreakpoints,
-  FlexContainerProps,
-  GridContainerProps,
-  AspectRatioContainerProps,
-  ScrollContainerProps,
 };

@@ -6,8 +6,8 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 import type {
-  CreatePolymorphicComponent,
-  PolymorphicPropsWithRef,
+  PolymorphicComponentPropWithRef,
+  PolymorphicComponentWithDisplayName,
   PolymorphicRef,
 } from "../compound/types";
 
@@ -33,9 +33,12 @@ type ButtonBaseProps = {
 };
 
 export type ButtonProps<T extends React.ElementType = "button"> =
-  PolymorphicPropsWithRef<T, ButtonBaseProps>;
+  PolymorphicComponentPropWithRef<T, ButtonBaseProps>;
 
-type ButtonComponent = CreatePolymorphicComponent<"button", ButtonBaseProps>;
+type ButtonComponent = PolymorphicComponentWithDisplayName<
+  "button",
+  ButtonBaseProps
+>;
 
 const variantClasses: Record<ButtonVariant, string> = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -64,74 +67,80 @@ const iconSizeClasses: Record<ButtonSize, string> = {
   xl: "h-12 w-12",
 };
 
-const Button = React.forwardRef(
-  <T extends React.ElementType = "button">(
-    {
-      as,
-      asChild = false,
-      className,
-      variant = "default",
-      size = "md",
-      loading = false,
-      disabled,
-      fullWidth = false,
-      children,
-      ...props
-    }: ButtonProps<T>,
-    ref: PolymorphicRef<T>
-  ) => {
-    const Component = asChild ? Slot : (as ?? "button");
-    const isButtonElement = typeof Component === "string" && Component === "button";
-    const isDisabled = (disabled ?? false) || loading;
+function ButtonInner<T extends React.ElementType = "button">(
+  {
+    as,
+    asChild = false,
+    className,
+    variant = "default",
+    size = "md",
+    loading = false,
+    disabled,
+    fullWidth = false,
+    children,
+    ...props
+  }: ButtonProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const Component = asChild ? Slot : (as ?? "button");
+  const isButtonElement = typeof Component === "string" && Component === "button";
+  const isDisabled = (disabled ?? false) || loading;
+  const ComponentToRender = Component as React.ElementType;
 
-    return (
-      <Component
-        ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
-          "ring-offset-background transition-colors duration-200",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "disabled:pointer-events-none disabled:opacity-50",
-          variantClasses[variant],
-          sizeClasses[size],
-          fullWidth && "w-full",
-          loading && "cursor-not-allowed",
-          className
-        )}
-        aria-busy={loading || undefined}
-        disabled={isButtonElement ? isDisabled : undefined}
-        data-variant={variant}
-        data-size={size}
-        {...props}
-      >
-        {loading && (
-          <svg
-            className="-ml-1 mr-2 h-4 w-4 animate-spin"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938z"
-              fill="currentColor"
-            />
-          </svg>
-        )}
-        {children}
-      </Component>
-    );
-  }
+  return (
+    <ComponentToRender
+      ref={ref as React.Ref<unknown>}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
+        "ring-offset-background transition-colors duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "disabled:pointer-events-none disabled:opacity-50",
+        variantClasses[variant],
+        sizeClasses[size],
+        fullWidth && "w-full",
+        loading && "cursor-not-allowed",
+        className
+      )}
+      aria-busy={loading || undefined}
+      disabled={isButtonElement ? isDisabled : undefined}
+      data-variant={variant}
+      data-size={size}
+      {...(props as ButtonProps<any>)}
+    >
+      {loading && (
+        <svg
+          className="-ml-1 mr-2 h-4 w-4 animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938z"
+            fill="currentColor"
+          />
+        </svg>
+      )}
+      {children}
+    </ComponentToRender>
+  );
+}
+
+const Button = React.forwardRef(
+  ButtonInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    ButtonProps<any>
+  >
 ) as ButtonComponent;
 
 Button.displayName = "Button";
@@ -161,21 +170,39 @@ type LinkButtonProps<T extends React.ElementType = "a"> = ButtonProps<T> & {
   href?: string;
 };
 
-const LinkButton = React.forwardRef(
-  <T extends React.ElementType = "a">(
-    {
-      as,
-      variant = "link",
-      children,
-      ...props
-    }: LinkButtonProps<T>,
-    ref: PolymorphicRef<T>
-  ) => (
-    <Button as={as ?? ("a" as T)} ref={ref} variant={variant} {...props}>
+type LinkButtonComponent = PolymorphicComponentWithDisplayName<
+  "a",
+  ButtonBaseProps & { href?: string }
+>;
+
+function LinkButtonInner<T extends React.ElementType = "a">(
+  {
+    as,
+    variant = "link",
+    children,
+    ...props
+  }: LinkButtonProps<T>,
+  ref: PolymorphicRef<T>
+): React.ReactElement | null {
+  const BaseButton = Button as unknown as React.ComponentType<any>;
+  return (
+    <BaseButton
+      as={as ?? ("a" as T)}
+      ref={ref as React.Ref<unknown>}
+      variant={variant}
+      {...(props as ButtonProps<any>)}
+    >
       {children}
-    </Button>
-  )
-) as CreatePolymorphicComponent<"a", ButtonBaseProps & { href?: string }>;
+    </BaseButton>
+  );
+}
+
+const LinkButton = React.forwardRef(
+  LinkButtonInner as unknown as React.ForwardRefRenderFunction<
+    unknown,
+    LinkButtonProps<any>
+  >
+) as LinkButtonComponent;
 
 LinkButton.displayName = "LinkButton";
 
@@ -222,5 +249,3 @@ export {
   CancelButton,
   DestructiveButton,
 };
-
-export type { ButtonProps };
