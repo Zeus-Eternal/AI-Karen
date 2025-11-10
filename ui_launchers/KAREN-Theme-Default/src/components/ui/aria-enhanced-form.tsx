@@ -110,6 +110,7 @@ const FormItemContext = React.createContext<FormItemContextValue | null>(null);
  * Enhanced FormItem with proper ARIA structure
  */
 const AriaEnhancedFormItem = React.forwardRef<
+  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     /** Custom ARIA props */
     ariaProps?: Partial<AriaProps>;
@@ -199,7 +200,7 @@ const AriaEnhancedFormControl = React.forwardRef<
   } = useAriaFormField();
 
   // Build describedBy string
-  const describedByParts = [];
+  const describedByParts: string[] = [];
   if (helpText) describedByParts.push(formHelpId);
   if (!error) describedByParts.push(formDescriptionId);
   if (error) describedByParts.push(formDescriptionId, formMessageId);
@@ -231,6 +232,7 @@ AriaEnhancedFormControl.displayName = "AriaEnhancedFormControl";
  * Enhanced FormDescription with ARIA support
  */
 const AriaEnhancedFormDescription = React.forwardRef<
+  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => {
   const { formDescriptionId } = useAriaFormField();
@@ -251,6 +253,7 @@ AriaEnhancedFormDescription.displayName = "AriaEnhancedFormDescription";
  * Enhanced FormMessage with live announcements
  */
 const AriaEnhancedFormMessage = React.forwardRef<
+  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement> & {
     /** Whether to announce errors to screen readers */
     announceError?: boolean;
@@ -292,6 +295,7 @@ AriaEnhancedFormMessage.displayName = "AriaEnhancedFormMessage";
  * FormHelp - Additional help text component
  */
 const AriaFormHelp = React.forwardRef<
+  HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => {
   const { formHelpId } = useAriaFormField();
