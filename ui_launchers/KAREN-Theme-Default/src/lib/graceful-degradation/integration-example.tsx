@@ -5,7 +5,7 @@
 import React from 'react';
 import { useModelProviders, useGracefulDegradation } from './use-graceful-backend';
 import { DegradedModeBanner, ServiceUnavailable } from './fallback-ui';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 // Example of how to fix the existing ModelProviderIntegration component
 export function FixedModelProviderIntegration() {

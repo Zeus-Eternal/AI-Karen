@@ -7,6 +7,8 @@
 
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Enhanced badge variants using design tokens
@@ -123,44 +125,55 @@ export interface EnhancedBadgeProps
 }
 
 export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    interactive, 
-    dot, 
-    leftIcon, 
-    rightIcon, 
-    onRemove, 
+  ({
+    className,
+    variant,
+    size,
+    interactive,
+    dot,
+    leftIcon,
+    rightIcon,
+    onRemove,
     removable = false,
     dotColor,
-    children, 
+    children,
     onClick,
-    ...props 
+    ...props
   }, ref) => {
     const isInteractive = interactive || !!onClick || removable;
-    
+    const handleKeyDown = React.useCallback(
+      (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+
+          const clickHandler = onClick as
+            | React.MouseEventHandler<HTMLDivElement>
+            | undefined;
+
+          clickHandler?.(
+            event as unknown as React.MouseEvent<HTMLDivElement>
+          );
+        }
+      },
+      [onClick]
+    );
+
     return (
       <div
         className={cn(
-          enhancedBadgeVariants({ 
-            variant, 
-            size, 
-            interactive: isInteractive, 
-            dot: dot || !!dotColor, 
-            className 
-          })
+          enhancedBadgeVariants({
+            variant,
+            size,
+            interactive: isInteractive,
+            dot: dot || !!dotColor,
+          }),
+          className
         )}
         ref={ref}
         onClick={onClick}
         role={isInteractive ? 'button' : undefined}
         tabIndex={isInteractive ? 0 : undefined}
-        onKeyDown={isInteractive ? (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick?.(e as any);
-          }
-        } : undefined}
+        onKeyDown={isInteractive ? handleKeyDown : undefined}
         {...props}
       >
         {(dot || dotColor) && (
@@ -200,8 +213,8 @@ export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps
               'transition-colors [transition-duration:var(--duration-fast)]',
               'p-0.5'
             )}
-            onClick={() => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               onRemove?.();
             }}
             aria-label="Remove"

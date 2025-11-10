@@ -14,10 +14,65 @@ import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthCon
 import type { UseRoleReturn } from '@/hooks/useRole';
 import { mockSuperAdminUser, mockAdminUser, mockRegularUser, createMockAuthContext } from './test-providers';
 
+type AuthRole = Parameters<AuthContextType['hasRole']>[0];
+
 // ---------------------------------------------------------------------------
 // Internal registry (for optional debugging)
 // ---------------------------------------------------------------------------
 const activeMocks = new Set<string>();
+
+// ---------------------------------------------------------------------------
+// Lightweight global mock bootstrap
+// ---------------------------------------------------------------------------
+
+const createDefaultAuthAndRole = () => {
+  const auth = createMockAuthContext(null, false);
+  const role = createUseRoleReturnFromAuth(auth);
+  return { auth, role };
+};
+
+export const setupGlobalMocks = () => {
+  const restoreFns: Array<() => void> = [];
+  let authModule: { useAuth: () => AuthContextType } | null = null;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    authModule = require('@/contexts/AuthContext');
+    if (authModule && !vi.isMockFunction(authModule.useAuth)) {
+      const authSpy = vi
+        .spyOn(authModule, 'useAuth')
+        .mockImplementation(() => createMockAuthContext(null, false));
+      restoreFns.push(() => authSpy.mockRestore());
+    }
+  } catch {
+    authModule = null;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const roleModule = require('@/hooks/useRole') as { useRole: () => UseRoleReturn };
+    if (!vi.isMockFunction(roleModule.useRole)) {
+      const roleSpy = vi.spyOn(roleModule, 'useRole').mockImplementation(() => {
+        const { auth } = createDefaultAuthAndRole();
+        const context = authModule ? authModule.useAuth() : auth;
+        return createUseRoleReturnFromAuth(context);
+      });
+      restoreFns.push(() => roleSpy.mockRestore());
+    }
+  } catch {
+    // Hooks may not exist in certain testing contexts; ignore.
+  }
+
+  return () => {
+    restoreFns.splice(0).forEach((restore) => {
+      try {
+        restore();
+      } catch {
+        // ignore restoration failures – spies may have been manually restored
+      }
+    });
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Factories that your tests can pass directly to vi.mock(..., factory)
@@ -142,7 +197,11 @@ export const createMockUseRole = (
   const role = user?.role ?? null;
   const base: UseRoleReturn = {
     role,
-    hasRole: vi.fn((requiredRole: string) => !!(user && (user.role === requiredRole || user.roles?.includes?.(requiredRole)))) ,
+    hasRole: vi.fn((requiredRole: AuthRole) => {
+      if (!user) return false;
+      if (user.role) return user.role === requiredRole;
+      return user.roles.includes(requiredRole);
+    }),
     hasPermission: vi.fn((permission: string) => !!user?.permissions?.includes(permission)),
     isAdmin: !!(user && (user.role === 'admin' || user.role === 'super_admin')),
     isSuperAdmin: !!(user && user.role === 'super_admin'),
@@ -159,7 +218,7 @@ export const createMockUseRole = (
 // Realistic AuthContext (mirrors real behavior for most tests)
 // ---------------------------------------------------------------------------
 export const createRealisticMockAuth = (user: User | null, isAuthenticated: boolean): AuthContextType => {
-  const hasRole = vi.fn((role: 'super_admin' | 'admin' | 'user'): boolean => {
+  const hasRole = vi.fn((role: AuthRole): boolean => {
     if (!user) return false;
     if (user.role) return user.role === role;
     return !!user.roles?.includes(role);
@@ -168,7 +227,8 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
     if (user.permissions) return user.permissions.includes(permission);
-    const rolePerms = getRolePermissions((user.role || user.roles?.[0] || 'user') as 'super_admin' | 'admin' | 'user');
+    const fallbackRole = (user.role || user.roles?.[0] || 'user') as AuthRole;
+    const rolePerms = getRolePermissions(fallbackRole);
     return rolePerms.includes(permission);
   });
 
@@ -196,12 +256,24 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
   };
 };
 
-const getRolePermissions = (role: 'super_admin' | 'admin' | 'user'): string[] => {
+const getRolePermissions = (role: AuthRole): string[] => {
   switch (role) {
     case 'super_admin':
-      return ['user_management','admin_management','system_config','audit_logs','security_settings','user_create','user_edit','user_delete','admin_create','admin_edit','admin_delete'];
+      return [
+        'user_management',
+        'admin_management',
+        'system_config',
+        'audit_logs',
+        'security_settings',
+        'user_create',
+        'user_edit',
+        'user_delete',
+        'admin_create',
+        'admin_edit',
+        'admin_delete',
+      ];
     case 'admin':
-      return ['user_management','user_create','user_edit','user_delete'];
+      return ['user_management', 'user_create', 'user_edit', 'user_delete'];
     case 'user':
     default:
       return [];
@@ -219,15 +291,6 @@ export const resetHookMocks = () => {
 export const cleanupHookMocks = () => {
   activeMocks.clear();
   resetHookMocks();
-};
-
-export const setupTestIsolation = () => {
-  beforeEach(() => {
-    resetHookMocks();
-  });
-  afterEach(() => {
-    cleanupHookMocks();
-  });
 };
 
 // ---------------------------------------------------------------------------
@@ -301,6 +364,17 @@ export const resetToDefaultMocks = () => {
     // Modules may not be resolved in some test runners; ignore.
   }
 };
+
+export const setupHookMocksIsolation = () => {
+  beforeEach(() => {
+    resetHookMocks();
+  });
+  afterEach(() => {
+    cleanupHookMocks();
+  });
+};
+
+export { setupHookMocksIsolation as setupTestIsolation };
 
 // ---------------------------------------------------------------------------
 // Usage example (inside a test file):

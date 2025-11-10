@@ -5,6 +5,8 @@
 
 // Core types and enums
 export {
+  ErrorCategory,
+  ErrorSeverity,
   type CategorizedError,
   type ErrorPattern
 } from './error-categories';

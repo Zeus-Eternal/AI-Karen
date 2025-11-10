@@ -8,6 +8,8 @@ import React, { ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
 import { AuthContext, AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
+
+type AuthRole = Parameters<AuthContextType['hasRole']>[0];
 // Enhanced mock user data for testing with complete and realistic data
 export const mockSuperAdminUser: User = {
   userId: 'super-admin-001',
@@ -88,7 +90,7 @@ export const createMockAuthContext = (
   overrides: Partial<AuthContextType> = {}
 ): AuthContextType => {
   // Helper function to get default permissions for a role (matches actual implementation)
-  const getRolePermissions = (role: 'super_admin' | 'admin' | 'user'): string[] => {
+  const getRolePermissions = (role: AuthRole): string[] => {
     switch (role) {
       case 'super_admin':
         return [
@@ -117,7 +119,7 @@ export const createMockAuthContext = (
     }
   };
   // Create realistic mock functions that behave like the actual implementation
-  const hasRole = vi.fn((role: 'super_admin' | 'admin' | 'user'): boolean => {
+  const hasRole = vi.fn((role: AuthRole): boolean => {
     if (!user) return false;
     // Check the role field first, then fall back to roles array (matches actual implementation)
     if (user.role) {
@@ -134,7 +136,7 @@ export const createMockAuthContext = (
       return user.permissions.includes(permission);
     }
     // Default permissions based on role (matches actual implementation)
-    const rolePermissions = getRolePermissions(user.role || (user.roles[0] as 'super_admin' | 'admin' | 'user'));
+    const rolePermissions = getRolePermissions(user.role || (user.roles[0] as AuthRole));
     return rolePermissions.includes(permission);
   });
 
@@ -196,7 +198,7 @@ interface TestAuthProviderProps {
   user?: User | null;
   isAuthenticated?: boolean;
   // Additional options for test scenarios
-  testScenario?: 'authenticated' | 'unauthenticated' | 'super_admin' | 'admin' | 'user' | 'custom';
+  testScenario?: 'authenticated' | 'unauthenticated' | AuthRole | 'custom';
 }
 export const TestAuthProvider: React.FC<TestAuthProviderProps> = ({ 
   children, 
@@ -256,7 +258,7 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   user?: User | null;
   isAuthenticated?: boolean;
   // Test scenario for quick setup
-  testScenario?: 'authenticated' | 'unauthenticated' | 'super_admin' | 'admin' | 'user' | 'custom';
+  testScenario?: 'authenticated' | 'unauthenticated' | AuthRole | 'custom';
   // Additional provider options for different test scenarios
   providerOptions?: {
     // Mock router context if needed
@@ -389,7 +391,7 @@ export const createMockImplementations = (scenario: AuthTestScenario) => {
       }
       return Promise.resolve(scenario.isAuthenticated);
     }),
-    hasRole: vi.fn().mockImplementation((role: 'super_admin' | 'admin' | 'user') => {
+    hasRole: vi.fn().mockImplementation((role: AuthRole) => {
       if (!scenario.user) return false;
       return scenario.user.role === role || scenario.user.roles.includes(role);
     }),
@@ -770,7 +772,7 @@ export const createSimpleMockAuth = (user: User | null = null, isAuthenticated: 
   isAdmin: vi.fn(() => false),
   isSuperAdmin: vi.fn(() => false),
 });
-export const createSimpleMockRole = (role: 'super_admin' | 'admin' | 'user' | null = null) => ({
+export const createSimpleMockRole = (role: AuthRole | null = null) => ({
   role,
   hasRole: vi.fn(() => false),
   hasPermission: vi.fn(() => false),

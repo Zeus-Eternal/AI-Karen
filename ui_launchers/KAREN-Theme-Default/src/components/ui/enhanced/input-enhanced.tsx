@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 /**
