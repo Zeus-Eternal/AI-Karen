@@ -1,12 +1,17 @@
 "use client";
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import type { InteractiveCardProps } from './types';
+
+import type { CardHoverAnimation, CardHoverEffect, InteractiveCardProps } from './types';
 import { animationVariants, reducedMotionVariants } from './animation-variants';
 import { triggerHapticFeedback } from './haptic-feedback';
 import { useMicroInteractions } from './micro-interaction-provider';
 import { cn } from '@/lib/utils';
+
+const isCardHoverAnimation = (
+  effect: CardHoverEffect | undefined
+): effect is CardHoverAnimation => effect !== undefined && effect !== 'none';
 
 export const InteractiveCard = React.forwardRef<HTMLDivElement, InteractiveCardProps>(
   ({ 
@@ -20,27 +25,31 @@ export const InteractiveCard = React.forwardRef<HTMLDivElement, InteractiveCardP
     ...props 
   }, ref) => {
     const { reducedMotion, enableHaptics } = useMicroInteractions();
-    
-    type CardHoverVariant = Exclude<NonNullable<InteractiveCardProps['hoverEffect']>, 'none'>;
-    const hoverVariant: CardHoverVariant | undefined =
-      hoverEffect && hoverEffect !== 'none' ? hoverEffect : undefined;
 
-    const variants = hoverVariant
-      ? (reducedMotion
-          ? reducedMotionVariants.card[hoverVariant]
-          : animationVariants.card[hoverVariant])
-      : undefined;
+    const hoverVariant = useMemo(() => {
+      if (!hoverEffect) return undefined;
+      return isCardHoverAnimation(hoverEffect) ? hoverEffect : undefined;
+    }, [hoverEffect]);
 
-    const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!interactive) return;
-      
-      // Trigger haptic feedback
-      if (enableHaptics) {
-        triggerHapticFeedback('light');
-      }
-      
-      onClick?.(event);
-    };
+    const variants = useMemo(() => {
+      if (!hoverVariant) return undefined;
+      return (reducedMotion
+        ? reducedMotionVariants.card[hoverVariant]
+        : animationVariants.card[hoverVariant]);
+    }, [hoverVariant, reducedMotion]);
+
+    const handleClick = useCallback(
+      (event: React.MouseEvent<HTMLDivElement>) => {
+        if (!interactive) return;
+
+        if (enableHaptics) {
+          triggerHapticFeedback('light');
+        }
+
+        onClick?.(event);
+      },
+      [enableHaptics, interactive, onClick]
+    );
 
     return (
       <motion.div

@@ -1,13 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+
 import { Input } from '@/components/ui/input';
-import { InteractiveInputProps } from './types';
+import type { InteractiveInputProps } from './types';
 import { animationVariants, reducedMotionVariants } from './animation-variants';
 import { triggerHapticFeedback } from './haptic-feedback';
 import { useMicroInteractions } from './micro-interaction-provider';
 import { cn } from '@/lib/utils';
+
+const MotionInput = motion(Input);
+
+const motionConflictKeys = [
+  'onDrag',
+  'onDragEnd',
+  'onDragStart',
+  'draggable',
+  'onAnimationStart',
+  'onAnimationEnd',
+  'onAnimationIteration',
+] as const;
+
+type MotionConflictKey = (typeof motionConflictKeys)[number];
+
+const sanitizeMotionProps = <T extends Record<string, unknown>>(props: T) => {
+  const clone = { ...props } as Record<string, unknown>;
+  for (const key of motionConflictKeys) {
+    if (key in clone) {
+      delete clone[key];
+    }
+  }
+  return clone as Omit<T, MotionConflictKey>;
+};
 
 export const InteractiveInput = React.forwardRef<HTMLInputElement, InteractiveInputProps>(
   ({ 
@@ -18,15 +43,19 @@ export const InteractiveInput = React.forwardRef<HTMLInputElement, InteractiveIn
     onFocus,
     onBlur,
     className,
-    ...props 
+    ...restProps
   }, ref) => {
     const { reducedMotion, enableHaptics } = useMicroInteractions();
     const [isFocused, setIsFocused] = useState(false);
     const [shouldShake, setShouldShake] = useState(false);
-    
-    const variants = reducedMotion 
-      ? reducedMotionVariants.input[animationVariant]
-      : animationVariants.input[animationVariant];
+
+    const variants = useMemo(
+      () =>
+        reducedMotion
+          ? reducedMotionVariants.input[animationVariant]
+          : animationVariants.input[animationVariant],
+      [animationVariant, reducedMotion]
+    );
 
     // Trigger shake animation when error state changes to true
     useEffect(() => {
@@ -48,40 +77,37 @@ export const InteractiveInput = React.forwardRef<HTMLInputElement, InteractiveIn
       }
     }, [success, hapticFeedback, enableHaptics]);
 
-    const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-      setIsFocused(true);
-      if (hapticFeedback && enableHaptics) {
-        triggerHapticFeedback('light');
-      }
-      onFocus?.(event);
-    };
+    const handleFocus = useCallback(
+      (event: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(true);
+        if (hapticFeedback && enableHaptics) {
+          triggerHapticFeedback('light');
+        }
+        onFocus?.(event);
+      },
+      [enableHaptics, hapticFeedback, onFocus]
+    );
 
-    const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-      setIsFocused(false);
-      onBlur?.(event);
-    };
+    const handleBlur = useCallback(
+      (event: React.FocusEvent<HTMLInputElement>) => {
+        setIsFocused(false);
+        onBlur?.(event);
+      },
+      [onBlur]
+    );
 
-    const getAnimationState = () => {
+    const animationState = useMemo(() => {
       if (shouldShake && animationVariant === 'shake') return 'error';
       if (error) return 'error';
       if (success) return 'success';
       if (isFocused) return 'focus';
       return 'idle';
-    };
+    }, [animationVariant, error, isFocused, shouldShake, success]);
 
-    const MotionInput = motion(Input);
-
-    // Filter out props that conflict with Framer Motion
-    const { 
-      onDrag, 
-      onDragEnd, 
-      onDragStart, 
-      draggable,
-      onAnimationStart,
-      onAnimationEnd,
-      onAnimationIteration,
-      ...filteredProps 
-    } = props;
+    const filteredProps = useMemo(() => {
+      const nativeProps = restProps as React.ComponentPropsWithoutRef<'input'>;
+      return sanitizeMotionProps(nativeProps);
+    }, [restProps]);
 
     return (
       <MotionInput
@@ -93,7 +119,7 @@ export const InteractiveInput = React.forwardRef<HTMLInputElement, InteractiveIn
           className
         )}
         variants={variants}
-        animate={getAnimationState()}
+        animate={animationState}
         onFocus={handleFocus}
         onBlur={handleBlur}
         {...filteredProps}
