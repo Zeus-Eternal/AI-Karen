@@ -8,16 +8,13 @@
 export {
   getEnvironmentConfigManager,
   initializeEnvironmentConfigManager,
-  type BackendConfig,
-  type BackendConfigType,
-  type TimeoutConfiguration,
-  type TimeoutConfigurationType,
-  type RetryPolicy,
-  type RetryPolicyType,
-  type EnvironmentInfo,
-  type EnvironmentInfoType,
-  type ValidationResult,
-  type ValidationResultType,
+} from './environment-config-manager';
+export type {
+  BackendConfig,
+  TimeoutConfiguration,
+  RetryPolicy,
+  EnvironmentInfo,
+  ValidationResult,
 } from './environment-config-manager';
 
 // Re-export existing config for backward compatibility
@@ -27,5 +24,5 @@ export {
   logConfigInfo,
   getRuntimeInfo,
   webUIConfig,
-  type WebUIConfig,
 } from '../config';
+export type { WebUIConfig } from '../config';

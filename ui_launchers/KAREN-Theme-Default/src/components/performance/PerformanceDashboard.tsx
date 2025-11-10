@@ -8,12 +8,26 @@
  */
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
-import { Card } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { PerformanceUtils } from '../../lib/performance';
+import React, { useState, useEffect } from "react";
+import {
+  ErrorBoundary,
+  type ErrorFallbackProps,
+} from "@/components/error-handling/ErrorBoundary";
+import { Card } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { PerformanceUtils } from "../../lib/performance";
+
+const PerformanceDashboardFallback: React.FC<ErrorFallbackProps> = ({
+  resetError,
+}) => (
+  <div className="space-y-2 p-4">
+    <p className="font-medium">Something went wrong in PerformanceDashboard.</p>
+    <Button variant="outline" size="sm" onClick={resetError}>
+      Try again
+    </Button>
+  </div>
+);
 
 export interface PerformanceMetrics {
   connectionPool: {
@@ -123,7 +137,7 @@ export function PerformanceDashboard() {
 
   if (isLoading) {
     return (
-      <ErrorBoundary fallback={<div>Something went wrong in PerformanceDashboard</div>}>
+      <ErrorBoundary fallback={PerformanceDashboardFallback}>
         <div className="p-6 sm:p-4 md:p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded mb-4"></div>
@@ -243,4 +257,6 @@ export function PerformanceDashboard() {
       )}
     </div>
   );
-}
+} 
+
+export default PerformanceDashboard;

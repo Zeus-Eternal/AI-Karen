@@ -9,6 +9,7 @@ export interface WorkflowNode {
   data: {
     label: string;
     description?: string;
+    nodeType?: string;
     config: Record<string, any>;
     inputs?: NodePort[];
     outputs?: NodePort[];
@@ -88,7 +89,7 @@ export interface WorkflowExecution {
 export interface ExecutionLog {
   id: string;
   timestamp: Date;
-  level: '' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   nodeId?: string;
   message: string;
   data?: any;
@@ -216,6 +217,16 @@ export interface WorkflowTrigger {
   workflowId: string;
   lastTriggered?: Date;
   nextTrigger?: Date;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  executionCount?: number;
+  successCount?: number;
+  failureCount?: number;
+  errorCount?: number;
+  lastError?: string;
+  owner?: string;
+  tags?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 export interface TriggerConfig {
   schedule?: CronSchedule;
@@ -251,6 +262,8 @@ export interface WorkflowQueue {
   currentLoad: number;
   tasks: QueuedWorkflow[];
   metrics: QueueMetrics;
+  status?: 'active' | 'paused' | 'draining';
+  queuePriority?: 'low' | 'medium' | 'high' | 'critical';
 }
 export interface QueuedWorkflow {
   id: string;

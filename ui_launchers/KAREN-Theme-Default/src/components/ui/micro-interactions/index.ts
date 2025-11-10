@@ -7,4 +7,9 @@ export { MicroInteractionProvider } from './micro-interaction-provider';
 export type {
   MicroInteractionType,
   MicroInteractionConfig,
+  ButtonAnimationVariant,
+  InputAnimationVariant,
+  CardHoverAnimation,
+  CardHoverEffect,
+  CardClickEffect,
 } from './types';

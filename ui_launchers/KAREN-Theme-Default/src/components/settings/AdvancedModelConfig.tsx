@@ -23,7 +23,7 @@ import {
   Cpu, Zap, Gauge, Clock, MemoryStick, Target, Star, Edit3,
   CheckCircle2, AlertTriangle, Info, Download, Upload, Copy,
   Trash2, Plus, Minus, Eye, EyeOff, Brain, Shield, Network,
-  Database, HardDrive, Layers, Cogs, Rocket, TestTube, RefreshCw
+  Database, HardDrive, Layers, Cog, Rocket, TestTube, RefreshCw
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
@@ -208,8 +208,55 @@ export interface AdvancedModelConfigProps {
   className?: string;
 }
 
+type ParameterCategory =
+  | 'memory'
+  | 'performance'
+  | 'creativity'
+  | 'length'
+  | 'reproducibility'
+  | 'safety';
+
+type ParameterType = 'number' | 'slider' | 'boolean' | 'select';
+
+interface BaseParameterDefinition<TType extends ParameterType, TValue> {
+  key: string;
+  label: string;
+  type: TType;
+  default: TValue;
+  tooltip?: string;
+  category: ParameterCategory;
+}
+
+type NumberParameterDefinition = BaseParameterDefinition<'number', number> & {
+  min?: number;
+  max?: number;
+  step?: number;
+};
+
+type SliderParameterDefinition = BaseParameterDefinition<'slider', number> & {
+  min: number;
+  max: number;
+  step: number;
+};
+
+type BooleanParameterDefinition = BaseParameterDefinition<'boolean', boolean>;
+
+type SelectParameterDefinition = BaseParameterDefinition<'select', string> & {
+  options: string[];
+};
+
+type ParameterDefinition =
+  | NumberParameterDefinition
+  | SliderParameterDefinition
+  | BooleanParameterDefinition
+  | SelectParameterDefinition;
+
+type SupportedRuntime = 'llama.cpp' | 'transformers' | 'vllm';
+
+type RuntimeParameterMap = Record<SupportedRuntime, ParameterDefinition[]>;
+
 // Enhanced runtime parameters with tooltips and validation
-const RUNTIME_PARAMETERS = {
+const RUNTIME_PARAMETERS: RuntimeParameterMap = {
   'llama.cpp': [
     { 
       key: 'n_ctx', 
@@ -313,7 +360,13 @@ const RUNTIME_PARAMETERS = {
   ]
 };
 
-const GENERATION_PARAMETERS = [
+const isSupportedRuntime = (value: string): value is SupportedRuntime =>
+  Object.prototype.hasOwnProperty.call(RUNTIME_PARAMETERS, value);
+
+const getRuntimeParameters = (value: string): ParameterDefinition[] =>
+  isSupportedRuntime(value) ? RUNTIME_PARAMETERS[value] : [];
+
+const GENERATION_PARAMETERS: ParameterDefinition[] = [
   { 
     key: 'temperature', 
     label: 'Temperature', 
@@ -360,7 +413,7 @@ const GENERATION_PARAMETERS = [
   },
 ];
 
-const SAFETY_PARAMETERS = [
+const SAFETY_PARAMETERS: ParameterDefinition[] = [
   {
     key: 'safe_prompt',
     label: 'Safe Prompt',
@@ -516,27 +569,27 @@ export default function AdvancedModelConfig({
     }
   };
 
-  const getDefaultParameters = (runtime: string) => {
-    const params: Record<string, any> = {};
-    
-    // Runtime parameters
-    const runtimeParams = RUNTIME_PARAMETERS[runtime as keyof typeof RUNTIME_PARAMETERS] || [];
-    runtimeParams.forEach(param => {
-      params[param.key] = param.default;
-    });
+    const getDefaultParameters = (runtime: string) => {
+      const params: Record<string, unknown> = {};
 
-    // Generation parameters
-    GENERATION_PARAMETERS.forEach(param => {
-      params[param.key] = param.default;
-    });
+      // Runtime parameters
+      const runtimeParams = getRuntimeParameters(runtime);
+      runtimeParams.forEach((param) => {
+        params[param.key] = param.default;
+      });
 
-    // Safety parameters
-    SAFETY_PARAMETERS.forEach(param => {
-      params[param.key] = param.default;
-    });
+      // Generation parameters
+      GENERATION_PARAMETERS.forEach((param) => {
+        params[param.key] = param.default;
+      });
 
-    return params;
-  };
+      // Safety parameters
+      SAFETY_PARAMETERS.forEach((param) => {
+        params[param.key] = param.default;
+      });
+
+      return params;
+    };
 
   const getDefaultHardwareRequirements = (runtime: string) => {
     const baseRequirements = {
@@ -574,87 +627,139 @@ export default function AdvancedModelConfig({
   };
 
   // Enhanced parameter updates with validation
-  const updateParameter = useCallback((key: string, value: any) => {
-    if (!config) return;
-    
-    // Validate parameter value
-    const validatedValue = validateParameter(key, value);
-    if (validatedValue === undefined) return;
+    const validateParameter = useCallback(
+      (key: string, value: unknown): unknown => {
+        const allParams: ParameterDefinition[] = [
+          ...getRuntimeParameters(runtime),
+          ...GENERATION_PARAMETERS,
+          ...SAFETY_PARAMETERS,
+        ];
 
-    setConfig(prev => ({
-      ...prev!,
-      parameters: {
-        ...prev!.parameters,
-        [key]: validatedValue
+        const paramDef = allParams.find((p) => p.key === key);
+        if (!paramDef) {
+          return value;
+        }
+
+        switch (paramDef.type) {
+          case 'number': {
+            const numValue = Number(value);
+            if (Number.isNaN(numValue)) {
+              return paramDef.default;
+            }
+            if (typeof paramDef.min === 'number' && numValue < paramDef.min) {
+              return paramDef.min;
+            }
+            if (typeof paramDef.max === 'number' && numValue > paramDef.max) {
+              return paramDef.max;
+            }
+            return numValue;
+          }
+          case 'slider': {
+            const sliderValue = Number(value);
+            if (Number.isNaN(sliderValue)) {
+              return paramDef.default;
+            }
+            return Math.min(paramDef.max, Math.max(paramDef.min, sliderValue));
+          }
+          case 'boolean':
+            return Boolean(value);
+          case 'select':
+            return typeof value === 'string' && paramDef.options.includes(value)
+              ? value
+              : paramDef.default;
+          default:
+            return value;
+        }
       },
-      metadata: {
-        ...prev!.metadata,
-        updated_at: Date.now()
+      [runtime]
+    );
+
+    const updateParameter = useCallback(
+      (key: string, value: unknown) => {
+        setConfig((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          const validatedValue = validateParameter(key, value);
+          const previousValue = (prev.parameters as Record<string, unknown>)[key];
+
+          if (Object.is(previousValue, validatedValue)) {
+            return prev;
+          }
+
+          setHasUnsavedChanges(true);
+
+          return {
+            ...prev,
+            parameters: {
+              ...prev.parameters,
+              [key]: validatedValue,
+            },
+            metadata: {
+              ...prev.metadata,
+              updated_at: Date.now(),
+            },
+          };
+        });
+      },
+      [validateParameter]
+    );
+
+  const updateMetadata = <K extends keyof ModelConfig['metadata']>(
+    key: K,
+    value: ModelConfig['metadata'][K],
+  ) => {
+    setConfig((prev) => {
+      if (!prev) {
+        return prev;
       }
-    }));
-    setHasUnsavedChanges(true);
-  }, [config]);
 
-  const validateParameter = (key: string, value: any): any => {
-    // Find parameter definition
-    const allParams = [
-      ...RUNTIME_PARAMETERS[runtime as keyof typeof RUNTIME_PARAMETERS] || [],
-      ...GENERATION_PARAMETERS,
-      ...SAFETY_PARAMETERS
-    ];
-    
-    const paramDef = allParams.find(p => p.key === key);
-    if (!paramDef) return value;
+      const currentValue = prev.metadata[key];
+      if (Object.is(currentValue, value)) {
+        return prev;
+      }
 
-    // Type-specific validation
-    switch (paramDef.type) {
-      case 'number':
-        const numValue = Number(value);
-        if (isNaN(numValue)) return paramDef.default;
-        if (paramDef.min !== undefined && numValue < paramDef.min) return paramDef.min;
-        if (paramDef.max !== undefined && numValue > paramDef.max) return paramDef.max;
-        return numValue;
-      
-      case 'slider':
-        const sliderValue = Number(value);
-        if (isNaN(sliderValue)) return paramDef.default;
-        return Math.max(paramDef.min || 0, Math.min(paramDef.max || 1, sliderValue));
-      
-      case 'boolean':
-        return Boolean(value);
-      
-      default:
-        return value;
-    }
+      setHasUnsavedChanges(true);
+
+      return {
+        ...prev,
+        metadata: {
+          ...prev.metadata,
+          [key]: value,
+          updated_at: Date.now(),
+        },
+      };
+    });
   };
 
-  const updateMetadata = (key: string, value: any) => {
-    if (!config) return;
-    setConfig(prev => ({
-      ...prev!,
-      metadata: {
-        ...prev!.metadata,
-        [key]: value,
-        updated_at: Date.now()
+  const updateSecurity = <K extends keyof ModelConfig['security']>(
+    key: K,
+    value: ModelConfig['security'][K],
+  ) => {
+    setConfig((prev) => {
+      if (!prev) {
+        return prev;
       }
-    }));
-    setHasUnsavedChanges(true);
-  };
 
-  const updateSecurity = (key: string, value: any) => {
-    if (!config) return;
-    setConfig(prev => ({
-      ...prev!,
-      security: {
-        ...prev!.security,
-        [key]: value
-      },
-      metadata: {
-        ...prev!.metadata,
-        updated_at: Date.now()
+      if (Object.is(prev.security[key], value)) {
+        return prev;
       }
-    }));
-    setHasUnsavedChanges(true);
+
+      setHasUnsavedChanges(true);
+
+      return {
+        ...prev,
+        security: {
+          ...prev.security,
+          [key]: value,
+        },
+        metadata: {
+          ...prev.metadata,
+          updated_at: Date.now(),
+        },
+      };
+    });
   };
 
   // Enhanced save with backup and validation
@@ -791,11 +896,12 @@ export default function AdvancedModelConfig({
   };
 
   // Enhanced parameter control rendering with tooltips
-  const renderParameterControl = (param: any) => {
+  const renderParameterControl = (param: ParameterDefinition): React.ReactNode => {
     if (!config) return null;
-    
-    const value = (config.parameters as Record<string, any>)[param.key] ?? param.default;
-    
+
+    const parameters = config.parameters as Record<string, unknown>;
+    const value = parameters[param.key] ?? param.default;
+
     const control = (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -806,7 +912,9 @@ export default function AdvancedModelConfig({
             )}
           </Label>
           {param.type === 'slider' && (
-            <span className="text-sm text-muted-foreground">{value}</span>
+            <span className="text-sm text-muted-foreground">
+              {typeof value === 'number' ? value : Number(value ?? param.default)}
+            </span>
           )}
         </div>
 
@@ -814,29 +922,36 @@ export default function AdvancedModelConfig({
           <div className="flex items-center space-x-2">
             <Switch
               id={param.key}
-              checked={value}
+              checked={typeof value === 'boolean' ? value : Boolean(value)}
               onCheckedChange={(checked) => updateParameter(param.key, checked)}
             />
           </div>
         ) : param.type === 'slider' ? (
-          <Slider
-            value={[value]}
-            onValueChange={([newValue]) => updateParameter(param.key, newValue)}
-            min={param.min}
-            max={param.max}
-            step={param.step}
-            className="w-full"
-          />
+          (() => {
+            const numericValue =
+              typeof value === 'number' ? value : Number(value ?? param.default);
+            const safeValue = Number.isFinite(numericValue) ? numericValue : param.default;
+            return (
+              <Slider
+                value={[safeValue]}
+                onValueChange={([newValue]) => updateParameter(param.key, newValue)}
+                min={param.min}
+                max={param.max}
+                step={param.step}
+                className="w-full"
+              />
+            );
+          })()
         ) : param.type === 'select' ? (
           <Select
-            value={value}
+            value={typeof value === 'string' ? value : param.default}
             onValueChange={(newValue) => updateParameter(param.key, newValue)}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {param.options.map((option: string) => (
+              {param.options.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
@@ -847,7 +962,13 @@ export default function AdvancedModelConfig({
           <Input
             id={param.key}
             type="number"
-            value={value}
+            value={
+              typeof value === 'number'
+                ? value
+                : Number.isFinite(Number(value))
+                ? Number(value)
+                : param.default
+            }
             onChange={(e) => updateParameter(param.key, e.target.value)}
             min={param.min}
             max={param.max}
@@ -857,39 +978,39 @@ export default function AdvancedModelConfig({
       </div>
     );
 
-    return param.tooltip ? (
-      <TooltipProvider key={param.key}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {control}
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">{param.tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ) : (
-      <div key={param.key}>{control}</div>
-    );
+    if (param.tooltip) {
+      return (
+        <TooltipProvider key={param.key} delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>{control}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-sm">
+              <p>{param.tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return <div key={param.key}>{control}</div>;
   };
 
-  // Group parameters by category for better organization
-  const groupedParameters = useMemo(() => {
-    const allParams = [
-      ...RUNTIME_PARAMETERS[runtime as keyof typeof RUNTIME_PARAMETERS] || [],
-      ...GENERATION_PARAMETERS,
-      ...SAFETY_PARAMETERS
-    ];
+    // Group parameters by category for better organization
+    const groupedParameters = useMemo(() => {
+      const allParams = [
+        ...getRuntimeParameters(runtime),
+        ...GENERATION_PARAMETERS,
+        ...SAFETY_PARAMETERS
+      ];
 
-    const groups: Record<string, any[]> = {};
-    allParams.forEach(param => {
-      const category = param.category || 'general';
-      if (!groups[category]) groups[category] = [];
-      groups[category].push(param);
-    });
+      const groups: Record<string, ParameterDefinition[]> = {};
+      allParams.forEach((param) => {
+        const category = param.category || 'general';
+        if (!groups[category]) groups[category] = [];
+        groups[category].push(param);
+      });
 
-    return groups;
-  }, [runtime]);
+      return groups;
+    }, [runtime]);
 
   // Enhanced loading state
   if (loading) {
@@ -996,7 +1117,7 @@ export default function AdvancedModelConfig({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="config" className="flex items-center gap-2">
-            <Cogs className="h-4 w-4" />
+            <Cog className="h-4 w-4" />
             Configuration
           </TabsTrigger>
           <TabsTrigger value="benchmark" className="flex items-center gap-2">

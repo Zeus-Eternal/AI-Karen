@@ -5,7 +5,8 @@
  * intelligent fallback strategies and recovery mechanisms.
  */
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { agUIErrorHandler, AGUIErrorType, FallbackStrategy } from '../../lib/ag-ui-error-handler';
+import { Button } from '@/components/ui/button';
+import { agUIErrorHandler, FallbackStrategy, type FallbackResponse } from '../../lib/ag-ui-error-handler';
 export interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<any>;
@@ -17,12 +18,12 @@ export interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  fallbackResponse: any;
+  fallbackResponse: FallbackResponse | null;
   retryCount: number;
 }
 export class ErrorBoundary extends Component<Props, State> {
   private maxRetries = 3;
-  private retryTimeout: NodeJS.Timeout | null = null;
+  private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -39,21 +40,25 @@ export class ErrorBoundary extends Component<Props, State> {
       error
     };
   }
-  async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    // Handle the error with AG-UI error handler
-    const componentName = this.props.componentName || 'unknown';
-    const fallbackResponse = await agUIErrorHandler.handleComponentError(
-      error,
-      componentName
-    );
     this.setState({
       errorInfo,
-      fallbackResponse
     });
+
+    const componentName = this.props.componentName || 'unknown';
+
+    void agUIErrorHandler
+      .handleComponentError(error, componentName)
+      .then((fallbackResponse) => {
+        this.setState({ fallbackResponse });
+      })
+      .catch(() => {
+        this.setState({ fallbackResponse: null });
+      });
   }
   handleRetry = async () => {
     if (this.state.retryCount >= this.maxRetries) {
@@ -111,7 +116,10 @@ export class ErrorBoundary extends Component<Props, State> {
     }
     return this.props.children;
   }
-  private renderDefaultErrorUI(fallbackResponse: any, enableRetry: boolean) {
+  private renderDefaultErrorUI(
+    fallbackResponse: FallbackResponse | null,
+    enableRetry: boolean
+  ) {
     const { error, retryCount } = this.state;
     const componentName = this.props.componentName || 'Component';
     if (!fallbackResponse) {
@@ -151,7 +159,10 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.renderGenericFallback(fallbackResponse, enableRetry);
     }
   }
-  private renderSimpleTableFallback(fallbackResponse: any, enableRetry: boolean) {
+  private renderSimpleTableFallback(
+    fallbackResponse: FallbackResponse,
+    enableRetry: boolean
+  ) {
     const { data, columns, message, degradedFeatures } = fallbackResponse;
     return (
       <div className="error-boundary-container">
@@ -192,16 +203,29 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
         {enableRetry && (
           <div className="fallback-actions">
-            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            <Button
+              onClick={this.handleRetry}
+              className="retry-button"
+              aria-label="Retry"
+            >
+              Retry ({this.state.retryCount}/{this.maxRetries})
             </Button>
-            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            <Button
+              onClick={this.handleReset}
+              className="reset-button"
+              aria-label="Reset"
+            >
+              Reset Component
             </Button>
           </div>
         )}
       </div>
     );
   }
-  private renderCachedDataFallback(fallbackResponse: any, enableRetry: boolean) {
+  private renderCachedDataFallback(
+    fallbackResponse: FallbackResponse,
+    enableRetry: boolean
+  ) {
     const { message, degradedFeatures } = fallbackResponse;
     return (
       <div className="error-boundary-container">
@@ -218,16 +242,29 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
         {enableRetry && (
           <div className="fallback-actions">
-            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            <Button
+              onClick={this.handleRetry}
+              className="retry-button"
+              aria-label="Retry"
+            >
+              Retry ({this.state.retryCount}/{this.maxRetries})
             </Button>
-            <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+            <Button
+              onClick={this.handleReset}
+              className="reset-button"
+              aria-label="Reset"
+            >
+              Reset Component
             </Button>
           </div>
         )}
       </div>
     );
   }
-  private renderLoadingStateFallback(fallbackResponse: any, enableRetry: boolean) {
+  private renderLoadingStateFallback(
+    fallbackResponse: FallbackResponse,
+    enableRetry: boolean
+  ) {
     const { message } = fallbackResponse;
     return (
       <div className="error-boundary-container">
@@ -235,14 +272,22 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="loading-spinner">⏳</div>
           <p>{message}</p>
           {enableRetry && (
-            <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+            <Button
+              onClick={this.handleRetry}
+              className="retry-button"
+              aria-label="Retry"
+            >
+              Retry ({this.state.retryCount}/{this.maxRetries})
             </Button>
           )}
         </div>
       </div>
     );
   }
-  private renderErrorMessageFallback(fallbackResponse: any, enableRetry: boolean) {
+  private renderErrorMessageFallback(
+    fallbackResponse: FallbackResponse,
+    enableRetry: boolean
+  ) {
     const { message } = fallbackResponse;
     return (
       <div className="error-boundary-container">
@@ -251,9 +296,19 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+              <Button
+                onClick={this.handleRetry}
+                className="retry-button"
+                aria-label="Retry"
+              >
+                Retry ({this.state.retryCount}/{this.maxRetries})
               </Button>
-              <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+              <Button
+                onClick={this.handleReset}
+                className="reset-button"
+                aria-label="Reset"
+              >
+                Reset Component
               </Button>
             </div>
           )}
@@ -261,7 +316,10 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
-  private renderGenericFallback(fallbackResponse: any, enableRetry: boolean) {
+  private renderGenericFallback(
+    fallbackResponse: FallbackResponse,
+    enableRetry: boolean
+  ) {
     const { message } = fallbackResponse;
     const componentName = this.props.componentName || 'Component';
     return (
@@ -272,9 +330,19 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>{message || 'An unexpected error occurred.'}</p>
           {enableRetry && (
             <div className="fallback-actions">
-              <Button onClick={this.handleRetry} className="retry-button" aria-label="Button">
+              <Button
+                onClick={this.handleRetry}
+                className="retry-button"
+                aria-label="Retry"
+              >
+                Retry ({this.state.retryCount}/{this.maxRetries})
               </Button>
-              <Button onClick={this.handleReset} className="reset-button" aria-label="Button">
+              <Button
+                onClick={this.handleReset}
+                className="reset-button"
+                aria-label="Reset"
+              >
+                Reset Component
               </Button>
             </div>
           )}

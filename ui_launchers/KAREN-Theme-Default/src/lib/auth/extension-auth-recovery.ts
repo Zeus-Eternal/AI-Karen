@@ -6,7 +6,7 @@ import {
   ExtensionAuthError,
   ExtensionAuthRecoveryStrategy,
 } from './extension-auth-errors';
-import { extensionAuthDegradationManager } from './extension-auth-degradation';
+import { extensionAuthDegradationManager, ExtensionFeatureLevel } from './extension-auth-degradation';
 /**
  * Extension Authentication Error Recovery Manager
  * 

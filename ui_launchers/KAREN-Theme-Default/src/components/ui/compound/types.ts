@@ -6,19 +6,23 @@ export interface BaseComponentProps extends React.HTMLAttributes<HTMLDivElement>
   children?: React.ReactNode
 }
 
+export interface BaseCardProps extends BaseComponentProps {}
+
 // Card compound component types
-export interface CardRootProps extends BaseComponentProps {
+export interface CardRootProps extends BaseCardProps {
   interactive?: boolean
   variant?: "default" | "elevated" | "outlined" | "glass"
 }
 
-export interface CardActionsProps extends BaseComponentProps {
+export interface CardActionsProps extends BaseCardProps {
   justify?: "start" | "center" | "end" | "between"
 }
 
 export type CardProps = CardRootProps
 
 // Modal compound component types
+export interface BaseModalProps extends BaseComponentProps {}
+
 export interface ModalRootProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -34,7 +38,7 @@ export interface ModalContentProps extends React.HTMLAttributes<HTMLDivElement> 
   showCloseButton?: boolean
 }
 
-export interface ModalActionsProps extends BaseComponentProps {
+export interface ModalActionsProps extends BaseModalProps {
   justify?: "start" | "center" | "end" | "between"
 }
 

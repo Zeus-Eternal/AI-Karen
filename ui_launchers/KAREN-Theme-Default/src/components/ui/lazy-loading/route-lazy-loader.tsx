@@ -7,10 +7,14 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import { Button } from "@/components/ui/button";
 
+type FallbackComponent = React.ComponentType<Record<string, unknown>>;
+type RouteErrorFallback = React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
+type PropsOf<T> = T extends ComponentType<infer P> ? P : never;
+
 export interface RouteLazyLoaderProps {
   children: React.ReactNode;
-  fallback?: React.ComponentType;
-  errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
+  fallback?: FallbackComponent;
+  errorFallback?: RouteErrorFallback;
 }
 
 const DefaultRouteFallback: React.FC = () => (
@@ -113,20 +117,20 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
 export function createLazyRoute<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: {
-    fallback?: React.ComponentType;
-    errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
+    fallback?: FallbackComponent;
+    errorFallback?: RouteErrorFallback;
     preload?: boolean;
   } = {}
-): ComponentType<React.ComponentProps<T>> {
+): ComponentType<PropsOf<T>> {
   const load = async () => importFn();
 
   if (options.preload) {
-    importFn().catch(error => { });
+    void importFn().catch(() => undefined);
   }
 
   const LazyComponent = React.lazy(load);
 
-  const Wrapped: React.FC<React.ComponentProps<T>> = (props) => (
+  const Wrapped: React.FC<PropsOf<T>> = (props) => (
     <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
       <LazyComponent {...props} />
     </RouteLazyLoader>
@@ -139,7 +143,7 @@ export function createLazyRoute<T extends ComponentType<any>>(
 export function useRoutePreloader() {
   const preloadRoute = React.useCallback(
     (importFn: () => Promise<{ default: ComponentType<any> }>) => {
-      importFn().catch(error => { });
+      void importFn().catch(() => undefined);
     },
     []
   );
@@ -149,8 +153,8 @@ export function useRoutePreloader() {
 export function withLazyLoading<P extends object>(
   Component: ComponentType<P>,
   options: {
-    fallback?: React.ComponentType;
-    errorFallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
+    fallback?: FallbackComponent;
+    errorFallback?: RouteErrorFallback;
   } = {}
 ) {
   const WrappedComponent = (props: P) => (

@@ -7,9 +7,24 @@
  * Requirements: 1.4, 4.4
  */
 
-import { HttpConnectionPool, getHttpConnectionPool, ConnectionPoolConfig } from './http-connection-pool';
-import { RequestResponseCache, getRequestResponseCache, CacheConfig } from './request-response-cache';
-import { DatabaseQueryOptimizer, getDatabaseQueryOptimizer, QueryOptimizationConfig } from './database-query-optimizer';
+import {
+  HttpConnectionPool,
+  getHttpConnectionPool,
+  initializeHttpConnectionPool,
+  ConnectionPoolConfig,
+} from './http-connection-pool';
+import {
+  RequestResponseCache,
+  getRequestResponseCache,
+  initializeRequestResponseCache,
+  CacheConfig,
+} from './request-response-cache';
+import {
+  DatabaseQueryOptimizer,
+  getDatabaseQueryOptimizer,
+  initializeDatabaseQueryOptimizer,
+  QueryOptimizationConfig,
+} from './database-query-optimizer';
 import { getConnectionManager } from '../connection/connection-manager';
 
 export type HeaderLike = HeadersInit | undefined;
@@ -132,9 +147,19 @@ export class PerformanceOptimizer {
       ...config,
     };
 
-    this.connectionPool = getHttpConnectionPool(this.config.connectionPool);
-    this.responseCache = getRequestResponseCache(this.config.responseCache);
-    this.queryOptimizer = getDatabaseQueryOptimizer(this.config.queryOptimizer);
+    const hasPoolOverrides = Object.keys(this.config.connectionPool).length > 0;
+    const hasCacheOverrides = Object.keys(this.config.responseCache).length > 0;
+    const hasQueryOverrides = Object.keys(this.config.queryOptimizer).length > 0;
+
+    this.connectionPool = hasPoolOverrides
+      ? initializeHttpConnectionPool(this.config.connectionPool)
+      : getHttpConnectionPool();
+    this.responseCache = hasCacheOverrides
+      ? initializeRequestResponseCache(this.config.responseCache)
+      : getRequestResponseCache();
+    this.queryOptimizer = hasQueryOverrides
+      ? initializeDatabaseQueryOptimizer(this.config.queryOptimizer)
+      : getDatabaseQueryOptimizer();
 
     if (this.config.enableMetrics) {
       this.startMetricsCollection();

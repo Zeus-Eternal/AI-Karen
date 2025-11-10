@@ -54,7 +54,7 @@ export function useAccessibilityTesting(
   });
 
   const testSuiteRef = useRef<AccessibilityTestSuite | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initialize test suite
   useEffect(() => {
@@ -224,7 +224,7 @@ export function useAccessibilityTesting(
 
 // Hook for monitoring accessibility in development
 export function useAccessibilityMonitor(
-  elementRef: React.RefObject<HTMLElement>,
+  elementRef: RefObject<HTMLElement>,
   enabled: boolean = process.env.NODE_ENV === 'development'
 ) {
   const [violations, setViolations] = useState<string[]>([]);

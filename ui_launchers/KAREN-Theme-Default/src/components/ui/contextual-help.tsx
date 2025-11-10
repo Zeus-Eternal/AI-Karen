@@ -1,15 +1,21 @@
 "use client";
 
-import React from 'react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-import { } from 'lucide-react';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { getHelpContent } from '@/lib/help-content';
+import {
+  AlertTriangle,
+  BookOpen,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Lightbulb,
+} from 'lucide-react';
 
 export interface ContextualHelpProps {
   section: string;
@@ -63,7 +69,10 @@ export function ContextualHelp({
               if (!content) return null;
               
               return (
-                <div key={helpKey} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-blue-100 sm:p-4 md:p-6">
+                <div
+                  key={helpKey}
+                  className="flex items-start gap-3 p-3 bg-white rounded-lg border border-blue-100 sm:p-4 md:p-6"
+                >
                   <div className="flex-shrink-0 mt-0.5">
                     <Lightbulb className="h-4 w-4 text-blue-600 " />
                   </div>
@@ -87,7 +96,7 @@ export function ContextualHelp({
 export interface HelpCalloutProps {
   type: 'tip' | 'warning' | 'info' | 'success';
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   helpKey?: string;
   category?: 'modelLibrary' | 'llmSettings';
   className?: string;
@@ -115,15 +124,6 @@ export function HelpCallout({
         return <CheckCircle className="h-4 w-4 " />;
       default:
         return <BookOpen className="h-4 w-4 " />;
-    }
-  };
-
-  const getVariant = () => {
-    switch (type) {
-      case 'warning':
-        return 'destructive';
-      default:
-        return 'default';
     }
   };
 
@@ -174,10 +174,10 @@ export interface QuickStartHelpProps {
  * Quick start help component that provides step-by-step guidance
  * for common workflows.
  */
-export function QuickStartHelp({ 
-  steps, 
-  category = 'modelLibrary', 
-  className = '' 
+export function QuickStartHelp({
+  steps,
+  category = 'modelLibrary',
+  className = ''
 }: QuickStartHelpProps) {
   return (
     <Card className={`border-green-200 bg-green-50/50 ${className}`}>
@@ -186,6 +186,7 @@ export function QuickStartHelp({
           <CheckCircle className="h-5 w-5 " />
         </CardTitle>
         <CardDescription className="text-green-700">
+          Follow these steps to get up and running quickly.
         </CardDescription>
       </CardHeader>
       <CardContent>
