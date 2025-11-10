@@ -3,7 +3,7 @@
  * Provides comprehensive screen reader support and announcements
  */
 
-import * as React from 'react';
+import React from "react";
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAriaAnnouncements, AriaLiveRegion } from './aria-live-region';

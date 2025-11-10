@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode } from 'react';
+import React from "react";
 import { RefreshCw, AlertCircle, Clock, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ export interface RetryButtonProps {
   size?: 'sm' | 'md' | 'lg' | 'icon';
   variant?: 'default' | 'outline' | 'ghost';
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 /**
@@ -197,9 +197,9 @@ export interface RetryWrapperProps<T> {
     canRetry: boolean;
     retry: () => void;
     reset: () => void;
-  }) => ReactNode;
-  fallback?: ReactNode;
-  errorFallback?: (error: Error, retry: () => void) => ReactNode;
+  }) => React.ReactNode;
+  fallback?: React.ReactNode;
+  errorFallback?: (error: Error, retry: () => void) => React.ReactNode;
 }
 
 /**
@@ -345,7 +345,7 @@ export interface LoadingRetryProps {
   onRetry: () => void;
   loadingText?: string;
   retryingText?: string;
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
 }
 
