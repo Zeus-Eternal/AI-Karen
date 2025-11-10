@@ -82,7 +82,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   } = useChatState(initialMessages, welcomeMessage);
 
   // Settings management
-  const { settings, updateSettings, resetSettings } = useChatSettings(onSettingsChange);
+  const { settings, updateSettings, resetSettings } = useChatSettings(
+    {},
+    onSettingsChange
+  );
 
   // Analytics management
   const { analytics, resetAnalytics } = useChatAnalytics(

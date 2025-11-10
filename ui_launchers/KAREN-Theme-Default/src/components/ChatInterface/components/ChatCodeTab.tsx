@@ -19,11 +19,11 @@ interface ChatCodeTabProps {
   isTyping: boolean;
   showCodePreview: boolean;
   onPreviewToggle: () => void;
-  onCodeSubmit: () => void;
+  onCodeSubmit: (code: string) => void | Promise<void>;
   useCopilotKit: boolean;
   enableDocGeneration: boolean;
   isAnalyzing?: boolean;
-  onQuickAction?: (action: string, prompt: string, type: string) => void;
+  onQuickAction?: (action: string, prompt: string, type: string) => void | Promise<void>;
 }
 
 export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
@@ -117,7 +117,10 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
           )}
           {/* Actions */}
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button onClick={onCodeSubmit} disabled={!codeValue.trim() || isTyping}>
+            <Button
+              onClick={() => onCodeSubmit(codeValue)}
+              disabled={!codeValue.trim() || isTyping}
+            >
               {isTyping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
             </Button>
             <Button variant="outline" onClick={handleCodeAnalysis} disabled={!codeValue.trim() || isTyping || isAnalyzing}>
