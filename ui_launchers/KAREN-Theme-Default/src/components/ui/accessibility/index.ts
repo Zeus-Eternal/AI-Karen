@@ -10,7 +10,15 @@ export * from '../../../utils/aria';
 export * from '../aria-live-region';
 
 // Enhanced components with ARIA support
-export * from '../aria-enhanced-button';
+export {
+  AriaEnhancedButton,
+  ToggleButton,
+  MenuButton,
+  type AriaEnhancedButtonProps,
+  type ToggleButtonProps,
+  type MenuButtonProps,
+} from '../aria-enhanced-button';
+export { buttonVariants as ariaEnhancedButtonVariants } from '../aria-enhanced-button';
 export * from '../aria-enhanced-form';
 export * from '../aria-enhanced-input';
 
