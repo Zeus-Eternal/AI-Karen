@@ -9,7 +9,7 @@
  * - Mirror AuthContext semantics so components behave realistically.
  */
 
-import { vi, beforeEach, afterEach } from 'vitest';
+// Vitest globals are configured via tsconfig types; keep usage implicit.
 import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import type { UseRoleReturn } from '@/hooks/useRole';
 import { mockSuperAdminUser, mockAdminUser, mockRegularUser, createMockAuthContext } from './test-providers';

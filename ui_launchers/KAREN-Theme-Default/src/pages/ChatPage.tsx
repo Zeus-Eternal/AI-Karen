@@ -85,7 +85,7 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-        {currentConversation?.messages.map((message) => (
+        {currentConversation?.messages?.map((message) => (
           <div
             key={message.id}
             className={cn(

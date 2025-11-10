@@ -7,8 +7,9 @@
  */
 
 import React from 'react';
-import { vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
+
+// Vitest globals (vi, beforeEach, afterEach, beforeAll, afterAll) are available via configured types.
 import {
   resetHookMocks,
   cleanupHookMocks,

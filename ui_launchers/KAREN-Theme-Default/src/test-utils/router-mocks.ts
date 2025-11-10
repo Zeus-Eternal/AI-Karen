@@ -8,7 +8,7 @@
  * - Safe window.location shim with install/restore.
  */
 
-import { vi } from 'vitest';
+// Vitest provides global mocks via configured types.
 
 // --------------------------------------------------
 // Internal state
