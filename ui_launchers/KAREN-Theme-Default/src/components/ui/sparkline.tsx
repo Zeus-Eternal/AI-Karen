@@ -3,6 +3,14 @@
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
+type SparklinePoint = { x: number; y: number };
+
+type SparklinePathData = {
+  linePath: string;
+  areaPath: string;
+  points: SparklinePoint[];
+};
+
 export interface SparklineProps extends React.SVGAttributes<SVGSVGElement> {
   data: number[];
   width?: number;
@@ -28,45 +36,48 @@ export function Sparkline({
   className,
   ...props
 }: SparklineProps) {
-  const pathData = useMemo(() => {
+  const pathData = useMemo<SparklinePathData>(() => {
     if (data.length === 0) {
       return {
         linePath: '',
         areaPath: '',
-        points: [] as Array<{ x: number; y: number }>,
+        points: [],
       };
     }
 
     const max = Math.max(...data);
     const min = Math.min(...data);
     const range = max - min || 1;
+    const denominator = Math.max(data.length - 1, 1);
 
-    const points = data.map((value, index) => {
-      const x = (index / (data.length - 1)) * width;
+    const points: SparklinePoint[] = data.map((value, index) => {
+      const x = data.length === 1 ? width / 2 : (index / denominator) * width;
       const y = height - ((value - min) / range) * height;
       return { x, y };
     });
 
+    if (points.length === 0) {
+      return { linePath: '', areaPath: '', points };
+    }
+
     let path = `M ${points[0].x} ${points[0].y}`;
 
-    // Create smooth curves using quadratic bezier curves
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const curr = points[i];
       const midX = (prev.x + curr.x) / 2;
-      path += ` Q ${prev.x} ${prev.y} ${midX} ${(prev.y + curr.y) / 2}`;
+      const midY = (prev.y + curr.y) / 2;
+      path += ` Q ${prev.x} ${prev.y} ${midX} ${midY}`;
 
       if (i === points.length - 1) {
         path += ` Q ${curr.x} ${curr.y} ${curr.x} ${curr.y}`;
       }
     }
 
-    const areaPath = showArea
-      ? `${path} L ${width} ${height} L 0 ${height} Z`
-      : path;
+    const areaPath = showArea ? `${path} L ${width} ${height} L 0 ${height} Z` : path;
 
     return { linePath: path, areaPath, points };
-  }, [data, width, height, showArea]);
+  }, [data, height, showArea, width]);
 
   if (data.length === 0) {
     return (

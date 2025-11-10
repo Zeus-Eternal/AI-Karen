@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type { ReactNode } from 'react';
 
 export interface SkeletonProps {
   className?: string;
@@ -6,7 +6,7 @@ export interface SkeletonProps {
   height?: string | number;
   variant?: 'default' | 'rounded' | 'circular';
   animated?: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export interface SkeletonTextProps {

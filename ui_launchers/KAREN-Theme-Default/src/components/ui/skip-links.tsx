@@ -3,6 +3,8 @@
  * Provides accessible skip navigation for keyboard users
  */
 
+'use client';
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -30,36 +32,31 @@ export interface SkipLinksProps extends React.HTMLAttributes<HTMLDivElement> {
  * SkipLinks - Provides keyboard navigation shortcuts to main content areas
  */
 export const SkipLinks = React.forwardRef<HTMLDivElement, SkipLinksProps>(
-  ({ 
-    links, 
-    alwaysVisible = false, 
-    className, 
-    ...props 
-  }, ref) => {
-    const handleSkipClick = (targetId: string) => {
+  ({ links, alwaysVisible = false, className, ...props }, ref) => {
+    const handleSkipClick = React.useCallback((targetId: string) => {
       const targetElement = document.getElementById(targetId);
-      if (targetElement) {
-        // Focus the target element
-        targetElement.focus();
-        
-        // If the element is not naturally focusable, make it focusable temporarily
-        if (targetElement.tabIndex < 0) {
-          targetElement.tabIndex = -1;
-          targetElement.focus();
-          
-          // Remove tabindex after a short delay
-          setTimeout(() => {
-            targetElement.removeAttribute('tabindex');
-          }, 100);
-        }
-
-        // Scroll to the element
-        targetElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
+      if (!targetElement) {
+        return;
       }
-    };
+
+      const restoreTabIndex = targetElement.tabIndex;
+
+      if (targetElement.tabIndex < 0) {
+        targetElement.tabIndex = -1;
+      }
+
+      targetElement.focus();
+      targetElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+
+      if (restoreTabIndex < 0) {
+        window.setTimeout(() => {
+          targetElement.removeAttribute('tabindex');
+        }, 100);
+      }
+    }, []);
 
     if (links.length === 0) {
       return null;
@@ -92,8 +89,8 @@ export const SkipLinks = React.forwardRef<HTMLDivElement, SkipLinksProps>(
                     'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
                     'transition-colors duration-200'
                   )}
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={event => {
+                    event.preventDefault();
                     handleSkipClick(link.target);
                   }}
                   aria-describedby={link.description ? `${link.id}-desc` : undefined}
@@ -132,34 +129,48 @@ export interface SkipToContentProps extends React.AnchorHTMLAttributes<HTMLAncho
 }
 
 export const SkipToContent = React.forwardRef<HTMLAnchorElement, SkipToContentProps>(
-  ({ 
-    targetId = 'main-content',
-    label = 'Skip to main content',
-    alwaysVisible = false,
-    className,
-    onClick,
-    ...props 
-  }, ref) => {
-    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      
-      const targetElement = document.getElementById(targetId);
-      if (targetElement) {
-        // Focus the target element
+  (
+    {
+      targetId = 'main-content',
+      label = 'Skip to main content',
+      alwaysVisible = false,
+      className,
+      onClick,
+      ...props
+    },
+    ref,
+  ) => {
+    const handleClick = React.useCallback(
+      (event: React.MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+
+        const targetElement = document.getElementById(targetId);
+        if (!targetElement) {
+          return;
+        }
+
+        const restoreTabIndex = targetElement.tabIndex;
+
         if (targetElement.tabIndex < 0) {
           targetElement.tabIndex = -1;
         }
-        targetElement.focus();
-        
-        // Scroll to the element
+
+        targetElement.focus({ preventScroll: true });
         targetElement.scrollIntoView({
           behavior: 'smooth',
-          block: 'start'
+          block: 'start',
         });
-      }
 
-      onClick?.(e);
-    };
+        if (restoreTabIndex < 0) {
+          window.setTimeout(() => {
+            targetElement.removeAttribute('tabindex');
+          }, 100);
+        }
+
+        onClick?.(event);
+      },
+      [onClick, targetId],
+    );
 
     return (
       <a

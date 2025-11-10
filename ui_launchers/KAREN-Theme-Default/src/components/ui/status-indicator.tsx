@@ -29,6 +29,8 @@ const statusIndicatorVariants = cva(
   }
 );
 
+type StatusVariant = NonNullable<VariantProps<typeof statusIndicatorVariants>['status']>;
+
 const dotVariants = cva(
   'rounded-full transition-all duration-300',
   {
@@ -67,6 +69,15 @@ export interface StatusIndicatorProps
   pulse?: boolean;
 }
 
+const STATUS_LABELS: Record<StatusVariant, string> = {
+  online: 'Online',
+  offline: 'Offline',
+  warning: 'Warning',
+  error: 'Error',
+  loading: 'Loading',
+  success: 'Success',
+};
+
 export function StatusIndicator({
   className,
   status = 'online',
@@ -76,24 +87,18 @@ export function StatusIndicator({
   pulse = false,
   ...props
 }: StatusIndicatorProps) {
-  const statusLabels = {
-    online: 'Online',
-    offline: 'Offline',
-    warning: 'Warning',
-    error: 'Error',
-    loading: 'Loading',
-    success: 'Success',
-  };
+  const normalizedStatus: StatusVariant =
+    status && status in STATUS_LABELS ? (status as StatusVariant) : 'online';
 
   return (
     <div
-      className={cn(statusIndicatorVariants({ status, size }), className)}
+      className={cn(statusIndicatorVariants({ status: normalizedStatus, size }), className)}
       {...props}
     >
       {showDot && (
-        <span className={cn(dotVariants({ status, size, pulse }))} />
+        <span className={cn(dotVariants({ status: normalizedStatus, size, pulse }))} />
       )}
-      <span>{label || statusLabels[status || 'online']}</span>
+      <span>{label ?? STATUS_LABELS[normalizedStatus]}</span>
     </div>
   );
 }
