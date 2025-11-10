@@ -12,8 +12,3 @@ export {
 } from './client';
 
 // Re-export types that are commonly used with database utilities
-export type { 
-  DatabaseClientConfig,
-  DatabaseClient,
-  AdminDatabaseUtilsType
-} from '@/types/admin';
