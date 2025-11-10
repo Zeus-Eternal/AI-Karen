@@ -54,7 +54,9 @@ export type SidebarProps = React.ComponentPropsWithoutRef<'aside'> & {
   side?: 'left' | 'right';
 };
 
-const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
+type SidebarElement = React.ElementRef<'aside'>;
+
+const Sidebar = React.forwardRef<SidebarElement, SidebarProps>(
   (
     {
       className,
@@ -101,13 +103,11 @@ const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
 
     return (
       <Comp
-        ref={ref as any}
+        ref={ref}
         type={asChild ? undefined : 'button'}
         aria-expanded={isOpen}
         onClick={event => {
-          if (onClick) {
-            onClick(event as any);
-          }
+          onClick?.(event);
           toggle();
         }}
         className={cn(

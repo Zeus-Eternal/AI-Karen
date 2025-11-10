@@ -17,10 +17,31 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CheckSquare, Pin, ExternalLink, Download, Search, MessageSquare, Sparkles, Loader2, X, ChevronRight } from 'lucide-react';
+import {
+  CheckSquare,
+  Pin,
+  ExternalLink,
+  Download,
+  Search,
+  MessageSquare,
+  Sparkles,
+  Loader2,
+  X,
+  ChevronRight,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActionRegistry } from '@/hooks/use-action-registry';
 import type { SuggestedAction, ActionResult } from '@/services/actionMapper';
+
+type SuggestedActionType = SuggestedAction['type'];
+type PriorityLevel = NonNullable<SuggestedAction['priority']>;
+
+const formatActionLabel = (type: SuggestedActionType) =>
+  type
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
 export interface SuggestedActionsProps {
   actions: SuggestedAction[];
@@ -32,28 +53,28 @@ export interface SuggestedActionsProps {
   maxActions?: number;
 }
 
-const actionIcons = {
+const actionIcons: Partial<Record<SuggestedActionType, LucideIcon>> = {
   add_task: CheckSquare,
   pin_memory: Pin,
   open_doc: ExternalLink,
   export_note: Download,
   search_memory: Search,
-  create_conversation: MessageSquare
+  create_conversation: MessageSquare,
 };
 
-const actionColors = {
+const actionColors: Partial<Record<SuggestedActionType, string>> = {
   add_task: 'bg-blue-500 hover:bg-blue-600',
   pin_memory: 'bg-purple-500 hover:bg-purple-600',
   open_doc: 'bg-green-500 hover:bg-green-600',
   export_note: 'bg-orange-500 hover:bg-orange-600',
   search_memory: 'bg-indigo-500 hover:bg-indigo-600',
-  create_conversation: 'bg-pink-500 hover:bg-pink-600'
+  create_conversation: 'bg-pink-500 hover:bg-pink-600',
 };
 
-const priorityColors = {
+const priorityColors: Record<PriorityLevel, string> = {
   high: 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950',
   medium: 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950',
-  low: 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+  low: 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
 };
 
 export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
@@ -65,7 +86,9 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
   showConfidence = true,
   maxActions = 5
 }) => {
-  const { performSuggestedAction, isLoading } = useActionRegistry({
+  const removalTimers = React.useRef<Map<string, number>>(new Map());
+
+  const { performSuggestedAction } = useActionRegistry({
     autoToast: true,
     onActionComplete: (actionType, result) => {
       const action = actions.find(a => a.type === actionType);
@@ -74,32 +97,49 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
       }
     }
   });
-  const [executingActions, setExecutingActions] = useState<Set<string>>(new Set());
-  const [completedActions, setCompletedActions] = useState<Set<string>>(new Set());
+  const [executingActions, setExecutingActions] = useState<Set<string>>(() => new Set());
+  const [completedActions, setCompletedActions] = useState<Set<string>>(() => new Set());
+
+  React.useEffect(
+    () => () => {
+      removalTimers.current.forEach(timeoutId => window.clearTimeout(timeoutId));
+      removalTimers.current.clear();
+    },
+    [],
+  );
 
   if (!actions.length) return null;
 
-  const displayActions = actions.slice(0, maxActions);
+  const displayActions = React.useMemo(
+    () => actions.slice(0, maxActions),
+    [actions, maxActions],
+  );
 
   const handleActionClick = async (action: SuggestedAction, index: number) => {
     const actionKey = `${action.type}_${index}`;
-    
+
     setExecutingActions(prev => new Set(prev).add(actionKey));
-    
+
+    let completedSuccessfully = false;
+
     try {
       const result = await performSuggestedAction(action);
-      
+
       if (result.success) {
+        completedSuccessfully = true;
         setCompletedActions(prev => new Set(prev).add(actionKey));
-        
+
         // Auto-remove completed action after delay
-        setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
           setCompletedActions(prev => {
             const newSet = new Set(prev);
             newSet.delete(actionKey);
             return newSet;
           });
+          removalTimers.current.delete(actionKey);
         }, 3000);
+
+        removalTimers.current.set(actionKey, timeoutId);
       }
     } finally {
       setExecutingActions(prev => {
@@ -107,19 +147,26 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
         newSet.delete(actionKey);
         return newSet;
       });
+      if (!completedSuccessfully) {
+        const timeoutId = removalTimers.current.get(actionKey);
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+          removalTimers.current.delete(actionKey);
+        }
+      }
     }
   };
 
-  const ActionButton: React.FC<{ 
-    action: SuggestedAction; 
+  const ActionButton: React.FC<{
+    action: SuggestedAction;
     index: number;
     isCompact?: boolean;
   }> = ({ action, index, isCompact = false }) => {
     const actionKey = `${action.type}_${index}`;
     const isExecuting = executingActions.has(actionKey);
     const isCompleted = completedActions.has(actionKey);
-    const IconComponent = actionIcons[action.type as keyof typeof actionIcons] || Sparkles;
-    const colorClass = actionColors[action.type as keyof typeof actionColors] || 'bg-gray-500 hover:bg-gray-600';
+    const IconComponent = actionIcons[action.type] ?? Sparkles;
+    const colorClass = actionColors[action.type] ?? 'bg-gray-500 hover:bg-gray-600';
 
     return (
       <motion.div
@@ -154,9 +201,9 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
             )}
             
             <span className={cn('font-medium', isCompact && 'text-xs')}>
-              {action.description || action.type.replace('_', ' ')}
+              {action.description ?? formatActionLabel(action.type)}
             </span>
-            
+
             {showConfidence && action.confidence && !isCompact && (
               <Badge variant="secondary" className="text-xs ml-1 sm:text-sm md:text-base">
                 {Math.round(action.confidence * 100)}%
@@ -272,8 +319,9 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                 const actionKey = `${action.type}_${index}`;
                 const isExecuting = executingActions.has(actionKey);
                 const isCompleted = completedActions.has(actionKey);
-                const IconComponent = actionIcons[action.type as keyof typeof actionIcons] || Sparkles;
-                const priorityClass = priorityColors[action.priority || 'medium'];
+                const IconComponent = actionIcons[action.type] ?? Sparkles;
+                const priority = action.priority ?? 'medium';
+                const priorityClass = priorityColors[priority];
 
                 return (
                   <motion.div
@@ -290,10 +338,12 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                     )}
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <div className={cn(
-                        'p-2 rounded-full text-white',
-                        isCompleted ? 'bg-green-500' : actionColors[action.type as keyof typeof actionColors] || 'bg-gray-500'
-                      )}>
+                      <div
+                        className={cn(
+                          'p-2 rounded-full text-white',
+                          isCompleted ? 'bg-green-500' : actionColors[action.type] ?? 'bg-gray-500',
+                        )}
+                      >
                         {isCompleted ? (
                           <CheckSquare className="h-4 w-4 " />
                         ) : (
@@ -304,10 +354,10 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {action.description || action.type.replace('_', ' ')}
+                            {action.description ?? formatActionLabel(action.type)}
                           </span>
-                          
-                          {action.priority === 'high' && (
+
+                          {priority === 'high' && (
                             <Badge variant="destructive" className="text-xs sm:text-sm md:text-base">
                               High priority
                             </Badge>
