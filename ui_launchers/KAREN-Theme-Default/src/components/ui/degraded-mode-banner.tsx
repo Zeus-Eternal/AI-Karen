@@ -34,21 +34,8 @@ export default function DegradedModeBanner({
 }: DegradedModeBannerProps) {
   if (!show) return null;
 
-  const getVariant = () => {
-    switch (severity) {
-      case 'error':
-        return 'destructive';
-      case 'info':
-        return 'default';
-      case 'warning':
-      default:
-        return 'default';
-    }
-  };
-
   return (
     <Alert
-      variant={getVariant()}
       className={cn(
         'relative',
         severity === 'warning' && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600',

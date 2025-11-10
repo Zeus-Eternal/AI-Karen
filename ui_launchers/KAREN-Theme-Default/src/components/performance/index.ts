@@ -34,10 +34,6 @@ export type {
 // Resource Monitoring Dashboard
 export { ResourceMonitoringDashboard } from "./ResourceMonitoringDashboard";
 export type {
-  ResourceMetrics,
-  ResourceAlert,
-  ScalingRecommendation,
-  CapacityPlan,
   ResourceMonitoringDashboardProps,
 } from "./ResourceMonitoringDashboard";
 
@@ -68,6 +64,21 @@ export { performanceProfiler } from "@/services/performance-profiler";
 // ============================================================================
 
 export type { PerformanceMetrics, PerformanceEvent } from "@/services/performance-monitor";
-export type { OptimizationSuggestion, OptimizationResult } from "@/services/performance-optimizer";
-export type { ResourceStats, ResourceUsageDetail } from "@/services/resource-monitor";
-export type { ProfilingData, ProfilingReport } from "@/services/performance-profiler";
+export type {
+  OptimizationConfig,
+  OptimizationMetrics,
+  OptimizationRecommendation,
+} from "@/services/performance-optimizer";
+export type {
+  ResourceMetrics,
+  ResourceAlert,
+  ScalingRecommendation,
+  CapacityPlan,
+} from "@/services/resource-monitor";
+export type {
+  PerformanceProfile,
+  Bottleneck,
+  OptimizationSuggestion,
+  PerformanceComparison,
+  RegressionTest,
+} from "@/services/performance-profiler";

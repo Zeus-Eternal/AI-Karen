@@ -25,7 +25,10 @@ export function initGracefulDegradation(config: GracefulDegradationConfig = {}) 
 
   // Initialize feature flags
   Object.entries(featureFlags).forEach(([name, flag]) => {
-    featureFlagManager.setFlag(name, flag.enabled, flag.fallbackBehavior);
+    featureFlagManager.updateFlag(name, {
+      enabled: flag.enabled,
+      fallbackBehavior: flag.fallbackBehavior,
+    });
   });
 
   // Setup global error handling if enabled

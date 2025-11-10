@@ -54,7 +54,7 @@ const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputPr
     ...props 
   }, ref) => {
     // Build describedBy string
-    const describedByParts = [];
+    const describedByParts: string[] = [];
     if (helpId) describedByParts.push(helpId);
     if (ariaDescribedBy) describedByParts.push(ariaDescribedBy);
     if (invalid && errorId) describedByParts.push(errorId);
@@ -123,7 +123,11 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       typeof value === 'string' ? value : ''
     );
     const inputRef = React.useRef<HTMLInputElement>(null);
-    React.useImperativeHandle(ref, () => inputRef.current);
+    React.useImperativeHandle<HTMLInputElement | null, HTMLInputElement | null>(
+      ref,
+      () => inputRef.current,
+      []
+    );
     React.useEffect(() => {
       if (typeof value === 'string') {
         setInternalValue(value);
@@ -217,7 +221,11 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
   ({ showToggle = true, className, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
-    React.useImperativeHandle(ref, () => inputRef.current);
+    React.useImperativeHandle<HTMLInputElement | null, HTMLInputElement | null>(
+      ref,
+      () => inputRef.current,
+      []
+    );
     const togglePasswordVisibility = () => {
       setShowPassword(!showPassword);
       // Keep focus on input after toggle

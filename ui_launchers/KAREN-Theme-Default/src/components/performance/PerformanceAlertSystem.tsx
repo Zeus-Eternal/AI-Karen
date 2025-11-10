@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -39,14 +39,7 @@ import {
 
 export type AlertLevel = "warning" | "critical";
 
-export interface PerformanceAlert {
-  id: string;
-  metric: string; // e.g. 'lcp','fid','cls','fcp','ttfb','page-load','memory-usage','api-call'
-  value: number; // numeric value to compare to threshold
-  type: AlertLevel;
-  message: string;
-  timestamp: number; // epoch ms
-}
+export type PerformanceAlert = MonitorPerformanceAlert;
 
 export interface AlertRule {
   id: string;
@@ -76,7 +69,10 @@ export interface PerformanceAlertSystemProps {
 //  - performanceMonitor.getAlerts(limit?: number): PerformanceAlert[]
 //  - performanceMonitor.onAlert(cb: (a: PerformanceAlert) => void): () => void
 //  - (optional) performanceMonitor.metrics() ...
-import { performanceMonitor } from "@/services/performance-monitor";
+import {
+  performanceMonitor,
+  type PerformanceAlert as MonitorPerformanceAlert,
+} from "@/services/performance-monitor";
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -318,6 +314,22 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
   const clearAllAlerts = useCallback(() => setAlerts([]), []);
 
   // --- UI helpers -----------------------------------------------------------
+
+  type BadgeVariant = NonNullable<BadgeProps["variant"]>;
+  const alertBadgeVariant: Record<AlertLevel, BadgeVariant> = {
+    critical: "destructive",
+    warning: "secondary",
+  };
+
+  const alertVariant: Record<AlertLevel, "default" | "destructive"> = {
+    critical: "destructive",
+    warning: "default",
+  };
+
+  type AlertComponentProps = React.ComponentPropsWithoutRef<"div"> & {
+    variant?: "default" | "destructive";
+  };
+  const AlertComponent = Alert as React.ComponentType<AlertComponentProps>;
 
   const getAlertIcon = (type: AlertLevel) =>
     type === "critical" ? (
@@ -709,21 +721,14 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
             <ScrollArea className="h-96">
               <div className="space-y-2">
                 {alerts.map((alert) => (
-                  <Alert
-                    key={alert.id}
-                    variant={alert.type === "critical" ? "destructive" : "default"}
-                  >
+                  <AlertComponent key={alert.id} variant={alertVariant[alert.type]}>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-2">
                         {getAlertIcon(alert.type)}
                         <div>
                           <AlertTitle className="flex items-center gap-2">
                             <span>{getMetricDisplayName(alert.metric)}</span>
-                            <Badge
-                              variant={
-                                alert.type === "critical" ? "destructive" : "secondary"
-                              }
-                            >
+                            <Badge variant={alertBadgeVariant[alert.type]}>
                               {alert.type}
                             </Badge>
                             <Badge variant="outline" className="ml-1">
@@ -748,7 +753,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  </Alert>
+                  </AlertComponent>
                 ))}
               </div>
             </ScrollArea>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,16 +110,16 @@ export function WorkflowScheduler({
   onExportData,
   className = '',
 }: WorkflowSchedulerProps) {
-  const [selectedTab, setSelectedTab] = useState('triggers');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'type' | 'priority' | 'lastTriggered'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [selectedTriggers, setSelectedTriggers] = useState<Set<string>>(new Set());
+  const [selectedTab, setSelectedTab] = React.useState('triggers');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [filterStatus, setFilterStatus] = React.useState<'all' | 'active' | 'inactive'>('all');
+  const [filterType, setFilterType] = React.useState<string>('all');
+  const [sortBy, setSortBy] = React.useState<'name' | 'type' | 'priority' | 'lastTriggered'>('name');
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+  const [selectedTriggers, setSelectedTriggers] = React.useState<Set<string>>(new Set());
   const { toast } = useToast();
 
-  const schedulerStats = useMemo(() => {
+  const schedulerStats = React.useMemo(() => {
     const activeTriggers = triggers.filter((trigger) => trigger.enabled).length;
     const totalQueued = queues.reduce((sum, queue) => sum + queue.tasks.length, 0);
     const totalProcessing = queues.reduce((sum, queue) => sum + queue.currentLoad, 0);
@@ -143,12 +143,12 @@ export function WorkflowScheduler({
     };
   }, [analytics, queues, triggers]);
 
-  const availableTriggerTypes = useMemo(
+  const availableTriggerTypes = React.useMemo(
     () => Array.from(new Set(triggers.map((trigger) => trigger.type))).sort(),
     [triggers],
   );
 
-  const filteredTriggers = useMemo(() => {
+  const filteredTriggers = React.useMemo(() => {
     return triggers
       .filter((trigger) => {
         const matchesSearch = trigger.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -183,7 +183,7 @@ export function WorkflowScheduler({
       });
   }, [filterStatus, filterType, searchTerm, sortBy, sortOrder, triggers]);
 
-  const toggleTriggerSelection = useCallback((triggerId: string) => {
+  const toggleTriggerSelection = React.useCallback((triggerId: string) => {
     setSelectedTriggers((current) => {
       const next = new Set(current);
       if (next.has(triggerId)) {
@@ -195,7 +195,7 @@ export function WorkflowScheduler({
     });
   }, []);
 
-  const selectAllTriggers = useCallback(() => {
+  const selectAllTriggers = React.useCallback(() => {
     setSelectedTriggers((current) => {
       if (current.size === filteredTriggers.length) {
         return new Set();
@@ -204,9 +204,9 @@ export function WorkflowScheduler({
     });
   }, [filteredTriggers]);
 
-  const clearSelection = useCallback(() => setSelectedTriggers(new Set()), []);
+  const clearSelection = React.useCallback(() => setSelectedTriggers(new Set()), []);
 
-  const handleBulkAction = useCallback(async (action: BulkAction) => {
+  const handleBulkAction = React.useCallback(async (action: BulkAction) => {
     if (selectedTriggers.size === 0) {
       toast({
         variant: 'destructive',
@@ -253,7 +253,7 @@ export function WorkflowScheduler({
     }
   }, [clearSelection, onDeleteTrigger, onRunTrigger, onToggleTrigger, selectedTriggers, toast]);
 
-  const handleCreateTrigger = useCallback(async () => {
+  const handleCreateTrigger = React.useCallback(async () => {
     if (!onCreateTrigger) {
       toast({
         title: 'Creation unavailable',
@@ -309,7 +309,7 @@ export function WorkflowScheduler({
     }
   }, [onCreateTrigger, toast, triggers]);
 
-  const handleNewQueueClick = useCallback(() => {
+  const handleNewQueueClick = React.useCallback(() => {
     toast({
       title: 'Queue creation managed externally',
       description: 'Use backend tooling to provision queues, then refresh this view.',
@@ -390,7 +390,7 @@ export function WorkflowScheduler({
         />
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+      <Tabs value={selectedTab} onValueChange={(value: string) => setSelectedTab(value)}>
         <TabsList className="grid w-full lg:w-auto grid-cols-4">
           <TabsTrigger value="triggers">Triggers</TabsTrigger>
           <TabsTrigger value="queues">Queues</TabsTrigger>
@@ -403,10 +403,13 @@ export function WorkflowScheduler({
             <Input
               placeholder="Search triggers"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(event.target.value)}
               className="lg:w-1/2"
             />
-            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as 'all' | 'active' | 'inactive')}>
+            <Select
+              value={filterStatus}
+              onValueChange={(value: string) => setFilterStatus(value as 'all' | 'active' | 'inactive')}
+            >
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -416,7 +419,7 @@ export function WorkflowScheduler({
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
@@ -429,7 +432,12 @@ export function WorkflowScheduler({
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+            <Select
+              value={sortBy}
+              onValueChange={(value: string) =>
+                setSortBy(value as 'name' | 'type' | 'priority' | 'lastTriggered')
+              }
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>

@@ -243,17 +243,20 @@ interface BackgroundTasksProps {
 }
 
 const BackgroundTasks: React.FC<BackgroundTasksProps> = ({ status, handleExecuteTask, executing }) => {
+  const backgroundTasks = status.backgroundTasks ?? { active: 0, total: 0 };
+  const { active, total, lastExecution } = backgroundTasks;
+
   return (
     <div className="bg-gray-50 rounded-lg p-4">
       <h5 className="text-sm font-medium text-gray-900 mb-2">Background Tasks</h5>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-600">
-            {status.backgroundTasks.active} active / {status.backgroundTasks.total} total
+            {active} active / {total} total
           </p>
-          {status.backgroundTasks.lastExecution && (
+          {lastExecution && (
             <p className="text-xs text-gray-500">
-              Last execution: {new Date(status.backgroundTasks.lastExecution).toLocaleString()}
+              Last execution: {new Date(lastExecution).toLocaleString()}
             </p>
           )}
         </div>

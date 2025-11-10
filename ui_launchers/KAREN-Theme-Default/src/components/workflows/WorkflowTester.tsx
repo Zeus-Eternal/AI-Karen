@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useCallback } from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,10 +30,10 @@ interface TestInput {
 }
 
 export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTesterProps) {
-  const [testInputs, setTestInputs] = useState<Record<string, unknown>>({});
-  const [testResult, setTestResult] = useState<WorkflowTestResult | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [selectedStep, setSelectedStep] = useState<string | null>(null);
+  const [testInputs, setTestInputs] = React.useState<Record<string, unknown>>({});
+  const [testResult, setTestResult] = React.useState<WorkflowTestResult | null>(null);
+  const [isRunning, setIsRunning] = React.useState(false);
+  const [selectedStep, setSelectedStep] = React.useState<string | null>(null);
 
   // Extract input nodes and their required inputs
   const inputNodes = workflow.nodes.filter((node) =>
@@ -58,14 +58,14 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
       })
   );
 
-  const handleInputChange = useCallback((nodeId: string, inputId: string, value: unknown) => {
+  const handleInputChange = React.useCallback((nodeId: string, inputId: string, value: unknown) => {
     setTestInputs(prev => ({
       ...prev,
       [`${nodeId}.${inputId}`]: value
     }));
   }, []);
 
-  const handleRunTest = useCallback(async () => {
+  const handleRunTest = React.useCallback(async () => {
     if (!onTest) return;
 
     setIsRunning(true);
@@ -92,12 +92,12 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
     }
   }, [workflow, testInputs, onTest]);
 
-  const handleStopTest = useCallback(() => {
+  const handleStopTest = React.useCallback(() => {
     setIsRunning(false);
     // In a real implementation, this would cancel the running test
   }, []);
 
-  const handleResetTest = useCallback(() => {
+  const handleResetTest = React.useCallback(() => {
     setTestInputs({});
     setTestResult(null);
     setSelectedStep(null);
@@ -109,7 +109,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <Textarea
             value={typeof input.value === 'string' ? input.value : String(input.value ?? '')}
-            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+              handleInputChange(input.nodeId, input.inputId, event.target.value)
+            }
             placeholder={`Enter ${input.name.toLowerCase()}...`}
             className="min-h-[80px]"
           />
@@ -120,7 +122,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
           <Input
             type="number"
             value={typeof input.value === 'number' ? input.value : Number(input.value) || 0}
-            onChange={(event) => handleInputChange(input.nodeId, input.inputId, Number(event.target.value))}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              handleInputChange(input.nodeId, input.inputId, Number(event.target.value))
+            }
             placeholder="0"
           />
         );
@@ -129,7 +133,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <select
             value={(Boolean(input.value)).toString()}
-            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value === 'true')}
+            onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+              handleInputChange(input.nodeId, input.inputId, event.target.value === 'true')
+            }
             className="w-full p-2 border border-input rounded-md sm:p-4 md:p-6"
           >
             <option value="false">False</option>
@@ -142,7 +148,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <Textarea
             value={typeof input.value === 'string' ? input.value : JSON.stringify(input.value, null, 2)}
-            onChange={(event) => {
+            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
               try {
                 const parsed = JSON.parse(event.target.value);
                 handleInputChange(input.nodeId, input.inputId, parsed);
@@ -159,7 +165,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
         return (
           <Input
             value={typeof input.value === 'string' ? input.value : String(input.value ?? '')}
-            onChange={(event) => handleInputChange(input.nodeId, input.inputId, event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              handleInputChange(input.nodeId, input.inputId, event.target.value)
+            }
             placeholder={`Enter ${input.name.toLowerCase()}...`}
           />
         );
@@ -176,9 +184,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
     }
   };
 
-  const exportTestResults = useCallback(() => {
+  const exportTestResults = React.useCallback(() => {
     if (!testResult) return;
-    
+
     const exportData = {
       workflow: {
         id: workflow.id,

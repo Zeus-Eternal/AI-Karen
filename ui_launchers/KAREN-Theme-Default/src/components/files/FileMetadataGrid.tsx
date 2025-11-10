@@ -353,7 +353,6 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     },
     {
       headerName: 'Actions',
-      field: 'actions',
       width: 90,
       sortable: false,
       filter: false,

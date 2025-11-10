@@ -24,7 +24,11 @@ import MemoryEditor from "./MemoryEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import type { AgChartOptions } from "ag-charts-community";
+import type {
+  AgCartesianChartOptions,
+  AgChartOptions,
+  AgPolarChartOptions,
+} from "ag-charts-community";
 
 // Lazy-load heavy pieces
 const MemoryNetworkVisualization = dynamic(
@@ -284,31 +288,33 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           count,
         })
       );
-      const pieChartOptions = {
+      const pieChartOptions: AgPolarChartOptions = {
         title: { text: "Memory Types Distribution" },
         data: typeData,
-        series: [{ type: "pie", angleKey: "count", labelKey: "type" }],
-      } satisfies AgChartOptions;
+        series: [{ type: "pie", angleKey: "count", calloutLabelKey: "type" }],
+      };
       charts.push(pieChartOptions);
     }
 
     // Confidence distribution columns
     if (analytics.confidence_distribution) {
-      const confidenceChartOptions = {
+      const confidenceChartOptions: AgCartesianChartOptions = {
         title: { text: "Confidence Score Distribution" },
         data: analytics.confidence_distribution,
         axes: [
           { type: "category", position: "bottom" },
           { type: "number", position: "left" },
         ],
-        series: [{ type: "column", xKey: "range", yKey: "count" }],
-      } satisfies AgChartOptions;
+        series: [
+          { type: "bar", direction: "vertical", xKey: "range", yKey: "count" },
+        ],
+      };
       charts.push(confidenceChartOptions);
     }
 
     // Access patterns line
     if (analytics.access_patterns) {
-      const accessPatternsChartOptions = {
+      const accessPatternsChartOptions: AgCartesianChartOptions = {
         title: { text: "Memory Access Patterns (Last 30 Days)" },
         data: analytics.access_patterns,
         axes: [
@@ -316,7 +322,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           { type: "number", position: "left" },
         ],
         series: [{ type: "line", xKey: "date", yKey: "count", marker: { enabled: true } }],
-      } satisfies AgChartOptions;
+      };
       charts.push(accessPatternsChartOptions);
     }
 
@@ -330,7 +336,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   /* ----- Render ----- */
   return (
     <ErrorBoundary fallback={MemoryInterfaceFallback}>
-      <CopilotKit apiKey={copilotApiKey}>
+      <CopilotKit publicApiKey={copilotApiKey}>
         <div
           className="memory-interface relative flex flex-col"
           style={{ height: `${height}px` }}

@@ -112,6 +112,13 @@ export type CreatePolymorphicComponent<
   props: { as?: T } & PolymorphicPropsWithRef<T, Props>
 ) => React.ReactElement | null
 
+export type PolymorphicComponentWithDisplayName<
+  DefaultElement extends React.ElementType,
+  Props = {}
+> = CreatePolymorphicComponent<DefaultElement, Props> & {
+  displayName?: string
+}
+
 // Polymorphic component factory type
 export interface PolymorphicComponentFactory {
   <T extends React.ElementType = "div">(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,15 +83,15 @@ export function AgentDashboard({
   onConfigureAgent,
   className = '',
 }: AgentDashboardProps) {
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | AgentStatus>('all');
-  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
+  const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | AgentStatus>('all');
+  const [isLoading, setIsLoading] = React.useState<Record<string, boolean>>({});
 
   // Filter agents based on search term and status filter
-  const filteredAgents = useMemo(() => {
+  const filteredAgents = React.useMemo(() => {
     return agents.filter(agent => {
-      const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             agent.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || agent.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -99,7 +99,7 @@ export function AgentDashboard({
   }, [agents, searchTerm, statusFilter]);
 
   // Calculate agent stats
-  const agentStats = useMemo(() => {
+  const agentStats = React.useMemo(() => {
     const stats: Record<AgentStatus, number> & {
       total: number;
       totalTasks: number;
@@ -126,7 +126,7 @@ export function AgentDashboard({
     return stats;
   }, [agents]);
 
-  const handleAgentAction = useCallback(async (action: 'start' | 'stop' | 'restart', agentId: string) => {
+  const handleAgentAction = React.useCallback(async (action: 'start' | 'stop' | 'restart', agentId: string) => {
     setIsLoading(prev => ({ ...prev, [agentId]: true }));
     try {
       switch (action) {
@@ -174,13 +174,15 @@ export function AgentDashboard({
             <Input
               placeholder="Search agents..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(event.target.value)}
               className="w-64"
             />
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+              setStatusFilter(event.target.value as 'all' | AgentStatus)
+            }
             className="px-3 py-2 border border-input rounded-md text-sm md:text-base lg:text-lg"
           >
             <option value="all">All Status</option>

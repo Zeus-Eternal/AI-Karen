@@ -85,6 +85,10 @@ export interface PerformanceAnalyticsDashboardProps {
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
+type AlertBoxProps = React.ComponentPropsWithoutRef<"div"> & {
+  variant?: "default" | "destructive";
+};
+const AlertBox = Alert as React.ComponentType<AlertBoxProps>;
 
 /* ------------------------------- Component ------------------------------- */
 
@@ -150,9 +154,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
     setComparisons(performanceProfiler.getPerformanceComparisons());
   }, []);
 
-  const getSeverityColor = (
-    severity: Bottleneck["priority"] | Bottleneck["severity"]
-  ): BadgeVariant => {
+  const getSeverityColor = (severity: Bottleneck["priority"]): BadgeVariant => {
     switch (severity) {
       case "critical":
       case "high":
@@ -432,7 +434,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
                       </div>
 
                       {selectedProfile.bottleneck && (
-                        <Alert variant="destructive">
+                        <AlertBox variant="destructive">
                           <AlertTriangle className="h-4 w-4" />
                           <AlertTitle>Performance Bottleneck</AlertTitle>
                           <AlertDescription>
@@ -440,7 +442,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
                               ? selectedProfile.bottleneck
                               : "This profile indicates a bottleneck. Investigate below."}
                           </AlertDescription>
-                        </Alert>
+                        </AlertBox>
                       )}
 
                       {selectedProfile.metadata && (

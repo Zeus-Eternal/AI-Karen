@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { VerticalSeparator } from "./utils/vertical-separator";
 
 import {
   Search,
@@ -276,6 +276,12 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
   const [showOnlyFree, setShowOnlyFree] = useState(false);
   const [showOnlyVerified, setShowOnlyVerified] = useState(false);
 
+  const openExternalLink = (url: string) => {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const categories = React.useMemo(() => {
     const cats = Array.from(new Set(plugins.map((p) => p.category)));
     return ["all", ...cats.sort()];
@@ -424,7 +430,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                   {plugin.rating} ({plugin.reviewCount})
                 </span>
               </div>
-              <Separator orientation="vertical" className="h-4" />
+                <VerticalSeparator className="h-4" />
               <span className="text-xs text-muted-foreground sm:text-sm md:text-base">
                 {plugin.downloads.toLocaleString()} downloads
               </span>
@@ -671,7 +677,7 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 )}
               </Button>
 
-              <Separator orientation="vertical" className="h-6" />
+              <VerticalSeparator className="h-6" />
 
               <div className="flex items-center border rounded-md overflow-hidden">
                 <Button
@@ -885,26 +891,24 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <Heart className="w-4 h-4 mr-2" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Share className="w-4 h-4 mr-2" />
-                    </Button>
-                    {selectedPlugin.manifest.homepage && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={selectedPlugin.manifest.homepage}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm">
+                        <Heart className="w-4 h-4 mr-2" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                      </Button>
+                      {selectedPlugin.manifest.homepage && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openExternalLink(selectedPlugin.manifest.homepage ?? "")}
                         >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           Docs
-                        </a>
-                      </Button>
-                    )}
-                  </div>
+                        </Button>
+                      )}
+                    </div>
 
                   <Button
                     variant="default"

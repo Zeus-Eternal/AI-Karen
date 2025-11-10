@@ -191,7 +191,8 @@ export const useDashboardUrlSync = () => {
         if (currentFiltersJson !== urlFiltersJson) {
           clearGlobalFilters();
           filters.forEach(filter => {
-            addGlobalFilter(filter);
+            const { id: _id, ...filterData } = filter;
+            addGlobalFilter(filterData);
           });
         }
       } catch (error) {}

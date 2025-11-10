@@ -47,6 +47,8 @@ export interface AlertAction {
   variant?: 'default' | 'destructive' | 'outline';
   /** Optional icon to display with the action */
   icon?: React.ReactNode;
+  /** Accessible description when rendered as a toast action */
+  altText?: string;
 }
 
 /**

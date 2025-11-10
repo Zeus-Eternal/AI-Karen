@@ -33,6 +33,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 
 /**
  * @file BookDetailsPluginPage.tsx (Filename remains due to constraints, but content is Database Connector)
@@ -56,7 +57,7 @@ export default function DatabaseConnectorPluginPage() {
       </div>
 
       {/* Concept Warning */}
-      <Alert variant="destructive">
+      <Alert className={alertClassName("destructive")}>
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Conceptual Demonstration & Mocked Functionality</AlertTitle>
         <AlertDescription>

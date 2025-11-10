@@ -67,6 +67,9 @@ export interface EvilModeAnalyticsProps {
   className?: string;
 }
 
+const destructiveAlertClassName =
+  "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive";
+
 export interface EvilModeStats {
   totalSessions: number;
   activeSessions: number;
@@ -306,7 +309,7 @@ function OverviewDashboard({ stats }: OverviewDashboardProps) {
         </Card>
       </div>
 
-      <Alert variant="destructive">
+      <Alert className={destructiveAlertClassName}>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
           Evil Mode usage is continuously monitored for security and compliance. All activities are
@@ -685,7 +688,7 @@ function ComplianceAnalysis({ stats }: ComplianceAnalysisProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <Alert variant="destructive">
+              <Alert className={destructiveAlertClassName}>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>2 sessions without proper justification</AlertDescription>
               </Alert>

@@ -451,4 +451,4 @@ export function initializeHealthMonitor(config?: Partial<MonitoringConfig>): Hea
   return healthMonitor;
 }
 
-export type { HealthMonitor, HealthStatus, HealthCheckResult, BackendEndpoint, MonitoringConfig };
+export type { HealthStatus, HealthCheckResult, BackendEndpoint, MonitoringConfig };

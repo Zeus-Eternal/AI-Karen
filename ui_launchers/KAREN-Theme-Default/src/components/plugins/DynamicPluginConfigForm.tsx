@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { alertClassName } from './utils/alertVariants';
 
 export interface ValidationError {
   field: string;
@@ -85,6 +86,22 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['general']));
   const [searchQuery, setSearchQuery] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+
+  const toJsonString = (input: unknown): string => {
+    if (typeof input === 'string') {
+      return input;
+    }
+
+    if (input === undefined || input === null) {
+      return '';
+    }
+
+    try {
+      return JSON.stringify(input, null, 2);
+    } catch {
+      return '';
+    }
+  };
   // Group configuration fields by category or prefix
   const fieldGroups: FieldGroup[] = React.useMemo(() => {
     if (!plugin.manifest.configSchema) return [];
@@ -311,6 +328,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     const showPassword = showPasswords[field.key];
     const FieldIcon = getFieldIcon(field);
     const fieldId = `field-${field.key}`;
+    const jsonString = toJsonString(value);
     return (
       <div key={field.key} className="space-y-3">
         <div className="flex items-center justify-between">
@@ -424,13 +442,14 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           <div className="space-y-2">
             <textarea
               id={fieldId}
-              value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+              value={jsonString}
               onChange={(e) => {
+                const nextValue = e.target.value;
                 try {
-                  const parsed = JSON.parse(e.target.value);
+                  const parsed = JSON.parse(nextValue);
                   handleFieldChange(field.key, parsed);
                 } catch {
-                  handleFieldChange(field.key, e.target.value);
+                  handleFieldChange(field.key, nextValue);
                 }
               }}
               rows={6}
@@ -444,11 +463,12 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  const source = jsonString;
                   try {
-                    const formatted = JSON.stringify(JSON.parse(value), null, 2);
+                    const formatted = JSON.stringify(JSON.parse(source), null, 2);
                     handleFieldChange(field.key, formatted);
-                  } catch (e) {
-                    // Invalid JSON, ignore
+                  } catch {
+                    handleFieldChange(field.key, source);
                   }
                 }}
                 disabled={readOnly}
@@ -460,7 +480,10 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+                  const text = jsonString;
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    void navigator.clipboard.writeText(text);
+                  }
                 }}
               >
                 <Copy className="w-3 h-3 mr-1 " />
@@ -469,14 +492,16 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           </div>
         )}
         {error && (
-          <Alert variant={error.severity === 'error' ? 'destructive' : 'default'} className="py-2">
+          <Alert className={alertClassName(error.severity === 'error' ? 'destructive' : 'default', 'py-2')}>
             <AlertTriangle className="w-4 h-4 " />
             <AlertDescription className="text-sm md:text-base lg:text-lg">{error.message}</AlertDescription>
           </Alert>
         )}
         {field.default !== undefined && !value && (
           <div className="text-xs text-muted-foreground sm:text-sm md:text-base">
-            Default: {typeof field.default === 'object' ? JSON.stringify(field.default) : field.default.toString()}
+            Default: {typeof field.default === 'object' && field.default !== null
+              ? toJsonString(field.default)
+              : String(field.default)}
           </div>
         )}
       </div>
@@ -574,13 +599,13 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           </AlertDescription>
         </Alert>
       )}
-      {errorCount > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4 " />
-          <AlertDescription>
-            Please fix {errorCount} error{errorCount !== 1 ? 's' : ''} before saving.
-          </AlertDescription>
-        </Alert>
+        {errorCount > 0 && (
+          <Alert className={alertClassName("destructive")}>
+            <AlertTriangle className="w-4 h-4 " />
+            <AlertDescription>
+              Please fix {errorCount} error{errorCount !== 1 ? 's' : ''} before saving.
+            </AlertDescription>
+          </Alert>
       )}
       {warningCount > 0 && (
         <Alert>

@@ -312,7 +312,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   /* ----- Grid Events ----- */
   const onGridReady = (params: GridReadyEvent<MemoryGridRow>) => {
-    params.api.setDomLayout("normal");
+    params.api.setGridOption("domLayout", "normal");
     params.api.sizeColumnsToFit({
       defaultMinWidth: 90,
       columnLimits: [{ key: "content", minWidth: 220 }],
@@ -326,11 +326,15 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
   };
 
   const onRowClicked = (event: RowClickedEvent<MemoryGridRow>) => {
-    onMemorySelect?.(event.data);
+    const memory = event.data;
+    if (!memory) return;
+    onMemorySelect?.(memory);
   };
 
   const onRowDoubleClicked = (event: RowDoubleClickedEvent<MemoryGridRow>) => {
-    onMemoryEdit?.(event.data);
+    const memory = event.data;
+    if (!memory) return;
+    onMemoryEdit?.(memory);
   };
 
   /* ----- Grid Options ----- */
@@ -378,7 +382,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   const handleQuickFilter = (v: string) => {
     setQuickFilter(v);
-    gridRef.current?.api.setQuickFilter(v);
+    gridRef.current?.api.setGridOption("quickFilterText", v || undefined);
   };
 
   /* ----- Error State ----- */

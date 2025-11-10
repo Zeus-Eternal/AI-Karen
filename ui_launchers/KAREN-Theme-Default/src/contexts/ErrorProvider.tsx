@@ -9,8 +9,8 @@
 
 "use client";
 
-import { createContext, useCallback, useContext, useState } from 'react';
-import type { FC, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import type { ComponentType, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -208,7 +208,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [addGlobalError, apiError]);
 
   // Update global errors with analysis results
-  React.useEffect(() => {
+  useEffect(() => {
     if (intelligentError.analysis) {
       setGlobalErrors(prev => {
         const updated = [...prev];
@@ -260,7 +260,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
  * Higher-order component to wrap components with error provider
  */
 export function withErrorProvider<P extends object>(
-  Component: React.ComponentType<P>,
+  Component: ComponentType<P>,
   providerProps?: Omit<ErrorProviderProps, 'children'>
 ) {
   return function WrappedComponent(props: P) {

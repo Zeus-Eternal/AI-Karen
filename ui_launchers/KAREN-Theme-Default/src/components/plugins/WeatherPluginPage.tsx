@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CloudSun, AlertTriangle, Info, Save, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
@@ -193,7 +194,7 @@ export default function WeatherPluginPage() {
           </Button>
         </CardFooter>
       </Card>
-      <Alert variant="destructive">
+      <Alert className={alertClassName("destructive")}>
         <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>About Weather Integration</AlertTitle>
         <AlertDescription>

@@ -40,8 +40,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { alertClassName } from "./utils/alertVariants";
+import { VerticalSeparator } from "./utils/vertical-separator";
 
 import type { PluginInfo } from "@/types/plugins";
 import { usePluginStore, selectPluginLoading } from "@/store/plugin-store";
@@ -206,8 +207,13 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
   const disableLoading = usePluginStore(selectPluginLoading(`disable-${plugin.id}`));
   const uninstallLoading = usePluginStore(selectPluginLoading(`uninstall-${plugin.id}`));
   const configureLoading = usePluginStore(selectPluginLoading(`configure-${plugin.id}`));
+  const openExternalLink = (url: string) => {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
 
-  const statusInfo = statusConfig[plugin.status];
+  const statusInfo = statusConfig[plugin.status] ?? statusConfig.active;
   const StatusIcon = statusInfo.icon;
 
   const handleToggleEnabled = () => {
@@ -242,11 +248,11 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <VerticalSeparator className="h-6" />
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">{plugin.name}</h1>
@@ -323,7 +329,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
 
       {/* Error Display */}
       {plugin.lastError && (
-        <Alert variant="destructive">
+        <Alert className={alertClassName("destructive")}>
           <XCircle className="w-4 h-4" />
           <AlertDescription>
             <div className="font-medium">Last Error:</div>
@@ -337,7 +343,7 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
 
       {/* Health Issues */}
       {plugin.metrics.health.issues.length > 0 && (
-        <Alert variant="destructive">
+        <Alert className={alertClassName("destructive")}>
           <AlertTriangle className="w-4 h-4" />
           <AlertDescription>
             <div className="font-medium">Health Issues:</div>
@@ -402,16 +408,18 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
                   </div>
                 </div>
 
-                {plugin.manifest.homepage && (
-                  <div className="pt-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={plugin.manifest.homepage} target="_blank" rel="noopener noreferrer">
+                  {plugin.manifest.homepage && (
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openExternalLink(plugin.manifest.homepage ?? "")}
+                      >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Homepage
-                      </a>
-                    </Button>
-                  </div>
-                )}
+                      </Button>
+                    </div>
+                  )}
               </CardContent>
             </Card>
 

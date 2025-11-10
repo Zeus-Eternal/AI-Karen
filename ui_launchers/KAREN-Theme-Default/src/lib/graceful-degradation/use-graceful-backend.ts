@@ -56,10 +56,21 @@ export function useGracefulBackend<T>(
 
   // Get the enhanced backend service
   const enhancedService = React.useMemo(() => {
-    const originalService = (window as any).karenBackendService;
-    if (!originalService) {
+    if (typeof window === 'undefined') {
       return null;
     }
+
+    const globalWindow = window as typeof window & {
+      karenBackendService?: {
+        makeRequest: (endpoint: string, init?: RequestInit) => Promise<unknown>;
+      };
+    };
+
+    const originalService = globalWindow.karenBackendService;
+    if (!originalService || typeof originalService.makeRequest !== 'function') {
+      return null;
+    }
+
     return new EnhancedBackendService(originalService);
   }, []);
 
@@ -146,14 +157,14 @@ export function useGracefulBackend<T>(
   }, [fetchData, refetchInterval, enabled]);
 
   const retry = React.useCallback(() => {
-    setRetryCount(prev => prev + 1);
+    setRetryCount((prev) => prev + 1);
   }, []);
 
   const refresh = React.useCallback(() => {
     if (cacheKey) {
       extensionCache.delete(cacheKey);
     }
-    setRetryCount(prev => prev + 1);
+    setRetryCount((prev) => prev + 1);
   }, [cacheKey]);
 
   return {
@@ -170,7 +181,7 @@ export function useGracefulBackend<T>(
 // Global error handler for automatic feature flag management
 // Hook for graceful degradation state management
 export function useGracefulDegradation(featureName: string) {
-  const featureFlag = useFeatureFlag(featureName);
+  const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
   const [showDegradedBanner, setShowDegradedBanner] = React.useState(false);
 
   const dismissBanner = React.useCallback(() => {
@@ -183,14 +194,16 @@ export function useGracefulDegradation(featureName: string) {
   }, [featureName]);
 
   React.useEffect(() => {
-    if (!featureFlag.enabled) {
+    if (isEnabled) {
+      setShowDegradedBanner(false);
+    } else {
       setShowDegradedBanner(true);
     }
-  }, [featureFlag.enabled]);
+  }, [isEnabled]);
 
   return {
-    isEnabled: featureFlag.enabled,
-    fallbackBehavior: featureFlag.fallbackBehavior,
+    isEnabled,
+    fallbackBehavior,
     showDegradedBanner,
     dismissBanner,
     forceRetry
@@ -208,30 +221,50 @@ export function useModelProviders(options: UseGracefulBackendOptions = {}) {
 }
 
 export function setupGlobalErrorHandling() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   // Handle unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    const error = event.reason;
-    if (error?.message?.includes('403') || error?.status === 403) {
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    const error = event.reason as { message?: string; status?: number } | undefined;
+    const message = error?.message ?? '';
+
+    if (message.includes('403') || error?.status === 403) {
       featureFlagManager.handleServiceError('extension-auth', error);
     }
-    if (error?.message?.includes('503') || error?.status === 503) {
+    if (message.includes('503') || error?.status === 503) {
       // Determine which service is affected based on the error
-      if (error.message?.includes('/api/extensions')) {
+      if (message.includes('/api/extensions')) {
         featureFlagManager.handleServiceError('extension-api', error);
-      } else if (error.message?.includes('/api/models')) {
+      } else if (message.includes('/api/models')) {
         featureFlagManager.handleServiceError('model-provider', error);
       }
     }
   });
 
   // Handle fetch errors
-  const originalFetch = window.fetch;
-  window.fetch = async (...args) => {
+  const windowWithMutableFetch = window as typeof window & { fetch: typeof fetch };
+  const originalFetch = windowWithMutableFetch.fetch.bind(window);
+
+  const getRequestUrl = (input: Parameters<typeof fetch>[0]): string => {
+    if (typeof input === 'string') {
+      return input;
+    }
+    if (input instanceof URL) {
+      return input.toString();
+    }
+    return input?.url ?? '';
+  };
+
+  windowWithMutableFetch.fetch = (async (
+    ...args: Parameters<typeof fetch>
+  ) => {
     try {
       const response = await originalFetch(...args);
       // Handle successful responses - re-enable services if they were disabled
       if (response.ok) {
-        const url = args[0] as string;
+        const url = getRequestUrl(args[0]);
         if (url.includes('/api/extensions')) {
           featureFlagManager.handleServiceRecovery('extension-api');
         } else if (url.includes('/api/models')) {
@@ -241,7 +274,7 @@ export function setupGlobalErrorHandling() {
       return response;
     } catch (error) {
       // Handle network errors
-      const url = args[0] as string;
+      const url = getRequestUrl(args[0]);
       if (url.includes('/api/extensions')) {
         featureFlagManager.handleServiceError('extension-api', error as Error);
       } else if (url.includes('/api/models')) {
@@ -249,5 +282,5 @@ export function setupGlobalErrorHandling() {
       }
       throw error;
     }
-  };
+  }) as typeof fetch;
 }

@@ -214,7 +214,12 @@ export interface SystemHealth {
 // Security event interface
 export interface SecurityEvent {
   id: string;
-  event_type: 'failed_login' | 'account_locked' | 'suspicious_activity' | 'privilege_escalation';
+  event_type:
+    | 'failed_login'
+    | 'account_locked'
+    | 'suspicious_activity'
+    | 'privilege_escalation'
+    | 'concurrent_session_limit';
   user_id?: string;
   ip_address?: string;
   user_agent?: string;

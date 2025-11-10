@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Card,
   CardContent,
@@ -261,6 +261,12 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
     compatibility: [],
     tags: [],
   });
+
+  const openExternalLink = (url: string) => {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const filterOptions = useMemo(() => {
     const categories = Array.from(new Set(plugins.map((p) => p.category)));
@@ -543,9 +549,15 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
           <Card key={review.id}>
             <CardContent className="p-4 sm:p-4 md:p-6">
               <div className="flex items-start gap-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={review.userAvatar} />
-                  <AvatarFallback>
+                  <Avatar className="w-10 h-10">
+                    {review.userAvatar ? (
+                      <img
+                        src={review.userAvatar}
+                        alt={review.userName}
+                        className="aspect-square h-full w-full rounded-full object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback>
                     {review.userName
                       .split(" ")
                       .map((n) => n[0])
@@ -951,30 +963,26 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
 
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center gap-2">
-                      {selectedPlugin.manifest.homepage && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a
-                            href={selectedPlugin.manifest.homepage}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {selectedPlugin.manifest.homepage && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openExternalLink(selectedPlugin.manifest.homepage ?? "")}
                           >
                             <ExternalLink className="w-4 h-4 mr-2" />
                             Homepage
-                          </a>
-                        </Button>
-                      )}
-                      {selectedPlugin.manifest.repository && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a
-                            href={selectedPlugin.manifest.repository}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          </Button>
+                        )}
+                        {selectedPlugin.manifest.repository && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openExternalLink(selectedPlugin.manifest.repository ?? "")}
                           >
                             <ExternalLink className="w-4 h-4 mr-2" />
                             Repository
-                          </a>
-                        </Button>
-                      )}
+                          </Button>
+                        )}
                     </div>
 
                     <Button onClick={() => handleInstall(selectedPlugin)}>

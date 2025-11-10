@@ -43,7 +43,7 @@ export function LocaleMetadata({
     try {
       const parts = locale.split("-");
       const languageCode = parts[0];
-      const regionCode = parts[1];
+      const regionCode = parts[1] ?? null;
 
       const displayNames =
         typeof Intl.DisplayNames !== "undefined"
@@ -89,7 +89,7 @@ export function LocaleMetadata({
         regionCode,
         languageName: displayNames?.of(languageCode) || languageCode,
         regionName:
-          regionCode && regionDisplayNames ? regionDisplayNames.of(regionCode) : null,
+        regionCode && regionDisplayNames ? regionDisplayNames.of(regionCode) : null,
         direction,
         calendar,
         currency,

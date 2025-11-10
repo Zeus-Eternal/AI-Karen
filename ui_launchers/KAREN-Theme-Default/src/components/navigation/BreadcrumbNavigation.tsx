@@ -243,7 +243,7 @@ export const BreadcrumbNavigation = React.forwardRef<
     return (
       <nav
         ref={ref}
-        className={cn(breadcrumbNavigationVariants({ size, className }))}
+        className={cn(breadcrumbNavigationVariants({ size }), className)}
         aria-label={ariaLabel}
         {...props}
       >
@@ -289,7 +289,7 @@ const BreadcrumbNode: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
         {item.label}
       </span>
     );
-    }
+  }
 
   const content = (
     <>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { alertClassName } from "./utils/alertVariants";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1278,7 +1279,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
         </div>
 
         {state.installationError && (
-          <Alert variant="destructive">
+          <Alert className={alertClassName("destructive")}>
             <XCircle className="w-4 h-4" />
             <AlertDescription>{state.installationError}</AlertDescription>
           </Alert>
