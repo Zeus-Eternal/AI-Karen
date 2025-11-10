@@ -8,7 +8,11 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { retryMechanism, type RetryConfig } from "@/utils/retry-mechanisms";
+import {
+  retryMechanism,
+  fetchWithTimeout,
+  type RetryConfig,
+} from "@/utils/retry-mechanisms";
 import { RetryCard, LoadingRetry } from "./retry-components";
 
 export interface WithRetryOptions extends Partial<RetryConfig> {
@@ -200,14 +204,14 @@ export function useAsyncRetry<T>(
           baseDelay: merged.baseDelay ?? 1000,
           backoffFactor: merged.backoffFactor ?? 2,
           jitter: merged.jitter ?? true,
-          onRetry: (error, attempt) => {
+          onRetry: (error, attempt, nextDelayMs) => {
             setState((prev) => ({
               ...prev,
               attempt,
               isRetrying: true,
               error: error instanceof Error ? error : new Error(String(error)),
             }));
-            merged.onRetry?.(error, attempt);
+            merged.onRetry?.(error, attempt, nextDelayMs);
           },
         },
         merged.retryKey
@@ -358,18 +362,37 @@ export class RetryBoundary extends React.Component<
 
 /**
  * Hook for creating retry-enabled fetch operations.
- * Uses retryMechanism.retryFetch internally (with backoff/jitter/caps).
+ * Wraps fetchWithTimeout with retryMechanism-based backoff handling.
  */
 export function useRetryFetch(
   url: string,
   options: RequestInit = {},
   retryOptions: WithRetryOptions = {}
 ) {
+  const mergedOptions: WithRetryOptions = {
+    ...retryOptions,
+    retryKey: retryOptions.retryKey ?? `fetch-${url}`,
+  };
+
   return useAsyncRetry(
-    () => retryMechanism.retryFetch(url, options, retryOptions),
-    {
-      ...retryOptions,
-      retryKey: `fetch-${url}`,
-    }
+    async () => {
+      const response = await fetchWithTimeout(
+        url,
+        options,
+        mergedOptions.timeoutMs ?? 0
+      );
+
+      if (!response.ok) {
+        const error = new Error(
+          `HTTP ${response.status}: ${response.statusText}`
+        );
+        (error as Error & { status?: number }).status = response.status;
+        (error as Error & { response?: Response }).response = response;
+        throw error;
+      }
+
+      return response;
+    },
+    mergedOptions
   );
 }

@@ -238,8 +238,8 @@ export class PerformanceTracker {
               break;
             }
             case 'largest-contentful-paint': {
-              // @ts-expect-error: TS doesn't know extended fields on LCP
-              const lcpTime: number = entry.startTime ?? 0;
+              const lcpEntry = entry as PerformanceEntry & { startTime?: number };
+              const lcpTime = typeof lcpEntry.startTime === 'number' ? lcpEntry.startTime : 0;
               this.metrics.rendering.paintTime = lcpTime;
               break;
             }

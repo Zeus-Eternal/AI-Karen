@@ -22,6 +22,11 @@ import type {
   CsvExportParams,
   ValueFormatterParams,
   ColGroupDef,
+  GridOptions,
+  GetRowIdParams,
+  RowClickedEvent,
+  RowDoubleClickedEvent,
+  ProcessCellForExportParams,
 } from "ag-grid-community";
 
 import "ag-grid-community/styles/ag-grid.css";
@@ -307,7 +312,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   /* ----- Grid Events ----- */
   const onGridReady = (params: GridReadyEvent<MemoryGridRow>) => {
-    params.api.setGridOption("domLayout", "normal");
+    params.api.setDomLayout("normal");
     params.api.sizeColumnsToFit({
       defaultMinWidth: 90,
       columnLimits: [{ key: "content", minWidth: 220 }],
@@ -320,16 +325,16 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     // console.debug("Filters changed:", model);
   };
 
-  const onRowClicked = (event: { data: MemoryGridRow }) => {
+  const onRowClicked = (event: RowClickedEvent<MemoryGridRow>) => {
     onMemorySelect?.(event.data);
   };
 
-  const onRowDoubleClicked = (event: { data: MemoryGridRow }) => {
+  const onRowDoubleClicked = (event: RowDoubleClickedEvent<MemoryGridRow>) => {
     onMemoryEdit?.(event.data);
   };
 
   /* ----- Grid Options ----- */
-  const gridOptions = useMemo(
+  const gridOptions = useMemo<GridOptions<MemoryGridRow>>(
     () => ({
       pagination: true,
       paginationPageSize: 50,
@@ -339,7 +344,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       suppressRowClickSelection: false,
       rowHeight: 64,
       headerHeight: 44,
-      getRowId: (p: { data: MemoryGridRow }) => p.data.id,
+      getRowId: (params: GetRowIdParams<MemoryGridRow>) => params.data.id,
       overlayLoadingTemplate:
         '<span class="ag-overlay-loading-center">Loading memory data…</span>',
       overlayNoRowsTemplate:
@@ -354,7 +359,9 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     if (!api) return;
     const params: CsvExportParams = {
       fileName: `memories_${new Date().toISOString().slice(0, 19)}.csv`,
-      processCellCallback: (p) => {
+      processCellCallback: (
+        p: ProcessCellForExportParams<MemoryGridRow, unknown>
+      ) => {
         // flatten arrays for CSV
         if (Array.isArray(p.value)) return p.value.join(" | ");
         if (typeof p.value === "number" && p.column.getColId() === "confidence") {
@@ -371,7 +378,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   const handleQuickFilter = (v: string) => {
     setQuickFilter(v);
-    gridRef.current?.api.setGridOption("quickFilterText", v);
+    gridRef.current?.api.setQuickFilter(v);
   };
 
   /* ----- Error State ----- */

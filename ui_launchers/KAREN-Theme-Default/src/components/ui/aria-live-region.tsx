@@ -81,8 +81,8 @@ export const useAriaAnnouncements = (options: UseAriaAnnouncementsOptions = {}) 
   const { defaultPoliteness = 'polite', clearDelay = 1000 } = options;
   const [politeMessage, setPoliteMessage] = useState('');
   const [assertiveMessage, setAssertiveMessage] = useState('');
-  const politeTimeoutRef = useRef<NodeJS.Timeout>();
-  const assertiveTimeoutRef = useRef<NodeJS.Timeout>();
+  const politeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const assertiveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const announce = (
     message: string, 

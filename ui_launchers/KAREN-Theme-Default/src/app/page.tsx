@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import SettingsDialogComponent from "@/components/settings/SettingsDialog";
-import { IconButton } from "@/components/ui/polymorphic/button";
 import { GridContainer } from "@/components/ui/layout/grid-container";
 import { FlexContainer } from "@/components/ui/layout/flex-container";
 import { Separator } from "@/components/ui/separator";
@@ -109,18 +108,17 @@ function AuthenticatedHomePage() {
               </h1>
             </FlexContainer>
             <FlexContainer className="gap-2" align="center">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <IconButton
-                    variant="ghost"
-                    aria-label="Settings"
-                    className="focus-ring smooth-transition"
-                    icon={
-                      <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
-                    }
-                  >
-                  </IconButton>
-                </SheetTrigger>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Open settings"
+                      className="focus-ring smooth-transition inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+                    >
+                      <SlidersHorizontal className="h-5 w-5" />
+                      <span className="sr-only">Open settings</span>
+                    </button>
+                  </SheetTrigger>
                 <SheetContent
                   side="right"
                   className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass"

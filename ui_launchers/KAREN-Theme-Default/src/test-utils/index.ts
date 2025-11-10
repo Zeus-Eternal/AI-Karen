@@ -16,7 +16,30 @@ export type { TestCredentials, DatabaseConnectivityResult, AuthenticationTestRes
 // Hook Mocking
 // ============================================================================
 
-export { makeUseAuthMockModule, makeUseRoleMockModule, setupUseAuthMock, setupUseRoleMock, createUseRoleReturnFromAuth, setupAuthAndRoleMocks, mockScenarios, createMockUseAuth, createMockUseRole, createRealisticMockAuth, resetHookMocks, cleanupHookMocks, setupTestIsolation, setupConsistentMocks, validateMockSetup, debugMockState, mockAuthForTest, mockAuthWithUser, createTestMocks, resetToDefaultMocks } from './hook-mocks';
+export {
+  makeUseAuthMockModule,
+  makeUseRoleMockModule,
+  setupUseAuthMock,
+  setupUseRoleMock,
+  createUseRoleReturnFromAuth,
+  setupAuthAndRoleMocks,
+  mockScenarios,
+  createMockUseAuth,
+  createMockUseRole,
+  createRealisticMockAuth,
+  resetHookMocks,
+  cleanupHookMocks,
+  setupHookMocksIsolation,
+  setupHookMocksIsolation as setupHookTestIsolation,
+  setupConsistentMocks,
+  validateMockSetup,
+  debugMockState,
+  mockAuthForTest,
+  mockAuthWithUser,
+  createTestMocks,
+  resetToDefaultMocks,
+  setupGlobalMocks,
+} from './hook-mocks';
 
 // ============================================================================
 // Router Mocking

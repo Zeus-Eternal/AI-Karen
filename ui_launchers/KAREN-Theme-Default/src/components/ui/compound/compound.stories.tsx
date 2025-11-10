@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Card } from './card';
 import { Modal } from './modal';
-import { Button } from './button'; // Make sure Button is correctly imported
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Compound Components for visual regression testing
  */
-const meta: Meta = {
+const meta = {
   title: 'Components/Compound Components',
   parameters: {
     layout: 'centered',
@@ -19,7 +17,8 @@ const meta: Meta = {
       },
     },
   },
-};
+} satisfies Meta;
+
 export default meta;
 export type Story = StoryObj<typeof meta>;
 
