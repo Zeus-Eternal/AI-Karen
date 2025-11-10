@@ -110,19 +110,20 @@ const fetchDashboard = async (signal?: AbortSignal): Promise<DashboardData> => {
 const formatTimestamp = (timestamp: string) => new Date(timestamp).toLocaleString();
 const formatMs = (seconds: number) => `${Math.max(0, seconds * 1000).toFixed(0)}ms`;
 
-const getSeverityVariant = (severity: Severity) => {
+const getSeverityVariant = (severity: Severity): "default" | "destructive" => {
   switch (severity) {
     case "critical":
     case "error":
       return "destructive";
-    case "warning":
-      return "default";
-    case "info":
-      return "secondary";
     default:
       return "default";
   }
 };
+
+type AlertComponentProps = React.ComponentPropsWithoutRef<"div"> & {
+  variant?: "default" | "destructive";
+};
+const AlertBox = Alert as React.ComponentType<AlertComponentProps>;
 
 const SeverityIcon: React.FC<{ severity: Severity; className?: string }> = ({ severity, className }) => {
   switch (severity) {
@@ -147,22 +148,33 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30_000); // 30s
 
-  const fetchDashboardData = useCallback(async () => {
-    const controller = new AbortController();
+  const fetchDashboardData = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await fetchDashboard(controller.signal);
+      const data = await fetchDashboard(signal);
+      if (signal?.aborted) return;
       setDashboardData(data);
       setFetchError(null);
     } catch (err) {
+      if (signal?.aborted) return;
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       setFetchError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    void fetchDashboardData(controller.signal);
+    return () => controller.abort();
+  }, [fetchDashboardData]);
+
+  const handleRefresh = useCallback(() => {
     void fetchDashboardData();
   }, [fetchDashboardData]);
 
@@ -185,26 +197,26 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
 
   if (fetchError) {
     return (
-      <Alert variant="destructive">
+      <AlertBox variant="destructive">
         <XCircle className="h-4 w-4" />
         <AlertTitle>Error Loading Dashboard</AlertTitle>
         <AlertDescription className="flex items-center gap-2">
           {fetchError}
-          <Button variant="outline" size="sm" onClick={fetchDashboardData}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             Retry
           </Button>
         </AlertDescription>
-      </Alert>
+      </AlertBox>
     );
   }
 
   if (!dashboardData) {
     return (
-      <Alert>
+      <AlertBox>
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>No Data Available</AlertTitle>
         <AlertDescription>No monitoring data is currently available.</AlertDescription>
-      </Alert>
+      </AlertBox>
     );
   }
 
@@ -250,7 +262,7 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchDashboardData}
+            onClick={handleRefresh}
             disabled={loading}
             aria-label="Refresh monitoring data"
           >
@@ -281,7 +293,7 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
           <CardContent>
             <div className="space-y-2">
               {active_alerts.map((alert) => (
-                <Alert key={alert.id} variant={getSeverityVariant(alert.severity) as any}>
+                <AlertBox key={alert.id} variant={getSeverityVariant(alert.severity)}>
                   <div className="flex items-center">
                     <SeverityIcon severity={alert.severity} className="h-4 w-4" />
                     <div className="ml-2 flex-1">
@@ -295,7 +307,7 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
                       </AlertDescription>
                     </div>
                   </div>
-                </Alert>
+                </AlertBox>
               ))}
             </div>
           </CardContent>

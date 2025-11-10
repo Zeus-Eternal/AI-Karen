@@ -10,7 +10,13 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useImperativeHandle,
+} from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -194,7 +200,7 @@ export interface SidebarNavigationProps
 
 /* --------------------------- Sidebar Navigation --------------------------- */
 
-export const SidebarNavigation = React.forwardRef<HTMLDivElement, SidebarNavigationProps>(
+export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, SidebarNavigationProps>(
   (
     {
       className,
@@ -211,9 +217,26 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement, SidebarNavigat
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const pathname = usePathname();
     const router = useRouter();
-    const localNavRef = useRef<HTMLDivElement>(null);
-    const navRef = (ref as React.RefObject<HTMLDivElement>) ?? localNavRef;
+    const localNavRef = useRef<HTMLDivElement | null>(null);
+    const navRef = localNavRef;
+    const assignNavRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        localNavRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }
+      },
+      [ref]
+    );
     const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+    useImperativeHandle<HTMLDivElement | null, HTMLDivElement | null>(
+      ref,
+      () => localNavRef.current,
+      []
+    );
 
     // Auto-expand active sections
     useEffect(() => {
@@ -228,7 +251,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement, SidebarNavigat
       if (autoFocus && navRef.current) {
         navRef.current.focus();
       }
-    }, [autoFocus, navRef]);
+    }, [autoFocus]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {
@@ -352,11 +375,11 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement, SidebarNavigat
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardNavigation, flattenedItems, expandedItems, toggleExpanded, handleItemClick, navRef]);
+    }, [enableKeyboardNavigation, flattenedItems, expandedItems, toggleExpanded, handleItemClick]);
 
     return (
       <nav
-        ref={navRef}
+        ref={assignNavRef}
         className={cn(sidebarNavigationVariants(), className)}
         aria-label={ariaLabel}
         role="navigation"
@@ -384,7 +407,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement, SidebarNavigat
                 isActive={isItemActive(item, pathname)}
                 isCollapsed={sidebarCollapsed}
                 onToggle={() => toggleExpanded(item.id)}
-                onClick={() => handleItemClick(item)}
+                onClick={handleItemClick}
                 itemRef={(el) => {
                   if (el) itemRefs.current.set(item.id, el);
                   else itemRefs.current.delete(item.id);
@@ -408,7 +431,7 @@ export interface NavigationItemComponentProps {
   isActive: boolean;
   isCollapsed: boolean;
   onToggle: () => void;
-  onClick: () => void;
+  onClick: (item: NavigationItem) => void;
   level?: number;
   itemRef?: (el: HTMLButtonElement | null) => void;
 }
@@ -464,7 +487,13 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             "justify-center": isCollapsed,
           }
         )}
-        onClick={hasChildren && !item.href ? onToggle : onClick}
+        onClick={
+          hasChildren && !item.href
+            ? onToggle
+            : () => {
+                onClick(item);
+              }
+        }
         disabled={item.disabled}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-current={isActive ? "page" : undefined}
@@ -518,13 +547,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
               isActive={isItemActive(child, pathname)}
               isCollapsed={false}
               onToggle={() => {}}
-              onClick={() => {
-                // bubble the click up so parent handler performs navigation/close on mobile
-                if (child.href) {
-                  window.dispatchEvent(new KeyboardEvent("keydown", { key: "" })); // no-op to keep type parity, safe
-                }
-                onClick();
-              }}
+              onClick={() => onClick(child)}
               level={level + 1}
               itemRef={itemRef}
             />
