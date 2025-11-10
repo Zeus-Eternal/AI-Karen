@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { alertClassName } from "./utils/alertVariants";
+import { VerticalSeparator } from "./utils/vertical-separator";
 
 import {
   DropdownMenu,
@@ -263,7 +264,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
           {Array.isArray(plugin.metrics?.health?.issues) &&
             plugin.metrics.health.issues.length > 0 && (
               <div className="mt-2">
-                <Alert variant="destructive" className="py-2">
+                <Alert className={alertClassName("destructive", "py-2")}>
                   <AlertTriangle className="w-4 h-4" />
                   <AlertDescription className="text-xs sm:text-sm md:text-base">
                     {plugin.metrics.health.issues[0]}
@@ -278,7 +279,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
         {/* Last Error */}
         {plugin.lastError && (
           <div className="mt-3">
-            <Alert variant="destructive" className="py-2">
+            <Alert className={alertClassName("destructive", "py-2")}>
               <XCircle className="w-4 h-4" />
               <AlertDescription className="text-xs sm:text-sm md:text-base">
                 <div className="font-medium">Last Error:</div>
@@ -446,7 +447,7 @@ export const PluginManager: React.FC = () => {
 
         {/* Error Display */}
         {error && (
-          <Alert variant="destructive">
+          <Alert className={alertClassName("destructive")}>
             <AlertTriangle className="w-4 h-4" />
             <AlertDescription>
               {typeof error === "string" ? error : "An error occurred"}
@@ -507,7 +508,7 @@ export const PluginManager: React.FC = () => {
                   </SelectContent>
                 </Select>
 
-                <Separator orientation="vertical" className="h-6" />
+                  <VerticalSeparator className="h-6" />
 
                 <div className="flex items-center border rounded-md">
                   <Button

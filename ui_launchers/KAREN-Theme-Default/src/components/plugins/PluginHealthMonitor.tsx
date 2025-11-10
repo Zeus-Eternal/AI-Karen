@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { VerticalSeparator } from "./utils/vertical-separator";
 import {
   Select,
   SelectContent,
@@ -403,7 +403,7 @@ export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
             </Label>
           </div>
 
-          <Separator orientation="vertical" className="h-6" />
+            <VerticalSeparator className="h-6" />
 
           <Button variant="outline" size="sm" onClick={() => setNotifications(!notifications)}>
             {notifications ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}

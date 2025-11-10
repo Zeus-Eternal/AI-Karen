@@ -584,17 +584,19 @@ export const PluginLogAnalyzer: React.FC<{
                   {filteredLogs.map((log) => {
                     const expanded = expandedLogs.has(log.id);
                     return (
-                      <Collapsible key={log.id} open={expanded}>
-                        <div className={`p-3 rounded-lg ${getLevelColor(log.level)}`}>
-                          <CollapsibleTrigger
-                            className="w-full"
-                            onClick={() => toggleLogExpansion(log.id)}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3 flex-1 text-left">
-                                {getLevelIcon(log.level)}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
+                        <Collapsible key={log.id} open={expanded}>
+                          <div className={`p-3 rounded-lg ${getLevelColor(log.level)}`}>
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="w-full text-left"
+                                onClick={() => toggleLogExpansion(log.id)}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start gap-3 flex-1 text-left">
+                                    {getLevelIcon(log.level)}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
                                     <span className="text-xs font-mono text-muted-foreground">
                                       {new Date(log.timestamp).toLocaleString()}
                                     </span>
@@ -644,8 +646,9 @@ export const PluginLogAnalyzer: React.FC<{
                                   <ChevronRight className="w-4 h-4" />
                                 )}
                               </div>
-                            </div>
-                          </CollapsibleTrigger>
+                                </div>
+                              </button>
+                            </CollapsibleTrigger>
                           <CollapsibleContent>
                             {log.context && (
                               <div className="mt-3 p-3 bg-background/50 rounded border">

@@ -18,7 +18,7 @@ export { default as PluginMarketplace } from "./PluginMarketplace";
 export type { PluginMarketplaceProps } from "./PluginMarketplace";
 
 // Enhanced Plugin Marketplace
-export { default as EnhancedPluginMarketplace } from "./EnhancedPluginMarketplace";
+export { EnhancedPluginMarketplace } from "./EnhancedPluginMarketplace";
 export type {
   PluginReview,
   MarketplaceFilters,
@@ -63,7 +63,7 @@ export type {
 } from "./PluginConfigurationManager";
 
 // Dynamic Plugin Config Form
-export { default as DynamicPluginConfigForm } from "./DynamicPluginConfigForm";
+export { DynamicPluginConfigForm } from "./DynamicPluginConfigForm";
 export type {
   ValidationError as FormValidationError,
   FieldGroup,
@@ -71,7 +71,7 @@ export type {
 } from "./DynamicPluginConfigForm";
 
 // Plugin Configuration Security Integration
-export { default as PluginConfigurationSecurityIntegration } from "./PluginConfigurationSecurityIntegration";
+export { PluginConfigurationSecurityIntegration } from "./PluginConfigurationSecurityIntegration";
 export type {
   ValidationError as SecurityValidationError,
   InfoItemProps,
@@ -90,7 +90,7 @@ export type {
 } from "./PluginSecurityManager";
 
 // Plugin Health Monitor
-export { default as PluginHealthMonitor } from "./PluginHealthMonitor";
+export { PluginHealthMonitor } from "./PluginHealthMonitor";
 export type {
   HealthStatus,
   EventType,
@@ -120,7 +120,7 @@ export type {
 } from "./PluginLogAnalyzer";
 
 // Plugin Detail View
-export { default as PluginDetailView } from "./PluginDetailView";
+export { PluginDetailView } from "./PluginDetailView";
 export type {
   Permission as DetailPermission,
   LogEntryT,
