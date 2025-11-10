@@ -151,9 +151,10 @@ export const useChatMessages = (
           ? "/copilot/assist"
           : "/api/ai/conversation-processing";
 
-        const useProxy =
-          (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !==
-          "false";
+        // Force proxy usage in browser environment for better reliability
+        const useProxy = typeof window !== 'undefined' ? true : 
+          (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
+        
         const proxyUrlFor = (path: string) =>
           `/api/chat/proxy?path=${encodeURIComponent(path)}`;
 
@@ -163,6 +164,16 @@ export const useChatMessages = (
         const fallbackUrl = useProxy
           ? proxyUrlFor(fallbackPath)
           : joinBackendPath(fallbackPath);
+
+        // Debug logging for URL resolution
+        safeDebug("🔍 useChatMessages: URL resolution", {
+          useProxy,
+          chatRuntimePath,
+          fallbackPath,
+          chatRuntimeUrl,
+          fallbackUrl,
+          baseUrl: trimmedBaseUrl,
+        });
         let activeEndpoint = chatRuntimeUrl;
 
         try {
@@ -330,13 +341,24 @@ export const useChatMessages = (
             stream: chatRuntimePayload.stream,
           });
 
-          const executeRequest = async (url: string, body: any) =>
-            fetch(url, {
+          const executeRequest = async (url: string, body: any) => {
+            safeDebug("🔍 useChatMessages: Executing request", {
+              url,
+              method: "POST",
+              bodyKeys: Object.keys(body),
+              headersKeys: Object.keys(headers),
+            });
+
+            return fetch(url, {
               method: "POST",
               headers,
               body: JSON.stringify(body),
               signal: controller.signal,
+              // Add additional fetch options for better reliability
+              cache: 'no-cache',
+              credentials: 'same-origin',
             });
+          };
 
           let response: Response;
           let responseOrigin: "chat-runtime" | "copilot" | "ai-orchestrator" =
@@ -366,6 +388,8 @@ export const useChatMessages = (
                   primaryError instanceof Error
                     ? primaryError.message
                     : String(primaryError),
+                errorType: primaryError instanceof Error ? primaryError.name : 'Unknown',
+                stack: primaryError instanceof Error ? primaryError.stack : undefined,
               }
             );
 
@@ -373,6 +397,11 @@ export const useChatMessages = (
             try {
               response = await executeRequest(fallbackUrl, legacyPayload);
             } catch (fallbackNetworkError) {
+              safeError("🔍 useChatMessages: Fallback network request failed", {
+                endpoint: fallbackUrl,
+                error: fallbackNetworkError instanceof Error ? fallbackNetworkError.message : String(fallbackNetworkError),
+                errorType: fallbackNetworkError instanceof Error ? fallbackNetworkError.name : 'Unknown',
+              });
               throw fallbackNetworkError;
             }
 

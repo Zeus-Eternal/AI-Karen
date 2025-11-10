@@ -111,3 +111,5 @@ ui_launchers/KAREN-Theme-Default/.next/cache/tsbuildinfo
 /ui_launchers/KAREN-Theme-Default/.next
 data/users.json
 ui_launchers/KAREN-Theme-Default/package-lock.json
+data/users.json
+ui_launchers/KAREN-Theme-Default/package.json
