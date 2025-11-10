@@ -13,7 +13,8 @@
 
 import React from "react";
 import { featureFlagManager as _ffm } from "./feature-flags";
-import { extensionCache as _extCache } from "./cache-manager";
+import { extensionCache as sharedExtensionCache } from "./cache-manager";
+import { ProgressiveEnhancement as ProgressiveEnhancementComponent } from "./fallback-ui";
 
 /* ----------------------------------------
  * Re-exports: Feature Flags
@@ -76,7 +77,7 @@ export function withProgressiveEnhancement(opts: {
     return React.createElement(React.Fragment, null, fallbackComponent);
   }
 
-  return React.createElement(ProgressiveEnhancement, {
+  return React.createElement(ProgressiveEnhancementComponent, {
     featureName,
     fallbackComponent,
     enhancedComponent,
@@ -124,7 +125,7 @@ export function useProgressiveData<T>({
 
       if (!canRun) {
         // Respect disabled feature flag -> try stale cache if available
-        const stale = extensionCache.getStale<T>(key, maxStaleAge);
+        const stale = sharedExtensionCache.getStale<T>(key, maxStaleAge);
         if (alive) {
           if (stale) {
             setData(stale);
@@ -140,7 +141,7 @@ export function useProgressiveData<T>({
       // Try fresh cache first
       let fresh: T | null = null;
       try {
-        fresh = extensionCache.get<T>(key);
+        fresh = sharedExtensionCache.get<T>(key);
       } catch (err) {
         console.error("Error fetching from cache:", err);
         setError(new Error("Cache fetch failed"));
@@ -155,7 +156,7 @@ export function useProgressiveData<T>({
       try {
         const result = await fetcher();
         if (!alive) return;
-        extensionCache.set<T>(key, result, { ttl });
+        sharedExtensionCache.set<T>(key, result, { ttl });
         setData(result);
         setFromCache(false);
       } catch (e: any) {
@@ -163,7 +164,7 @@ export function useProgressiveData<T>({
         setError(e instanceof Error ? e : new Error(String(e)));
 
         if (useStaleOnError) {
-          const stale = extensionCache.getStale<T>(key, maxStaleAge);
+          const stale = sharedExtensionCache.getStale<T>(key, maxStaleAge);
           if (stale) {
             setData(stale);
             setFromCache(true);
@@ -240,7 +241,7 @@ export function initializeGracefulDegradation() {
   // periodic cache cleanup
   const intervalId = window.setInterval(() => {
     try {
-      _extCache.cleanup();
+      sharedExtensionCache.cleanup();
     } catch {
       /* ignore */
     }
@@ -262,7 +263,7 @@ export function initializeGracefulDegradation() {
  */
 export function getSystemHealthStatus() {
   const flags = _ffm.getAllFlags();
-  const cacheStats = _extCache.getStats();
+  const cacheStats = sharedExtensionCache.getStats();
   const enabledFeatures = flags.filter((f) => f.enabled).length;
   const totalFeatures = flags.length;
 
@@ -282,7 +283,7 @@ export function getSystemHealthStatus() {
  * Force purge all extension cache entries
  */
 export function refreshAllCachedData() {
-  _extCache.clear();
+  sharedExtensionCache.clear();
 }
 
 /**
