@@ -14,6 +14,7 @@ import React from "react";
 import { getKarenBackend, APIError } from "../karen-backend";
 import { safeError, safeLog } from "../safe-console";
 import type {
+  ExtensionTaskHistoryEntry,
   HealthStatus,
   ResourceUsage,
 } from "../../extensions/types";
@@ -901,8 +902,8 @@ export class ExtensionIntegrationService {
   async executeExtensionTask(
     extensionId: string,
     taskName: string,
-    parameters?: Record<string, any>
-  ): Promise<any> {
+    parameters?: Record<string, unknown>
+  ): Promise<unknown> {
     try {
       const backend = getKarenBackend();
       const response = await backend.makeRequestPublic("/api/extensions/tasks/execute", {
@@ -924,7 +925,10 @@ export class ExtensionIntegrationService {
     }
   }
 
-  async getExtensionTaskHistory(extensionId: string, taskName?: string): Promise<any[]> {
+  async getExtensionTaskHistory(
+    extensionId: string,
+    taskName?: string
+  ): Promise<ExtensionTaskHistoryEntry[]> {
     try {
       const backend = getKarenBackend();
       const params = new URLSearchParams({ extension_id: extensionId });
@@ -934,7 +938,7 @@ export class ExtensionIntegrationService {
       );
       if (Array.isArray(response)) return response;
       // Fallback sample
-      return [
+      const fallbackHistory: ExtensionTaskHistoryEntry[] = [
         {
           execution_id: "exec-1",
           task_name: taskName || "sample_task",
@@ -954,6 +958,7 @@ export class ExtensionIntegrationService {
           error: "Connection timeout",
         },
       ];
+      return fallbackHistory;
     } catch (error) {
       safeError(
         `ExtensionIntegrationService: Failed to get task history for extension ${extensionId}:`,

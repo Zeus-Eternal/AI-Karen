@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -16,7 +16,9 @@ import {
   useExtensionStatuses,
   useExtensionPerformance,
   useExtensionTaskMonitoring,
+  type ExtensionTaskMonitoringSummary,
 } from "../../../lib/extensions/hooks";
+import type { ExtensionStatus } from "../../../lib/extensions/extension-integration";
 
 import {
   RefreshCw,
@@ -38,6 +40,9 @@ import {
   PieChart,
   Target,
 } from "lucide-react";
+
+type TimeRangeOption = "1h" | "6h" | "24h" | "7d";
+type ResourceMetricKey = "cpu" | "memory" | "network" | "storage";
 
 interface PerformanceMetric {
   name: string;
@@ -73,8 +78,8 @@ export function ExtensionPerformanceMonitor({
   extensionId,
 }: ExtensionPerformanceMonitorProps) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d">("1h");
-  const [selectedMetric, setSelectedMetric] = useState<string>("cpu");
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h");
+  const [selectedMetric, setSelectedMetric] = useState<ResourceMetricKey>("cpu");
   const [alerts, setAlerts] = useState<ResourceAlert[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -84,13 +89,13 @@ export function ExtensionPerformanceMonitor({
 
   // Filter statuses if specific extension is selected
   const filteredStatuses = useMemo(() => {
-    return extensionId ? statuses.filter((s: any) => s.id === extensionId) : statuses;
+    return extensionId ? statuses.filter((status) => status.id === extensionId) : statuses;
   }, [statuses, extensionId]);
 
   // Generate performance metrics
   const performanceMetrics = useMemo((): PerformanceMetric[] => {
-    const activeErrors = filteredStatuses.filter((s: any) => s.status === "error").length;
-    const activeCount = filteredStatuses.filter((s: any) => s.status === "active").length;
+    const activeErrors = filteredStatuses.filter((status) => status.status === "error").length;
+    const activeCount = filteredStatuses.filter((status) => status.status === "active").length;
     const tasks = taskData?.totalActiveTasks ?? 0;
 
     return [
@@ -209,11 +214,11 @@ export function ExtensionPerformanceMonitor({
       timestamp: new Date().toISOString(),
       timeRange,
       metrics: performanceMetrics,
-      extensions: filteredStatuses.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        status: s.status,
-        resources: s.resources,
+      extensions: filteredStatuses.map((status) => ({
+        id: status.id,
+        name: status.name,
+        status: status.status,
+        resources: status.resources,
       })),
       alerts,
     };
@@ -258,7 +263,7 @@ export function ExtensionPerformanceMonitor({
         <div className="flex gap-2">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as any)}
+            onChange={(e) => setTimeRange(e.target.value as TimeRangeOption)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="1h">Last Hour</option>
@@ -440,7 +445,13 @@ function MetricCard({ metric }: MetricCardProps) {
   );
 }
 
-function OverviewPanel({ metrics, statuses, taskData }: any) {
+interface OverviewPanelProps {
+  metrics: PerformanceMetric[];
+  statuses: ExtensionStatus[];
+  taskData: ExtensionTaskMonitoringSummary;
+}
+
+function OverviewPanel({ metrics: _metrics, statuses, taskData }: OverviewPanelProps) {
   return (
     <div className="space-y-6">
       {/* System Health Summary */}
@@ -453,7 +464,7 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">
-                {statuses.filter((s: any) => s.status === "active").length}
+                {statuses.filter((status) => status.status === "active").length}
               </div>
               <p className="text-sm text-gray-600 md:text-base lg:text-lg">Active Extensions</p>
             </div>
@@ -463,13 +474,13 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-yellow-600">
-                {statuses.filter((s: any) => s.status === "inactive").length}
+                {statuses.filter((status) => status.status === "inactive").length}
               </div>
               <p className="text-sm text-gray-600 md:text-base lg:text-lg">Inactive Extensions</p>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">
-                {statuses.filter((s: any) => s.status === "error").length}
+                {statuses.filter((status) => status.status === "error").length}
               </div>
               <p className="text-sm text-gray-600 md:text-base lg:text-lg">Error Extensions</p>
             </div>
@@ -499,8 +510,14 @@ function OverviewPanel({ metrics, statuses, taskData }: any) {
   );
 }
 
-function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
-  const resourceMetrics = ["cpu", "memory", "network", "storage"];
+interface ResourcesPanelProps {
+  statuses: ExtensionStatus[];
+  selectedMetric: ResourceMetricKey;
+  onMetricChange: (metric: ResourceMetricKey) => void;
+}
+
+function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: ResourcesPanelProps) {
+  const resourceMetrics: ResourceMetricKey[] = ["cpu", "memory", "network", "storage"];
   return (
     <div className="space-y-6">
       {/* Resource Selector */}
@@ -530,7 +547,7 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
 
           {/* Resource Usage by Extension */}
           <div className="space-y-3">
-            {statuses.map((status: any) => (
+            {statuses.map((status) => (
               <div
                 key={status.id}
                 className="flex items-center justify-between p-3 border border-gray-200 rounded-lg sm:p-4 md:p-6"
@@ -596,7 +613,11 @@ function ResourcesPanel({ statuses, selectedMetric, onMetricChange }: any) {
   );
 }
 
-function ExtensionsPanel({ statuses }: any) {
+interface ExtensionsPanelProps {
+  statuses: ExtensionStatus[];
+}
+
+function ExtensionsPanel({ statuses }: ExtensionsPanelProps) {
   return (
     <div className="space-y-6">
       <Card>
@@ -619,7 +640,7 @@ function ExtensionsPanel({ statuses }: any) {
                 </tr>
               </thead>
               <tbody>
-                {statuses.map((status: any) => (
+                {statuses.map((status) => (
                   <tr key={status.id} className="border-b border-gray-100">
                     <td className="py-2">
                       <div>
@@ -662,7 +683,12 @@ function ExtensionsPanel({ statuses }: any) {
   );
 }
 
-function AnalyticsPanel({ metrics, timeRange }: any) {
+interface AnalyticsPanelProps {
+  metrics: PerformanceMetric[];
+  timeRange: TimeRangeOption;
+}
+
+function AnalyticsPanel({ metrics: _metrics, timeRange }: AnalyticsPanelProps) {
   return (
     <div className="space-y-6">
       {/* Performance Analytics */}

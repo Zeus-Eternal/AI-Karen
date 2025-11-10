@@ -1,6 +1,5 @@
 "use client";
 
-import React from 'react';
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,15 +59,15 @@ export default function WorkflowList() {
             </Badge>
           </CardHeader>
           <CardContent className="space-y-2 text-sm md:text-base lg:text-lg">
-            {wf.steps.map((step, idx) => (
-              <div key={idx} className="flex items-center justify-between">
-                <span>{step.name}</span>
-                <input className="w-40 " value={step.action} readOnly />
-              </div>
-            ))}
+          {wf.steps.map((step, idx) => (
+            <div key={idx} className="flex items-center justify-between">
+              <span>{step.name}</span>
+              <Input className="w-40" value={step.action} readOnly />
+            </div>
+          ))}
           </CardContent>
-          <CardFooter className="flex items-center justify-between">
-            <textarea className="w-full" placeholder="Variables (JSON)" />
+          <CardFooter className="flex items-center justify-between gap-3">
+            <Textarea className="w-full" placeholder="Variables (JSON)" />
             <Button size="sm" onClick={() => executeWorkflow(wf.id)}>Execute</Button>
           </CardFooter>
         </Card>

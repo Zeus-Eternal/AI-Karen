@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { extensionIntegration, ExtensionStatus, ExtensionUIComponent, ExtensionRoute, ExtensionNavItem } from './extension-integration';
 import { safeError } from '../safe-console';
+import type { ExtensionTaskHistoryEntry } from '../../extensions/types';
 
 /**
  * Hook to get all extension statuses
@@ -158,21 +159,25 @@ export function useExtensionNavigation(extensionId?: string) {
 /**
  * Hook to execute extension background tasks
  */
-export function useExtensionTasks(extensionId: string) {
+export function useExtensionTasks(extensionId?: string | null) {
   const [executing, setExecuting] = useState<Set<string>>(new Set());
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<ExtensionTaskHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const executeTask = useCallback(async (taskName: string, parameters?: Record<string, any>) => {
+  const executeTask = useCallback(async (taskName: string, parameters?: Record<string, unknown>) => {
+    if (!extensionId) {
+      throw new Error('Extension ID is required to execute a task');
+    }
+
     setExecuting(prev => new Set(prev).add(taskName));
-    
+
     try {
       const result = await extensionIntegration.executeExtensionTask(extensionId, taskName, parameters);
-      
+
       // Refresh history after execution
       const updatedHistory = await extensionIntegration.getExtensionTaskHistory(extensionId);
       setHistory(updatedHistory);
-      
+
       return result;
     } catch (error) {
       safeError(`Failed to execute task ${taskName}:`, error);
@@ -187,6 +192,11 @@ export function useExtensionTasks(extensionId: string) {
   }, [extensionId]);
 
   const loadHistory = useCallback(async (taskName?: string) => {
+    if (!extensionId) {
+      setHistory([]);
+      return;
+    }
+
     setLoading(true);
     try {
       const taskHistory = await extensionIntegration.getExtensionTaskHistory(extensionId, taskName);
@@ -199,7 +209,11 @@ export function useExtensionTasks(extensionId: string) {
   }, [extensionId]);
 
   useEffect(() => {
-    loadHistory();
+    if (extensionId) {
+      loadHistory();
+    } else {
+      setHistory([]);
+    }
   }, [loadHistory]);
 
   return {
@@ -209,6 +223,14 @@ export function useExtensionTasks(extensionId: string) {
     history,
     loading
   };
+}
+
+export interface ExtensionTaskMonitoringSummary {
+  extensionsWithTasks: number;
+  totalActiveTasks: number;
+  totalTasks: number;
+  taskUtilization: number;
+  statuses: ExtensionStatus[];
 }
 
 /**
@@ -312,11 +334,11 @@ export function useExtensionPerformance(extensionId?: string) {
 /**
  * Hook for extension background task monitoring
  */
-export function useExtensionTaskMonitoring(extensionId?: string) {
+export function useExtensionTaskMonitoring(extensionId?: string): ExtensionTaskMonitoringSummary {
   const { statuses } = useExtensionStatuses();
-  
-  const taskData = useMemo(() => {
-    const relevantStatuses = extensionId 
+
+  const taskData = useMemo<ExtensionTaskMonitoringSummary>(() => {
+    const relevantStatuses = extensionId
       ? statuses.filter(s => s.id === extensionId)
       : statuses;
 

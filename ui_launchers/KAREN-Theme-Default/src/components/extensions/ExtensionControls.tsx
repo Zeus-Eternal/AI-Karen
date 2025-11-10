@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
+type ExtensionActionName = 'start' | 'stop' | 'restart' | 'delete';
+
 export default function ExtensionControls() {
   const { toast } = useToast();
-  const [action, setAction] = useState<string | null>(null);
+  const [action, setAction] = useState<ExtensionActionName | null>(null);
 
-  const exec = (act: string) => {
+  const exec = (act: ExtensionActionName) => {
     setAction(null);
     toast({ title: `Action executed`, description: act });
   };

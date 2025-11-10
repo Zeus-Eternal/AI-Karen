@@ -1,6 +1,5 @@
 "use client";
 
-import React from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,11 +15,13 @@ import { sanitizeInput } from "@/lib/utils";
 const schema = z.object({
   refreshInterval: z.number().min(1).max(60),
   enableLogs: z.boolean(),
-  logLevel: z.enum(["info", "debug", "error"]),
+  logLevel: z.enum(["info", "debug", "error"] as const),
   endpoint: z.string().url(),
 });
 
 type FormValues = z.infer<typeof schema>;
+type LogLevelOption = FormValues["logLevel"];
+const LOG_LEVELS: LogLevelOption[] = ["info", "debug", "error"];
 
 export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormValues) => void }) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
@@ -36,6 +37,9 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
     onSave?.(vals);
     toast({ title: "Settings saved" });
   });
+
+  const isLogLevel = (value: string): value is LogLevelOption =>
+    (LOG_LEVELS as string[]).includes(value);
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -55,12 +59,21 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium md:text-base lg:text-lg">Log Level</label>
-            <Select value={watch("logLevel")} onValueChange={(val) => setValue("logLevel", val as any)}>
+            <Select
+              value={watch("logLevel")}
+              onValueChange={(val) => {
+                if (isLogLevel(val)) {
+                  setValue("logLevel", val);
+                }
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="info">Info</SelectItem>
-                <SelectItem value="debug">Debug</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
+                {LOG_LEVELS.map((level) => (
+                  <SelectItem key={level} value={level} className="capitalize">
+                    {level}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

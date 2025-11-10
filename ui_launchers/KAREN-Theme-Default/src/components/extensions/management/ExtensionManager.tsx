@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import {
   useExtensionHealth,
   useExtensionPerformance,
 } from "../../../lib/extensions/hooks";
+import type { ExtensionStatus } from "../../../lib/extensions/extension-integration";
 
 import {
   Package,
@@ -133,7 +135,7 @@ export function ExtensionManager({
     [selectedExtensions, handleAction, onEnable, onDisable, onUninstall]
   );
   const handleFileUpload = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file && onInstallFromFile) {
         try {
@@ -427,14 +429,14 @@ export function ExtensionManager({
   );
 }
 interface ExtensionListProps {
-  extensions: any[];
+  extensions: ExtensionStatus[];
   selectedExtensions: Set<string>;
   actionInProgress: Set<string>;
   onToggleSelection: (id: string) => void;
   onAction: (
     id: string,
     action: "enable" | "disable" | "uninstall",
-    callback?: any
+    callback?: (id: string) => Promise<void>
   ) => Promise<void>;
   onEnable?: (id: string) => Promise<void>;
   onDisable?: (id: string) => Promise<void>;
@@ -489,7 +491,7 @@ function ExtensionList({
   );
 }
 interface ExtensionCardProps {
-  extension: any;
+  extension: ExtensionStatus;
   selected: boolean;
   actionInProgress: boolean;
   onToggleSelection: () => void;

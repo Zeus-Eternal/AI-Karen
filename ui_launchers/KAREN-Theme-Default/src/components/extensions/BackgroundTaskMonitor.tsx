@@ -6,8 +6,10 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useExtensionTaskMonitoring, useExtensionTasks } from '@/lib/extensions/hooks';
+import { useEffect, useMemo, useState } from 'react';
+import type { ExtensionTaskHistoryEntry } from '@/extensions/types';
+import type { ExtensionStatus } from '@/lib/extensions/extension-integration';
+import { useExtensionTaskMonitoring, useExtensionTasks, type ExtensionTaskMonitoringSummary } from '@/lib/extensions/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -32,19 +34,25 @@ export interface BackgroundTaskMonitorProps {
 export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTaskMonitorProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedExtension, setSelectedExtension] = useState<string | null>(extensionId || null);
-  
+
   const taskData = useExtensionTaskMonitoring(extensionId);
-  const { executeTask, history, loading } = useExtensionTasks(selectedExtension || '');
+  const { history, loading } = useExtensionTasks(selectedExtension ?? extensionId);
+
+  useEffect(() => {
+    if (extensionId) {
+      setSelectedExtension(extensionId);
+    }
+  }, [extensionId]);
 
   const taskStats = useMemo(() => {
     const recentExecutions = history.slice(0, 10);
     const completedTasks = recentExecutions.filter(h => h.status === 'completed').length;
     const failedTasks = recentExecutions.filter(h => h.status === 'failed').length;
     const runningTasks = recentExecutions.filter(h => h.status === 'running').length;
-    
+
     const avgDuration = recentExecutions
       .filter(h => h.duration_seconds)
-      .reduce((sum, h) => sum + (h.duration_seconds || 0), 0) / 
+      .reduce((sum, h) => sum + (h.duration_seconds || 0), 0) /
       (recentExecutions.filter(h => h.duration_seconds).length || 1);
 
     return {
@@ -151,15 +159,15 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         </TabsContent>
 
         <TabsContent value="extensions" className="space-y-4">
-          <ExtensionTaskList 
+          <ExtensionTaskList
             extensions={taskData.statuses}
             selectedExtension={selectedExtension}
-            onSelectExtension={setSelectedExtension}
+            onSelectExtension={(id) => setSelectedExtension(id)}
           />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <TaskExecutionHistory 
+          <TaskExecutionHistory
             history={history}
             loading={loading}
             extensionId={selectedExtension}
@@ -170,7 +178,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
   );
 }
 
-function TaskOverview({ taskData }: { taskData: any }) {
+function TaskOverview({ taskData }: { taskData: ExtensionTaskMonitoringSummary }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
@@ -180,7 +188,7 @@ function TaskOverview({ taskData }: { taskData: any }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {taskData.statuses.map((status: any) => (
+            {taskData.statuses.map((status) => (
               <div key={status.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${
@@ -240,12 +248,12 @@ function TaskOverview({ taskData }: { taskData: any }) {
   );
 }
 
-function ExtensionTaskList({ 
-  extensions, 
-  selectedExtension, 
-  onSelectExtension 
-}: { 
-  extensions: any[];
+function ExtensionTaskList({
+  extensions,
+  selectedExtension,
+  onSelectExtension
+}: {
+  extensions: ExtensionStatus[];
   selectedExtension: string | null;
   onSelectExtension: (id: string) => void;
 }) {
@@ -299,12 +307,12 @@ function ExtensionTaskList({
   );
 }
 
-function TaskExecutionHistory({ 
-  history, 
-  loading, 
-  extensionId 
-}: { 
-  history: any[];
+function TaskExecutionHistory({
+  history,
+  loading,
+  extensionId
+}: {
+  history: ExtensionTaskHistoryEntry[];
   loading: boolean;
   extensionId: string | null;
 }) {
@@ -344,8 +352,8 @@ function TaskExecutionHistory({
                 <h3 className="font-semibold text-lg">{execution.task_name}</h3>
                 <p className="text-sm text-gray-500 md:text-base lg:text-lg">ID: {execution.execution_id}</p>
               </div>
-              
-              <Badge 
+
+              <Badge
                 variant={
                   execution.status === 'completed' ? 'default' :
                   execution.status === 'failed' ? 'destructive' :
@@ -401,7 +409,7 @@ function TaskExecutionHistory({
               </div>
             )}
             
-            {execution.result && (
+            {execution.result !== undefined && execution.result !== null && (
               <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md sm:p-4 md:p-6">
                 <div className="text-gray-700 font-medium mb-2">Result:</div>
                 <pre className="text-xs text-gray-600 whitespace-pre-wrap overflow-x-auto sm:text-sm md:text-base">
