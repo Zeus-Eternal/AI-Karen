@@ -17,20 +17,36 @@ export default defineConfig({
       tsconfig: resolve(rootDir, "tsconfig.json"),
     },
     deps: {
-      inline: [
-        "@mui/material",
-        "@mui/system",
-        "@mui/icons-material",
-        "@mui/lab",
-        "@mui/x-data-grid",
-        "@emotion/react",
-        "@emotion/styled",
-        "@emotion/cache",
-        "@emotion/serialize",
-        "@emotion/utils",
-        /^@mui\//,
-        /^@emotion\//,
-      ],
+      optimizer: {
+        client: {
+          include: [
+            "@mui/material",
+            "@mui/system",
+            "@mui/icons-material",
+            "@mui/lab",
+            "@mui/x-data-grid",
+            "@emotion/react",
+            "@emotion/styled",
+            "@emotion/cache",
+            "@emotion/serialize",
+            "@emotion/utils",
+          ],
+        },
+        ssr: {
+          include: [
+            "@mui/material",
+            "@mui/system",
+            "@mui/icons-material",
+            "@mui/lab",
+            "@mui/x-data-grid",
+            "@emotion/react",
+            "@emotion/styled",
+            "@emotion/cache",
+            "@emotion/serialize",
+            "@emotion/utils",
+          ],
+        },
+      },
     },
     css: false,
     restoreMocks: true,
@@ -38,7 +54,6 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
-      all: false,
     },
   },
   resolve: {

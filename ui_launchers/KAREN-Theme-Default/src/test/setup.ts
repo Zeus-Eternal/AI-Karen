@@ -1,7 +1,6 @@
 /// <reference types="vitest/globals" />
 
 import React from 'react';
-import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 
@@ -13,11 +12,8 @@ expect.extend(matchers);
 // ---------------------------------------------------------------------------
 // Make React available globally (handy for certain JSX runtime configs)
 // ---------------------------------------------------------------------------
-declare global {
-  // eslint-disable-next-line no-var
-  var React: typeof import('react');
-}
-globalThis.React = React;
+// Provide React on the global scope for test environments that expect it.
+(globalThis as typeof globalThis & { React?: typeof React }).React = React;
 
 // ---------------------------------------------------------------------------
 // Mock window.matchMedia (used by various UI libs)

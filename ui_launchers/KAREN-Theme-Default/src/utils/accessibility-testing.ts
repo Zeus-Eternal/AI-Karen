@@ -500,5 +500,8 @@ export async function runWithPreset(
   preset: AccessibilityPresetKey
 ): Promise<AccessibilityReport> {
   const cfg = accessibilityTestConfigs[preset];
-  return runAccessibilityTest(container, { tags: cfg.tags, rules: cfg.rules });
+  return runAccessibilityTest(container, {
+    tags: [...cfg.tags],
+    rules: cfg.rules,
+  });
 }
