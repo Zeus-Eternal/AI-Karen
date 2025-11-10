@@ -334,6 +334,42 @@ export class ConfigManager {
   public getFallbackUrls(): string[] {
     return [...this.config.fallbackUrls];
   }
+
+  /**
+   * Ordered list of base URLs including fallbacks (primary first)
+   */
+  public getOrderedBases(_endpointKey?: string): string[] {
+    const bases: string[] = [];
+    const seen = new Set<string>();
+
+    const primary = this.getBackendUrl();
+    const normalizedPrimary = typeof primary === 'string' ? primary.trim() : '';
+    if (!seen.has(normalizedPrimary)) {
+      bases.push(normalizedPrimary);
+      seen.add(normalizedPrimary);
+    }
+
+    for (const url of this.config.fallbackUrls) {
+      const normalized = (url ?? '').trim();
+      if (!seen.has(normalized)) {
+        bases.push(normalized);
+        seen.add(normalized);
+      }
+    }
+
+    if (!seen.has('')) {
+      bases.push('');
+    }
+
+    return bases;
+  }
+
+  /**
+   * Backwards-compatible alias for ordered bases
+   */
+  public getOrderedEndpoints(endpointKey?: string): string[] {
+    return this.getOrderedBases(endpointKey);
+  }
   /**
    * Get current configuration
    */

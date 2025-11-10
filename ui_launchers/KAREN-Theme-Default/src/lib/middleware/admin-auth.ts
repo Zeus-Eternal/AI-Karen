@@ -544,9 +544,13 @@ export function getRateLimitInfo(): Array<{
   resetTime: number;
   remaining: number;
 }> {
-  const now = Date.now();
-  const info = [];
-  
+  const info: Array<{
+    key: string;
+    count: number;
+    resetTime: number;
+    remaining: number;
+  }> = [];
+
   for (const [key, value] of rateLimitStore.entries()) {
     const limit = 100; // Default limit
     info.push({

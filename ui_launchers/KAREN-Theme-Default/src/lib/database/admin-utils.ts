@@ -18,7 +18,110 @@ import {
   AuditLogEntry,
   RoleBasedQuery
 } from '@/types/admin';
+import bcrypt from 'bcryptjs';
+import { createHash, scryptSync, timingSafeEqual } from 'crypto';
+
 import { DatabaseClient, getDatabaseClient } from './client';
+
+function bufferFromValue(value: string | Buffer): Buffer {
+  if (Buffer.isBuffer(value)) {
+    return Buffer.from(value);
+  }
+
+  const trimmed = value.trim();
+  if (/^[0-9a-f]+$/i.test(trimmed) && trimmed.length % 2 === 0) {
+    return Buffer.from(trimmed, 'hex');
+  }
+
+  return Buffer.from(trimmed, 'utf8');
+}
+
+function safeCompare(expected: string | Buffer, actual: string | Buffer): boolean {
+  const expectedBuffer = bufferFromValue(expected);
+  const actualBuffer = bufferFromValue(actual);
+
+  if (expectedBuffer.length !== actualBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function verifyPasswordHash(password: string, storedHash: string): boolean {
+  if (!storedHash) {
+    return false;
+  }
+
+  const normalized = storedHash.trim();
+
+  if (/^\$2[aby]\$/i.test(normalized)) {
+    try {
+      return bcrypt.compareSync(password, normalized);
+    } catch (error) {
+      console.warn('bcrypt comparison failed', error);
+      return false;
+    }
+  }
+
+  const colonParts = normalized.split(':');
+  const dollarParts = normalized.split('$');
+  const parts = colonParts.length >= dollarParts.length ? colonParts : dollarParts;
+  const algorithm = parts[0]?.toLowerCase();
+
+  if (algorithm === 'scrypt') {
+    const params = parts.slice(1).filter(Boolean);
+    let salt: string | undefined;
+    let digest: string | undefined;
+    let N = 16384;
+    let r = 8;
+    let p = 1;
+
+    if (params.length >= 5) {
+      const maybeN = Number(params[0]);
+      const maybeR = Number(params[1]);
+      const maybeP = Number(params[2]);
+      if (maybeN > 0 && maybeR > 0 && maybeP > 0) {
+        N = maybeN;
+        r = maybeR;
+        p = maybeP;
+        salt = params[3];
+        digest = params[4];
+      }
+    }
+
+    if (!salt || !digest) {
+      salt = params[params.length - 2];
+      digest = params[params.length - 1];
+    }
+
+    if (salt && digest) {
+      try {
+        const digestBuffer = bufferFromValue(digest);
+        const derived = scryptSync(password, bufferFromValue(salt), digestBuffer.length, { N, r, p });
+        return safeCompare(digestBuffer, derived);
+      } catch (error) {
+        console.warn('scrypt comparison failed', error);
+        return false;
+      }
+    }
+  }
+
+  if (algorithm === 'sha256') {
+    const salt = parts[1] ?? '';
+    const digest = parts[parts.length - 1];
+    if (digest) {
+      const computed = createHash('sha256').update(`${salt}:${password}`).digest('hex');
+      return safeCompare(digest, computed);
+    }
+  }
+
+  const fallback = createHash('sha256').update(password).digest('hex');
+  if (safeCompare(normalized, fallback)) {
+    return true;
+  }
+
+  return normalized === password;
+}
 
 /**
  * Error classes for specific admin database operations
@@ -269,6 +372,90 @@ export class AdminDatabaseUtils {
     };
   }
 
+  private mapUserRow(row: any): User {
+    let preferences: User['preferences'] | undefined;
+    if (row.preferences) {
+      try {
+        preferences = typeof row.preferences === 'string'
+          ? JSON.parse(row.preferences)
+          : row.preferences;
+      } catch {
+        preferences = undefined;
+      }
+    }
+
+    const roles: string[] = Array.isArray(row.roles)
+      ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
+      : row.role
+        ? [row.role]
+        : [];
+
+    return {
+      user_id: row.user_id,
+      email: row.email,
+      full_name: row.full_name ?? undefined,
+      role: row.role,
+      roles,
+      tenant_id: row.tenant_id ?? 'default',
+      preferences,
+      is_verified: Boolean(row.is_verified),
+      is_active: Boolean(row.is_active),
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
+      last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
+      failed_login_attempts: row.failed_login_attempts ?? 0,
+      locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
+      two_factor_enabled: Boolean(row.two_factor_enabled),
+      two_factor_secret: row.two_factor_secret ?? null,
+      created_by: row.created_by ?? undefined,
+    };
+  }
+
+  /**
+   * Find user by email with role information
+   */
+  async findUserByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    const query = `
+      SELECT
+        user_id,
+        email,
+        full_name,
+        role,
+        roles,
+        tenant_id,
+        preferences,
+        is_verified,
+        is_active,
+        created_at,
+        updated_at,
+        last_login_at,
+        failed_login_attempts,
+        locked_until,
+        two_factor_enabled,
+        two_factor_secret,
+        created_by
+      FROM auth_users
+      WHERE LOWER(email) = $1
+      LIMIT 1
+    `;
+
+    try {
+      const rows = await this.executeQuery<any>('findUserByEmail', query, [normalizedEmail]);
+      if (!rows.length) {
+        return null;
+      }
+
+      return this.mapUserRow(rows[0]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to find user by email', 'findUserByEmail', error);
+    }
+  }
+
   /**
    * Get user with role information
    */
@@ -301,6 +488,34 @@ export class AdminDatabaseUtils {
     
     const result = await this.executeQuery<User>(`getUserWithRole-${userId}`, query, [userId]);
     return result[0] || null;
+  }
+
+  async verifyPassword(email: string, password: string): Promise<boolean> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      return false;
+    }
+
+    const query = `
+      SELECT aph.password_hash
+      FROM auth_users u
+      LEFT JOIN auth_password_hashes aph ON aph.user_id = u.user_id
+      WHERE LOWER(u.email) = $1
+      ORDER BY aph.updated_at DESC NULLS LAST, aph.created_at DESC NULLS LAST
+      LIMIT 1
+    `;
+
+    try {
+      const rows = await this.executeQuery<{ password_hash: string | null }>('verifyPassword', query, [normalizedEmail]);
+      const storedHash = rows[0]?.password_hash;
+      if (!storedHash) {
+        return false;
+      }
+
+      return verifyPasswordHash(password, storedHash);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to verify password', 'verifyPassword', error);
+    }
   }
 
   /**
@@ -1627,6 +1842,99 @@ export class AdminDatabaseUtils {
       await this.db.query(query, [alertId, resolvedBy, resolutionNote ?? null]);
     } catch (error) {
       throw new AdminDatabaseError('Failed to resolve security alert', 'resolveSecurityAlert', error);
+    }
+  }
+
+  /**
+   * Persist an IP block entry
+   */
+  async blockIp(
+    ip: string,
+    reason?: string | null,
+    blockedUntil?: Date | null,
+    blockedBy?: string | null,
+  ): Promise<void> {
+    if (!ip) {
+      throw new AdminDatabaseError('IP address is required', 'blockIp');
+    }
+
+    const query = `
+      INSERT INTO blocked_ips (ip_address, reason, blocked_at, blocked_by, expires_at, failed_attempts)
+      VALUES ($1, $2, NOW(), $3, $4, COALESCE((SELECT failed_attempts FROM blocked_ips WHERE ip_address = $1), 0))
+      ON CONFLICT (ip_address) DO UPDATE SET
+        reason = EXCLUDED.reason,
+        blocked_at = NOW(),
+        blocked_by = EXCLUDED.blocked_by,
+        expires_at = EXCLUDED.expires_at
+    `;
+
+    try {
+      await this.db.query(query, [ip, reason ?? null, blockedBy ?? null, blockedUntil ?? null]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to persist IP block', 'blockIp', error);
+    }
+  }
+
+  /**
+   * Check if IP is whitelisted with optional user/role constraints
+   */
+  async isIpWhitelisted(ip: string, userId?: string, role?: 'super_admin' | 'admin'): Promise<boolean> {
+    if (!ip) {
+      return false;
+    }
+
+    const conditions: string[] = [
+      'is_active IS DISTINCT FROM FALSE',
+      `(ip_or_cidr = $1 OR (POSITION('/' IN ip_or_cidr) > 0 AND inet($1) <<= inet(ip_or_cidr)))`,
+    ];
+    const params: any[] = [ip];
+    let index = 2;
+
+    if (userId) {
+      conditions.push(`(user_id IS NULL OR user_id = $${index})`);
+      params.push(userId);
+      index += 1;
+    } else {
+      conditions.push('user_id IS NULL');
+    }
+
+    if (role) {
+      conditions.push(`(role_restriction IS NULL OR role_restriction = $${index})`);
+      params.push(role);
+      index += 1;
+    } else {
+      conditions.push('role_restriction IS NULL');
+    }
+
+    const query = `
+      SELECT 1
+      FROM ip_whitelist
+      WHERE ${conditions.join(' AND ')}
+      LIMIT 1
+    `;
+
+    try {
+      const rows = await this.executeQuery<{ exists: number }>('isIpWhitelisted', query, params);
+      return rows.length > 0;
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to check IP whitelist', 'isIpWhitelisted', error);
+    }
+  }
+
+  /**
+   * Remove an IP block entry by address
+   */
+  async unblockIp(ip: string): Promise<void> {
+    if (!ip) {
+      throw new AdminDatabaseError('IP address is required', 'unblockIp');
+    }
+
+    const query = `DELETE FROM blocked_ips WHERE ip_address = $1`;
+
+    try {
+      await this.db.query(query, [ip]);
+    } catch (error) {
+      throw new AdminDatabaseError('Failed to remove blocked IP', 'unblockIp', error);
     }
   }
 

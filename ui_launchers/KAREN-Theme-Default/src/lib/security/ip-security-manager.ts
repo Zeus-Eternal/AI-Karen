@@ -11,6 +11,7 @@
 
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { BlockedIpEntry, IpWhitelistEntry } from '@/lib/database/admin-utils';
+export type { IpWhitelistEntry };
 import type { User, SecurityEvent } from '@/types/admin';
 import { securityManager } from './security-manager';
 
@@ -366,9 +367,9 @@ class SimpleThrottle {
  * ========================= */
 
 export class IpSecurityManager {
-  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
+  private _adminUtils?: ReturnType<typeof getAdminDatabaseUtils>;
 
-  private get adminUtils() {
+  private get adminUtils(): ReturnType<typeof getAdminDatabaseUtils> {
     if (!this._adminUtils) {
       this._adminUtils = getAdminDatabaseUtils();
     }
@@ -668,7 +669,7 @@ export class IpSecurityManager {
       // Persist block if backend provides such API (best-effort)
       try { 
         if (this.adminUtils.blockIp) {
-          await this.adminUtils.blockIp(ip, reason, blockedUntil); 
+          await this.adminUtils.blockIp(ip, reason, blockedUntil, blockedBy);
         }
       } catch (persistError) {
         console.warn('Failed to persist IP block:', persistError);
@@ -703,7 +704,7 @@ export class IpSecurityManager {
 
       try { 
         if (this.adminUtils.unblockIp) {
-          await this.adminUtils.unblockIp(ip); 
+          await this.adminUtils.unblockIp(ip);
         }
       } catch (persistError) {
         console.warn('Failed to persist IP unblock:', persistError);

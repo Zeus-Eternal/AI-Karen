@@ -44,9 +44,9 @@ export interface AuthenticationResult {
 }
 
 export class EnhancedAuthMiddleware {
-  private _adminUtils: ReturnType<typeof getAdminDatabaseUtils> | null = null;
+  private _adminUtils?: ReturnType<typeof getAdminDatabaseUtils>;
 
-  private get adminUtils() {
+  private get adminUtils(): ReturnType<typeof getAdminDatabaseUtils> {
     if (!this._adminUtils) {
       this._adminUtils = getAdminDatabaseUtils();
     }
@@ -217,6 +217,29 @@ export class EnhancedAuthMiddleware {
         }
       };
     }
+  }
+
+  private async findUserByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    try {
+      if (typeof this.adminUtils.findUserByEmail === 'function') {
+        return await this.adminUtils.findUserByEmail(normalizedEmail);
+      }
+
+      // Legacy fallback: fetch all users with matching role filters if direct lookup is unavailable
+      const users = await this.adminUtils.getUsersWithRoleFilter?.({ search: normalizedEmail }, { page: 1, limit: 1 });
+      if (users && Array.isArray(users.data) && users.data.length > 0) {
+        return users.data[0];
+      }
+    } catch (error) {
+      console.warn('Failed to locate user by email during authentication:', error);
+    }
+
+    return null;
   }
 
   /**
