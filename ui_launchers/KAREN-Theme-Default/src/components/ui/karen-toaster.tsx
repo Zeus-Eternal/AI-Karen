@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { useKarenAlerts } from "@/hooks/use-karen-alerts";
+import type { AlertAction } from "@/types/karen-alerts";
 
 import {
   KarenToast,
@@ -14,7 +15,7 @@ export function KarenToaster() {
   const { activeAlerts, settings, dismissAlert } = useKarenAlerts();
 
   const handleActionClick = React.useCallback(
-    (alertId: string) => {
+    (alertId: string) => (_action: AlertAction) => {
       void dismissAlert(alertId);
     },
     [dismissAlert]
@@ -35,7 +36,7 @@ export function KarenToaster() {
               void dismissAlert(alert.id);
             }
           }}
-          onActionClick={() => handleActionClick(alert.id)}
+          onActionClick={handleActionClick(alert.id)}
         />
       ))}
     </KarenToastProvider>

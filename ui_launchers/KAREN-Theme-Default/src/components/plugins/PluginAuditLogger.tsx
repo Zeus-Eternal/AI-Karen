@@ -52,6 +52,7 @@ import {
   Unlock,
   XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import type { PluginInfo, PluginAuditEntry, PluginLogEntry } from "@/types/plugins";
 
@@ -211,6 +212,47 @@ const mockComplianceReports: ComplianceReport[] = [
   },
 ];
 
+type DateRange = "1d" | "7d" | "30d" | "90d";
+type AuditAction = PluginAuditEntry["action"];
+type AuditActionFilter = AuditAction | "all";
+type LogLevelFilter = PluginLogEntry["level"] | "all";
+
+const actionIconMap: Record<AuditAction, LucideIcon> = {
+  install: Download,
+  uninstall: XCircle,
+  enable: CheckCircle,
+  disable: XCircle,
+  configure: Settings,
+  update: RefreshCw,
+  permission_grant: Unlock,
+  permission_revoke: Lock,
+};
+
+const actionColorMap: Record<AuditAction, string> = {
+  install: "text-green-600",
+  uninstall: "text-red-600",
+  enable: "text-green-600",
+  disable: "text-orange-600",
+  configure: "text-blue-600",
+  update: "text-blue-600",
+  permission_grant: "text-green-600",
+  permission_revoke: "text-red-600",
+};
+
+const levelColorMap: Record<PluginLogEntry["level"], string> = {
+  debug: "text-gray-600",
+  info: "text-blue-600",
+  warn: "text-yellow-600",
+  error: "text-red-600",
+};
+
+const dateRangeDurations: Record<DateRange, number> = {
+  "1d": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "90d": 90 * 24 * 60 * 60 * 1000,
+};
+
 /* -------------------- Component -------------------- */
 
 export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
@@ -223,21 +265,15 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
   const [complianceReports] = useState<ComplianceReport[]>(mockComplianceReports);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState<string>("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<string>("7d");
+  const [actionFilter, setActionFilter] = useState<AuditActionFilter>("all");
+  const [levelFilter, setLevelFilter] = useState<LogLevelFilter>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("7d");
   const [selectedEntry, setSelectedEntry] = useState<PluginAuditEntry | null>(null);
   const [loading, setLoading] = useState(false);
 
   const auditSummary: AuditSummary = useMemo(() => {
     const now = new Date();
-    const rangeMs =
-      {
-        "1d": 24 * 60 * 60 * 1000,
-        "7d": 7 * 24 * 60 * 60 * 1000,
-        "30d": 30 * 24 * 60 * 60 * 1000,
-        "90d": 90 * 24 * 60 * 60 * 1000,
-      }[dateRange] ?? 7 * 24 * 60 * 60 * 1000;
+    const rangeMs = dateRangeDurations[dateRange];
 
     const withinRange = auditEntries.filter(
       (e) => now.getTime() - e.timestamp.getTime() <= rangeMs
@@ -269,9 +305,17 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
       criticalEvents: withinRange.filter((e) =>
         ["permission_grant", "permission_revoke", "uninstall"].includes(e.action)
       ).length,
-      securityEvents: withinRange.filter(
-        (e) => e.action.includes("permission") || (e.details as any)?.security
-      ).length,
+      securityEvents: withinRange.filter((e) => {
+        if (e.action.includes("permission")) {
+          return true;
+        }
+        const details = e.details ?? {};
+        if (typeof details === "object" && details !== null && "security" in details) {
+          const securityFlag = (details as Record<string, unknown>).security;
+          return typeof securityFlag === "boolean" ? securityFlag : Boolean(securityFlag);
+        }
+        return false;
+      }).length,
       configurationChanges: withinRange.filter((e) => e.action === "configure").length,
       permissionChanges: withinRange.filter((e) => e.action.includes("permission")).length,
       lastActivity,
@@ -279,7 +323,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
       eventsByType,
       eventsByDay: Object.entries(dayCounts)
         .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => (a.date < b.date ? -1 : 1)),
+        .sort((a, b) => a.date.localeCompare(b.date)),
     };
   }, [auditEntries, dateRange]);
 
@@ -324,43 +368,11 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
     onExportAuditLog?.(format);
   };
 
-  const getActionIcon = (action: string) => {
-    const map = {
-      install: Download,
-      uninstall: XCircle,
-      enable: CheckCircle,
-      disable: XCircle,
-      configure: Settings,
-      update: RefreshCw,
-      permission_grant: Unlock,
-      permission_revoke: Lock,
-    };
-    return (map as any)[action] ?? Activity;
-  };
+  const getActionIcon = (action: AuditAction): LucideIcon => actionIconMap[action] ?? Activity;
 
-  const getActionColor = (action: string) => {
-    const colors: Record<string, string> = {
-      install: "text-green-600",
-      uninstall: "text-red-600",
-      enable: "text-green-600",
-      disable: "text-orange-600",
-      configure: "text-blue-600",
-      update: "text-blue-600",
-      permission_grant: "text-green-600",
-      permission_revoke: "text-red-600",
-    };
-    return colors[action] ?? "text-gray-600";
-  };
+  const getActionColor = (action: AuditAction) => actionColorMap[action] ?? "text-gray-600";
 
-  const getLevelColor = (level: string) => {
-    const colors: Record<string, string> = {
-      debug: "text-gray-600",
-      info: "text-blue-600",
-      warn: "text-yellow-600",
-      error: "text-red-600",
-    };
-    return colors[level] ?? "text-gray-600";
-  };
+  const getLevelColor = (level: PluginLogEntry["level"]) => levelColorMap[level] ?? "text-gray-600";
 
   const renderAuditEntry = (entry: PluginAuditEntry) => {
     const ActionIcon = getActionIcon(entry.action);
@@ -438,7 +450,7 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
+          <Select value={dateRange} onValueChange={(value: DateRange) => setDateRange(value)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Date range" />
             </SelectTrigger>
@@ -534,7 +546,10 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                   />
                 </div>
 
-                <Select value={actionFilter} onValueChange={setActionFilter}>
+                <Select
+                  value={actionFilter}
+                  onValueChange={(value: AuditActionFilter) => setActionFilter(value)}
+                >
                   <SelectTrigger className="w-56">
                     <SelectValue placeholder="Filter by action" />
                   </SelectTrigger>
@@ -598,7 +613,10 @@ export const PluginAuditLogger: React.FC<PluginAuditLoggerProps> = ({
                   />
                 </div>
 
-                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                <Select
+                  value={levelFilter}
+                  onValueChange={(value: LogLevelFilter) => setLevelFilter(value)}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Level" />
                   </SelectTrigger>

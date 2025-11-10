@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import { extensionIntegration, ExtensionRoute } from './extension-integration';
 import { useExtensionRoutes } from './hooks';
 import { safeError, safeLog } from '../safe-console';
+import { Button } from '@/components/ui/button';
 
 export interface DynamicExtensionRouterProps {
   children?: React.ReactNode;
@@ -177,23 +178,26 @@ function ExtensionErrorFallback({
         {error && (
           <details className="text-left bg-gray-100 rounded p-3 mb-4">
             <summary className="cursor-pointer text-sm font-medium text-gray-700">
+              View technical details
             </summary>
             <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
               {error.toString()}
             </pre>
           </details>
         )}
-        
+
         <div className="flex gap-3 justify-center">
           <Button
             onClick={handleRetry}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
+            Retry
           </Button>
           <Button
             onClick={() => window.history.back()}
             className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
           >
+            Go Back
           </Button>
         </div>
       </div>

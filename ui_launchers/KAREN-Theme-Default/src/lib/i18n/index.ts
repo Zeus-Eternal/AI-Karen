@@ -42,6 +42,8 @@ export interface PluralOptions {
 export interface InterpolationOptions {
   [key: string]: string | number | boolean;
 }
+
+type TranslationOptions = InterpolationOptions & Partial<PluralOptions> & { ns?: string };
 export const DEFAULT_CONFIG: I18nConfig = {
   defaultLocale: 'en',
   locales: ['en', 'es', 'fr', 'de', 'ja', 'zh', 'ar', 'ru'],
@@ -107,7 +109,7 @@ export class I18nManager {
   /**
    * Translate a key
    */
-  t(key: string, options: InterpolationOptions & PluralOptions & { ns?: string } = {}): string {
+  t(key: string, options: TranslationOptions = {}): string {
     const { ns = 'common', count, ...interpolationOptions } = options;
     // Handle pluralization
     if (this.config.pluralization && typeof count === 'number') {
