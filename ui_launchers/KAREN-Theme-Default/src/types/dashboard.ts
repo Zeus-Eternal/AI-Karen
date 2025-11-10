@@ -38,11 +38,42 @@ export interface WidgetPosition {
  * Type-safe configuration for different widget types
  */
 export type WidgetConfigData =
-  | { type: 'metric'; threshold?: number; target?: number; decimals?: number }
-  | { type: 'chart'; chartType: 'line' | 'bar' | 'area' | 'pie'; stacked?: boolean }
-  | { type: 'table'; pageSize?: number; sortable?: boolean; exportable?: boolean }
-  | { type: 'status'; checkInterval?: number; alertThreshold?: 'warning' | 'critical' }
-  | { type: 'log'; maxEntries?: number; levels?: Array<'info' | 'warn' | 'error'>; sources?: string[] }
+  | ({
+      type: 'metric';
+      metric?: string;
+      unit?: string;
+      format?: string;
+      threshold?: { warning: number; critical: number } | number;
+      target?: number;
+      decimals?: number;
+    } & Record<string, unknown>)
+  | ({
+      type: 'chart';
+      metrics?: string[];
+      timeRange?: string;
+      chartType: 'line' | 'bar' | 'area' | 'pie';
+      stacked?: boolean;
+    } & Record<string, unknown>)
+  | ({
+      type: 'table';
+      pageSize?: number;
+      sortable?: boolean;
+      exportable?: boolean;
+    } & Record<string, unknown>)
+  | ({
+      type: 'status';
+      components?: string[];
+      checkInterval?: number;
+      alertThreshold?: 'warning' | 'critical';
+    } & Record<string, unknown>)
+  | ({
+      type: 'log';
+      logType?: string;
+      filters?: string[];
+      maxEntries?: number;
+      levels?: Array<'info' | 'warn' | 'error'>;
+      sources?: string[];
+    } & Record<string, unknown>)
   | { type: string; [key: string]: unknown }; // Extensible for custom widgets
 
 /**

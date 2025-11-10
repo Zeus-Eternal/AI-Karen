@@ -33,81 +33,85 @@ const karenToastVariants = cva(
       variant: "default",
     },
   }
-)
+);
+
+const progressVariantClasses: Record<
+  NonNullable<VariantProps<typeof karenToastVariants>["variant"]>,
+  string
+> = {
+  default: "bg-gradient-to-r from-primary/80 to-primary shadow-sm",
+  destructive: "bg-gradient-to-r from-red-500 to-red-700 shadow-sm shadow-red-200/40",
+  "karen-success": "bg-gradient-to-r from-green-400 to-green-600 shadow-sm shadow-green-200 dark:shadow-green-900/20",
+  "karen-info": "bg-gradient-to-r from-blue-400 to-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/20",
+  "karen-warning": "bg-gradient-to-r from-amber-400 to-amber-600 shadow-sm shadow-amber-200 dark:shadow-amber-900/20",
+  "karen-error": "bg-gradient-to-r from-red-400 to-red-600 shadow-sm shadow-red-200 dark:shadow-red-900/20",
+  "karen-system": "bg-gradient-to-r from-purple-400 to-purple-600 shadow-sm shadow-purple-200 dark:shadow-purple-900/20",
+};
 
 /**
  * Enhanced progress indicator for timed alerts with smooth animations
  */
 const KarenToastProgress = React.forwardRef<
+  HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     duration?: number;
     variant?: VariantProps<typeof karenToastVariants>["variant"];
     enableAnimations?: boolean;
   }
->(({ className, duration = 5000, variant = "default", enableAnimations = true, ...props }, ref) => {
+>(({ className, duration = 5000, variant = "default", enableAnimations = true, style, ...props }, ref) => {
   const [progress, setProgress] = React.useState(100);
 
   React.useEffect(() => {
-    if (duration <= 0 || !enableAnimations) return;
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev - (100 / (duration / 100));
-        return newProgress <= 0 ? 0 : newProgress;
-      });
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [duration, enableAnimations]);
-
-  const getProgressColor = () => {
-    switch (variant) {
-      case "karen-success":
-        return "bg-gradient-to-r from-green-400 to-green-600 shadow-sm shadow-green-200 dark:shadow-green-900/20";
-      case "karen-info":
-        return "bg-gradient-to-r from-blue-400 to-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/20";
-      case "karen-warning":
-        return "bg-gradient-to-r from-amber-400 to-amber-600 shadow-sm shadow-amber-200 dark:shadow-amber-900/20";
-      case "karen-error":
-        return "bg-gradient-to-r from-red-400 to-red-600 shadow-sm shadow-red-200 dark:shadow-red-900/20";
-      case "karen-system":
-        return "bg-gradient-to-r from-purple-400 to-purple-600 shadow-sm shadow-purple-200 dark:shadow-purple-900/20";
-      default:
-        return "bg-gradient-to-r from-primary/80 to-primary shadow-sm";
+    if (!enableAnimations || duration <= 0) {
+      setProgress(100);
+      return;
     }
 
-    const getProgressColor = () => {
-      switch (variant) {
-        case "karen-success":
-          return "bg-gradient-to-r from-green-400 to-green-600 shadow-sm shadow-green-200 dark:shadow-green-900/20";
-        case "karen-info":
-          return "bg-gradient-to-r from-blue-400 to-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900/20";
-        case "karen-warning":
-          return "bg-gradient-to-r from-amber-400 to-amber-600 shadow-sm shadow-amber-200 dark:shadow-amber-900/20";
-        case "karen-error":
-          return "bg-gradient-to-r from-red-400 to-red-600 shadow-sm shadow-red-200 dark:shadow-red-900/20";
-        case "karen-system":
-          return "bg-gradient-to-r from-purple-400 to-purple-600 shadow-sm shadow-purple-200 dark:shadow-purple-900/20";
-        default:
-          return "bg-gradient-to-r from-primary/80 to-primary shadow-sm";
-      }
-    };
+    setProgress(100);
+    const startTime = Date.now();
 
-    return (
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const ratio = Math.min(elapsed / duration, 1);
+      const nextProgress = Math.max(100 - ratio * 100, 0);
+      setProgress(nextProgress);
+
+      if (ratio >= 1) {
+        window.clearInterval(interval);
+      }
+    }, 100);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [duration, enableAnimations]);
+
+  const resolvedVariant = (variant ?? "default") as VariantProps<typeof karenToastVariants>["variant"];
+  const barClassName = progressVariantClasses[resolvedVariant] ?? progressVariantClasses.default;
+
+  return (
+    <div
+      ref={ref}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress)}
+      className={cn("mt-3 h-1 w-full overflow-hidden rounded-full bg-current/10", className)}
+      style={style}
+      {...props}
+    >
       <div
         className={cn(
           "h-full transition-all duration-100 ease-linear motion-reduce:transition-none",
-          getProgressColor()
+          !enableAnimations && "transition-none",
+          barClassName
         )}
-        style={{ 
-          width: `${progress}%`,
-          '--duration': `${duration}ms`
-        } as React.CSSProperties}
+        style={{ width: `${progress}%` }}
       />
     </div>
   );
 });
-      
+
 KarenToastProgress.displayName = "KarenToastProgress";
 
 type KarenToastRootProps = React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
@@ -118,111 +122,110 @@ type KarenToastRootProps = React.ComponentPropsWithoutRef<typeof ToastPrimitives
   };
 
 const KarenToast = React.forwardRef<React.ElementRef<typeof ToastPrimitives.Root>, KarenToastRootProps>(
-  ({ className, variant, alert, showProgress = true, onActionClick, duration, ...props }, ref) => {
+  ({
+    className,
+    variant,
+    alert,
+    showProgress = true,
+    onActionClick,
+    duration,
+    children,
+    ...props
+  }, ref) => {
     const [isExpanded, setIsExpanded] = React.useState(false);
+
+    const resolvedVariant = React.useMemo(
+      () => (alert?.variant ?? variant ?? "default") as VariantProps<typeof karenToastVariants>["variant"],
+      [alert?.variant, variant]
+    );
+
+    const resolvedDuration = alert?.duration ?? duration;
 
     const handleActionClick = React.useCallback(
       (action: AlertAction) => {
-        action.action();
+        void action.action();
         onActionClick?.(action);
       },
       [onActionClick]
     );
 
-    const resolvedDuration = alert?.duration ?? duration;
+    const hasActions = Boolean(alert?.actions?.length);
+    const hasExpandableContent = Boolean(alert?.expandableContent);
 
     return (
       <ToastPrimitives.Root
         ref={ref}
-        className={cn(karenToastVariants({ variant: alert?.variant ?? variant }), className)}
+        className={cn(karenToastVariants({ variant: resolvedVariant }), className)}
         duration={resolvedDuration}
         {...props}
       >
-        <div className="flex w-full flex-col space-y-2">
-          <div className="flex items-start space-x-3">
-            {alert?.emoji && (
-              <div className="flex-shrink-0 text-lg" role="img" aria-label="Alert indicator">
+        <div className="flex w-full flex-col space-y-3">
+          <div className="flex items-start gap-3">
+            {alert?.emoji ? (
+              <div className="flex-shrink-0 text-xl" role="img" aria-label="Alert indicator">
                 {alert.emoji}
               </div>
-            )}
-            
-            {/* Expandable content */}
-            {alert?.expandableContent && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex items-center space-x-1 text-xs font-medium opacity-75 hover:opacity-100 transition-opacity sm:text-sm md:text-base"
-                  aria-expanded={isExpanded}
-                  aria-controls="expandable-content"
-                >
-                  <span>{isExpanded ? "Show less" : "Show more"}</span>
-                  {isExpanded ? (
-                    <ChevronUp className="h-3 w-3 " />
-                  ) : (
-                    <ChevronDown className="h-3 w-3 " />
-                  )}
-                </button>
-                
-                {isExpanded && (
-                  <div
-                    id="expandable-content"
-                    className="mt-2 p-2 rounded bg-black/5 dark:bg-white/5 text-xs sm:text-sm md:text-base"
-                  >
-                    {alert.expandableContent}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Action buttons */}
-        {alert?.actions && alert.actions.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-current/10">
-            {alert.actions.map((action, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => {
-                  action.action();
-                  onActionClick?.(action);
-                }}
-                className={cn(
-                  "inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-                  action.variant === "destructive"
-                    ? "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
-                    : action.variant === "outline"
-                    ? "border border-current/20 bg-transparent hover:bg-current/10 focus:ring-current"
-                    : "bg-current/10 hover:bg-current/20 focus:ring-current"
-                )}
-              >
-                {action.icon && <span className="mr-1">{action.icon}</span>}
-                {action.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Progress indicator */}
-      {showProgress && alert?.duration && (
-        <KarenToastProgress duration={alert.duration} variant={variant} />
-      )}
-      
-      {/* Close button */}
-      <KarenToastClose />
-    </ToastPrimitives.Root>
-  );
-});
+            ) : null}
 
-        {showProgress && resolvedDuration ? (
-          <KarenToastProgress
-            duration={resolvedDuration}
-            variant={alert?.variant ?? variant}
-            enableAnimations
-          />
-        ) : null}
+            <div className="flex flex-1 flex-col space-y-2">
+              {alert?.title ? <KarenToastTitle>{alert.title}</KarenToastTitle> : null}
+              {alert?.message ? <KarenToastDescription>{alert.message}</KarenToastDescription> : null}
+              {children}
+
+              {hasExpandableContent ? (
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsExpanded((previous) => !previous)}
+                    className="h-auto px-2 py-1 text-xs font-medium opacity-75 transition-opacity hover:opacity-100 sm:text-sm"
+                    aria-expanded={isExpanded}
+                    aria-controls={`karen-toast-expandable-${alert?.id ?? "content"}`}
+                  >
+                    <span>{isExpanded ? "Show less" : "Show more"}</span>
+                    {isExpanded ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
+                  </Button>
+
+                  {isExpanded ? (
+                    <div
+                      id={`karen-toast-expandable-${alert?.id ?? "content"}`}
+                      className="rounded-md bg-black/5 p-2 text-xs dark:bg-white/5 sm:text-sm"
+                    >
+                      {alert?.expandableContent}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {hasActions ? (
+            <div className="flex flex-wrap gap-2 border-t border-current/10 pt-2">
+              {alert?.actions?.map((action, index) => (
+                <Button
+                  key={`${action.label}-${index}`}
+                  type="button"
+                  variant={action.variant ?? "default"}
+                  size="sm"
+                  onClick={() => handleActionClick(action)}
+                  className="gap-1"
+                >
+                  {action.icon ? <span className="text-base leading-none">{action.icon}</span> : null}
+                  <span>{action.label}</span>
+                </Button>
+              ))}
+            </div>
+          ) : null}
+
+          {showProgress && resolvedDuration ? (
+            <KarenToastProgress
+              duration={resolvedDuration}
+              variant={resolvedVariant}
+              enableAnimations={showProgress}
+            />
+          ) : null}
+        </div>
 
         <KarenToastClose />
       </ToastPrimitives.Root>
@@ -253,7 +256,7 @@ const KarenToastAction = React.forwardRef<
     />
   );
 });
-    
+
 KarenToastAction.displayName = "KarenToastAction";
 
 const KarenToastClose = React.forwardRef<
@@ -279,11 +282,11 @@ const KarenToastTitle = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title> & { emoji?: string }
 >(({ className, emoji, children, ...props }, ref) => (
   <ToastPrimitives.Title ref={ref} className={cn("text-sm font-semibold leading-tight", className)} {...props}>
-    {emoji && (
+    {emoji ? (
       <span className="mr-2" role="img" aria-label="Alert indicator">
         {emoji}
       </span>
-    )}
+    ) : null}
     {children}
   </ToastPrimitives.Title>
 ));
@@ -295,7 +298,7 @@ const KarenToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm opacity-90 leading-relaxed", className)}
+    className={cn("text-sm leading-relaxed text-foreground/80", className)}
     {...props}
   />
 ));
@@ -326,7 +329,7 @@ const KarenToastViewport = React.forwardRef<
     />
   );
 });
-    
+
 KarenToastViewport.displayName = "KarenToastViewport";
 
 const KarenToastProvider = ToastPrimitives.Provider;
@@ -345,12 +348,5 @@ export {
   KarenToastClose,
   KarenToastAction,
   karenToastVariants,
-  KarenToast,
-  KarenToastAction,
-  KarenToastClose,
-  KarenToastDescription,
   KarenToastProgress,
-  KarenToastProvider,
-  KarenToastTitle,
-  KarenToastViewport,
 };

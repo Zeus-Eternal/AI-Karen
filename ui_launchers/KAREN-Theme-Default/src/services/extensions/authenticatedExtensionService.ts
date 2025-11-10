@@ -1,10 +1,10 @@
 import { logger } from '@/lib/logger';
 /**
  * Authenticated Extension Service
- * 
+ *
  * Extension service with proper authentication handling, error recovery,
  * and graceful degradation for extension API operations.
- * 
+ *
  * Requirements addressed:
  * - 3.1: Extension integration service error handling
  * - 3.2: Extension API calls with proper authentication
@@ -15,10 +15,14 @@ import { logger } from '@/lib/logger';
 
 import {
   getEnhancedKarenBackendService,
+  EnhancedKarenBackendService,
 } from '@/lib/auth/enhanced-karen-backend-service';
 
 import {
   getExtensionAuthErrorHandler,
+  ExtensionAuthErrorHandler,
+  ErrorClassification,
+  ErrorContext,
 } from '@/lib/auth/extension-auth-error-handler';
 
 // Extension interfaces
@@ -76,7 +80,7 @@ export class AuthenticatedExtensionService {
   private backendService: EnhancedKarenBackendService;
   private errorHandler: ExtensionAuthErrorHandler;
   private serviceState: ServiceState;
-  private eventSubscription: NodeJS.Timeout | null = null;
+  private eventSubscription: ReturnType<typeof setInterval> | null = null;
   private eventCallbacks: ((events: ExtensionEvent[]) => void)[] = [];
 
   constructor() {

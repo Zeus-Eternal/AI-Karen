@@ -74,6 +74,10 @@ export interface AuditEvent {
   ipAddress?: string;
   userAgent?: string;
   requestId?: string;
+  url?: string;
+  referrer?: string;
+  locale?: string;
+  timezone?: string;
   
   // Resource context
   resourceType?: string;

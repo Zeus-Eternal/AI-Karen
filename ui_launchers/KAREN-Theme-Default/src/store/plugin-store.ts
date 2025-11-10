@@ -18,6 +18,7 @@ import type {
   PluginStoreState,
   PluginStoreActions,
 } from '@/types/plugins';
+export type { PluginStore } from '@/types/plugins';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 
 // ────────────────────────────────────────────────────────────────────────────────

@@ -66,7 +66,8 @@ class AuditLoggerService {
     if (this.isInitialized) return;
 
     try {
-      this.config = await enhancedApiClient.get<AuditConfig>(this.CONFIG_ENDPOINT);
+      const response = await enhancedApiClient.get<AuditConfig>(this.CONFIG_ENDPOINT);
+      this.config = response.data ?? this.getDefaultConfig();
     } catch (error) {
       console.error('[audit] Failed to load remote config, using defaults:', error);
       this.config = this.getDefaultConfig();
@@ -240,16 +241,17 @@ class AuditLoggerService {
   // ---------------- Queries / Export / Stats ----------------
 
   async searchEvents(filter: AuditFilter): Promise<AuditSearchResult> {
-    return enhancedApiClient.post<AuditSearchResult>(this.SEARCH_ENDPOINT, filter);
+    const response = await enhancedApiClient.post<AuditSearchResult>(this.SEARCH_ENDPOINT, filter);
+    return response.data;
   }
 
   async exportEvents(filter: AuditFilter, format: 'json' | 'csv' | 'xlsx' = 'json'): Promise<Blob> {
-    const response = await enhancedApiClient.post(
-      this.EXPORT_ENDPOINT,
-      { ...filter, format },
-      { responseType: 'blob' }
-    );
-    return response as Blob;
+    const response = await enhancedApiClient.post<Blob>(this.EXPORT_ENDPOINT, { ...filter, format });
+    const payload = response.data;
+    if (payload instanceof Blob) {
+      return payload;
+    }
+    return new Blob([payload as BlobPart]);
   }
 
   async getStatistics(timeframe: { start: Date; end: Date }): Promise<{
@@ -260,7 +262,15 @@ class AuditLoggerService {
     topUsers: Array<{ userId: string; username: string; eventCount: number }>;
     riskTrends: Array<{ date: string; averageRiskScore: number }>;
   }> {
-    return enhancedApiClient.post(this.STATS_ENDPOINT, timeframe);
+    const response = await enhancedApiClient.post(this.STATS_ENDPOINT, timeframe);
+    return response.data as {
+      totalEvents: number;
+      eventsByType: Record<AuditEventType, number>;
+      eventsBySeverity: Record<AuditSeverity, number>;
+      eventsByOutcome: Record<AuditOutcome, number>;
+      topUsers: Array<{ userId: string; username: string; eventCount: number }>;
+      riskTrends: Array<{ date: string; averageRiskScore: number }>;
+    };
   }
 
   // ---------------- Flush mechanics ----------------
