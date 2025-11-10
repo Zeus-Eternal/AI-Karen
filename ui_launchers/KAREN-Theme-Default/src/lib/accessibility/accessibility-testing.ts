@@ -672,4 +672,4 @@ export async function generateAccessibilityReport(element?: Element | Document):
   return report;
 }
 
-export default AccessibilityTestSuite;
+export default AccessibilityTestSuiteImpl;
