@@ -7,7 +7,8 @@
 export { AgentDashboard } from './AgentDashboard';
 
 export { NodeLibrary } from './NodeLibrary';
-export type { NodeTemplate, NodeLibraryProps } from './NodeLibrary';
+export type { NodeLibraryProps } from './NodeLibrary';
+export type { NodeTemplate } from '@/types/workflows';
 
 export { WorkflowBuilder, WorkflowBuilderProvider } from './WorkflowBuilder';
 export type { WorkflowBuilderProps } from './WorkflowBuilder';

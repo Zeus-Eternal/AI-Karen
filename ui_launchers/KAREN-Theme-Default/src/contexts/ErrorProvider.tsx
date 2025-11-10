@@ -9,7 +9,8 @@
 
 "use client";
 
-import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
+import type { FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -64,7 +65,7 @@ export interface ErrorProviderProps {
   maxGlobalErrors?: number;
 }
 
-export const ErrorProvider: React.FC<ErrorProviderProps> = ({
+export const ErrorProvider: FC<ErrorProviderProps> = ({
   children,
   options = {},
   onErrorAnalyzed,

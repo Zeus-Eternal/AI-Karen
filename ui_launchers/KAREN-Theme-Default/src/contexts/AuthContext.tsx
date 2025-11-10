@@ -1,6 +1,7 @@
 
 "use client";
-import React, {  createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
 import { getConnectionManager, ConnectionError, ErrorCategory } from "@/lib/connection/connection-manager";
@@ -69,7 +70,7 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Enhanced authentication state with error handling and loading states
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -85,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const timeoutManager = getTimeoutManager();
 
   // Session refresh timer
-  const sessionRefreshTimer = useRef<NodeJS.Timeout | null>(null);
+  const sessionRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionRefreshInterval = 15 * 60 * 1000; // 15 minutes
 
   // Flag to prevent multiple simultaneous auth checks
@@ -128,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Create standardized auth error from various error types
-  const createAuthError = (error: any): AuthError => {
+  const createAuthError = (error: unknown): AuthError => {
     if (error instanceof ConnectionError) {
       return {
         message: getUserFriendlyErrorMessage(error),
@@ -382,7 +383,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       const result = await connectionManager.makeRequest(
-        "/api/auth/login",
+        loginUrl,
         {
           method: "POST",
           headers: {
