@@ -12,6 +12,7 @@
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { BlockedIpEntry, IpWhitelistEntry } from '@/lib/database/admin-utils';
 import type { User, SecurityEvent } from '@/types/admin';
+import { securityManager } from './security-manager';
 
 /* =========================
  * Types
@@ -1011,7 +1012,7 @@ export class IpSecurityManager {
         if (entry.role_restriction && entry.role_restriction !== role) continue;
         if (matchesIpOrCidr(entry.ip_or_cidr, ip)) return true;
       }
-      
+
       // Also allow backend decision if provided
       try {
         if (this.adminUtils.isIpWhitelisted) {
@@ -1019,27 +1020,121 @@ export class IpSecurityManager {
           if (typeof ok === 'boolean') return ok;
         }
       } catch {}
-      
+
       return false;
     } catch {
       return false; // Default to not whitelisted on error
     }
   }
 
-  // Continue with the rest of the methods following the same pattern...
-  // [The rest of the methods would follow the same improved error handling and validation pattern]
+  private generateId(): string {
+    return `ipsec_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private async audit(
+    actorId: string | undefined,
+    action: string,
+    resourceType: string,
+    resourceId: string,
+    details: Record<string, any>,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    try {
+      if (typeof this.adminUtils.createAuditLog === 'function') {
+        await this.adminUtils.createAuditLog({
+          user_id: actorId || 'system',
+          action,
+          resource_type: resourceType,
+          resource_id: resourceId,
+          details,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to write IP security audit log:', error);
+    }
+  }
+
+  private async securityEvent(
+    eventType: SecurityEvent['event_type'],
+    event: Omit<SecurityEvent, 'id' | 'event_type' | 'resolved' | 'created_at'>
+  ): Promise<void> {
+    try {
+      await securityManager.logSecurityEvent({
+        event_type: eventType,
+        ...event,
+      });
+    } catch (error) {
+      console.warn('Failed to record IP security event:', error);
+    }
+  }
+
+  private async getIpLocation(
+    ip: string
+  ): Promise<IpAccessRecord['location'] | undefined> {
+    try {
+      if (this.adminUtils && typeof (this.adminUtils as any).getIpLocation === 'function') {
+        const result = await (this.adminUtils as any).getIpLocation(ip);
+        if (result && typeof result === 'object') {
+          return {
+            country: result.country,
+            region: result.region,
+            city: result.city,
+            timezone: result.timezone,
+            asn: result.asn,
+            org: result.org,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to resolve IP geolocation:', error);
+    }
+    return undefined;
+  }
+
+  private async checkSuspiciousActivity(record: IpAccessRecord): Promise<void> {
+    if (record.access_count < this.config.suspicious_activity_threshold) {
+      return;
+    }
+
+    if (!record.is_suspicious) {
+      record.is_suspicious = true;
+    }
+
+    await this.securityEvent('suspicious_activity', {
+      user_id: record.user_id,
+      ip_address: record.ip_address,
+      user_agent: record.user_agent,
+      details: {
+        access_count: record.access_count,
+        threshold: this.config.suspicious_activity_threshold,
+      },
+      severity: record.is_blocked ? 'high' : 'medium',
+    });
+
+    if (this.config.auto_block_suspicious_ips && !record.is_blocked) {
+      try {
+        await this.blockIp(record.ip_address, 'suspicious_activity_detected', this.config.ip_lockout_duration);
+        record.is_blocked = true;
+      } catch (error) {
+        console.warn('Failed to auto-block suspicious IP:', error);
+      }
+    }
+  }
 }
 
 /**
  * Get the singleton instance of IPSecurityManager
  */
-export function getIPSecurityManager(): IPSecurityManager {
+export function getIPSecurityManager(): IpSecurityManager {
   if (!ipSecurityManagerInstance) {
-    ipSecurityManagerInstance = new IPSecurityManager();
+    ipSecurityManagerInstance = new IpSecurityManager();
   }
   return ipSecurityManagerInstance;
 }
 
-let ipSecurityManagerInstance: IPSecurityManager | null = null;
+let ipSecurityManagerInstance: IpSecurityManager | null = null;
 
-export const ipSecurityManager = new IpSecurityManager();
+export const ipSecurityManager = getIPSecurityManager();

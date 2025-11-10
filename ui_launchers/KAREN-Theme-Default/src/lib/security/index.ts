@@ -16,6 +16,7 @@ export type { MfaVerificationResult, MfaSetupData, MfaStatus } from './mfa-manag
 export { securityManager, SECURITY_CONFIG, SecurityManager } from './security-manager';
 export type { AttemptRec } from './security-manager';
 
-export { sessionTimeoutManager, SessionTimeoutManager, default as SessionTimeoutManager } from './session-timeout-manager';
+export { sessionTimeoutManager, SessionTimeoutManager } from './session-timeout-manager';
+export { default as sessionTimeoutManagerSingleton } from './session-timeout-manager';
 export type { RoleKey, SessionTimeoutConfig, SessionStatus, ConcurrentSessionSummary } from './session-timeout-manager';
 
