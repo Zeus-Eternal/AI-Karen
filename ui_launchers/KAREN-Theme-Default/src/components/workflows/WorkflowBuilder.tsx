@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/workflows/WorkflowBuilder.tsx
 "use client";
 
-import React, { useCallback, useMemo, useState, useRef } from 'react';
+import * as React from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -49,11 +49,11 @@ export function WorkflowBuilder({
   readOnly = false,
   className = '',
 }: WorkflowBuilderProps) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
   // Convert workflow nodes/edges to ReactFlow format
-  const initialNodes: Node[] = useMemo(() => 
+  const initialNodes: Node[] = React.useMemo(() =>
     workflow?.nodes.map(node => ({
       id: node.id,
       type: 'workflowNode',
@@ -63,7 +63,7 @@ export function WorkflowBuilder({
     })) || [], [workflow]
   );
 
-  const initialEdges: Edge[] = useMemo(() => 
+  const initialEdges: Edge[] = React.useMemo(() =>
     workflow?.edges.map(edge => ({
       id: edge.id,
       source: edge.source,
@@ -79,15 +79,15 @@ export function WorkflowBuilder({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNode, setSelectedNode] = React.useState<Node | null>(null);
   const selectedNodeData = selectedNode?.data as WorkflowNode['data'] | undefined;
-  const [validationResult, setValidationResult] = useState<WorkflowValidationResult | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [showMiniMap, setShowMiniMap] = useState(true);
-  const [showBackground, setShowBackground] = useState(true);
+  const [validationResult, setValidationResult] = React.useState<WorkflowValidationResult | null>(null);
+  const [isValidating, setIsValidating] = React.useState(false);
+  const [isTesting, setIsTesting] = React.useState(false);
+  const [showMiniMap, setShowMiniMap] = React.useState(true);
+  const [showBackground, setShowBackground] = React.useState(true);
 
-  const onConnect = useCallback(
+  const onConnect = React.useCallback(
     (params: Connection) => {
       if (readOnly) return;
       setEdges((eds) => addEdge(params, eds));
@@ -95,16 +95,16 @@ export function WorkflowBuilder({
     [setEdges, readOnly]
   );
 
-  const onInit = useCallback((instance: ReactFlowInstance) => {
+  const onInit = React.useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
   }, []);
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
+  const onDragOver = React.useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const onDrop = useCallback(
+  const onDrop = React.useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
       if (!reactFlowInstance || readOnly) return;
@@ -146,15 +146,15 @@ export function WorkflowBuilder({
     [reactFlowInstance, setNodes, readOnly]
   );
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+  const onNodeClick = React.useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
   }, []);
 
-  const onPaneClick = useCallback(() => {
+  const onPaneClick = React.useCallback(() => {
     setSelectedNode(null);
   }, []);
 
-  const validateWorkflow = useCallback(async () => {
+  const validateWorkflow = React.useCallback(async () => {
     setIsValidating(true);
     try {
       const workflowDef = convertToWorkflowDefinition();
@@ -167,7 +167,7 @@ export function WorkflowBuilder({
     }
   }, [nodes, edges]);
 
-  const testWorkflow = useCallback(async () => {
+  const testWorkflow = React.useCallback(async () => {
     if (!onTest) return;
     setIsTesting(true);
     try {
@@ -180,7 +180,7 @@ export function WorkflowBuilder({
     }
   }, [nodes, edges, onTest]);
 
-  const convertToWorkflowDefinition = useCallback((): WorkflowDefinition => {
+  const convertToWorkflowDefinition = React.useCallback((): WorkflowDefinition => {
     const allowedNodeTypes: WorkflowNode['type'][] = ['input', 'output', 'llm', 'memory', 'plugin', 'condition', 'loop', 'custom'];
 
     const workflowNodes: WorkflowNode[] = nodes.map((node) => {
@@ -236,22 +236,22 @@ export function WorkflowBuilder({
     };
   }, [nodes, edges, workflow]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = React.useCallback(() => {
     if (!onSave) return;
     const workflowDef = convertToWorkflowDefinition();
     onSave(workflowDef);
   }, [convertToWorkflowDefinition, onSave]);
 
-  const deleteSelectedNode = useCallback(() => {
+  const deleteSelectedNode = React.useCallback(() => {
     if (!selectedNode || readOnly) return;
     setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
-    setEdges((eds) => eds.filter((edge) => 
+    setEdges((eds) => eds.filter((edge) =>
       edge.source !== selectedNode.id && edge.target !== selectedNode.id
     ));
     setSelectedNode(null);
   }, [selectedNode, setNodes, setEdges, readOnly]);
 
-  const duplicateSelectedNode = useCallback(() => {
+  const duplicateSelectedNode = React.useCallback(() => {
     if (!selectedNode || readOnly) return;
     const newNode: Node = {
       ...selectedNode,

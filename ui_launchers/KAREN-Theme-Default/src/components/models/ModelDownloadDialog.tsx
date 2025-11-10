@@ -15,7 +15,7 @@ export interface ModelDownloadDialogProps { modelName: string; open: boolean; on
 
 export default function ModelDownloadDialog({ modelName, open, onClose }: ModelDownloadDialogProps) {
   const [state, setState] = useState<DownloadState>({ progress: 0, status: 'idle' });
-  
+
   const startDownload = () => {
     setState({ progress: 0, status: 'downloading' });
     let p = 0;
@@ -29,9 +29,15 @@ export default function ModelDownloadDialog({ modelName, open, onClose }: ModelD
       }
     }, 500);
   };
-  
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Download {modelName}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-4">
@@ -48,7 +54,7 @@ export default function ModelDownloadDialog({ modelName, open, onClose }: ModelD
             <Alert><CheckCircle2 className="h-4 w-4" /><AlertDescription>Download complete!</AlertDescription></Alert>
           )}
           {state.status === 'error' && (
-            <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{state.error}</AlertDescription></Alert>
+            <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{state.error ?? 'Download failed. Please try again.'}</AlertDescription></Alert>
           )}
         </div>
         <Button onClick={onClose} variant="outline" className="w-full">Close</Button>

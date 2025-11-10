@@ -23,9 +23,7 @@ declare module '@/components/ui/button' {
     size?: ButtonSize;
     icon?: ReactNode;
     asChild?: boolean;
-  }
-
-  export const Button: ForwardRefExoticComponent<ButtonProps & RefAttributes<HTMLButtonElement>>;
+  };
 
   export const buttonVariants: (options?: {
     variant?: ButtonVariant;

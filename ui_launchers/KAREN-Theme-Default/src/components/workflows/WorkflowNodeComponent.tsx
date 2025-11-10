@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from 'react';
+import * as React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +55,7 @@ const statusColors = {
   error: 'bg-red-100 text-red-600',
 };
 
-export const WorkflowNodeComponent = memo<NodeProps<WorkflowNodeData>>(({ data, selected }) => {
+export const WorkflowNodeComponent = React.memo<NodeProps<WorkflowNodeData>>(({ data, selected }) => {
   const IconComponent = nodeIcons[data.nodeType as keyof typeof nodeIcons] || nodeIcons.custom;
   const nodeColorClass = nodeColors[data.nodeType as keyof typeof nodeColors] || nodeColors.custom;
   

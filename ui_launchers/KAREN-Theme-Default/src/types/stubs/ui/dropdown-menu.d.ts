@@ -26,6 +26,7 @@ declare module '@/components/ui/dropdown-menu' {
     alignOffset?: number;
     side?: DropdownSide;
     sideOffset?: number;
+    forceMount?: boolean;
     onClick?: (event: MouseEvent<HTMLElement>) => void;
   }
 
