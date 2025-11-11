@@ -67,7 +67,6 @@ export interface DynamicPluginConfigFormProps {
   onValidate?: (config: PluginConfig) => ValidationError[];
   onPreview?: (config: PluginConfig) => void;
   readOnly?: boolean;
-  showAdvanced?: boolean;
 }
 export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = ({
   plugin,
@@ -76,7 +75,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   onValidate,
   onPreview,
   readOnly = false,
-  _showAdvanced = false,
+  showAdvanced: _showAdvanced = false,
 }) => {
   const [config, setConfig] = useState<PluginConfig>(initialConfig);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -158,8 +157,13 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   }, [plugin.manifest.configSchema]);
   // Filter fields based on search query
   const filteredGroups = React.useMemo(() => {
-    if (!searchQuery) return fieldGroups;
-    return fieldGroups.map(group => ({
+    const visibleGroups = showAdvanced
+      ? fieldGroups
+      : fieldGroups.filter(group => group.required || group.id === 'general');
+
+    if (!searchQuery) return visibleGroups;
+
+    return visibleGroups.map(group => ({
       ...group,
       fields: group.fields.filter(field =>
         field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -167,7 +171,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         (field.description && field.description.toLowerCase().includes(searchQuery.toLowerCase()))
       ),
     })).filter(group => group.fields.length > 0);
-  }, [fieldGroups, searchQuery]);
+  }, [fieldGroups, searchQuery, showAdvanced]);
   // Validate a single field
   const validateField = (field: PluginConfigField, value: unknown): ValidationError | null => {
     if (field.required && (value === undefined || value === null || value === '')) {

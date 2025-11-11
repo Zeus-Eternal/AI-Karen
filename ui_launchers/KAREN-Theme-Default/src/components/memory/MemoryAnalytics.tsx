@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Database, Clock, Zap } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
-import type {  MemoryAnalytics as MemoryAnalyticsData, MemoryAnalyticsProps, VectorStoreStats, MemoryUsageStats, MemoryPerformanceStats, MemoryContentStats, MemoryTrendData } from '@/types/memory';
+import type { MemoryAnalytics as MemoryAnalyticsData, MemoryAnalyticsProps } from '@/types/memory';
 
 // Lazy load charts for better performance
 const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
@@ -80,7 +80,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
 export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
   userId,
   tenantId,
-  timeRange,
   refreshInterval = 30000, // 30 seconds
   height = 800,
   onError
