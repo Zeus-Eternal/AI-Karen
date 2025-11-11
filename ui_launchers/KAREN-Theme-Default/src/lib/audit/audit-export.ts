@@ -356,18 +356,13 @@ export class AuditLogExporter {
         return log.ip_address || '';
       case 'user_agent':
         return log.user_agent || '';
-      default:
-        if (field in log) {
-          const value = log[field as keyof AuditLog];
-          if (value instanceof Date) {
-            return this.formatDate(value, dateFormat);
-          }
-          if (value === null || value === undefined) {
-            return '';
-          }
-          return String(value);
+      default: {
+        const fallbackValue = (log as Record<string, unknown>)[field];
+        if (fallbackValue === undefined || fallbackValue === null) {
+          return '';
         }
-        return '';
+        return String(fallbackValue);
+      }
     }
   }
 

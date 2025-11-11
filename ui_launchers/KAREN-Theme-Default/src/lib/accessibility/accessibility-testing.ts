@@ -1,6 +1,5 @@
 import axe, {
   type AxeResults,
-  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,
@@ -117,14 +116,15 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private readonly container: Document | Element;
-  private readonly options: RunOptions;
+  private container: Document | Element;
+  private options: RunOptions;
+  private root: Document | Element;
 
   constructor(
-    container: ElementContext = document,
+    container: Document | Element = document,
     options: RunOptions = {}
   ) {
-    this.container = this.normalizeContainer(container);
+    this.container = this.resolveContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -134,39 +134,24 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     };
   }
 
-  private normalizeContainer(container: ElementContext): Document | Element {
+  private resolveContainer(container: ElementContext): Document | Element {
     if (typeof container === "string") {
-      const resolved = document.querySelector(container);
-      return resolved ?? document;
+      return document.querySelector(container) ?? document;
     }
 
-    if (container instanceof Document || container instanceof Element) {
+    if (container instanceof Element || container instanceof Document) {
       return container;
     }
 
     if (Array.isArray(container)) {
-      const [first] = container;
-      if (first instanceof Element || first instanceof Document) {
-        return first;
-      }
+      return container[0] ?? document;
     }
 
-    if (typeof NodeList !== "undefined" && container instanceof NodeList) {
-      const first = container[0];
-      if (first instanceof Element) {
-        return first;
-      }
+    if (container instanceof NodeList) {
+      return container[0] ?? document;
     }
 
     return document;
-  }
-
-  private getDocument(): Document {
-    if (this.container instanceof Document) {
-      return this.container;
-    }
-
-    return this.container.ownerDocument ?? document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -188,7 +173,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -204,7 +189,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: {
           type: "tag",
@@ -234,10 +219,8 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = Array.from(
-      this.container.querySelectorAll<HTMLElement>(
-        focusableSelectors.join(", ")
-      )
+    const focusableElements = this.container.querySelectorAll<HTMLElement>(
+      focusableSelectors.join(", ")
     );
     const unreachableElements: string[] = [];
     const focusOrderIssues: string[] = [];
@@ -258,32 +241,36 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const focusTraps = Array.from(
-      this.container.querySelectorAll<HTMLElement>('[data-focus-trap="true"]')
+    const focusTraps = this.container.querySelectorAll<HTMLElement>(
+      '[data-focus-trap="true"]'
     );
-    focusTraps.forEach((trapElement) => {
-      const focusableInTrap = trapElement.querySelectorAll(
+    focusTraps.forEach((trap) => {
+      if (!(trap instanceof HTMLElement)) {
+        return;
+      }
+      const focusableInTrap = trap.querySelectorAll(
         focusableSelectors.join(", ")
       );
 
       if (focusableInTrap.length === 0) {
         trapIssues.push(
           `Focus trap has no focusable elements: ${this.getElementSelector(
-            trapElement
+            trap
           )}`
         );
       }
     });
 
-    const skipLinks = Array.from(
-      this.container.querySelectorAll<HTMLAnchorElement>(
-        '.skip-links a, [href^="#"]'
-      )
+    const skipLinks = this.container.querySelectorAll<HTMLAnchorElement>(
+      '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return;
+      }
       const href = link.getAttribute("href");
       if (href && href.startsWith("#")) {
-        const target = this.container.querySelector(href);
+        const target = this.root.querySelector(href);
         if (!target) {
           skipLinkIssues.push(`Skip link target not found: ${href}`);
         }
@@ -325,14 +312,15 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       };
     }
 
-    const elements = Array.from(
-      this.container.querySelectorAll<HTMLElement>("*")
-    );
+    const elements = Array.from(this.root.querySelectorAll("*"));
     const failedElements: ColorContrastReport["failedElements"] = [];
     let totalRatio = 0;
     let sampled = 0;
 
     elements.slice(0, 200).forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
       const styles = window.getComputedStyle(element);
       const foreground = styles.color || "#000000";
       const background = styles.backgroundColor || "#ffffff";
@@ -559,7 +547,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const allElements = Array.from(
       this.container.querySelectorAll<HTMLElement>("*")
     );
-    const scopeDocument = this.getDocument();
+    const scopeDocument =
+      this.container instanceof Document
+        ? this.container
+        : this.container.ownerDocument ?? document;
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();
@@ -626,9 +617,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     duration: number
   ): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map(
-      (violation: Result) => ({
+      (violation: Result): AccessibilityViolation => ({
         id: violation.id,
-        impact: violation.impact,
+        impact: (violation.impact ?? "minor") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,

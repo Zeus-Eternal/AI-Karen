@@ -6,13 +6,7 @@
  * with different database drivers (pg, mysql, etc.)
  */
 
-import type {
-  Pool as PgPool,
-  PoolClient,
-  PoolConfig,
-  QueryResult as PgQueryResult,
-  QueryResultRow,
-} from "pg";
+import type { Pool as PgPool, PoolClient, PoolConfig } from "pg";
 
 type PoolConstructor = typeof import("pg").Pool;
 type ConnectionConfig = PoolConfig & { connectionString?: string };
@@ -24,7 +18,10 @@ if (typeof window === "undefined") {
     const pg = require("pg") as { Pool: PoolConstructor };
     PoolClass = pg.Pool;
   } catch (error) {
-    console.warn("pg module is not available; database operations are disabled.", error);
+    console.warn(
+      "pg module is not available; database operations are disabled.",
+      error,
+    );
   }
 }
 
@@ -43,38 +40,38 @@ export interface QueryResult {
 }
 
 // PostgreSQL client implementation
-  export class PostgreSQLClient implements DatabaseClient {
-    private pool: PgPool;
+export class PostgreSQLClient implements DatabaseClient {
+  private readonly pool: PgPool;
 
-    constructor(connectionConfig: string | ConnectionConfig) {
-      if (typeof window !== "undefined") {
-        throw new Error("PostgreSQL client can only be used on the server side");
-      }
-      if (!PoolClass) {
-        throw new Error("pg library is not available");
-      }
-      const config: ConnectionConfig =
-        typeof connectionConfig === "string"
-          ? { connectionString: connectionConfig }
-          : connectionConfig;
-      // Set reasonable defaults for connection pooling
-      const poolConfig: ConnectionConfig = {
-        ...config,
-        max: config.max ?? 20,
-        idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,
-        connectionTimeoutMillis: config.connectionTimeoutMillis ?? 2000,
-      };
-      this.pool = new PoolClass(poolConfig);
-
-      // Handle pool errors
-      this.pool.on("error", (err: Error) => {
-        console.error("Database pool error:", err);
-      });
+  constructor(connectionConfig: string | ConnectionConfig) {
+    if (typeof window !== "undefined") {
+      throw new Error("PostgreSQL client can only be used on the server side");
     }
+    if (!PoolClass) {
+      throw new Error("pg library is not available");
+    }
+    const config: ConnectionConfig =
+      typeof connectionConfig === "string"
+        ? { connectionString: connectionConfig }
+        : connectionConfig;
+    // Set reasonable defaults for connection pooling
+    const poolConfig: ConnectionConfig = {
+      ...config,
+      max: config.max ?? 20,
+      idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,
+      connectionTimeoutMillis: config.connectionTimeoutMillis ?? 2000,
+    };
+    this.pool = new PoolClass(poolConfig);
+
+    // Handle pool errors
+    this.pool.on("error", (err: Error) => {
+      console.error("Database pool error:", err);
+    });
+  }
 
     async query(sql: string, params?: unknown[]): Promise<QueryResult> {
       try {
-        const result: PgQueryResult<QueryResultRow> = await this.pool.query(sql, params);
+        const result = await this.pool.query(sql, params);
         return {
           rows: result.rows,
           rowCount: result.rowCount || 0,
@@ -85,7 +82,7 @@ export interface QueryResult {
       throw new Error(
         `Database query failed: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   }
@@ -99,7 +96,7 @@ export interface QueryResult {
         // Create a transaction client wrapper
         const transactionClient: DatabaseClient = {
           query: async (sql: string, params?: unknown[]) => {
-            const result: PgQueryResult<QueryResultRow> = await poolClient.query(sql, params);
+            const result = await poolClient.query(sql, params);
             return {
               rows: result.rows,
               rowCount: result.rowCount || 0,
@@ -110,6 +107,7 @@ export interface QueryResult {
           throw new Error("Nested transactions are not supported");
         },
       };
+
       const result = await callback(transactionClient);
       await poolClient.query("COMMIT");
       return result;
@@ -127,15 +125,15 @@ export interface QueryResult {
 }
 
 // Database client factory
-  export class DatabaseClientFactory {
-    static create(
-      type: "postgresql",
-      config: string | ConnectionConfig
-    ): DatabaseClient {
-      if (typeof window !== "undefined") {
-        throw new Error("Database client can only be created on the server side");
-      }
-      switch (type) {
+export class DatabaseClientFactory {
+  static create(
+    type: "postgresql",
+    config: string | ConnectionConfig,
+  ): DatabaseClient {
+    if (typeof window !== "undefined") {
+      throw new Error("Database client can only be created on the server side");
+    }
+    switch (type) {
       case "postgresql":
         return new PostgreSQLClient(config);
       default:
@@ -151,23 +149,27 @@ export function getDatabaseClient(): DatabaseClient {
   if (typeof window !== "undefined") {
     throw new Error("Database client can only be accessed on the server side");
   }
+
   if (!dbClient) {
     // Get database URL from environment
     const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (!databaseUrl) {
       throw new Error(
-        "DATABASE_URL or POSTGRES_URL environment variable is required"
+        "DATABASE_URL or POSTGRES_URL environment variable is required",
       );
     }
-      try {
-        dbClient = DatabaseClientFactory.create("postgresql", databaseUrl);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Database connection failed: ${message}`);
-      }
+    try {
+      dbClient = DatabaseClientFactory.create("postgresql", databaseUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Database connection failed: ${message}`);
     }
-    return dbClient;
   }
+  return dbClient;
+}
+
+  return dbClient;
+}
 
 // Function to safely close the database connection
 export async function closeDatabaseClient(): Promise<void> {

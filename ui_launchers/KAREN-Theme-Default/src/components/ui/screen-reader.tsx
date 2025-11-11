@@ -30,7 +30,10 @@ export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLElement>
   asDiv?: boolean;
 }
 
-export const ScreenReaderOnly = React.forwardRef<ScreenReaderOnlyElement, ScreenReaderOnlyProps>(
+export const ScreenReaderOnly = React.forwardRef<
+  HTMLSpanElement | HTMLDivElement,
+  ScreenReaderOnlyProps
+>(
   ({ children, asDiv = false, className, ...props }, ref) => {
     const sharedClassName = cn('sr-only', className);
     const setElementRef = React.useCallback(
@@ -48,8 +51,24 @@ export const ScreenReaderOnly = React.forwardRef<ScreenReaderOnlyElement, Screen
       );
     }
 
+    if (asDiv) {
+      return (
+        <div
+          ref={ref as React.Ref<HTMLDivElement>}
+          className={sharedClassName}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
+
     return (
-      <span ref={setElementRef} className={sharedClassName} {...props}>
+      <span
+        ref={ref as React.Ref<HTMLSpanElement>}
+        className={sharedClassName}
+        {...props}
+      >
         {children}
       </span>
     );

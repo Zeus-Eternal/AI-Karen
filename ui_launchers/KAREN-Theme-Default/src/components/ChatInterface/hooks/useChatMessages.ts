@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
 import { useHooks } from "@/hooks/use-hooks";
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
-import { generateUUID } from "@/lib/uuid";
-import { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
+import { ChatMessage, ChatSettings } from "../types";
 
 interface BackendChatRuntimeRequest {
   message: string;
@@ -458,9 +456,8 @@ export const useChatMessages = (
           if (isStream) {
             // Handle streaming response
             const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let streamDone = false;
+              const decoder = new TextDecoder();
+              let buffer = "";
 
             while (true) {
               const { value, done } = await reader.read();
@@ -474,10 +471,9 @@ export const useChatMessages = (
                 const line = rawLine.replace(/\r$/, "");
                 const trimmed = line.trim();
                 if (!trimmed) continue;
-                if (trimmed === "data: [DONE]" || trimmed === "[DONE]") {
-                  streamDone = true;
-                  continue;
-                }
+                  if (trimmed === "data: [DONE]" || trimmed === "[DONE]") {
+                    continue;
+                  }
 
                 let data = trimmed;
                 if (trimmed.startsWith("data:")) {
@@ -583,16 +579,8 @@ export const useChatMessages = (
                         )
                       );
                     }
-                  }
-
-                  if (
-                    json.done === true ||
-                    json.event === "done" ||
-                    json.type === "complete"
-                  ) {
-                    streamDone = true;
-                  }
-                } catch (e) {
+                    }
+                  } catch (_error) {
                   // Handle non-JSON streaming data
                   if (!data.startsWith("{")) {
                     fullText += data;
@@ -962,6 +950,8 @@ export const useChatMessages = (
       maxMessages,
       toast,
       configManager,
+      setIsTyping,
+      setMessages,
     ]
   );
 
@@ -1016,7 +1006,7 @@ export const useChatMessages = (
           });
           break;
 
-        case "regenerate":
+        case "regenerate": {
           if (message.role === "assistant") {
             const userMessage =
               messages[messages.findIndex((m) => m.id === messageId) - 1];
@@ -1025,6 +1015,7 @@ export const useChatMessages = (
             }
           }
           break;
+        }
 
         case "select":
           // Selection is handled in useChatState
@@ -1032,7 +1023,7 @@ export const useChatMessages = (
           break;
       }
     },
-    [messages, toast, triggerHooks, user?.user_id, sendMessage]
+    [messages, toast, triggerHooks, user?.user_id, sendMessage, setMessages]
   );
 
   // Clear messages

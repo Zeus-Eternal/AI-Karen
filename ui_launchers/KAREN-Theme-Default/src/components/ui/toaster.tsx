@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useToast } from "@/hooks/use-toast";
+import { useToast, type ToasterToast } from "@/hooks/use-toast";
 import {
   ToastProvider,
   Toast,
@@ -10,7 +10,7 @@ import {
   ToastTitle,
   ToastDescription,
   ToastClose,
-  type ToastProps,
+  type ToastProps as UiToastProps,
 } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +68,10 @@ function buildToastClassName(
 
 export function Toaster({ position = "bottom-right", richColors = false }: AppToasterProps) {
   const { toasts } = useToast();
+  const ToastComponent = React.useMemo(
+    () => Toast as React.ComponentType<Record<string, unknown>>,
+    []
+  );
 
   return (
     <ToastProvider>
@@ -93,14 +97,16 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
             stackJustifyClasses[position],
           )}
         >
-          {toasts.map(({ id, title, description, action, ...toastProps }) => {
-            const { className, variant, ...rest } = toastProps as ToastProps;
+          {toasts.map((toast) => {
+            const { id, title, description, action, ...props } = toast as ToasterToast;
+            const toastProps = props as UiToastProps;
+            const { className, variant, ...rest } = toastProps;
 
             return (
-              <Toast
+              <ToastComponent
                 key={id}
-                variant={variant}
-                className={buildToastClassName(variant, className, richColors)}
+                variant={typedVariant}
+                className={buildToastClassName(typedVariant, className, richColors)}
                 {...rest}
               >
                 <div className="grid gap-1">
@@ -109,7 +115,7 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
                 </div>
                 {action}
                 <ToastClose />
-              </Toast>
+              </ToastComponent>
             );
           })}
         </div>
