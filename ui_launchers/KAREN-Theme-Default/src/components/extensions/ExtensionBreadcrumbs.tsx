@@ -16,8 +16,7 @@ export type Crumb = BreadcrumbItem;
 function ExtensionBreadcrumbsComponent() {
   const { state, dispatch } = useExtensionContext();
   const { breadcrumbs } = state;
-
-  if (!Array.isArray(breadcrumbs) || breadcrumbs.length === 0) return null;
+  const hasBreadcrumbs = Array.isArray(breadcrumbs) && breadcrumbs.length > 0;
 
   const handleClick = useCallback(
     (index: number) => {
@@ -26,6 +25,10 @@ function ExtensionBreadcrumbsComponent() {
     },
     [dispatch]
   );
+
+  if (!hasBreadcrumbs) return null;
+
+  const breadcrumbItems = breadcrumbs ?? [];
 
   return (
     <nav
@@ -36,8 +39,8 @@ function ExtensionBreadcrumbsComponent() {
         role="list"
         className="flex items-center space-x-2 text-sm text-muted-foreground md:text-base lg:text-lg"
       >
-        {breadcrumbs.map((crumb: BreadcrumbItem, idx) => {
-          const isLast = idx === breadcrumbs.length - 1;
+        {breadcrumbItems.map((crumb: BreadcrumbItem, idx) => {
+          const isLast = idx === breadcrumbItems.length - 1;
           const key = crumb.id ?? `${crumb.level}-${crumb.name}-${idx}`;
           return (
             <li key={key} className="flex items-center">

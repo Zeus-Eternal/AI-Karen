@@ -8,7 +8,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 
@@ -76,7 +75,7 @@ export function ExtensionMarketplace({
   const [showFilters, setShowFilters] = useState(false);
   const [installingExtensions, setInstallingExtensions] = useState<Set<string>>(new Set());
   //  - in real implementation, this would come from API
-  const marketplaceExtensions: MarketplaceExtension[] = [
+  const marketplaceExtensions: MarketplaceExtension[] = useMemo(() => [
     {
       id: 'advanced-analytics',
       name: 'advanced-analytics',
@@ -224,15 +223,15 @@ export function ExtensionMarketplace({
         provides_webhooks: false
       }
     }
-  ];
-  const categories = [
+  ], []);
+  const categories = useMemo(() => [
     { id: 'all', name: 'All Categories', count: marketplaceExtensions.length },
     { id: 'analytics', name: 'Analytics', count: marketplaceExtensions.filter(e => e.category === 'analytics').length },
     { id: 'automation', name: 'Automation', count: marketplaceExtensions.filter(e => e.category === 'automation').length },
     { id: 'communication', name: 'Communication', count: marketplaceExtensions.filter(e => e.category === 'communication').length },
     { id: 'security', name: 'Security', count: marketplaceExtensions.filter(e => e.category === 'security').length },
     { id: 'experimental', name: 'Experimental', count: marketplaceExtensions.filter(e => e.category === 'experimental').length }
-  ];
+  ], [marketplaceExtensions]);
   const filteredAndSortedExtensions = useMemo(() => {
     let filtered = marketplaceExtensions;
     // Apply search filter
@@ -250,7 +249,8 @@ export function ExtensionMarketplace({
       filtered = filtered.filter(ext => ext.category === selectedCategory);
     }
     // Apply sorting
-    filtered.sort((a, b) => {
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
       switch (sortBy) {
         case 'popular':
           return b.downloads - a.downloads;
@@ -265,7 +265,7 @@ export function ExtensionMarketplace({
       }
     });
 
-    return filtered;
+    return sorted;
   }, [marketplaceExtensions, searchQuery, selectedCategory, sortBy]);
   const handleInstall = useCallback(async (extension: MarketplaceExtension) => {
     if (installingExtensions.has(extension.id)) return;

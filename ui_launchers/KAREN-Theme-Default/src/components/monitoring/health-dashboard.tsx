@@ -81,16 +81,13 @@ export function HealthDashboard({
     }
 
     try {
-      return !!healthMonitor.getStatus?.().isMonitoring;
+      return healthMonitor.getStatus?.().isMonitoring ?? false;
     } catch {
       return false;
     }
   });
 
-  const [lastUpdate, setLastUpdate] = useState<string>(() => {
-    if (!healthMonitor) {
-      return "";
-    }
+  const [lastUpdate, setLastUpdate] = useState<string>('');
 
     try {
       const currentMetrics = healthMonitor.getMetrics?.();

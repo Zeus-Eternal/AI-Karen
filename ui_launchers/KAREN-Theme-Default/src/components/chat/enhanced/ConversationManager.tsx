@@ -107,6 +107,96 @@ interface ConversationManagerProps {
   className?: string;
 }
 
+const AnalyticsPanel: React.FC<{ analytics: ConversationAnalytics }> = ({ analytics }) => {
+  const topMax = analytics.topTopics[0]?.count || 1;
+
+  return (
+    <div className="space-y-6">
+      {/* Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{analytics.totalConversations}</div>
+            <div className="text-sm text-muted-foreground">Conversations</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{analytics.totalMessages}</div>
+            <div className="text-sm text-muted-foreground">Messages</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{Math.round(analytics.averageLength)}</div>
+            <div className="text-sm text-muted-foreground">Avg. Length</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{analytics.topTopics.length}</div>
+            <div className="text-sm text-muted-foreground">Top Topics</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top topics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm md:text-base">Top Topics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {analytics.topTopics.slice(0, 5).map((t) => (
+              <div key={t.topic} className="flex items-center justify-between gap-4">
+                <span className="text-sm md:text-base truncate">{t.topic}</span>
+                <div className="flex items-center gap-2 w-40">
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{ width: `${(t.count / topMax) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-6 text-right">{t.count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sentiment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm md:text-base">Sentiment Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-green-600">Positive</span>
+              <span className="text-sm font-medium">
+                {Math.round(analytics.sentimentDistribution.positive)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Neutral</span>
+              <span className="text-sm font-medium">
+                {Math.round(analytics.sentimentDistribution.neutral)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-red-600">Negative</span>
+              <span className="text-sm font-medium">
+                {Math.round(analytics.sentimentDistribution.negative)}%
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 /* ----------------------------------------------------------------------------
  * Component
  * --------------------------------------------------------------------------*/
@@ -115,7 +205,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
   conversations,
   analytics,
   onConversationSelect,
-  onConversationUpdate,
+  onConversationUpdate: _onConversationUpdate,
   onConversationDelete,
   onConversationArchive,
   onConversationExport,
@@ -388,108 +478,6 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
     );
   };
 
-  // Analytics panel
-  const AnalyticsPanel: React.FC = () => {
-    if (!analytics) return null;
-    const topMax = analytics.topTopics[0]?.count || 1;
-
-    return (
-      <div className="space-y-6">
-        {/* Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">
-                {analytics.totalConversations}
-              </div>
-              <div className="text-sm text-muted-foreground">Conversations</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">
-                {analytics.totalMessages}
-              </div>
-              <div className="text-sm text-muted-foreground">Messages</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">
-                {Math.round(analytics.averageLength)}
-              </div>
-              <div className="text-sm text-muted-foreground">Avg. Length</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">
-                {analytics.topTopics.length}
-              </div>
-              <div className="text-sm text-muted-foreground">Top Topics</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Top topics */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm md:text-base">Top Topics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {analytics.topTopics.slice(0, 5).map((t) => (
-                <div key={t.topic} className="flex items-center justify-between gap-4">
-                  <span className="text-sm md:text-base truncate">{t.topic}</span>
-                  <div className="flex items-center gap-2 w-40">
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${(t.count / topMax) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground w-6 text-right">
-                      {t.count}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sentiment */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm md:text-base">Sentiment Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-green-600">Positive</span>
-                <span className="text-sm font-medium">
-                  {Math.round(analytics.sentimentDistribution.positive)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Neutral</span>
-                <span className="text-sm font-medium">
-                  {Math.round(analytics.sentimentDistribution.neutral)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-red-600">Negative</span>
-                <span className="text-sm font-medium">
-                  {Math.round(analytics.sentimentDistribution.negative)}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
   // Error Fallback Component
   const ErrorFallback = () => <div className="p-4 text-sm">Something went wrong in ConversationManager</div>;
 
@@ -625,7 +613,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
                 <TabsContent value="analytics" className="h-full m-0">
                   <ScrollArea className="h-full px-4">
                     <div className="pb-4">
-                      <AnalyticsPanel />
+                      <AnalyticsPanel analytics={analytics} />
                     </div>
                   </ScrollArea>
                 </TabsContent>

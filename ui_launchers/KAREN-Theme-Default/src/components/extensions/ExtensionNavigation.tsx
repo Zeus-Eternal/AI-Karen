@@ -85,7 +85,6 @@ export function ExtensionNavigation({
         {Object.entries(groupedNavItems).map(([extensionId, items]) => (
           <ExtensionNavGroup
             key={extensionId}
-            extensionId={extensionId}
             items={items}
             currentPath={pathname}
             compact={compact}
@@ -97,14 +96,12 @@ export function ExtensionNavigation({
 }
 
 export interface ExtensionNavGroupProps {
-  extensionId: string;
   items: ExtensionNavItem[];
   currentPath: string;
   compact: boolean;
 }
 
 function ExtensionNavGroup({
-  extensionId,
   items,
   currentPath,
   compact,
@@ -291,7 +288,7 @@ export function ExtensionNavigationBreadcrumbs({
         Extensions
       </Link>
 
-      {breadcrumbs.map((crumb, index) => (
+      {breadcrumbs.map((crumb, _index) => (
         <Fragment key={crumb.path}>
           <span>/</span>
           {crumb.isLast ? (
