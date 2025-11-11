@@ -322,6 +322,32 @@ export function WorkflowBuilder({
     }
   }, [convertToWorkflowDefinition, onTest]);
 
+  const validateWorkflow = React.useCallback(async () => {
+    setIsValidating(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      const result = await WorkflowValidator.validate(workflowDef);
+      setValidationResult(result);
+    } catch (error) {
+      console.error('Workflow validation failed', error);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [convertToWorkflowDefinition]);
+
+  const testWorkflow = React.useCallback(async () => {
+    if (!onTest) return;
+    setIsTesting(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      await onTest(workflowDef);
+    } catch (error) {
+      console.error('Workflow test failed', error);
+    } finally {
+      setIsTesting(false);
+    }
+  }, [convertToWorkflowDefinition, onTest]);
+
   const handleSave = React.useCallback(() => {
     if (!onSave) return;
     const workflowDef = convertToWorkflowDefinition();

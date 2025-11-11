@@ -223,3 +223,4 @@ if (isBrowser && process.env.NODE_ENV === 'development') {
     }
   }, 300);
 }
+import type { ExtensionErrorIntegration } from './extension-error-integration';

@@ -209,7 +209,9 @@ export class AutomatedAccessibilityTester {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
         },
-        rules: config.rules || {}
+        rules: config.rules || {},
+        ...(config.include ? { include: config.include } : {}),
+        ...(config.exclude ? { exclude: config.exclude } : {})
       };
 
       if (config.include) {

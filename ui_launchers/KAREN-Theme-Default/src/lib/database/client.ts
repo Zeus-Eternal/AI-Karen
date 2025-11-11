@@ -85,7 +85,6 @@ export class PostgreSQLClient implements DatabaseClient {
         }`,
       );
     }
-  }
 
     async transaction<T>(
       callback: (client: DatabaseClient) => Promise<T>
@@ -102,7 +101,7 @@ export class PostgreSQLClient implements DatabaseClient {
               rowCount: result.rowCount || 0,
               fields: result.fields,
             };
-        },
+          },
         transaction: async () => {
           throw new Error("Nested transactions are not supported");
         },

@@ -6,7 +6,12 @@
  */
 
 import { logger } from './logger';
-import { handleExtensionError, shouldUseExtensionFallback, getExtensionErrorMessage } from './extension-error-integration';
+import {
+  handleExtensionError,
+  shouldUseExtensionFallback,
+  getExtensionErrorMessage,
+  type ExtensionErrorResponse,
+} from './extension-error-integration';
 import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 
 /**

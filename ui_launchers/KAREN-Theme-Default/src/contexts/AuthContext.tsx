@@ -4,10 +4,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
-import { getConnectionManager, ConnectionError, ErrorCategory } from "@/lib/connection/connection-manager";
+import {
+  getConnectionManager,
+  ConnectionError,
+  ErrorCategory,
+  type ConnectionResponse,
+} from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 import { AuthContext } from "./auth-context-instance";
 
+
+interface ApiUserResponse {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: ApiUserResponse;
+  user_data?: ApiUserResponse;
+}
+
+interface LoginResponse {
+  user?: ApiUserResponse;
+  user_data?: ApiUserResponse;
+}
 
 export interface User {
   userId: string;
@@ -843,6 +867,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     startSessionRefreshTimer,
     stopSessionRefreshTimer,
     timeoutManager,
+    resolveUserData,
   ]);
 
   // Clear authentication error
