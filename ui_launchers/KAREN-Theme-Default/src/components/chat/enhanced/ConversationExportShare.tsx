@@ -106,7 +106,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
         description: `Conversation exported as ${exportConfig.format.toUpperCase()}.`,
       });
       setExportDialogOpen(false);
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Export failed",
@@ -129,7 +129,7 @@ export const ConversationExportShare: React.FC<ConversationExportShareProps> = (
         title: "Share link created",
         description: "Conversation share link has been generated.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Share failed",
