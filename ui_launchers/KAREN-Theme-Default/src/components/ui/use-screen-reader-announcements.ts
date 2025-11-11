@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import { useAriaAnnouncements } from './aria-live-region';
+import { useAriaAnnouncements } from './aria-live-announcements';
 
 export interface ScreenReaderAnnouncementsApi {
   announce: (message: string, priority?: 'polite' | 'assertive') => void;

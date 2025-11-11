@@ -414,7 +414,6 @@ AriaFormSection.displayName = "AriaFormSection";
 
 export {
   AriaEnhancedForm as Form,
-  useAriaFormField,
   AriaEnhancedFormField,
   AriaEnhancedFormItem,
   AriaEnhancedFormLabel,

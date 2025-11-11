@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { LazyComponentProps, SimpleComponent } from "./lazy-component.types";
+import type { LazyComponentProps } from "./lazy-component.types";
 
 const DefaultLoadingFallback: React.FC = () => (
   <motion.div
