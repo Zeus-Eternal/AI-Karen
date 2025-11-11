@@ -5,7 +5,7 @@
  * and comprehensive error handling for extension API calls.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '../logger';
 
 // Error categories for connection issues
 export enum ErrorCategory {
