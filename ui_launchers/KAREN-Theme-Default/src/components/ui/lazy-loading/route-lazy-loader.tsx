@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, type ComponentType } from "react";
+import React, { Suspense } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 
 type FallbackComponent = React.ComponentType<Record<string, unknown>>;
 type RouteErrorFallback = React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>;
-type PropsOf<T> = T extends ComponentType<infer P> ? P : never;
-
 export interface RouteLazyLoaderProps {
   children: React.ReactNode;
   fallback?: FallbackComponent;
@@ -113,58 +111,5 @@ export const RouteLazyLoader: React.FC<RouteLazyLoaderProps> = ({
     <Suspense fallback={<FallbackComponent />}>{children}</Suspense>
   </ErrorBoundary>
 );
-
-export function createLazyRoute<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  options: {
-    fallback?: FallbackComponent;
-    errorFallback?: RouteErrorFallback;
-    preload?: boolean;
-  } = {}
-): ComponentType<PropsOf<T>> {
-  const load = async () => importFn();
-
-  if (options.preload) {
-    void importFn().catch(() => undefined);
-  }
-
-  const LazyComponent = React.lazy(load);
-
-  const Wrapped: React.FC<PropsOf<T>> = (props) => (
-    <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
-      <LazyComponent {...props} />
-    </RouteLazyLoader>
-  );
-
-  Wrapped.displayName = "LazyRouteWrapper";
-  return Wrapped;
-}
-
-export function useRoutePreloader() {
-  const preloadRoute = React.useCallback(
-    (importFn: () => Promise<{ default: ComponentType<any> }>) => {
-      void importFn().catch(() => undefined);
-    },
-    []
-  );
-  return { preloadRoute };
-}
-
-export function withLazyLoading<P extends object>(
-  Component: ComponentType<P>,
-  options: {
-    fallback?: FallbackComponent;
-    errorFallback?: RouteErrorFallback;
-  } = {}
-) {
-  const WrappedComponent = (props: P) => (
-    <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
-      <Component {...props} />
-    </RouteLazyLoader>
-  );
-
-  WrappedComponent.displayName = `withLazyLoading(${Component.displayName ?? Component.name ?? "Component"})`;
-  return WrappedComponent;
-}
 
 export default RouteLazyLoader;
