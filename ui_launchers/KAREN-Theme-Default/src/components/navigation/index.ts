@@ -24,21 +24,31 @@ export type {
 } from './AdminBreadcrumbs';
 
 // Breadcrumb Navigation
-export { BreadcrumbNavigation, useBreadcrumbs, defaultRouteConfig, breadcrumbNavigationVariants, default as BreadcrumbNavigationDefault } from './BreadcrumbNavigation';
+export { BreadcrumbNavigation, default as BreadcrumbNavigationDefault } from './BreadcrumbNavigation';
+export {
+  useBreadcrumbs,
+  defaultRouteConfig,
+  breadcrumbNavigationVariants,
+  generateBreadcrumbsFromRoute,
+} from './breadcrumb-utils';
 export type {
   BreadcrumbItem,
   RouteConfig,
   BreadcrumbNavigationProps,
-  BreadcrumbItemProps,
-} from './BreadcrumbNavigation';
+} from './breadcrumb-utils';
+export type { BreadcrumbItemProps } from './BreadcrumbNavigation';
 
 // Sidebar Navigation
-export { SidebarNavigation, defaultNavigationItems, sidebarNavigationVariants } from './SidebarNavigation';
+export {
+  SidebarNavigation,
+  defaultNavigationItems,
+  sidebarNavigationVariants,
+} from './SidebarNavigation';
 export type {
   NavigationItem,
   SidebarNavigationProps,
   NavigationItemComponentProps,
-} from './SidebarNavigation';
+} from './SidebarNavigation.config';
 
 // Navigation Layout
 export { NavigationLayout, default as NavigationLayoutDefault } from './NavigationLayout';

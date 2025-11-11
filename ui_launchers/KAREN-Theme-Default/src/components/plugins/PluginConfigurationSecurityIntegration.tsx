@@ -231,13 +231,15 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onSave={handleSaveConfiguration}
               onValidate={validateConfiguration}
               onPreview={() => undefined}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
+              showAdvanced
             />
             {!readOnly && (
               <Button
                 variant="outline"
                 onClick={() => setShowMarketplace(true)}
                 className="self-start"
+                disabled={saving}
               >
                 Browse marketplace
               </Button>
@@ -250,7 +252,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onUpdateSecurity={handleSaveSecurity}
               onGrantPermission={onGrantPermission}
               onRevokePermission={onRevokePermission}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
             />
           </TabsContent>
 

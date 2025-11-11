@@ -1,17 +1,16 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Send, Inbox, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 /**
@@ -21,15 +20,19 @@ import { Switch } from "@/components/ui/switch";
  */
 export default function GmailPluginPage() {
   const [username, setUsername] = useState<string>(() =>
-    typeof window !== "undefined" ? localStorage.getItem("gmail_username") ?? "" : "",
+    typeof window !== "undefined" ? localStorage.getItem("gmail_username") || "" : ""
   );
   const [appPassword, setAppPassword] = useState<string>(() =>
-    typeof window !== "undefined" ? localStorage.getItem("gmail_app_password") ?? "" : "",
+    typeof window !== "undefined" ? localStorage.getItem("gmail_app_password") || "" : ""
   );
 
   const saveCreds = () => {
-    localStorage.setItem("gmail_username", username);
-    localStorage.setItem("gmail_app_password", appPassword);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("gmail_username", username);
+    window.localStorage.setItem("gmail_app_password", appPassword);
   };
 
 
@@ -78,15 +81,8 @@ export default function GmailPluginPage() {
             <Input id="gmail-user" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="gmail-pass" className="flex items-center">
-              <KeyRound className="mr-2 h-4 w-4 text-primary/80 " />App Password
-            </Label>
-            <Input
-              id="gmail-pass"
-              type="password"
-              value={appPassword}
-              onChange={(e) => setAppPassword(e.target.value)}
-            />
+            <Label htmlFor="gmail-pass" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 "/>App Password</Label>
+            <Input id="gmail-pass" type="password" value={appPassword} onChange={(e) => setAppPassword(e.target.value)} />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Use a Gmail app password for SMTP/IMAP access.</p>
           </div>
         </CardContent>
@@ -148,21 +144,11 @@ export default function GmailPluginPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email-check-criteria">Criteria for "Important" (conceptual)</Label>
-            <Input
-              id="email-check-criteria"
-              type="text"
-              placeholder="e.g., From:boss@example.com, Subject contains:Urgent"
-              disabled
-            />
+            <Input id="email-check-criteria" type="text" placeholder="e.g., From:boss@example.com, Subject contains:Urgent" disabled />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email-check-frequency">Check frequency (conceptual)</Label>
-            <Input
-              id="email-check-frequency"
-              type="text"
-              placeholder="e.g., Every 30 minutes, Hourly"
-              disabled
-            />
+            <Input id="email-check-frequency" type="text" placeholder="e.g., Every 30 minutes, Hourly" disabled />
           </div>
             <Alert className={alertClassName("default", "bg-background")}>
             <Info className="h-4 w-4 " />

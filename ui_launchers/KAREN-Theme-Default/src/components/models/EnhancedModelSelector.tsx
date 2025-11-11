@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Info } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export interface SelectorModel { id: string; name: string; provider: string; status: string; recommended: boolean; }
 export interface EnhancedModelSelectorProps { models: SelectorModel[]; onSelect: (id: string) => void; showRecommendations?: boolean; className?: string; }

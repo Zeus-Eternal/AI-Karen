@@ -65,7 +65,7 @@ export interface MemoryGridProps {
 /* ---------------------------
  * Utility: safe JSON POST
  * ------------------------- */
-async function safeJsonPost<T = any>(url: string, payload: unknown): Promise<T> {
+async function safeJsonPost<T = unknown>(url: string, payload: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -321,8 +321,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
 
   const onFilterChanged = (event: FilterChangedEvent<MemoryGridRow>) => {
     // hook for analytics/telemetry
-    const model = event.api.getFilterModel();
-    // console.debug("Filters changed:", model);
+    void event.api.getFilterModel();
   };
 
   const onRowClicked = (event: RowClickedEvent<MemoryGridRow>) => {

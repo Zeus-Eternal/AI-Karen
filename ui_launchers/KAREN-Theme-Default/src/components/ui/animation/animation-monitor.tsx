@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, AlertTriangle, CheckCircle, TrendingUp, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,16 +39,14 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
     stopMonitoring,
   } = useAnimationPerformance();
 
-  const metricsHistoryRef = useRef<AnimationMetrics[]>([]);
+  const [historicalMetrics, setHistoricalMetrics] = useState<AnimationMetrics[]>([]);
 
-  const historicalMetrics = useMemo(() => {
+  useEffect(() => {
     if (!metrics) {
-      return metricsHistoryRef.current;
+      return;
     }
 
-    const updatedHistory = [...metricsHistoryRef.current.slice(-19), metrics];
-    metricsHistoryRef.current = updatedHistory;
-    return updatedHistory;
+    setHistoricalMetrics(prevHistory => [...prevHistory.slice(-19), metrics]);
   }, [metrics]);
 
   useEffect(() => {

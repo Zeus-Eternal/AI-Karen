@@ -71,6 +71,7 @@ export function PerformanceDashboard() {
       setMetrics(metricsData);
       setRecommendations(recommendationsData);
     } catch (error) {
+      console.error('Failed to fetch performance metrics', error);
       setMetrics({
         connectionPool: { totalConnections: 0, activeConnections: 0, connectionReuse: 0, averageConnectionTime: 0 },
         responseCache: { hitRate: 0, totalEntries: 0, memoryUsage: 0, compressionRatio: 0 },
@@ -105,21 +106,6 @@ export function PerformanceDashboard() {
     const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) return `${ms.toFixed(0)}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    if (ms < 3600000) return `${(ms / 60000).toFixed(1)}m`;
-    return `${(ms / 3600000).toFixed(1)}h`;
-  };
 
   const getPerformanceStatus = (value: number, thresholds: { good: number; warning: number }): 'good' | 'warning' | 'error' => {
     if (value <= thresholds.good) return 'good';
@@ -218,19 +204,70 @@ export function PerformanceDashboard() {
         {/* Connection Pool Metrics */}
         <Card className="p-6 sm:p-4 md:p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Connection Pool</h3>
-          {/* Display individual metrics here */}
+          <dl className="space-y-2 text-sm text-gray-700 md:text-base lg:text-lg">
+            <div className="flex justify-between">
+              <dt>Total connections</dt>
+              <dd>{metrics.connectionPool.totalConnections}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Active connections</dt>
+              <dd>{metrics.connectionPool.activeConnections}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Connection reuse</dt>
+              <dd>{(metrics.connectionPool.connectionReuse * 100).toFixed(0)}%</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Avg. connection time</dt>
+              <dd>{formatDuration(metrics.connectionPool.averageConnectionTime)}</dd>
+            </div>
+          </dl>
         </Card>
 
         {/* Response Cache Metrics */}
         <Card className="p-6 sm:p-4 md:p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Response Cache</h3>
-          {/* Display individual metrics here */}
+          <dl className="space-y-2 text-sm text-gray-700 md:text-base lg:text-lg">
+            <div className="flex justify-between">
+              <dt>Hit rate</dt>
+              <dd>{(metrics.responseCache.hitRate * 100).toFixed(0)}%</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Total entries</dt>
+              <dd>{metrics.responseCache.totalEntries.toLocaleString()}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Memory usage</dt>
+              <dd>{formatBytes(metrics.responseCache.memoryUsage)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Compression ratio</dt>
+              <dd>{metrics.responseCache.compressionRatio.toFixed(2)}x</dd>
+            </div>
+          </dl>
         </Card>
 
         {/* Query Optimizer Metrics */}
         <Card className="p-6 sm:p-4 md:p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Query Optimizer</h3>
-          {/* Display individual metrics here */}
+          <dl className="space-y-2 text-sm text-gray-700 md:text-base lg:text-lg">
+            <div className="flex justify-between">
+              <dt>Total queries</dt>
+              <dd>{metrics.queryOptimizer.totalQueries.toLocaleString()}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Cache hits</dt>
+              <dd>{metrics.queryOptimizer.cacheHits.toLocaleString()}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Avg. query time</dt>
+              <dd>{formatDuration(metrics.queryOptimizer.averageQueryTime)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Slow queries</dt>
+              <dd>{metrics.queryOptimizer.slowQueries.toLocaleString()}</dd>
+            </div>
+          </dl>
         </Card>
       </div>
 

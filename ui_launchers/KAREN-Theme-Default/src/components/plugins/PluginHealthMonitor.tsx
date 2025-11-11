@@ -97,16 +97,10 @@ export interface RecoveryAction {
 
 export interface PluginHealthMonitorProps {
   plugin: PluginInfo;
-  onRestart?: () => Promise<void>;
-  onReconfigure?: () => Promise<void>;
-  onDisable?: () => Promise<void>;
 }
 
 export const PluginHealthMonitor: React.FC<PluginHealthMonitorProps> = ({
   plugin,
-  onRestart,
-  onReconfigure,
-  onDisable,
 }) => {
   const [monitoring, setMonitoring] = useState(true);
   const [autoRecovery, setAutoRecovery] = useState(true);
