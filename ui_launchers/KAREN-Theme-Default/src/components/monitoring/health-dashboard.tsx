@@ -5,8 +5,8 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,41 +22,51 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const monitorRef = useRef<ReturnType<typeof getHealthMonitor> | null>(null);
-  if (monitorRef.current === null) {
-    monitorRef.current = getHealthMonitor();
-  }
+  const healthMonitorRef = useRef(getHealthMonitor());
+  const healthMonitor = healthMonitorRef.current;
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(() =>
-    monitorRef.current?.getMetrics?.() ?? null
-  );
-  const [alerts, setAlerts] = useState<HealthAlert[]>(() =>
-    monitorRef.current?.getAlerts?.(20) ?? []
-  );
-  const [isMonitoring, setIsMonitoring] = useState(() =>
-    monitorRef.current?.getStatus?.().isMonitoring ?? false
-  );
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    try {
+      return healthMonitor.getMetrics();
+    } catch {
+      return null;
+    }
+  });
+  const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
+    try {
+      return healthMonitor.getAlerts(20);
+    } catch {
+      return [];
+    }
+  });
+  const [isMonitoring, setIsMonitoring] = useState(() => {
+    try {
+      return healthMonitor.getStatus().isMonitoring;
+    } catch {
+      return false;
+    }
+  });
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    const healthMonitor = monitorRef.current;
-    if (!healthMonitor) {
-      return () => {};
-    }
+    const monitor = healthMonitorRef.current;
 
-    if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
-    }
-
-    const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
+    // Set up listeners
+    const unsubscribeMetrics = monitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
       setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
-    const unsubscribeAlerts = healthMonitor.onAlert((newAlert) => {
-      setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
+    const unsubscribeAlerts = monitor.onAlert((newAlert) => {
+      setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
     });
+
+    // Start monitoring if not already started
+    if (!monitor.getStatus().isMonitoring) {
+      monitor.start();
+      setIsMonitoring(true);
+    }
 
     return () => {
       unsubscribeMetrics();

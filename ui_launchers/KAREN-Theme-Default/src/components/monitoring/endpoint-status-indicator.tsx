@@ -107,8 +107,14 @@ export function EndpointStatusIndicator({
   const [recentErrors, setRecentErrors] = useState<number>(snapshotRef.current.recentErrors);
 
   useEffect(() => {
-    const monitor = snapshotRef.current?.monitor ?? getHealthMonitor?.();
-    const logger = snapshotRef.current?.logger ?? getDiagnosticLogger?.();
+    // Guard against missing providers
+    const healthMonitor = getHealthMonitor?.();
+    const diagnosticLogger = getDiagnosticLogger?.();
+
+    if (!healthMonitor || !diagnosticLogger) {
+      // Soft-fail with a minimal placeholder to avoid UI crash
+      return;
+    }
 
     if (!monitor || !logger) {
       return;

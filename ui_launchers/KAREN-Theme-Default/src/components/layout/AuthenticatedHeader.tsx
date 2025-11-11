@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserProfile } from "@/components/auth/UserProfile";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, LogOut, Settings } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 import {
@@ -28,13 +28,8 @@ export const AuthenticatedHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
 
-  if (!user) return null;
-
   const initialsFrom = (s?: string) =>
     (s?.trim()?.charAt(0) ?? "?").toUpperCase();
-
-  const userInitials =
-    initialsFrom(user?.email) || initialsFrom(user?.userId) || "?";
 
   const handleLogout = () => {
     logout();
@@ -49,6 +44,11 @@ export const AuthenticatedHeader: React.FC = () => {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showProfile]);
+
+  if (!user) return null;
+
+  const userInitials =
+    initialsFrom(user?.email) || initialsFrom(user?.userId) || "?";
 
   return (
     <>

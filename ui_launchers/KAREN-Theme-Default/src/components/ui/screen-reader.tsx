@@ -6,7 +6,8 @@
 import React from "react";
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useAriaAnnouncements, AriaLiveRegion } from './aria-live-region';
+import { AriaLiveRegion } from './aria-live-region';
+import { useAriaAnnouncements } from './aria-live-announcements';
 import { useScreenReaderAnnouncements } from './use-screen-reader-announcements';
 
 /**

@@ -239,20 +239,25 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       []
     );
 
-    const effectiveExpandedItems = useMemo(() => {
+    const activeParentId = React.useMemo(() => {
       const activeItem = findActiveItem(items, pathname || "/");
-      if (!activeItem?.parent) {
+      return activeItem?.parent ?? null;
+    }, [items, pathname]);
+
+    const effectiveExpandedItems = React.useMemo(() => {
+      if (!activeParentId) {
         return expandedItems;
       }
-      const combined = new Set(expandedItems);
-      combined.add(activeItem.parent);
-      return combined;
-    }, [expandedItems, items, pathname]);
+      if (expandedItems.has(activeParentId)) {
+        return expandedItems;
+      }
+      return new Set([...expandedItems, activeParentId]);
+    }, [expandedItems, activeParentId]);
 
     // Auto-focus navigation when requested
     useEffect(() => {
-      if (autoFocus && navRef.current) {
-        navRef.current.focus();
+      if (autoFocus && localNavRef.current) {
+        localNavRef.current.focus();
       }
     }, [autoFocus, navRef]);
 
@@ -271,7 +276,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       flatten(items);
       return flattened;
-    }, [effectiveExpandedItems, items]);
+    }, [items, effectiveExpandedItems]);
 
     // Toggle expand/collapse
     const toggleExpanded = useCallback((itemId: string) => {
@@ -337,7 +342,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
           case "ArrowRight": {
             event.preventDefault();
             const curr = flattenedItems[currentIndex];
-            if (curr?.item.children && !expandedItems.has(curr.item.id)) {
+            if (curr?.item.children && !effectiveExpandedItems.has(curr.item.id)) {
               toggleExpanded(curr.item.id);
             }
             break;
@@ -345,7 +350,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
           case "ArrowLeft": {
             event.preventDefault();
             const curr = flattenedItems[currentIndex];
-            if (curr?.item.children && expandedItems.has(curr.item.id)) {
+            if (curr?.item.children && effectiveExpandedItems.has(curr.item.id)) {
               toggleExpanded(curr.item.id);
             }
             break;
@@ -378,7 +383,13 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardNavigation, flattenedItems, effectiveExpandedItems, toggleExpanded, handleItemClick, navRef]);
+    }, [
+      enableKeyboardNavigation,
+      flattenedItems,
+      effectiveExpandedItems,
+      toggleExpanded,
+      handleItemClick,
+    ]);
 
     return (
       <nav
