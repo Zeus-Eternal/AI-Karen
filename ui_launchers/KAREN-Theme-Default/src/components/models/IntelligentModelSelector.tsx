@@ -375,11 +375,14 @@ export default function IntelligentModelSelector({
 
   const autoSelectionRef = useRef<string | null>(null);
   const effectiveSelectedModelId = useMemo(() => {
+    if (manualSelectedModelId) {
+      return manualSelectedModelId;
+    }
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
       return topRecommendation.model.id;
     }
-    return selectedModelId;
-  }, [autoSelect, selectedModelId, topRecommendation]);
+    return '';
+  }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
@@ -391,12 +394,6 @@ export default function IntelligentModelSelector({
     }
   }, [autoSelect, topRecommendation, onModelSelect]);
 
-  const selectedModelId = manualSelectedModelId ?? (
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : ''
-  );
-
   const handleManualSelect = useCallback((modelId: string) => {
     setManualSelectedModelId(modelId);
     onModelSelect(modelId);
@@ -404,14 +401,16 @@ export default function IntelligentModelSelector({
 
   const handleAutoSelectChange = useCallback((checked: boolean) => {
     setAutoSelect(checked);
-    if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
-      setSelectedModelId(topRecommendation.model.id);
-      onModelSelect(topRecommendation.model.id);
+    if (!checked && !manualSelectedModelId && topRecommendation && topRecommendation.score > 60) {
+      const recommendedId = topRecommendation.model.id;
+      setManualSelectedModelId(recommendedId);
+      onModelSelect(recommendedId);
     }
     if (checked) {
+      setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [selectedModelId, topRecommendation, onModelSelect]);
+  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
 
   if (!contextAnalysis) {
     return (
