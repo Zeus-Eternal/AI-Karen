@@ -12,8 +12,8 @@
  * - 9.2: Fallback behavior for extension unavailability
  */
 
-import { logger } from '@/lib/logger';
-import { ErrorInfo } from '@/lib/error-handler';
+import { logger } from '../logger';
+import { ErrorInfo } from '../error-handler';
 
 /**
  * Extension authentication error categories

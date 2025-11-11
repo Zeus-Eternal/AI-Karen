@@ -5,7 +5,7 @@
  * Based on requirements: 12.2, 12.3
  */
 
-import { useAppStore } from '@/store/app-store';
+import { useAppStore } from '../store/app-store';
 
 // API Response types
 export interface ApiResponse<T = unknown> {

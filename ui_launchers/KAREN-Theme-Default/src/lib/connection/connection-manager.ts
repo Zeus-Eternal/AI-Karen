@@ -5,7 +5,7 @@
  * and comprehensive error handling for extension API calls.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '../logger';
 
 // Error categories for connection issues
 export enum ErrorCategory {
@@ -200,8 +200,7 @@ export class ConnectionManager {
     // All retries exhausted
     const duration = Date.now() - startTime;
     logger.error(
-      `Request failed for ${url} after ${retryAttempts + 1} attempts:`,
-      lastError?.message || 'Unknown error',
+      `Request failed for ${url} after ${retryAttempts + 1} attempts: ${lastError?.message || 'Unknown error'}`,
       { duration }
     );
 

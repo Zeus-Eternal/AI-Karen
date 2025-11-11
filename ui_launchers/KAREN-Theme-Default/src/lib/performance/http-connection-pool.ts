@@ -173,18 +173,18 @@ export class HttpConnectionPool {
     }
 
     // Abort all active connections
-    for (const hostConnections of this.connections.values()) {
-      for (const connection of hostConnections) {
+    this.connections.forEach((hostConnections) => {
+      hostConnections.forEach((connection) => {
         if (connection.isActive) {
           connection.controller.abort();
         }
-      }
-    }
+      });
+    });
 
     // Reject all queued requests
-    for (const queuedRequest of this.requestQueue) {
+    this.requestQueue.forEach((queuedRequest) => {
       queuedRequest.reject(new Error('Connection pool shutting down'));
-    }
+    });
 
     // Clear all data structures
     this.connections.clear();
@@ -198,13 +198,11 @@ export class HttpConnectionPool {
     const hostConnections = this.connections.get(host) || [];
 
     // Find an idle connection
-    for (const connection of hostConnections) {
-      if (!connection.isActive && !this.isConnectionExpired(connection)) {
-        return connection;
-      }
-    }
+    const idleConnection = hostConnections.find(
+      (connection) => !connection.isActive && !this.isConnectionExpired(connection)
+    );
 
-    return null;
+    return idleConnection ?? null;
   }
 
   /**

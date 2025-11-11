@@ -11,7 +11,7 @@
  * - 3.2: Extension API calls with proper authentication
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '../logger';
 import { ExtensionAuthError, ExtensionAuthRecoveryStrategy, ExtensionAuthErrorCategory } from './extension-auth-errors';
 
 /**
@@ -151,9 +151,9 @@ export class ExtensionAuthDegradationManager {
       }
     ];
 
-    for (const feature of defaultFeatures) {
+    defaultFeatures.forEach((feature) => {
       this.featureConfigs.set(feature.name, feature);
-    }
+    });
   }
 
   /**
@@ -484,11 +484,11 @@ export class ExtensionAuthDegradationManager {
   private getAffectedFeatures(level: ExtensionFeatureLevel): string[] {
     const affected: string[] = [];
 
-    for (const [name, config] of this.featureConfigs) {
+    this.featureConfigs.forEach((config, name) => {
       if (!this.isFeatureAvailableAtLevel(config, level)) {
         affected.push(name);
       }
-    }
+    });
 
     return affected;
   }
@@ -499,11 +499,11 @@ export class ExtensionAuthDegradationManager {
   private getAvailableFeatures(level: ExtensionFeatureLevel): string[] {
     const available: string[] = [];
 
-    for (const [name, config] of this.featureConfigs) {
+    this.featureConfigs.forEach((config, name) => {
       if (this.isFeatureAvailableAtLevel(config, level)) {
         available.push(name);
       }
-    }
+    });
 
     return available;
   }
@@ -593,12 +593,12 @@ export class ExtensionAuthDegradationManager {
     let oldestKey: string | null = null;
     let oldestTime = Date.now();
 
-    for (const [key, cached] of this.cachedData) {
+    this.cachedData.forEach((cached, key) => {
       if (cached.timestamp.getTime() < oldestTime) {
         oldestTime = cached.timestamp.getTime();
         oldestKey = key;
       }
-    }
+    });
 
     if (oldestKey) {
       this.cachedData.delete(oldestKey);

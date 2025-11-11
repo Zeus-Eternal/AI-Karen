@@ -12,9 +12,9 @@
  * - 6.2: Hot reload support without authentication issues
  */
 
-import { logger } from '@/lib/logger';
-import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/connection/connection-manager';
-import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
+import { logger } from '../logger';
+import { getConnectionManager, ConnectionError, ErrorCategory } from '../connection/connection-manager';
+import { getTimeoutManager, OperationType } from '../connection/timeout-manager';
 import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './development-auth';
 import { getHotReloadAuthManager } from './hot-reload-auth';
 
@@ -42,6 +42,11 @@ export interface TokenRefreshResponse {
   refresh_token?: string;
   expires_in?: number;
   token_type?: string;
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  token?: string;
 }
 
 // Secure token storage implementation with encryption support
@@ -530,7 +535,7 @@ export class ExtensionAuthManager {
       // Try to validate existing session
       const timeout = this.timeoutManager.getTimeout(OperationType.SESSION_VALIDATION);
       
-      const result = await this.connectionManager.makeRequest(
+      const result = await this.connectionManager.makeRequest<SessionValidationResponse>(
         '/api/auth/validate-session',
         {
           method: 'GET',
