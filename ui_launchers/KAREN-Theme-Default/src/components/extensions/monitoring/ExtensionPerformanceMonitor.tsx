@@ -105,7 +105,7 @@ export function ExtensionPerformanceMonitor({
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h");
   const [selectedMetric, setSelectedMetric] = useState<ResourceMetricKey>("cpu");
-  const [alerts, setAlerts] = useState<ResourceAlert[]>(() =>
+  const [alerts] = useState<ResourceAlert[]>(() =>
     SAMPLE_ALERTS.map((alert) => ({ ...alert }))
   );
   const [autoRefresh, setAutoRefresh] = useState(true);

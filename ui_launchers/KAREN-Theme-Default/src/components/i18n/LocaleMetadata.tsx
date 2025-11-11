@@ -61,7 +61,7 @@ export function LocaleMetadata({
       try {
         const dateFormat = new Intl.DateTimeFormat(locale);
         calendar = dateFormat.resolvedOptions().calendar;
-      } catch (e) {
+      } catch {
         // Use default
       }
 
@@ -76,7 +76,7 @@ export function LocaleMetadata({
         if (resolvedCurrency) {
           currency = resolvedCurrency;
         }
-      } catch (e) {
+      } catch {
         // Use default
       }
 

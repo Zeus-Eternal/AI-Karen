@@ -16,7 +16,6 @@ import React, {
   useRef,
   useCallback,
   useImperativeHandle,
-  useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -79,21 +78,19 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     }, [items, pathname]);
 
     const effectiveExpandedItems = React.useMemo(() => {
-      if (!activeParentId) {
-        return expandedItems;
+      if (!activeParentId || manualExpandedItems.has(activeParentId)) {
+        return manualExpandedItems;
       }
-      if (expandedItems.has(activeParentId)) {
-        return expandedItems;
-      }
-      return new Set([...expandedItems, activeParentId]);
-    }, [expandedItems, activeParentId]);
+
+      return new Set([...manualExpandedItems, activeParentId]);
+    }, [manualExpandedItems, activeParentId]);
 
     // Auto-focus navigation when requested
     useEffect(() => {
       if (autoFocus && localNavRef.current) {
         localNavRef.current.focus();
       }
-    }, [autoFocus, navRef]);
+    }, [autoFocus]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {
@@ -263,7 +260,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
                   if (el) itemRefs.current.set(item.id, el);
                   else itemRefs.current.delete(item.id);
                 }}
-                isExpandedById={(id) => visibleExpandedItems.has(id)}
+                isExpandedById={(id) => effectiveExpandedItems.has(id)}
               />
             ))}
           </ul>

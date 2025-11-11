@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -297,15 +297,6 @@ export function AccessibilityUserTestingTool({
     setCurrentScenario(scenario);
     setCurrentTest(testResult);
     setIsRecording(true);
-    startTimeRef.current = Date.now();
-
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      if (startTimeRef.current) {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setCurrentTest((prev) => (prev ? { ...prev, timeSpent: elapsed } : prev));
-      }
-    }, 1000);
   };
 
   const completeTest = (success: boolean, feedback: string = "") => {
@@ -368,7 +359,7 @@ export function AccessibilityUserTestingTool({
 
   /* ------------------------------ Simulations Apply ----------------------------- */
 
-  const applySimulation = () => {
+  const applySimulation = useCallback(() => {
     const body = document.body;
 
     // Visual impairment
@@ -411,7 +402,7 @@ export function AccessibilityUserTestingTool({
       body.classList.remove("cognitive-impairment-simulation");
       body.style.removeProperty("--motion-preference");
     }
-  };
+  }, [simulationSettings]);
 
   /* --------------------------------- Helpers ----------------------------------- */
 
@@ -448,12 +439,41 @@ export function AccessibilityUserTestingTool({
   /* --------------------------------- Effects ----------------------------------- */
 
   useEffect(() => {
+    if (!isRecording) return;
+
+    startTimeRef.current = Date.now();
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    timerRef.current = setInterval(() => {
+      if (startTimeRef.current !== null) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setCurrentTest((prev) => (prev ? { ...prev, timeSpent: elapsed } : prev));
+      }
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      startTimeRef.current = null;
+    };
+  }, [isRecording]);
+
+  useEffect(() => {
     applySimulation();
-  }, [simulationSettings]);
+  }, [applySimulation]);
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      startTimeRef.current = null;
     };
   }, []);
 

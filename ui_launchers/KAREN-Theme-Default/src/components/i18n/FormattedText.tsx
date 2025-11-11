@@ -97,6 +97,11 @@ export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
     return <span className={className}>{formattedValue}</span>;
   });
 
+type RelativeTimeParts = {
+  value: number;
+  unit: Intl.RelativeTimeFormatUnit;
+};
+
 const useCurrentTimestamp = (intervalMs = 60_000) => {
   return React.useSyncExternalStore(
     React.useCallback((onStoreChange) => {
@@ -146,6 +151,7 @@ const computeRelativeTimeParts = (referenceMs: number, inputMs: number): Relativ
 
 export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
   const [relativeTime, setRelativeTime] = React.useState<RelativeTimeParts>(DEFAULT_RELATIVE_TIME);
+  const now = useCurrentTimestamp();
 
   React.useEffect(() => {
     const inputMs =
@@ -156,8 +162,8 @@ export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) 
       return;
     }
 
-    setRelativeTime(computeRelativeTimeParts(Date.now(), inputMs));
-  }, [date]);
+    setRelativeTime(computeRelativeTimeParts(now, inputMs));
+  }, [date, now]);
 
   return <FormattedRelativeTime value={relativeTime.value} unit={relativeTime.unit} className={className} />;
 });

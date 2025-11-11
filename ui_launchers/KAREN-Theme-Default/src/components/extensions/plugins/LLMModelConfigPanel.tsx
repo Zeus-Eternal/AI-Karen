@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,11 +19,11 @@ export interface LLMModelConfig {
 }
 
 export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMModelConfig) => void }) {
-  const { register, handleSubmit, watch, setValue } = useForm<LLMModelConfig>({
+  const { register, handleSubmit, control, setValue } = useForm<LLMModelConfig>({
     defaultValues: { temperature: 0.7, maxTokens: 2048, systemPrompt: "", apiKey: "" },
   });
 
-  const temp = watch("temperature");
+  const temp = useWatch({ control, name: "temperature" }) ?? 0;
 
   return (
     <form

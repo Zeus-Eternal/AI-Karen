@@ -134,33 +134,36 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
     }
   };
 
-  const validateFile = (file: File): string | null => {
-    if (file.size > maxFileSize * 1024 * 1024) {
-      return `File size exceeds ${maxFileSize}MB limit`;
-    }
-
-    if (attachments.length >= maxFiles) {
-      return `Maximum ${maxFiles} files allowed`;
-    }
-
-    // Validate accepted types (MIME wildcards and extensions)
-    const isAccepted = acceptedTypes.some((t) => {
-      if (t.includes("*")) {
-        const base = t.replace("*", "");
-        return file.type?.startsWith(base);
+  const validateFile = useCallback(
+    (file: File): string | null => {
+      if (file.size > maxFileSize * 1024 * 1024) {
+        return `File size exceeds ${maxFileSize}MB limit`;
       }
-      if (t.startsWith(".")) {
-        return file.name.toLowerCase().endsWith(t.toLowerCase());
+
+      if (attachments.length >= maxFiles) {
+        return `Maximum ${maxFiles} files allowed`;
       }
-      return file.type === t;
-    });
 
-    if (!isAccepted) {
-      return "File type not supported";
-    }
+      // Validate accepted types (MIME wildcards and extensions)
+      const isAccepted = acceptedTypes.some((t) => {
+        if (t.includes("*")) {
+          const base = t.replace("*", "");
+          return file.type?.startsWith(base);
+        }
+        if (t.startsWith(".")) {
+          return file.name.toLowerCase().endsWith(t.toLowerCase());
+        }
+        return file.type === t;
+      });
 
-    return null;
-  };
+      if (!isAccepted) {
+        return "File type not supported";
+      }
+
+      return null;
+    },
+    [acceptedTypes, attachments.length, maxFileSize, maxFiles]
+  );
 
   const formatFileSize = (bytes: number): string => {
     if (!bytes) return "0 Bytes";
@@ -173,48 +176,51 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
 
   /* -------------------- Optional “Analysis” Sim -------------------- */
 
-  const analyzeFile = async (
-    file: File,
-    type: Attachment["type"]
-  ): Promise<AttachmentAnalysis | undefined> => {
-    // simulate analysis time
-    await new Promise((r) => setTimeout(r, 1000));
+  const analyzeFile = useCallback(
+    async (
+      file: File,
+      type: Attachment["type"]
+    ): Promise<AttachmentAnalysis | undefined> => {
+      // simulate analysis time
+      await new Promise((r) => setTimeout(r, 1000));
 
-    if (type === "image" && enableImageAnalysis) {
-      return {
-        summary: "Image contains objects and text elements",
-        entities: ["person", "building", "text"],
-        topics: ["architecture", "urban"],
-        sentiment: "neutral",
-        confidence: 0.85,
-        extractedText: "Sample extracted text from image",
-      };
-    }
+      if (type === "image" && enableImageAnalysis) {
+        return {
+          summary: "Image contains objects and text elements",
+          entities: ["person", "building", "text"],
+          topics: ["architecture", "urban"],
+          sentiment: "neutral",
+          confidence: 0.85,
+          extractedText: "Sample extracted text from image",
+        };
+      }
 
-    if (type === "code" && enableCodeAnalysis) {
-      return {
-        summary: "Code file with functions and imports",
-        entities: ["function", "import", "variable"],
-        topics: ["programming", "javascript"],
-        sentiment: "neutral",
-        confidence: 0.9,
-        extractedText: await file.text(),
-      };
-    }
+      if (type === "code" && enableCodeAnalysis) {
+        return {
+          summary: "Code file with functions and imports",
+          entities: ["function", "import", "variable"],
+          topics: ["programming", "javascript"],
+          sentiment: "neutral",
+          confidence: 0.9,
+          extractedText: await file.text(),
+        };
+      }
 
-    if (type === "document") {
-      return {
-        summary: "Document with structured content",
-        entities: ["heading", "paragraph", "list"],
-        topics: ["documentation"],
-        sentiment: "neutral",
-        confidence: 0.8,
-        extractedText: file.type?.startsWith("text/") ? await file.text() : "Text extraction not available",
-      };
-    }
+      if (type === "document") {
+        return {
+          summary: "Document with structured content",
+          entities: ["heading", "paragraph", "list"],
+          topics: ["documentation"],
+          sentiment: "neutral",
+          confidence: 0.8,
+          extractedText: file.type?.startsWith("text/") ? await file.text() : "Text extraction not available",
+        };
+      }
 
-    return undefined;
-  };
+      return undefined;
+    },
+    [enableCodeAnalysis, enableImageAnalysis]
+  );
 
   /* -------------------- Core: Process Files -------------------- */
 
@@ -314,7 +320,7 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
                 : it
             )
           );
-        } catch (err) {
+        } catch {
           setUploadProgress((prev) =>
             prev.map((it) =>
               it.fileId === progressItem.fileId
@@ -338,16 +344,7 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
       // Clear progress after a short delay
       setTimeout(() => setUploadProgress([]), 2000);
     },
-    [
-      attachments.length,
-      maxFiles,
-      maxFileSize,
-      acceptedTypes,
-      enableImageAnalysis,
-      enableCodeAnalysis,
-      onFilesUploaded,
-      toast,
-    ]
+    [analyzeFile, onFilesUploaded, toast, validateFile]
   );
 
   /* -------------------- Drag & Drop -------------------- */

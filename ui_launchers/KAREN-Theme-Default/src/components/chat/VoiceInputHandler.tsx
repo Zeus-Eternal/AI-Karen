@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/chat/VoiceInputHandler.tsx
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, Loader2 } from "lucide-react";
@@ -39,7 +39,13 @@ interface SpeechRecognitionResult {
 
 interface SpeechRecognitionAlternative {
   transcript: string;
-  confidence: number;
+  confidence?: number;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognition;
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error?: string;
 }
 
 interface ISpeechRecognition extends EventTarget {
@@ -49,10 +55,10 @@ interface ISpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: ISpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: ISpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: ISpeechRecognition, ev: unknown) => any) | null;
-  onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onstart: ((this: ISpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: ISpeechRecognition, ev: Event) => void) | null;
+  onerror: ((this: ISpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
 }
 
 export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
@@ -67,7 +73,6 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
 }) => {
   const { toast } = useToast();
 
-  const [isSupported, setIsSupported] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [displayTranscript, setDisplayTranscript] = useState("");
   const [confidence, setConfidence] = useState(0);
@@ -76,21 +81,23 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   // SSR guard
-  const getSR = useCallback(() => {
+  const getSR = useCallback((): SpeechRecognitionConstructor | undefined => {
     if (typeof window === "undefined") return undefined;
-    const win = window as unknown;
-    return win.SpeechRecognition || win.webkitSpeechRecognition;
+    const win = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    return win.SpeechRecognition ?? win.webkitSpeechRecognition;
   }, []);
+
+  const speechRecognitionConstructor = useMemo(() => getSR(), [getSR]);
+  const isSupported = Boolean(speechRecognitionConstructor);
 
   // Initialize SpeechRecognition
   useEffect(() => {
-    const SR = getSR();
-    const supported = Boolean(SR);
-    setIsSupported(supported);
+    if (!speechRecognitionConstructor) return;
 
-    if (!supported) return;
-
-    const recognition = new SR!();
+    const recognition = new speechRecognitionConstructor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = lang;
@@ -109,7 +116,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       }
     };
 
-    recognition.onerror = (event: Event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       setIsProcessing(false);
       // Handle mic permission explicitly
       if (event?.error === "not-allowed" || event?.error === "service-not-allowed") {
@@ -158,12 +165,12 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
     return () => {
       try {
         recognitionRef.current?.abort();
-      } catch (e) {
+      } catch {
         // ignore abort errors
       }
       recognitionRef.current = null;
     };
-  }, [getSR, isRecording, onStop, onError, onTranscript, toast, lang]);
+  }, [speechRecognitionConstructor, isRecording, onStop, onError, onTranscript, toast, lang]);
 
   // Start recording
   const handleStart = useCallback(async () => {
@@ -179,11 +186,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
     // Hint to request mic permission early (helps UX on some browsers)
     try {
       if (navigator?.mediaDevices?.getUserMedia) {
-        // Don't await indefinitely—race with a short timeout
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1500);
-        await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).catch(() => {});
-        clearTimeout(timeout);
+        await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).catch(() => undefined);
       }
     } catch {
       // ignore; SR may still prompt
