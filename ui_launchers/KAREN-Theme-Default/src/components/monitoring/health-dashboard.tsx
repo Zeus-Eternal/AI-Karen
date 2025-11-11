@@ -45,9 +45,9 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       return [];
     }
     try {
-      return healthMonitor.getAlerts(20);
+      setMetrics(monitor.getMetrics());
     } catch {
-      return [];
+      setMetrics(null);
     }
   });
   const [isMonitoring, setIsMonitoring] = useState(() => {
@@ -55,12 +55,10 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       return false;
     }
     try {
-      return healthMonitor.getStatus().isMonitoring;
+      setAlerts(monitor.getAlerts(20));
     } catch {
-      return false;
+      setAlerts([]);
     }
-  });
-  const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
     if (!healthMonitor) {
@@ -93,10 +91,14 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     }
 
     return () => {
-      unsubscribeMetrics();
-      unsubscribeAlerts();
+      try {
+        unsubscribeMetrics();
+        unsubscribeAlerts();
+      } catch {
+        // noop
+      }
     };
-  }, [healthMonitor]);
+  }, []);
 
   const resolveHealthMonitor = () => {
     if (healthMonitor) {

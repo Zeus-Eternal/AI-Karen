@@ -123,7 +123,7 @@ export function EndpointStatusIndicator({
     const logger = loggerRef.current;
 
     if (!monitor || !logger) {
-      return;
+      return undefined;
     }
 
     try {
@@ -146,12 +146,15 @@ export function EndpointStatusIndicator({
         }
       }) ?? (() => {});
 
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
+      logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
           const timeoutId = window.setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
+            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
           errorTimers.push(timeoutId);
         }
