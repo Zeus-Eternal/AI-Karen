@@ -99,6 +99,10 @@ const formatDetailValue = (value: unknown): string => {
 
 export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
   const { data: widgetData } = props;
+  const statusHistory = React.useMemo(() => {
+    const basePattern = ["healthy", "healthy", "warning", "healthy", "critical"] as const;
+    return Array.from({ length: 10 }, (_, index) => basePattern[index % basePattern.length]);
+  }, []);
 
   if (!widgetData?.data) {
     return (
@@ -116,10 +120,6 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
   const status = widgetData.data as StatusData;
   const statusConfig = getStatusConfig(status.status);
   const StatusIcon = statusConfig.icon;
-  const statusHistory = React.useMemo(() => {
-    const basePattern = ["healthy", "healthy", "warning", "healthy", "critical"] as const;
-    return Array.from({ length: 10 }, (_, index) => basePattern[index % basePattern.length]);
-  }, []);
 
   return (
     <WidgetBase {...props}>
