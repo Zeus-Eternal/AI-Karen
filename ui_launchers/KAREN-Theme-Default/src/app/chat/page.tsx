@@ -14,8 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Bell, Brain, LayoutGrid, MessageSquare, PlugZap, Settings as SettingsIconLucide, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+import { SidebarProvider } from "@/components/ui/sidebar-context";
 import {
-  SidebarProvider,
   Sidebar,
   SidebarTrigger,
   SidebarHeader,

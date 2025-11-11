@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { Meta, StoryObj } from "@storybook/react";
 import ExtensionSidebar from "./ExtensionSidebar";
 import type { ExtensionSidebarProps } from "./ExtensionSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar-context";
 
 const meta: Meta<typeof ExtensionSidebar> = {
   title: "Extensions/ExtensionSidebar",
