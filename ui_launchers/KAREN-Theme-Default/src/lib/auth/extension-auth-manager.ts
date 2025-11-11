@@ -513,6 +513,20 @@ export class ExtensionAuthManager {
     }
   }
 
+  private isSessionValidationResponse(data: unknown): data is SessionValidationResponse {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    const record = data as Record<string, unknown>;
+    const { valid, token } = record;
+
+    const isValidFlag = typeof valid === 'boolean' || typeof valid === 'undefined';
+    const isTokenValid = typeof token === 'string' || typeof token === 'undefined';
+
+    return isValidFlag && isTokenValid;
+  }
+
   /**
    * Get token from main authentication context
    */
@@ -551,8 +565,10 @@ export class ExtensionAuthManager {
         }
       );
 
-      if (result.data.valid && result.data.token) {
-        return result.data.token;
+      const { data } = result;
+
+      if (this.isSessionValidationResponse(data) && data.valid && data.token) {
+        return data.token;
       }
 
       return null;

@@ -7,7 +7,8 @@
  *  - Specific handling for auth & service-unavailable errors
  */
 
-import { featureFlagManager, extensionCache, CacheAwareDataFetcher } from "./index";
+import { featureFlagManager } from "./feature-flags";
+import { extensionCache, CacheAwareDataFetcher } from "./cache-manager";
 
 export interface EnhancedRequestOptions {
   endpoint: string;
