@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Enhanced badge variants using design tokens
-export const enhancedBadgeVariants = cva(
+const enhancedBadgeVariants = cva(
   [
     'inline-flex items-center gap-[var(--space-xs)]',
     'rounded-[var(--radius-full)] border',

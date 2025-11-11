@@ -11,7 +11,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 // Enhanced button variants using design tokens
-export const enhancedButtonVariants = cva(
+const enhancedButtonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2',
     'rounded-[var(--radius-md)] font-medium',
