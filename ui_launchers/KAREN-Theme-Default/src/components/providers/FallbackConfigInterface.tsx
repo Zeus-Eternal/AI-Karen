@@ -46,6 +46,14 @@ export interface TestResult {
   details: string;
 }
 
+const createEmptyChain = (): FallbackChain => ({
+  id: '',
+  name: '',
+  priority: 1,
+  providers: [],
+  conditions: [],
+});
+
 const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ className }) => {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<FallbackConfig[]>([]);
@@ -70,7 +78,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       const payload = response.data;
       const configList = Array.isArray(payload) ? payload : payload?.configs ?? [];
       setConfigs(configList);
-      setSelectedConfig(prev => prev ?? (configList[0] ?? null));
+      setSelectedConfig(prev => {
+        if (!prev) {
+          return configList[0] ?? null;
+        }
+        const matchingConfig = configList.find(config => config.id === prev.id);
+        return matchingConfig ?? (configList[0] ?? null);
+      });
     } catch (error) {
       console.error('Failed to load fallback configurations:', error);
       toast({
@@ -170,7 +184,11 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   };
 
   const deleteConfig = async (configId: string) => {
-    if (!confirm('Are you sure you want to delete this fallback configuration?')) return;
+    const shouldDelete = typeof window === 'undefined'
+      ? true
+      : window.confirm('Are you sure you want to delete this fallback configuration?');
+
+    if (!shouldDelete) return;
     try {
       await enhancedApiClient.delete(`/api/fallback/configs/${configId}`);
       setConfigs(prev => {
@@ -288,7 +306,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     onSave: (chain: FallbackChain) => void
   }> = ({ chain, onSave }) => {
     const [formData, setFormData] = useState<FallbackChain>(
-      chain || { id: '', name: '', priority: 1, providers: [], conditions: [] },
+      chain || createEmptyChain(),
     );
 
     useEffect(() => {
@@ -551,7 +569,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5 " />
@@ -572,7 +590,21 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                 }}
               >
                 <DialogTrigger asChild>
-                  <Button aria-label="Add new fallback chain">
+                  <Button
+                    aria-label="Add new fallback chain"
+                    onClick={(event) => {
+                      if (!selectedConfig) {
+                        event.preventDefault();
+                        toast({
+                          title: 'Select a configuration first',
+                          description: 'Choose a fallback configuration before adding a new chain.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      setEditingChain(null);
+                    }}
+                  >
                     <Plus className="w-4 h-4 mr-2 " />
                     New Chain
                   </Button>
@@ -587,6 +619,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
                           ? selectedConfig.chains.map(c => (c.id === editingChain.id ? { ...c, ...chain } : c))
                         : [...selectedConfig.chains, { ...chain, id: `chain-${Date.now()}` }],
                     };
+
                     saveConfig(updatedConfig);
                   }
                   setEditingChain(null);
@@ -597,6 +630,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
           </div>
         </CardHeader>
       </Card>
+
       {/* Analytics Overview */}
       {analytics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
