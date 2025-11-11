@@ -5,7 +5,7 @@
  * with support for multiple formats, filtering, and compliance requirements.
  */
 
-import {  AuditLog, AuditLogFilter, PaginationParams, ExportConfig } from '@/types/admin';
+import { AuditLog, AuditLogFilter, PaginationParams } from '@/types/admin';
 import { getAuditLogger, AuditLogger } from './audit-logger';
 import { AuditFilterBuilder } from './audit-filters';
 
@@ -40,6 +40,7 @@ export interface ExportResult {
   downloadUrl?: string;
   error?: string;
   duration_ms: number;
+  mimeType?: string;
 }
 
 /**
@@ -186,7 +187,8 @@ export class AuditLogExporter {
         filename: finalFilename,
         recordCount: logs.length,
         fileSize: Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content, 'utf8'),
-        duration_ms: Date.now() - startTime
+        duration_ms: Date.now() - startTime,
+        mimeType
       };
 
     } catch (error) {
@@ -245,14 +247,25 @@ export class AuditLogExporter {
 
     // Transform logs to include only specified fields
     const transformedLogs = logs.map(log => {
-      const transformed: Record<string, any> = {};
+      const transformed: Record<string, string> = {};
       fields.forEach(field => {
         transformed[field] = this.formatFieldValue(log, field, dateFormat);
       });
       return transformed;
     });
     // Add metadata if requested
-    const exportData: Record<string, any> = {
+    const exportData: {
+      logs: Record<string, string>[];
+      count: number;
+      exported_at: string;
+      metadata?: {
+        export_format: string;
+        fields_included: string[];
+        date_format: string;
+        timezone: string;
+        filter_applied: AuditLogFilter | {};
+      };
+    } = {
       logs: transformedLogs,
       count: logs.length,
       exported_at: new Date().toISOString()

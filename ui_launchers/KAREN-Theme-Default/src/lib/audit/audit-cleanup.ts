@@ -431,7 +431,7 @@ export class AuditCleanupManager {
         newest_archived: stats.newest_archived ? new Date(stats.newest_archived as string) : null,
         archive_size_mb: 0 // Would need to parse pg_size_pretty result
       };
-    } catch (error) {
+    } catch {
       return {
         total_archived: 0,
         oldest_archived: null,

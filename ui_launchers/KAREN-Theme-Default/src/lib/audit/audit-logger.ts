@@ -5,7 +5,7 @@
  * administrative actions, security events, and system changes.
  */
 
-import { AuditLog, AuditLogEntry, AuditLogFilter, PaginationParams, PaginatedResponse, User } from "@/types/admin";
+import { AuditLog, AuditLogEntry, AuditLogFilter, PaginationParams, PaginatedResponse } from "@/types/admin";
 import { getAdminDatabaseUtils } from "@/lib/database/admin-utils";
 import { NextRequest } from "next/server";
 

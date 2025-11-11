@@ -8,7 +8,7 @@
 import { useAppStore } from '@/store/app-store';
 
 // API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   status: 'success' | 'error' | 'warning';
@@ -139,7 +139,7 @@ export class ApiClient {
   }
 
   // Make HTTP request
-  public async request<T = any>(
+  public async request<T = unknown>(
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
@@ -269,11 +269,11 @@ export class ApiClient {
   }
 
   // HTTP method helpers
-  public async get<T = any>(endpoint: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async get<T = unknown>(endpoint: string, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: 'GET' });
   }
 
-  public async post<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async post<T = unknown>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'POST',
@@ -281,7 +281,7 @@ export class ApiClient {
     });
   }
 
-  public async put<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async put<T = unknown>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PUT',
@@ -289,7 +289,7 @@ export class ApiClient {
     });
   }
 
-  public async patch<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async patch<T = unknown>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PATCH',
@@ -297,12 +297,12 @@ export class ApiClient {
     });
   }
 
-  public async delete<T = any>(endpoint: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async delete<T = unknown>(endpoint: string, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' });
   }
 
   // Upload file
-  public async upload<T = any>(
+  public async upload<T = unknown>(
     endpoint: string,
     file: File,
     config?: Omit<RequestConfig, 'body'>
