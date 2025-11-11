@@ -2,6 +2,7 @@
 export { PageTransition } from './page-transition';
 export { RouteTransition } from './route-transition';
 export { TransitionProvider } from './transition-provider';
+export { useTransitionContext } from './transition-context';
 export { usePageTransition } from './use-page-transition';
 
 // Types Export

@@ -1,22 +1,9 @@
 "use client";
 
-import React, { createContext, useContext } from 'react';
-import { TransitionConfig, TransitionProviderProps } from './types';
-
-export interface TransitionContextType {
-  config: TransitionConfig;
-  updateConfig: (newConfig: Partial<TransitionConfig>) => void;
-}
-
-const TransitionContext = createContext<TransitionContextType | undefined>(undefined);
-
-export function useTransitionContext() {
-  const context = useContext(TransitionContext);
-  if (context === undefined) {
-    throw new Error('useTransitionContext must be used within a TransitionProvider');
-  }
-  return context;
-}
+import React from 'react';
+import { TransitionProviderProps } from './types';
+import type { TransitionConfig } from './types';
+import { TransitionContext, type TransitionContextType } from './transition-context';
 
 export function TransitionProvider({ 
   children, 
@@ -30,14 +17,17 @@ export function TransitionProvider({
     ...defaultConfig
   });
 
-  const updateConfig = (newConfig: Partial<TransitionConfig>) => {
+  const updateConfig = React.useCallback((newConfig: Partial<TransitionConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));
-  };
+  }, []);
 
-  const value = {
-    config,
-    updateConfig
-  };
+  const value = React.useMemo<TransitionContextType>(
+    () => ({
+      config,
+      updateConfig
+    }),
+    [config, updateConfig]
+  );
 
   return (
     <TransitionContext.Provider value={value}>
