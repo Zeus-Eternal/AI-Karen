@@ -374,7 +374,7 @@ export const validateTestEnvironment = () => {
 
   try {
     // Use dynamic import instead of require
-    import('@/contexts/AuthContext').then(({ useAuth }) => {
+    import('@/hooks/use-auth').then(({ useAuth }) => {
       if (!vi.isMockFunction(useAuth)) {
         // Not strictly required; some suites use real context.
         // We flag it for awareness only.

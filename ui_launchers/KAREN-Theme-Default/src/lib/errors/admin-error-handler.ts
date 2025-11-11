@@ -225,8 +225,8 @@ export class AdminErrorHandler {
     }
   };
   static createError(
-    code: string, 
-    details?: string, 
+    code: string,
+    details?: string,
     _context?: ErrorContext
   ): AdminError {
     const baseError = this.errorMap[code];
@@ -250,13 +250,15 @@ export class AdminErrorHandler {
     };
   }
   static fromHttpError(
-    status: number, 
-    response?: unknown, 
+    status: number,
+    response?: unknown,
     _context?: ErrorContext
   ): AdminError {
+    const responseMessage = this.extractResponseMessage(response);
+
     switch (status) {
       case 400:
-        return this.createError('VALIDATION_ERROR', response?.message);
+        return this.createError('VALIDATION_ERROR', responseMessage);
       case 401:
         return this.createError('AUTH_SESSION_EXPIRED');
       case 403:
@@ -264,14 +266,14 @@ export class AdminErrorHandler {
       case 404:
         return this.createError('USER_NOT_FOUND');
       case 409:
-        return this.createError('USER_EMAIL_EXISTS', response?.message);
+        return this.createError('USER_EMAIL_EXISTS', responseMessage);
       case 422:
-        return this.createError('VALIDATION_REQUIRED_FIELD', response?.message);
+        return this.createError('VALIDATION_REQUIRED_FIELD', responseMessage);
       case 429:
         return {
           code: 'RATE_LIMIT_EXCEEDED',
           message: 'Too many requests. Please wait before trying again.',
-          details: response?.message,
+          details: responseMessage,
           remediation: [
             'Wait a few minutes before trying again',
             'Reduce the frequency of your requests',
@@ -287,7 +289,7 @@ export class AdminErrorHandler {
       case 504:
         return this.createError('SYSTEM_NETWORK_ERROR');
       default:
-        return this.createError('UNKNOWN_ERROR', `HTTP ${status}: ${response?.message || 'Unknown error'}`);
+        return this.createError('UNKNOWN_ERROR', `HTTP ${status}: ${responseMessage || 'Unknown error'}`);
     }
   }
   static fromNetworkError(error: Error, _context?: ErrorContext): AdminError {
@@ -347,9 +349,25 @@ export class AdminErrorHandler {
         break;
     }
     // In production, send to error tracking service
-    if (typeof window !== 'undefined' && (window as unknown).errorTracker) {
-      (window as unknown).errorTracker.captureException(error, { extra: logData });
+    if (typeof window !== 'undefined') {
+      const globalWindow = window as typeof window & {
+        errorTracker?: { captureException: (err: AdminError, context: { extra: unknown }) => void };
+      };
+      globalWindow.errorTracker?.captureException(error, { extra: logData });
     }
+  }
+
+  private static extractResponseMessage(response?: unknown): string | undefined {
+    if (typeof response === 'string') {
+      return response;
+    }
+
+    if (response && typeof response === 'object' && 'message' in response) {
+      const message = (response as { message?: unknown }).message;
+      return typeof message === 'string' ? message : undefined;
+    }
+
+    return undefined;
   }
 }
 export default AdminErrorHandler;
