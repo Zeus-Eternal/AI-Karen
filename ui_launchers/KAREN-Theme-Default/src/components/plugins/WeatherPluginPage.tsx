@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import * as React from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,8 @@ import { CloudSun, AlertTriangle, Info, Save, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from '@/lib/types';
-import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
+import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from "@/lib/types";
+import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '../ui/separator';
 /**
@@ -22,31 +22,50 @@ import { Separator } from '../ui/separator';
  * responses are used. This page lets users set preferences for the future
  * full integration.
  */
-export default function WeatherPluginPage() {
-  const [settings, setSettings] = useState<Pick<KarenSettings, 'temperatureUnit' | 'weatherService' | 'weatherApiKey' | 'defaultWeatherLocation'>>({
-    temperatureUnit: DEFAULT_KAREN_SETTINGS.temperatureUnit,
-    weatherService: DEFAULT_KAREN_SETTINGS.weatherService,
-    weatherApiKey: DEFAULT_KAREN_SETTINGS.weatherApiKey,
-    defaultWeatherLocation: DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
-  });
+const useInitialSettings = () =>
+  useMemo<Pick<
+    KarenSettings,
+    "temperatureUnit" | "weatherService" | "weatherApiKey" | "defaultWeatherLocation"
+  >>(() => {
+    const fallbackSettings = {
+      temperatureUnit: DEFAULT_KAREN_SETTINGS.temperatureUnit,
+      weatherService: DEFAULT_KAREN_SETTINGS.weatherService,
+      weatherApiKey: DEFAULT_KAREN_SETTINGS.weatherApiKey,
+      defaultWeatherLocation: DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
+    };
 
-  const { toast } = useToast();
-  useEffect(() => {
+    if (typeof window === "undefined") {
+      return fallbackSettings;
+    }
+
     try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      if (storedSettingsStr) {
-        const parsedSettings: Partial<KarenSettings> = JSON.parse(storedSettingsStr);
-        setSettings(prev => ({
-          ...prev,
-          temperatureUnit: parsedSettings.temperatureUnit || DEFAULT_KAREN_SETTINGS.temperatureUnit,
-          weatherService: parsedSettings.weatherService || DEFAULT_KAREN_SETTINGS.weatherService,
-          weatherApiKey: parsedSettings.weatherApiKey || DEFAULT_KAREN_SETTINGS.weatherApiKey,
-          defaultWeatherLocation: parsedSettings.defaultWeatherLocation || DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
-        }));
+      const storedSettingsStr = window.localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+      if (!storedSettingsStr) {
+        return fallbackSettings;
       }
+
+      const parsedSettings: Partial<KarenSettings> = JSON.parse(storedSettingsStr);
+      return {
+        temperatureUnit:
+          parsedSettings.temperatureUnit ?? DEFAULT_KAREN_SETTINGS.temperatureUnit,
+        weatherService:
+          parsedSettings.weatherService ?? DEFAULT_KAREN_SETTINGS.weatherService,
+        weatherApiKey:
+          parsedSettings.weatherApiKey ?? DEFAULT_KAREN_SETTINGS.weatherApiKey,
+        defaultWeatherLocation:
+          parsedSettings.defaultWeatherLocation ?? DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
+      };
     } catch (error) {
+      console.warn("Failed to parse stored weather settings", error);
+      return fallbackSettings;
     }
   }, []);
+
+export default function WeatherPluginPage() {
+  const initialSettings = useInitialSettings();
+  const [settings, setSettings] = useState(initialSettings);
+
+  const { toast } = useToast();
   const handleUnitChange = (unit: TemperatureUnit) => {
     setSettings(prev => ({ ...prev, temperatureUnit: unit }));
   };
@@ -60,7 +79,7 @@ export default function WeatherPluginPage() {
   };
   const savePreferences = () => {
     try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+      const storedSettingsStr = window.localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       let currentFullSettings: KarenSettings = { ...DEFAULT_KAREN_SETTINGS };
       if (storedSettingsStr) {
         currentFullSettings = { ...currentFullSettings, ...JSON.parse(storedSettingsStr) };
@@ -74,12 +93,13 @@ export default function WeatherPluginPage() {
           : null,
         defaultWeatherLocation: settings.defaultWeatherLocation,
       };
-      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedSettings));
+      window.localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedSettings));
       toast({
         title: "Weather Preferences Saved",
         description: "Your weather service settings have been updated.",
       });
     } catch (error) {
+      console.error("Failed to save weather preferences", error);
       toast({
         variant: "destructive",
         title: "Save Error",

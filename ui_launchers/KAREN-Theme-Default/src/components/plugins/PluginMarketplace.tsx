@@ -2,18 +2,10 @@
 
 import React, { useState } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { VerticalSeparator } from "./utils/vertical-separator";
 
 import {
@@ -273,8 +265,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedPlugin, setSelectedPlugin] =
     useState<PluginMarketplaceEntry | null>(null);
-  const [showOnlyFree, setShowOnlyFree] = useState(false);
-  const [showOnlyVerified, setShowOnlyVerified] = useState(false);
+  const [showOnlyFree] = useState(false);
+  const [showOnlyVerified] = useState(false);
 
   const openExternalLink = (url: string) => {
     if (typeof window !== "undefined") {
