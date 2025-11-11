@@ -46,7 +46,13 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
       return;
     }
 
-    setHistoricalMetrics(prevHistory => [...prevHistory.slice(-19), metrics]);
+    const frameId = requestAnimationFrame(() => {
+      setHistoricalMetrics(prevHistory => [...prevHistory.slice(-19), metrics]);
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
   }, [metrics]);
 
   useEffect(() => {
