@@ -260,7 +260,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       await onSave(config);
       setValidationErrors([]);
       setIsDirty(false);
-    } catch (error) {
+    } catch {
       setValidationErrors([{
         field: '_global',
         message: 'Failed to save configuration. Please try again.',

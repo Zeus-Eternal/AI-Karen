@@ -176,7 +176,12 @@ export default function GmailPluginPage() {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="gmail-signature">Default Email Signature</Label>
-            <textarea id="gmail-signature" placeholder="e.g., Best regards, [Your Name]" rows={3} disabled />
+            <Textarea
+              id="gmail-signature"
+              placeholder="e.g., Best regards, [Your Name]"
+              rows={3}
+              disabled
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="gmail-notifications">Notification Preferences for Gmail</Label>
