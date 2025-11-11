@@ -2,7 +2,7 @@
  * Base service class with common utilities and constants
  */
 
-import { safeError, safeLog } from "@/lib/safe-console";
+import { safeError, safeLog } from "../safe-console";
 import { MemoryCache, CacheKeyGenerator } from "./utils/cache-utils";
 import { formatMemorySize } from "./utils/resource-utils";
 import {
@@ -31,7 +31,7 @@ export abstract class BaseModelService {
 
   // Service state
   protected readonly serviceName: string;
-  protected readonly cache: MemoryCache<any>;
+  protected readonly cache: MemoryCache<unknown>;
   protected isInitialized = false;
   protected isShuttingDown = false;
 
@@ -67,7 +67,7 @@ export abstract class BaseModelService {
    */
   protected generateModelName(
     filename: string,
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
   ): string {
     // Remove file extension
     let name = filename.replace(/\.(gguf|bin|safetensors)$/i, "");
@@ -94,7 +94,7 @@ export abstract class BaseModelService {
    * Generate model description from metadata
    */
   protected generateModelDescription(
-    metadata: Record<string, any>,
+    metadata: Record<string, unknown>,
     _type: string
   ): string {
     const parts: string[] = [];
@@ -215,7 +215,7 @@ export abstract class BaseModelService {
     delayMs: number = this.RETRY_DELAY_MS,
     operationName?: string
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -266,7 +266,7 @@ export abstract class BaseModelService {
   ): Promise<T> {
     const cached = this.cache.get(key);
     if (cached !== undefined) {
-      return cached;
+      return cached as T;
     }
 
     const result = await computeFn();
@@ -314,9 +314,9 @@ export abstract class BaseModelService {
    * Handle errors consistently across services
    */
   protected handleError(
-    error: any,
+    error: unknown,
     context: string,
-    additionalInfo?: Record<string, any>
+    additionalInfo?: Record<string, unknown>
   ): void {
     const wrappedError = ErrorUtils.wrapError(
       error,
@@ -347,7 +347,7 @@ export abstract class BaseModelService {
   /**
    * Create a debounced version of a function
    */
-  protected debounce<T extends (...args: any[]) => any>(
+  protected debounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     waitMs: number = this.DEFAULT_DEBOUNCE_MS
   ): (...args: Parameters<T>) => void {
@@ -365,7 +365,7 @@ export abstract class BaseModelService {
   /**
    * Create a throttled version of a function
    */
-  protected throttle<T extends (...args: any[]) => any>(
+  protected throttle<T extends (...args: unknown[]) => unknown>(
     func: T,
     limitMs: number = 1000
   ): (...args: Parameters<T>) => void {
@@ -394,13 +394,8 @@ export abstract class BaseModelService {
     const worker = async () => {
       while (index < items.length) {
         const current = index++;
-        try {
-          const res = await operation(items[current]);
-          results[current] = res;
-        } catch (err) {
-          // Let the caller decide how to handle; rethrow to fail fast
-          throw err;
-        }
+        const res = await operation(items[current]);
+        results[current] = res;
       }
     };
 
@@ -435,29 +430,28 @@ export abstract class BaseModelService {
   ): Promise<{ result: T; duration: number }> {
     const startTime = Date.now();
 
-    try {
-      const result = await operation();
-      const duration = Date.now() - startTime;
-
-      if (operationName) {
-        this.log(`${operationName} completed in ${duration}ms`);
-      }
-
-      return { result, duration };
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      this.logError(
-        `${operationName || "Operation"} failed after ${duration}ms`,
-        error
-      );
-      throw error;
-    }
+    return operation()
+      .then((result) => {
+        const duration = Date.now() - startTime;
+        if (operationName) {
+          this.log(`${operationName} completed in ${duration}ms`);
+        }
+        return { result, duration };
+      })
+      .catch((error) => {
+        const duration = Date.now() - startTime;
+        this.logError(
+          `${operationName || "Operation"} failed after ${duration}ms`,
+          error
+        );
+        throw error;
+      });
   }
 
   /**
    * Create a circuit breaker for operations
    */
-  protected createCircuitBreaker<T extends (...args: any[]) => Promise<any>>(
+  protected createCircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>>(
     operation: T,
     failureThreshold: number = 5,
     resetTimeoutMs: number = 60000
@@ -509,11 +503,11 @@ export abstract class BaseModelService {
     batchSize: number = 10,
     maxWaitMs: number = 1000
   ): (item: T) => Promise<R> {
-    const queue: Array<{
-      item: T;
-      resolve: (result: R) => void;
-      reject: (error: any) => void;
-    }> = [];
+      const queue: Array<{
+        item: T;
+        resolve: (result: R) => void;
+        reject: (error: unknown) => void;
+      }> = [];
 
     let batchTimeout: NodeJS.Timeout | null = null;
 
@@ -558,29 +552,30 @@ export abstract class BaseModelService {
   /**
    * Create a memoized version of an async function
    */
-  protected memoizeAsync<T extends (...args: any[]) => Promise<any>>(
+  protected memoizeAsync<T extends (...args: unknown[]) => Promise<unknown>>(
     func: T,
     keyGenerator?: (...args: Parameters<T>) => string,
     ttl?: number
   ): T {
-    const localCache = new MemoryCache<any>(ttl || this.CACHE_DURATION);
-    const pending = new Map<string, Promise<any>>();
+    type Result = Awaited<ReturnType<T>>;
+    const localCache = new MemoryCache<Result>(ttl || this.CACHE_DURATION);
+    const pending = new Map<string, Promise<Result>>();
 
     return (async (...args: Parameters<T>) => {
       const key = keyGenerator
         ? keyGenerator(...args)
-        : this.generateCacheKey(...args);
+        : this.generateCacheKey(...(args as (string | number | boolean | undefined | null)[]));
 
       const cached = localCache.get(key);
       if (cached !== undefined) {
-        return cached;
+        return cached as Awaited<ReturnType<T>>;
       }
 
       if (pending.has(key)) {
         return pending.get(key)!;
       }
 
-      const promise = func(...args)
+      const promise = (func(...args) as Promise<Result>)
         .then((result) => {
           localCache.set(key, result, ttl);
           pending.delete(key);
@@ -600,8 +595,8 @@ export abstract class BaseModelService {
    * Validate and sanitize input data
    */
   protected validateInput<T>(
-    input: any,
-    validator: (input: any) => input is T,
+    input: unknown,
+    validator: (input: unknown) => input is T,
     errorMessage: string = "Invalid input"
   ): T {
     if (!validator(input)) {
@@ -645,14 +640,14 @@ export abstract class BaseModelService {
   /**
    * Safe logging wrapper with service context
    */
-  protected log(message: string, ...args: any[]): void {
+  protected log(message: string, ...args: unknown[]): void {
     safeLog(`[${this.serviceName}] ${message}`, ...args);
   }
 
   /**
    * Safe error logging wrapper with service context
    */
-  protected logError(message: string, error?: any): void {
+  protected logError(message: string, error?: unknown): void {
     safeError(`[${this.serviceName}] ${message}`, error);
   }
 }

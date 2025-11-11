@@ -6,7 +6,7 @@ import { clearSession, isAuthenticated, validateSession } from './auth/session';
 export interface RequestInterceptor {
   onRequest?: (config: RequestInit) => Promise<RequestInit>;
   onResponse?: (response: Response) => Promise<Response>;
-  onError?: (error: any) => Promise<any>;
+  onError?: (error: Error) => Promise<unknown>;
 }
 class AuthInterceptor implements RequestInterceptor {
   private refreshInProgress = false;
@@ -40,9 +40,10 @@ class AuthInterceptor implements RequestInterceptor {
     }
     return response;
   }
-  async onError(error: any): Promise<any> {
+  async onError(error: Error): Promise<Response> {
     // Handle network errors that might be auth-related
-    if (error.status === 401 || error.message?.includes('401')) {
+    const errorWithStatus = error as Error & { status?: number };
+    if (errorWithStatus.status === 401 || error.message?.includes('401')) {
       // Clear session and redirect to login
       clearSession();
       if (typeof window !== 'undefined') {
@@ -76,7 +77,7 @@ export async function authenticatedFetch(
     return await authInterceptor.onResponse(response);
   } catch (error) {
     // Apply error interceptor
-    return await authInterceptor.onError(error);
+    return await authInterceptor.onError(error as Error);
   }
 }
 /**

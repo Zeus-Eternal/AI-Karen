@@ -39,7 +39,7 @@ export interface WithIntelligentErrorOptions extends UseIntelligentErrorOptions 
   /** Props passed to IntelligentErrorPanel (partial override) */
   errorPanelProps?: Partial<IntelligentErrorPanelProps>;
   /** Custom error detection function */
-  detectError?: (props: any, prevProps?: any) => Error | string | null;
+  detectError?: (props: Record<string, unknown>, prevProps?: unknown) => Error | string | null;
   /** Whether to monitor prop changes for errors */
   monitorProps?: boolean;
   /** Props to monitor for error conditions */
@@ -56,7 +56,7 @@ export interface WithIntelligentErrorProps {
   /** Called when the error panel is dismissed */
   onErrorDismiss?: () => void;
   /** Additional context for error analysis */
-  errorContext?: Record<string, any>;
+  errorContext?: Record<string, unknown>;
   /** Optional unique id to improve stabilization between re-renders */
   errorContextId?: string | number;
 }
@@ -121,7 +121,7 @@ export function withIntelligentError<P extends object>(
 
     // Memoize component label for context
     const componentLabel = useMemo(
-      () => WrappedComponent.displayName || (WrappedComponent as any).name || "AnonymousComponent",
+      () => WrappedComponent.displayName || (WrappedComponent as unknown).name || "AnonymousComponent",
       []
     );
 
@@ -133,7 +133,7 @@ export function withIntelligentError<P extends object>(
         intelligentErrorOptions.onAnalysisComplete?.(analysis);
         // Best-effort telemetry
         try {
-          const anyWindow = window as any;
+          const anyWindow = window as unknown;
           anyWindow?.dispatchEvent?.(
             new CustomEvent("kari:intelligent-error", {
               detail: {
@@ -170,7 +170,7 @@ export function withIntelligentError<P extends object>(
       // 3) Scan known error-ish props
       else if (monitorProps && errorProps.length > 0) {
         for (const key of errorProps) {
-          const val = (props as any)[key];
+          const val = (props as unknown)[key];
           if (!val) continue;
 
           if (typeof val === "string" || val instanceof Error) {
@@ -186,7 +186,7 @@ export function withIntelligentError<P extends object>(
               "message",
             ];
             const msg = msgKeyCandidates
-              .map((k) => (props as any)[k])
+              .map((k) => (props as unknown)[k])
               .find((m) => typeof m === "string" && m.trim().length > 0);
             errorToAnalyze = (msg as string) || `Error detected in ${key}`;
             break;

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Globe, Check } from "lucide-react";
-import { useLocale, useI18n } from "../../providers/i18n-provider";
+import { useLocale, useI18n } from "../../providers/i18n-hooks";
 import { cn } from "../../lib/utils";
 
 export interface LanguageSelectorProps {

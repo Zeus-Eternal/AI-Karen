@@ -70,11 +70,11 @@ function AuthenticatedHomePage() {
   };
 
   const [activeMainView, setActiveMainView] = useState<ActiveView>(() =>
-    parseView(searchParams as any)
+    parseView(searchParams as unknown)
   );
 
   useEffect(() => {
-    const currentView = parseView(searchParams as any);
+    const currentView = parseView(searchParams as unknown);
     if (currentView !== activeMainView) {
       setActiveMainView(currentView);
     }

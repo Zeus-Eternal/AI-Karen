@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
 // import { CopilotSidebar } from '@copilotkit/react-ui'; // Not available in current version
-import { useHooks } from '@/contexts/HookContext';
+import { useHooks } from '@/hooks/use-hooks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getConfigManager } from '@/lib/endpoint-config';
@@ -42,7 +42,7 @@ export interface CopilotContextType {
   updateConfig: (newConfig: Partial<CopilotKitConfig>) => void;
   toggleFeature: (feature: keyof CopilotKitConfig['features']) => void;
   getSuggestions: (context: string, type?: string) => Promise<any[]>;
-  analyzeCode: (code: string, language: string) => Promise<any>;
+  analyzeCode: (code: string, language: string) => Promise<unknown>;
   generateDocumentation: (code: string, language: string) => Promise<string>;
 }
 
@@ -163,19 +163,19 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     const hookIds: string[] = [];
 
     // Register suggestion hook
-    hookIds.push(registerHook('copilot_suggestion_request', async (context: any) => {
+    hookIds.push(registerHook('copilot_suggestion_request', async (context: unknown) => {
       safeDebug('CopilotKit suggestion requested:', context);
       return { success: true, provider: 'copilotkit' };
     }));
 
     // Register code analysis hook
-    hookIds.push(registerHook('copilot_code_analysis', async (context: any) => {
+    hookIds.push(registerHook('copilot_code_analysis', async (context: unknown) => {
       safeDebug('CopilotKit code analysis:', context);
       return { success: true, analysisType: context.type };
     }));
 
     // Register documentation generation hook
-    hookIds.push(registerHook('copilot_doc_generation', async (context: any) => {
+    hookIds.push(registerHook('copilot_doc_generation', async (context: unknown) => {
       safeDebug('CopilotKit documentation generation:', context);
       return { success: true, language: context.language };
     }));
@@ -245,7 +245,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     }
   };
 
-  const analyzeCode = async (code: string, language: string): Promise<any> => {
+  const analyzeCode = async (code: string, language: string): Promise<unknown> => {
     if (!config.features.debuggingAssistance) {
       throw new Error('Code analysis feature is disabled');
     }

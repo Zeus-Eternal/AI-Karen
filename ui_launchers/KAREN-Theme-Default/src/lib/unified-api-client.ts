@@ -11,7 +11,7 @@
  * - Correlation IDs propagated on responses
  */
 
-import { getApiClient, type ApiResponse, type ApiError, type ApiClient } from './api-client';
+import { getApiClient, type ApiClient } from './api-client';
 import { safeError } from './safe-console';
 import { getConfigManager } from './endpoint-config';
 
@@ -41,7 +41,7 @@ export interface CopilotAssistRequest {
   org_id?: string;
   message: string;
   top_k?: number;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   stream?: boolean;
 }
 
@@ -52,11 +52,11 @@ export interface CopilotAssistResponse {
     text: string;
     score: number;
     tags: string[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }>;
   actions: Array<{
     type: string;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
     confidence: number;
     description?: string;
   }>;
@@ -88,7 +88,7 @@ export interface MemorySearchResponse {
     decay_tier: string;
     created_at: string;
     updated_at?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }>;
   total_found: number;
   query_time_ms: number;
@@ -102,7 +102,7 @@ export interface MemoryCommitRequest {
   tags?: string[];
   importance?: number;
   decay?: 'short' | 'medium' | 'long' | 'pinned';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MemoryCommitResponse {
@@ -112,6 +112,25 @@ export interface MemoryCommitResponse {
   decay_tier_assigned: string;
   correlation_id: string;
 }
+
+interface MemoryUpdatePayload extends Partial<MemoryCommitRequest> {
+  id: string;
+}
+
+interface MemoryDeletePayload {
+  id: string;
+  user_id: string;
+  hard_delete?: boolean;
+  org_id?: string;
+}
+
+type BatchMemoryOperation =
+  | { type: 'search'; data: MemorySearchRequest }
+  | { type: 'commit'; data: MemoryCommitRequest }
+  | { type: 'update'; data: MemoryUpdatePayload }
+  | { type: 'delete'; data: MemoryDeletePayload };
+
+type BatchOperationType = BatchMemoryOperation['type'];
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -227,16 +246,13 @@ export class UnifiedApiClient {
   }
 
   async batchMemoryOperations(
-    operations: Array<{
-      type: 'search' | 'commit' | 'update' | 'delete';
-      data: any;
-    }>
-  ): Promise<Array<{ success: boolean; result?: any; error?: string }>> {
-    const results: Array<{ success: boolean; result?: any; error?: string }> = [];
+    operations: BatchMemoryOperation[]
+  ): Promise<Array<{ success: boolean; result?: unknown; error?: string }>> {
+    const results: Array<{ success: boolean; result?: unknown; error?: string }> = [];
 
     for (const op of operations) {
       try {
-        let result: any;
+        let result: unknown;
         switch (op.type) {
           case 'search':
             result = await this.memorySearch(op.data);
@@ -245,13 +261,19 @@ export class UnifiedApiClient {
             result = await this.memoryCommit(op.data);
             break;
           case 'update':
-            result = await this.memoryUpdate(op.data.id, op.data);
+            {
+              const { id, ...updates } = op.data;
+              result = await this.memoryUpdate(id, updates);
+            }
             break;
           case 'delete':
-            result = await this.memoryDelete(op.data.id, op.data);
+            {
+              const { id, ...options } = op.data;
+              result = await this.memoryDelete(id, options);
+            }
             break;
           default:
-            throw new Error(`Unknown operation type: ${op.type}`);
+            throw new Error(`Unknown operation type: ${(op as { type: string }).type}`);
         }
         results.push({ success: true, result });
       } catch (err) {
@@ -345,7 +367,7 @@ export class UnifiedApiClient {
     for (const url of urls) {
       try {
         const res = await this.requestWithRetry<T>(url, method, body, opName);
-        this.logSuccess(opName, res as any);
+        this.logSuccess(opName, res as unknown);
         return res;
       } catch (err) {
         errors.push({ url, error: err });
@@ -445,7 +467,7 @@ export class UnifiedApiClient {
     return this.config.enableFallback ? urls : urls.slice(0, 1);
   }
 
-  private validateRequest(request: any, requiredFields: string[]): void {
+  private validateRequest(request: unknown, requiredFields: string[]): void {
     for (const field of requiredFields) {
       if (!request || request[field] == null || request[field] === '') {
         throw new Error(`Missing required field: ${field}`);
@@ -494,17 +516,10 @@ export class UnifiedApiClient {
   }
 
   private extractCorrelation(value: unknown): Record<string, unknown> | undefined {
-    try {
-      if (value && typeof value === 'object' && 'correlation_id' in (value as any)) {
-        return { correlation_id: (value as any).correlation_id };
-      }
-    } catch {
-      // ignore
-    }
-    return undefined;
+    return hasCorrelationId(value) ? { correlation_id: value.correlation_id } : undefined;
   }
 
-  private createUserFriendlyError(error: any, defaultMessage: string): Error {
+  private createUserFriendlyError(error: unknown, defaultMessage: string): Error {
     const msg = error instanceof Error ? error.message : String(error || '');
     const low = msg.toLowerCase();
 
@@ -534,6 +549,17 @@ export class UnifiedApiClient {
 
     return new Error(defaultMessage);
   }
+}
+
+function hasCorrelationId(value: unknown): value is { correlation_id: string } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    'correlation_id' in candidate &&
+    typeof candidate.correlation_id === 'string'
+  );
 }
 
 // -------------------- SINGLETON ACCESSORS --------------------

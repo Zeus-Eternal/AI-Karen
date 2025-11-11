@@ -182,15 +182,15 @@ export class ErrorBoundary extends Component<Props, State> {
             <table className="simple-table">
               <thead>
                 <tr>
-                  {columns.map((col: any, index: number) => (
+                  {columns.map((col: unknown, index: number) => (
                     <th key={index}>{col.headerName || col.field}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {data.map((row: any, rowIndex: number) => (
+                {data.map((row: unknown, rowIndex: number) => (
                   <tr key={rowIndex}>
-                    {columns.map((col: any, colIndex: number) => (
+                    {columns.map((col: unknown, colIndex: number) => (
                       <td key={colIndex}>{row[col.field] || '-'}</td>
                     ))}
                   </tr>

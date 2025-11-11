@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {  useKeyboardShortcuts, type KeyboardShortcutConfig, type KeyboardShortcutHandler } from './use-keyboard-shortcuts';
+import { useKeyboardShortcuts, type KeyboardShortcutConfig } from './use-keyboard-shortcuts';
 
 export interface EnhancedKeyboardShortcutConfig extends KeyboardShortcutConfig {
   /** Whether this shortcut should be announced to screen readers */
@@ -34,9 +34,14 @@ export const useEnhancedKeyboardShortcuts = (
   context: KeyboardShortcutContext
 ) => {
   const [activeShortcuts, setActiveShortcuts] = useState<KeyboardShortcutConfig[]>([]);
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Filter and sort shortcuts based on context and priority
   useEffect(() => {
+    if (updateTimerRef.current) {
+      clearTimeout(updateTimerRef.current);
+    }
+
     const filtered = shortcuts
       .filter(shortcut => {
         if (!context.enabled) return false;
@@ -61,7 +66,16 @@ export const useEnhancedKeyboardShortcuts = (
         }
       }));
 
-    setActiveShortcuts(filtered);
+    updateTimerRef.current = setTimeout(() => {
+      setActiveShortcuts(filtered);
+    }, 0);
+
+    return () => {
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+        updateTimerRef.current = null;
+      }
+    };
   }, [shortcuts, context]);
 
   useKeyboardShortcuts(activeShortcuts, context.enabled);
@@ -381,7 +395,10 @@ export const useEscapeKeyHandler = (
   enabled: boolean = true
 ) => {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     if (!enabled) return;

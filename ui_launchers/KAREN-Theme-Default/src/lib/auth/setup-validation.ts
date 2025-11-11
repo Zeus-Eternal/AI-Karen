@@ -6,6 +6,10 @@
 import type { CreateSuperAdminRequest, SetupValidationErrors } from '@/types/admin';
 import { FormValidator } from '@/lib/form-validator';
 
+const SPECIAL_CHARACTERS = '!@#$%^&*()_+-=[]{};\':"\\|,.<>/?';
+const hasSpecialCharacter = (value: string): boolean =>
+  value.split('').some(char => SPECIAL_CHARACTERS.includes(char));
+
 /**
  * Strong password validation rules for super admin setup
  */
@@ -35,7 +39,7 @@ export const SUPER_ADMIN_PASSWORD_RULES = [
     message: 'Password must contain at least one number'
   },
   {
-    validate: (value: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value),
+    validate: hasSpecialCharacter,
     message: 'Password must contain at least one special character'
   },
   {
@@ -115,7 +119,7 @@ export const FULL_NAME_RULES = [
     message: 'Full name is too long (maximum 100 characters)'
   },
   {
-    validate: (value: string) => /^[a-zA-Z\s\-'\.]+$/.test(value.trim()),
+    validate: (value: string) => /^[a-zA-Z\s'.-]+$/.test(value.trim()),
     message: 'Full name can only contain letters, spaces, hyphens, apostrophes, and periods'
   }
 ];
@@ -218,7 +222,7 @@ export function calculatePasswordStrength(password: string): {
   if (/\d/.test(password)) score += 1;
   else feedback.push('Add numbers');
 
-  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 2;
+  if (hasSpecialCharacter(password)) score += 2;
   else feedback.push('Add special characters');
 
   // Bonus points for extra length
@@ -307,7 +311,7 @@ export function validateEmailFormat(email: string): {
   }
 
   // Check for valid domain format
-  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   if (!domainRegex.test(domain)) {
     return { isValid: false, error: 'Email domain format is invalid' };
   }
@@ -357,7 +361,7 @@ export function verifyEmailVerificationToken(token: string): {
     }
     
     return { isValid: true, email: decoded.email };
-  } catch (error) {
+  } catch {
     return { isValid: false, error: 'Invalid token format' };
   }
 }

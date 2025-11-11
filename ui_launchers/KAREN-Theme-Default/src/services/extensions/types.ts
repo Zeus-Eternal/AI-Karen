@@ -1,12 +1,12 @@
 // API types for extension services
 
-export interface ExtensionAPIResponse<T = any> {
+export interface ExtensionAPIResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   meta?: {
     total?: number;
@@ -18,8 +18,8 @@ export interface ExtensionAPIResponse<T = any> {
 export interface ExtensionAPIRequest {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   endpoint: string;
-  data?: any;
-  params?: Record<string, any>;
+  data?: unknown;
+  params?: Record<string, unknown>;
   headers?: Record<string, string>;
 }
 
@@ -78,33 +78,33 @@ export interface ExtensionHealthSummary {
 export interface ExtensionInstallRequest {
   extensionId: string;
   version?: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   permissions?: string[];
 }
 
 export interface ExtensionUpdateRequest {
   extensionId: string;
   version?: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface ExtensionConfigRequest {
   extensionId: string;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   validate?: boolean;
 }
 
 export interface ExtensionControlRequest {
   extensionId: string;
   action: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 // WebSocket event types for real-time updates
 export interface ExtensionWebSocketEvent {
   type: 'extension_status' | 'extension_installed' | 'extension_updated' | 'extension_error';
   extensionId: string;
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 

@@ -124,10 +124,12 @@ export const correlationTracker = CorrelationTracker.getInstance();
 /**
  * Decorator for adding correlation tracking to methods
  */
-export function withCorrelation(target: any, propertyName: string, descriptor: PropertyDescriptor) {
-  const method = descriptor.value;
-  
-  descriptor.value = function (...args: any[]) {
+type AnyFunction = (...args: unknown[]) => unknown;
+
+export function withCorrelation(target: unknown, propertyName: string, descriptor: PropertyDescriptor) {
+  const method = descriptor.value as AnyFunction;
+
+  descriptor.value = function (...args: unknown[]) {
     const correlationId = correlationTracker.generateCorrelationId();
     return correlationTracker.withCorrelation(correlationId, () => {
       return method.apply(this, args);
@@ -138,12 +140,12 @@ export function withCorrelation(target: any, propertyName: string, descriptor: P
 /**
  * Decorator for adding correlation tracking to async methods
  */
-export function withCorrelationAsync(target: any, propertyName: string, descriptor: PropertyDescriptor) {
-  const method = descriptor.value;
-  
-  descriptor.value = async function (...args: any[]) {
+export function withCorrelationAsync(target: unknown, propertyName: string, descriptor: PropertyDescriptor) {
+  const method = descriptor.value as (...args: unknown[]) => Promise<unknown>;
+
+  descriptor.value = async function (...args: unknown[]) {
     const correlationId = correlationTracker.generateCorrelationId();
-    return await correlationTracker.withCorrelationAsync(correlationId, () => {
+    return correlationTracker.withCorrelationAsync(correlationId, () => {
       return method.apply(this, args);
     });
   };

@@ -83,7 +83,7 @@ export interface HardwareRecommendations {
   recommended_mixed_precision?: boolean;
   recommended_use_flash_attention?: boolean;
   recommended_attention_implementation?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MultiGpuConfig {
@@ -96,8 +96,8 @@ export interface MultiGpuConfig {
   }>;
   total_memory_gb: number;
   recommended_strategy: string;
-  device_map: any;
-  load_balancing: any;
+  device_map: unknown;
+  load_balancing: unknown;
 }
 
 export interface TransformerModelConfigProps {
@@ -108,7 +108,7 @@ export interface TransformerModelConfigProps {
   onSave: () => void;
   onReset: () => void;
   saving?: boolean;
-  validationResult?: any;
+  validationResult?: unknown;
 }
 
 export default function TransformerModelConfig({
@@ -158,7 +158,7 @@ export default function TransformerModelConfig({
     }
   };
 
-  const updateConfigValue = (key: string, value: any) => {
+  const updateConfigValue = (key: string, value: unknown) => {
     const newConfig = { ...configuration, [key]: value };
     onConfigurationChange(newConfig);
   };

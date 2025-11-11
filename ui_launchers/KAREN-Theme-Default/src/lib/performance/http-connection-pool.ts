@@ -47,7 +47,7 @@ export interface QueuedRequest {
   url: string;
   options: RequestInit;
   resolve: (response: Response) => void;
-  reject: (error: Error) => void;
+  reject: (_error: Error) => void;
   queuedAt: Date;
   timeout: number;
 }
@@ -228,7 +228,7 @@ export class HttpConnectionPool {
   /**
    * Create a new connection
    */
-  private async createConnection(host: string, url: string): Promise<PooledConnection> {
+  private async createConnection(host: string, _url: string): Promise<PooledConnection> {
     const connection: PooledConnection = {
       id: `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       url: host,
@@ -328,7 +328,7 @@ export class HttpConnectionPool {
   /**
    * Handle connection errors
    */
-  private handleConnectionError(host: string, error: Error): void {
+  private handleConnectionError(host: string, _error: Error): void {
     // Remove failed connections
     const hostConnections = this.connections.get(host) || [];
     const validConnections = hostConnections.filter(conn => !conn.isActive);
@@ -351,9 +351,9 @@ export class HttpConnectionPool {
   /**
    * Get host from URL
    */
-  private getHostFromUrl(url: string): string {
+  private getHostFromUrl(_url: string): string {
     try {
-      const urlObj = new URL(url);
+      const urlObj = new URL(_url);
       return `${urlObj.protocol}//${urlObj.host}`;
     } catch {
       // Fallback for relative URLs
@@ -446,7 +446,7 @@ let connectionPool: HttpConnectionPool | null = null;
 export function getHttpConnectionPool(): HttpConnectionPool {
   if (!connectionPool) {
     // Get configuration from environment
-    const configManager = getEnvironmentConfigManager();
+    const _configManager = getEnvironmentConfigManager();
     const timeoutManager = getTimeoutManager();
     const config: Partial<ConnectionPoolConfig> = {
       connectionTimeout: timeoutManager.getTimeout(OperationType.CONNECTION),

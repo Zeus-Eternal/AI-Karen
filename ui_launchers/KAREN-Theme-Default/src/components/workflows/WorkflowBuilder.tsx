@@ -33,7 +33,7 @@ import { WorkflowValidator } from './WorkflowValidator';
 export interface WorkflowBuilderProps {
   workflow?: WorkflowDefinition;
   onSave?: (workflow: WorkflowDefinition) => void;
-  onTest?: (workflow: WorkflowDefinition) => Promise<any>;
+  onTest?: (workflow: WorkflowDefinition) => Promise<unknown>;
   readOnly?: boolean;
   className?: string;
 }

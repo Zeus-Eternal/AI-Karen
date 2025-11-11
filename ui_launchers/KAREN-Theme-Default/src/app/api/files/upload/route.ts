@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(upstreamResp.status),
       },
     });
-  } catch (err: any) {
+  } catch (err: Error) {
     const isAbort = err?.name === 'AbortError';
     return NextResponse.json(
       {

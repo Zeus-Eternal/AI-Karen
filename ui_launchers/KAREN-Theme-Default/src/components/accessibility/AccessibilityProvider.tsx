@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAccessibility } from '../../providers/accessibility-provider';
+import { useAccessibility } from '../../providers/accessibility-hooks';
 
 interface AccessibilityEnhancementsContextValue {
   // High contrast mode

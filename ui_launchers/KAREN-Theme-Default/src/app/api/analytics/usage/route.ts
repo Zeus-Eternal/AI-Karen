@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
             method: 'GET',
             headers: fwdHeaders,
             signal: controller.signal,
-            // @ts-ignore keepalive is supported in Node/undici and Edge runtimes
+            // @ts-expect-error keepalive is supported in Node/undici and Edge runtimes
             keepalive: true,
             cache: 'no-store',
           });
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
           lastErr = err;
 
           const msg = String((err as Error)?.message ?? err);
-          const isAbort = (err as any)?.name === 'AbortError';
+          const isAbort = (err as unknown)?.name === 'AbortError';
           const isSocket =
             msg.includes('UND_ERR_SOCKET') ||
             msg.includes('other side closed') ||
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     // Parse upstream payload
     const contentType = upstreamResponse.headers.get('content-type') ?? '';
-    let data: any;
+    let data: unknown;
 
     if (contentType.includes('application/json')) {
       try {
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     // Forward Set-Cookie (array or single) if upstream set any session context
     try {
       const cookies: string[] = [];
-      const hdrsAny = upstreamResponse.headers as any;
+      const hdrsAny = upstreamResponse.headers as unknown;
       if (typeof hdrsAny.entries === 'function') {
         for (const [k, v] of hdrsAny.entries()) {
           if (String(k).toLowerCase() === 'set-cookie' && v) cookies.push(String(v));
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     res.headers.set('X-Proxy-Cache', 'no-store');
 
     return res;
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json(
       {
         error: 'Internal server error',

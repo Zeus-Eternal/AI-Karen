@@ -114,7 +114,7 @@ const WorkflowMonitor: React.FC = () => {
       const workflows = data.workflows || [];
       
       // Calculate additional metrics for each workflow
-      const statusData = workflows.map((workflow: any) => {
+      const statusData = workflows.map((workflow: unknown) => {
         const workflowExecutions = executions.filter(e => e.workflow_id === workflow.id);
         const avgDuration = workflowExecutions.length > 0 
           ? workflowExecutions.reduce((sum, e) => sum + e.duration, 0) / workflowExecutions.length

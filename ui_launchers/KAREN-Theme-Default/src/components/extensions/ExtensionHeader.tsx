@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 import ExtensionBreadcrumbs from "./ExtensionBreadcrumbs";
 import ExtensionStats from "./ExtensionStats";
-import { useExtensionContext } from "@/extensions/ExtensionContext";
+import { useExtensionContext } from "@/hooks/use-extension-context";
 import type { ExtensionCategory } from "@/extensions";
 
 export default function ExtensionHeader() {

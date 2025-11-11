@@ -203,7 +203,7 @@ class PerformanceMonitor {
           console[level](`Karen Performance: ${alert.message}`, {
             type: alert.type,
             severity: alert.severity,
-            endpoint: (alert.metrics as any)?.endpoint ?? 'unknown',
+            endpoint: (alert.metrics as any)?.endpoint ?? 'any',
           });
         });
     } else {
@@ -211,7 +211,7 @@ class PerformanceMonitor {
       console[level](`Karen Performance: ${alert.message}`, {
         type: alert.type,
         severity: alert.severity,
-        endpoint: (alert.metrics as any)?.endpoint ?? 'unknown',
+        endpoint: (alert.metrics as any)?.endpoint ?? 'any',
       });
     }
 
@@ -402,7 +402,7 @@ class PerformanceMonitor {
         ? input
         : input instanceof URL
         ? input.toString()
-        : (input as Request).url ?? 'unknown';
+        : (input as Request).url ?? 'any';
 
     const method =
       (init?.method || (input as Request)?.method || 'GET').toUpperCase();
@@ -423,9 +423,9 @@ class PerformanceMonitor {
       this.recordRequest(endpoint, method, start, end, status, size);
 
       return res;
-    } catch (e: any) {
+    } catch (e: unknown) {
       status = 0; // network error
-      errMsg = e?.message ?? String(e);
+      errMsg = e instanceof Error ? e.message : String(e);
       const end = performance.now();
       this.recordRequest(endpoint, method, start, end, status, size, errMsg);
       throw e;

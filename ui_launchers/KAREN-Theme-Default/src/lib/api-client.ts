@@ -20,11 +20,12 @@ export interface ApiResponse<T = any> {
   };
 }
 
-export interface ApiError {
+export interface ApiError extends Error {
+  name: string;
   message: string;
   code?: string;
   status?: number;
-  details?: any;
+  details?: unknown;
 }
 
 // Request configuration
@@ -183,6 +184,7 @@ export class ApiClient {
         if (!finalResponse.ok) {
           const errorData = await this.parseErrorResponse(finalResponse);
           const apiError: ApiError = {
+            name: "ApiError",
             message: errorData.message || `HTTP ${finalResponse.status}`,
             code: errorData.code,
             status: finalResponse.status,
@@ -209,36 +211,42 @@ export class ApiClient {
         const data = await this.parseResponse<T>(finalResponse);
         return data;
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
 
+        const err = error as Error & { name?: string; code?: string };
+        
         // Handle abort error (timeout)
-        if (error.name === 'AbortError') {
+        if (err.name === 'AbortError') {
           lastError = {
+            name: 'ApiError',
             message: 'Request timeout',
             code: 'TIMEOUT',
             status: 408,
           };
-        } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        } else if (error instanceof TypeError && err.message.includes('fetch')) {
           // Network error
           lastError = {
+            name: 'ApiError',
             message: 'Network error',
             code: 'NETWORK_ERROR',
             status: 0,
           };
-        } else if (error.message || error.code) {
+        } else if (err.message || err.code) {
           // API error
-          lastError = error;
+          lastError = err as ApiError;
         } else {
           // Unknown error
           lastError = {
+            name: 'ApiError',
             message: 'An unexpected error occurred',
             code: 'UNKNOWN_ERROR',
           };
         }
 
         // Don't retry on certain errors
-        if (error.code === 'TIMEOUT' || (error.status && error.status >= 400 && error.status < 500)) {
+        const errorObj = error as { code?: string; status?: number };
+        if (errorObj.code === 'TIMEOUT' || (errorObj.status && errorObj.status >= 400 && errorObj.status < 500)) {
           break;
         }
 
@@ -265,7 +273,7 @@ export class ApiClient {
     return this.request<T>(endpoint, { ...config, method: 'GET' });
   }
 
-  public async post<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async post<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'POST',
@@ -273,7 +281,7 @@ export class ApiClient {
     });
   }
 
-  public async put<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async put<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PUT',
@@ -281,7 +289,7 @@ export class ApiClient {
     });
   }
 
-  public async patch<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  public async patch<T = any>(endpoint: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PATCH',
@@ -339,12 +347,13 @@ export class ApiClient {
   }
 
   // Parse error response
-  private async parseErrorResponse(response: Response): Promise<any> {
+  private async parseErrorResponse(response: Response): Promise<{ message?: string; code?: string; details?: unknown }> {
     try {
       const contentType = response.headers.get('content-type');
       
       if (contentType && contentType.includes('application/json')) {
-        return await response.json();
+        const jsonData = await response.json();
+        return jsonData as { message?: string; code?: string; details?: unknown };
       } else {
         const text = await response.text();
         return { message: text || response.statusText };
@@ -425,14 +434,14 @@ export const api = {
   providers: {
     getList: () => apiClient.get('/providers'),
     getProvider: (id: string) => apiClient.get(`/providers/${id}`),
-    updateProvider: (id: string, config: any) => apiClient.put(`/providers/${id}`, config),
+    updateProvider: (id: string, config: Record<string, unknown>) => apiClient.put(`/providers/${id}`, config),
   },
 
   // Users
   users: {
     getList: () => apiClient.get('/users'),
     getUser: (id: string) => apiClient.get(`/users/${id}`),
-    updateUser: (id: string, data: any) => apiClient.put(`/users/${id}`, data),
+    updateUser: (id: string, data: unknown) => apiClient.put(`/users/${id}`, data),
   },
 
   // System

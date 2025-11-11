@@ -51,7 +51,7 @@ export interface GenerationResult {
   mime_type: string;     // 'image/png', 'image/webp', 'image/jpeg'
   width: number;
   height: number;
-  stats?: Record<string, any>;
+  stats?: Record<string, unknown>;
 }
 
 export interface GenerationError {
@@ -62,7 +62,7 @@ export interface GenerationError {
   status?: number;
   code?: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export type GenerationResponse = GenerationResult | GenerationError;
@@ -176,18 +176,19 @@ export class ImageGenerationService {
         code: 'ALL_PROVIDERS_FAILED',
         message: 'All providers in the fallback chain failed to generate an image.'
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       const elapsed = Date.now() - started;
-      const message = (err?.name === 'AbortError')
+      const errorObj = err as { name?: string; message?: string };
+      const message = (errorObj?.name === 'AbortError')
         ? 'Overall image generation timed out.'
-        : (err?.message ?? String(err));
+        : (errorObj?.message ?? String(err));
       this.trace('timeout', correlation, { error: message, elapsed_ms: elapsed });
       return {
         ok: false,
         provider: providers[0]!,
         correlation_id: correlation,
         duration_ms: elapsed,
-        code: err?.name === 'AbortError' ? 'HARD_TIMEOUT' : 'UNCAUGHT_ERROR',
+        code: errorObj?.name === 'AbortError' ? 'HARD_TIMEOUT' : 'UNCAUGHT_ERROR',
         message
       };
     } finally {
@@ -260,9 +261,10 @@ export class ImageGenerationService {
           elapsed_ms: elapsed
         });
         return { ...errorResponse, duration_ms: Date.now() - started };
-      } catch (err: any) {
+      } catch (err: unknown) {
         const elapsed = Date.now() - t0;
-        if (err?.name === 'AbortError') {
+        const errorObj = err as { name?: string };
+        if (errorObj?.name === 'AbortError') {
           return {
             ok: false,
             provider,
@@ -338,7 +340,7 @@ export class ImageGenerationService {
 
       const status = res.status;
       if (!res.ok) {
-        let details: any;
+        let details: unknown;
         try { details = await res.json(); } catch { details = await res.text(); }
         return {
           ok: false,
@@ -389,7 +391,7 @@ export class ImageGenerationService {
     this.cfg.onTrace(event);
   }
 
-  private buildPayload(provider: Provider, input: GenerationInput): Record<string, any> {
+  private buildPayload(provider: Provider, input: GenerationInput): Record<string, unknown> {
     // Normalize aliases
     const guidance = input.guidance_scale ?? input.cfg ?? 7;
 

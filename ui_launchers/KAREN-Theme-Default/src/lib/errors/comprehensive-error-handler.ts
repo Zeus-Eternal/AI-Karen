@@ -13,7 +13,7 @@ export interface ErrorHandlingOptions {
   enableUserNotification?: boolean;
   maxRetryAttempts?: number;
   baseRetryDelay?: number;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface ErrorHandlingResult {
@@ -63,6 +63,10 @@ export class ComprehensiveErrorHandler {
     // Notify error listeners
     this.notifyErrorListeners(categorizedError);
 
+    if (enableUserNotification) {
+      this.notifyUserNotification(categorizedError);
+    }
+
     let recoveryResult: RecoveryResult | undefined;
     let shouldRetry = false;
     let retryDelay: number | undefined;
@@ -74,7 +78,7 @@ export class ComprehensiveErrorHandler {
         shouldRetry = recoveryResult.shouldRetry;
         retryDelay = recoveryResult.nextRetryDelay;
       } catch (recoveryError) {
-        // Fall back to basic retry logic
+        console.warn('[ComprehensiveErrorHandler] Recovery attempt failed', recoveryError);
         shouldRetry = this.categorizer.shouldRetry(categorizedError, 0);
         retryDelay = this.categorizer.calculateRetryDelay(categorizedError, 0);
       }
@@ -144,7 +148,7 @@ export class ComprehensiveErrorHandler {
   /**
    * Create a wrapper function that automatically handles errors
    */
-  createErrorHandledFunction<T extends any[], R>(
+  createErrorHandledFunction<T extends unknown[], R>(
     fn: (...args: T) => Promise<R>,
     options: ErrorHandlingOptions = {}
   ): (...args: T) => Promise<R> {
@@ -169,18 +173,17 @@ export class ComprehensiveErrorHandler {
     };
     switch (error.severity) {
       case ErrorSeverity.CRITICAL:
-        // Log critical error details
+        console.error('[ComprehensiveErrorHandler]', logData);
         break;
       case ErrorSeverity.HIGH:
-        // Log high severity error details
+        console.warn('[ComprehensiveErrorHandler]', logData);
         break;
       case ErrorSeverity.MEDIUM:
-        // Log medium severity error details
+        console.info('[ComprehensiveErrorHandler]', logData);
         break;
       case ErrorSeverity.LOW:
-        // Log low severity error details
+        console.debug('[ComprehensiveErrorHandler]', logData);
         break;
-      default:
     }
   }
 
@@ -235,8 +238,15 @@ export class ComprehensiveErrorHandler {
       try {
         listener(error);
       } catch (listenerError) {
+        console.warn('[ComprehensiveErrorHandler] Listener failed', listenerError);
       }
     });
+  }
+
+  private notifyUserNotification(error: CategorizedError): void {
+    if (typeof window !== 'undefined') {
+      console.info('[ComprehensiveErrorHandler] User notification', error.userMessage);
+    }
   }
 
   /**

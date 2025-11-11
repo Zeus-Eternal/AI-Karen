@@ -20,7 +20,7 @@ export enum ErrorCode {
 export interface ErrorResponse {
   errorCode: ErrorCode;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   requestId?: string;
   timestamp: string;
   userFriendlyMessage?: string;
@@ -30,7 +30,16 @@ export interface ErrorContext {
   userId?: string;
   sessionId?: string;
   component?: string;
-  additionalData?: Record<string, any>;
+  additionalData?: Record<string, unknown>;
+}
+
+// Define HttpError interface for type safety
+interface HttpError {
+  response?: {
+    status?: number;
+    statusText?: string;
+    data?: unknown;
+  };
 }
 export class UnifiedErrorHandler {
   private static instance: UnifiedErrorHandler | null = null;
@@ -46,7 +55,7 @@ export class UnifiedErrorHandler {
    * Handle and format errors consistently
    */
   handleError(
-    error: Error | any,
+    error: unknown,
     context: ErrorContext = {}
   ): ErrorResponse {
     const timestamp = new Date().toISOString();
@@ -59,9 +68,9 @@ export class UnifiedErrorHandler {
     // Handle different error types
     if (error instanceof Error) {
       errorResponse = this.handleJavaScriptError(error, context, timestamp, requestId);
-    } else if (typeof error === 'object' && error.response) {
+    } else if (typeof error === 'object' && error !== null && 'response' in error) {
       // Handle HTTP response errors
-      errorResponse = this.handleHttpError(error, context, timestamp, requestId);
+      errorResponse = this.handleHttpError(error as HttpError, context, timestamp, requestId);
     } else if (typeof error === 'string') {
       errorResponse = this.handleStringError(error, context, timestamp, requestId);
     } else {
@@ -122,7 +131,7 @@ export class UnifiedErrorHandler {
    * Handle HTTP response errors
    */
   private handleHttpError(
-    error: any,
+    error: HttpError,
     context: ErrorContext,
     timestamp: string,
     requestId: string
@@ -201,7 +210,7 @@ export class UnifiedErrorHandler {
    * Handle unknown error types
    */
   private handleUnknownError(
-    error: any,
+    error: unknown,
     context: ErrorContext,
     timestamp: string,
     requestId: string
@@ -221,14 +230,14 @@ export class UnifiedErrorHandler {
   /**
    * Check if an object is already an ErrorResponse
    */
-  private isErrorResponse(obj: any): obj is ErrorResponse {
-    return obj && typeof obj === 'object' && 'errorCode' in obj && 'message' in obj && 'timestamp' in obj;
+  private isErrorResponse(obj: unknown): obj is ErrorResponse {
+    return obj !== null && typeof obj === 'object' && 'errorCode' in obj && 'message' in obj && 'timestamp' in obj;
   }
   /**
    * Generate a unique request ID
    */
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
   /**
    * Log error for debugging and monitoring
@@ -316,10 +325,10 @@ export class UnifiedErrorHandler {
   }
 }
 // Convenience functions
-export function handleError(error: any, context: ErrorContext = {}): ErrorResponse {
+export function handleError(error: unknown, context: ErrorContext = {}): ErrorResponse {
   return UnifiedErrorHandler.getInstance().handleError(error, context);
 }
-export function getUserFriendlyMessage(error: any, context: ErrorContext = {}): string {
+export function getUserFriendlyMessage(error: unknown, context: ErrorContext = {}): string {
   const errorResponse = handleError(error, context);
   return errorResponse.userFriendlyMessage || errorResponse.message;
 }

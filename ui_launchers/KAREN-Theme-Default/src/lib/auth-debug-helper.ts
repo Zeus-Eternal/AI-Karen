@@ -2,7 +2,13 @@
  * Authentication Debug Helper
  * Provides debugging utilities for authentication issues
  */
-import { getSession, isAuthenticated, hasSessionCookie, getCurrentUser } from './auth/session';
+import {
+  getSession,
+  isAuthenticated,
+  hasSessionCookie,
+  getCurrentUser,
+  clearSession
+} from './auth/session';
 export function debugAuthState(): void {
   // Check current session (in-memory)
   const session = getSession();
@@ -14,12 +20,15 @@ export function debugAuthState(): void {
   } : 'No session');
   // Check current user
   const currentUser = getCurrentUser();
+  console.log('Current User data:', currentUser ?? 'No user loaded');
   // Check session cookie
   const hasCookie = hasSessionCookie();
+  console.log('Session cookie flag:', hasCookie);
   // Check document.cookie if available
   if (typeof document !== 'undefined') {
     const cookies = document.cookie;
     const sessionCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('session_id='));
+    console.log('Session cookie value:', sessionCookie ?? 'Not found');
   }
   // Check authentication status
   console.log('Is Authenticated:', isAuthenticated());
@@ -37,7 +46,6 @@ export function clearAuthState(): void {
     document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
   // Clear in-memory session
-  const { clearSession } = require('./auth/session');
   clearSession();
 }
 // Make functions available globally for debugging

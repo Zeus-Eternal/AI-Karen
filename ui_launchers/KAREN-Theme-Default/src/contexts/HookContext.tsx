@@ -1,21 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useState } from 'react';
 import type { FC, ReactNode } from 'react';
 
 // Hook types for AG-UI and chat enhancement
 export interface HookRegistration {
   id: string;
   type: string;
-  handler: (context: any, userContext?: any) => Promise<any>;
+  handler: (context: unknown, userContext?: unknown) => Promise<unknown>;
   priority: number;
-  conditions?: Record<string, any>;
+  conditions?: Record<string, unknown>;
   sourceType: 'plugin' | 'extension' | 'ui' | 'custom';
 }
 
 export interface HookResult {
   hookId: string;
-  result?: any;
+  result?: unknown;
   error?: string;
   success: boolean;
 }
@@ -24,10 +24,10 @@ export interface HookContextType {
   // Hook registration
   registerHook: (
     type: string,
-    handler: (context: any, userContext?: any) => Promise<any>,
+    handler: (context: unknown, userContext?: unknown) => Promise<unknown>,
     options?: {
       priority?: number;
-      conditions?: Record<string, any>;
+      conditions?: Record<string, unknown>;
       sourceType?: HookRegistration['sourceType'];
     }
   ) => string;
@@ -35,8 +35,8 @@ export interface HookContextType {
   // Hook execution
   triggerHooks: (
     type: string,
-    context: any,
-    userContext?: any
+    context: unknown,
+    userContext?: unknown
   ) => Promise<HookResult[]>;
   
   // Hook management
@@ -47,23 +47,23 @@ export interface HookContextType {
   registerGridHook: (
     gridId: string,
     event: 'dataLoad' | 'cellValueChanged' | 'rowSelected',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ) => string;
   
   registerChartHook: (
     chartId: string,
     event: 'dataLoad' | 'seriesClick' | 'legendClick' | 'metricChange' | 'nodeClick',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ) => string;
   
   // Chat enhancement hooks
   registerChatHook: (
     event: 'preMessage' | 'postMessage' | 'messageProcessed' | 'aiSuggestion',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ) => string;
 }
 
-const HookContext = createContext<HookContextType | undefined>(undefined);
+export const HookContext = createContext<HookContextType | undefined>(undefined);
 
 export interface HookProviderProps {
   children: ReactNode;
@@ -74,10 +74,10 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
 
   const registerHook = useCallback((
     type: string,
-    handler: (context: any, userContext?: any) => Promise<any>,
+    handler: (context: unknown, userContext?: unknown) => Promise<unknown>,
     options: {
       priority?: number;
-      conditions?: Record<string, any>;
+      conditions?: Record<string, unknown>;
       sourceType?: HookRegistration['sourceType'];
     } = {}
   ): string => {
@@ -99,8 +99,8 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
 
   const triggerHooks = useCallback(async (
     type: string,
-    context: any,
-    userContext?: any
+    context: unknown,
+    userContext?: unknown
   ): Promise<HookResult[]> => {
     const typeHooks = Array.from(hooks.values())
       .filter(hook => hook.type === type)
@@ -113,7 +113,7 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
         // Check conditions if any
         if (hook.conditions && Object.keys(hook.conditions).length > 0) {
           const conditionsMet = Object.entries(hook.conditions).every(([key, value]) => {
-            return context[key] === value || userContext?.[key] === value;
+            return (context as Record<string, unknown>)[key] === value || userContext?.[key] === value;
           });
 
           if (!conditionsMet) {
@@ -157,7 +157,7 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   const registerGridHook = useCallback((
     gridId: string,
     event: 'dataLoad' | 'cellValueChanged' | 'rowSelected',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ): string => {
     return registerHook(`grid_${gridId}_${event}`, handler, {
       sourceType: 'ui',
@@ -168,7 +168,7 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   const registerChartHook = useCallback((
     chartId: string,
     event: 'dataLoad' | 'seriesClick' | 'legendClick' | 'metricChange' | 'nodeClick',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ): string => {
     return registerHook(`chart_${chartId}_${event}`, handler, {
       sourceType: 'ui',
@@ -179,7 +179,7 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   // Chat enhancement hook registration helpers
   const registerChatHook = useCallback((
     event: 'preMessage' | 'postMessage' | 'messageProcessed' | 'aiSuggestion',
-    handler: (params: any) => Promise<any>
+    handler: (params: Record<string, unknown>) => Promise<unknown>
   ): string => {
     return registerHook(`chat_${event}`, handler, {
       sourceType: 'ui',
@@ -204,10 +204,4 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   );
 };
 
-export const useHooks = () => {
-  const context = useContext(HookContext);
-  if (context === undefined) {
-    throw new Error('useHooks must be used within a HookProvider');
-  }
-  return context;
-};
+// Hook moved to separate file for React Fast Refresh compatibility

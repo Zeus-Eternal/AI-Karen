@@ -58,7 +58,7 @@ export interface HealthStatus {
     {
       status: string;
       error?: string;
-      details?: Record<string, any>;
+      details?: Record<string, unknown>;
     }
   >;
 }

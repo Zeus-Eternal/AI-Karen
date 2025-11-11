@@ -1,11 +1,11 @@
 // Validation utility functions for extension management
 
-import type {  ExtensionBase, ExtensionSetting, ExtensionManifest, ExtensionPermissions, ResourceLimits } from '../../extensions/types';
+import type { ExtensionSetting, ExtensionPermissions, ResourceLimits } from '../../extensions/types';
 
 /**
  * Validates extension manifest structure
  */
-export function validateExtensionManifest(manifest: any): { valid: boolean; errors: string[] } {
+export function validateExtensionManifest(manifest: Record<string, unknown>): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
   // Required fields
@@ -21,15 +21,15 @@ export function validateExtensionManifest(manifest: any): { valid: boolean; erro
   }
   
   // Version format validation
-  if (manifest.version && !isValidVersion(manifest.version)) {
+  if (manifest.version && !isValidVersion(String(manifest.version))) {
     errors.push('Invalid version format. Use semantic versioning (e.g., 1.0.0)');
   }
   
-  if (manifest.api_version && !isValidVersion(manifest.api_version)) {
+  if (manifest.api_version && !isValidVersion(String(manifest.api_version))) {
     errors.push('Invalid api_version format. Use semantic versioning (e.g., 1.0.0)');
   }
   
-  if (manifest.kari_min_version && !isValidVersion(manifest.kari_min_version)) {
+  if (manifest.kari_min_version && !isValidVersion(String(manifest.kari_min_version))) {
     errors.push('Invalid kari_min_version format. Use semantic versioning (e.g., 1.0.0)');
   }
   
@@ -224,7 +224,7 @@ function isValidNetworkEndpoint(endpoint: string): boolean {
 /**
  * Validates extension setting value
  */
-export function validateSettingValue(setting: ExtensionSetting, value: any): { valid: boolean; error?: string } {
+export function validateSettingValue(setting: ExtensionSetting, value: unknown): { valid: boolean; error?: string } {
   const validation = setting.validation;
   
   if (!validation) {
@@ -243,7 +243,7 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
   
   // Type-specific validation
   switch (setting.type) {
-    case 'number':
+    case 'number': {
       const numValue = Number(value);
       if (isNaN(numValue)) {
         return { valid: false, error: `${setting.label} must be a number` };
@@ -255,8 +255,9 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
         return { valid: false, error: `${setting.label} must be at most ${validation.max}` };
       }
       break;
+    }
       
-    case 'string':
+    case 'string': {
       if (typeof value !== 'string') {
         return { valid: false, error: `${setting.label} must be a string` };
       }
@@ -267,6 +268,7 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
         }
       }
       break;
+    }
       
     case 'boolean':
       if (typeof value !== 'boolean') {
@@ -274,7 +276,7 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
       }
       break;
       
-    case 'select':
+    case 'select': {
       if (validation.options) {
         const validValues = validation.options.map(opt => opt.value);
         if (!validValues.includes(value)) {
@@ -282,8 +284,9 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
         }
       }
       break;
+    }
       
-    case 'multiselect':
+    case 'multiselect': {
       if (!Array.isArray(value)) {
         return { valid: false, error: `${setting.label} must be an array` };
       }
@@ -295,6 +298,7 @@ export function validateSettingValue(setting: ExtensionSetting, value: any): { v
         }
       }
       break;
+    }
   }
   
   return { valid: true };
@@ -357,7 +361,7 @@ export function sanitizeInput(input: string): string {
 /**
  * Validates extension configuration object
  */
-export function validateExtensionConfig(config: any): { valid: boolean; errors: string[] } {
+export function validateExtensionConfig(config: Record<string, unknown>): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
   if (typeof config !== 'object' || config === null) {
@@ -375,8 +379,8 @@ export function validateExtensionConfig(config: any): { valid: boolean; errors: 
   
   // Validate nested objects recursively
   for (const [key, value] of Object.entries(config)) {
-    if (typeof value === 'object' && value !== null) {
-      const nestedValidation = validateExtensionConfig(value);
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const nestedValidation = validateExtensionConfig(value as Record<string, unknown>);
       if (!nestedValidation.valid) {
         errors.push(...nestedValidation.errors.map(err => `${key}.${err}`));
       }

@@ -3,7 +3,7 @@
  * Provides comprehensive keyboard navigation functionality for complex components
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface KeyboardNavigationOptions {
   /** Whether navigation is enabled */
@@ -82,10 +82,10 @@ export const useKeyboardNavigation = (
   const containerRef = useRef<HTMLElement>(null);
 
   // Determine key map based on orientation
-  const keyMap = {
+  const keyMap = useMemo(() => ({
     ...getKeyMapForOrientation(orientation),
     ...customKeyMap,
-  };
+  }), [orientation, customKeyMap]);
 
   const moveToIndex = useCallback((index: number) => {
     if (index < 0 || index >= itemCount) return;
@@ -235,7 +235,6 @@ export interface GridNavigationOptions extends Omit<KeyboardNavigationOptions, '
 
 export const useGridNavigation = (options: GridNavigationOptions) => {
   const { columns, rows, ...navigationOptions } = options;
-  const itemCount = columns * rows;
 
   const [activeRow, setActiveRow] = useState(0);
   const [activeCol, setActiveCol] = useState(0);

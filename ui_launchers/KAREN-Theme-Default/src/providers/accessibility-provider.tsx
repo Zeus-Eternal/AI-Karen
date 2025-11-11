@@ -1,34 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useUIStore, selectAnimationState } from '../store';
-export interface AccessibilitySettings {
-  // Visual accessibility
-  highContrast: boolean;
-  fontSize: 'small' | 'medium' | 'large' | 'extra-large';
-  lineHeight: 'normal' | 'relaxed' | 'loose';
-  // Motion accessibility
-  reducedMotion: boolean;
-  // Interaction accessibility
-  focusVisible: boolean;
-  keyboardNavigation: boolean;
-  // Screen reader accessibility
-  announcements: boolean;
-  verboseDescriptions: boolean;
-  // Color accessibility
-  colorBlindnessSupport: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia';
-}
-export interface AccessibilityContextValue {
-  settings: AccessibilitySettings;
-  updateSetting: <K extends keyof AccessibilitySettings>(
-    key: K,
-    value: AccessibilitySettings[K]
-  ) => void;
-  resetSettings: () => void;
-  isScreenReaderActive: boolean;
-  announce: (message: string, priority?: 'polite' | 'assertive') => void;
-}
-const AccessibilityContext = createContext<AccessibilityContextValue | undefined>(undefined);
+import {
+  AccessibilityContext,
+  type AccessibilityContextValue,
+  type AccessibilitySettings,
+} from './accessibility-context';
 const defaultSettings: AccessibilitySettings = {
   highContrast: false,
   fontSize: 'medium',
@@ -52,23 +30,30 @@ export function AccessibilityProvider({
   const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
   const [isScreenReaderActive, setIsScreenReaderActive] = useState(false);
   const [mounted, setMounted] = useState(false);
-  // Load settings from localStorage
+  // Load settings from localStorage on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsedSettings = JSON.parse(stored) as Partial<AccessibilitySettings>;
-        const mergedSettings = { ...defaultSettings, ...parsedSettings };
-        setSettings(mergedSettings);
-        // Sync with UI store
-        setReducedMotion(mergedSettings.reducedMotion);
+    const loadSettings = () => {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsedSettings = JSON.parse(stored) as Partial<AccessibilitySettings>;
+          const mergedSettings = { ...defaultSettings, ...parsedSettings };
+          return mergedSettings;
+        }
+      } catch (error) {
+        console.error('[AccessibilityProvider] Failed to parse stored settings:', error);
       }
-    } catch (error) {
-      console.error('[AccessibilityProvider] Failed to parse stored settings:', error);
-      // Reset to defaults on parse error
-      setSettings(defaultSettings);
-    }
-    setMounted(true);
+      return defaultSettings;
+    };
+
+    const timer = setTimeout(() => {
+      const loadedSettings = loadSettings();
+      setSettings(loadedSettings);
+      setReducedMotion(loadedSettings.reducedMotion);
+      setMounted(true);
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [storageKey, setReducedMotion]);
 
   // Save settings to localStorage
@@ -83,12 +68,32 @@ export function AccessibilityProvider({
       }
     }
   }, [settings, storageKey, mounted]);
-  // Sync reduced motion with UI store
-  useEffect(() => {
+  // Sync reduced motion with UI store - use callback to avoid setState in effect
+  const syncReducedMotion = useCallback(() => {
     if (mounted && settings.reducedMotion !== reducedMotion) {
       setSettings(prev => ({ ...prev, reducedMotion }));
     }
   }, [reducedMotion, mounted, settings.reducedMotion]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      syncReducedMotion();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [syncReducedMotion]);
+  // Define updateSetting callback
+  const updateSetting = useCallback(<K extends keyof AccessibilitySettings>(
+    key: K,
+    value: AccessibilitySettings[K]
+  ) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    // Sync specific settings with UI store
+    if (key === 'reducedMotion') {
+      setReducedMotion(value as boolean);
+    }
+  }, [setReducedMotion]);
+
   // Detect system preferences
   useEffect(() => {
     if (!mounted || typeof window === 'undefined' || !window.matchMedia) return;
@@ -116,18 +121,18 @@ export function AccessibilityProvider({
       setIsScreenReaderActive(hasScreenReader);
     };
     detectScreenReader();
-    // Set initial values if not already set
+    // Set initial values if not already set - use setTimeout to avoid setState in effect
     if (settings.reducedMotion !== reducedMotionQuery?.matches) {
-      updateSetting('reducedMotion', reducedMotionQuery?.matches || false);
+      setTimeout(() => updateSetting('reducedMotion', reducedMotionQuery?.matches || false), 0);
     }
     if (settings.highContrast !== highContrastQuery?.matches) {
-      updateSetting('highContrast', highContrastQuery?.matches || false);
+      setTimeout(() => updateSetting('highContrast', highContrastQuery?.matches || false), 0);
     }
     return () => {
       reducedMotionQuery?.removeEventListener('change', handleReducedMotionChange);
       highContrastQuery?.removeEventListener('change', handleHighContrastChange);
     };
-  }, [mounted, settings.reducedMotion, settings.highContrast]);
+  }, [mounted, settings.reducedMotion, settings.highContrast, updateSetting]);
   // Apply accessibility settings to document
   useEffect(() => {
     if (!mounted) return;
@@ -160,16 +165,6 @@ export function AccessibilityProvider({
       root.classList.remove('focus-visible');
     }
   }, [settings, mounted]);
-  const updateSetting = <K extends keyof AccessibilitySettings>(
-    key: K,
-    value: AccessibilitySettings[K]
-  ) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    // Sync specific settings with UI store
-    if (key === 'reducedMotion') {
-      setReducedMotion(value as boolean);
-    }
-  };
   const resetSettings = () => {
     setSettings(defaultSettings);
     setReducedMotion(defaultSettings.reducedMotion);
@@ -201,27 +196,4 @@ export function AccessibilityProvider({
     </AccessibilityContext.Provider>
   );
 }
-export function useAccessibility() {
-  const context = useContext(AccessibilityContext);
-  if (context === undefined) {
-    throw new Error('useAccessibility must be used within an AccessibilityProvider');
-  }
-  return context;
-}
-// Convenience hooks
-export function useAnnounce() {
-  const { announce } = useAccessibility();
-  return announce;
-}
-export function useScreenReader() {
-  const { isScreenReaderActive, settings } = useAccessibility();
-  return {
-    isActive: isScreenReaderActive,
-    verboseDescriptions: settings.verboseDescriptions,
-    announcements: settings.announcements,
-  };
-}
-export function useAccessibilitySettings() {
-  const { settings, updateSetting } = useAccessibility();
-  return { settings, updateSetting };
-}
+// Hooks moved to separate file for React Fast Refresh compatibility

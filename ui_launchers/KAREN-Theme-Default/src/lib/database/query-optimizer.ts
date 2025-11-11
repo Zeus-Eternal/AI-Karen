@@ -46,12 +46,12 @@ export class QueryOptimizer {
         ]
       );
 
-      const users = result.rows;
-      const totalCount = users.length > 0 ? parseInt(users[0].total_count) : 0;
+      const users = result.rows as any[];
+      const totalCount = users.length > 0 ? parseInt((users[0] as any).total_count) : 0;
       const totalPages = Math.ceil(totalCount / pagination.limit);
 
       const response: PaginatedResponse<User> = {
-        data: users.map(row => ({
+        data: users.map((row: any) => ({
           user_id: row.user_id,
           email: row.email,
           full_name: row.full_name,
@@ -120,7 +120,7 @@ export class QueryOptimizer {
         [userIds, JSON.stringify(updates), updatedBy]
       );
 
-      const updatedCount = result.rows[0]?.updated_count || 0;
+      const updatedCount = (result.rows[0] as any)?.updated_count || 0;
 
       await this.db.query('COMMIT');
 
@@ -181,12 +181,12 @@ export class QueryOptimizer {
         ]
       );
 
-      const logs = result.rows;
-      const totalCount = logs.length > 0 ? parseInt(logs[0].total_count) : 0;
+      const logs = result.rows as any[];
+      const totalCount = logs.length > 0 ? parseInt((logs[0] as any).total_count) : 0;
       const totalPages = Math.ceil(totalCount / pagination.limit);
 
       return {
-        data: logs.map(row => ({
+        data: logs.map((row: any) => ({
           id: row.id,
           user_id: row.user_id,
           action: row.action,
@@ -219,7 +219,7 @@ export class QueryOptimizer {
   /**
    * Get user statistics with materialized view optimization
    */
-  async getUserStatisticsOptimized(): Promise<any> {
+  async getUserStatisticsOptimized(): Promise<unknown> {
     const endQuery = DatabasePerformanceMonitor.startQuery(
       'getUserStatisticsOptimized',
       'SELECT * FROM user_statistics'
@@ -269,12 +269,11 @@ export class QueryOptimizer {
     try {
       await this.db.query('BEGIN');
 
-      const values: any[] = [];
+      const values: unknown[] = [];
       const placeholders: string[] = [];
       let paramIndex = 1;
 
-      users.forEach((user, index) => {
-        const baseIndex = index * 5;
+      users.forEach((user) => {
         placeholders.push(
           `($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`
         );
@@ -360,7 +359,7 @@ export class QueryOptimizer {
         [userId]
       );
 
-      const user = result.rows[0];
+      const user = result.rows[0] as User | undefined;
       if (user) {
         // Cache the user
         UserCache.set(user);

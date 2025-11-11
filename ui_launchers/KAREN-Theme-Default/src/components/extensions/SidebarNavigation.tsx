@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useExtensionContext, navigationActions } from "@/extensions";
+import { useExtensionContext } from "@/hooks/use-extension-context";
+import { navigationActions } from "@/extensions";
 import {
   getPluginService,
   getExtensionService,

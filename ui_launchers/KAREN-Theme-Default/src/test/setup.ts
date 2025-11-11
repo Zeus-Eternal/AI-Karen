@@ -13,7 +13,10 @@ expect.extend(matchers);
 // Make React available globally (handy for certain JSX runtime configs)
 // ---------------------------------------------------------------------------
 // Provide React on the global scope for test environments that expect it.
-(globalThis as typeof globalThis & { React?: typeof React }).React = React;
+interface GlobalWithReact {
+  React?: typeof React;
+}
+(globalThis as GlobalWithReact).React = React;
 
 // ---------------------------------------------------------------------------
 // Mock window.matchMedia (used by various UI libs)
@@ -43,18 +46,27 @@ class MockIntersectionObserver implements IntersectionObserver {
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
-  takeRecords = vi.fn<[], IntersectionObserverEntry[]>().mockReturnValue([]);
+  takeRecords = vi.fn().mockReturnValue([]);
   constructor(
     _callback: IntersectionObserverCallback,
     _options?: IntersectionObserverInit
   ) {}
 }
-(globalThis as any).IntersectionObserver = MockIntersectionObserver;
+interface GlobalWithIntersectionObserver {
+  IntersectionObserver: typeof IntersectionObserver;
+}
+(globalThis as unknown as GlobalWithIntersectionObserver).IntersectionObserver = MockIntersectionObserver;
 
 // ---------------------------------------------------------------------------
 // Mock requestIdleCallback / cancelIdleCallback
 // ---------------------------------------------------------------------------
-(globalThis as any).requestIdleCallback = vi.fn(
+interface GlobalWithIdleCallback {
+  requestIdleCallback: (cb: (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void) => number;
+  cancelIdleCallback: (id: number) => void;
+}
+
+const globalWithIdle = globalThis as unknown as GlobalWithIdleCallback;
+globalWithIdle.requestIdleCallback = vi.fn(
   (cb: (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void) => {
     const id = setTimeout(() => {
       cb({
@@ -65,7 +77,7 @@ class MockIntersectionObserver implements IntersectionObserver {
     return Number(id);
   }
 );
-(globalThis as any).cancelIdleCallback = vi.fn((id: number) => clearTimeout(id));
+globalWithIdle.cancelIdleCallback = vi.fn((id: number) => clearTimeout(id));
 
 // ---------------------------------------------------------------------------
 // Mock ResizeObserver
@@ -76,7 +88,10 @@ class MockResizeObserver implements ResizeObserver {
   disconnect = vi.fn();
   constructor(_cb?: ResizeObserverCallback) {}
 }
-(globalThis as any).ResizeObserver = MockResizeObserver;
+interface GlobalWithResizeObserver {
+  ResizeObserver: typeof ResizeObserver;
+}
+(globalThis as unknown as GlobalWithResizeObserver).ResizeObserver = MockResizeObserver;
 
 // ---------------------------------------------------------------------------
 // Mock URL.createObjectURL / revokeObjectURL
@@ -125,7 +140,7 @@ HTMLCanvasElement.prototype.getContext = vi
         globalCompositeOperation: 'source-over' as GlobalCompositeOperation,
         isPointInPath: vi.fn(() => false),
         isPointInStroke: vi.fn(() => false),
-      } as any;
+      } as unknown;
     }
     return null;
   });
@@ -140,11 +155,17 @@ if (!HTMLElement.prototype.scrollIntoView) {
 // ---------------------------------------------------------------------------
 // Light performance mocks (avoid breaking existing usage of performance)
 // ---------------------------------------------------------------------------
+interface PerformanceWithMocks {
+  mark?: () => void;
+  measure?: () => void;
+}
+
 const originalNow = performance.now?.bind(performance);
 performance.now = vi.fn(() => (originalNow ? originalNow() : Date.now()));
 // mark/measure are optional in JSDOM; make them no-ops if absent
-if (!(performance as any).mark) (performance as any).mark = vi.fn();
-if (!(performance as any).measure) (performance as any).measure = vi.fn();
+const perfWithMocks = performance as unknown as PerformanceWithMocks;
+if (!perfWithMocks.mark) perfWithMocks.mark = vi.fn();
+if (!perfWithMocks.measure) perfWithMocks.measure = vi.fn();
 
 // ---------------------------------------------------------------------------
 // Cleanup after each test (clear DOM, detach listeners, etc.)

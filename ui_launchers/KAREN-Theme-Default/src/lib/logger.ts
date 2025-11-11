@@ -18,25 +18,25 @@ function shouldRateLimit(key: string, windowMs: number): boolean {
 }
 
 export const logger = {
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (webUIConfig.debugLogging) {
       // prefer console.debug when available
       // eslint-disable-next-line no-console
       console.debug('[DEBUG]', ...args);
     }
   },
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (webUIConfig.requestLogging || webUIConfig.logLevel === 'info') {
       // eslint-disable-next-line no-console
       console.info('[INFO]', ...args);
     }
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     // always show warnings, but keep them concise
     // eslint-disable-next-line no-console
     console.warn('[WARN]', ...args);
   },
-  error: (message: string, meta?: any, opts?: { rateLimitKey?: string; rateLimitMs?: number }) => {
+  error: (message: string, meta?: unknown, opts?: { rateLimitKey?: string; rateLimitMs?: number }) => {
     const key = opts?.rateLimitKey;
     const windowMs = opts?.rateLimitMs ?? 10000; // default 10s
     if (key && shouldRateLimit(key, windowMs)) {

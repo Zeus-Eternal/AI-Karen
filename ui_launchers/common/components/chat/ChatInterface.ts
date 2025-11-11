@@ -459,7 +459,7 @@ export class SharedChatInterface implements IChatComponent {
       const savedState = storageManager.get(`${STORAGE_KEYS.MESSAGES}-${this.id}`);
       if (savedState && savedState.messages) {
         // Convert timestamp strings back to Date objects
-        const messages = savedState.messages.map((msg: any) => ({
+        const messages = savedState.messages.map((msg: unknown) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));

@@ -4,6 +4,7 @@
  * Provides wrapper components and utilities for testing React components
  * that depend on various context providers.
  */
+/* eslint-disable react-refresh/only-export-components */
 import React, { ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { AuthContext, AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
@@ -149,7 +150,7 @@ export const createMockAuthContext = (
     return hasRole('super_admin');
   });
 
-  const login = vi.fn(async (credentials: LoginCredentials): Promise<void> => {
+  const login = vi.fn(async (_credentials: LoginCredentials): Promise<void> => {
     // Mock successful login behavior
     return Promise.resolve();
   });
@@ -359,7 +360,7 @@ export const setupAuthMockWithScenario = (scenarioName: keyof typeof authTestSce
   return createAuthContextFromScenario(scenarioName);
 };
 // Mock setup for useRole hook (if it exists)
-export const setupRoleMock = (roleData?: any) => {
+export const setupRoleMock = (_roleData?: unknown) => {
   // Note: vi.mock calls should be done in individual test files, not in utilities
 };
 // Comprehensive mock setup for all auth-related modules
@@ -526,7 +527,7 @@ export const renderWithAuthError = (
   });
 };
 // Mock session functions for testing
-export const mockSessionFunctions = (user?: User | null, isAuthenticated: boolean = false) => {
+export const mockSessionFunctions = (user?: User | null, _isAuthenticated: boolean = false) => {
   // Note: vi.mock calls should be done in individual test files, not in utilities
 };
 // Enhanced test isolation and cleanup utilities

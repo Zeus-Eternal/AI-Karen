@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { safeError, safeWarn } from '@/lib/safe-console';
+import { safeError } from '@/lib/safe-console';
 import { getApiClient } from '@/lib/api-client';
 
 export interface ErrorAnalysisRequest {
@@ -17,7 +17,7 @@ export interface ErrorAnalysisRequest {
   status_code?: number;
   provider_name?: string;
   request_path?: string;
-  user_context?: Record<string, any>;
+  user_context?: Record<string, unknown>;
   use_ai_analysis?: boolean;
 }
 
@@ -133,16 +133,16 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
       setRetryCount(0);
       onAnalysisComplete?.(response.data);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Check if request was aborted
       if (abortController.signal.aborted) {
         return;
       }
 
       safeError('Error analysis failed:', err);
-      const errorMessage = err.message || 'Failed to analyze error';
+      const errorMessage = (err as Error).message || 'Failed to analyze error';
       setAnalysisError(errorMessage);
-      onAnalysisError?.(err);
+      onAnalysisError?.(err as Error);
 
       // Create fallback analysis for critical errors
       if (retryCount >= maxRetries) {
@@ -262,11 +262,11 @@ export function useIntelligentErrorBoundary(options: UseIntelligentErrorOptions 
   /**
    * Error boundary handler that automatically analyzes errors
    */
-  const handleError = useCallback((error: Error, errorInfo?: any) => {
+  const handleError = useCallback((error: Error, errorInfo?: unknown) => {
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: (errorInfo as { componentStack?: string })?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -292,22 +292,22 @@ export function useIntelligentApiError(options: UseIntelligentErrorOptions = {})
   /**
    * API error handler that extracts relevant context
    */
-  const handleApiError = useCallback((error: any, requestContext?: {
+  const handleApiError = useCallback((error: Error, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
   }) => {
     const context: Partial<ErrorAnalysisRequest> = {
-      status_code: error.status,
+      status_code: (error as { status?: number }).status,
       error_type: error.name || 'ApiError',
       request_path: requestContext?.endpoint,
       provider_name: requestContext?.provider,
       user_context: {
         method: requestContext?.method,
-        is_network_error: error.isNetworkError,
-        is_cors_error: error.isCorsError,
-        is_timeout_error: error.isTimeoutError,
-        response_time: error.responseTime,
+        is_network_error: (error as { isNetworkError?: boolean }).isNetworkError,
+        is_cors_error: (error as { isCorsError?: boolean }).isCorsError,
+        is_timeout_error: (error as { isTimeoutError?: boolean }).isTimeoutError,
+        response_time: (error as { responseTime?: number }).responseTime,
         timestamp: new Date().toISOString(),
       },
     };

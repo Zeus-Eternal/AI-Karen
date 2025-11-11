@@ -21,11 +21,12 @@ export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLSpanElem
 export const ScreenReaderOnly = React.forwardRef<HTMLElement, ScreenReaderOnlyProps>(
   ({ children, asDiv = false, className, ...props }, ref) => {
     const Component = asDiv ? 'div' : 'span';
-    
+    const sharedClassName = cn('sr-only', className);
+
     return (
       <Component
-        ref={ref as any}
-        className={cn('sr-only', className)}
+        ref={ref}
+        className={sharedClassName}
         {...props}
       >
         {children}
@@ -85,8 +86,8 @@ export const DescriptiveText = React.forwardRef<HTMLSpanElement, DescriptiveText
     className, 
     ...props 
   }, ref) => {
-    const id = descriptionId || React.useId();
-
+    const generatedId = React.useId();
+    const id = descriptionId ?? generatedId;
     return (
       <span
         ref={ref}
@@ -123,7 +124,6 @@ export const HeadingStructure = React.forwardRef<HTMLHeadingElement, HeadingStru
     const visualClass = visualLevel ? `text-${visualLevel === 1 ? '4xl' : visualLevel === 2 ? '3xl' : visualLevel === 3 ? '2xl' : visualLevel === 4 ? 'xl' : visualLevel === 5 ? 'lg' : 'base'}` : '';
 
     const commonProps = {
-      ref: ref as any,
       className: cn(
         'heading-structure font-semibold',
         visualClass,
@@ -134,19 +134,19 @@ export const HeadingStructure = React.forwardRef<HTMLHeadingElement, HeadingStru
 
     switch (level) {
       case 1:
-        return <h1 {...commonProps}>{children}</h1>;
+        return <h1 ref={ref} {...commonProps}>{children}</h1>;
       case 2:
-        return <h2 {...commonProps}>{children}</h2>;
+        return <h2 ref={ref} {...commonProps}>{children}</h2>;
       case 3:
-        return <h3 {...commonProps}>{children}</h3>;
+        return <h3 ref={ref} {...commonProps}>{children}</h3>;
       case 4:
-        return <h4 {...commonProps}>{children}</h4>;
+        return <h4 ref={ref} {...commonProps}>{children}</h4>;
       case 5:
-        return <h5 {...commonProps}>{children}</h5>;
+        return <h5 ref={ref} {...commonProps}>{children}</h5>;
       case 6:
-        return <h6 {...commonProps}>{children}</h6>;
+        return <h6 ref={ref} {...commonProps}>{children}</h6>;
       default:
-        return <h1 {...commonProps}>{children}</h1>;
+        return <h1 ref={ref} {...commonProps}>{children}</h1>;
     }
   }
 );
@@ -186,19 +186,19 @@ export const LandmarkRegion = React.forwardRef<HTMLElement, LandmarkRegionProps>
       }
     };
 
-    const Element = getElement();
+    const elementTag = getElement() as keyof JSX.IntrinsicElements;
 
-    return (
-      <Element
-        ref={ref as any}
-        role={landmark === 'region' ? 'region' : undefined}
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        className={cn('landmark-region', className)}
-        {...props}
-      >
-        {children}
-      </Element>
+    return React.createElement(
+      elementTag,
+      {
+        ref,
+        role: landmark === 'region' ? 'region' : undefined,
+        'aria-label': label,
+        'aria-labelledby': labelledBy,
+        className: cn('landmark-region', className),
+        ...props,
+      },
+      children
     );
   }
 );
@@ -264,19 +264,25 @@ export const LoadingAnnouncement: React.FC<LoadingAnnouncementProps> = ({
   errorMessage = 'Loading failed',
   error = false,
 }) => {
-  const [previousLoading, setPreviousLoading] = React.useState(loading);
+  const previousLoadingRef = React.useRef(loading);
   const [shouldShowCompletion, setShouldShowCompletion] = React.useState(false);
 
   React.useEffect(() => {
-    // Announce completion when loading changes from true to false
-    if (previousLoading && !loading && !error) {
-      setShouldShowCompletion(true);
-      // Clear the completion message after a short delay
-      const timer = setTimeout(() => setShouldShowCompletion(false), 100);
-      return () => clearTimeout(timer);
+    let showTimer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    if (previousLoadingRef.current && !loading && !error) {
+      showTimer = setTimeout(() => setShouldShowCompletion(true), 0);
+      hideTimer = setTimeout(() => setShouldShowCompletion(false), 100);
     }
-    setPreviousLoading(loading);
-  }, [loading, previousLoading, error]);
+
+    previousLoadingRef.current = loading;
+
+    return () => {
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [loading, error]);
 
   const shouldAnnounceError = error;
 
@@ -327,7 +333,8 @@ export const InteractionDescription: React.FC<InteractionDescriptionProps> = ({
   instructions = [],
   id,
 }) => {
-  const descriptionId = id || React.useId();
+  const generatedId = React.useId();
+  const descriptionId = id ?? generatedId;
 
   return (
     <div id={descriptionId} className="sr-only">

@@ -34,12 +34,18 @@ function serializeMessage(message: ChatMessage) {
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
   const data = text ? (JSON.parse(text) as T) : ({} as T);
+  const payloadObject =
+    data && typeof data === 'object'
+      ? (data as Record<string, unknown>)
+      : null;
   if (!response.ok) {
-    const error = new Error(
-      data && typeof data === 'object' && 'message' in (data as any)
-        ? ((data as any).message as string)
-        : response.statusText
-    ) as HttpError;
+    const detailCandidate =
+      payloadObject?.detail ?? payloadObject?.message;
+    const errorMessage =
+      typeof detailCandidate === 'string'
+        ? detailCandidate
+        : response.statusText;
+    const error = new Error(errorMessage) as HttpError;
     error.status = response.status;
     throw error;
   }
@@ -162,4 +168,3 @@ const chatUiService = new ChatUiService();
 
 export { chatUiService };
 export type { ChatUiService };
-

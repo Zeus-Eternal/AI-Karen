@@ -25,7 +25,7 @@ export interface ProviderConfig {
   name: string;
   type: string;
   enabled: boolean;
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   credentials: Record<string, string>;
   metadata: ProviderMetadata;
   createdAt: Date;
@@ -58,7 +58,7 @@ export interface ProviderConfigField {
   description: string;
   required: boolean;
   sensitive?: boolean;
-  default?: any;
+  default?: unknown;
   validation?: FieldValidation;
   options?: SelectOption[];
   advanced?: boolean;
@@ -70,7 +70,7 @@ export interface ValidationRule {
   field: string;
   rule: 'required' | 'pattern' | 'custom';
   message: string;
-  validator?: (value: any, formData: ProviderFormData) => boolean;
+  validator?: (value: unknown, formData: ProviderFormData) => boolean;
 }
 
 export interface SelectOption {
@@ -144,7 +144,7 @@ export interface AdvancedConfigSection {
 }
 
 export interface ProviderFormData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ValidationError {
@@ -408,7 +408,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: unknown } | null>(null);
   const [providerHealth, setProviderHealth] = useState<Record<string, ProviderHealth>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -540,7 +540,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     return errors;
   };
 
-  const validateField = (field: ProviderConfigField, value: any, formData: ProviderFormData): ValidationError[] => {
+  const validateField = (field: ProviderConfigField, value: unknown, formData: ProviderFormData): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     if (field.required && (value === undefined || value === '' || value === null)) {
@@ -742,7 +742,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           variant: 'destructive'
         });
       }
-    } catch (error: any) {
+    } catch (error: Error) {
       const message = error.name === 'TimeoutError' 
         ? 'Connection test timed out after 30 seconds'
         : 'Network error occurred during testing';
@@ -854,7 +854,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       setValidationErrors([]);
       setTestResult(null);
 
-    } catch (error: any) {
+    } catch (error: Error) {
       toast({
         title: 'Save Failed',
         description: error.message || 'Failed to save provider configuration',
@@ -866,7 +866,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   };
 
   // Handle field changes
-  const handleFieldChange = useCallback((fieldName: string, value: any) => {
+  const handleFieldChange = useCallback((fieldName: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [fieldName]: value

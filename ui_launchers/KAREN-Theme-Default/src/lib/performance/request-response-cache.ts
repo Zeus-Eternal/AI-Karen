@@ -14,9 +14,9 @@ export interface CacheConfig {
   enablePersistence: boolean;
   persistenceKey: string;
 }
-export interface CacheEntry {
+export interface CacheEntry<Data = unknown> {
   key: string;
-  data: any;
+  data: Data;
   headers: Record<string, string>;
   status: number;
   timestamp: number;
@@ -110,7 +110,7 @@ export class RequestResponseCache {
     this.updateHitRate();
     // Decompress data if needed
     if (entry.compressed && this.config.enableCompression) {
-      entry.data = await this.decompress(entry.data);
+      entry.data = await this.decompress(entry.data as Uint8Array);
       entry.compressed = false;
     }
     return { ...entry };
@@ -120,7 +120,7 @@ export class RequestResponseCache {
    */
   async set(
     key: string,
-    data: any,
+    data: unknown,
     headers: Record<string, string> = {},
     status: number = 200,
     options?: CacheOptions
@@ -137,8 +137,8 @@ export class RequestResponseCache {
     let size = this.estimateSize(data);
     // Compress data if enabled and beneficial
     if (this.config.enableCompression && options?.compress !== false && size > 1024) {
-      try {
-        processedData = await this.compress(data);
+    try {
+      processedData = await this.compress(data);
         const compressedSize = this.estimateSize(processedData);
         if (compressedSize < size * 0.8) { // Only use compression if it saves at least 20%
           size = compressedSize;
@@ -146,9 +146,9 @@ export class RequestResponseCache {
         } else {
           processedData = data; // Revert to original if compression not beneficial
         }
-      } catch (error) {
-        processedData = data;
-      }
+    } catch {
+      processedData = data;
+    }
     }
     const entry: CacheEntry = {
       key: cacheKey,
@@ -340,7 +340,7 @@ export class RequestResponseCache {
   /**
    * Estimate size of data in bytes
    */
-  private estimateSize(data: any): number {
+  private estimateSize(data: unknown): number {
     if (typeof data === 'string') {
       return data.length * 2; // Rough estimate for UTF-16
     }
@@ -360,7 +360,7 @@ export class RequestResponseCache {
   /**
    * Compress data using built-in compression
    */
-  private async compress(data: any): Promise<Uint8Array> {
+  private async compress(data: unknown): Promise<Uint8Array> {
     if (typeof CompressionStream === 'undefined') {
       throw new Error('Compression not supported');
     }
@@ -396,7 +396,7 @@ export class RequestResponseCache {
   /**
    * Decompress data
    */
-  private async decompress(compressedData: Uint8Array): Promise<any> {
+  private async decompress(compressedData: Uint8Array): Promise<unknown> {
     if (typeof DecompressionStream === 'undefined') {
       throw new Error('Decompression not supported');
     }
@@ -495,6 +495,7 @@ export class RequestResponseCache {
       };
       localStorage.setItem(this.config.persistenceKey, JSON.stringify(cacheData));
     } catch (error) {
+      void error;
     }
   }
   /**
@@ -509,7 +510,7 @@ export class RequestResponseCache {
       if (!stored) {
         return;
       }
-      const cacheData = JSON.parse(stored);
+      const cacheData: { entries: [string, CacheEntry][]; timestamp: number } = JSON.parse(stored);
       const now = Date.now();
       // Only load if data is not too old (1 hour)
       if (now - cacheData.timestamp > 3600000) {
@@ -527,6 +528,7 @@ export class RequestResponseCache {
       this.metrics.memoryUsage = Array.from(this.cache.values())
         .reduce((sum, entry) => sum + entry.size, 0);
     } catch (error) {
+      void error;
       this.clearPersistence();
     }
   }

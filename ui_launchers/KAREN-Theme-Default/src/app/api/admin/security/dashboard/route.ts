@@ -81,7 +81,7 @@ interface SecurityDashboardData {
       event_type: string;
       severity: Severity;
       timestamp: string;
-      details: any;
+      details: unknown;
     }>;
   };
   mfa_statistics: {
@@ -104,7 +104,7 @@ interface SecurityDashboardData {
     ip_address?: string;
     timestamp: string;
     resolved: boolean;
-    details: any;
+    details: unknown;
   }>;
   recent_activities: Array<{
     timestamp: string;
@@ -112,7 +112,7 @@ interface SecurityDashboardData {
     user_id: string;
     user_email: string;
     ip_address?: string;
-    details: any;
+    details: unknown;
   }>;
 }
 
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 /* ---------------------------- SUPPORTING GETTERS ---------------------------- */
 
-async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: Date) {
+async function getSecurityOverview(adminUtils: unknown, todayStart: Date, hourAgo: Date) {
   const sessionStats = safe(() => sessionTimeoutManager.getSessionStatistics(), {
     totalActiveSessions: 0,
     sessionsByRole: {},
@@ -207,7 +207,7 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
     blockedIps = [];
   }
   const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
-  const todayEvents = securityEvents.filter((e: any) => toDate(e.created_at) >= todayStart);
+  const todayEvents = securityEvents.filter((e: Event) => toDate(e.created_at) >= todayStart);
 
   // Failed attempts in the last hour (audit logs)
   const recentAuditLogs = await adminUtils
@@ -216,9 +216,9 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
 
   // Users & MFA
   const allUsers = await adminUtils.getUsers({}).catch(() => ({ data: [] }));
-  const mfaEnabledCount = allUsers.data.filter((u: any) => u.two_factor_enabled).length;
+  const mfaEnabledCount = allUsers.data.filter((u: unknown) => u.two_factor_enabled).length;
   const lockedAccounts = allUsers.data.filter(
-    (u: any) => u.locked_until && toDate(u.locked_until) > new Date(),
+    (u: unknown) => u.locked_until && toDate(u.locked_until) > new Date(),
   ).length;
 
   return {
@@ -241,13 +241,13 @@ function getSessionStatistics() {
 
   const concurrentSessions = safe(
     () =>
-      sessionTimeoutManager.getConcurrentSessionsByUser(25).map((summary: any) => ({
+      sessionTimeoutManager.getConcurrentSessionsByUser(25).map((summary: unknown) => ({
         user_id: summary.user_id,
         email: summary.email,
         session_count: summary.session_count,
         role: summary.role,
         last_activity: toDate(summary.last_activity).toISOString(),
-        sessions: (summary.active_sessions || []).map((s: any) => ({
+        sessions: (summary.active_sessions || []).map((s: unknown) => ({
           session_token: s.session_token,
           ip_address: s.ip_address,
           user_agent: s.user_agent,
@@ -279,9 +279,9 @@ async function getIpSecurityData() {
   const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
 
   const suspiciousActivities = securityEvents
-    .filter((e: any) => e.event_type === 'suspicious_activity')
+    .filter((e: Event) => e.event_type === 'suspicious_activity')
     .slice(0, 10)
-    .map((event: any) => ({
+    .map((event: Event) => ({
       ip: event.ip_address || 'unknown',
       user_id: event.user_id,
       event_type: event.event_type,
@@ -309,25 +309,25 @@ async function getIpSecurityData() {
   };
 }
 
-async function getMfaStatistics(adminUtils: any) {
+async function getMfaStatistics(adminUtils: unknown) {
   // Optionally ask mfaManager for authoritative counts if available
   const allUsers = await adminUtils.getUsers({}).catch(() => ({ data: [] }));
   const totalUsers = allUsers.data.length;
-  const mfaEnabledUsers = allUsers.data.filter((u: any) => !!u.two_factor_enabled);
+  const mfaEnabledUsers = allUsers.data.filter((u: unknown) => !!u.two_factor_enabled);
   const mfaEnabledCount = mfaEnabledUsers.length;
 
   const adminUsers = allUsers.data.filter(
-    (u: any) => u.role === 'admin' || u.role === 'super_admin',
+    (u: unknown) => u.role === 'admin' || u.role === 'super_admin',
   );
   const mfaRequiredCount = adminUsers.length;
   const complianceRate =
     mfaRequiredCount > 0
       ? Math.round(
-          (adminUsers.filter((u: any) => !!u.two_factor_enabled).length / mfaRequiredCount) * 100,
+          (adminUsers.filter((u: unknown) => !!u.two_factor_enabled).length / mfaRequiredCount) * 100,
         )
       : 100;
 
-  const recentSetups = mfaEnabledUsers.slice(0, 5).map((u: any) => ({
+  const recentSetups = mfaEnabledUsers.slice(0, 5).map((u: unknown) => ({
     user_id: u.user_id,
     email: u.email,
     enabled_at: (u.updated_at && toDate(u.updated_at).toISOString()) || new Date().toISOString(),
@@ -342,8 +342,8 @@ async function getMfaStatistics(adminUtils: any) {
   };
 }
 
-async function getRecentSecurityEvents(adminUtils: any, limit = DEFAULT_LIMIT, offset = 0) {
-  const events = safe(() => securityManager.getSecurityEvents('system'), []) as any[];
+async function getRecentSecurityEvents(adminUtils: unknown, limit = DEFAULT_LIMIT, offset = 0) {
+  const events = safe(() => securityManager.getSecurityEvents('system'), []) as unknown[];
   const page = events
     .sort((a, b) => toDate(b.created_at).getTime() - toDate(a.created_at).getTime())
     .slice(offset, offset + limit);
@@ -353,7 +353,7 @@ async function getRecentSecurityEvents(adminUtils: any, limit = DEFAULT_LIMIT, o
     new Set(page.map((e) => e.user_id).filter((x: string | undefined) => !!x)),
   );
 
-  const usersById: Record<string, any> = {};
+  const usersById: Record<string, unknown> = {};
   if (userIds.length) {
     try {
       const res = await adminUtils.getUsers({ user_ids: userIds });
@@ -377,7 +377,7 @@ async function getRecentSecurityEvents(adminUtils: any, limit = DEFAULT_LIMIT, o
 }
 
 async function getRecentSecurityActivities(
-  adminUtils: any,
+  adminUtils: unknown,
   startFrom: Date,
   limit = DEFAULT_LIMIT,
   offset = 0,
@@ -400,7 +400,7 @@ async function getRecentSecurityActivities(
     user_id: string;
     user_email: string;
     ip_address?: string;
-    details: any;
+    details: unknown;
   }> = [];
 
   for (const action of securityActions) {
@@ -427,7 +427,7 @@ async function getRecentSecurityActivities(
   }
 
   // Sort, dedupe by (timestamp+user_id+action), paginate
-  const key = (a: any) => `${a.timestamp}|${a.user_id}|${a.action}`;
+  const key = (a: unknown) => `${a.timestamp}|${a.user_id}|${a.action}`;
   const deduped = Array.from(new Map(activities.map((a) => [key(a), a])).values()).sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
@@ -537,7 +537,7 @@ function deriveTimeRange(period: string) {
   return { now, todayStart: weekStart, hourAgo };
 }
 
-function toDate(d: any): Date {
+function toDate(d: unknown): Date {
   if (!d) return new Date(0);
   if (d instanceof Date) return d;
   const t = new Date(d);

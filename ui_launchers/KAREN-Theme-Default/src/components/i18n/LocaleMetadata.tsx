@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useLocale } from "../../providers/i18n-provider";
+import { useLocale } from "../../providers/i18n-hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Globe, Calendar, DollarSign, Clock } from "lucide-react";
@@ -72,7 +72,10 @@ export function LocaleMetadata({
           style: "currency",
           currency: "USD",
         });
-        currency = numberFormat.resolvedOptions().currency;
+        const resolvedCurrency = numberFormat.resolvedOptions().currency;
+        if (resolvedCurrency) {
+          currency = resolvedCurrency;
+        }
       } catch (e) {
         // Use default
       }

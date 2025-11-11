@@ -13,7 +13,7 @@ type PostBody = {
 
 const collector = new QualityMetricsCollector();
 
-function json(data: any, status = 200, headers: Record<string, string> = {}) {
+function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return NextResponse.json(data, {
     status,
     headers: {
@@ -41,7 +41,7 @@ function ensurePercent(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function computeOverallScore(metrics: any) {
+function computeOverallScore(metrics: unknown) {
   // Defensive guards to avoid NaN/ZeroDiv
   const coverageOverall = Number(metrics?.testCoverage?.overall ?? 0);
   const passed = Number(metrics?.testResults?.passed ?? 0);
@@ -56,7 +56,7 @@ function computeOverallScore(metrics: any) {
   return ensurePercent(avg);
 }
 
-function buildReportData(metrics: any, qualityGates: any[], trends: any, includeCharts: boolean) {
+function buildReportData(metrics: unknown, qualityGates: unknown[], trends: unknown, includeCharts: boolean) {
   const criticalIssues =
     Number(metrics?.security?.vulnerabilities?.critical ?? 0) +
     Number(metrics?.accessibility?.violations ?? 0);
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         Expires: '0',
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return json(
       {
         error: 'Failed to export quality report',
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
  *
  * Dependency: `pdfkit`
  */
-async function generatePdfReport(reportData: any): Promise<Buffer> {
+async function generatePdfReport(reportData: unknown): Promise<Buffer> {
   // Dynamic import to keep route cold-start smaller if PDF not used
   const { default: PDFDocument } = await import('pdfkit');
 
@@ -274,7 +274,7 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
     doc.moveDown(1);
 
     sectionHeader(doc, 'Quality Gates');
-    const gates: any[] = reportData.qualityGates ?? [];
+    const gates: unknown[] = reportData.qualityGates ?? [];
     if (gates.length === 0) {
       doc.fontSize(10).fillColor('#666').text('No quality gates available.').fillColor('#000');
     } else {
@@ -289,25 +289,25 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
     doc.end();
 
     // Helpers
-    function sectionHeader(d: any, title: string) {
+    function sectionHeader(d: unknown, title: string) {
       d.fontSize(13).text(title, { underline: true }).moveDown(0.3);
     }
 
-    function drawKV(d: any, rows: Array<[string, string]>) {
+    function drawKV(d: unknown, rows: Array<[string, string]>) {
       d.fontSize(10);
       rows.forEach(([k, v]) => {
         d.text(`${k}: ${v}`);
       });
     }
 
-    function drawKeyValueTable(d: any, rows: Array<[string, string]>) {
+    function drawKeyValueTable(d: unknown, rows: Array<[string, string]>) {
       d.fontSize(10);
       rows.forEach(([k, v]) => {
         d.text(`${k}: ${v}`);
       });
     }
 
-    function drawBar(d: any, label: string, percent: number) {
+    function drawBar(d: unknown, label: string, percent: number) {
       const pct = Math.max(0, Math.min(100, percent));
       const width = 400;
       const height = 10;
@@ -325,7 +325,7 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
   });
 }
 
-function generateHtmlReport(reportData: any): string {
+function generateHtmlReport(reportData: unknown): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -430,7 +430,7 @@ function generateHtmlReport(reportData: any): string {
     <div class="quality-gates">
       <h2>Quality Gates</h2>
       ${(reportData.qualityGates ?? [])
-        .map((gate: any) => {
+        .map((gate: unknown) => {
           const status = String(gate.status ?? 'failed').toLowerCase();
           const cls = status === 'passed' ? 'gate-passed status-passed'
                    : status === 'warning' ? 'gate-warning status-warning'

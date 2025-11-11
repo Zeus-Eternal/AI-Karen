@@ -39,7 +39,7 @@ interface BatchResultItem {
     model_id: string;
     provider: string;
     prompt: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
     generation_time: number;
   };
   error?: string;
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const models = await modelSelectionService.getAvailableModels();
     const imageModels = (models || []).filter(
-      (m: any) => m?.type === 'image' || m?.capabilities?.includes?.('text2img') || m?.capabilities?.includes?.('image-generation')
+      (m: unknown) => m?.type === 'image' || m?.capabilities?.includes?.('text2img') || m?.capabilities?.includes?.('image-generation')
     );
     if (!imageModels.length) {
       return NextResponse.json(

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     });
 
     const ct = (response.headers.get('content-type') || '').toLowerCase();
-    let data: any;
+    let data: unknown;
 
     if (ct.includes('application/json')) {
       try {

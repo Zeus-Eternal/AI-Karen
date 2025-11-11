@@ -25,37 +25,51 @@ class SafeConsole {
   /**
    * Safe error logging that prevents console interceptor issues
    */
-  safeError(message: string, error?: any, options: SafeConsoleOptions = {}) {
+  safeError(
+    message: string,
+    error?: unknown,
+    options: SafeConsoleOptions = {}
+  ) {
     const { skipInProduction = false, useStructuredLogging = true } = options;
 
     // Skip in production if requested
-    if (skipInProduction && process.env.NODE_ENV === 'production') {
+    if (skipInProduction && process.env.NODE_ENV === "production") {
       return;
     }
 
     try {
       if (useStructuredLogging && error) {
         // Use structured logging to avoid interceptor issues
+        // Type guard for error object
+        const errorObj = error as Error | { name?: string; message?: string; stack?: string } | null;
+        
+        const errorName = errorObj?.name || "Unknown";
+        const errorMessage = errorObj?.message || "No message";
+        const errorStack = errorObj?.stack;
+        
         const errorData = {
           message,
           error: {
-            name: error?.name || 'Unknown',
-            message: error?.message || 'No message',
-            stack: error?.stack,
+            name: errorName,
+            message: errorMessage,
+            stack: errorStack,
           },
           timestamp: new Date().toISOString(),
           environment: process.env.NODE_ENV,
         };
 
         // Use original console methods to bypass interceptors
-        this.originalConsole.error('🚨 Safe Console Error:', JSON.stringify(errorData, null, 2));
+        this.originalConsole.error(
+          "🚨 Safe Console Error:",
+          JSON.stringify(errorData, null, 2)
+        );
       } else {
         this.originalConsole.error(message, error);
       }
     } catch (consoleError) {
       // Fallback if even safe logging fails
       try {
-        this.originalConsole.warn('Console error occurred:', message);
+        this.originalConsole.warn("Console error occurred:", message);
       } catch {
         // Last resort - do nothing to prevent infinite loops
       }
@@ -65,7 +79,7 @@ class SafeConsole {
   /**
    * Safe warning logging
    */
-  safeWarn(message: string, data?: any) {
+  safeWarn(message: string, data?: unknown) {
     try {
       this.originalConsole.warn(message, data);
     } catch {
@@ -76,7 +90,7 @@ class SafeConsole {
   /**
    * Safe info logging
    */
-  safeInfo(message: string, data?: any) {
+  safeInfo(message: string, data?: unknown) {
     try {
       this.originalConsole.info(message, data);
     } catch {
@@ -87,8 +101,8 @@ class SafeConsole {
   /**
    * Safe debug logging (only in development)
    */
-  safeDebug(message: string, data?: any) {
-    if (process.env.NODE_ENV === 'development') {
+  safeDebug(message: string, data?: unknown) {
+    if (process.env.NODE_ENV === "development") {
       try {
         this.originalConsole.debug(message, data);
       } catch {
@@ -102,18 +116,21 @@ class SafeConsole {
 export const safeConsole = SafeConsole.getInstance();
 
 // Export convenience functions
-export const safeError = (message: string, error?: any, options?: SafeConsoleOptions) => 
-  safeConsole.safeError(message, error, options);
+export const safeError = (
+  message: string,
+  error?: unknown,
+  options?: SafeConsoleOptions
+) => safeConsole.safeError(message, error, options);
 
-export const safeWarn = (message: string, data?: any) => 
+export const safeWarn = (message: string, data?: unknown) =>
   safeConsole.safeWarn(message, data);
 
-export const safeInfo = (message: string, data?: any) => 
+export const safeInfo = (message: string, data?: unknown) =>
   safeConsole.safeInfo(message, data);
 
-export const safeDebug = (message: string, data?: any) => 
+export const safeDebug = (message: string, data?: unknown) =>
   safeConsole.safeDebug(message, data);
 
 // Alias for safeInfo for convenience
-export const safeLog = (message: string, data?: any) => 
+export const safeLog = (message: string, data?: unknown) =>
   safeConsole.safeInfo(message, data);

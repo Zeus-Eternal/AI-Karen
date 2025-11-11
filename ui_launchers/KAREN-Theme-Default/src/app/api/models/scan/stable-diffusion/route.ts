@@ -293,7 +293,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json({
       models: [],
       directory: opts.directory,

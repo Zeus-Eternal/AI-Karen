@@ -74,7 +74,7 @@ export class NetworkDiagnostics {
    */
   public getNetworkInfo(): NetworkInfo {
     let protocol = 'http';
-    let host = 'unknown';
+    let host = 'any';
     let port = '80';
 
     try {
@@ -195,7 +195,7 @@ export class NetworkDiagnostics {
    * CORS analysis (preflight)
    */
   private async analyzeCORS(endpoint: string): Promise<CORSInfo> {
-    const origin = isBrowser ? window.location.origin : 'unknown';
+    const origin = isBrowser ? window.location.origin : 'any';
 
     const info: CORSInfo = {
       origin,

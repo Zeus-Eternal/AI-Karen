@@ -21,9 +21,9 @@ interface CapabilitiesResponse {
   capabilities: ModelCapability[];
   supported_modes: string[];
   parameters: {
-    text_generation?: Record<string, any>;
-    image_generation?: Record<string, any>;
-    embedding?: Record<string, any>;
+    text_generation?: Record<string, unknown>;
+    image_generation?: Record<string, unknown>;
+    embedding?: Record<string, unknown>;
   };
   compatibility: {
     multimodal: boolean;
@@ -34,20 +34,20 @@ interface CapabilitiesResponse {
 
 /** ---------------- Utilities ---------------- */
 
-function arr(val: any): any[] {
+function arr(val: unknown): unknown[] {
   return Array.isArray(val) ? val : [];
 }
 
-function hasCap(model: any, cap: string): boolean {
+function hasCap(model: unknown, cap: string): boolean {
   return arr(model?.capabilities).includes(cap);
 }
 
-function normType(model: any): string {
+function normType(model: unknown): string {
   return (model?.type || 'unknown').toString();
 }
 
 /** Build detailed capabilities for a model based on its type and metadata */
-function buildModelCapabilities(model: any): ModelCapability[] {
+function buildModelCapabilities(model: unknown): ModelCapability[] {
   const capabilities: ModelCapability[] = [];
   const caps = arr(model?.capabilities);
 
@@ -150,7 +150,7 @@ function buildModelCapabilities(model: any): ModelCapability[] {
 }
 
 /** Get supported interaction modes for a model */
-function getSupportedModes(model: any): string[] {
+function getSupportedModes(model: unknown): string[] {
   const modes: string[] = [];
   const t = normType(model);
 
@@ -178,8 +178,8 @@ function getSupportedModes(model: any): string[] {
 }
 
 /** Build parameter specifications for different model types */
-function buildParameterSpecs(model: any): Record<string, any> {
-  const params: Record<string, any> = {};
+function buildParameterSpecs(model: unknown): Record<string, unknown> {
+  const params: Record<string, unknown> = {};
   const t = normType(model);
 
   if (t === 'text' || t === 'text_generation' || hasCap(model, 'text-generation') || hasCap(model, 'chat')) {
@@ -235,7 +235,7 @@ function buildParameterSpecs(model: any): Record<string, any> {
 }
 
 /** Build compatibility information for a model */
-function buildCompatibilityInfo(model: any): {
+function buildCompatibilityInfo(model: unknown): {
   multimodal: boolean;
   streaming: boolean;
   batch_processing: boolean;
@@ -273,7 +273,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch available models and locate target
     const models = await modelSelectionService.getAvailableModels();
-    const targetModel = (models || []).find((m: any) => m.id === modelId);
+    const targetModel = (models || []).find((m: unknown) => m.id === modelId);
 
     if (!targetModel) {
       return NextResponse.json(
@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
         'X-Model-Provider': response.provider,
       },
     });
-  } catch (capabilityError: any) {
+  } catch (capabilityError: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to fetch model capabilities',

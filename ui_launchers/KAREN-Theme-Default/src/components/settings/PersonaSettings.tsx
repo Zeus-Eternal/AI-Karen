@@ -32,15 +32,15 @@ function mergeSettings(base: KarenSettings, partial?: Partial<KarenSettings>): K
   return {
     ...base,
     ...p,
-    notifications: { ...base.notifications, ...(p as any).notifications },
-    personalFacts: Array.isArray((p as any).personalFacts) ? (p as any).personalFacts : base.personalFacts,
-    ttsVoiceURI: (p as any).ttsVoiceURI === undefined ? base.ttsVoiceURI : (p as any).ttsVoiceURI,
-    memoryDepth: (p as any).memoryDepth ?? base.memoryDepth,
-    personalityTone: (p as any).personalityTone ?? base.personalityTone,
-    personalityVerbosity: (p as any).personalityVerbosity ?? base.personalityVerbosity,
+    notifications: { ...base.notifications, ...(p as unknown).notifications },
+    personalFacts: Array.isArray((p as unknown).personalFacts) ? (p as unknown).personalFacts : base.personalFacts,
+    ttsVoiceURI: (p as unknown).ttsVoiceURI === undefined ? base.ttsVoiceURI : (p as unknown).ttsVoiceURI,
+    memoryDepth: (p as unknown).memoryDepth ?? base.memoryDepth,
+    personalityTone: (p as unknown).personalityTone ?? base.personalityTone,
+    personalityVerbosity: (p as unknown).personalityVerbosity ?? base.personalityVerbosity,
     customPersonaInstructions:
-      typeof (p as any).customPersonaInstructions === "string"
-        ? (p as any).customPersonaInstructions
+      typeof (p as unknown).customPersonaInstructions === "string"
+        ? (p as unknown).customPersonaInstructions
         : base.customPersonaInstructions,
   };
 }

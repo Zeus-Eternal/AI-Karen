@@ -1,4 +1,4 @@
-import type React from 'react';
+import type * as React from 'react';
 
 /**
  * Utility functions for model management and display
@@ -13,7 +13,7 @@ export interface Model {
   capabilities: string[];
   status: 'local' | 'available' | 'downloading' | 'incompatible' | 'error';
   download_progress?: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   local_path?: string;
   download_url?: string;
   checksum?: string;

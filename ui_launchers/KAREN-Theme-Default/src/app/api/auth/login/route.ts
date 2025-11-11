@@ -93,7 +93,7 @@ async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
       error: `Backend health check failed with status ${response.status}`,
       timestamp: new Date(),
     };
-  } catch (e: any) {
+  } catch (e: Event) {
     return {
       isConnected: false,
       responseTime: Date.now() - start,
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   let retryCount = 0;
 
   // Parse body
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
     email = body?.email || "unknown";
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
     }
 
     return nextResponse;
-  } catch (error: any) {
+  } catch (error: Error) {
     const totalResponseTime = Date.now() - startTime;
     const dbConnectivity = databaseConnectivity.isConnected
       ? databaseConnectivity

@@ -24,15 +24,15 @@ interface Workflow {
   created_at: string;
   updated_at: string;
   steps: WorkflowStep[];
-  triggers: any[];
+  triggers: unknown[];
 }
 
 interface WorkflowStep {
   id: string;
   plugin: string;
-  params: Record<string, any>;
-  conditions?: Record<string, any>;
-  retry_config?: Record<string, any>;
+  params: Record<string, unknown>;
+  conditions?: Record<string, unknown>;
+  retry_config?: Record<string, unknown>;
 }
 
 interface ExecutionResult {
@@ -41,7 +41,7 @@ interface ExecutionResult {
   workflow_id: string;
   duration: number;
   steps_executed: number;
-  output: Record<string, any>;
+  output: Record<string, unknown>;
   error?: string;
 }
 
@@ -55,7 +55,7 @@ interface Plugin {
 const AutomationStudio: React.FC = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [plugins, setPlugins] = useState<Record<string, Plugin>>({});
-  const [templates, setTemplates] = useState<Record<string, any>>({});
+  const [templates, setTemplates] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('create');

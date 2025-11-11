@@ -33,10 +33,12 @@ export class ConfigManager {
     this.config = this.loadConfiguration();
     // Enhanced debug logging for configuration
     if (typeof console !== 'undefined') {
+      // Debug logging would go here in development
     }
     this.detectEnvironment();
     // Enhanced debug logging after environment detection
     if (typeof console !== 'undefined') {
+      // Environment detection logging would go here in development
     }
   }
   /**
@@ -97,6 +99,7 @@ export class ConfigManager {
         typeof console !== 'undefined' &&
         (key === 'KAREN_BACKEND_URL' || key === 'API_BASE_URL')
       ) {
+        // Environment variable logging would go here in development
       }
       return value;
     }

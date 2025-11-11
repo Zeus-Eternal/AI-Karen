@@ -32,7 +32,7 @@ export interface CategorizedError {
   fallbackAction?: string;
   timestamp: Date;
   correlationId?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface ErrorPattern {

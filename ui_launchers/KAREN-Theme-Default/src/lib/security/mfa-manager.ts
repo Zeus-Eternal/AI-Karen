@@ -55,8 +55,7 @@ async function sha256Hex(input: string): Promise<string> {
 
   // Node fallback
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodeCrypto = require('crypto');
+    const nodeCrypto = await import('crypto');
     return nodeCrypto.createHash('sha256').update(input, 'utf8').digest('hex');
   } catch (err) {
     console.error('[MFA] Node crypto failed, using weak fallback:', err);
@@ -70,7 +69,7 @@ async function sha256Hex(input: string): Promise<string> {
   }
 }
 
-function randomBytesHex(len: number): string {
+async function randomBytesHex(len: number): Promise<string> {
   // Browser crypto with proper type checking
   if (typeof globalThis !== 'undefined' &&
       globalThis.crypto &&
@@ -89,8 +88,7 @@ function randomBytesHex(len: number): string {
 
   // Node fallback
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodeCrypto = require('crypto');
+    const nodeCrypto = await import('crypto');
     return nodeCrypto.randomBytes(len).toString('hex');
   } catch (err) {
     console.error('[MFA] Node crypto failed, using weak fallback for random bytes:', err);
@@ -127,9 +125,13 @@ export class MfaManager {
       length: 32,
     });
 
-    const otpauth = secret.otpauth_url!;
+    const otpauth = secret.otpauth_url;
+    if (!otpauth) {
+      throw new Error('Failed to generate OTP auth URL');
+    }
+    
     const qrCodeUrl = await QRCode.toDataURL(otpauth);
-    const backupCodes = this.generateBackupCodes();
+    const backupCodes = await this.generateBackupCodes();
 
     return {
       secret: secret.base32,
@@ -154,7 +156,7 @@ export class MfaManager {
 
     // Hash backup codes before storing
     const hashed = await Promise.all(
-      backupCodesPlain.map((c) => sha256Hex(c.toUpperCase()))
+      backupCodesPlain.map((c: string) => sha256Hex(c.toUpperCase()))
     );
 
     await this.adminUtils.updateUser(userId, {
@@ -189,8 +191,8 @@ export class MfaManager {
   async disableMfa(userId: string, adminUserId: string): Promise<void> {
     const user = await this.adminUtils.getUserWithRole(userId);
     const prefs = { ...(user?.preferences || {}) };
-    delete (prefs as any).mfa_backup_codes_hashed;
-    delete (prefs as any).mfa_backup_codes; // backward-compat cleanup
+    delete (prefs as Record<string, unknown>).mfa_backup_codes_hashed;
+    delete (prefs as Record<string, unknown>).mfa_backup_codes; // backward-compat cleanup
 
     await this.adminUtils.updateUser(userId, {
       two_factor_enabled: false,
@@ -300,7 +302,7 @@ export class MfaManager {
    * Returns plaintext codes for display once.
    */
   async regenerateBackupCodes(userId: string, adminUserId: string): Promise<string[]> {
-    const newCodes = this.generateBackupCodes();
+    const newCodes = await this.generateBackupCodes();
     const hashed = await Promise.all(newCodes.map((c) => sha256Hex(c.toUpperCase())));
     const user = await this.adminUtils.getUserWithRole(userId);
 
@@ -333,7 +335,7 @@ export class MfaManager {
     if (user.role === 'super_admin' || user.role === 'admin') {
       // Use consistent API (pull all configs, then find)
       const configs = await this.adminUtils.getSystemConfig();
-      const cfg = configs.find((c: any) => c.key === 'mfa_required_for_admins');
+      const cfg = configs.find((c) => c.key === 'mfa_required_for_admins');
       return cfg?.value === 'true' || cfg?.value === true;
     }
     return false;
@@ -375,11 +377,11 @@ export class MfaManager {
    * Generate cryptographically-strong backup codes (default 10)
    * Format: 4-4-4 alnum (uppercase) for usability, e.g., "9K3D-1TQZ-7MHF"
    */
-  private generateBackupCodes(count: number = 10): string[] {
+  private async generateBackupCodes(count: number = 10): Promise<string[]> {
     const codes: string[] = [];
     for (let i = 0; i < count; i++) {
       // 12 nibbles (~48 bits) -> mapped to base36 then chunked
-      const hex = randomBytesHex(8); // 64 bits, plenty entropy
+      const hex = await randomBytesHex(8); // 64 bits, plenty entropy
       const base36 = BigInt('0x' + hex).toString(36).toUpperCase().padStart(13, '0');
       const compact = base36.slice(0, 12); // normalize length
       const formatted = `${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}`;
@@ -395,7 +397,7 @@ export class MfaManager {
     const user = await this.adminUtils.getUserWithRole(userId);
     const prefs = user?.preferences || {};
     const hashed: string[] =
-      (prefs as any).mfa_backup_codes_hashed ||
+      (prefs as Record<string, unknown>).mfa_backup_codes_hashed as string[] ||
       []; // old plaintext list is ignored for security
     return hashed.length;
   }
@@ -410,8 +412,8 @@ export class MfaManager {
     const user = await this.adminUtils.getUserWithRole(userId);
     const prefs = user?.preferences || {};
     const list: string[] =
-      (prefs as any).mfa_backup_codes_hashed ||
-      (prefs as any).mfa_backup_codes ||
+      (prefs as Record<string, unknown>).mfa_backup_codes_hashed as string[] ||
+      (prefs as Record<string, unknown>).mfa_backup_codes as string[] ||
       [];
 
     if (!list.length) return { valid: false };

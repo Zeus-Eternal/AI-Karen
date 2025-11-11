@@ -544,7 +544,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
               <FilterIcon className="h-4 w-4 text-muted-foreground" />
 
               {/* Status */}
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as unknown)}>
                 <SelectTrigger className="w-40 h-8 text-xs" aria-label="Status filter">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -571,7 +571,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
               </Select>
 
               {/* Sort */}
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as unknown)}>
                 <SelectTrigger className="w-48 h-8 text-xs" aria-label="Sort by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>

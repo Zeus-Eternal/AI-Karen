@@ -50,7 +50,7 @@ function readNavigationTimings(): { ttfb?: number; loadTime?: number } {
     };
   }
   // Legacy fallback
-  const t = (performance as any).timing;
+  const t = (performance as unknown).timing;
   if (t) {
     return {
       ttfb: t.responseStart - t.navigationStart,
@@ -100,12 +100,12 @@ export function PerformanceMonitor({
       if ("PerformanceObserver" in window) {
         const lcpObs = new PerformanceObserver((list) => {
           const entries = list.getEntries();
-          const last = entries[entries.length - 1] as any;
+          const last = entries[entries.length - 1] as unknown;
           if (last) {
             setMetrics((prev) => ({ ...prev, lcp: last.startTime })); // ms
           }
         });
-        lcpObs.observe({ type: "largest-contentful-paint", buffered: true } as any);
+        lcpObs.observe({ type: "largest-contentful-paint", buffered: true } as unknown);
         lcpObserverRef.current = lcpObs;
       }
     } catch {
@@ -116,7 +116,7 @@ export function PerformanceMonitor({
     try {
       if ("PerformanceObserver" in window) {
         const fidObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as any[];
+          const entries = list.getEntries() as unknown[];
           for (const entry of entries) {
             if (entry.processingStart && entry.startTime) {
               const fid = entry.processingStart - entry.startTime; // ms
@@ -124,7 +124,7 @@ export function PerformanceMonitor({
             }
           }
         });
-        fidObs.observe({ type: "first-input", buffered: true } as any);
+        fidObs.observe({ type: "first-input", buffered: true } as unknown);
         fidObserverRef.current = fidObs;
       }
     } catch {
@@ -136,13 +136,13 @@ export function PerformanceMonitor({
       if ("PerformanceObserver" in window) {
         let clsValue = 0;
         const clsObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as any[];
+          const entries = list.getEntries() as unknown[];
           for (const e of entries) {
             if (!e.hadRecentInput) clsValue += e.value;
           }
           setMetrics((prev) => ({ ...prev, cls: clsValue }));
         });
-        clsObs.observe({ type: "layout-shift", buffered: true } as any);
+        clsObs.observe({ type: "layout-shift", buffered: true } as unknown);
         clsObserverRef.current = clsObs;
       }
     } catch {
@@ -153,14 +153,14 @@ export function PerformanceMonitor({
     try {
       if ("PerformanceObserver" in window) {
         const paintObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as any[];
+          const entries = list.getEntries() as unknown[];
           for (const e of entries) {
             if (e.name === "first-contentful-paint") {
               setMetrics((prev) => ({ ...prev, fcp: e.startTime })); // ms
             }
           }
         });
-        paintObs.observe({ type: "paint", buffered: true } as any);
+        paintObs.observe({ type: "paint", buffered: true } as unknown);
         paintObserverRef.current = paintObs;
       }
     } catch {
@@ -174,7 +174,7 @@ export function PerformanceMonitor({
     // ----- Memory usage -----
     try {
       if ("memory" in performance) {
-        const memory = (performance as any).memory;
+        const memory = (performance as unknown).memory;
         setMetrics((prev) => ({
           ...prev,
           usedJSHeapSize: memory?.usedJSHeapSize,
@@ -436,7 +436,7 @@ export function usePerformanceMetrics() {
       // Memory usage
       try {
         if ("memory" in performance) {
-          const memory = (performance as any).memory;
+          const memory = (performance as unknown).memory;
           out.usedJSHeapSize = memory?.usedJSHeapSize;
           out.totalJSHeapSize = memory?.totalJSHeapSize;
           out.jsHeapSizeLimit = memory?.jsHeapSizeLimit;

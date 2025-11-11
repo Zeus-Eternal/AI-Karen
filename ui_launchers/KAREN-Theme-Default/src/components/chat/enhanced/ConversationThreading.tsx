@@ -86,8 +86,8 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "created": {
-          const aTime = new Date(a.createdAt as any).getTime();
-          const bTime = new Date(b.createdAt as any).getTime();
+          const aTime = new Date(a.createdAt as unknown).getTime();
+          const bTime = new Date(b.createdAt as unknown).getTime();
           return bTime - aTime;
         }
         case "messages": {
@@ -97,8 +97,8 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         }
         case "updated":
         default: {
-          const aTime = new Date(a.updatedAt as any).getTime();
-          const bTime = new Date(b.updatedAt as any).getTime();
+          const aTime = new Date(a.updatedAt as unknown).getTime();
+          const bTime = new Date(b.updatedAt as unknown).getTime();
           return bTime - aTime;
         }
       }
@@ -253,7 +253,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {formatDistanceToNow(new Date(thread.updatedAt as any), { addSuffix: true })}
+              {formatDistanceToNow(new Date(thread.updatedAt as unknown), { addSuffix: true })}
             </span>
 
             <span className="flex items-center gap-1">
@@ -351,7 +351,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <select
               id="filter-status"
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value as unknown)}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base"
               aria-label="Filter by status"
             >
@@ -366,7 +366,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <select
               id="sort-by"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as unknown)}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base"
               aria-label="Sort threads"
             >

@@ -24,7 +24,7 @@ import { webhookHandler } from '@/lib/email/delivery-tracker';
 type Provider = 'sendgrid' | 'ses' | 'mailgun' | 'postmark' | 'smtp';
 
 const SUPPORTED_PROVIDERS: Provider[] = ['sendgrid', 'ses', 'mailgun', 'postmark', 'smtp'];
-const TEXT_ENCODER = new TextEncoder();
+
 
 /* -------------------------------------------------------------------------- */
 /*                               ROUTE:  POST                                 */
@@ -47,7 +47,7 @@ export async function POST(
   const headers = toHeadersRecord(request.headers);
 
   let rawBody: string | undefined;
-  let body: any;
+  let body: unknown;
 
   try {
     if (contentType.includes('application/json')) {
@@ -56,7 +56,7 @@ export async function POST(
     } else if (contentType.includes('application/x-www-form-urlencoded')) {
       // Mailgun may POST with form-encoded payloads
       const form = await request.formData();
-      const obj: Record<string, any> = {};
+      const obj: Record<string, unknown> = {};
       for (const [k, v] of form.entries()) obj[k] = v;
       body = obj;
       rawBody = new URLSearchParams(obj as Record<string, string>).toString();
@@ -76,7 +76,7 @@ export async function POST(
         // Last resort: formData
         try {
           const form = await request.formData();
-          const obj: Record<string, any> = {};
+          const obj: Record<string, unknown> = {};
           for (const [k, v] of form.entries()) obj[k] = v;
           body = obj;
         } catch {
@@ -140,7 +140,6 @@ export async function GET(
   }
 
   const url = new URL(request.url);
-  const headers = toHeadersRecord(request.headers);
 
   try {
     switch (provider) {
@@ -204,7 +203,7 @@ async function verifySignature(
   provider: Provider,
   headers: Record<string, string>,
   rawBody: string,
-  body: any
+  body: unknown
 ) {
   switch (provider) {
     case 'sendgrid': {
@@ -287,9 +286,9 @@ async function verifySignature(
 
 function normalizeEvents(
   provider: Provider,
-  body: any,
-  headers: Record<string, string>
-): Array<{ event_id?: string; event_type: string; body: any }> {
+  body: unknown,
+  _headers: Record<string, string>
+): Array<{ event_id?: string; event_type: string; body: unknown }> {
   switch (provider) {
     case 'sendgrid': {
       // SendGrid posts an array of events
@@ -329,7 +328,7 @@ function normalizeEvents(
       // SES via SNS: body may be SNS wrapper; unwrap if necessary
       if (body?.Type && body?.Message) {
         // SNS envelope
-        let msg: any = {};
+        let msg: unknown = {};
         try { msg = JSON.parse(body.Message); } catch { msg = body.Message; }
         const notificationType = msg?.notificationType || msg?.eventType || 'unknown';
         const id =
@@ -370,7 +369,7 @@ function verifyEd25519(publicKey: string, signatureBase64: string, message: Buff
     const sig = Buffer.from(signatureBase64, 'base64');
     // Node >= 12 supports Ed25519 using crypto.verify with null params
     return crypto.verify(null, message, toEd25519KeyObject(publicKey), sig);
-  } catch (e) {
+  } catch {
     return false;
   }
 }

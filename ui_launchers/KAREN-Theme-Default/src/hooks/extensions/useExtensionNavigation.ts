@@ -1,6 +1,7 @@
 "use client";
 import { useCallback } from "react";
-import { useExtensionContext, type BreadcrumbItem, type ExtensionCategory } from "@/extensions";
+import { useExtensionContext } from "@/hooks/use-extension-context";
+import { type BreadcrumbItem, type ExtensionCategory } from "@/extensions";
 import { useNavigationActions } from "@/lib/extensions/navigationUtils";
 
 export interface UseExtensionNavigation {
@@ -14,7 +15,7 @@ export interface UseExtensionNavigation {
 
 export function useExtensionNavigation(): UseExtensionNavigation {
   const { state, dispatch } = useExtensionContext();
-  const { dispatchMultiple, navigate } = useNavigationActions(dispatch);
+  const { navigate } = useNavigationActions(dispatch);
 
   const setCategory = useCallback(
     (category: ExtensionCategory) => dispatch({ type: "SET_CATEGORY", category }),

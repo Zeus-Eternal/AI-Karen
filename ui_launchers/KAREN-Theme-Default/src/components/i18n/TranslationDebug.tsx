@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useI18n, useLocale } from "../../providers/i18n-provider";
+import { useI18n, useLocale } from "../../providers/i18n-hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";

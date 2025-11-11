@@ -58,10 +58,14 @@ export const setupTestIsolation = () => {
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.clear();
-      } catch {}
+      } catch {
+        // Ignore localStorage errors in test environment
+      }
       try {
         window.sessionStorage.clear();
-      } catch {}
+      } catch {
+        // Ignore sessionStorage errors in test environment
+      }
     }
   });
 
@@ -276,14 +280,19 @@ export const cleanupTestData = () => {
   if (typeof window !== 'undefined') {
     try {
       window.localStorage.clear();
-    } catch {}
+    } catch {
+      // Ignore localStorage errors in test environment
+    }
     try {
       window.sessionStorage.clear();
-    } catch {}
+    } catch {
+      // Ignore sessionStorage errors in test environment
+    }
     // Remove any ad-hoc test globals you might attach
     Object.keys(window).forEach((key) => {
       if (key.startsWith('test_')) {
-        delete (window as any)[key];
+        const globalWindow = window as unknown as Record<string, unknown>;
+        delete globalWindow[key];
       }
     });
   }
@@ -356,7 +365,7 @@ export const setupComponentTestEnvironment = () => {
 export const validateTestEnvironment = () => {
   const issues: string[] = [];
 
-  if (typeof (globalThis as any).fetch !== 'function') {
+  if (typeof (globalThis as Record<string, unknown>).fetch !== 'function') {
     issues.push('fetch is not mocked');
   }
   if (typeof window === 'undefined') {
@@ -364,21 +373,29 @@ export const validateTestEnvironment = () => {
   }
 
   try {
-    const { useAuth } = require('@/contexts/AuthContext');
-    if (!vi.isMockFunction(useAuth)) {
-      // Not strictly required; some suites use real context.
-      // We flag it for awareness only.
-      // issues.push('useAuth is not properly mocked');
-    }
+    // Use dynamic import instead of require
+    import('@/contexts/AuthContext').then(({ useAuth }) => {
+      if (!vi.isMockFunction(useAuth)) {
+        // Not strictly required; some suites use real context.
+        // We flag it for awareness only.
+        // issues.push('useAuth is not properly mocked');
+      }
+    }).catch(() => {
+      // Module may not be loaded in some suites—ignore.
+    });
   } catch {
     // Module may not be loaded in some suites—ignore.
   }
 
   try {
-    const { useRole } = require('@/hooks/useRole');
-    if (!vi.isMockFunction(useRole)) {
-      // issues.push('useRole is not properly mocked');
-    }
+    // Use dynamic import instead of require
+    import('@/hooks/useRole').then(({ useRole }) => {
+      if (!vi.isMockFunction(useRole)) {
+        // issues.push('useRole is not properly mocked');
+      }
+    }).catch(() => {
+      // Ignore if not present
+    });
   } catch {
     // Ignore if not present
   }
@@ -390,7 +407,7 @@ export const debugTestEnvironment = () => {
   // eslint-disable-next-line no-console
   console.log('Test Environment:', {
     hasJSDOM: typeof window !== 'undefined',
-    hasFetch: typeof (globalThis as any).fetch === 'function',
+    hasFetch: typeof (globalThis as Record<string, unknown>).fetch === 'function',
     hasLocalStorage: typeof window !== 'undefined' && 'localStorage' in window,
     hasSessionStorage: typeof window !== 'undefined' && 'sessionStorage' in window,
     validationPassed: validateTestEnvironment(),

@@ -76,7 +76,7 @@ export interface KarenAlert {
   /** Expandable content for detailed information */
   expandableContent?: React.ReactNode;
   /** Additional metadata for tracking and context */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   /** Timestamp when alert was created */
   timestamp: number;
   /** Source component or service that triggered the alert */
@@ -185,7 +185,7 @@ export interface AlertResult {
   /** The alert ID that was processed */
   alertId: string;
   /** Any additional result data */
-  data?: any;
+  data?: unknown;
 }
 
 /**

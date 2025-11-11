@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getHealthMonitor, type HealthMetrics, type Alert } from '@/lib/health-monitor';
 import { getPerformanceMonitor, type PerformanceStats, type PerformanceAlert } from '@/lib/performance-monitor';
 import { webUIConfig } from '@/lib/config';
@@ -24,18 +24,20 @@ export interface MonitoringState {
 }
 
 export function useMonitoring() {
-  const [state, setState] = useState<MonitoringState>({
+  const healthMonitor = useMemo(() => getHealthMonitor(), []);
+  const performanceMonitor = useMemo(() => getPerformanceMonitor(), []);
+  const [state, setState] = useState<MonitoringState>(() => ({
     health: {
-      metrics: null,
-      alerts: [],
-      isMonitoring: false,
+      metrics: webUIConfig.enableHealthChecks ? healthMonitor.getMetrics() : null,
+      alerts: webUIConfig.enableHealthChecks ? healthMonitor.getAlerts(50) : [],
+      isMonitoring: healthMonitor.getStatus().isMonitoring,
     },
     performance: {
-      stats: null,
+      stats: performanceMonitor.getStats(),
       alerts: [],
     },
-    lastUpdate: '',
-  });
+    lastUpdate: new Date().toISOString(),
+  }));
 
   const updateHealthMetrics = useCallback((metrics: HealthMetrics) => {
     setState(prev => ({
@@ -69,7 +71,6 @@ export function useMonitoring() {
   }, []);
 
   const startMonitoring = useCallback(() => {
-    const healthMonitor = getHealthMonitor();
     healthMonitor.start();
 
     setState(prev => ({
@@ -79,10 +80,9 @@ export function useMonitoring() {
         isMonitoring: true,
       },
     }));
-  }, []);
+  }, [healthMonitor]);
 
   const stopMonitoring = useCallback(() => {
-    const healthMonitor = getHealthMonitor();
     healthMonitor.stop();
 
     setState(prev => ({
@@ -92,10 +92,9 @@ export function useMonitoring() {
         isMonitoring: false,
       },
     }));
-  }, []);
+  }, [healthMonitor]);
 
   const acknowledgeHealthAlert = useCallback((alertId: string) => {
-    const healthMonitor = getHealthMonitor();
     if (healthMonitor.acknowledgeAlert(alertId)) {
       setState(prev => ({
         ...prev,
@@ -109,10 +108,9 @@ export function useMonitoring() {
       return true;
     }
     return false;
-  }, []);
+  }, [healthMonitor]);
 
   const clearHealthAlerts = useCallback(() => {
-    const healthMonitor = getHealthMonitor();
     healthMonitor.clearAlerts();
 
     setState(prev => ({
@@ -122,10 +120,9 @@ export function useMonitoring() {
         alerts: [],
       },
     }));
-  }, []);
+  }, [healthMonitor]);
 
   const refreshPerformanceStats = useCallback(() => {
-    const performanceMonitor = getPerformanceMonitor();
     const stats = performanceMonitor.getStats();
 
     setState(prev => ({
@@ -135,48 +132,22 @@ export function useMonitoring() {
         stats,
       },
     }));
-  }, []);
+  }, [performanceMonitor]);
 
   useEffect(() => {
     if (!webUIConfig.enableHealthChecks) {
       return;
     }
 
-    const healthMonitor = getHealthMonitor();
-    const performanceMonitor = getPerformanceMonitor();
-
-    // Initialize state
-    setState({
-      health: {
-        metrics: healthMonitor.getMetrics(),
-        alerts: healthMonitor.getAlerts(50),
-        isMonitoring: healthMonitor.getStatus().isMonitoring,
-      },
-      performance: {
-        stats: performanceMonitor.getStats(),
-        alerts: [],
-      },
-      lastUpdate: new Date().toISOString(),
-    });
-
-    // Set up listeners
     const unsubscribeHealthMetrics = healthMonitor.onMetricsUpdate(updateHealthMetrics);
     const unsubscribeHealthAlerts = healthMonitor.onAlert(updateHealthAlert);
     const unsubscribePerformanceAlerts = performanceMonitor.onAlert(updatePerformanceAlert);
 
-    // Start monitoring if not already started
     if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
-      setState(prev => ({
-        ...prev,
-        health: {
-          ...prev.health,
-          isMonitoring: true,
-        },
-      }));
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => startMonitoring(), 0);
     }
 
-    // Refresh performance stats periodically
     const performanceInterval = setInterval(refreshPerformanceStats, 30000); // Every 30 seconds
 
     return () => {
@@ -186,10 +157,13 @@ export function useMonitoring() {
       clearInterval(performanceInterval);
     };
   }, [
+    healthMonitor,
+    performanceMonitor,
     updateHealthMetrics,
     updateHealthAlert,
     updatePerformanceAlert,
     refreshPerformanceStats,
+    startMonitoring,
   ]);
 
   return {

@@ -79,7 +79,7 @@ const getDetailIcon = (key: string) => {
   return IconComponent;
 };
 
-const formatDetailValue = (value: any): string => {
+const formatDetailValue = (value: unknown): string => {
   if (typeof value === "number") {
     // Format based on the value range
     if (value < 1) {

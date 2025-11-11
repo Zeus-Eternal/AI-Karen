@@ -181,9 +181,10 @@ export class ResourceMonitor {
    */
   private async getCPUMetrics(): Promise<ResourceMetrics['cpu']> {
     const usage = this.estimateCPUUsage();
+    const nav = navigator as unknown as { hardwareConcurrency?: number };
     return {
       usage,
-      cores: (navigator as any)?.hardwareConcurrency ?? 4,
+      cores: nav?.hardwareConcurrency ?? 4,
       loadAverage: [usage / 100, usage / 100, usage / 100],
       processes: 1,
     };
@@ -193,7 +194,13 @@ export class ResourceMonitor {
    * Get memory metrics
    */
   private async getMemoryMetrics(): Promise<ResourceMetrics['memory']> {
-    const perfAny = performance as any;
+    interface PerformanceMemory {
+      usedJSHeapSize?: number;
+      totalJSHeapSize?: number;
+      jsHeapSizeLimit?: number;
+    }
+
+    const perfAny = performance as unknown as { memory?: PerformanceMemory };
     if (perfAny && perfAny.memory) {
       const memory = perfAny.memory;
       const used = Number(memory.usedJSHeapSize) || 0;
@@ -226,7 +233,12 @@ export class ResourceMonitor {
    * Get network metrics
    */
   private async getNetworkMetrics(): Promise<ResourceMetrics['network']> {
-    const nav: any = navigator;
+    interface NavigatorConnection {
+      downlink?: number;
+      effectiveType?: string;
+    }
+
+    const nav = navigator as unknown as { connection?: NavigatorConnection };
     const connection = nav?.connection;
 
     const navEntries = (performance.getEntriesByType?.('navigation') ?? []) as PerformanceNavigationTiming[];
@@ -264,7 +276,11 @@ export class ResourceMonitor {
    * Get storage metrics
    */
   private async getStorageMetrics(): Promise<ResourceMetrics['storage']> {
-    const navAny: any = navigator;
+    interface StorageManager {
+      estimate(): Promise<{ usage?: number; quota?: number }>;
+    }
+
+    const navAny = navigator as unknown as { storage?: StorageManager };
     if (navAny?.storage?.estimate) {
       try {
         const estimate = await navAny.storage.estimate();
@@ -299,13 +315,20 @@ export class ResourceMonitor {
    * Estimate CPU usage based on performance metrics
    */
   private estimateCPUUsage(): number {
-    const getEntriesByType = (performance as any)?.getEntriesByType?.bind(performance);
-    const longTasks: any[] = getEntriesByType ? getEntriesByType('longtask') : [];
+    interface LongTask {
+      startTime: number;
+      duration: number;
+    }
+
+    const perf = performance as unknown as { getEntriesByType?: (type: string) => unknown[] };
+    const getEntriesByType = perf?.getEntriesByType?.bind(performance);
+    const longTasks: unknown[] = getEntriesByType ? getEntriesByType('longtask') : [];
     const now = performance.now?.() ?? 0;
 
-    const recentTasks = (longTasks || []).filter(
-      (task) => typeof task.startTime === 'number' && now - task.startTime < 10000
-    );
+    const recentTasks = (longTasks || []).filter((task): task is LongTask => {
+      const t = task as LongTask;
+      return typeof t.startTime === 'number' && now - t.startTime < 10000;
+    });
 
     if (!recentTasks.length) return Math.random() * 20;
 
@@ -323,8 +346,9 @@ export class ResourceMonitor {
     if (!timings?.length) return 0;
     const latencies = timings
       .map((t) => {
-        const start = (t as any).requestStart ?? 0;
-        const respStart = (t as any).responseStart ?? 0;
+        const timing = t as unknown as { requestStart?: number; responseStart?: number };
+        const start = timing.requestStart ?? 0;
+        const respStart = timing.responseStart ?? 0;
         const delta = respStart - start;
         return isFinite(delta) ? delta : 0;
       })

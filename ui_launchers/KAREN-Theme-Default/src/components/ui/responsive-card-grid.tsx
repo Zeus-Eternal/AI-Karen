@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-export interface ResponsiveCardGridProps extends React.HTMLAttributes<HTMLDivElement> {}
+export type ResponsiveCardGridProps = React.HTMLAttributes<HTMLDivElement>;
 
 const ResponsiveCardGrid = React.forwardRef<HTMLDivElement, ResponsiveCardGridProps>(
   ({ className, ...props }, ref) => (

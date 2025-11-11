@@ -6,13 +6,13 @@
  */
 
 // Providers
+export { default as I18nProvider } from "../../providers/i18n-provider";
 export {
-  default as I18nProvider,
   useI18n,
   useTranslation,
   useLocale,
   useFormatting,
-} from "../../providers/i18n-provider";
+} from "../../providers/i18n-hooks";
 
 // Components
 export { default as LanguageSelector } from "./LanguageSelector";

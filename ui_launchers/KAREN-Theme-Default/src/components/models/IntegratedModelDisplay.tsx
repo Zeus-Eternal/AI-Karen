@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Server, BarChart3, Settings } from 'lucide-react';
 
-export interface DisplayModel { name: string; status: string; metrics: { requests: number; latency: number; cost: number; }; config: Record<string, any>; }
+export interface DisplayModel { name: string; status: string; metrics: { requests: number; latency: number; cost: number; }; config: Record<string, unknown>; }
 export interface IntegratedModelDisplayProps { model: DisplayModel; onConfigure?: () => void; className?: string; }
 
 export default function IntegratedModelDisplay({ model, onConfigure, className = '' }: IntegratedModelDisplayProps) {

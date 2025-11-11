@@ -27,7 +27,7 @@ export interface ProviderInfo {
   status: 'active' | 'inactive' | 'error';
   models: ModelInfo[];
   capabilities: string[];
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   health_status: 'healthy' | 'degraded' | 'unhealthy';
   last_check: string;
 }

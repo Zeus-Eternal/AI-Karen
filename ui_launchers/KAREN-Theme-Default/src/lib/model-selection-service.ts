@@ -35,7 +35,7 @@ export class ModelSelectionService {
   private cachedModels: Model[] = [];
   private lastFetchTime: number = 0;
   private readonly CACHE_DURATION = 30000; // 30 seconds
-  private changeListeners: Array<(event: any) => void> = [];
+  private changeListeners: Array<(event: Event) => void> = [];
 
   static getInstance(): ModelSelectionService {
     if (!ModelSelectionService.instance) {
@@ -545,7 +545,7 @@ export class ModelSelectionService {
   /**
    * Add change listener for model updates
    */
-  addChangeListener(listener: (event: any) => void): () => void {
+  addChangeListener(listener: (event: Event) => void): () => void {
     this.changeListeners.push(listener);
     
     // Return unsubscribe function
@@ -560,7 +560,7 @@ export class ModelSelectionService {
   /**
    * Notify change listeners
    */
-  private notifyChangeListeners(event: any): void {
+  private notifyChangeListeners(event: Event): void {
     this.changeListeners.forEach(listener => {
       try {
         listener(event);

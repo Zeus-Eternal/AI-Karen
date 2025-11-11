@@ -301,7 +301,7 @@ export function createPermissionRequest(
 }
 
 /** Validates structure of a permission request */
-export function validatePermissionRequest(request: any): {
+export function validatePermissionRequest(request: Record<string, unknown>): {
   valid: boolean;
   errors: string[];
 } {

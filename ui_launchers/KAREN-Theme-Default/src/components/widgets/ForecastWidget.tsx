@@ -21,7 +21,7 @@ export default function ForecastWidget({ refId }: ForecastWidgetProps) {
       const location = refId.replace(/_forecast$/, '').replace(/_/g, ' ');
       const result = await pluginService.executePlugin('weather_query', { location });
       if (result.success && result.result && typeof result.result === 'object') {
-        setWeather({ summary: result.result.summary || '' });
+        setWeather({ summary: (result.result as { summary?: string }).summary || '' });
       } else {
         setError(result.error || 'Unable to fetch forecast');
       }

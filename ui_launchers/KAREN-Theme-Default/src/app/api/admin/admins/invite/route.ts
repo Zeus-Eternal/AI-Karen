@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       message: 'Admin invitation sent successfully',
       invitationId: invitation.id,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to send admin invitation' },
       { status: 500 }

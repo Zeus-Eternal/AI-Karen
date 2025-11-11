@@ -9,7 +9,7 @@ export interface ReasoningRequest {
   context?: {
     user_id?: string;
     conversation_id?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -21,7 +21,7 @@ export interface ReasoningResponse {
     metadata?: {
       fallback_mode?: boolean;
       local_processing?: boolean;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
   reasoning_method: string;
@@ -32,13 +32,23 @@ export interface ReasoningResponse {
   };
 }
 
+export interface ReasoningSystemStatus {
+  degraded: boolean;
+  components: string[];
+  fallback_systems_active: boolean;
+  local_models_available: boolean;
+  ai_status?: unknown;
+  failed_providers?: string[];
+  reason?: string;
+}
+
 export type FetchOptions = {
   timeoutMs?: number;
   retries?: number;
   retryBackoffMs?: number;
   method?: 'GET' | 'POST';
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
 };
 
 class ReasoningService {
@@ -58,7 +68,7 @@ class ReasoningService {
     return `${base}${suffix}`;
   }
 
-  private async fetchJSON<T = any>(url: string, opts: FetchOptions = {}): Promise<T> {
+  private async fetchJSON<T = unknown>(url: string, opts: FetchOptions = {}): Promise<T> {
     const {
       timeoutMs = 15000,
       retries = 1,
@@ -99,7 +109,7 @@ class ReasoningService {
           throw err;
         }
 
-        // Try parse JSON safely; empty body -> {} as any
+        // Try parse JSON safely; empty body -> {} as unknown
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
           // attempt text -> try to parse, else wrap into object
@@ -194,14 +204,14 @@ class ReasoningService {
   async testConnection(): Promise<boolean> {
     // proxy
     try {
-      const ok = await this.fetchJSON<any>(this.PROXY_DEGRADED, { timeoutMs: 8000 });
+      const ok = await this.fetchJSON<unknown>(this.PROXY_DEGRADED, { timeoutMs: 8000 });
       return !!ok;
     } catch {
       // fallback to backend
     }
     try {
       const url = this.buildURL('/health/degraded-mode');
-      const ok = await this.fetchJSON<any>(url, { timeoutMs: 8000 });
+      const ok = await this.fetchJSON<unknown>(url, { timeoutMs: 8000 });
       return !!ok;
     } catch {
       return false;
@@ -211,30 +221,35 @@ class ReasoningService {
   /**
    * Returns a normalized system status shape
    */
-  async getSystemStatus(): Promise<{
-    degraded: boolean;
-    components: string[];
-    fallback_systems_active: boolean;
-    local_models_available: boolean;
-    ai_status?: any;
-    failed_providers?: string[];
-    reason?: string;
-  }> {
-    const mapDegraded = (degradedModeData: any) => ({
-      degraded: !!degradedModeData?.is_active,
-      components: degradedModeData?.infrastructure_issues || [],
-      fallback_systems_active:
-        !!degradedModeData?.core_helpers_available?.fallback_responses,
-      local_models_available:
-        !!degradedModeData?.core_helpers_available?.total_ai_capabilities,
-      ai_status: degradedModeData?.ai_status,
-      failed_providers: degradedModeData?.failed_providers || [],
-      reason: degradedModeData?.reason,
-    });
+  async getSystemStatus(): Promise<ReasoningSystemStatus> {
+    interface DegradedModeData {
+      is_active?: boolean;
+      infrastructure_issues?: string[];
+      core_helpers_available?: {
+        fallback_responses?: boolean;
+        total_ai_capabilities?: boolean;
+      };
+      ai_status?: unknown;
+      failed_providers?: string[];
+      reason?: string;
+    }
+
+    const mapDegraded = (degradedModeData: unknown): ReasoningSystemStatus => {
+      const data = degradedModeData as DegradedModeData;
+      return {
+        degraded: !!data?.is_active,
+        components: data?.infrastructure_issues || [],
+        fallback_systems_active: !!data?.core_helpers_available?.fallback_responses,
+        local_models_available: !!data?.core_helpers_available?.total_ai_capabilities,
+        ai_status: data?.ai_status,
+        failed_providers: data?.failed_providers || [],
+        reason: data?.reason,
+      };
+    };
 
     // proxy first
     try {
-      const degraded = await this.fetchJSON<any>(this.PROXY_DEGRADED, { timeoutMs: 10000 });
+      const degraded = await this.fetchJSON<unknown>(this.PROXY_DEGRADED, { timeoutMs: 10000 });
       return mapDegraded(degraded);
     } catch (proxyErr) {
       safeError('Degraded-mode (proxy) check failed:', proxyErr);
@@ -243,7 +258,7 @@ class ReasoningService {
     // backend fallback
     try {
       const url = this.buildURL('/health/degraded-mode');
-      const degraded = await this.fetchJSON<any>(url, { timeoutMs: 10000 });
+      const degraded = await this.fetchJSON<unknown>(url, { timeoutMs: 10000 });
       return mapDegraded(degraded);
     } catch (backendErr) {
       safeError('Degraded-mode (backend) check failed:', backendErr);

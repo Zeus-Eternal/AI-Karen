@@ -50,17 +50,15 @@ const isoNow = () => new Date().toISOString();
 function secureRandomId(prefix: string): string {
   try {
     // Prefer Web Crypto if present
-    // @ts-ignore
-    if (globalThis.crypto?.getRandomValues) {
-      // @ts-ignore
+    if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
       const arr = new Uint32Array(3);
-      // @ts-ignore
       globalThis.crypto.getRandomValues(arr);
       return `${prefix}_${Date.now().toString(36)}_${Array.from(arr)
         .map((n) => n.toString(36))
         .join('')}`;
     }
-  } catch {
+  } catch (error) {
+    console.debug('Crypto operation failed:', error);
     // fallthrough
   }
   // Fallback
@@ -92,7 +90,8 @@ export class SecurityManager {
       // Unlock if expired
       await this.unlockAccount(userId);
       return false;
-    } catch {
+    } catch (error) {
+      console.debug('Account lock check failed:', error);
       // Fail-soft: don't block logins if DB transient error
       return false;
     }
@@ -149,7 +148,8 @@ export class SecurityManager {
             severity: 'high',
           });
         }
-      } catch {
+      } catch (error) {
+        console.debug('Failed to lock account:', error);
         // ignore
       }
     }
@@ -249,9 +249,10 @@ export class SecurityManager {
   ): Promise<string | number | boolean | null> {
     try {
       const configs = await this.adminUtils.getSystemConfig();
-      const config = configs.find((c: any) => c.key === key);
+      const config = configs.find((c) => c.key === key);
       return config?.value ?? null;
-    } catch {
+    } catch (error) {
+      console.debug('Failed to get system config:', error);
       return null;
     }
   }
@@ -495,14 +496,14 @@ export class SecurityManager {
     resolvedBy: string,
     options: { resolution_notes?: string } = {},
   ): Promise<void> {
-    for (const [key, events] of securityEvents.entries()) {
+    for (const [_key, events] of securityEvents.entries()) {
       const event = events.find((e) => e.id === eventId);
       if (event) {
         event.resolved = true;
-        (event as any).resolved_by = resolvedBy;
-        (event as any).resolved_at = new Date();
+        (event as SecurityEvent & { resolved_by?: string; resolved_at?: Date; resolution_notes?: string }).resolved_by = resolvedBy;
+        (event as SecurityEvent & { resolved_by?: string; resolved_at?: Date; resolution_notes?: string }).resolved_at = new Date();
         if (options.resolution_notes) {
-          (event as any).resolution_notes = options.resolution_notes;
+          (event as SecurityEvent & { resolved_by?: string; resolved_at?: Date; resolution_notes?: string }).resolution_notes = options.resolution_notes;
         }
 
         await this.adminUtils.createAuditLog({
@@ -583,7 +584,8 @@ export class SecurityManager {
         if (maybe) return maybe;
       }
       return await this.adminUtils.getUserByEmail(identifier);
-    } catch {
+    } catch (error) {
+      console.debug('Failed to find user by identifier:', error);
       return null;
     }
   }

@@ -8,7 +8,7 @@
  */
 import { getEnvironmentConfigManager } from '../../../lib/config/index';
 import { getConnectionManager, ConnectionOptions, RequestResult, ConnectionError } from '../../../lib/connection/connection-manager';
-import { getPerformanceOptimizer } from '../../../lib/performance/performance-optimizer';
+
 // Legacy implementation for backward compatibility
 const DEFAULT_PORT = process.env.KAREN_BACKEND_PORT || process.env.BACKEND_PORT || '8000';
 // Standardized environment variables with legacy fallbacks
@@ -22,8 +22,10 @@ const ENV_CANDIDATES = [
 ];
 // Log deprecation warnings for legacy environment variables
 if (process.env.API_BASE_URL && !process.env.KAREN_BACKEND_URL) {
+  console.warn('API_BASE_URL is deprecated. Please use KAREN_BACKEND_URL instead.');
 }
 if (process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_KAREN_BACKEND_URL) {
+  console.warn('NEXT_PUBLIC_API_BASE_URL is deprecated. Please use NEXT_PUBLIC_KAREN_BACKEND_URL instead.');
 }
 const DEFAULT_HOST_CANDIDATES = [
   `http://localhost:${DEFAULT_PORT}`,
@@ -50,7 +52,7 @@ export function getBackendBaseUrl(): string {
     const configManager = getEnvironmentConfigManager();
     const config = configManager.getBackendConfig();
     return config.primaryUrl;
-  } catch (error) {
+  } catch {
     // Fallback to legacy implementation
     const candidates = buildCandidateList();
     return candidates[0] ?? 'http://localhost:8000';
@@ -69,7 +71,7 @@ export function getBackendCandidates(additional: (string | undefined)[] = []): s
       .filter((value): value is string => Boolean(value && value.trim()))
       .map((value) => normalizeUrl(value.trim()));
     return Array.from(new Set([...candidates, ...additionalUrls]));
-  } catch (error) {
+  } catch {
     // Fallback to legacy implementation
     return buildCandidateList(additional);
   }
@@ -91,7 +93,7 @@ export function getTimeoutConfig() {
   try {
     const configManager = getEnvironmentConfigManager();
     return configManager.getTimeoutConfig();
-  } catch (error) {
+  } catch {
     return {
       connection: 30000,
       authentication: 45000,
@@ -107,7 +109,7 @@ export function getRetryPolicy() {
   try {
     const configManager = getEnvironmentConfigManager();
     return configManager.getRetryPolicy();
-  } catch (error) {
+  } catch {
     return {
       maxAttempts: 3,
       baseDelay: 1000,
@@ -124,7 +126,7 @@ export function getEnvironmentInfo() {
   try {
     const configManager = getEnvironmentConfigManager();
     return configManager.getEnvironmentInfo();
-  } catch (error) {
+  } catch {
     return {
       type: 'local' as const,
       networkMode: 'localhost' as const,
@@ -164,12 +166,11 @@ export function validateBackendConfiguration() {
  * @param connectionOptions - Connection-specific options (timeout, retry, etc.)
  * @returns Promise with request result including retry information
  */
-export async function makeBackendRequest<T = any>(
+export async function makeBackendRequest<T = unknown>(
   path: string,
   options: RequestInit = {},
   connectionOptions: ConnectionOptions = {}
 ): Promise<RequestResult<T>> {
-  const performanceOptimizer = getPerformanceOptimizer();
   const url = withBackendPath(path);
   try {
     // Temporarily bypass performance optimizer and use connection manager directly
@@ -189,7 +190,7 @@ export async function makeBackendRequest<T = any>(
             retryAttempts: 1, // Reduce retries for fallback attempts
           });
 
-        } catch (fallbackError) {
+        } catch {
           continue;
         }
       }
@@ -198,55 +199,7 @@ export async function makeBackendRequest<T = any>(
     throw error;
   }
 }
-/**
- * Determine if caching should be enabled for a request
- */
-function shouldEnableCaching(path: string, method?: string): boolean {
-  const httpMethod = method?.toUpperCase() || 'GET';
-  // Only cache GET requests and some POST requests
-  if (httpMethod !== 'GET' && httpMethod !== 'POST') {
-    return false;
-  }
-  // Don't cache sensitive endpoints
-  if (path.includes('/auth/') && !path.includes('/validate-session')) {
-    return false;
-  }
-  // Cache health checks and user data
-  if (path.includes('/health') || path.includes('/users/') || path.includes('/validate-session')) {
-    return true;
-  }
-  return httpMethod === 'GET';
-}
-/**
- * Get cache options for specific paths
- */
-function getCacheOptionsForPath(path: string): { ttl?: number; tags?: string[]; compress?: boolean } {
-  if (path.includes('/health')) {
-    return {
-      ttl: 10000, // 10 seconds
-      tags: ['health'],
-      compress: false,
-    };
-  }
-  if (path.includes('/validate-session')) {
-    return {
-      ttl: 30000, // 30 seconds
-      tags: ['auth', 'session'],
-      compress: false,
-    };
-  }
-  if (path.includes('/users/')) {
-    return {
-      ttl: 300000, // 5 minutes
-      tags: ['user'],
-      compress: true,
-    };
-  }
-  return {
-    ttl: 60000, // 1 minute default
-    compress: true,
-  };
-}
+
 /**
  * Simplified API request function for common use cases
  * 
@@ -256,10 +209,10 @@ function getCacheOptionsForPath(path: string): { ttl?: number; tags?: string[]; 
  * @param headers - Additional headers
  * @returns Promise with response data
  */
-export async function apiRequest<T = any>(
+export async function apiRequest<T = unknown>(
   path: string,
   method: string = 'GET',
-  body?: any,
+  body?: unknown,
   headers: Record<string, string> = {}
 ): Promise<T> {
   const options: RequestInit = {
@@ -278,7 +231,7 @@ export async function apiRequest<T = any>(
 /**
  * GET request with retry logic
  */
-export async function apiGet<T = any>(
+export async function apiGet<T = unknown>(
   path: string,
   headers: Record<string, string> = {}
 ): Promise<T> {
@@ -287,9 +240,9 @@ export async function apiGet<T = any>(
 /**
  * POST request with retry logic
  */
-export async function apiPost<T = any>(
+export async function apiPost<T = unknown>(
   path: string,
-  body?: any,
+  body?: unknown,
   headers: Record<string, string> = {}
 ): Promise<T> {
   return apiRequest<T>(path, 'POST', body, headers);
@@ -297,9 +250,9 @@ export async function apiPost<T = any>(
 /**
  * PUT request with retry logic
  */
-export async function apiPut<T = any>(
+export async function apiPut<T = unknown>(
   path: string,
-  body?: any,
+  body?: unknown,
   headers: Record<string, string> = {}
 ): Promise<T> {
   return apiRequest<T>(path, 'PUT', body, headers);
@@ -307,7 +260,7 @@ export async function apiPut<T = any>(
 /**
  * DELETE request with retry logic
  */
-export async function apiDelete<T = any>(
+export async function apiDelete<T = unknown>(
   path: string,
   headers: Record<string, string> = {}
 ): Promise<T> {

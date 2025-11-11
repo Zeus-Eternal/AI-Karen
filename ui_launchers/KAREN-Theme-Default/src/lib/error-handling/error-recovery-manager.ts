@@ -91,7 +91,8 @@ export class ErrorRecoveryManager {
             nextRetryDelay: 1000, // Short delay before retry
           };
         }
-      } catch (error) {
+      } catch (actionError) {
+        console.warn(`[ErrorRecoveryManager] Recovery action ${action.name} failed`, actionError);
         // If action failed, attempt to rollback if available
         if (action.rollback) {
           await action.rollback();

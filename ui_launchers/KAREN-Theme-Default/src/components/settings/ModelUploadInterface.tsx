@@ -49,7 +49,7 @@ export interface ConversionJob {
   logs: string[];
   error?: string;
   created_at: number;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
 }
 
 export interface ModelUploadInterfaceProps {
@@ -220,7 +220,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
               ? { ...job, status: 'completed', progress: 100 }
               : job
           ));
-          onJobCreated?.((response as any).job_id);
+          onJobCreated?.((response as unknown).job_id);
           toast({
             title: 'Upload Started',
             description: `${file.name} upload initiated successfully.`,
@@ -228,10 +228,10 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         } catch (error) {
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
-              ? { ...job, status: 'error', error: (error as any).message }
+              ? { ...job, status: 'error', error: (error as unknown).message }
               : job
           ));
-          const info = handleApiError(error as any, 'uploadModel');
+          const info = handleApiError(error as unknown, 'uploadModel');
           toast({
             variant: 'destructive',
             title: info.title,
@@ -272,7 +272,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.((response as any).job_id);
+      onJobCreated?.((response as unknown).job_id);
       toast({
         title: 'Conversion Started',
         description: 'Model conversion job has been queued. Check the job center for progress.',
@@ -284,7 +284,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setConversionArchitecture('auto');
       setVocabOnly(false);
     } catch (error) {
-      const info = handleApiError(error as any, 'convertModel');
+      const info = handleApiError(error as unknown, 'convertModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -317,7 +317,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.((response as any).job_id);
+      onJobCreated?.((response as unknown).job_id);
       toast({
         title: 'Quantization Started',
         description: 'Model quantization job has been queued. Check the job center for progress.',
@@ -329,7 +329,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setQuantizationFormat('Q4_K_M');
       setAllowRequantize(false);
     } catch (error) {
-      const info = handleApiError(error as any, 'quantizeModel');
+      const info = handleApiError(error as unknown, 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -362,7 +362,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.((response as any).job_id);
+      onJobCreated?.((response as unknown).job_id);
       toast({
         title: 'LoRA Merge Started',
         description: 'LoRA merge job has been queued. Check the job center for progress.',
@@ -374,7 +374,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
       setLoraOutputPath('');
       setLoraAlpha(1.0);
     } catch (error) {
-      const info = handleApiError(error as any, 'mergeLoRA');
+      const info = handleApiError(error as unknown, 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title,

@@ -130,7 +130,7 @@ export interface ModelConfig {
     benchmark_score: number;
     safety_rating: number;
     efficiency_score: number;
-    custom_fields: Record<string, any>;
+    custom_fields: Record<string, unknown>;
   };
   security: {
     encrypted: boolean;
@@ -188,7 +188,7 @@ export interface ModelStats {
     peak_tps: number;
     error_count: number;
   };
-  popular_parameters: Record<string, any>;
+  popular_parameters: Record<string, unknown>;
   performance_trend: {
     date: string;
     tps: number;
@@ -800,7 +800,7 @@ export default function AdvancedModelConfig({
       await loadModelConfig();
       
     } catch (error) {
-      const info = handleApiError(error as any, 'saveConfig');
+      const info = handleApiError(error as unknown, 'saveConfig');
       toast({
         variant: 'destructive',
         title: info.title || "Save Failed",
@@ -1114,7 +1114,7 @@ export default function AdvancedModelConfig({
       </Card>
 
       {/* Enhanced Tabs with More Categories */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as unknown)}>
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="config" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />

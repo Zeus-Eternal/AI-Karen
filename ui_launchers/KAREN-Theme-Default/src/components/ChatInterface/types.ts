@@ -19,8 +19,8 @@ export interface ChatMessage {
     intent?: string;
     tokens?: number;
     cost?: number;
-    suggestions?: any[];
-    analysis?: any;
+    suggestions?: unknown[];
+    analysis?: unknown;
     rating?: "up" | "down";
     codeAnalysis?: {
       issues: Array<{

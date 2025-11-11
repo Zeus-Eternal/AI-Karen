@@ -82,11 +82,11 @@ export interface OptimizedRequestOptions {
   retryOn?: number[];    // HTTP codes to retry
 }
 
-function clamp(n: number, min: number, max: number) {
+function _clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
-function stableStringify(obj: any): string {
+function stableStringify(obj: unknown): string {
   if (obj == null) return '';
   if (typeof obj === 'string') return obj;
   if (obj instanceof URLSearchParams) return obj.toString();
@@ -169,7 +169,7 @@ export class PerformanceOptimizer {
   /**
    * Make an optimized HTTP request with pooling, timeout/retry, and caching.
    */
-  async optimizedRequest<T = any>(
+  async optimizedRequest<T = unknown>(
     url: string,
     options: RequestInit = {},
     optimizationOptions: OptimizedRequestOptions = {}
@@ -201,7 +201,7 @@ export class PerformanceOptimizer {
     const backoffBase = optimizationOptions.retryBackoffMs ?? 300;
     const retryOn = new Set(optimizationOptions.retryOn ?? [408, 425, 429, 500, 502, 503, 504]);
 
-    let lastErr: any;
+    let lastErr: unknown;
 
     for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       const abortController = new AbortController();
@@ -230,7 +230,7 @@ export class PerformanceOptimizer {
             {
               status: result.status,
               statusText: result.statusText,
-              headers: result.headers as any,
+              headers: result.headers as HeadersInit,
             }
           );
         }
@@ -239,7 +239,7 @@ export class PerformanceOptimizer {
 
         // Parse response
         const ctype = response.headers.get('content-type') || '';
-        let data: any;
+        let data: unknown;
         if (ctype.includes('application/json')) {
           data = await response.json();
         } else if (ctype.startsWith('text/')) {
@@ -278,20 +278,21 @@ export class PerformanceOptimizer {
 
         if (!response.ok) {
           // Surface an error with context
-          const err = new Error(`HTTP ${response.status} ${response.statusText}`);
-          (err as any).status = response.status;
-          (err as any).data = data;
+          const err = new Error(`HTTP ${response.status} ${response.statusText}`) as Error & { status?: number; data?: unknown };
+          err.status = response.status;
+          err.data = data;
           throw err;
         }
 
         return data as T;
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearTimeout(timer);
         lastErr = err;
 
         // Retry on abort/network or selected HTTP codes (already handled above).
-        const isAbort = err?.name === 'AbortError';
-        const isNetwork = /network/i.test(String(err?.message ?? ''));
+        const errorObj = err as { name?: string; message?: string } | null;
+        const isAbort = errorObj?.name === 'AbortError';
+        const isNetwork = /network/i.test(String(errorObj?.message ?? ''));
         if ((isAbort || isNetwork) && attempt < retryAttempts) {
           const delay = backoffBase * Math.pow(2, attempt);
           await new Promise(res => setTimeout(res, delay));
@@ -311,7 +312,7 @@ export class PerformanceOptimizer {
   }
 
   /** Convenience: Optimized authentication request */
-  async authenticateUser(email: string, password: string): Promise<any> {
+  async authenticateUser(email: string, password: string): Promise<unknown> {
     return this.optimizedRequest(
       '/api/auth/login',
       {
@@ -329,7 +330,7 @@ export class PerformanceOptimizer {
   }
 
   /** Convenience: Optimized session validation request */
-  async validateSession(token: string): Promise<any> {
+  async validateSession(token: string): Promise<unknown> {
     return this.optimizedRequest(
       '/api/auth/validate-session',
       {
@@ -354,7 +355,7 @@ export class PerformanceOptimizer {
   }
 
   /** Convenience: Optimized user data request */
-  async getUserData(userId: string): Promise<any> {
+  async getUserData(userId: string): Promise<unknown> {
     return this.optimizedRequest(
       `/api/users/${userId}`,
       { method: 'GET' },
@@ -372,7 +373,7 @@ export class PerformanceOptimizer {
   }
 
   /** Health check */
-  async healthCheck(): Promise<any> {
+  async healthCheck(): Promise<unknown> {
     return this.optimizedRequest(
       '/health',
       { method: 'GET' },
@@ -522,7 +523,7 @@ export class PerformanceOptimizer {
     } else if (typeof options.body === 'string') {
       bodyStr = options.body;
     } else if (options.body && typeof options.body === 'object') {
-      bodyStr = stableStringify(options.body as any);
+      bodyStr = stableStringify(options.body as unknown);
     }
     const keyObj = {
       m: method,

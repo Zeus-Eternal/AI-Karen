@@ -4,7 +4,7 @@
  * Tracks email delivery status, handles webhooks from email providers,
  * and provides delivery analytics and reporting.
  */
-import {  EmailDeliveryStatus, EmailMessage, EmailWebhook, EmailStatistics, EmailServiceConfig } from './types';
+import {  EmailDeliveryStatus, EmailWebhook, EmailStatistics } from './types';
 /**
  * Delivery Status Manager
  */
@@ -65,7 +65,9 @@ export class DeliveryStatusManager {
         await handler(webhook);
       }
     } catch (error) {
-      throw error;
+      // Log error and re-throw with additional context
+      console.error('Failed to process webhook:', error);
+      throw new Error(`Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
   /**
@@ -137,13 +139,13 @@ export class DeliveryStatusManager {
   /**
    * Save delivery status to database
    */
-  private async saveDeliveryStatus(status: EmailDeliveryStatus): Promise<void> {
+  private async saveDeliveryStatus(_status: EmailDeliveryStatus): Promise<void> {
     // In a real implementation, this would save to database
   }
   /**
    * Notify status change handlers
    */
-  private async notifyStatusChange(status: EmailDeliveryStatus): Promise<void> {
+  private async notifyStatusChange(_status: EmailDeliveryStatus): Promise<void> {
     // In a real implementation, this could trigger notifications
     // or update message status in the database
   }
@@ -151,9 +153,9 @@ export class DeliveryStatusManager {
    * Get delivery statistics
    */
   async getDeliveryStatistics(
-    startDate?: Date,
-    endDate?: Date,
-    templateId?: string
+    _startDate?: Date,
+    _endDate?: Date,
+    _templateId?: string
   ): Promise<EmailStatistics> {
     // In a real implementation, this would query the database
     // For now, return mock statistics
@@ -238,7 +240,7 @@ export class DeliveryStatusManager {
   /**
    * Get failed deliveries for retry
    */
-  async getFailedDeliveries(limit: number = 100): Promise<Array<{
+  async getFailedDeliveries(_limit: number = 100): Promise<Array<{
     messageId: string;
     email: string;
     failureReason: string;
@@ -251,7 +253,7 @@ export class DeliveryStatusManager {
   /**
    * Mark message for retry
    */
-  async markForRetry(messageId: string): Promise<void> {
+  async markForRetry(_messageId: string): Promise<void> {
     // In a real implementation, this would update the message status
     // and add it back to the queue
   }
@@ -296,35 +298,35 @@ export class WebhookHandler {
   /**
    * Handle SendGrid webhook
    */
-  private async handleSendGridWebhook(webhook: EmailWebhook): Promise<void> {
+  private async handleSendGridWebhook(_webhook: EmailWebhook): Promise<void> {
     // SendGrid-specific processing
   }
   /**
    * Handle Amazon SES webhook
    */
-  private async handleSESWebhook(webhook: EmailWebhook): Promise<void> {
+  private async handleSESWebhook(_webhook: EmailWebhook): Promise<void> {
     // SES-specific processing
   }
   /**
    * Handle Mailgun webhook
    */
-  private async handleMailgunWebhook(webhook: EmailWebhook): Promise<void> {
+  private async handleMailgunWebhook(_webhook: EmailWebhook): Promise<void> {
     // Mailgun-specific processing
   }
   /**
    * Handle Postmark webhook
    */
-  private async handlePostmarkWebhook(webhook: EmailWebhook): Promise<void> {
+  private async handlePostmarkWebhook(_webhook: EmailWebhook): Promise<void> {
     // Postmark-specific processing
   }
   /**
    * Process incoming webhook request
    */
   async processIncomingWebhook(
-    provider: string,
-    eventType: string,
-    data: any,
-    headers: Record<string, string>
+    _provider: string,
+    _eventType: string,
+    _data: unknown,
+    _headers: Record<string, string>
   ): Promise<void> {
     // Validate webhook signature (provider-specific)
     if (!this.validateWebhookSignature(provider, data, headers)) {
@@ -349,9 +351,9 @@ export class WebhookHandler {
    * Validate webhook signature
    */
   private validateWebhookSignature(
-    provider: string,
-    data: any,
-    headers: Record<string, string>
+    _provider: string,
+    _data: unknown,
+    _headers: Record<string, string>
   ): boolean {
     // In a real implementation, this would validate the webhook signature
     // using the provider's specific method
@@ -360,7 +362,7 @@ export class WebhookHandler {
   /**
    * Extract message ID from webhook data
    */
-  private extractMessageId(provider: string, data: any): string {
+  private extractMessageId(provider: string, data: unknown): string {
     switch (provider) {
       case 'sendgrid':
         return data.sg_message_id || data.message_id || '';
@@ -377,7 +379,7 @@ export class WebhookHandler {
   /**
    * Extract email address from webhook data
    */
-  private extractEmail(provider: string, data: any): string {
+  private extractEmail(provider: string, data: unknown): string {
     switch (provider) {
       case 'sendgrid':
         return data.email || '';

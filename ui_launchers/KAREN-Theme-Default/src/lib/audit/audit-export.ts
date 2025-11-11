@@ -245,14 +245,14 @@ export class AuditLogExporter {
 
     // Transform logs to include only specified fields
     const transformedLogs = logs.map(log => {
-      const transformed: any = {};
+      const transformed: Record<string, any> = {};
       fields.forEach(field => {
         transformed[field] = this.formatFieldValue(log, field, dateFormat);
       });
       return transformed;
     });
     // Add metadata if requested
-    const exportData: any = {
+    const exportData: Record<string, any> = {
       logs: transformedLogs,
       count: logs.length,
       exported_at: new Date().toISOString()
@@ -342,7 +342,7 @@ export class AuditLogExporter {
       case 'user_agent':
         return log.user_agent || '';
       default:
-        return String((log as any)[field] || '');
+        return String((log as unknown)[field] || '');
     }
   }
 

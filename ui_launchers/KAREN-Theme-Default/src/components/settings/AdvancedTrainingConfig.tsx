@@ -70,7 +70,7 @@ export interface OptimizationConfig {
   epsilon: number;
   momentum: number;
   scheduler_type: string;
-  scheduler_params: Record<string, any>;
+  scheduler_params: Record<string, unknown>;
   lookahead: boolean;
   lookahead_alpha: number;
   lookahead_k: number;
@@ -121,8 +121,8 @@ export interface OptimizationConstraint {
 
 export interface ABTestConfig {
   test_name: string;
-  control_config: Record<string, any>;
-  treatment_configs: Record<string, any>[];
+  control_config: Record<string, unknown>;
+  treatment_configs: Record<string, unknown>[];
   traffic_split: number[];
   success_metric: string;
   minimum_sample_size: number;
@@ -238,7 +238,7 @@ export interface TrainingMetrics {
     recommendations: Array<{
       issue: string;
       suggestion: string;
-      parameters?: Record<string, any>;
+      parameters?: Record<string, unknown>;
       confidence: number;
     }>;
     health_score: number;
@@ -247,14 +247,14 @@ export interface TrainingMetrics {
 
 export interface AIAssistanceResponse {
   suggestions: {
-    optimization_config: Record<string, any>;
-    training_logic: Record<string, any>;
+    optimization_config: Record<string, unknown>;
+    training_logic: Record<string, unknown>;
     monitoring_recommendations: string[];
     potential_issues: string[];
     mitigation_strategies: Array<{
       issue: string;
       solutions: string[];
-      parameters: Record<string, any>;
+      parameters: Record<string, unknown>;
       confidence: number;
     }>;
     architecture_recommendations: string[];
@@ -353,14 +353,14 @@ const AdvancedTrainingConfig: React.FC = () => {
     status: string;
     current_trial: number;
     best_score?: number;
-    best_params?: Record<string, any>;
+    best_params?: Record<string, unknown>;
     progress: number;
   }>({ status: 'idle', current_trial: 0, progress: 0 });
   
   const [abTestStatus, setAbTestStatus] = useState<{
     test_id?: string;
     status: string;
-    analysis?: any;
+    analysis?: unknown;
   }>({ status: 'idle' });
 
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
@@ -779,7 +779,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                 <Label htmlFor="compliance_framework">Compliance Framework</Label>
                 <Select
                   value={config.security.compliance_framework}
-                  onValueChange={(value: any) => setConfig(prev => ({
+                  onValueChange={(value: unknown) => setConfig(prev => ({
                     ...prev,
                     security: { ...prev.security, compliance_framework: value }
                   }))}
@@ -847,7 +847,7 @@ const AdvancedTrainingConfig: React.FC = () => {
                           ...prev,
                           federated_learning: { 
                             ...prev.federated_learning!,
-                            strategy: value as any
+                            strategy: value as unknown
                           }
                         }))}
                       >

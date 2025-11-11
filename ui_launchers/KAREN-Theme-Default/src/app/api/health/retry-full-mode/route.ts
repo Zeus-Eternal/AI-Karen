@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Best-effort content handling
     const ct = response.headers.get('content-type') || '';
-    let data: any;
+    let data: unknown;
 
     if (ct.toLowerCase().includes('application/json')) {
       try {

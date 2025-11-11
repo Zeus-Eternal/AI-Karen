@@ -19,9 +19,10 @@ const defaultOptions: DefaultOptions = {
     // Cache time - how long data stays in cache after becoming unused
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     // Retry configuration
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry on 4xx errors (client errors)
-      if (error?.status >= 400 && error?.status < 500) {
+      const errorWithStatus = error as { status?: number };
+      if (errorWithStatus?.status && errorWithStatus.status >= 400 && errorWithStatus.status < 500) {
         return false;
       }
       // Retry up to 3 times for other errors
@@ -194,13 +195,13 @@ export const prefetchQueries = {
 };
 // Helper function to set query data optimistically
 export const setQueryData = {
-  user: (userData: any) => {
+  user: (userData: unknown) => {
     queryClient.setQueryData(queryKeys.auth.user(), userData);
   },
-  conversation: (conversationId: string, data: any) => {
+  conversation: (conversationId: string, data: unknown) => {
     queryClient.setQueryData(queryKeys.chat.conversation(conversationId), data);
   },
-  plugin: (pluginId: string, data: any) => {
+  plugin: (pluginId: string, data: unknown) => {
     queryClient.setQueryData(queryKeys.plugins.plugin(pluginId), data);
   },
 };

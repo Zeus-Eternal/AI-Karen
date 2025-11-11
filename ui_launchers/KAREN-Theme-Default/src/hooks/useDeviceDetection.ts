@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface DeviceInfo {
   isMobile: boolean;
@@ -43,7 +43,7 @@ export const useDeviceDetection = (): DeviceInfo => {
       // Detect touch capability
       const isTouchDevice = 'ontouchstart' in window || 
                              navigator.maxTouchPoints > 0 || 
-                             // @ts-ignore
+                             // @ts-expect-error - Legacy IE property
                              navigator.msMaxTouchPoints > 0;
 
       // Detect orientation

@@ -436,11 +436,11 @@ export interface BackendError {
 export function parseBackendError(error: BackendError | Error | unknown): AuthenticationError {
   // Type guard to check if error has a name property
   const hasName = (err: unknown): err is { name: string } =>
-    typeof err === 'object' && err !== null && 'name' in err && typeof (err as any).name === 'string';
+    typeof err === 'object' && err !== null && 'name' in err && typeof (err as Record<string, unknown>).name === 'string';
 
   // Type guard to check if error has a message property
   const hasMessage = (err: unknown): err is { message: string } =>
-    typeof err === 'object' && err !== null && 'message' in err && typeof (err as any).message === 'string';
+    typeof err === 'object' && err !== null && 'message' in err && typeof (err as Record<string, unknown>).message === 'string';
 
   const isBackendError = (err: unknown): err is BackendError =>
     typeof err === 'object' && err !== null;
@@ -564,6 +564,6 @@ export function createDebouncedValidator(
 /**
  * Type guard to check if an error is an AuthenticationError
  */
-export function isAuthenticationError(error: any): error is AuthenticationError {
-  return error && typeof error === 'object' && 'type' in error && 'message' in error;
+export function isAuthenticationError(error: unknown): error is AuthenticationError {
+  return error !== null && typeof error === 'object' && 'type' in error && 'message' in error;
 }

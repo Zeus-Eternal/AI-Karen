@@ -86,7 +86,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
       container.innerHTML = customHtml;
       document.body.appendChild(container);
 
-      let results: any;
+      let results: unknown;
       switch (testType) {
         case "basic":
           results = await runAccessibilityTest(container);
@@ -107,7 +107,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
       setActiveTab("results");
     } catch (error) {
       setTestResults({
-        error: error instanceof Error ? error.message : "Test failed",
+        _error: error instanceof Error ? error.message : "Test failed",
       });
       setActiveTab("results");
     } finally {
@@ -209,7 +209,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {testResults.violations.map((violation: any, index: number) => (
+                  {testResults.violations.map((violation: unknown, index: number) => (
                     <div key={index} className="border-l-4 border-l-red-500 pl-4">
                       <div className="flex items-center space-x-2 mb-1">
                         <Badge variant="destructive">{violation.impact ?? "unknown"}</Badge>

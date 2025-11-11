@@ -166,11 +166,11 @@ export const BasicErrorPanelExample: React.FC = () => {
 
 export const HookUsageExample: React.FC = () => {
   const intelligentError = useIntelligentError({
-    onAnalysisComplete: (analysis: any) => {
+    onAnalysisComplete: (analysis: unknown) => {
       // Optional: toast/log
       console.debug("Analysis complete:", analysis);
     },
-    onAnalysisError: (e: any) => {
+    onAnalysisError: (e: Event) => {
       console.warn("Analysis failed:", e);
     },
   });
@@ -300,7 +300,7 @@ export const ApiErrorExample: React.FC = () => {
       isTimeoutError: false,
       responseTime: 2500,
     };
-    apiError.handleApiError(mockApiError as any, {
+    apiError.handleApiError(mockApiError as unknown, {
       endpoint: "/api/chat/completions",
       method: "POST",
       provider: "openai",

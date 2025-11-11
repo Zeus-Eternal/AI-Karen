@@ -136,7 +136,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   const schema = useMemo(() => getSchemaForType(config.type), [config.type]);
 
   const form = useForm<WidgetConfig>({
-    resolver: zodResolver(schema) as any,
+    resolver: zodResolver(schema) as unknown,
     defaultValues: config,
     mode: "onChange",
   });
@@ -170,7 +170,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
     <>
       <FormField
         control={form.control}
-        name={"config.dataSource" as any}
+        name={"config.dataSource" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Data Source</FormLabel>
@@ -192,7 +192,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.metric" as any}
+        name={"config.metric" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Metric</FormLabel>
@@ -205,7 +205,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.format" as any}
+        name={"config.format" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Format</FormLabel>
@@ -228,7 +228,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.unit" as any}
+        name={"config.unit" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Unit (Optional)</FormLabel>
@@ -244,7 +244,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name={"config.thresholds.warning" as any}
+            name={"config.thresholds.warning" as unknown}
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Warning</FormLabel>
@@ -264,7 +264,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
           />
           <FormField
             control={form.control}
-            name={"config.thresholds.critical" as any}
+            name={"config.thresholds.critical" as unknown}
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Critical</FormLabel>
@@ -286,7 +286,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       </div>
       <FormField
         control={form.control}
-        name={"config.showTrend" as any}
+        name={"config.showTrend" as unknown}
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -306,7 +306,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
     <>
       <FormField
         control={form.control}
-        name={"config.service" as any}
+        name={"config.service" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Service</FormLabel>
@@ -329,7 +329,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.endpoint" as any}
+        name={"config.endpoint" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Health Check Endpoint (Optional)</FormLabel>
@@ -342,7 +342,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.checkInterval" as any}
+        name={"config.checkInterval" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Check Interval (ms)</FormLabel>
@@ -366,7 +366,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.showDetails" as any}
+        name={"config.showDetails" as unknown}
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -380,7 +380,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.showHistory" as any}
+        name={"config.showHistory" as unknown}
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -399,7 +399,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
     <>
       <FormField
         control={form.control}
-        name={"config.dataSource" as any}
+        name={"config.dataSource" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Data Source</FormLabel>
@@ -421,7 +421,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.chartType" as any}
+        name={"config.chartType" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Chart Type</FormLabel>
@@ -443,7 +443,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.timeRange" as any}
+        name={"config.timeRange" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Time Range</FormLabel>
@@ -467,7 +467,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.series" as any}
+        name={"config.series" as unknown}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Data Series</FormLabel>
@@ -492,7 +492,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.showLegend" as any}
+        name={"config.showLegend" as unknown}
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -506,7 +506,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       />
       <FormField
         control={form.control}
-        name={"config.enableZoom" as any}
+        name={"config.enableZoom" as unknown}
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -527,7 +527,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
       <>
         <FormField
           control={form.control}
-          name={"config.logSource" as any}
+          name={"config.logSource" as unknown}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Log Source</FormLabel>
@@ -550,7 +550,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
         />
         <FormField
           control={form.control}
-          name={"config.levels" as any}
+          name={"config.levels" as unknown}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Log Levels</FormLabel>
@@ -581,7 +581,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
         />
         <FormField
           control={form.control}
-          name={"config.maxEntries" as any}
+          name={"config.maxEntries" as unknown}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Max Entries</FormLabel>
@@ -603,7 +603,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
         />
         <FormField
           control={form.control}
-          name={"config.autoScroll" as any}
+          name={"config.autoScroll" as unknown}
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
@@ -617,7 +617,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
         />
         <FormField
           control={form.control}
-          name={"config.showMetadata" as any}
+          name={"config.showMetadata" as unknown}
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

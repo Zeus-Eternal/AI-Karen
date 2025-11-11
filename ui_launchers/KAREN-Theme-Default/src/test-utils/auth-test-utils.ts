@@ -10,7 +10,11 @@
  * - Zero side effects at import
  */
 
-import { getConnectionManager } from '@/lib/connection/connection-manager';
+import {
+  ConnectionError,
+  ConnectionResponse,
+  getConnectionManager,
+} from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
 
 // ---------------------------------------------------------------------------
@@ -45,11 +49,27 @@ export interface AuthenticationTestResult {
   databaseConnectivity: DatabaseConnectivityResult;
 }
 
-/** Expected shape from ConnectionManager.makeRequest */
-interface MakeRequestSuccess<T = any> {
-  data: T;
-  retryCount?: number;
-  status?: number;
+interface AuthUserData {
+  user_id?: string | number;
+  email?: string;
+  roles?: string[];
+  tenant_id?: string;
+  role?: string;
+}
+
+type AuthenticationResponse = {
+  user?: AuthUserData;
+  user_data?: AuthUserData;
+} | null;
+
+type MakeRequestSuccess<T = unknown> = ConnectionResponse<T>;
+
+interface TestSessionData {
+  userId: string;
+  email: string;
+  roles: string[];
+  tenantId: string;
+  role: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,12 +117,12 @@ export async function testDatabaseConnectivity(): Promise<DatabaseConnectivityRe
       responseTime,
       timestamp: new Date(),
     };
-  } catch (error: any) {
+  } catch (error) {
     const responseTime = Date.now() - startTime;
     return {
       isConnected: false,
       responseTime,
-      error: error?.message || 'Database connectivity test failed',
+      error: getErrorMessage(error, 'Database connectivity test failed'),
       timestamp: new Date(),
     };
   }
@@ -132,33 +152,35 @@ export async function testDatabaseAuthentication(
       ...(credentials.totp_code ? { totp_code: credentials.totp_code } : {}),
     };
 
-    const result = (await connectionManager.makeRequest(
-      '/api/auth/login',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
+    const result: MakeRequestSuccess<AuthenticationResponse> =
+      await connectionManager.makeRequest<AuthenticationResponse>(
+        '/api/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          credentials: 'include',
         },
-        body: JSON.stringify(requestBody),
-        credentials: 'include',
-      },
-      {
-        timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
-        retryAttempts: 2,
-        exponentialBackoff: true,
-      },
-    )) as MakeRequestSuccess;
+        {
+          timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
+          retryAttempts: 2,
+          exponentialBackoff: true,
+        },
+      );
 
     const responseTime = Date.now() - startTime;
-    const userData = (result?.data as any)?.user || (result?.data as any)?.user_data;
+    const responseData = result.data;
+    const userData = responseData?.user ?? responseData?.user_data;
 
     if (!userData) {
       return {
         success: false,
         error: 'No user data in authentication response',
         responseTime,
-        retryCount: result?.retryCount ?? 0,
+        retryCount: result.retryCount ?? 0,
         databaseConnectivity,
       };
     }
@@ -173,16 +195,16 @@ export async function testDatabaseAuthentication(
         role: String(userData.role ?? determineUserRole(Array.isArray(userData.roles) ? userData.roles : [])),
       },
       responseTime,
-      retryCount: result?.retryCount ?? 0,
+      retryCount: result.retryCount ?? 0,
       databaseConnectivity,
     };
-  } catch (error: any) {
+  } catch (error) {
     const responseTime = Date.now() - startTime;
     return {
       success: false,
-      error: error?.message || 'Authentication test failed',
+      error: getErrorMessage(error, 'Authentication test failed'),
       responseTime,
-      retryCount: error?.retryCount || 0,
+      retryCount: getRetryCount(error),
       databaseConnectivity,
     };
   }
@@ -242,6 +264,39 @@ function determineUserRole(roles: string[]): string {
   return 'user';
 }
 
+function hasProperty<Key extends PropertyKey>(
+  value: unknown,
+  property: Key,
+): value is Record<Key, unknown> {
+  return typeof value === 'object' && value !== null && property in value;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ConnectionError) return error.message;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (hasProperty(error, 'message')) {
+    const message = error.message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  return fallback;
+}
+
+function getRetryCount(error: unknown): number {
+  if (error instanceof ConnectionError && typeof error.retryCount === 'number') {
+    return error.retryCount;
+  }
+  if (hasProperty(error, 'retryCount')) {
+    const retryCount = error.retryCount;
+    if (typeof retryCount === 'number') {
+      return retryCount;
+    }
+  }
+  return 0;
+}
+
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
@@ -265,10 +320,10 @@ export async function validateTestCredentials(): Promise<{
       message: `Test credentials validation failed: ${result.error}`,
       details: result,
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       valid: false,
-      message: `Test credentials validation error: ${error?.message ?? 'Unknown error'}`,
+      message: `Test credentials validation error: ${getErrorMessage(error, 'Unknown error')}`,
     };
   }
 }
@@ -281,7 +336,7 @@ export async function createTestSession(
   credentials: TestCredentials = TEST_CREDENTIALS,
 ): Promise<{
   success: boolean;
-  sessionData?: any;
+  sessionData?: TestSessionData;
   error?: string;
 }> {
   try {
@@ -302,10 +357,10 @@ export async function createTestSession(
       success: false,
       error: authResult.error || 'Failed to create test session',
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       success: false,
-      error: error?.message || 'Test session creation failed',
+      error: getErrorMessage(error, 'Test session creation failed'),
     };
   }
 }

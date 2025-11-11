@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeError } from '@/lib/safe-console';
-import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
-import {  handleApiError, handleDownloadError, showSuccess, showInfo, showWarning } from '@/lib/error-handler';
+import { handleDownloadError, showSuccess, showInfo, showWarning } from '@/lib/error-handler';
 
 export interface DownloadTask {
   id: string;
@@ -48,7 +47,6 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   const [downloadTasks, setDownloadTasks] = useState<DownloadTask[]>([]);
   const [isPolling, setIsPolling] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { toast } = useToast();
   const backend = getKarenBackend();
 
   // Derived state
@@ -59,32 +57,31 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   const erroredDownloads = downloadTasks.filter(task => task.status === 'error');
 
   // Convert API response to DownloadTask
-  const convertApiResponseToTask = (apiResponse: any): DownloadTask => {
-    return {
-      id: apiResponse.task_id,
-      modelId: apiResponse.model_id,
-      modelName: apiResponse.filename || apiResponse.model_id, // Use filename or fallback to model_id
-      status: apiResponse.status,
-      progress: apiResponse.progress || 0,
-      downloadedBytes: apiResponse.downloaded_size || 0,
-      totalBytes: apiResponse.total_size || 0,
-      speed: calculateSpeed(apiResponse),
-      estimatedTimeRemaining: apiResponse.estimated_time_remaining || 0,
-      error: apiResponse.error_message,
-      startTime: apiResponse.start_time || Date.now() / 1000,
-      lastUpdateTime: Date.now() / 1000
-    };
-  };
-
-  // Calculate download speed from API response
-  const calculateSpeed = (apiResponse: any): number => {
+  const calculateSpeed = useCallback((apiResponse: Record<string, unknown>): number => {
     if (!apiResponse.start_time || !apiResponse.downloaded_size) return 0;
     
-    const elapsedTime = (Date.now() / 1000) - apiResponse.start_time;
+    const elapsedTime = (Date.now() / 1000) - (apiResponse.start_time as number);
     if (elapsedTime <= 0) return 0;
     
-    return apiResponse.downloaded_size / elapsedTime;
-  };
+    return (apiResponse.downloaded_size as number) / elapsedTime;
+  }, []);
+
+  const convertApiResponseToTask = useCallback((apiResponse: Record<string, unknown>): DownloadTask => {
+    return {
+      id: apiResponse.task_id as string,
+      modelId: apiResponse.model_id as string,
+      modelName: (apiResponse.filename as string) || (apiResponse.model_id as string), // Use filename or fallback to model_id
+      status: apiResponse.status as DownloadTask['status'],
+      progress: (apiResponse.progress as number) || 0,
+      downloadedBytes: (apiResponse.downloaded_size as number) || 0,
+      totalBytes: (apiResponse.total_size as number) || 0,
+      speed: calculateSpeed(apiResponse),
+      estimatedTimeRemaining: (apiResponse.estimated_time_remaining as number) || 0,
+      error: apiResponse.error_message as string,
+      startTime: (apiResponse.start_time as number) || Date.now() / 1000,
+      lastUpdateTime: Date.now() / 1000
+    };
+  }, [calculateSpeed]);
 
   // Get download status for a specific task
   const getDownloadStatus = useCallback(async (taskId: string): Promise<DownloadTask | null> => {
@@ -98,7 +95,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       safeError(`Failed to get download status for task ${taskId}:`, error);
       return null;
     }
-  }, [backend]);
+  }, [backend, convertApiResponseToTask]);
 
   // Refresh all download tasks
   const refreshDownloads = useCallback(async () => {
@@ -120,6 +117,15 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   }, [downloadTasks, getDownloadStatus]);
 
   // Start polling for download updates
+  // Stop polling
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+  }, []);
+
   const startPolling = useCallback(() => {
     if (pollingIntervalRef.current) return; // Already polling
 
@@ -132,16 +138,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
         stopPolling();
       }
     }, 2000); // Poll every 2 seconds
-  }, [activeDownloads.length, refreshDownloads]);
-
-  // Stop polling
-  const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    setIsPolling(false);
-  }, []);
+  }, [activeDownloads.length, refreshDownloads, stopPolling]);
 
   // Cancel download
   const cancelDownload = useCallback(async (taskId: string) => {
@@ -163,21 +160,21 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       handleDownloadError(error, "download");
       throw error;
     }
-  }, [backend, toast]);
+  }, [backend]);
 
   // Pause download (placeholder - not implemented in backend yet)
-  const pauseDownload = useCallback(async (taskId: string) => {
+  const pauseDownload = useCallback(async (_taskId: string) => {
     // TODO: Implement when backend supports pause functionality
     showWarning("Pause Not Available", "Download pause functionality is not yet implemented.");
     throw new Error("Pause functionality not implemented");
-  }, [toast]);
+  }, []);
 
   // Resume download (placeholder - not implemented in backend yet)
-  const resumeDownload = useCallback(async (taskId: string) => {
+  const resumeDownload = useCallback(async (_taskId: string) => {
     // TODO: Implement when backend supports resume functionality
     showWarning("Resume Not Available", "Download resume functionality is not yet implemented.");
     throw new Error("Resume functionality not implemented");
-  }, [toast]);
+  }, []);
 
   // Retry download
   const retryDownload = useCallback(async (taskId: string) => {
@@ -214,7 +211,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       handleDownloadError(error, task?.modelId || "unknown model");
       throw error;
     }
-  }, [backend, downloadTasks, toast, isPolling, startPolling]);
+  }, [backend, convertApiResponseToTask, downloadTasks, isPolling, startPolling]);
 
   // Clear completed downloads from the list
   const clearCompletedDownloads = useCallback(() => {

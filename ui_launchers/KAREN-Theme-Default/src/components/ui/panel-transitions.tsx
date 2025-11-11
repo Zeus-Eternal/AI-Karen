@@ -285,7 +285,7 @@ export function getTransitionVariants(
  */
 export function applyTransitionConfig(
   variants: Variants,
-  transitionConfig: any
+  transitionConfig: unknown
 ): Variants {
   const enhancedVariants: Variants = {};
   
@@ -296,7 +296,7 @@ export function applyTransitionConfig(
         ...variant,
         transition: {
           ...transitionConfig,
-          ...(variant as any).transition,
+          ...(variant as unknown).transition,
         },
       };
     } else {
@@ -317,7 +317,7 @@ export function createReducedMotionVariants(variants: Variants): Variants {
     const variant = variants[key];
     if (typeof variant === 'object' && variant !== null) {
       reducedVariants[key] = {
-        opacity: (variant as any).opacity ?? 1,
+        opacity: (variant as unknown).opacity ?? 1,
         transition: reducedMotionTransition,
       };
     } else {

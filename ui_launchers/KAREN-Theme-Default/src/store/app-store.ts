@@ -169,7 +169,7 @@ const initialState: AppState = {
 export const useAppStore = create<AppStore>()(
   subscribeWithSelector(
     persist(
-      immer((set, get) => ({
+      immer((set, _get) => ({
         ...initialState,
         
         // Authentication actions
@@ -358,14 +358,15 @@ export const useAppStore = create<AppStore>()(
         }),
         // Handle migration for state changes
         version: 1,
-        migrate: (persistedState: any, version: number) => {
+        migrate: (persistedState: unknown, version: number) => {
           if (version === 0) {
             // Migration from version 0 to 1
+            const state = persistedState as Record<string, unknown>;
             return {
-              ...persistedState,
+              ...state,
               layout: {
                 ...initialState.layout,
-                ...persistedState.layout,
+                ...(state.layout as Record<string, unknown>),
               },
             };
           }

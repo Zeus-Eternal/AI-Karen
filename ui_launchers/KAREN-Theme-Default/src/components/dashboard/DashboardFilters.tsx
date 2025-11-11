@@ -233,7 +233,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 ? value
                 : value
                 ? Number(value)
-                : ("" as any)
+                : ("" as unknown)
             }
             onChange={(e) => {
               const v = e.target.value;

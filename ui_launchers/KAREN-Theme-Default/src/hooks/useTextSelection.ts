@@ -4,6 +4,20 @@
  * Provides utilities for text selection, copying, and interaction management.
  */
 import { useCallback, useEffect, useState } from 'react';
+
+type VendorSelectableStyle = CSSStyleDeclaration & {
+  webkitUserSelect?: string;
+  mozUserSelect?: string;
+  msUserSelect?: string;
+};
+
+const applyUserSelect = (style: CSSStyleDeclaration, value: 'auto' | 'none') => {
+  const vendorStyle = style as VendorSelectableStyle;
+  vendorStyle.userSelect = value;
+  vendorStyle.webkitUserSelect = value;
+  vendorStyle.mozUserSelect = value;
+  vendorStyle.msUserSelect = value;
+};
 export interface TextSelectionState {
   selectedText: string;
   selectionRange: Range | null;
@@ -61,14 +75,14 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        const success = document.execCommand('copy');
+        const success = document.execCommand('copy'); // Legacy fallback
         document.body.removeChild(textArea);
         if (success) {
           onTextCopied?.(text);
         }
         return success;
       }
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }, [onTextCopied]);
@@ -144,18 +158,12 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
   }, [handleSelectionChange, handleKeyDown, enableCopyShortcut]);
   // Utility to make an element's text easily selectable
   const makeSelectable = useCallback((element: HTMLElement) => {
-    element.style.userSelect = 'auto';
-    (element.style as any).webkitUserSelect = 'auto';
-    (element.style as any).mozUserSelect = 'auto';
-    (element.style as any).msUserSelect = 'auto';
+    applyUserSelect(element.style, 'auto');
     element.style.cursor = 'text';
   }, []);
   // Utility to make an element's text unselectable
   const makeUnselectable = useCallback((element: HTMLElement) => {
-    element.style.userSelect = 'none';
-    (element.style as any).webkitUserSelect = 'none';
-    (element.style as any).mozUserSelect = 'none';
-    (element.style as any).msUserSelect = 'none';
+    applyUserSelect(element.style, 'none');
     element.style.cursor = 'default';
   }, []);
   return {
@@ -178,18 +186,12 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
 // Utility function to ensure text selection is enabled on an element
 export function ensureTextSelectable(element: HTMLElement | null) {
   if (!element) return;
-  element.style.userSelect = 'auto';
-  (element.style as any).webkitUserSelect = 'auto';
-  (element.style as any).mozUserSelect = 'auto';
-  (element.style as any).msUserSelect = 'auto';
+  applyUserSelect(element.style, 'auto');
   // Also ensure child elements are selectable
   const children = element.querySelectorAll('*');
   children.forEach((child) => {
     if (child instanceof HTMLElement) {
-      child.style.userSelect = 'auto';
-      (child.style as any).webkitUserSelect = 'auto';
-      (child.style as any).mozUserSelect = 'auto';
-      (child.style as any).msUserSelect = 'auto';
+      applyUserSelect(child.style, 'auto');
     }
   });
 }
@@ -216,7 +218,7 @@ export function highlightSelection(className: string = 'highlighted-selection') 
     const span = document.createElement('span');
     span.className = className;
     range.surroundContents(span);
-  } catch (error) {
+  } catch (_error) {
     // If surroundContents fails (e.g., range spans multiple elements),
     // we could implement a more complex highlighting solution
   }
@@ -225,18 +227,28 @@ export function highlightSelection(className: string = 'highlighted-selection') 
 export function debugTextSelection() {
   console.log('Selection API supported:', isTextSelectionSupported());
   console.log('Current selection:', getDocumentSelection());
-  // Test selection on body
+  
+  // Test selection capabilities
   const selection = window.getSelection();
+  console.log('Selection object:', selection);
+  
   // Check for conflicting CSS
   const testElement = document.createElement('div');
   testElement.textContent = 'Test selection';
   testElement.style.position = 'absolute';
   testElement.style.top = '-1000px';
   document.body.appendChild(testElement);
+  
   const computedStyle = window.getComputedStyle(testElement);
+  console.log('User select style:', computedStyle.userSelect);
+  
   document.body.removeChild(testElement);
 }
 // Make debug function available in development
+type DebuggableWindow = Window & {
+  debugTextSelection?: () => void;
+};
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).debugTextSelection = debugTextSelection;
+  (window as DebuggableWindow).debugTextSelection = debugTextSelection;
 }

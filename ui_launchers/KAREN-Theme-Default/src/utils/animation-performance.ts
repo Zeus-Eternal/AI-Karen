@@ -366,7 +366,7 @@ export function usePerformanceAwareAnimation(
       try {
         const renderer = (gl as WebGLRenderingContext).getParameter((gl as WebGLRenderingContext).RENDERER);
         hasHardwareAcceleration = typeof renderer === 'string' && renderer.indexOf('Software') === -1;
-      } catch (e) {
+      } catch {
         hasHardwareAcceleration = false;
       }
     }
@@ -382,7 +382,9 @@ export function usePerformanceAwareAnimation(
   }, [enableHardwareDetection]);
 
   const getOptimizedVariant = React.useCallback((variantName: keyof typeof performanceAnimationVariants) => {
-    const baseVariant = variants[variantName] as any;
+    const baseVariant = variants[variantName] as Record<string, unknown> & {
+      transition?: Record<string, unknown> & { duration?: number };
+    };
     
     if (animationQuality === 'low') {
       return {
@@ -432,7 +434,7 @@ export function useWillChange<TElement extends HTMLElement = HTMLElement>() {
   const elementRef = React.useRef<TElement | null>(null);
 
   const addWillChange = React.useCallback((properties: string[]) => {
-    setWillChangeProperties(prev => [...new Set([...prev, ...properties])]);
+    setWillChangeProperties(prev => Array.from(new Set([...prev, ...properties])));
   }, []);
 
   const removeWillChange = React.useCallback((properties: string[]) => {

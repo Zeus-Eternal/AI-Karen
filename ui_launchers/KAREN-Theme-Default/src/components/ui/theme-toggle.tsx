@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { useTheme } from '@/providers/theme-provider';
+import { useTheme } from '@/providers/theme-hooks';
 import { cn } from '@/lib/utils';
 
 export interface ThemeToggleProps {

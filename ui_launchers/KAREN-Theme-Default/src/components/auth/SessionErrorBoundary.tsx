@@ -112,7 +112,7 @@ export class SessionErrorBoundary extends Component<
     }
 
     // Shapes from fetch/axios-like errors
-    const anyErr = error as any;
+    const anyErr = error as unknown;
     const status = anyErr?.status ?? anyErr?.response?.status ?? anyErr?.cause?.status;
     if (status === 401 || status === 403) return true;
 

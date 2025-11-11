@@ -108,12 +108,12 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
     [],
   );
 
-  if (!actions.length) return null;
-
   const displayActions = React.useMemo(
     () => actions.slice(0, maxActions),
     [actions, maxActions],
   );
+
+  if (!actions.length) return null;
 
   const handleActionClick = async (action: SuggestedAction, index: number) => {
     const actionKey = `${action.type}_${index}`;

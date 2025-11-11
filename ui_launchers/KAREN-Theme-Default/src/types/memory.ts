@@ -7,13 +7,13 @@
 export interface MemoryEntry {
   id: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   timestamp: number;
   similarity_score?: number;
   tags: string[];
   user_id?: string;
   session_id?: string;
-  type?: 'fact' | 'preference' | 'context';
+  type?: "fact" | "preference" | "context";
   confidence?: number;
   semantic_cluster?: string;
   relationships?: string[];
@@ -26,7 +26,7 @@ export interface MemoryQuery {
   user_id?: string;
   session_id?: string;
   tags?: string[];
-  metadata_filter?: Record<string, any>;
+  metadata_filter?: Record<string, unknown>;
   time_range?: [Date, Date];
   top_k?: number;
   similarity_threshold?: number;
@@ -95,7 +95,11 @@ export interface MemoryPerformanceStats {
 export interface MemoryContentStats {
   confidenceDistribution: Array<{ range: string; count: number }>;
   tagDistribution: Array<{ tag: string; count: number; percentage: number }>;
-  clusterDistribution: Array<{ cluster: string; count: number; avgConfidence: number }>;
+  clusterDistribution: Array<{
+    cluster: string;
+    count: number;
+    avgConfidence: number;
+  }>;
   contentTypes: Array<{ type: string; count: number; avgSize: number }>;
   relationshipStats: {
     totalConnections: number;
@@ -106,7 +110,11 @@ export interface MemoryContentStats {
 
 export interface MemoryTrendData {
   accessPatterns: Array<{ date: string; count: number; uniqueUsers: number }>;
-  creationPatterns: Array<{ date: string; count: number; avgConfidence: number }>;
+  creationPatterns: Array<{
+    date: string;
+    count: number;
+    avgConfidence: number;
+  }>;
   searchPatterns: Array<{ date: string; queries: number; avgLatency: number }>;
   retentionCurve: Array<{ age: number; retentionRate: number }>;
 }
@@ -121,8 +129,8 @@ export interface MemorySearchOptions {
   contentType?: string;
   minConfidence?: number;
   clusters?: string[];
-  sortBy?: 'relevance' | 'date' | 'confidence' | 'access_count';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "relevance" | "date" | "confidence" | "access_count";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface MemorySearchResult {
@@ -173,7 +181,7 @@ export interface MemoryNetworkNode {
   size: number;
   color: string;
   position?: { x: number; y: number };
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   tags: string[];
 }
 
@@ -182,9 +190,9 @@ export interface MemoryNetworkEdge {
   source: string;
   target: string;
   weight: number;
-  type: 'semantic' | 'temporal' | 'explicit' | 'inferred';
+  type: "semantic" | "temporal" | "explicit" | "inferred";
   confidence: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MemoryNetworkData {
@@ -225,17 +233,22 @@ export interface MemoryValidationResult {
 }
 
 export interface ValidationIssue {
-  type: 'duplicate' | 'inconsistency' | 'corruption' | 'low_quality' | 'orphaned';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  type:
+    | "duplicate"
+    | "inconsistency"
+    | "corruption"
+    | "low_quality"
+    | "orphaned";
+  severity: "low" | "medium" | "high" | "critical";
   description: string;
   affectedMemories: string[];
   suggestedAction: string;
 }
 
 export interface MemoryBatchOperation {
-  type: 'delete' | 'update' | 'merge' | 'tag' | 'cluster';
+  type: "delete" | "update" | "merge" | "tag" | "cluster";
   memoryIds: string[];
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   userId: string;
   timestamp: Date;
 }
@@ -259,7 +272,7 @@ export interface MemoryBackup {
   memoryCount: number;
   size: number;
   version: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface MemoryRestoreOptions {
@@ -330,20 +343,37 @@ export interface MemorySearchResponse {
 export interface MemoryNetworkResponse {
   network: MemoryNetworkData;
   query?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   timestamp: Date;
 }
 
 // Error Types
 export interface MemoryError extends Error {
-  type: 'MEMORY_NOT_FOUND' | 'SEARCH_FAILED' | 'ANALYTICS_ERROR' | 'NETWORK_ERROR' | 'VALIDATION_ERROR';
+  type:
+    | "MEMORY_NOT_FOUND"
+    | "SEARCH_FAILED"
+    | "ANALYTICS_ERROR"
+    | "NETWORK_ERROR"
+    | "VALIDATION_ERROR";
   memoryId?: string;
   userId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Utility Types
-export type MemoryTimeRange = '1h' | '24h' | '7d' | '30d' | '90d' | '1y' | 'all';
-export type MemoryViewMode = 'grid' | 'network' | 'analytics' | 'search';
-export type MemorySortField = 'relevance' | 'date' | 'confidence' | 'access_count' | 'similarity';
-export type MemorySortOrder = 'asc' | 'desc';
+export type MemoryTimeRange =
+  | "1h"
+  | "24h"
+  | "7d"
+  | "30d"
+  | "90d"
+  | "1y"
+  | "all";
+export type MemoryViewMode = "grid" | "network" | "analytics" | "search";
+export type MemorySortField =
+  | "relevance"
+  | "date"
+  | "confidence"
+  | "access_count"
+  | "similarity";
+export type MemorySortOrder = "asc" | "desc";

@@ -45,7 +45,7 @@ interface ImageModelParameters {
   presets: Array<{
     name: string;
     description: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
   }>;
   limitations: {
     max_batch_size: number;
@@ -57,12 +57,12 @@ interface ImageModelParameters {
 
 /** ---------- Helpers ---------- */
 
-function hasCap(model: any, cap: string): boolean {
+function hasCap(model: unknown, cap: string): boolean {
   const caps = Array.isArray(model?.capabilities) ? model.capabilities : [];
   return caps.includes(cap);
 }
 
-function isImageModel(model: any): boolean {
+function isImageModel(model: unknown): boolean {
   const t = (model?.type || '').toString().toLowerCase();
   return (
     t === 'image' ||
@@ -76,7 +76,7 @@ function isImageModel(model: any): boolean {
 }
 
 /** Build parameter specs based on provider & metadata */
-function buildImageModelParameters(model: any): ImageModelParameters['parameters'] {
+function buildImageModelParameters(model: unknown): ImageModelParameters['parameters'] {
   const params: ImageModelParameters['parameters'] = {
     prompt: {
       type: 'string',
@@ -170,7 +170,7 @@ function buildImageModelParameters(model: any): ImageModelParameters['parameters
   return params;
 }
 
-function getSupportedImageModes(model: any): string[] {
+function getSupportedImageModes(model: unknown): string[] {
   const modes: string[] = [];
   if (hasCap(model, 'text2img')) modes.push('text2img');
   if (hasCap(model, 'img2img')) modes.push('img2img');
@@ -180,8 +180,8 @@ function getSupportedImageModes(model: any): string[] {
 }
 
 function buildImageModelPresets(
-  model: any,
-): Array<{ name: string; description: string; parameters: Record<string, any> }> {
+  model: unknown,
+): Array<{ name: string; description: string; parameters: Record<string, unknown> }> {
   const presets = [
     {
       name: 'Quality',
@@ -217,7 +217,7 @@ function buildImageModelPresets(
   return presets;
 }
 
-function buildImageModelLimitations(model: any): ImageModelParameters['limitations'] {
+function buildImageModelLimitations(model: unknown): ImageModelParameters['limitations'] {
   const provider = (model?.provider || '').toLowerCase();
   const baseModel = (model?.metadata?.base_model || '').toUpperCase();
 
@@ -258,7 +258,7 @@ export async function GET(
 
     // pull available models from the orchestrator
     const models = await modelSelectionService.getAvailableModels();
-    const target = (models || []).find((m: any) => m.id === modelId);
+    const target = (models || []).find((m: unknown) => m.id === modelId);
 
     if (!target) {
       return NextResponse.json(
@@ -302,7 +302,7 @@ export async function GET(
         'X-Model-Type': (target.type || 'unknown').toString(),
       },
     });
-  } catch (err: any) {
+  } catch (err: Error) {
     return NextResponse.json(
       {
         error: 'Failed to fetch model parameters',

@@ -8,7 +8,7 @@
 
 let isInitialized = false;
 
-function isInterceptorSignature(msgOrStack: unknown): boolean {
+function isInterceptorSignature(msgOrStack: any): boolean {
   if (!msgOrStack) return false;
   const s = typeof msgOrStack === 'string' ? msgOrStack : String((msgOrStack as any) ?? '');
   return (

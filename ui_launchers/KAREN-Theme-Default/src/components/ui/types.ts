@@ -165,8 +165,8 @@ export interface InteractiveComponentProps extends BaseComponentProps {
 
 export interface FormComponentProps extends BaseComponentProps {
   name?: string;
-  value?: any;
-  onChange?: (value: any) => void;
+  value?: unknown;
+  onChange?: (value: unknown) => void;
   onBlur?: () => void;
   onFocus?: () => void;
   error?: string;
@@ -176,11 +176,11 @@ export interface FormComponentProps extends BaseComponentProps {
 
 // Animation Types
 export interface AnimationProps {
-  initial?: any;
-  animate?: any;
-  exit?: any;
-  transition?: any;
-  variants?: any;
+  initial?: unknown;
+  animate?: unknown;
+  exit?: unknown;
+  transition?: unknown;
+  variants?: unknown;
 }
 
 // Theme Types
@@ -190,10 +190,10 @@ export type VariantType = 'default' | 'outline' | 'ghost' | 'link' | 'destructiv
 
 // Responsive Types
 export interface ResponsiveProps {
-  sm?: any;
-  md?: any;
-  lg?: any;
-  xl?: any;
+  sm?: unknown;
+  md?: unknown;
+  lg?: unknown;
+  xl?: unknown;
 }
 
 // Accessibility Types
@@ -223,7 +223,7 @@ export type ChangeHandler<T = any> = (value: T) => void;
 export interface LoadingState {
   isLoading: boolean;
   error: Error | null;
-  data: any;
+  data: unknown;
 }
 
 export interface AsyncState<T = any> {
@@ -242,7 +242,7 @@ export interface FormFieldProps extends FormComponentProps {
     minLength?: number;
     maxLength?: number;
     pattern?: RegExp;
-    custom?: (value: any) => string | null;
+    custom?: (value: unknown) => string | null;
   };
 }
 

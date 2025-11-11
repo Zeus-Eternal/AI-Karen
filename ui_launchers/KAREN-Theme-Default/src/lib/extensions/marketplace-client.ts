@@ -36,7 +36,7 @@ export interface ExtensionListing {
 export interface ExtensionVersion {
   id?: number;
   version: string;   // semver preferred
-  manifest: Record<string, any>;
+  manifest: Record<string, unknown>;
   changelog?: string;
   is_stable: boolean;
   min_kari_version?: string;
@@ -70,7 +70,7 @@ export interface ExtensionInstallation {
     | "updating"
     | "uninstalling";
   error_message?: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   installed_at?: string;
   updated_at?: string;
 }
@@ -97,7 +97,7 @@ export interface ExtensionSearchResponse {
 export interface ExtensionInstallRequest {
   extension_name: string;       // slug
   version?: string;             // semver
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface ExtensionInstallResponse {

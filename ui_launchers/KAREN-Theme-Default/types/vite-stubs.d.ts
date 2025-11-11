@@ -20,5 +20,7 @@ declare module "@vitejs/plugin-react-swc" {
     [key: string]: unknown;
   }
 
-  export default function reactPlugin(options?: ReactPluginOptions): PluginOption;
+  export default function reactPlugin(
+    options?: ReactPluginOptions
+  ): PluginOption;
 }

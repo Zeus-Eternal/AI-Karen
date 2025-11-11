@@ -106,7 +106,7 @@ const userListCache = new SimpleCache<string, PaginatedResponse<User>>({
   ttl: CACHE_CONFIG.userLists.ttl,
 });
 
-const statisticsCache = new SimpleCache<string, any>({
+const statisticsCache = new SimpleCache<string, unknown>({
   max: CACHE_CONFIG.statistics.maxSize,
   ttl: CACHE_CONFIG.statistics.ttl,
 });
@@ -129,7 +129,7 @@ export class CacheKeyGenerator {
     const sortStr = `${sortBy || 'created_at'}:${sortOrder || 'desc'}`;
     return `userlist:${Buffer.from(filterStr).toString('base64')}:${page}:${limit}:${sortStr}`;
   }
-  static statistics(type: string, params?: Record<string, any>): string {
+  static statistics(type: string, params?: Record<string, unknown>): string {
     const paramStr = params ? JSON.stringify(params) : '';
     return `stats:${type}:${Buffer.from(paramStr).toString('base64')}`;
   }
@@ -256,7 +256,7 @@ export class UserListCache {
   static invalidateAll(): void {
     userListCache.clear();
   }
-  static invalidateByUser(userId: string): void {
+  static invalidateByUser(_userId: string): void {
     // Since we can't easily find all cache entries that contain a specific user,
     // we'll clear the entire user list cache when a user is updated
     this.invalidateAll();
@@ -272,15 +272,15 @@ export class UserListCache {
 }
 // Statistics caching
 export class StatisticsCache {
-  static async get(type: string, params?: Record<string, any>): Promise<any | null> {
+  static async get(type: string, params?: Record<string, unknown>): Promise<unknown | null> {
     const key = CacheKeyGenerator.statistics(type, params);
     return statisticsCache.get(key) || null;
   }
-  static set(type: string, data: any, params?: Record<string, any>): void {
+  static set(type: string, data: unknown, params?: Record<string, unknown>): void {
     const key = CacheKeyGenerator.statistics(type, params);
     statisticsCache.set(key, data);
   }
-  static invalidate(type: string, params?: Record<string, any>): void {
+  static invalidate(type: string, params?: Record<string, unknown>): void {
     const key = CacheKeyGenerator.statistics(type, params);
     statisticsCache.delete(key);
   }
@@ -361,10 +361,12 @@ export class AdminCacheManager {
             }
           }
         } catch (error) {
-        }
+    // Handle error silently
+  }
       }
     } catch (error) {
-    }
+    // Handle error silently
+  }
   }
   /**
    * Get cache memory usage estimation
@@ -410,22 +412,24 @@ export function withCache<T>(
   cacheSetter: (data: T) => void,
   dataFetcher: () => Promise<T>
 ): Promise<T> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Try to get from cache first
-      const cachedData = await cacheGetter();
-      if (cachedData !== null) {
-        resolve(cachedData);
-        return;
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        // Try to get from cache first
+        const cachedData = await cacheGetter();
+        if (cachedData !== null) {
+          resolve(cachedData);
+          return;
+        }
+        // Fetch fresh data
+        const freshData = await dataFetcher();
+        // Cache the fresh data
+        cacheSetter(freshData);
+        resolve(freshData);
+      } catch (error) {
+        reject(error);
       }
-      // Fetch fresh data
-      const freshData = await dataFetcher();
-      // Cache the fresh data
-      cacheSetter(freshData);
-      resolve(freshData);
-    } catch (error) {
-      reject(error);
-    }
+    })();
   });
 }
 // Export cache instances for direct access if needed

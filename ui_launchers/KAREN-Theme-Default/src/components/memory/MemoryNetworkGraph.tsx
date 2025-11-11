@@ -325,7 +325,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         container.attr("transform", event.transform.toString());
       });
 
-    svg.call(zoomBehavior as any);
+    svg.call(zoomBehavior as unknown);
 
     // Simulation
     const sim = d3
@@ -494,27 +494,27 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         d.fy = null;
       });
 
-    nodeGroups.call(drag as any);
+    nodeGroups.call(drag as unknown);
 
     // Tick
     sim.on("tick", () => {
       links
         .attr("x1", (d) =>
-          typeof d.source === "object" ? (d.source as any).x ?? 0 : 0
+          typeof d.source === "object" ? (d.source as unknown).x ?? 0 : 0
         )
         .attr("y1", (d) =>
-          typeof d.source === "object" ? (d.source as any).y ?? 0 : 0
+          typeof d.source === "object" ? (d.source as unknown).y ?? 0 : 0
         )
         .attr("x2", (d) =>
-          typeof d.target === "object" ? (d.target as any).x ?? 0 : 0
+          typeof d.target === "object" ? (d.target as unknown).x ?? 0 : 0
         )
         .attr("y2", (d) =>
-          typeof d.target === "object" ? (d.target as any).y ?? 0 : 0
+          typeof d.target === "object" ? (d.target as unknown).y ?? 0 : 0
         );
 
       nodeGroups.attr(
         "transform",
-        (d) => `translate(${(d as any).x || 0}, ${(d as any).y || 0})`
+        (d) => `translate(${(d as unknown).x || 0}, ${(d as unknown).y || 0})`
       );
 
       // cluster centroids
@@ -525,9 +525,9 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           );
           if (cNodes.length > 0) {
             cluster.centroid.x =
-              d3.mean(cNodes, (n: any) => n.x || 0) ?? cluster.centroid.x;
+              d3.mean(cNodes, (n: unknown) => n.x || 0) ?? cluster.centroid.x;
             cluster.centroid.y =
-              d3.mean(cNodes, (n: any) => n.y || 0) ?? cluster.centroid.y;
+              d3.mean(cNodes, (n: unknown) => n.y || 0) ?? cluster.centroid.y;
           }
         });
 
@@ -574,7 +574,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     if (svgRef.current) {
       d3.select(svgRef.current)
         .transition()
-        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as any), 1.5);
+        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as unknown), 1.5);
     }
   }, []);
 
@@ -582,7 +582,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     if (svgRef.current) {
       d3.select(svgRef.current)
         .transition()
-        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as any), 1 / 1.5);
+        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as unknown), 1 / 1.5);
     }
   }, []);
 
@@ -591,7 +591,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       d3.select(svgRef.current)
         .transition()
         .call(
-          (d3.zoom<SVGSVGElement, unknown>().transform as any),
+          (d3.zoom<SVGSVGElement, unknown>().transform as unknown),
           d3.zoomIdentity
         );
     }

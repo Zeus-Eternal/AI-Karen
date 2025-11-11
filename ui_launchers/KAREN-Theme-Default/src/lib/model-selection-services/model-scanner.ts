@@ -132,7 +132,7 @@ export class ModelScanner extends BaseModelService {
           path: string;
           size: number;
           modified: string;
-          metadata?: any;
+          metadata?: unknown;
         }>;
       }>(`/api/models/scan/llama-cpp?directory=${encodeURIComponent(directory)}`);
 
@@ -212,8 +212,8 @@ export class ModelScanner extends BaseModelService {
           path: string;
           size: number;
           modified: string;
-          config?: any;
-          tokenizer_config?: any;
+          config?: unknown;
+          tokenizer_config?: unknown;
         }>;
       }>(`/api/models/scan/transformers?directory=${encodeURIComponent(directory)}`);
 
@@ -297,7 +297,7 @@ export class ModelScanner extends BaseModelService {
           size: number;
           modified: string;
           type: 'checkpoint' | 'diffusers';
-          config?: any;
+          config?: unknown;
         }>;
       }>(`/api/models/scan/stable-diffusion?directory=${encodeURIComponent(directory)}`);
 
@@ -378,7 +378,7 @@ export class ModelScanner extends BaseModelService {
           size: number;
           modified: string;
           type: 'checkpoint' | 'diffusers';
-          config?: any;
+          config?: unknown;
         }>;
       }>(`/api/models/scan/flux?directory=${encodeURIComponent(directory)}`);
 
@@ -477,9 +477,9 @@ export class ModelScanner extends BaseModelService {
   // - getLlamaCppFallbackModels, getTransformersFallbackModels, etc.
   // - inferCapabilities, generateTransformersModelName, etc.
 
-  private extractGGUFMetadata(filename: string, fileMetadata?: any): Record<string, any> {
+  private extractGGUFMetadata(filename: string, fileMetadata?: unknown): Record<string, unknown> {
     // Implementation from original service
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
     
     // Extract information from filename patterns
     const lowerFilename = filename.toLowerCase();
@@ -531,33 +531,35 @@ export class ModelScanner extends BaseModelService {
     return metadata;
   }
 
-  private extractTransformersMetadata(dirname: string, config?: any, tokenizerConfig?: any): Record<string, any> {
+  private extractTransformersMetadata(dirname: string, config?: unknown, tokenizerConfig?: unknown): Record<string, unknown> {
     // Implementation from original service
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
     
     // Extract from config.json if available
-    if (config) {
-      metadata.model_type = config.model_type || config._name_or_path?.split('/').pop() || 'unknown';
-      metadata.architectures = config.architectures || [];
-      metadata.vocab_size = config.vocab_size;
-      metadata.max_position_embeddings = config.max_position_embeddings || config.max_seq_len || config.seq_length;
-      metadata.torch_dtype = config.torch_dtype;
-      metadata.hidden_size = config.hidden_size;
-      metadata.num_attention_heads = config.num_attention_heads;
-      metadata.num_hidden_layers = config.num_hidden_layers;
+    if (config && typeof config === 'object') {
+      const configObj = config as Record<string, unknown>;
+      metadata.model_type = configObj.model_type || (configObj._name_or_path as string)?.split('/').pop() || 'unknown';
+      metadata.architectures = configObj.architectures || [];
+      metadata.vocab_size = configObj.vocab_size;
+      metadata.max_position_embeddings = configObj.max_position_embeddings || configObj.max_seq_len || configObj.seq_length;
+      metadata.torch_dtype = configObj.torch_dtype;
+      metadata.hidden_size = configObj.hidden_size;
+      metadata.num_attention_heads = configObj.num_attention_heads;
+      metadata.num_hidden_layers = configObj.num_hidden_layers;
     }
     
     // Extract from tokenizer config if available
-    if (tokenizerConfig) {
-      metadata.tokenizer_class = tokenizerConfig.tokenizer_class;
-      metadata.model_max_length = tokenizerConfig.model_max_length;
+    if (tokenizerConfig && typeof tokenizerConfig === 'object') {
+      const tokenizerObj = tokenizerConfig as Record<string, unknown>;
+      metadata.tokenizer_class = tokenizerObj.tokenizer_class;
+      metadata.model_max_length = tokenizerObj.model_max_length;
     }
     
     // Infer parameter count from directory name or config
     const paramMatch = dirname.match(/(\d+\.?\d*)[Bb]/i);
     if (paramMatch) {
       metadata.parameter_count = paramMatch[1] + 'B';
-    } else if (metadata.hidden_size && metadata.num_hidden_layers) {
+    } else if (typeof metadata.hidden_size === 'number' && typeof metadata.num_hidden_layers === 'number') {
       // Rough estimation based on architecture
       const params = (metadata.hidden_size * metadata.num_hidden_layers * 12) / 1000000;
       metadata.parameter_count = params < 1000 ? `${Math.round(params)}M` : `${(params / 1000).toFixed(1)}B`;
@@ -585,9 +587,9 @@ export class ModelScanner extends BaseModelService {
     return metadata;
   }
 
-  private extractStableDiffusionMetadata(modelName: string, modelType: 'checkpoint' | 'diffusers', config?: any): Record<string, any> {
+  private extractStableDiffusionMetadata(modelName: string, modelType: 'checkpoint' | 'diffusers', config?: unknown): Record<string, unknown> {
     // Implementation from original service
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
     const lowerName = modelName.toLowerCase();
     
     // Determine base model version
@@ -617,23 +619,27 @@ export class ModelScanner extends BaseModelService {
     metadata.vae_type = lowerName.includes('vae') ? 'custom' : 'default';
     
     // Extract from config if available (for diffusers models)
-    if (config) {
-      if (config.sample_size) {
-        const size = Array.isArray(config.sample_size) ? config.sample_size[0] : config.sample_size;
-        metadata.resolution = [size * 8, size * 8]; // VAE scaling factor
+    if (config && typeof config === 'object') {
+      const configObj = config as Record<string, unknown>;
+      if (configObj.sample_size) {
+        const sampleSize = configObj.sample_size;
+        const size = Array.isArray(sampleSize) ? sampleSize[0] : sampleSize;
+        if (typeof size === 'number') {
+          metadata.resolution = [size * 8, size * 8]; // VAE scaling factor
+        }
       }
       
-      if (config.scheduler) {
-        metadata.scheduler_type = config.scheduler;
+      if (configObj.scheduler) {
+        metadata.scheduler_type = configObj.scheduler;
       }
     }
     
     return metadata;
   }
 
-  private extractFluxMetadata(modelName: string, modelType: 'checkpoint' | 'diffusers', config?: any): Record<string, any> {
+  private extractFluxMetadata(modelName: string, modelType: 'checkpoint' | 'diffusers', config?: unknown): Record<string, unknown> {
     // Implementation from original service
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
     const lowerName = modelName.toLowerCase();
     
     // Determine Flux variant
@@ -660,21 +666,25 @@ export class ModelScanner extends BaseModelService {
     metadata.supports_inpainting = lowerName.includes('inpaint');
     
     // Extract from config if available (for diffusers models)
-    if (config) {
-      if (config.sample_size) {
-        const size = Array.isArray(config.sample_size) ? config.sample_size[0] : config.sample_size;
-        metadata.resolution = [size * 8, size * 8]; // VAE scaling factor
+    if (config && typeof config === 'object') {
+      const configObj = config as Record<string, unknown>;
+      if (configObj.sample_size) {
+        const sampleSize = configObj.sample_size;
+        const size = Array.isArray(sampleSize) ? sampleSize[0] : sampleSize;
+        if (typeof size === 'number') {
+          metadata.resolution = [size * 8, size * 8]; // VAE scaling factor
+        }
       }
       
-      if (config.guidance_scale) {
-        metadata.guidance_scale_range = [1.0, config.guidance_scale];
+      if (typeof configObj.guidance_scale === 'number') {
+        metadata.guidance_scale_range = [1.0, configObj.guidance_scale];
       }
     }
     
     return metadata;
   }
 
-  private inferCapabilities(filename: string, metadata: Record<string, any>, type: string): string[] {
+  private inferCapabilities(filename: string, metadata: Record<string, unknown>, type: string): string[] {
     // Implementation from original service
     const capabilities: string[] = [];
     const lowerFilename = filename.toLowerCase();
@@ -695,12 +705,12 @@ export class ModelScanner extends BaseModelService {
         capabilities.push('reasoning');
       }
     } else if (type === 'transformers') {
-      const modelType = metadata.model_type?.toLowerCase() || '';
-      const architectures = metadata.architectures || [];
+      const modelType = typeof metadata.model_type === 'string' ? metadata.model_type.toLowerCase() : '';
+      const architectures = Array.isArray(metadata.architectures) ? metadata.architectures : [];
       
       // Text generation models
       if (modelType.includes('causal') || 
-          architectures.some((arch: string) => arch.includes('CausalLM'))) {
+          architectures.some((arch: unknown) => typeof arch === 'string' && arch.includes('CausalLM'))) {
         capabilities.push('text-generation');
         
         if (lowerFilename.includes('chat') || lowerFilename.includes('instruct')) {
@@ -773,22 +783,23 @@ export class ModelScanner extends BaseModelService {
   // Add validation methods and fallback model methods
   // (These would be similar to the original service implementation)
   private validateLlamaCppCompatibility(model: Model): boolean {
-    return model.format === 'gguf' && model.size && model.size > 1000000 && model.metadata.architecture;
+    return Boolean(model.format === 'gguf' && model.size && model.size > 1000000 && model.metadata.architecture);
   }
 
   private validateTransformersCompatibility(model: Model): boolean {
-    return (model.metadata.model_type || model.metadata.architectures?.length) && model.size && model.size > 1000000;
+    const architectures = model.metadata.architectures as unknown[] | undefined;
+    return Boolean((model.metadata.model_type || architectures?.length) && model.size && model.size > 1000000);
   }
 
   private validateStableDiffusionCompatibility(model: Model): boolean {
-    return model.metadata.base_model && model.size && model.size > 100000000;
+    return Boolean(model.metadata.base_model && model.size && model.size > 100000000);
   }
 
   private validateFluxCompatibility(model: Model): boolean {
-    return model.metadata.variant && model.size && model.size > 100000000;
+    return Boolean(model.metadata.variant && model.size && model.size > 100000000);
   }
 
-  private generateTransformersModelName(dirname: string, metadata: Record<string, any>): string {
+  private generateTransformersModelName(dirname: string, metadata: Record<string, unknown>): string {
     // Clean up directory name (remove organization prefix)
     let name = dirname.replace(/^[^-]+-+/, ''); // Remove "org--" prefix
     name = name.replace(/[_-]/g, ' ');
@@ -806,9 +817,9 @@ export class ModelScanner extends BaseModelService {
     return name.trim();
   }
 
-  private inferTransformersModelType(metadata: Record<string, any>): 'text' | 'image' | 'embedding' | 'multimodal' {
-    const modelType = metadata.model_type?.toLowerCase() || '';
-    const architectures = metadata.architectures || [];
+  private inferTransformersModelType(metadata: Record<string, unknown>): 'text' | 'image' | 'embedding' | 'multimodal' {
+    const modelType = (metadata.model_type as string)?.toLowerCase() || '';
+    const architectures = (metadata.architectures as string[]) || [];
     
     // Check for embedding models
     if (modelType.includes('bert') && !modelType.includes('causal')) {
@@ -828,13 +839,13 @@ export class ModelScanner extends BaseModelService {
     return 'text';
   }
 
-  private inferTransformersFormat(modelPath: string): 'safetensors' | 'pytorch' | 'diffusers' {
+  private inferTransformersFormat(_modelPath: string): 'safetensors' | 'pytorch' | 'diffusers' {
     // This would need to check actual files in the directory
     // For now, default to safetensors as it's becoming the standard
     return 'safetensors';
   }
 
-  private generateStableDiffusionModelName(modelName: string, metadata: Record<string, any>): string {
+  private generateStableDiffusionModelName(modelName: string, metadata: Record<string, unknown>): string {
     // Clean up model name
     let name = modelName.replace(/[_-]/g, ' ');
     name = name.split(' ')
@@ -847,14 +858,14 @@ export class ModelScanner extends BaseModelService {
     }
     
     // Add version info
-    if (metadata.base_model && !name.includes(metadata.base_model)) {
+    if (metadata.base_model && !name.includes(metadata.base_model as string)) {
       name += ` (${metadata.base_model})`;
     }
     
     return name.trim();
   }
 
-  private generateFluxModelName(modelName: string, metadata: Record<string, any>): string {
+  private generateFluxModelName(modelName: string, metadata: Record<string, unknown>): string {
     // Clean up model name
     let name = modelName.replace(/[_-]/g, ' ');
     name = name.split(' ')
@@ -867,8 +878,9 @@ export class ModelScanner extends BaseModelService {
     }
     
     // Add variant info
-    if (metadata.variant && !name.toLowerCase().includes(metadata.variant)) {
-      name += ` (${metadata.variant.charAt(0).toUpperCase() + metadata.variant.slice(1)})`;
+    if (metadata.variant && !name.toLowerCase().includes(metadata.variant as string)) {
+      const variant = metadata.variant as string;
+      name += ` (${variant.charAt(0).toUpperCase() + variant.slice(1)})`;
     }
     
     return name.trim();
@@ -896,7 +908,7 @@ export class ModelScanner extends BaseModelService {
   }
 
   // Fallback model methods (simplified for brevity)
-  private getLlamaCppFallbackModels(options: DirectoryScanOptions): Model[] {
+  private getLlamaCppFallbackModels(_options: DirectoryScanOptions): Model[] {
     return [
       {
         id: 'llama-cpp-phi3-mini-4k-q4',
@@ -922,7 +934,7 @@ export class ModelScanner extends BaseModelService {
     ];
   }
 
-  private getTransformersFallbackModels(options: DirectoryScanOptions): Model[] {
+  private getTransformersFallbackModels(_options: DirectoryScanOptions): Model[] {
     return [
       {
         id: 'transformers-deepseek-r1-distill-qwen-1-5b',
@@ -951,7 +963,7 @@ export class ModelScanner extends BaseModelService {
     ];
   }
 
-  private getStableDiffusionFallbackModels(options: DirectoryScanOptions): Model[] {
+  private getStableDiffusionFallbackModels(_options: DirectoryScanOptions): Model[] {
     return [
       {
         id: 'stable-diffusion-stable-diffusion-v1-5',
@@ -979,8 +991,14 @@ export class ModelScanner extends BaseModelService {
     ];
   }
 
-  private getFluxFallbackModels(options: DirectoryScanOptions): Model[] {
+  private getFluxFallbackModels(_options: DirectoryScanOptions): Model[] {
     // Return empty array as no Flux models are typically present in development
     return [];
   }
+
+
+
+
+
+
 }

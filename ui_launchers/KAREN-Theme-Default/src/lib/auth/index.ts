@@ -74,7 +74,7 @@ export async function handleExtensionAuthenticationError(
   error: Error | Response,
   endpoint: string,
   operation?: string
-): Promise<any> {
+): Promise<unknown> {
   try {
     let authError: ExtensionAuthError;
     // Convert error to ExtensionAuthError
@@ -120,7 +120,7 @@ export function checkExtensionFeatureAvailability(featureName: string): {
   available: boolean;
   level: ExtensionFeatureLevel;
   reason?: string;
-  fallbackData?: any;
+  fallbackData?: unknown;
 } {
   const available = isExtensionFeatureAvailable(featureName);
   const degradationState = extensionAuthDegradationManager.getDegradationState();

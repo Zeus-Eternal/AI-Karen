@@ -48,7 +48,7 @@ export interface BackgroundTask {
   status: 'pending' | 'running' | 'completed' | 'failed';
   created_at: string;
   updated_at?: string;
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
@@ -56,7 +56,7 @@ export interface ExtensionEvent {
   id: string;
   extension_name: string;
   event_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   timestamp: string;
   severity: 'info' | 'warning' | 'error';
 }
@@ -198,7 +198,7 @@ export class AuthenticatedExtensionService {
     name: string;
     extension_name: string;
     schedule?: string;
-    parameters?: Record<string, any>;
+    parameters?: Record<string, unknown>;
   }): Promise<string | null> {
     const context: ErrorContext = {
       endpoint: '/api/extensions/background-tasks/',
@@ -211,10 +211,16 @@ export class AuthenticatedExtensionService {
     try {
       const result = await this.backendService.registerBackgroundTask(taskData);
       
+      const record = this.ensureRecord(result);
+      const taskId =
+        this.getStringField(record, 'task_id') ??
+        this.getStringField(record, 'id') ??
+        'unknown';
+
       this.updateServiceState(true, null);
       logger.info(`Background task ${taskData.name} registered successfully`);
       
-      return result.task_id || result.id || 'unknown';
+      return taskId;
     } catch (error) {
       return this.handleServiceError(error, context, null);
     }
@@ -263,13 +269,20 @@ export class AuthenticatedExtensionService {
    */
   async getExtensionHealth(): Promise<{
     status: 'healthy' | 'degraded' | 'unhealthy';
-    services: Record<string, any>;
+    services: Record<string, unknown>;
     timestamp: string;
   }> {
     try {
       const health = await this.backendService.getExtensionHealth();
+      const record = this.ensureRecord(health);
       this.updateServiceState(true, null);
-      return health;
+      return {
+        status: this.normalizeHealthStatus(record.status),
+        services: (record.services as Record<string, unknown>) ?? {},
+        timestamp:
+          this.getStringField(record, 'timestamp') ??
+          new Date().toISOString(),
+      };
     } catch (error) {
       logger.warn('Extension health check failed:', error);
       return {
@@ -342,7 +355,7 @@ export class AuthenticatedExtensionService {
    * Handle service errors with recovery strategies
    */
   private handleServiceError<T>(
-    error: any,
+    error: Error,
     context: ErrorContext,
     fallbackValue: T
   ): T {
@@ -390,39 +403,58 @@ export class AuthenticatedExtensionService {
   /**
    * Transform extension data to ensure consistency
    */
-  private transformExtensionData(extensions: any[]): ExtensionInfo[] {
-    return extensions.map(ext => ({
-      name: ext.name || 'unknown',
-      version: ext.version || '0.0.0',
-      display_name: ext.display_name || ext.name,
-      description: ext.description || 'No description available',
-      status: this.normalizeStatus(ext.status),
-      loaded_at: ext.loaded_at,
-      error_message: ext.error_message,
-      capabilities: ext.capabilities || {},
-    }));
+  private transformExtensionData(extensions: unknown[]): ExtensionInfo[] {
+    return extensions.map(ext => {
+      const record = this.ensureRecord(ext);
+      const name = this.getStringField(record, 'name', 'unknown') ?? 'unknown';
+      const version = this.getStringField(record, 'version', '0.0.0') ?? '0.0.0';
+      const displayName =
+        this.getStringField(record, 'display_name') ?? name;
+      const description =
+        this.getStringField(record, 'description') ??
+        'No description available';
+
+      return {
+        name,
+        version,
+        display_name: displayName,
+        description,
+        status: this.normalizeStatus(record.status),
+        loaded_at: this.getStringField(record, 'loaded_at'),
+        error_message: this.getStringField(record, 'error_message'),
+        capabilities: this.toCapabilities(record.capabilities),
+      };
+    });
   }
 
   /**
    * Transform background task data
    */
-  private transformBackgroundTaskData(tasks: any[]): BackgroundTask[] {
-    return tasks.map(task => ({
-      id: task.id || task.task_id || 'unknown',
-      name: task.name || 'Unnamed Task',
-      extension_name: task.extension_name || 'unknown',
-      status: this.normalizeTaskStatus(task.status),
-      created_at: task.created_at || new Date().toISOString(),
-      updated_at: task.updated_at,
-      result: task.result,
-      error: task.error,
-    }));
+  private transformBackgroundTaskData(tasks: unknown[]): BackgroundTask[] {
+    return tasks.map(task => {
+      const record = this.ensureRecord(task);
+      return {
+        id:
+          this.getStringField(record, 'id') ??
+          this.getStringField(record, 'task_id') ??
+          'unknown',
+        name: this.getStringField(record, 'name') ?? 'Unnamed Task',
+        extension_name: this.getStringField(record, 'extension_name') ?? 'unknown',
+        status: this.normalizeTaskStatus(record.status),
+        created_at:
+          this.getStringField(record, 'created_at') ??
+          new Date().toISOString(),
+        updated_at: this.getStringField(record, 'updated_at'),
+        result: record.result,
+        error: this.getStringField(record, 'error'),
+      };
+    });
   }
 
   /**
    * Normalize extension status
    */
-  private normalizeStatus(status: any): ExtensionInfo['status'] {
+  private normalizeStatus(status: unknown): ExtensionInfo['status'] {
     if (typeof status !== 'string') return 'inactive';
     
     const normalized = status.toLowerCase();
@@ -436,7 +468,7 @@ export class AuthenticatedExtensionService {
   /**
    * Normalize task status
    */
-  private normalizeTaskStatus(status: any): BackgroundTask['status'] {
+  private normalizeTaskStatus(status: unknown): BackgroundTask['status'] {
     if (typeof status !== 'string') return 'pending';
     
     const normalized = status.toLowerCase();
@@ -445,6 +477,52 @@ export class AuthenticatedExtensionService {
     }
     
     return 'pending';
+  }
+
+  private normalizeHealthStatus(status: unknown): 'healthy' | 'degraded' | 'unhealthy' {
+    if (typeof status !== 'string') return 'unhealthy';
+
+    const normalized = status.toLowerCase();
+    if (['healthy', 'degraded', 'unhealthy'].includes(normalized)) {
+      return normalized as 'healthy' | 'degraded' | 'unhealthy';
+    }
+
+    return 'unhealthy';
+  }
+
+  /**
+   * Ensure value is treated as a record for safe property access
+   */
+  private ensureRecord(value: unknown): Record<string, unknown> {
+    if (typeof value === 'object' && value !== null) {
+      return value as Record<string, unknown>;
+    }
+    return {};
+  }
+
+  /**
+   * Read string value from a record, optionally falling back to a default
+   */
+  private getStringField(
+    record: Record<string, unknown>,
+    key: string,
+    fallback?: string
+  ): string | undefined {
+    const value = record[key];
+    if (typeof value === 'string') {
+      return value;
+    }
+    return fallback;
+  }
+
+  /**
+   * Normalize capabilities object
+   */
+  private toCapabilities(value: unknown): ExtensionInfo['capabilities'] {
+    if (typeof value === 'object' && value !== null) {
+      return value as ExtensionInfo['capabilities'];
+    }
+    return {};
   }
 
   /**

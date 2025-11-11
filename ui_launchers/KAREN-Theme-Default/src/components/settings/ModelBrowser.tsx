@@ -78,7 +78,7 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                   toast({ title: 'Download started', description: res.path });
                   setJobs(prev => ({ ...prev, [res.job_id]: { job_id: res.job_id, status: res.status || 'running', progress: res.progress || 0, path: res.path } }));
                 }
-              } catch (e: any) {
+              } catch (e: Event) {
                 toast({ title: 'Download failed', description: e?.message || 'Error', variant: 'destructive' });
               }
             }}
@@ -152,7 +152,7 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                         await backend.makeRequestPublic(`/api/models/local?path=${encodeURIComponent(model.local_path)}`, { method: 'DELETE' });
                         toast({ title: 'Deleted', description: model.local_path });
                         setModels(models.filter(m => m.id !== model.id));
-                      } catch (e: any) {
+                      } catch (e: Event) {
                         toast({ title: 'Delete failed', description: e?.message || 'Error', variant: 'destructive' });
                       }
                     }}
@@ -169,7 +169,7 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
 }
 
 // Background poller for job progress
-function useJobPolling(jobs: Record<string, any>, setJobs: (j: Record<string, any>) => void) {
+function useJobPolling(jobs: Record<string, unknown>, setJobs: (j: Record<string, unknown>) => void) {
   const backend = getKarenBackend();
   useEffect(() => {
     const ids = Object.keys(jobs);
@@ -182,7 +182,7 @@ function useJobPolling(jobs: Record<string, any>, setJobs: (j: Record<string, an
         try {
           const s = await backend.makeRequestPublic<any>(`/api/models/local/jobs/${id}`);
           if (s) {
-            setJobs((prev: any) => ({ ...prev, [id]: { ...prev[id], ...s } }));
+            setJobs((prev: unknown) => ({ ...prev, [id]: { ...prev[id], ...s } }));
           }
         } catch {}
       }));

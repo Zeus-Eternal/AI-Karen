@@ -5,8 +5,8 @@ const REG_TIMEOUT_MS = 15_000;
 
 function buildTimeoutSignal(ms: number): AbortSignal {
   // Fallback for environments without AbortSignal.timeout
-  if (typeof (AbortSignal as any).timeout === 'function') {
-    return (AbortSignal as any).timeout(ms);
+  if (typeof (AbortSignal as unknown).timeout === 'function') {
+    return (AbortSignal as unknown).timeout(ms);
   }
   const controller = new AbortController();
   setTimeout(() => controller.abort(), ms);
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     // Best-effort decode
     const contentType = response.headers.get('content-type') || '';
-    let payload: any;
+    let payload: unknown;
     try {
       payload = contentType.includes('application/json')
         ? await response.json()
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Distinguish timeouts for clearer UX
     const isTimeout =
-      (error as any)?.name === 'AbortError' ||
+      (error as unknown)?.name === 'AbortError' ||
       String(message).toLowerCase().includes('timeout');
 
     return NextResponse.json(

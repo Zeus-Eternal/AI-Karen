@@ -5,7 +5,7 @@
 import type { Model, ModelHealth } from "../model-utils";
 
 // Re-export Model for convenience
-export type { Model, ModelHealth } from "../model-utils";
+export type { Model } from "../model-utils";
 
 export interface ModelSelectionPreferences {
   lastSelectedModel?: string;
@@ -162,7 +162,7 @@ export interface SelectOptimalModelOptions {
   forceRefresh?: boolean;
   includeDynamicScan?: boolean;
   contextPreservation?: boolean;
-  currentContext?: any;
+  currentContext?: Record<string, unknown>;
   checkResourceFeasibility?: boolean;
   maxMemoryUsage?: number;
   requireGPU?: boolean;
@@ -170,7 +170,7 @@ export interface SelectOptimalModelOptions {
 
 export interface ModelSwitchOptions {
   preserveContext?: boolean;
-  currentContext?: any;
+  currentContext?: Record<string, unknown>;
   forceSwitch?: boolean;
 }
 

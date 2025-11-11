@@ -21,7 +21,7 @@ export function generateModelId(filename: string, type: string): string {
 /**
  * Generate human-readable model name from filename and metadata
  */
-export function generateModelName(filename: string, metadata: Record<string, any>): string {
+export function generateModelName(filename: string, metadata: Record<string, unknown>): string {
   // Remove file extension
   let name = filename.replace(/\.(gguf|bin|safetensors)$/i, '');
   
@@ -45,7 +45,7 @@ export function generateModelName(filename: string, metadata: Record<string, any
 /**
  * Generate model description from metadata
  */
-export function generateModelDescription(metadata: Record<string, any>, type: string): string {
+export function generateModelDescription(metadata: Record<string, unknown>, type: string): string {
   const parts: string[] = [];
   
   if (metadata.parameter_count) {
@@ -71,8 +71,8 @@ export function generateModelDescription(metadata: Record<string, any>, type: st
 /**
  * Extract model metadata from filename patterns
  */
-export function extractModelMetadataFromFilename(filename: string): Partial<Record<string, any>> {
-  const metadata: Record<string, any> = {};
+export function extractModelMetadataFromFilename(filename: string): Partial<Record<string, unknown>> {
+  const metadata: Record<string, unknown> = {};
   
   // Extract quantization info (Q4_0, Q8_0, etc.)
   const quantMatch = filename.match(/[Qq](\d+)_(\d+)/);

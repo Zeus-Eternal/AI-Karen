@@ -24,7 +24,7 @@ export interface ErrorMetrics {
   recoveryAttempts: number;
   resolved: boolean;
   resolutionTime?: number;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   performanceMetrics?: PerformanceMetrics;
   breadcrumbs: ErrorBreadcrumb[];
 }
@@ -42,7 +42,7 @@ export interface ErrorBreadcrumb {
   category: 'navigation' | 'user' | 'http' | 'console' | 'dom';
   message: string;
   level: 'info' | 'warning' | 'error';
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 export interface ErrorTrend {
@@ -107,7 +107,7 @@ export class ErrorAnalytics {
         bundleSize: this.getBundleSize(),
         componentCount: this.getComponentCount()
       };
-    } catch (error) {
+    } catch {
       this.performanceBaseline = null; // Handle gracefully if performance API is unavailable
     }
   }
@@ -129,7 +129,7 @@ export class ErrorAnalytics {
       level?: string;
       recoveryAttempts?: number;
       userId?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     } = {}
   ) {
     if (!this.config.enabled) return;
@@ -194,19 +194,19 @@ export class ErrorAnalytics {
     return Math.abs(hash).toString(36);
   }
 
-  private determineSeverity(error: Error, context: any): ErrorMetrics['severity'] {
+  private determineSeverity(error: Error, context: { level?: string; recoveryAttempts?: number; [key: string]: unknown }): ErrorMetrics['severity'] {
     const message = error.message.toLowerCase();
     const name = error.name.toLowerCase();
 
-    if (context.level === 'global' || message.includes('chunk') || message.includes('loading') || name.includes('chunkloaderror') || context.recoveryAttempts >= 3) {
+    if (context.level === 'global' || message.includes('chunk') || message.includes('loading') || name.includes('chunkloaderror') || (context.recoveryAttempts ?? 0) >= 3) {
       return 'critical';
     }
 
-    if (context.level === 'feature' || message.includes('network') || message.includes('auth') || message.includes('permission') || context.recoveryAttempts >= 2) {
+    if (context.level === 'feature' || message.includes('network') || message.includes('auth') || message.includes('permission') || (context.recoveryAttempts ?? 0) >= 2) {
       return 'high';
     }
 
-    if (message.includes('render') || message.includes('hook') || message.includes('validation') || context.recoveryAttempts >= 1) {
+    if (message.includes('render') || message.includes('hook') || message.includes('validation') || (context.recoveryAttempts ?? 0) >= 1) {
       return 'medium';
     }
 
@@ -314,7 +314,8 @@ export class ErrorAnalytics {
       if (storedReports) {
         return JSON.parse(storedReports).slice(-10);
       }
-    } catch (error) {
+    } catch {
+      // Handle error silently
     }
     return [];
   }

@@ -10,11 +10,11 @@ export interface WorkflowNode {
     label: string;
     description?: string;
     nodeType?: string;
-    config: Record<string, any>;
+    config: Record<string, unknown>;
     inputs?: NodePort[];
     outputs?: NodePort[];
   };
-  style?: Record<string, any>;
+  style?: Record<string, unknown>;
 }
 export interface NodePort {
   id: string;
@@ -31,7 +31,7 @@ export interface WorkflowEdge {
   targetHandle?: string;
   type?: 'default' | 'straight' | 'step' | 'smoothstep';
   animated?: boolean;
-  style?: Record<string, any>;
+  style?: Record<string, unknown>;
   data?: {
     condition?: string;
     transform?: string;
@@ -41,7 +41,7 @@ export interface WorkflowVariable {
   id: string;
   name: string;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-  value: any;
+  value: unknown;
   description?: string;
   scope: 'global' | 'local';
 }
@@ -79,7 +79,7 @@ export interface WorkflowExecution {
   progress: number;
   currentNode?: string;
   logs: ExecutionLog[];
-  results: Record<string, any>;
+  results: Record<string, unknown>;
   error?: string;
   metadata: {
     triggeredBy: 'manual' | 'schedule' | 'event';
@@ -92,7 +92,7 @@ export interface ExecutionLog {
   level: 'debug' | 'info' | 'warn' | 'error';
   nodeId?: string;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 export interface NodeTemplate {
   id: string;
@@ -103,8 +103,8 @@ export interface NodeTemplate {
   inputs: NodePort[];
   outputs: NodePort[];
   config: {
-    schema: Record<string, any>;
-    defaults: Record<string, any>;
+    schema: Record<string, unknown>;
+    defaults: Record<string, unknown>;
   };
   implementation?: string;
 }
@@ -131,7 +131,7 @@ export interface ValidationWarning {
 export interface WorkflowTestResult {
   success: boolean;
   duration: number;
-  nodeResults: Record<string, any>;
+  nodeResults: Record<string, unknown>;
   logs: ExecutionLog[];
   error?: string;
 }
@@ -178,11 +178,11 @@ export interface AgentTask {
   type: string;
   priority: 'low' | 'normal' | 'high' | 'critical';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-  payload: any;
+  payload: unknown;
   createdAt: Date;
   startedAt?: Date;
   completedAt?: Date;
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 export interface AgentHealth {
@@ -233,7 +233,7 @@ export interface TriggerConfig {
   event?: {
     source: string;
     type: string;
-    filter?: Record<string, any>;
+    filter?: Record<string, unknown>;
   };
   webhook?: {
     url: string;
@@ -272,7 +272,7 @@ export interface QueuedWorkflow {
   queuedAt: Date;
   estimatedDuration: number;
   dependencies: string[];
-  payload: any;
+  payload: unknown;
 }
 export interface QueueMetrics {
   totalProcessed: number;
@@ -306,7 +306,7 @@ export interface WorkflowAutomationAnalytics {
 export interface TimeSeriesData {
   timestamp: Date;
   value: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 export interface BottleneckAnalysis {
   nodeId: string;

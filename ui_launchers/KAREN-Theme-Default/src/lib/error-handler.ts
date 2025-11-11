@@ -35,6 +35,17 @@ export interface ApiErrorResponse {
   user_action_required?: boolean;
   context?: Record<string, any>;
 }
+
+// Extended Error interface to handle API errors with additional properties
+interface ExtendedError extends Error {
+  detail?: ApiErrorResponse;
+  response?: {
+    status?: number;
+    data?: ApiErrorResponse;
+  };
+  code?: string;
+  status?: number;
+}
 export class ErrorHandler {
   private static instance: ErrorHandler;
   public static getInstance(): ErrorHandler {
@@ -46,7 +57,7 @@ export class ErrorHandler {
   /**
    * Handle API errors and show appropriate user feedback
    */
-  public handleApiError(error: any, operation: string = 'operation'): ErrorInfo {
+  public handleApiError(error: ExtendedError, operation: string = 'operation'): ErrorInfo {
     let errorInfo: ErrorInfo;
     // Check if it's a structured API error response
     if (error?.detail && typeof error.detail === 'object' && error.detail.error) {
@@ -81,7 +92,7 @@ export class ErrorHandler {
   /**
    * Create error info for generic errors
    */
-  private createGenericErrorInfo(error: any, operation: string): ErrorInfo {
+  private createGenericErrorInfo(error: ExtendedError, operation: string): ErrorInfo {
     let title = 'Operation Failed';
     let message = `The ${operation} could not be completed.`;
     let category = 'system';
@@ -116,7 +127,7 @@ export class ErrorHandler {
       category = 'disk_space';
       severity = 'high';
       retryPossible = false;
-    } else if (error?.status >= 500) {
+    } else if (error?.status && error.status >= 500) {
       title = 'Server Error';
       message = 'The server encountered an error. Please try again later.';
       category = 'system';
@@ -247,7 +258,7 @@ export class ErrorHandler {
   /**
    * Handle download-specific errors
    */
-  public handleDownloadError(error: any, modelName: string): ErrorInfo {
+  public handleDownloadError(error: ExtendedError, modelName: string): ErrorInfo {
     const errorInfo = this.handleApiError(error, `download of ${modelName}`);
     // Add download-specific context
     errorInfo.context = {
@@ -260,7 +271,7 @@ export class ErrorHandler {
   /**
    * Handle model management errors
    */
-  public handleModelManagementError(error: any, operation: string, modelName: string): ErrorInfo {
+  public handleModelManagementError(error: ExtendedError, operation: string, modelName: string): ErrorInfo {
     const errorInfo = this.handleApiError(error, `${operation} of ${modelName}`);
     // Add model management context
     errorInfo.context = {
@@ -348,7 +359,7 @@ export class ErrorHandler {
 // Export singleton instance
 export const errorHandler = ErrorHandler.getInstance();
 // Export convenience functions
-export const handleApiError = (error: any, operation?: string) => 
+export const handleApiError = (error: ExtendedError, operation?: string) => 
   errorHandler.handleApiError(error, operation);
 export const showSuccess = (title: string, message: string, duration?: number) => 
   errorHandler.showSuccess(title, message, duration);
@@ -356,9 +367,9 @@ export const showInfo = (title: string, message: string, duration?: number) =>
   errorHandler.showInfo(title, message, duration);
 export const showWarning = (title: string, message: string, duration?: number) => 
   errorHandler.showWarning(title, message, duration);
-export const handleDownloadError = (error: any, modelName: string) => 
+export const handleDownloadError = (error: ExtendedError, modelName: string) => 
   errorHandler.handleDownloadError(error, modelName);
-export const handleModelManagementError = (error: any, operation: string, modelName: string) => 
+export const handleModelManagementError = (error: ExtendedError, operation: string, modelName: string) => 
   errorHandler.handleModelManagementError(error, operation, modelName);
 export const createConfirmationDialog = (operation: string, modelName: string) => 
   errorHandler.createConfirmationDialog(operation, modelName);

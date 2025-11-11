@@ -32,15 +32,15 @@ export abstract class BaseFrameworkAdapter implements IFrameworkAdapter {
   }
 
   // Abstract methods that must be implemented by each framework
-  abstract createChatComponent(containerId: string, options?: any): IChatComponent;
-  abstract createSettingsComponent(containerId: string, options?: any): ISettingsComponent;
-  abstract createPluginComponent(containerId: string, options?: any): IPluginComponent;
-  abstract createMemoryComponent(containerId: string, options?: any): IMemoryComponent;
-  abstract createAnalyticsComponent(containerId: string, options?: any): IAnalyticsComponent;
+  abstract createChatComponent(containerId: string, options?: unknown): IChatComponent;
+  abstract createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent;
+  abstract createPluginComponent(containerId: string, options?: unknown): IPluginComponent;
+  abstract createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent;
+  abstract createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent;
   
-  abstract createElement(type: string, props: any, children?: any[]): any;
-  abstract renderComponent(component: any, container: string | Element): void;
-  abstract destroyComponent(component: any): void;
+  abstract createElement(type: string, props: Record<string, unknown>, children?: unknown[]): unknown;
+  abstract renderComponent(component: unknown, container: string | Element): void;
+  abstract destroyComponent(component: unknown): void;
 
   // Common implementations
   getThemeManager(): IThemeManager {
@@ -68,37 +68,37 @@ export abstract class BaseFrameworkAdapter implements IFrameworkAdapter {
 export class ReactAdapter extends BaseFrameworkAdapter {
   framework: 'react' = 'react';
 
-  createChatComponent(containerId: string, options?: any): IChatComponent {
+  createChatComponent(containerId: string, options?: unknown): IChatComponent {
     return new ReactChatComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createSettingsComponent(containerId: string, options?: any): ISettingsComponent {
+  createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent {
     return new ReactSettingsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createPluginComponent(containerId: string, options?: any): IPluginComponent {
+  createPluginComponent(containerId: string, options?: unknown): IPluginComponent {
     return new ReactPluginComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createMemoryComponent(containerId: string, options?: any): IMemoryComponent {
+  createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent {
     return new ReactMemoryComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createAnalyticsComponent(containerId: string, options?: any): IAnalyticsComponent {
+  createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent {
     return new ReactAnalyticsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createElement(type: string, props: any, children?: any[]): any {
+  createElement(type: string, props: Record<string, unknown>, children?: unknown[]): any {
     // This would integrate with React.createElement in a real implementation
     return { type, props, children };
   }
 
-  renderComponent(component: any, container: string | Element): void {
+  renderComponent(component: unknown, container: string | Element): void {
     // This would integrate with ReactDOM.render in a real implementation
     console.log('Rendering React component', component, 'to', container);
   }
 
-  destroyComponent(component: any): void {
+  destroyComponent(component: unknown): void {
     // This would integrate with ReactDOM.unmountComponentAtNode in a real implementation
     console.log('Destroying React component', component);
   }
@@ -108,37 +108,37 @@ export class ReactAdapter extends BaseFrameworkAdapter {
 export class StreamlitAdapter extends BaseFrameworkAdapter {
   framework: 'streamlit' = 'streamlit';
 
-  createChatComponent(containerId: string, options?: any): IChatComponent {
+  createChatComponent(containerId: string, options?: unknown): IChatComponent {
     return new StreamlitChatComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createSettingsComponent(containerId: string, options?: any): ISettingsComponent {
+  createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent {
     return new StreamlitSettingsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createPluginComponent(containerId: string, options?: any): IPluginComponent {
+  createPluginComponent(containerId: string, options?: unknown): IPluginComponent {
     return new StreamlitPluginComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createMemoryComponent(containerId: string, options?: any): IMemoryComponent {
+  createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent {
     return new StreamlitMemoryComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createAnalyticsComponent(containerId: string, options?: any): IAnalyticsComponent {
+  createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent {
     return new StreamlitAnalyticsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createElement(type: string, props: any, children?: any[]): any {
+  createElement(type: string, props: Record<string, unknown>, children?: unknown[]): any {
     // Streamlit doesn't use createElement pattern, return a descriptor
     return { type: 'streamlit', element: type, props, children };
   }
 
-  renderComponent(component: any, container: string | Element): void {
+  renderComponent(component: unknown, container: string | Element): void {
     // Streamlit components are rendered through st.* calls
     console.log('Rendering Streamlit component', component, 'to', container);
   }
 
-  destroyComponent(component: any): void {
+  destroyComponent(component: unknown): void {
     // Streamlit handles component lifecycle automatically
     console.log('Streamlit component cleanup', component);
   }
@@ -148,37 +148,37 @@ export class StreamlitAdapter extends BaseFrameworkAdapter {
 export class TauriAdapter extends BaseFrameworkAdapter {
   framework: 'tauri' = 'tauri';
 
-  createChatComponent(containerId: string, options?: any): IChatComponent {
+  createChatComponent(containerId: string, options?: unknown): IChatComponent {
     return new TauriChatComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createSettingsComponent(containerId: string, options?: any): ISettingsComponent {
+  createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent {
     return new TauriSettingsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createPluginComponent(containerId: string, options?: any): IPluginComponent {
+  createPluginComponent(containerId: string, options?: unknown): IPluginComponent {
     return new TauriPluginComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createMemoryComponent(containerId: string, options?: any): IMemoryComponent {
+  createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent {
     return new TauriMemoryComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createAnalyticsComponent(containerId: string, options?: any): IAnalyticsComponent {
+  createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent {
     return new TauriAnalyticsComponent(containerId, this.config, this.themeManager, options);
   }
 
-  createElement(type: string, props: any, children?: any[]): any {
+  createElement(type: string, props: Record<string, unknown>, children?: unknown[]): any {
     // Tauri uses web technologies, so similar to React but with Tauri-specific APIs
     return { type, props, children, framework: 'tauri' };
   }
 
-  renderComponent(component: any, container: string | Element): void {
+  renderComponent(component: unknown, container: string | Element): void {
     // Tauri would use web APIs to render components
     console.log('Rendering Tauri component', component, 'to', container);
   }
 
-  destroyComponent(component: any): void {
+  destroyComponent(component: unknown): void {
     // Clean up Tauri-specific resources
     console.log('Destroying Tauri component', component);
   }
@@ -188,7 +188,7 @@ export class TauriAdapter extends BaseFrameworkAdapter {
 class ChatService implements IChatService {
   constructor(private apiBaseUrl: string) {}
 
-  async sendMessage(content: string, conversationHistory: string, settings: any): Promise<any> {
+  async sendMessage(content: string, conversationHistory: string, settings: unknown): Promise<unknown> {
     const response = await fetch(`${this.apiBaseUrl}/api/ai/conversation-processing`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -228,7 +228,7 @@ class ChatService implements IChatService {
 class MemoryService implements IMemoryService {
   constructor(private apiBaseUrl: string) {}
 
-  async storeMemory(content: string, metadata: Record<string, any>, tags: string[], userId: string, sessionId: string): Promise<string> {
+  async storeMemory(content: string, metadata: Record<string, unknown>, tags: string[], userId: string, sessionId: string): Promise<string> {
     const response = await fetch(`${this.apiBaseUrl}/api/memory/store`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -243,7 +243,7 @@ class MemoryService implements IMemoryService {
     return result.memory_id;
   }
 
-  async queryMemories(query: any): Promise<any[]> {
+  async queryMemories(query: unknown): Promise<any[]> {
     const response = await fetch(`${this.apiBaseUrl}/api/memory/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -258,7 +258,7 @@ class MemoryService implements IMemoryService {
     return result.memories;
   }
 
-  async buildContext(query: string, userId: string, sessionId: string): Promise<Record<string, any>> {
+  async buildContext(query: string, userId: string, sessionId: string): Promise<Record<string, unknown>> {
     const response = await fetch(`${this.apiBaseUrl}/api/memory/context/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -272,7 +272,7 @@ class MemoryService implements IMemoryService {
     return response.json();
   }
 
-  async getMemoryStats(userId: string): Promise<Record<string, any>> {
+  async getMemoryStats(userId: string): Promise<Record<string, unknown>> {
     const response = await fetch(`${this.apiBaseUrl}/api/memory/stats/${userId}`);
     
     if (!response.ok) {
@@ -296,7 +296,7 @@ class PluginService implements IPluginService {
     return response.json();
   }
 
-  async executePlugin(request: any): Promise<any> {
+  async executePlugin(request: unknown): Promise<unknown> {
     const response = await fetch(`${this.apiBaseUrl}/api/plugins/execute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -310,7 +310,7 @@ class PluginService implements IPluginService {
     return response.json();
   }
 
-  async getPluginInfo(pluginName: string): Promise<any> {
+  async getPluginInfo(pluginName: string): Promise<unknown> {
     const response = await fetch(`${this.apiBaseUrl}/api/plugins/${pluginName}`);
     
     if (!response.ok) {
@@ -320,7 +320,7 @@ class PluginService implements IPluginService {
     return response.json();
   }
 
-  async validatePlugin(pluginName: string, parameters: Record<string, any>): Promise<boolean> {
+  async validatePlugin(pluginName: string, parameters: Record<string, unknown>): Promise<boolean> {
     const response = await fetch(`${this.apiBaseUrl}/api/plugins/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -339,7 +339,7 @@ class PluginService implements IPluginService {
 class AnalyticsService implements IAnalyticsService {
   constructor(private apiBaseUrl: string) {}
 
-  async trackEvent(event: any): Promise<void> {
+  async trackEvent(event: Event): Promise<void> {
     const response = await fetch(`${this.apiBaseUrl}/api/analytics/track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -351,7 +351,7 @@ class AnalyticsService implements IAnalyticsService {
     }
   }
 
-  async getMetrics(timeRange?: [Date, Date]): Promise<any> {
+  async getMetrics(timeRange?: [Date, Date]): Promise<unknown> {
     const params = new URLSearchParams();
     if (timeRange) {
       params.append('start', timeRange[0].toISOString());
@@ -390,9 +390,9 @@ class ReactChatComponent implements IChatComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
+  state: unknown = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -413,7 +413,7 @@ class ReactChatComponent implements IChatComponent {
     console.log('Sending message:', content, 'isVoice:', isVoice);
   }
 
-  addMessage(message: any): void {
+  addMessage(message: unknown): void {
     this.state.messages.push(message);
   }
 
@@ -422,7 +422,7 @@ class ReactChatComponent implements IChatComponent {
   }
 
   exportMessages(format: 'text' | 'json'): string {
-    return format === 'json' ? JSON.stringify(this.state.messages) : this.state.messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
+    return format === 'json' ? JSON.stringify(this.state.messages) : this.state.messages.map((m: unknown) => `${m.role}: ${m.content}`).join('\n');
   }
 
   async startRecording(): Promise<void> {
@@ -441,11 +441,11 @@ class ReactChatComponent implements IChatComponent {
     }
   }
 
-  onMessageSent(callback: (message: any) => void): void {
+  onMessageSent(callback: (message: unknown) => void): void {
     // Implementation would store callback for later use
   }
 
-  onMessageReceived(callback: (message: any) => void): void {
+  onMessageReceived(callback: (message: unknown) => void): void {
     // Implementation would store callback for later use
   }
 
@@ -468,9 +468,9 @@ class ReactSettingsComponent implements ISettingsComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { settings: {}, isDirty: false, isLoading: false, errors: {} };
+  state: unknown = { settings: {}, isDirty: false, isLoading: false, errors: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -487,11 +487,11 @@ class ReactSettingsComponent implements ISettingsComponent {
     this.theme = theme;
   }
 
-  async loadSettings(): Promise<any> {
+  async loadSettings(): Promise<unknown> {
     return {};
   }
 
-  async saveSettings(settings: any): Promise<void> {
+  async saveSettings(settings: unknown): Promise<void> {
     console.log('Saving settings:', settings);
   }
 
@@ -503,7 +503,7 @@ class ReactSettingsComponent implements ISettingsComponent {
     return {};
   }
 
-  updateSetting(key: string, value: any): void {
+  updateSetting(key: string, value: unknown): void {
     this.state.settings[key] = value;
     this.state.isDirty = true;
   }
@@ -512,11 +512,11 @@ class ReactSettingsComponent implements ISettingsComponent {
     return this.state.settings[key];
   }
 
-  onSettingChanged(callback: (key: string, value: any) => void): void {
+  onSettingChanged(callback: (key: string, value: unknown) => void): void {
     // Implementation would store callback for later use
   }
 
-  onSettingsSaved(callback: (settings: any) => void): void {
+  onSettingsSaved(callback: (settings: unknown) => void): void {
     // Implementation would store callback for later use
   }
 
@@ -536,7 +536,7 @@ class ReactPluginComponent implements IPluginComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -545,12 +545,12 @@ class ReactPluginComponent implements IPluginComponent {
   destroy(): void { console.log('Destroying React plugin component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
   async listPlugins(): Promise<any[]> { return []; }
-  async getPluginInfo(pluginName: string): Promise<any> { return null; }
+  async getPluginInfo(pluginName: string): Promise<unknown> { return null; }
   async enablePlugin(pluginName: string): Promise<void> { console.log('Enabling plugin:', pluginName); }
   async disablePlugin(pluginName: string): Promise<void> { console.log('Disabling plugin:', pluginName); }
-  async executePlugin(request: any): Promise<any> { return { success: true }; }
-  validatePluginParameters(pluginName: string, parameters: Record<string, any>): boolean { return true; }
-  onPluginExecuted(callback: (result: any) => void): void { }
+  async executePlugin(request: unknown): Promise<unknown> { return { success: true }; }
+  validatePluginParameters(pluginName: string, parameters: Record<string, unknown>): boolean { return true; }
+  onPluginExecuted(callback: (result: unknown) => void): void { }
   onPluginStateChanged(callback: (pluginName: string, enabled: boolean) => void): void { }
 }
 
@@ -560,7 +560,7 @@ class ReactMemoryComponent implements IMemoryComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -568,14 +568,14 @@ class ReactMemoryComponent implements IMemoryComponent {
   async render(): Promise<void> { console.log('Rendering React memory component'); }
   destroy(): void { console.log('Destroying React memory component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async storeMemory(content: string, metadata: Record<string, any>, tags: string[]): Promise<string> { return 'memory-id'; }
-  async queryMemories(query: any): Promise<any[]> { return []; }
-  async getMemoryStats(userId: string): Promise<Record<string, any>> { return {}; }
+  async storeMemory(content: string, metadata: Record<string, unknown>, tags: string[]): Promise<string> { return 'memory-id'; }
+  async queryMemories(query: unknown): Promise<any[]> { return []; }
+  async getMemoryStats(userId: string): Promise<Record<string, unknown>> { return {}; }
   async deleteMemory(memoryId: string): Promise<void> { console.log('Deleting memory:', memoryId); }
   renderMemoryGraph(): void { console.log('Rendering memory graph'); }
   renderMemoryTimeline(): void { console.log('Rendering memory timeline'); }
-  onMemoryStored(callback: (memory: any) => void): void { }
-  onMemoryQueried(callback: (results: any[]) => void): void { }
+  onMemoryStored(callback: (memory: unknown) => void): void { }
+  onMemoryQueried(callback: (results: unknown[]) => void): void { }
 }
 
 class ReactAnalyticsComponent implements IAnalyticsComponent {
@@ -584,7 +584,7 @@ class ReactAnalyticsComponent implements IAnalyticsComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -592,8 +592,8 @@ class ReactAnalyticsComponent implements IAnalyticsComponent {
   async render(): Promise<void> { console.log('Rendering React analytics component'); }
   destroy(): void { console.log('Destroying React analytics component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async getMetrics(timeRange?: [Date, Date]): Promise<any> { return {}; }
-  async trackEvent(event: any): Promise<void> { console.log('Tracking event:', event); }
+  async getMetrics(timeRange?: [Date, Date]): Promise<unknown> { return {}; }
+  async trackEvent(event: Event): Promise<void> { console.log('Tracking event:', event); }
   renderUsageChart(): void { console.log('Rendering usage chart'); }
   renderEngagementMetrics(): void { console.log('Rendering engagement metrics'); }
   renderPluginUsage(): void { console.log('Rendering plugin usage'); }
@@ -606,9 +606,9 @@ class StreamlitChatComponent implements IChatComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
+  state: unknown = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -617,14 +617,14 @@ class StreamlitChatComponent implements IChatComponent {
   destroy(): void { console.log('Destroying Streamlit chat component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
   async sendMessage(content: string, isVoice?: boolean): Promise<void> { console.log('Sending message:', content); }
-  addMessage(message: any): void { this.state.messages.push(message); }
+  addMessage(message: unknown): void { this.state.messages.push(message); }
   clearMessages(): void { this.state.messages = []; }
   exportMessages(format: 'text' | 'json'): string { return ''; }
   async startRecording(): Promise<void> { this.state.isRecording = true; }
   stopRecording(): void { this.state.isRecording = false; }
   async toggleRecording(): Promise<void> { }
-  onMessageSent(callback: (message: any) => void): void { }
-  onMessageReceived(callback: (message: any) => void): void { }
+  onMessageSent(callback: (message: unknown) => void): void { }
+  onMessageReceived(callback: (message: unknown) => void): void { }
   onRecordingStateChanged(callback: (isRecording: boolean) => void): void { }
   updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
   getState(): any { return this.state; }
@@ -635,9 +635,9 @@ class StreamlitSettingsComponent implements ISettingsComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { settings: {}, isDirty: false, isLoading: false, errors: {} };
+  state: unknown = { settings: {}, isDirty: false, isLoading: false, errors: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -645,14 +645,14 @@ class StreamlitSettingsComponent implements ISettingsComponent {
   async render(): Promise<void> { console.log('Rendering Streamlit settings component'); }
   destroy(): void { console.log('Destroying Streamlit settings component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async loadSettings(): Promise<any> { return {}; }
-  async saveSettings(settings: any): Promise<void> { }
+  async loadSettings(): Promise<unknown> { return {}; }
+  async saveSettings(settings: unknown): Promise<void> { }
   async resetSettings(): Promise<void> { }
   validateSettings(settings: Partial<any>): Record<string, string> { return {}; }
-  updateSetting(key: string, value: any): void { }
+  updateSetting(key: string, value: unknown): void { }
   getSetting(key: string): any { return null; }
-  onSettingChanged(callback: (key: string, value: any) => void): void { }
-  onSettingsSaved(callback: (settings: any) => void): void { }
+  onSettingChanged(callback: (key: string, value: unknown) => void): void { }
+  onSettingsSaved(callback: (settings: unknown) => void): void { }
   updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
   getState(): any { return this.state; }
 }
@@ -663,7 +663,7 @@ class StreamlitPluginComponent implements IPluginComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -672,12 +672,12 @@ class StreamlitPluginComponent implements IPluginComponent {
   destroy(): void { console.log('Destroying Streamlit plugin component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
   async listPlugins(): Promise<any[]> { return []; }
-  async getPluginInfo(pluginName: string): Promise<any> { return null; }
+  async getPluginInfo(pluginName: string): Promise<unknown> { return null; }
   async enablePlugin(pluginName: string): Promise<void> { }
   async disablePlugin(pluginName: string): Promise<void> { }
-  async executePlugin(request: any): Promise<any> { return { success: true }; }
-  validatePluginParameters(pluginName: string, parameters: Record<string, any>): boolean { return true; }
-  onPluginExecuted(callback: (result: any) => void): void { }
+  async executePlugin(request: unknown): Promise<unknown> { return { success: true }; }
+  validatePluginParameters(pluginName: string, parameters: Record<string, unknown>): boolean { return true; }
+  onPluginExecuted(callback: (result: unknown) => void): void { }
   onPluginStateChanged(callback: (pluginName: string, enabled: boolean) => void): void { }
 }
 
@@ -687,7 +687,7 @@ class StreamlitMemoryComponent implements IMemoryComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -695,14 +695,14 @@ class StreamlitMemoryComponent implements IMemoryComponent {
   async render(): Promise<void> { console.log('Rendering Streamlit memory component'); }
   destroy(): void { console.log('Destroying Streamlit memory component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async storeMemory(content: string, metadata: Record<string, any>, tags: string[]): Promise<string> { return 'memory-id'; }
-  async queryMemories(query: any): Promise<any[]> { return []; }
-  async getMemoryStats(userId: string): Promise<Record<string, any>> { return {}; }
+  async storeMemory(content: string, metadata: Record<string, unknown>, tags: string[]): Promise<string> { return 'memory-id'; }
+  async queryMemories(query: unknown): Promise<any[]> { return []; }
+  async getMemoryStats(userId: string): Promise<Record<string, unknown>> { return {}; }
   async deleteMemory(memoryId: string): Promise<void> { }
   renderMemoryGraph(): void { }
   renderMemoryTimeline(): void { }
-  onMemoryStored(callback: (memory: any) => void): void { }
-  onMemoryQueried(callback: (results: any[]) => void): void { }
+  onMemoryStored(callback: (memory: unknown) => void): void { }
+  onMemoryQueried(callback: (results: unknown[]) => void): void { }
 }
 
 class StreamlitAnalyticsComponent implements IAnalyticsComponent {
@@ -711,7 +711,7 @@ class StreamlitAnalyticsComponent implements IAnalyticsComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -719,8 +719,8 @@ class StreamlitAnalyticsComponent implements IAnalyticsComponent {
   async render(): Promise<void> { console.log('Rendering Streamlit analytics component'); }
   destroy(): void { console.log('Destroying Streamlit analytics component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async getMetrics(timeRange?: [Date, Date]): Promise<any> { return {}; }
-  async trackEvent(event: any): Promise<void> { }
+  async getMetrics(timeRange?: [Date, Date]): Promise<unknown> { return {}; }
+  async trackEvent(event: Event): Promise<void> { }
   renderUsageChart(): void { }
   renderEngagementMetrics(): void { }
   renderPluginUsage(): void { }
@@ -733,9 +733,9 @@ class TauriChatComponent implements IChatComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
+  state: unknown = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -744,14 +744,14 @@ class TauriChatComponent implements IChatComponent {
   destroy(): void { console.log('Destroying Tauri chat component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
   async sendMessage(content: string, isVoice?: boolean): Promise<void> { console.log('Sending message:', content); }
-  addMessage(message: any): void { this.state.messages.push(message); }
+  addMessage(message: unknown): void { this.state.messages.push(message); }
   clearMessages(): void { this.state.messages = []; }
   exportMessages(format: 'text' | 'json'): string { return ''; }
   async startRecording(): Promise<void> { this.state.isRecording = true; }
   stopRecording(): void { this.state.isRecording = false; }
   async toggleRecording(): Promise<void> { }
-  onMessageSent(callback: (message: any) => void): void { }
-  onMessageReceived(callback: (message: any) => void): void { }
+  onMessageSent(callback: (message: unknown) => void): void { }
+  onMessageReceived(callback: (message: unknown) => void): void { }
   onRecordingStateChanged(callback: (isRecording: boolean) => void): void { }
   updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
   getState(): any { return this.state; }
@@ -762,9 +762,9 @@ class TauriSettingsComponent implements ISettingsComponent {
   isVisible: boolean = true;
   isLoading: boolean = false;
   theme: Theme;
-  state: any = { settings: {}, isDirty: false, isLoading: false, errors: {} };
+  state: unknown = { settings: {}, isDirty: false, isLoading: false, errors: {} };
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -772,14 +772,14 @@ class TauriSettingsComponent implements ISettingsComponent {
   async render(): Promise<void> { console.log('Rendering Tauri settings component'); }
   destroy(): void { console.log('Destroying Tauri settings component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async loadSettings(): Promise<any> { return {}; }
-  async saveSettings(settings: any): Promise<void> { }
+  async loadSettings(): Promise<unknown> { return {}; }
+  async saveSettings(settings: unknown): Promise<void> { }
   async resetSettings(): Promise<void> { }
   validateSettings(settings: Partial<any>): Record<string, string> { return {}; }
-  updateSetting(key: string, value: any): void { }
+  updateSetting(key: string, value: unknown): void { }
   getSetting(key: string): any { return null; }
-  onSettingChanged(callback: (key: string, value: any) => void): void { }
-  onSettingsSaved(callback: (settings: any) => void): void { }
+  onSettingChanged(callback: (key: string, value: unknown) => void): void { }
+  onSettingsSaved(callback: (settings: unknown) => void): void { }
   updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
   getState(): any { return this.state; }
 }
@@ -790,7 +790,7 @@ class TauriPluginComponent implements IPluginComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -799,12 +799,12 @@ class TauriPluginComponent implements IPluginComponent {
   destroy(): void { console.log('Destroying Tauri plugin component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
   async listPlugins(): Promise<any[]> { return []; }
-  async getPluginInfo(pluginName: string): Promise<any> { return null; }
+  async getPluginInfo(pluginName: string): Promise<unknown> { return null; }
   async enablePlugin(pluginName: string): Promise<void> { }
   async disablePlugin(pluginName: string): Promise<void> { }
-  async executePlugin(request: any): Promise<any> { return { success: true }; }
-  validatePluginParameters(pluginName: string, parameters: Record<string, any>): boolean { return true; }
-  onPluginExecuted(callback: (result: any) => void): void { }
+  async executePlugin(request: unknown): Promise<unknown> { return { success: true }; }
+  validatePluginParameters(pluginName: string, parameters: Record<string, unknown>): boolean { return true; }
+  onPluginExecuted(callback: (result: unknown) => void): void { }
   onPluginStateChanged(callback: (pluginName: string, enabled: boolean) => void): void { }
 }
 
@@ -814,7 +814,7 @@ class TauriMemoryComponent implements IMemoryComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -822,14 +822,14 @@ class TauriMemoryComponent implements IMemoryComponent {
   async render(): Promise<void> { console.log('Rendering Tauri memory component'); }
   destroy(): void { console.log('Destroying Tauri memory component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async storeMemory(content: string, metadata: Record<string, any>, tags: string[]): Promise<string> { return 'memory-id'; }
-  async queryMemories(query: any): Promise<any[]> { return []; }
-  async getMemoryStats(userId: string): Promise<Record<string, any>> { return {}; }
+  async storeMemory(content: string, metadata: Record<string, unknown>, tags: string[]): Promise<string> { return 'memory-id'; }
+  async queryMemories(query: unknown): Promise<any[]> { return []; }
+  async getMemoryStats(userId: string): Promise<Record<string, unknown>> { return {}; }
   async deleteMemory(memoryId: string): Promise<void> { }
   renderMemoryGraph(): void { }
   renderMemoryTimeline(): void { }
-  onMemoryStored(callback: (memory: any) => void): void { }
-  onMemoryQueried(callback: (results: any[]) => void): void { }
+  onMemoryStored(callback: (memory: unknown) => void): void { }
+  onMemoryQueried(callback: (results: unknown[]) => void): void { }
 }
 
 class TauriAnalyticsComponent implements IAnalyticsComponent {
@@ -838,7 +838,7 @@ class TauriAnalyticsComponent implements IAnalyticsComponent {
   isLoading: boolean = false;
   theme: Theme;
 
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: any) {
+  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
     this.id = containerId;
     this.theme = themeManager.currentTheme;
   }
@@ -846,8 +846,8 @@ class TauriAnalyticsComponent implements IAnalyticsComponent {
   async render(): Promise<void> { console.log('Rendering Tauri analytics component'); }
   destroy(): void { console.log('Destroying Tauri analytics component'); }
   updateTheme(theme: Theme): void { this.theme = theme; }
-  async getMetrics(timeRange?: [Date, Date]): Promise<any> { return {}; }
-  async trackEvent(event: any): Promise<void> { }
+  async getMetrics(timeRange?: [Date, Date]): Promise<unknown> { return {}; }
+  async trackEvent(event: Event): Promise<void> { }
   renderUsageChart(): void { }
   renderEngagementMetrics(): void { }
   renderPluginUsage(): void { }

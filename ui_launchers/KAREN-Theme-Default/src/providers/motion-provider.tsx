@@ -1,27 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { MotionConfig, type Variants, type Transition } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { useUIStore, selectAnimationState } from '../store';
-
-export interface MotionContextValue {
-  reducedMotion: boolean;
-  animationsEnabled: boolean;
-  setReducedMotion: (reduced: boolean) => void;
-  setAnimationsEnabled: (enabled: boolean) => void;
-  transitionConfig: {
-    duration: number;
-    ease: 'linear' | readonly [0.4, 0, 0.2, 1];
-  };
-}
-
-const MotionContext = createContext<MotionContextValue | undefined>(undefined);
-
-export interface MotionProviderProps {
-  children: React.ReactNode;
-  defaultReducedMotion?: boolean;
-  defaultAnimationsEnabled?: boolean;
-}
+import type { MotionContextValue, MotionProviderProps } from './motion-types';
+import { MotionContext } from './motion-context';
 
 export function MotionProvider({
   children,
@@ -30,9 +13,8 @@ export function MotionProvider({
 }: MotionProviderProps) {
   const { reducedMotion, setReducedMotion: setStoreReducedMotion } = useUIStore(selectAnimationState);
   const [animationsEnabled, setAnimationsEnabled] = useState(defaultAnimationsEnabled);
-  const [mounted, setMounted] = useState(false);
 
-  // Detect system reduced motion preference
+  // Handle hydration and detect system reduced motion preference
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     
@@ -43,19 +25,13 @@ export function MotionProvider({
     };
 
     // Set initial reduced motion preference
-    if (!mounted) {
-      setStoreReducedMotion(mediaQuery?.matches || defaultReducedMotion);
-    }
+    setStoreReducedMotion(mediaQuery?.matches || defaultReducedMotion);
     
     // Listen for changes
     mediaQuery?.addEventListener('change', handleChange);
     
     return () => mediaQuery?.removeEventListener('change', handleChange);
-  }, [defaultReducedMotion, setStoreReducedMotion, mounted]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  }, [defaultReducedMotion, setStoreReducedMotion]);
 
   // Calculate transition config based on preferences
   const transitionConfig = {
@@ -79,50 +55,7 @@ export function MotionProvider({
 
   return (
     <MotionContext.Provider value={contextValue}>
-      <MotionConfig {...motionConfig}>
-        {children}
-      </MotionConfig>
+      <MotionConfig {...motionConfig}>{children}</MotionConfig>
     </MotionContext.Provider>
   );
-}
-
-export function useMotion() {
-  const context = useContext(MotionContext);
-  if (context === undefined) {
-    throw new Error('useMotion must be used within a MotionProvider');
-  }
-  return context;
-}
-
-// Convenience hook for getting animation variants based on preferences
-export function useAnimationVariants() {
-  const { reducedMotion, animationsEnabled } = useMotion();
-
-  const getVariants = (variants: Variants): Variants => {
-    if (reducedMotion || !animationsEnabled) {
-      // Return variants with no animation
-      const staticVariants: Variants = {};
-      Object.keys(variants).forEach(key => {
-        staticVariants[key] = {
-          ...variants[key],
-          transition: { duration: 0 },
-        };
-      });
-      return staticVariants;
-    }
-    return variants;
-  };
-
-  const getTransition = (transition?: Transition): Transition => {
-    if (reducedMotion || !animationsEnabled) {
-      return { duration: 0 };
-    }
-    return transition || {};
-  };
-
-  return {
-    getVariants,
-    getTransition,
-    shouldAnimate: !reducedMotion && animationsEnabled,
-  };
 }

@@ -14,7 +14,7 @@ export interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement
   maxSize?: number;
 }
 
-export interface ResizableHandleProps extends React.HTMLAttributes<HTMLDivElement> {}
+export type ResizableHandleProps = React.HTMLAttributes<HTMLDivElement>;
 
 const ResizablePanelGroup = React.forwardRef<
   HTMLDivElement,

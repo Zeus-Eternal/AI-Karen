@@ -220,7 +220,7 @@ export function patchFetchForExtension403(): void {
     const url = typeof input === 'string' ? input : input.toString();
 
     try {
-      const response = await originalFetch(input as any, init);
+      const response = await originalFetch(input as unknown, init);
 
       // Non-extensions: pass through
       if (!isExtensionsUrl(url)) return response;

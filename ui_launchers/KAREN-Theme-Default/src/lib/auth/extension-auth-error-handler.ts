@@ -70,7 +70,7 @@ export class ExtensionAuthErrorHandler {
    * Handle extension authentication error
    */
   handleError(
-    error: any,
+    error: Error,
     context: ErrorContext
   ): ErrorClassification {
     const classification = this.classifyError(error, context);
@@ -88,7 +88,7 @@ export class ExtensionAuthErrorHandler {
    * Classify error and determine recovery strategy
    */
   private classifyError(
-    error: any,
+    error: Error,
     context: ErrorContext
   ): ErrorClassification {
     // Handle ExtensionApiError
@@ -142,7 +142,7 @@ export class ExtensionAuthErrorHandler {
    */
   private classifyExtensionApiError(
     error: ExtensionApiError,
-    context: ErrorContext
+    _context: ErrorContext
   ): ErrorClassification {
     switch (error.status) {
       case 401:
@@ -366,8 +366,8 @@ export class ExtensionAuthErrorHandler {
   /**
    * Record error for pattern analysis
    */
-  private recordError(error: any, context: ErrorContext): void {
-    const errorKey = `${context.endpoint}:${error.status || 'unknown'}`;
+  private recordError(error: Error, context: ErrorContext): void {
+    const errorKey = `${context.endpoint}:${(error as any).status || 'unknown'}`;
     const currentCount = this.errorHistory.get(errorKey) || 0;
     this.errorHistory.set(errorKey, currentCount + 1);
 
@@ -384,7 +384,7 @@ export class ExtensionAuthErrorHandler {
    * Log error with appropriate level
    */
   private logError(
-    error: any,
+    error: Error,
     classification: ErrorClassification,
     context: ErrorContext
   ): void {

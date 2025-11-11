@@ -323,8 +323,8 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
 
     // Sort
     filtered.sort((a, b) => {
-      let aVal: any;
-      let bVal: any;
+      let aVal: unknown;
+      let bVal: unknown;
       switch (sortBy) {
         case "popular":
           aVal = a.downloads;
@@ -759,7 +759,7 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Sort</Label>
                   <div className="space-y-2">
-                    <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                    <Select value={sortBy} onValueChange={(v: unknown) => setSortBy(v)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>

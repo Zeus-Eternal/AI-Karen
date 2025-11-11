@@ -1,43 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useUIStore, selectPreferencesState } from '../store';
-export interface UserPreferences {
-  // Theme preferences
-  theme: 'light' | 'dark' | 'system';
-  // Animation preferences
-  reducedMotion: boolean;
-  // Layout preferences
-  sidebarCollapsed: boolean;
-  rightPanelView: string;
-  // Accessibility preferences
-  highContrast: boolean;
-  fontSize: 'small' | 'medium' | 'large';
-  // Language preferences
-  language: string;
-  // Notification preferences
-  notifications: {
-    enabled: boolean;
-    sound: boolean;
-    desktop: boolean;
-    email: boolean;
-  };
-  // Performance preferences
-  animations: boolean;
-  autoSave: boolean;
-  autoSaveInterval: number; // in seconds
-}
-export interface PreferencesContextValue {
-  preferences: UserPreferences;
-  updatePreference: <K extends keyof UserPreferences>(
-    key: K,
-    value: UserPreferences[K]
-  ) => void;
-  resetPreferences: () => void;
-  isLoading: boolean;
-  error: string | null;
-}
-const PreferencesContext = createContext<PreferencesContextValue | undefined>(undefined);
+import {
+  PreferencesContext,
+  type PreferencesContextValue,
+  type UserPreferences,
+} from './preferences-context';
 const defaultPreferences: UserPreferences = {
   theme: 'system',
   reducedMotion: false,
@@ -89,7 +58,8 @@ export function PreferencesProvider({
           setTheme(defaultPreferences.theme);
           setReducedMotion(defaultPreferences.reducedMotion);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error('[PreferencesProvider] Failed to load preferences', error);
         setError('Failed to load preferences');
       } finally {
         setIsLoading(false);
@@ -112,10 +82,26 @@ export function PreferencesProvider({
     if (!mounted) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(preferences));
-    } catch (err) {
+    } catch (error) {
+      console.error('[PreferencesProvider] Failed to save preferences', error);
       setError('Failed to save preferences');
     }
   }, [preferences, storageKey, mounted]);
+  const updatePreference = useCallback(<K extends keyof UserPreferences>(
+    key: K,
+    value: UserPreferences[K]
+  ) => {
+    setPreferences(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+    // Sync specific preferences with UI store
+    if (key === 'theme') {
+      setTheme(value as 'light' | 'dark' | 'system');
+    } else if (key === 'reducedMotion') {
+      setReducedMotion(value as boolean);
+    }
+  }, [setTheme, setReducedMotion]);
   // Detect system preferences
   useEffect(() => {
     if (!mounted || typeof window === 'undefined' || !window.matchMedia) return;
@@ -132,22 +118,7 @@ export function PreferencesProvider({
     }
     mediaQuery?.addEventListener('change', handleReducedMotionChange);
     return () => mediaQuery?.removeEventListener('change', handleReducedMotionChange);
-  }, [mounted, preferences.reducedMotion]);
-  const updatePreference = <K extends keyof UserPreferences>(
-    key: K,
-    value: UserPreferences[K]
-  ) => {
-    setPreferences(prev => ({
-      ...prev,
-      [key]: value,
-    }));
-    // Sync specific preferences with UI store
-    if (key === 'theme') {
-      setTheme(value as 'light' | 'dark' | 'system');
-    } else if (key === 'reducedMotion') {
-      setReducedMotion(value as boolean);
-    }
-  };
+  }, [mounted, preferences.reducedMotion, updatePreference]);
   const resetPreferences = () => {
     setPreferences(defaultPreferences);
     setTheme(defaultPreferences.theme);
@@ -166,39 +137,4 @@ export function PreferencesProvider({
       {children}
     </PreferencesContext.Provider>
   );
-}
-export function usePreferences() {
-  const context = useContext(PreferencesContext);
-  if (context === undefined) {
-    throw new Error('usePreferences must be used within a PreferencesProvider');
-  }
-  return context;
-}
-// Convenience hooks for specific preferences
-export function useThemePreference() {
-  const { preferences, updatePreference } = usePreferences();
-  return {
-    theme: preferences.theme,
-    setTheme: (theme: 'light' | 'dark' | 'system') => updatePreference('theme', theme),
-  };
-}
-export function useAnimationPreference() {
-  const { preferences, updatePreference } = usePreferences();
-  return {
-    reducedMotion: preferences.reducedMotion,
-    animations: preferences.animations,
-    setReducedMotion: (reduced: boolean) => updatePreference('reducedMotion', reduced),
-    setAnimations: (enabled: boolean) => updatePreference('animations', enabled),
-  };
-}
-export function useAccessibilityPreference() {
-  const { preferences, updatePreference } = usePreferences();
-  return {
-    highContrast: preferences.highContrast,
-    fontSize: preferences.fontSize,
-    reducedMotion: preferences.reducedMotion,
-    setHighContrast: (enabled: boolean) => updatePreference('highContrast', enabled),
-    setFontSize: (size: 'small' | 'medium' | 'large') => updatePreference('fontSize', size),
-    setReducedMotion: (reduced: boolean) => updatePreference('reducedMotion', reduced),
-  };
 }

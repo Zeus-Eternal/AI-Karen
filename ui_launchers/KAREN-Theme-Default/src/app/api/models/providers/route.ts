@@ -90,13 +90,13 @@ async function forwardToBackends(
           }
           attempts.push({ url: publicUrl, status: pubRes.status });
           lastResponse = { response: pubRes, url: publicUrl };
-        } catch (e: any) {
+        } catch (e: Event) {
           attempts.push({ url: publicUrl, error: e?.message || String(e) });
         }
       } else {
         return { response: res, url: primaryUrl };
       }
-    } catch (e: any) {
+    } catch (e: Event) {
       attempts.push({ url: primaryUrl, error: e?.message || String(e) });
     }
   }
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         },
       },
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     const message = error?.message || 'Unknown error';
     return NextResponse.json(
       {

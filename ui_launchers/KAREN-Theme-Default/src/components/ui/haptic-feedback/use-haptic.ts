@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useHapticContext } from './haptic-provider';
+import { useHapticContext } from './context';
 import { HapticPattern } from './types';
 
 export function useHaptic() {

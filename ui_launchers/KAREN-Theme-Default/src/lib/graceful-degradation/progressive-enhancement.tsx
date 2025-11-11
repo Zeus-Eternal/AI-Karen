@@ -20,7 +20,7 @@ export interface ProgressiveFeatureProps {
 export interface EnhancedComponentProps {
   isEnhanced: boolean;
   fallbackMode: 'hide' | 'disable' | 'cache' | 'mock';
-  cachedData?: any;
+  cachedData?: unknown;
   onRetry?: () => void;
 }
 

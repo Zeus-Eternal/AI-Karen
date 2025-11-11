@@ -28,7 +28,7 @@ export interface ErrorContext {
   request_type?: string;
   timestamp: string;
   user_action?: string;
-  system_state?: Record<string, any>;
+  system_state?: Record<string, unknown>;
 }
 
 export interface ErrorSolution {

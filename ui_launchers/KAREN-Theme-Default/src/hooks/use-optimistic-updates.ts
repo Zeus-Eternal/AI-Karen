@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { useUIStore, selectLoadingState, selectErrorState } from '../store';
+import { useUIStore } from '../store';
 
 export interface OptimisticUpdateOptions<T> {
   key: string;
@@ -16,8 +16,8 @@ export interface OptimisticUpdateOptions<T> {
   showLoading?: boolean;
 }
 
-export function useOptimisticUpdates<T = any>() {
-  const [optimisticStates, setOptimisticStates] = useState<Record<string, any>>({});
+export function useOptimisticUpdates<T = unknown>() {
+  const [optimisticStates, setOptimisticStates] = useState<Record<string, unknown>>({});
   const retryCountRef = useRef<Record<string, number>>({});
   
   const performOptimisticUpdate = useCallback(async (options: OptimisticUpdateOptions<T>) => {
@@ -137,7 +137,7 @@ export function useOptimisticUpdates<T = any>() {
 }
 
 // Hook for form submissions with optimistic updates
-export function useOptimisticForm<TData = any, TResult = any>() {
+export function useOptimisticForm<TData = unknown, TResult = unknown>() {
   const { performOptimisticUpdate } = useOptimisticUpdates<TResult>();
   const [formData, setFormData] = useState<TData | null>(null);
   const [submittedData, setSubmittedData] = useState<TData | null>(null);
@@ -182,7 +182,7 @@ export function useOptimisticForm<TData = any, TResult = any>() {
 }
 
 // Hook for list operations with optimistic updates
-export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
+export function useOptimisticList<TItem = unknown>(initialItems: TItem[] = []) {
   const [items, setItems] = useState<TItem[]>(initialItems);
   const [optimisticItems, setOptimisticItems] = useState<TItem[]>([]);
   const { performOptimisticUpdate } = useOptimisticUpdates();
@@ -204,7 +204,7 @@ export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
         setOptimisticItems(prev => prev.filter(i => i !== item));
       },
       onSuccess: (result) => {
-        setItems(prev => [...prev, result]);
+        setItems(prev => [...prev, result as TItem]);
         setOptimisticItems(prev => prev.filter(i => i !== item));
       },
       ...options,
@@ -252,7 +252,7 @@ export function useOptimisticList<TItem = any>(initialItems: TItem[] = []) {
         setItems(prev => prev.map(i => i === newItem ? oldItem : i));
       },
       onSuccess: (result) => {
-        setItems(prev => prev.map(i => i === newItem ? result : i));
+        setItems(prev => prev.map(i => i === newItem ? result as TItem : i));
       },
       ...options,
     });

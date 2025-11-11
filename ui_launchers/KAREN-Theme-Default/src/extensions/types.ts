@@ -71,14 +71,14 @@ export interface ExtensionSetting {
   label: string;
   description?: string;
   type: 'number' | 'string' | 'boolean' | 'select' | 'multiselect';
-  value: any;
-  defaultValue: any;
+  value: unknown;
+  defaultValue: unknown;
   validation?: {
     min?: number;
     max?: number;
     step?: number;
     required?: boolean;
-    options?: { value: any; label: string }[];
+    options?: { value: unknown; label: string }[];
     pattern?: string;
   };
   group?: string;
@@ -91,7 +91,7 @@ export interface ExtensionControl {
   description?: string;
   type: 'button' | 'toggle' | 'slider';
   action: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
   confirmation?: {
     title: string;
     message: string;
@@ -385,19 +385,19 @@ export interface AgentExtension extends SystemExtension {
 
 export interface AgentTrigger {
   type: "event" | "schedule" | "webhook" | "manual";
-  config: any;
+  config: Record<string, unknown>;
   enabled: boolean;
 }
 
 export interface AgentAction {
   type: "plugin_execution" | "api_call" | "notification" | "data_operation";
-  config: any;
+  config: Record<string, unknown>;
   order: number;
 }
 
 export interface AgentCondition {
   type: "time" | "data" | "system" | "custom";
-  config: any;
+  config: Record<string, unknown>;
   operator: "and" | "or" | "not";
 }
 
@@ -424,7 +424,7 @@ export interface WorkflowStep {
   id: string;
   name: string;
   type: "action" | "condition" | "loop" | "parallel";
-  config: any;
+  config: Record<string, unknown>;
   next_steps: string[];
   error_handling?: string;
 }
@@ -432,7 +432,7 @@ export interface WorkflowStep {
 export interface WorkflowVariable {
   name: string;
   type: "string" | "number" | "boolean" | "object";
-  value: any;
+  value: unknown;
   description?: string;
 }
 
@@ -517,7 +517,7 @@ export interface ExtensionEvent {
   extensionId: string;
   timestamp: string;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 // Error types
@@ -525,7 +525,7 @@ export interface ExtensionError {
   type: "network" | "authentication" | "validation" | "permission" | "resource";
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: string;
   recoverable: boolean;
 }

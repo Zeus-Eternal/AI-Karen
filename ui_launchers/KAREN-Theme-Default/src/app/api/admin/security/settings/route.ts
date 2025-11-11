@@ -227,12 +227,12 @@ function isValidIpOrCidr(input: string): boolean {
  * Deep diff for audit (objects & arrays). Only reports keys present in `updated`.
  */
 function getSettingsChanges(
-  oldSettings: Record<string, any>,
-  updatedSettings: Record<string, any>,
-): Array<{ setting: string; oldValue: any; newValue: any }> {
-  const changes: Array<{ setting: string; oldValue: any; newValue: any }> = [];
+  oldSettings: Record<string, unknown>,
+  updatedSettings: Record<string, unknown>,
+): Array<{ setting: string; oldValue: unknown; newValue: unknown }> {
+  const changes: Array<{ setting: string; oldValue: unknown; newValue: unknown }> = [];
 
-  const walk = (oldVal: any, newVal: any, path: string) => {
+  const walk = (oldVal: unknown, newVal: unknown, path: string) => {
     const oldType = getType(oldVal);
     const newType = getType(newVal);
 
@@ -259,14 +259,14 @@ function getSettingsChanges(
   return changes;
 }
 
-function getType(v: any): 'array' | 'object' | 'null' | 'primitive' {
+function getType(v: unknown): 'array' | 'object' | 'null' | 'primitive' {
   if (Array.isArray(v)) return 'array';
   if (v === null) return 'null';
   if (typeof v === 'object') return 'object';
   return 'primitive';
 }
 
-function areValuesEqual(a: any, b: any): boolean {
+function areValuesEqual(a: unknown, b: unknown): boolean {
   // Handle Date objects if they appear
   if (a instanceof Date && b instanceof Date) {
     return a.getTime() === b.getTime();

@@ -5,6 +5,7 @@
  */
 
 import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
+import type { Metric } from 'web-vitals';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 const hasPO = typeof PerformanceObserver !== 'undefined';
@@ -18,11 +19,13 @@ export interface WebVitalsMetrics {
   fid?: number; // Back-compat when INP not available
 }
 
+export type PerformanceMetricMetadata = Record<string, unknown>;
+
 export interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: PerformanceMetricMetadata;
 }
 
 export interface ResourceUsage {
@@ -76,6 +79,25 @@ export interface PerformanceMetrics {
 export type PerformanceEvent =
   | { type: 'metric'; metric: PerformanceMetric }
   | { type: 'alert'; alert: PerformanceAlert };
+
+type PerformanceWithMemory = Performance & {
+  memory?: {
+    usedJSHeapSize?: number;
+    totalJSHeapSize?: number;
+  };
+};
+
+interface NetworkInformation {
+  downlink?: number;
+  effectiveType?: string;
+  rtt?: number;
+  addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+  removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+}
+
+type NavigatorWithConnection = Navigator & {
+  connection?: NetworkInformation;
+};
 
 export class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
@@ -133,25 +155,27 @@ export class PerformanceMonitor {
         this.recordMetric('ttfb', m.value, { id: m.id });
         this.checkThreshold('ttfb', m.value);
       });
-    } catch {}
+    } catch (error) {
+      void error;
+    }
 
     // INP primary (replaces FID in web-vitals v4+)
     try {
-      onINP((m: any) => {
+      onINP((m: Metric) => {
         // web-vitals returns INP with .value
         this.vitalsCache.inp = m.value;
         this.recordMetric('inp', m.value, { id: m.id });
         this.checkThreshold('inp', m.value);
       });
-    } catch {
-      // INP not available in older browsers - silently continue
+    } catch (error) {
+      void error;
     }
   }
 
   private initializeResourceMonitoring(): void {
     // Memory polling (Chrome-only)
     const memInterval = window.setInterval(() => {
-      const perf: any = performance as any;
+      const perf = performance as PerformanceWithMemory;
       if (perf && perf.memory) {
         const used = perf.memory.usedJSHeapSize || 0;
         const total = perf.memory.totalJSHeapSize || 0;
@@ -163,7 +187,7 @@ export class PerformanceMonitor {
     this.intervals.push(memInterval);
 
     // Network info snapshot + listener
-    const conn: any = (navigator as any).connection;
+    const conn = (navigator as NavigatorWithConnection).connection;
     if (conn) {
       const snapshot = () => {
         this.recordMetric('network-downlink', conn.downlink ?? 0, {
@@ -173,7 +197,9 @@ export class PerformanceMonitor {
       };
       try {
         conn.addEventListener?.('change', snapshot);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
       snapshot();
     }
   }
@@ -184,10 +210,10 @@ export class PerformanceMonitor {
       try {
         const longTaskObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            const dur = (entry as any).duration ?? 0;
+            const dur = entry.duration ?? 0;
             this.recordMetric('long-task', dur, {
-              startTime: (entry as any).startTime,
-              name: (entry as any).name,
+              startTime: entry.startTime,
+              name: entry.name,
             });
             if (dur > this.thresholds.interaction.warning) {
               this.createAlert(
@@ -200,9 +226,11 @@ export class PerformanceMonitor {
             }
           }
         });
-        longTaskObserver.observe({ entryTypes: ['longtask'] as any });
+        longTaskObserver.observe({ entryTypes: ['longtask'] });
         this.observers.push(longTaskObserver);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
 
     // Navigation timing (page load)
@@ -221,9 +249,11 @@ export class PerformanceMonitor {
             this.checkThreshold('pageLoad', pageLoadTime);
           }
         });
-        navigationObserver.observe({ type: 'navigation', buffered: true } as any);
+        navigationObserver.observe({ type: 'navigation', buffered: true });
         this.observers.push(navigationObserver);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
   }
 
@@ -237,11 +267,11 @@ export class PerformanceMonitor {
     // Optional: flush point hooks (you can wire to your telemetry here)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        // no-op here, placeholder for flush
+        void 0;
       }
     });
     window.addEventListener('pagehide', () => {
-      // no-op here, placeholder for flush
+      void 0;
     });
   }
 
@@ -253,12 +283,12 @@ export class PerformanceMonitor {
     this.checkThreshold('pageLoad', t);
   }
 
-  trackUserInteraction(action: string, duration: number, metadata?: Record<string, any>): void {
+  trackUserInteraction(action: string, duration: number, metadata?: Record<string, unknown>): void {
     this.recordMetric('user-interaction', duration, { action, ...metadata });
     this.checkThreshold('interaction', duration);
   }
 
-  trackAPICall(endpoint: string, duration: number, status: number, metadata?: Record<string, any>): void {
+  trackAPICall(endpoint: string, duration: number, status: number, metadata?: Record<string, unknown>): void {
     this.recordMetric('api-call', duration, {
       endpoint,
       status,
@@ -278,19 +308,25 @@ export class PerformanceMonitor {
       };
     }
 
-    const perf: any = performance as any;
-    const memory = perf?.memory;
-    const conn: any = (navigator as any).connection;
+    const perf = performance as PerformanceWithMemory;
+    const memory = perf.memory;
+    const conn = (navigator as NavigatorWithConnection).connection;
     return {
       memory: memory
         ? {
-            used: memory.usedJSHeapSize,
-            total: memory.totalJSHeapSize,
-            percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
+            used: memory.usedJSHeapSize ?? 0,
+            total: memory.totalJSHeapSize ?? 0,
+            percentage: memory.usedJSHeapSize && memory.totalJSHeapSize 
+              ? (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100 
+              : 0,
           }
         : { used: 0, total: 0, percentage: 0 },
       network: conn
-        ? { downlink: conn.downlink, effectiveType: conn.effectiveType, rtt: conn.rtt }
+        ? { 
+            downlink: conn.downlink ?? 0, 
+            effectiveType: conn.effectiveType ?? 'unknown', 
+            rtt: conn.rtt ?? 0 
+          }
         : { downlink: 0, effectiveType: 'unknown', rtt: 0 },
       // cpu usage cannot be read in the browser; expose hint only if desired
     };
@@ -304,7 +340,7 @@ export class PerformanceMonitor {
     if (this.vitalsCache.lcp != null) result.lcp = this.vitalsCache.lcp;
     if (this.vitalsCache.ttfb != null) result.ttfb = this.vitalsCache.ttfb;
     if (this.vitalsCache.inp != null) result.inp = this.vitalsCache.inp;
-    if (this.vitalsCache.fid != null) (result as any).fid = this.vitalsCache.fid;
+    if (this.vitalsCache.fid != null) result.fid = this.vitalsCache.fid;
     return result;
   }
 
@@ -351,7 +387,7 @@ export class PerformanceMonitor {
     }
     if (vitals.inp != null && vitals.inp > this.thresholds.inp.warning) {
       recs.push('Improve INP: break up long tasks, reduce JS on main thread, defer non-critical work, use Web Workers.');
-    } else if ((vitals as any).fid != null && (vitals as any).fid > this.thresholds.fid.warning) {
+    } else if (vitals.fid != null && vitals.fid > this.thresholds.fid.warning) {
       recs.push('FID high (fallback): reduce JS blocking, split bundles, offload heavy handlers.');
     }
     if (vitals.cls != null && vitals.cls > this.thresholds.cls.warning) {
@@ -375,7 +411,13 @@ export class PerformanceMonitor {
   }
 
   destroy(): void {
-    this.observers.forEach((o) => { try { o.disconnect(); } catch {} });
+    this.observers.forEach((o) => {
+      try {
+        o.disconnect();
+      } catch (error) {
+        void error;
+      }
+    });
     this.observers = [];
     this.alertCallbacks = [];
     this.intervals.forEach((id) => clearInterval(id));
@@ -384,7 +426,7 @@ export class PerformanceMonitor {
 
   // -------------------- Internals --------------------
 
-  private recordMetric(name: string, value: number, metadata?: Record<string, any>): void {
+  private recordMetric(name: string, value: number, metadata?: PerformanceMetricMetadata): void {
     this.metrics.push({ name, value, timestamp: Date.now(), metadata });
     // cap storage to avoid leaks
     if (this.metrics.length >= 5000) this.metrics = this.metrics.slice(-2500);
@@ -423,7 +465,11 @@ export class PerformanceMonitor {
     if (this.alerts.length >= 1000) this.alerts = this.alerts.slice(-500);
     // notify
     this.alertCallbacks.forEach((cb) => {
-      try { cb(alert); } catch {}
+      try {
+        cb(alert);
+      } catch (error) {
+        void error;
+      }
     });
   }
 }

@@ -7,25 +7,25 @@
  * - Strong typing and guardrails
  */
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   data: T;
-  timestamp: number;   // when inserted
-  expiresAt: number;   // hard expiry timestamp
-  version: string;     // entry schema/app version guard
-  metadata?: Record<string, any>;
+  timestamp: number; // when inserted
+  expiresAt: number; // hard expiry timestamp
+  version: string; // entry schema/app version guard
+  metadata?: Record<string, unknown>;
 }
 
 export interface CacheOptions {
-  ttl?: number;          // time to live in ms (default 5 minutes)
-  maxAge?: number;       // optional: treat entries older than this as stale (soft)
-  version?: string;      // app/schema version; mismatch invalidates cached entry
-  metadata?: Record<string, any>;
+  ttl?: number; // time to live in ms (default 5 minutes)
+  maxAge?: number; // optional: treat entries older than this as stale (soft)
+  version?: string; // app/schema version; mismatch invalidates cached entry
+  metadata?: Record<string, unknown>;
 }
 
 export type Stats = {
   totalEntries: number;
   expiredEntries: number;
-  totalSize: number;         // approximate bytes (UTF-8)
+  totalSize: number; // approximate bytes (UTF-8)
   oldestEntry?: Date;
   newestEntry?: Date;
 };
@@ -56,7 +56,10 @@ export class CacheManager {
   private readonly persistentStorage: boolean;
   private readonly storagePrefix: string;
 
-  constructor(persistentStorage: boolean = true, storagePrefix: string = STORAGE_PREFIX) {
+  constructor(
+    persistentStorage: boolean = true,
+    storagePrefix: string = STORAGE_PREFIX
+  ) {
     this.persistentStorage = persistentStorage && hasLocalStorage;
     this.storagePrefix = storagePrefix;
 
@@ -81,7 +84,11 @@ export class CacheManager {
         try {
           const entry: CacheEntry = JSON.parse(raw);
           // basic structural guard
-          if (entry && typeof entry === "object" && typeof entry.expiresAt === "number") {
+          if (
+            entry &&
+            typeof entry === "object" &&
+            typeof entry.expiresAt === "number"
+          ) {
             this.cache.set(cacheKey, entry);
           }
         } catch {
@@ -97,7 +104,10 @@ export class CacheManager {
   private saveToStorage(key: string, entry: CacheEntry): void {
     if (!this.persistentStorage) return;
     try {
-      window.localStorage.setItem(this.storagePrefix + key, JSON.stringify(entry));
+      window.localStorage.setItem(
+        this.storagePrefix + key,
+        JSON.stringify(entry)
+      );
     } catch {
       // quota errors or blocked; degrade to memory-only
     }
@@ -149,7 +159,10 @@ export class CacheManager {
   }
 
   /** Same as get(), but returns metadata wrapper */
-  getWithMetadata<T>(key: string, version?: string): { data: T; metadata: CacheEntry } | null {
+  getWithMetadata<T>(
+    key: string,
+    version?: string
+  ): { data: T; metadata: CacheEntry } | null {
     const entry = this.cache.get(key);
     if (!entry) return null;
 
@@ -273,7 +286,7 @@ export class ExtensionDataCache extends CacheManager {
     super(true, STORAGE_PREFIX);
   }
 
-  cacheExtensionList(extensions: any[]): void {
+  cacheExtensionList(extensions: unknown[]): void {
     this.set("extensions-list", extensions, {
       ttl: 10 * 60 * 1000,
       version: "1.0.0",
@@ -281,11 +294,11 @@ export class ExtensionDataCache extends CacheManager {
     });
   }
 
-  getCachedExtensionList(version?: string): any[] | null {
-    return this.get<any[]>("extensions-list", version);
+  getCachedExtensionList(version?: string): unknown[] | null {
+    return this.get<unknown[]>("extensions-list", version);
   }
 
-  cacheExtensionHealth(extensionName: string, health: any): void {
+  cacheExtensionHealth(extensionName: string, health: unknown): void {
     this.set(`extension-health-${extensionName}`, health, {
       ttl: 2 * 60 * 1000,
       version: "1.0.0",
@@ -293,11 +306,14 @@ export class ExtensionDataCache extends CacheManager {
     });
   }
 
-  getCachedExtensionHealth(extensionName: string, version?: string): any | null {
-    return this.get<any>(`extension-health-${extensionName}`, version);
+  getCachedExtensionHealth(
+    extensionName: string,
+    version?: string
+  ): unknown | null {
+    return this.get<unknown>(`extension-health-${extensionName}`, version);
   }
 
-  cacheBackgroundTasks(tasks: any[]): void {
+  cacheBackgroundTasks(tasks: unknown[]): void {
     this.set("background-tasks", tasks, {
       ttl: 5 * 60 * 1000,
       version: "1.0.0",
@@ -305,11 +321,11 @@ export class ExtensionDataCache extends CacheManager {
     });
   }
 
-  getCachedBackgroundTasks(version?: string): any[] | null {
-    return this.get<any[]>("background-tasks", version);
+  getCachedBackgroundTasks(version?: string): unknown[] | null {
+    return this.get<unknown[]>("background-tasks", version);
   }
 
-  cacheModelProviders(providers: any[]): void {
+  cacheModelProviders(providers: unknown[]): void {
     this.set("model-providers", providers, {
       ttl: 15 * 60 * 1000,
       version: "1.0.0",
@@ -317,17 +333,23 @@ export class ExtensionDataCache extends CacheManager {
     });
   }
 
-  getCachedModelProviders(version?: string): any[] | null {
-    return this.get<any[]>("model-providers", version);
+  getCachedModelProviders(version?: string): unknown[] | null {
+    return this.get<unknown[]>("model-providers", version);
   }
 
   // Stale reads for degraded mode
-  getStaleExtensionList(maxAge: number = 60 * 60 * 1000, version?: string): any[] | null {
-    return this.getStale<any[]>("extensions-list", maxAge, version);
+  getStaleExtensionList(
+    maxAge: number = 60 * 60 * 1000,
+    version?: string
+  ): unknown[] | null {
+    return this.getStale<unknown[]>("extensions-list", maxAge, version);
   }
 
-  getStaleModelProviders(maxAge: number = 60 * 60 * 1000, version?: string): any[] | null {
-    return this.getStale<any[]>("model-providers", maxAge, version);
+  getStaleModelProviders(
+    maxAge: number = 60 * 60 * 1000,
+    version?: string
+  ): unknown[] | null {
+    return this.getStale<unknown[]>("model-providers", maxAge, version);
   }
 }
 
@@ -340,7 +362,7 @@ export const generalCache = new CacheManager(true);
 export class CacheAwareDataFetcher {
   constructor(
     private cache: CacheManager,
-    private fetchFunction: (key: string) => Promise<any>
+    private fetchFunction: (key: string) => Promise<unknown>
   ) {}
 
   /**
@@ -361,11 +383,15 @@ export class CacheAwareDataFetcher {
 
     try {
       const data = await this.fetchFunction(key);
-      this.cache.set<T>(key, data, options);
-      return data;
+      this.cache.set<T>(key, data as T, options);
+      return data as T;
     } catch (error) {
       if (options.useStaleOnError) {
-        const stale = this.cache.getStale<T>(key, options.maxStaleAge, options.version);
+        const stale = this.cache.getStale<T>(
+          key,
+          options.maxStaleAge,
+          options.version
+        );
         if (stale !== null) return stale;
       }
       throw error;

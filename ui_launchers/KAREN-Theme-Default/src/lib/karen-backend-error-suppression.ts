@@ -10,16 +10,29 @@
 
 export type MaybePromise<T> = T | Promise<T>;
 
+type ErrorLike = {
+  status?: number;
+  code?: number;
+  message?: string;
+  details?: unknown;
+};
+
 export type MinimalKarenBackend = {
-  makeRequest?: (endpoint: string, ...args: any[]) => MaybePromise<any>;
-  makeRequestPublic?: (endpoint: string, opts?: any) => MaybePromise<any>;
+  makeRequest?: (
+    endpoint: string,
+    ...args: unknown[]
+  ) => MaybePromise<unknown>;
+  makeRequestPublic?: (
+    endpoint: string,
+    opts?: unknown
+  ) => MaybePromise<unknown>;
   isExtensionEndpoint?: (endpoint: string) => boolean;
   handleExtensionError?: (
     endpoint: string,
-    error: any,
-    details?: any
-  ) => MaybePromise<any | null | undefined>;
-  [k: string]: any;
+    error: unknown,
+    details?: unknown
+  ) => MaybePromise<unknown | null | undefined>;
+  [k: string]: unknown;
 };
 
 const PATCH_FLAG = Symbol.for("KAREN_BACKEND_EXTENSION_PATCHED");
@@ -34,20 +47,24 @@ function isExtensionsEndpoint(endpoint: string): boolean {
       const url = new URL(endpoint);
       endpoint = url.pathname;
     }
-  } catch {
-    /* ignore URL parse errors; fall back to raw string checks */
+  } catch (parseError) {
+    console.debug("[KAREN-BACKEND-PATCH] Failed to normalize endpoint URL", {
+      endpoint,
+      parseError,
+    });
   }
   return /^\/?api\/extensions(\/|$)/i.test(endpoint);
 }
 
 /** Check if an error is an auth error we want to suppress */
-function isAuthSuppressionCandidate(error: any): boolean {
-  const status = (error && (error.status ?? error.code)) as number | undefined;
+function isAuthSuppressionCandidate(error: unknown): boolean {
+  const maybeError = error as ErrorLike;
+  const status = (maybeError?.status ?? maybeError?.code) as number | undefined;
   if (typeof status === "number") {
     return status === 401 || status === 403;
   }
   // Some fetch wrappers embed status in message
-  const msg = String(error?.message ?? "");
+  const msg = String((error as { message?: string })?.message ?? "");
   return /\b(401|403)\b/.test(msg);
 }
 
@@ -89,25 +106,28 @@ function genericExtensionsFallback() {
 
 function markPatched(obj: object) {
   try {
-    (obj as any)[PATCH_FLAG] = true;
+    (obj as { [PATCH_FLAG]?: boolean })[PATCH_FLAG] = true;
     patchedInstances.add(obj);
   } catch {
-    /* ignore */
+    console.debug("[KAREN-BACKEND-PATCH] Failed to mark instance as patched", { obj });
   }
 }
 
 function alreadyPatched(obj: object): boolean {
-  return !!(obj as any)[PATCH_FLAG] || patchedInstances.has(obj);
+  return (
+    !!(obj as { [PATCH_FLAG]?: boolean })[PATCH_FLAG] ||
+    patchedInstances.has(obj)
+  );
 }
 
 async function suppressWrapper(
   instance: MinimalKarenBackend,
   endpoint: string,
-  runner: () => MaybePromise<any>
+  runner: () => MaybePromise<unknown>
 ) {
   try {
     return await runner();
-  } catch (error: any) {
+  } catch (error: unknown) {
     const isExt =
       instance.isExtensionEndpoint?.(endpoint) ?? isExtensionsEndpoint(endpoint);
     if (isExt && isAuthSuppressionCandidate(error)) {
@@ -117,18 +137,26 @@ async function suppressWrapper(
           const maybe = await instance.handleExtensionError(
             endpoint,
             error,
-            (error as any)?.details
+            (error as ErrorLike)?.details
           );
           if (maybe !== null && maybe !== undefined) return maybe;
-        } catch {
-          /* fallback below */
+        } catch (handlerError) {
+          console.debug(
+            "[KAREN-BACKEND-PATCH] Custom extension error handler failed",
+            { endpoint, handlerError }
+          );
         }
       }
       // Root listing gets richer fallback, others get generic
       const path = (() => {
         try {
           if (/^https?:\/\//i.test(endpoint)) return new URL(endpoint).pathname;
-        } catch {}
+        } catch (parseError) {
+          console.debug(
+            "[KAREN-BACKEND-PATCH] Failed to parse endpoint for fallback detection",
+            { endpoint, parseError }
+          );
+        }
         return endpoint;
       })();
 
@@ -153,9 +181,13 @@ export function patchKarenBackendInstance(instance: MinimalKarenBackend): boolea
     const original = instance[key];
     if (typeof original !== "function") return;
 
-    const bound = original.bind(instance);
-    instance[key] = (async (endpoint: string, ...args: any[]) =>
-      suppressWrapper(instance, endpoint, () => bound(endpoint, ...args))) as any;
+    const bound = original.bind(instance) as (
+      endpoint: string,
+      ...args: unknown[]
+    ) => MaybePromise<unknown>;
+    const wrapped = async (endpoint: string, ...args: unknown[]) =>
+      suppressWrapper(instance, endpoint, () => bound(endpoint, ...args));
+    instance[key] = wrapped as typeof original;
 
     patchedAny = true;
   };
@@ -174,11 +206,12 @@ function discoverKarenBackendInstances(): MinimalKarenBackend[] {
   if (typeof window === "undefined") return [];
   const found: MinimalKarenBackend[] = [];
 
-  const pushIfKB = (val: any) => {
+  const pushIfKB = (val: unknown) => {
     if (
       val &&
       typeof val === "object" &&
-      (typeof val.makeRequest === "function" || typeof val.makeRequestPublic === "function")
+      (typeof (val as MinimalKarenBackend).makeRequest === "function" ||
+        typeof (val as MinimalKarenBackend).makeRequestPublic === "function")
     ) {
       found.push(val as MinimalKarenBackend);
     }
@@ -186,14 +219,24 @@ function discoverKarenBackendInstances(): MinimalKarenBackend[] {
 
   try {
     // Common globals
-    pushIfKB((window as any).karenBackend);
-    const getKB = (window as any).getKarenBackend;
+    try {
+      pushIfKB((window as unknown as Record<string, unknown>).karenBackend);
+    } catch (globalError) {
+      console.debug(
+        "[KAREN-BACKEND-PATCH] Failed to inspect window.karenBackend",
+        { globalError }
+      );
+    }
+    const getKB = (window as unknown as Record<string, unknown>).getKarenBackend;
     if (typeof getKB === "function") {
       try {
         const inst = getKB();
         pushIfKB(inst);
-      } catch {
-        /* ignore */
+      } catch (getterError) {
+        console.debug(
+          "[KAREN-BACKEND-PATCH] getKarenBackend failed during discovery",
+          { getterError }
+        );
       }
     }
 
@@ -205,13 +248,19 @@ function discoverKarenBackendInstances(): MinimalKarenBackend[] {
       // skip obvious heavy or irrelevant keys
       if (/^(webkit|moz|chrome|safari|__|on|performance|document|location)/i.test(k)) continue;
       try {
-        pushIfKB((window as any)[k]);
-      } catch {
-        /* ignore */
+        pushIfKB((window as unknown as Record<string, unknown>)[k]);
+      } catch (scanError) {
+        console.debug(
+          "[KAREN-BACKEND-PATCH] Failed to inspect window key",
+          { key: k, scanError }
+        );
       }
     }
-  } catch {
-    /* ignore */
+  } catch (discoveryError) {
+    console.debug(
+      "[KAREN-BACKEND-PATCH] Failed to complete backend discovery",
+      { discoveryError }
+    );
   }
 
   // Deduplicate
@@ -228,8 +277,11 @@ export function suppressKarenBackendExtensionErrors(): void {
     for (const inst of instances) {
       try {
         if (patchKarenBackendInstance(inst)) count++;
-      } catch {
-        /* ignore individual failures */
+      } catch (instanceError) {
+        console.debug(
+          "[KAREN-BACKEND-PATCH] Failed to patch a discovered instance",
+          { instanceError }
+        );
       }
     }
     if (count > 0) {

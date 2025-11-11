@@ -55,6 +55,12 @@ class ConnectivityLogger {
     };
   }
 
+  private extractErrorCode(error?: Error): string | undefined {
+    if (!error) return undefined;
+    const candidate = error as Error & { code?: string | number };
+    return candidate.code ? String(candidate.code) : undefined;
+  }
+
   /**
    * Log connectivity issues
    */
@@ -85,7 +91,7 @@ class ConnectivityLogger {
         name: error.name,
         message: error.message,
         stack: error.stack,
-        code: (error as any).code
+        code: this.extractErrorCode(error)
       } : undefined,
       metadata: {
         timestamp: Date.now(),
@@ -134,7 +140,7 @@ class ConnectivityLogger {
         name: error.name,
         message: error.message,
         stack: error.stack,
-        code: (error as any).code
+        code: this.extractErrorCode(error)
       } : undefined,
       metadata: {
         timestamp: Date.now(),
@@ -208,7 +214,7 @@ class ConnectivityLogger {
         name: error.name,
         message: error.message,
         stack: error.stack,
-        code: (error as any).code
+        code: this.extractErrorCode(error)
       },
       metadata: {
         timestamp: Date.now(),
@@ -373,10 +379,11 @@ class ConnectivityLogger {
    * Determine connectivity subcategory based on data and error
    */
   private determineConnectivitySubcategory(
-    connectionData: any,
+    connectionData: unknown,
     error?: Error
   ): 'request' | 'retry' | 'timeout' | 'circuit_breaker' {
-    if (connectionData.retryAttempt && connectionData.retryAttempt > 0) {
+    const data = connectionData as { retryAttempt?: number };
+    if (data.retryAttempt && data.retryAttempt > 0) {
       return 'retry';
     }
     if (error?.message.includes('timeout') || error?.name === 'TimeoutError') {

@@ -214,7 +214,7 @@ export function useExtensionTasks(extensionId?: string | null) {
     } else {
       setHistory([]);
     }
-  }, [loadHistory]);
+  }, [loadHistory, extensionId]);
 
   return {
     executeTask,

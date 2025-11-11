@@ -16,7 +16,7 @@ declare global {
 }
 
 export type FallbackList = {
-  extensions: Record<string, any>;
+  extensions: Record<string, unknown>;
   total: number;
   message: string;
   access_level: 'readonly';
@@ -104,7 +104,7 @@ if (isBrowser()) {
       const url = typeof input === 'string' ? input : input.toString();
 
       try {
-        const res = await originalFetch(input as any, init);
+        const res = await originalFetch(input as unknown, init);
 
         if (!isExtensionsUrl(url)) return res; // not our concern
         if (res.ok) return res; // happy path

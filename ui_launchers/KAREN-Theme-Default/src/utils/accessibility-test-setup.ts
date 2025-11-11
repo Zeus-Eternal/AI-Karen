@@ -271,13 +271,14 @@ export function isValidAriaRole(role: string): boolean {
 // use: expect(await runAccessibilityTestSuite(...))).toHaveNoViolations()
 // ---------------------------------------------------------------------------
 export function registerA11yMatchers() {
-  const g: any = globalThis as any;
+  const g = globalThis as { expect?: { extend?: (matchers: Record<string, unknown>) => void } };
   if (!g.expect || !g.expect.extend) return; // not in a test env
   g.expect.extend({
     async toHaveNoViolations(received: A11yRunReport | AxeResults) {
-      const isA11yReport = (o: any) => o && Array.isArray(o.violations);
+      const isA11yReport = (o: unknown): o is A11yRunReport | AxeResults => 
+        o !== null && typeof o === 'object' && 'violations' in o && Array.isArray((o as { violations: unknown }).violations);
       const results = isA11yReport(received)
-        ? (received as any)
+        ? received
         : ((await axeCore.run(document)) as AxeResults);
 
       const pass = results.violations.length === 0;
@@ -289,7 +290,7 @@ export function registerA11yMatchers() {
         return `Expected 0 violations, found ${results.violations.length}:\n${details}`;
       };
 
-      return { pass, message } as any;
+      return { pass, message };
     },
   });
 }

@@ -10,7 +10,7 @@ export interface HealthCheckResult {
   responseTime: number;
   timestamp: string;
   error?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 export interface HealthMetrics {
   totalRequests: number;
@@ -200,6 +200,8 @@ class HealthMonitor {
         }
       }
     } catch (error) {
+      // Silently handle health check errors to avoid noise
+      void error;
     }
     // Update metrics
     this.updateMetrics();
@@ -209,6 +211,7 @@ class HealthMonitor {
     this.notifyListeners();
     if (webUIConfig.debugLogging) {
       const duration = Date.now() - startTime;
+      console.debug(`Health check completed in ${duration}ms`);
     }
   }
   /**
@@ -216,7 +219,7 @@ class HealthMonitor {
    */
   private async checkEndpointSafely(
     endpoint: string,
-    checkFunction: (signal: AbortSignal) => Promise<any>
+    checkFunction: (signal: AbortSignal) => Promise<unknown>
   ): Promise<void> {
     try {
       await this.checkEndpoint(endpoint, checkFunction);
@@ -234,6 +237,7 @@ class HealthMonitor {
       }
       // Log as debug instead of error for missing endpoints
       if (webUIConfig.debugLogging) {
+        console.debug(`Endpoint ${endpoint} not available:`, error);
       }
       // Mark endpoint as degraded instead of error for missing endpoints
       this.metrics.endpoints[endpoint] = {
@@ -250,7 +254,7 @@ class HealthMonitor {
    */
   private async checkEndpoint(
     endpoint: string,
-    checkFunction: (signal: AbortSignal) => Promise<any>
+    checkFunction: (signal: AbortSignal) => Promise<unknown>
   ): Promise<void> {
     const startTime = Date.now();
     const controller = new AbortController();
@@ -269,7 +273,7 @@ class HealthMonitor {
       ]);
       clearTimeout(timeoutId!);
       const responseTime = Date.now() - startTime;
-      const summarize = (data: any) => {
+      const summarize = (data: unknown) => {
         if (Array.isArray(data)) {
           return { length: data.length };
         }
@@ -281,14 +285,15 @@ class HealthMonitor {
       };
       // Recognize degraded mode explicitly
       let status: 'healthy' | 'degraded' | 'error' = 'healthy';
-      if (result?.status === 'error') status = 'error';
-      else if (result?.status === 'degraded') status = 'degraded';
+      const resultWithStatus = result as { status?: string };
+      if (resultWithStatus?.status === 'error') status = 'error';
+      else if (resultWithStatus?.status === 'degraded') status = 'degraded';
       this.metrics.endpoints[endpoint] = {
         endpoint,
         status,
         responseTime,
         timestamp: new Date().toISOString(),
-        details: summarize(result),
+        details: summarize(result) as Record<string, unknown>,
       };
       this.metrics.totalRequests++;
       if (status === 'healthy') {
@@ -383,6 +388,7 @@ class HealthMonitor {
       try {
         listener(alert);
       } catch (error) {
+        console.warn('Alert listener error:', error);
       }
     });
 
@@ -395,6 +401,7 @@ class HealthMonitor {
       try {
         listener(this.metrics);
       } catch (error) {
+        console.warn('Metrics listener error:', error);
       }
     });
 

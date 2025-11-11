@@ -6,7 +6,7 @@ export interface PerformanceEntry {
   operation: string;
   startTime: number;
   endTime?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 class PerformanceTracker {
   private static instance: PerformanceTracker;
@@ -22,7 +22,7 @@ class PerformanceTracker {
   /**
    * Start tracking a performance operation
    */
-  startOperation(operationId: string, operationName: string, metadata?: Record<string, any>): void {
+  startOperation(operationId: string, operationName: string, metadata?: Record<string, unknown>): void {
     const startTime = performance.now();
     this.activeOperations.set(operationId, {
       operation: operationName,
@@ -58,7 +58,7 @@ class PerformanceTracker {
   async trackOperation<T>(
     operationName: string,
     operation: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<{ result: T; metrics: PerformanceMetrics }> {
     const operationId = `${operationName}_${Date.now()}_${Math.random()}`;
     this.startOperation(operationId, operationName, metadata);
@@ -77,7 +77,7 @@ class PerformanceTracker {
   trackSyncOperation<T>(
     operationName: string,
     operation: () => T,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): { result: T; metrics: PerformanceMetrics } {
     const operationId = `${operationName}_${Date.now()}_${Math.random()}`;
     this.startOperation(operationId, operationName, metadata);
@@ -153,7 +153,7 @@ class PerformanceTracker {
     jsHeapSizeLimit?: number;
   } {
     if (typeof window !== 'undefined' && 'performance' in window && 'memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as { memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
       return {
         usedJSHeapSize: memory.usedJSHeapSize,
         totalJSHeapSize: memory.totalJSHeapSize,
@@ -207,11 +207,11 @@ export const performanceTracker = PerformanceTracker.getInstance();
  * Decorator for tracking method performance
  */
 export function trackPerformance(operationName?: string) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+  return function (target: unknown, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
-    const opName = operationName || `${target.constructor.name}.${propertyName}`;
-    descriptor.value = async function (...args: any[]) {
-      const { result, metrics } = await performanceTracker.trackOperation(
+    const opName = operationName || `${(target as { constructor: { name: string } }).constructor.name}.${propertyName}`;
+    descriptor.value = async function (...args: unknown[]) {
+      const { result } = await performanceTracker.trackOperation(
         opName,
         () => method.apply(this, args)
       );

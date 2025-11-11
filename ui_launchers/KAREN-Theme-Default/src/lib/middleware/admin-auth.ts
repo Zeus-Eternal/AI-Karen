@@ -47,7 +47,7 @@ export interface AdminAuthResult {
   error?: {
     code: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
   status?: number;
 }
@@ -232,7 +232,7 @@ function createErrorResponse(
   code: string,
   message: string,
   status: number,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): NextResponse {
   return NextResponse.json({
     success: false,

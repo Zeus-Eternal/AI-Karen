@@ -52,22 +52,20 @@ export const FocusTrap = React.forwardRef<HTMLDivElement, FocusTrapProps>(
     });
 
     // Merge refs - combine the external ref with the focus trap's container ref
+    const { ref: containerRefCallback, ...containerPropsWithoutRef } = focusTrap.containerProps;
+
     const mergedRef = React.useCallback((node: HTMLDivElement | null) => {
-      // Set the focus trap's container ref
-      if (focusTrap.containerRef && 'current' in focusTrap.containerRef) {
-        (focusTrap.containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (containerRefCallback) {
+        containerRefCallback(node);
       }
-      
+
       // Set the external ref
       if (typeof ref === 'function') {
         ref(node);
       } else if (ref && 'current' in ref) {
         (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }
-    }, [focusTrap.containerRef, ref]);
-
-    // Extract ref from containerProps to avoid duplication
-    const { ref: _, ...containerPropsWithoutRef } = focusTrap.containerProps;
+    }, [ref, containerRefCallback]);
 
     return (
       <div

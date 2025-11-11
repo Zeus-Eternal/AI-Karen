@@ -62,7 +62,7 @@ async function checkDegradedMode(): Promise<boolean> {
     const ct = (resp.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/json')) return false;
 
-    const data: any = await resp.json();
+    const data: unknown = await resp.json();
     return Boolean(data?.is_active || data?.degraded_mode);
   } catch {
     // If probe fails, do NOT assume degraded; keep normal behavior
@@ -179,10 +179,10 @@ export async function POST(request: NextRequest) {
     if (VERBOSE) {
       const str = JSON.stringify(data ?? {});
       console.log('🔍 ChatRuntime API: Backend response data', {
-        dataKeys: typeof data === 'object' && data ? Object.keys(data as any) : [],
-        hasContent: (data as any)?.content != null,
-        contentLength: ((data as any)?.content ?? '').length ?? 0,
-        hasError: (data as any)?.error != null,
+        dataKeys: typeof data === 'object' && data ? Object.keys(data as unknown) : [],
+        hasContent: (data as unknown)?.content != null,
+        contentLength: ((data as unknown)?.content ?? '').length ?? 0,
+        hasError: (data as unknown)?.error != null,
         dataPreview: str.length > 500 ? str.slice(0, 500) + '...' : str,
       });
     }
@@ -201,12 +201,12 @@ export async function POST(request: NextRequest) {
     const lastUserMsg =
       (Array.isArray(body?.messages) && body!.messages!.length
         ? body!.messages![body!.messages!.length - 1]?.content
-        : (body as any)?.message) || '';
+        : (body as unknown)?.message) || '';
     const fallback = createFallbackResponse(String(lastUserMsg ?? ''));
     if (VERBOSE) {
       console.log('🔍 ChatRuntime API: Backend error; returning fallback', {
         reason:
-          (backendError as any)?.name === 'AbortError'
+          (backendError as unknown)?.name === 'AbortError'
             ? 'timeout'
             : (backendError as Error)?.message || 'unknown',
         degraded: isDegraded,
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
         Expires: '0',
         'X-Fallback': 'true',
         'X-Fallback-Reason':
-          (backendError as any)?.name === 'AbortError'
+          (backendError as unknown)?.name === 'AbortError'
             ? `timeout_${isDegraded ? TIMEOUT_DEGRADED_MS : TIMEOUT_NORMAL_MS}ms`
             : 'upstream_unreachable',
       },

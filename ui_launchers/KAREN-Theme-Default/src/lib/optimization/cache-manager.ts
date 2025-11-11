@@ -40,13 +40,13 @@ export interface InvalidationRule {
   // If trigger==='time', condition is ms number.
   // If trigger==='event'|'dependency', condition is string tag/key.
   // If trigger==='manual', condition can be any predicate.
-  condition: string | number | ((data: any) => boolean);
+  condition: string | number | ((data: unknown) => boolean);
   cascade: boolean;
 }
 
 export interface CacheEntry {
   key: string;
-  data: any;                   // raw or compressed JSON string
+  data: unknown;                   // raw or compressed JSON string
   timestamp: number;           // insertion time
   ttl: number;                 // ms
   size: number;                // approx bytes
@@ -67,7 +67,7 @@ export interface CacheStats {
   topKeys: Array<{ key: string; accessCount: number; size: number }>;
 }
 
-export type MaybeWorker = (typeof globalThis extends any ? Worker : any) | null;
+export type MaybeWorker = Worker | null;
 
 export class CacheManager {
   private cache: Map<string, CacheEntry> = new Map();
@@ -138,7 +138,7 @@ export class CacheManager {
   // --------------------------
   // Compression (pluggable)
   // --------------------------
-  private async compressData(data: any, shouldCompress: boolean): Promise<{ blob: any; ratio: number; used: boolean }> {
+  private async compressData(data: unknown, shouldCompress: boolean): Promise<{ blob: unknown; ratio: number; used: boolean }> {
     if (!this.config.enableCompression || !shouldCompress) {
       return { blob: data, ratio: 1, used: false };
     }
@@ -160,7 +160,7 @@ export class CacheManager {
     }
   }
 
-  private async decompressData(blob: any, wasCompressed: boolean): Promise<any> {
+  private async decompressData(blob: unknown, wasCompressed: boolean): Promise<unknown> {
     if (!this.config.enableCompression || !wasCompressed) return blob;
     try {
       return typeof blob === 'string' ? JSON.parse(blob) : blob;
@@ -169,7 +169,7 @@ export class CacheManager {
     }
   }
 
-  private calculateSize(data: any): number {
+  private calculateSize(data: unknown): number {
     try {
       if (typeof data === 'string') return data.length;
       return JSON.stringify(data).length;
@@ -217,7 +217,7 @@ export class CacheManager {
   // --------------------------
   public async set(
     key: string,
-    data: any,
+    data: unknown,
     options: {
       ttl?: number;
       tags?: string[];
@@ -262,7 +262,7 @@ export class CacheManager {
     if (shouldEdge) await this.setEdgeCache(key, data, ttl).catch(() => {});
   }
 
-  public async get(key: string): Promise<any | null> {
+  public async get(key: string): Promise<unknown | null> {
     const start = Date.now();
     const entry = this.cache.get(key);
 
@@ -419,8 +419,10 @@ export class CacheManager {
     }
     if (this.compressionWorker) {
       try {
-        (this.compressionWorker as any).terminate?.();
-      } catch {}
+        this.compressionWorker.terminate();
+      } catch {
+        // ignore termination errors
+      }
       this.compressionWorker = null;
     }
     this.clear();
@@ -429,7 +431,7 @@ export class CacheManager {
   // --------------------------
   // CDN Integration (best-effort, guarded)
   // --------------------------
-  private async setCDNCache(key: string, data: any, ttl: number): Promise<void> {
+  private async setCDNCache(key: string, data: unknown, ttl: number): Promise<void> {
     if (!this.config.enableCDN || !this.config.cdnEndpoint) return;
     if (typeof fetch === 'undefined') return;
 
@@ -452,7 +454,7 @@ export class CacheManager {
     }
   }
 
-  private async getCDNCache(key: string): Promise<any | null> {
+  private async getCDNCache(key: string): Promise<unknown | null> {
     if (!this.config.enableCDN || !this.config.cdnEndpoint) return null;
     if (typeof fetch === 'undefined') return null;
 
@@ -483,7 +485,7 @@ export class CacheManager {
   // --------------------------
   // Edge (Service Worker) Integration
   // --------------------------
-  private async setEdgeCache(key: string, data: any, ttl: number): Promise<void> {
+  private async setEdgeCache(key: string, data: unknown, ttl: number): Promise<void> {
     if (!this.config.edgeCaching) return;
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
 
@@ -495,7 +497,7 @@ export class CacheManager {
     }
   }
 
-  private async getEdgeCache(key: string): Promise<any | null> {
+  private async getEdgeCache(key: string): Promise<unknown | null> {
     if (!this.config.edgeCaching) return null;
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
 
@@ -503,13 +505,13 @@ export class CacheManager {
       const registration = await navigator.serviceWorker.ready;
       if (!registration.active) return null;
 
-      return await new Promise<any | null>((resolve) => {
+      return await new Promise<unknown | null>((resolve) => {
         const messageChannel = new MessageChannel();
         const timer = setTimeout(() => resolve(null), 1000);
 
         messageChannel.port1.onmessage = (event: MessageEvent) => {
           clearTimeout(timer);
-          // Expect shape: { ok: boolean, data?: any }
+          // Expect shape: { ok: boolean, data?: unknown }
           resolve(event?.data?.data ?? null);
         };
 
@@ -535,7 +537,7 @@ export class CacheManager {
   // --------------------------
   // Warming / Preloading
   // --------------------------
-  public async warmCache(keys: string[], dataLoader: (key: string) => Promise<any>): Promise<void> {
+  public async warmCache(keys: string[], dataLoader: (key: string) => Promise<unknown>): Promise<void> {
     const tasks = keys.map(async (k) => {
       try {
         const data = await dataLoader(k);
@@ -549,7 +551,7 @@ export class CacheManager {
 
   public async preloadCriticalData(
     criticalKeys: string[],
-    dataLoader: (key: string) => Promise<any>,
+    dataLoader: (key: string) => Promise<unknown>,
   ): Promise<void> {
     for (const k of criticalKeys) {
       try {

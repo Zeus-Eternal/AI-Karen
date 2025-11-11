@@ -202,10 +202,10 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
     const handleFocus = (event: FocusEvent) => {
       const target = event.target as HTMLElement;
       
-      for (const [id, item] of items) {
+      for (const [itemId, item] of items) {
         if (item.element === target || item.element?.contains(target)) {
-          setFocusedItemId(id);
-          onFocusChange?.(id);
+          setFocusedItemId(itemId);
+          onFocusChange?.(itemId);
           item.onFocus?.();
           break;
         }
@@ -215,7 +215,7 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
     const handleBlur = (event: FocusEvent) => {
       const target = event.target as HTMLElement;
       
-      for (const [id, item] of items) {
+      for (const [, item] of items) {
         if (item.element === target || item.element?.contains(target)) {
           item.onBlur?.();
           break;
@@ -240,7 +240,8 @@ export const useTabOrder = (options: TabOrderOptions = {}) => {
 
   useEffect(() => {
     if (initialFocus && items.has(initialFocus) && !focusedItemId) {
-      focusItem(initialFocus);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => focusItem(initialFocus), 0);
     }
   }, [initialFocus, items, focusedItemId, focusItem]);
 

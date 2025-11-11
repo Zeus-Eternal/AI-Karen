@@ -96,7 +96,7 @@ export class ModelHealthMonitor extends BaseModelService {
 
       // 7) Model-specific health indicators
       const modelSpecificHealth = await this.checkModelSpecificHealth(model);
-      if (modelSpecificHealth.issues.length > 0) {
+      if (Array.isArray(modelSpecificHealth.issues) && modelSpecificHealth.issues.length > 0) {
         issues.push(...modelSpecificHealth.issues);
       }
       Object.assign(performanceMetrics, modelSpecificHealth.metrics);
@@ -153,7 +153,7 @@ export class ModelHealthMonitor extends BaseModelService {
     switch (model.type) {
       case "text":
         if (model.subtype === "llama-cpp") {
-          const quantization = model.metadata?.quantization || "Q4_K_M";
+          const quantization = String(model.metadata?.quantization || "Q4_K_M");
           if (quantization.includes("Q4")) baseRequirement *= 1.2;
           else if (quantization.includes("Q8")) baseRequirement *= 1.4;
           else baseRequirement *= 1.3;
@@ -387,7 +387,8 @@ export class ModelHealthMonitor extends BaseModelService {
             if (!model.metadata?.model_type) {
               issues.push("Transformers model type information missing");
             }
-            if (!model.metadata?.architectures?.length) {
+            const architectures = model.metadata?.architectures as unknown[];
+            if (!Array.isArray(architectures) || !architectures.length) {
               issues.push("Model architecture information missing");
             }
           }
@@ -425,10 +426,8 @@ export class ModelHealthMonitor extends BaseModelService {
         issues.push("Model size is unusually large, may cause performance issues");
       }
 
-      if (
-        model.metadata?.context_length &&
-        model.metadata.context_length > 32768
-      ) {
+      const contextLength = Number(model.metadata?.context_length);
+      if (contextLength && contextLength > 32768) {
         issues.push("Large context length may require significant memory");
       }
     } catch (error) {
@@ -443,7 +442,7 @@ export class ModelHealthMonitor extends BaseModelService {
    */
   private estimateTokensPerSecond(model: Model): number {
     const sizeGB = (model.size || 0) / (1024 * 1024 * 1024);
-    const quantization = model.metadata?.quantization || "Q4_K_M";
+    const quantization = String(model.metadata?.quantization || "Q4_K_M");
 
     let baseSpeed = 50; // conservative baseline
     if (sizeGB < 1) baseSpeed = 100;
@@ -464,7 +463,7 @@ export class ModelHealthMonitor extends BaseModelService {
    */
   private estimateImageGenerationSpeed(model: Model): number {
     const sizeGB = (model.size || 0) / (1024 * 1024 * 1024);
-    const baseModel = model.metadata?.base_model || "SD 1.5";
+    const baseModel = String(model.metadata?.base_model || "SD 1.5");
 
     let baseSpeed = 2; // images/min baseline
     if (baseModel.includes("SDXL")) baseSpeed = 1;

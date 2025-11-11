@@ -80,8 +80,8 @@ export interface EmailDeliveryStatus {
   message_id: string;
   status: 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'failed';
   timestamp: Date;
-  details?: Record<string, any>;
-  webhook_data?: Record<string, any>;
+  details?: Record<string, unknown>;
+  webhook_data?: Record<string, unknown>;
 }
 
 // Email notification types
@@ -222,7 +222,7 @@ export interface EmailWebhook {
   message_id: string;
   email: string;
   timestamp: Date;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   processed: boolean;
   processed_at?: Date;
   created_at: Date;
@@ -296,7 +296,7 @@ export interface EmailAuditLog {
   email_address?: string;
   template_id?: string;
   message_id?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
   timestamp: Date;
@@ -394,7 +394,7 @@ export type EmailErrorType =
 export interface EmailError {
   type: EmailErrorType;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   retry_after?: number;
 }
 

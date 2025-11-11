@@ -4,7 +4,7 @@
 "use client";
 
 import React, { createContext, useContext, useReducer } from 'react';
-import type { ExtensionAction, ExtensionState, ExtensionCategory, BreadcrumbItem, NavigationState } from './types';
+import type { ExtensionAction, ExtensionState, ExtensionCategory, NavigationState } from './types';
 
 const initialNavigationState: NavigationState = {
   currentCategory: 'Plugins',
@@ -25,7 +25,7 @@ const initialState: ExtensionState = {
 
 function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState {
   switch (action.type) {
-    case 'SET_CATEGORY':
+    case 'SET_CATEGORY': {
       return {
         ...state,
         currentCategory: action.category,
@@ -47,7 +47,8 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
         },
         error: null,
       };
-    case 'PUSH_BREADCRUMB':
+    }
+    case 'PUSH_BREADCRUMB': {
       const newBreadcrumbs = [...state.breadcrumbs, action.item];
       const newNavigationBreadcrumb = [...state.navigation.breadcrumb, action.item];
       return {
@@ -62,7 +63,8 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
           currentLevel: action.item.level,
         },
       };
-    case 'POP_BREADCRUMB':
+    }
+    case 'POP_BREADCRUMB': {
       const poppedBreadcrumbs = state.breadcrumbs.slice(0, -1);
       const poppedNavigationBreadcrumb = state.navigation.breadcrumb.slice(0, -1);
       const previousLevel = poppedNavigationBreadcrumb.length > 0 
@@ -103,7 +105,8 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
           }),
         },
       };
-    case 'GO_BACK':
+    }
+    case 'GO_BACK': {
       const backBreadcrumbs = state.breadcrumbs.slice(0, -1);
       const backNavigationBreadcrumb = state.navigation.breadcrumb.slice(0, -1);
       const backToPreviousLevel = backNavigationBreadcrumb.length > 0 
@@ -144,7 +147,8 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
           }),
         },
       };
-    case 'SET_LEVEL':
+    }
+    case 'SET_LEVEL': {
       const levelBreadcrumbs = state.breadcrumbs.slice(0, action.level);
       const levelNavigationBreadcrumb = state.navigation.breadcrumb.slice(0, action.level);
       const targetLevel = levelNavigationBreadcrumb.length > 0 
@@ -185,6 +189,7 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
           }),
         },
       };
+    }
     case 'RESET_BREADCRUMBS':
       return {
         ...state,
@@ -238,7 +243,7 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
   }
 }
 
-const ExtensionContext = createContext<{ state: ExtensionState; dispatch: React.Dispatch<ExtensionAction> } | undefined>(undefined);
+export const ExtensionContext = createContext<{ state: ExtensionState; dispatch: React.Dispatch<ExtensionAction> } | undefined>(undefined);
 
 export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; children: React.ReactNode }> = ({
   initialCategory = 'Plugins',
@@ -256,12 +261,6 @@ export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; 
   return <ExtensionContext.Provider value={{ state, dispatch }}>{children}</ExtensionContext.Provider>;
 };
 
-export function useExtensionContext() {
-  const context = useContext(ExtensionContext);
-  if (!context) {
-    throw new Error('useExtensionContext must be used within an ExtensionProvider');
-  }
-  return context;
-}
+// Hook moved to separate file for React Fast Refresh compatibility
 
 export { type ExtensionState, type ExtensionAction, type ExtensionCategory, type BreadcrumbItem } from './types';

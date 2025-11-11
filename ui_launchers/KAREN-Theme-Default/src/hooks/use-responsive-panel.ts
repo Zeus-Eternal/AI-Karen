@@ -58,7 +58,7 @@ export interface ResponsivePanelActions {
   /** Get responsive classes for panel */
   getResponsiveClasses: () => string;
   /** Get touch gesture props */
-  getTouchProps: () => Record<string, any>;
+  getTouchProps: () => Record<string, unknown>;
 }
 
 export interface UseResponsivePanelReturn extends ResponsivePanelState, ResponsivePanelActions {}
@@ -98,20 +98,23 @@ export function useResponsivePanel(options: ResponsivePanelOptions = {}): UseRes
     setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
   }, []);
 
-  // Detect touch support
-  const detectTouchSupport = useCallback(() => {
-    setSupportsTouch(
-      'ontouchstart' in window ||
-      navigator.maxTouchPoints > 0 ||
-      // @ts-ignore
-      navigator.msMaxTouchPoints > 0
-    );
-  }, []);
-
   // Initialize viewport and touch detection
   useEffect(() => {
-    updateViewport();
-    detectTouchSupport();
+    // Initialize values on mount
+    if (typeof window !== 'undefined') {
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setViewportWidth(window.innerWidth);
+        setViewportHeight(window.innerHeight);
+        setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+        setSupportsTouch(
+          'ontouchstart' in window ||
+          navigator.maxTouchPoints > 0 ||
+          // @ts-expect-error - Legacy IE property
+          navigator.msMaxTouchPoints > 0
+        );
+      }, 0);
+    }
 
     window.addEventListener('resize', updateViewport);
     window.addEventListener('orientationchange', updateViewport);
@@ -120,7 +123,7 @@ export function useResponsivePanel(options: ResponsivePanelOptions = {}): UseRes
       window.removeEventListener('resize', updateViewport);
       window.removeEventListener('orientationchange', updateViewport);
     };
-  }, [updateViewport, detectTouchSupport]);
+  }, [updateViewport]);
 
   // Touch gesture handlers
   const handleTouchStart = useCallback((event: TouchEvent) => {
@@ -152,7 +155,7 @@ export function useResponsivePanel(options: ResponsivePanelOptions = {}): UseRes
     }
   }, [touchGestures, supportsTouch]);
 
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
+  const handleTouchEnd = useCallback((_event: TouchEvent) => {
     if (!touchGestures || !supportsTouch || !touchStartRef.current || !touchMoveRef.current) {
       touchStartRef.current = null;
       touchMoveRef.current = null;
@@ -310,12 +313,13 @@ export function usePanelPerformance() {
   const { isMobile, supportsTouch } = useResponsivePanel();
 
   const getPerformanceProps = useCallback(() => {
-    const props: Record<string, any> = {};
+    const props: Record<string, unknown> = {};
+    let style: Record<string, unknown> = {};
 
     if (isMobile) {
       // Optimize for mobile performance
-      props.style = {
-        ...props.style,
+      style = {
+        ...style,
         contain: 'layout style paint',
         willChange: 'transform',
         transform: 'translateZ(0)',
@@ -324,11 +328,15 @@ export function usePanelPerformance() {
 
     if (supportsTouch) {
       // Optimize touch interactions
-      props.style = {
-        ...props.style,
+      style = {
+        ...style,
         touchAction: 'pan-y',
         WebkitTouchCallout: 'none',
       };
+    }
+
+    if (Object.keys(style).length > 0) {
+      props.style = style;
     }
 
     return props;

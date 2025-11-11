@@ -227,7 +227,7 @@ export class AdminErrorHandler {
   static createError(
     code: string, 
     details?: string, 
-    context?: ErrorContext
+    _context?: ErrorContext
   ): AdminError {
     const baseError = this.errorMap[code];
     if (!baseError) {
@@ -251,8 +251,8 @@ export class AdminErrorHandler {
   }
   static fromHttpError(
     status: number, 
-    response?: any, 
-    context?: ErrorContext
+    response?: unknown, 
+    _context?: ErrorContext
   ): AdminError {
     switch (status) {
       case 400:
@@ -290,7 +290,7 @@ export class AdminErrorHandler {
         return this.createError('UNKNOWN_ERROR', `HTTP ${status}: ${response?.message || 'Unknown error'}`);
     }
   }
-  static fromNetworkError(error: Error, context?: ErrorContext): AdminError {
+  static fromNetworkError(error: Error, _context?: ErrorContext): AdminError {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return this.createError('SYSTEM_NETWORK_ERROR', error.message);
     }
@@ -334,12 +334,21 @@ export class AdminErrorHandler {
       context,
       timestamp: new Date().toISOString()
     };
-    if (error.severity === 'critical' || error.severity === 'high') {
-    } else {
+    switch (error.severity) {
+      case 'critical':
+      case 'high':
+        console.error('[AdminError]', error.message, logData);
+        break;
+      case 'medium':
+        console.warn('[AdminError]', error.message, logData);
+        break;
+      case 'low':
+        console.info('[AdminError]', error.message, logData);
+        break;
     }
     // In production, send to error tracking service
-    if (typeof window !== 'undefined' && (window as any).errorTracker) {
-      (window as any).errorTracker.captureException(error, { extra: logData });
+    if (typeof window !== 'undefined' && (window as unknown).errorTracker) {
+      (window as unknown).errorTracker.captureException(error, { extra: logData });
     }
   }
 }

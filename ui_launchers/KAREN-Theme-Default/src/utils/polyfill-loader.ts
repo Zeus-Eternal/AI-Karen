@@ -13,6 +13,19 @@
 import * as React from 'react';
 import { featureDetection } from './feature-detection';
 
+type IndexedObject = Record<PropertyKey, unknown>;
+
+type ExtendedWindow = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  cancelIdleCallback?: (handle: number) => void;
+  IntersectionObserver?: typeof IntersectionObserver;
+  ResizeObserver?: typeof ResizeObserver;
+  cssVars?: ((options?: Record<string, unknown>) => void);
+  CSS?: {
+    supports?: (property: string, value: string) => boolean;
+  };
+};
+
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 export interface PolyfillConfig {
@@ -188,25 +201,28 @@ class PolyfillLoaderService {
 
   private async loadPolyfillImpl(name: KnownPolyfill, scriptOptions?: ScriptLoadOptions): Promise<void> {
     switch (name) {
-      case 'intersectionObserver':
+      case 'intersectionObserver': {
         if (this.hasIntersectionObserver()) return;
         await this.loadScriptOnce(
           'https://cdn.jsdelivr.net/npm/intersection-observer@0.12.2/intersection-observer.js',
           scriptOptions
         );
         return;
+      }
 
-      case 'resizeObserver':
+      case 'resizeObserver': {
         if (this.hasResizeObserver()) return;
         await this.loadScriptOnce(
           'https://cdn.jsdelivr.net/npm/resize-observer-polyfill@1.5.1/dist/ResizeObserver.global.js',
           scriptOptions
         );
         return;
+      }
 
-      case 'requestIdleCallback':
+      case 'requestIdleCallback': {
         if (this.hasRequestIdleCallback()) return;
-        (window as any).requestIdleCallback = (cb: IdleRequestCallback) => {
+        const win = window as unknown as ExtendedWindow;
+        win.requestIdleCallback = (cb: IdleRequestCallback) => {
           const start = Date.now();
           return window.setTimeout(() => {
             cb({
@@ -215,18 +231,21 @@ class PolyfillLoaderService {
             } as IdleDeadline);
           }, 1);
         };
-        (window as any).cancelIdleCallback = (id: number) => clearTimeout(id);
+        win.cancelIdleCallback = (id: number) => clearTimeout(id);
         return;
+      }
 
-      case 'webAnimations':
+      case 'webAnimations': {
         if (this.hasWebAnimations()) return;
         await this.loadScriptOnce('https://cdn.jsdelivr.net/npm/web-animations-js@2.3.2/web-animations.min.js', scriptOptions);
         return;
+      }
 
-      case 'customElements':
+      case 'customElements': {
         if (this.hasCustomElements()) return;
         await this.loadScriptOnce('https://cdn.jsdelivr.net/npm/@webcomponents/custom-elements@1.6.0/custom-elements.min.js', scriptOptions);
         return;
+      }
 
       case 'fetch':
         if (this.hasFetch()) return;
@@ -238,19 +257,22 @@ class PolyfillLoaderService {
         await this.loadScriptOnce('https://cdn.jsdelivr.net/npm/promise-polyfill@8.3.0/dist/polyfill.min.js', scriptOptions);
         return;
 
-      case 'objectAssign':
+      case 'objectAssign': {
         if (this.hasObjectAssign()) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (Object as any).assign =
-          (Object as any).assign ||
-          function (target: any, ...sources: any[]) {
+        const assignTarget = Object as {
+          assign?: (target: IndexedObject, ...sources: IndexedObject[]) => IndexedObject;
+        };
+        assignTarget.assign =
+          assignTarget.assign ||
+          function (target: IndexedObject, ...sources: IndexedObject[]) {
             if (target == null) throw new TypeError('Cannot convert undefined or null to object');
-            const to = Object(target);
+            const to = Object(target) as IndexedObject;
             for (const src of sources) {
               if (src != null) {
                 for (const key in src) {
                   if (Object.prototype.hasOwnProperty.call(src, key)) {
-                    (to as any)[key] = (src as any)[key];
+                    to[key] = (src as IndexedObject)[key];
                   }
                 }
               }
@@ -258,47 +280,57 @@ class PolyfillLoaderService {
             return to;
           };
         return;
+      }
 
-      case 'arrayIncludes':
+      case 'arrayIncludes': {
         if (this.hasArrayIncludes()) return;
         // eslint-disable-next-line no-extend-native
-        (Array.prototype as any).includes =
-          (Array.prototype as any).includes ||
-          function (searchElement: any, fromIndex?: number) {
-            const O = Object(this);
-            const len = parseInt((O as any).length, 10) || 0;
+        const arrayProto = Array.prototype as {
+          includes?: (this: Array<unknown>, searchElement: unknown, fromIndex?: number) => boolean;
+        };
+        arrayProto.includes =
+          arrayProto.includes ||
+          function (this: Array<unknown>, searchElement: unknown, fromIndex?: number) {
+            const O = Object(this) as IndexedObject;
+            const len = parseInt(String((O.length as number) ?? 0), 10) || 0;
             if (len === 0) return false;
             const n = parseInt(String(fromIndex ?? 0), 10) || 0;
             let k = n >= 0 ? n : Math.max(len + n, 0);
             while (k < len) {
-              if ((O as any)[k] === searchElement) return true;
+              if (O[k] === searchElement) return true;
               k++;
             }
             return false;
           };
         return;
+      }
 
-      case 'stringIncludes':
+      case 'stringIncludes': {
         if (this.hasStringIncludes()) return;
         // eslint-disable-next-line no-extend-native
-        (String.prototype as any).includes =
-          (String.prototype as any).includes ||
-          function (search: string, start?: number) {
+        const stringProto = String.prototype as {
+          includes?: (this: string, search: string, start?: number) => boolean;
+        };
+        stringProto.includes =
+          stringProto.includes ||
+          function (this: string, search: string, start?: number) {
             const s = String(this);
             const idx = typeof start === 'number' ? start : 0;
             if (idx + search.length > s.length) return false;
             return s.indexOf(search, idx) !== -1;
           };
         return;
+      }
 
-      case 'cssCustomProperties':
+      case 'cssCustomProperties': {
         if (this.hasCSSVars()) return;
         await this.loadScriptOnce(
           'https://cdn.jsdelivr.net/npm/css-vars-ponyfill@2.4.9/dist/css-vars-ponyfill.min.js',
           scriptOptions
         );
-        if ((window as any).cssVars) {
-          (window as any).cssVars({
+        const win2 = window as unknown as ExtendedWindow;
+        if (win2.cssVars) {
+          win2.cssVars({
             onlyLegacy: true,
             preserveStatic: false,
             preserveVars: false,
@@ -308,6 +340,7 @@ class PolyfillLoaderService {
           });
         }
         return;
+      }
 
       default:
         throw new Error(`Unknown polyfill: ${name}`);
@@ -326,17 +359,20 @@ class PolyfillLoaderService {
 
   private hasIntersectionObserver(f?: ReturnType<typeof featureDetection.getFeatures> | null): boolean {
     if (!isBrowser) return true;
-    return !!(window as any).IntersectionObserver || !!(f && f.intersectionObserver);
+    const win = window as unknown as ExtendedWindow;
+    return !!win.IntersectionObserver || !!(f && f.intersectionObserver);
   }
 
   private hasResizeObserver(f?: ReturnType<typeof featureDetection.getFeatures> | null): boolean {
     if (!isBrowser) return true;
-    return !!(window as any).ResizeObserver || !!(f && f.resizeObserver);
+    const win = window as unknown as ExtendedWindow;
+    return !!win.ResizeObserver || !!(f && f.resizeObserver);
   }
 
   private hasRequestIdleCallback(f?: ReturnType<typeof featureDetection.getFeatures> | null): boolean {
     if (!isBrowser) return true;
-    return 'requestIdleCallback' in window || !!(f && f.requestIdleCallback);
+    const win = window as unknown as ExtendedWindow;
+    return 'requestIdleCallback' in win || !!(f && f.requestIdleCallback);
   }
 
   private hasWebAnimations(f?: ReturnType<typeof featureDetection.getFeatures> | null): boolean {
@@ -377,7 +413,12 @@ class PolyfillLoaderService {
   private hasCSSVars(f?: ReturnType<typeof featureDetection.getFeatures> | null): boolean {
     if (!isBrowser) return true;
     try {
-      return (f && f.cssCustomProperties) || (window as any).CSS?.supports?.('color', 'var(--x)') || false;
+      const win = window as unknown as ExtendedWindow;
+      return (
+        (f && f.cssCustomProperties) ||
+        !!win.CSS?.supports?.('color', 'var(--x)') ||
+        false
+      );
     } catch {
       return false;
     }

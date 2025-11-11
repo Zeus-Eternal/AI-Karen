@@ -34,11 +34,11 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
   const load = async () => {
     setLoading(true);
     try {
-      const res = await backend.makeRequestPublic<{ status: string; output: any }>("/api/copilot/start", {
+      const res = await backend.makeRequestPublic<{ status: string; output: unknown }>("/api/copilot/start", {
         method: "POST",
         body: JSON.stringify({ action: "routing.audit", payload: { limit } }),
       });
-      const out = (res as any)?.output || {};
+      const out = (res as unknown)?.output || {};
       setEvents(out.events || []);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to load routing history" });
@@ -91,7 +91,7 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
                       <span className="text-muted-foreground">corr: {e.correlation_id}</span>
                     )}
                     {e.timestamp && (
-                      <span className="text-muted-foreground">{new Date(e.timestamp as any).toLocaleString()}</span>
+                      <span className="text-muted-foreground">{new Date(e.timestamp as unknown).toLocaleString()}</span>
                     )}
                   </div>
                   {e.reason && (

@@ -101,7 +101,7 @@ export class SharedConversationHistory {
           ...conv,
           createdAt: new Date(conv.createdAt),
           updatedAt: new Date(conv.updatedAt),
-          messages: conv.messages.map((msg: any) => ({
+          messages: conv.messages.map((msg: unknown) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))

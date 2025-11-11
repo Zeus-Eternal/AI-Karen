@@ -20,7 +20,7 @@ import React, {
 import { FixedSizeList as List, ListOnScrollProps } from "react-window";
 // TODO: Install react-virtualized-auto-sizer package
 // import AutoSizer from "react-virtualized-auto-sizer";
-const AutoSizer: any = ({ children }: any) => children({ height: 600, width: 800 });
+const AutoSizer: unknown = ({ children }: unknown) => children({ height: 600, width: 800 });
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/hooks/useRole";
 import {
@@ -55,7 +55,7 @@ export interface TableColumn {
   minWidth?: number;
   render?: (
     user: User,
-    value: any,
+    value: unknown,
     helpers: {
       onSelect?: (userId: string, selected: boolean) => void;
       onEdit?: (user: User) => void;
@@ -271,7 +271,7 @@ const Row: React.FC<RowProps> = ({ index, style, data }) => {
             ? isSelected
             : column.key === "actions"
             ? null
-            : (user[column.key as keyof User] as any);
+            : (user[column.key as keyof User] as unknown);
 
         return (
           <div
@@ -438,7 +438,7 @@ export function VirtualizedUserTable({
         setUsers((prev) => (append ? [...prev, ...newRows] : newRows));
         setTotalUsers(payload.data.pagination.total ?? 0);
         setHasNextPage(Boolean(payload.data.pagination.has_next));
-      } catch (err: any) {
+      } catch (err: Error) {
         if (err?.name !== "AbortError") {
           setError(err instanceof Error ? err.message : "Failed to load users");
         }
@@ -523,7 +523,7 @@ export function VirtualizedUserTable({
       setPagination((p) => ({ ...p, page: 1 }));
       await loadUsers();
       onUserUpdated();
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(
         err instanceof Error ? err.message : "Failed to update user status"
       );

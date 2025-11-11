@@ -318,8 +318,8 @@ export const PluginMarketplace: React.FC<PluginMarketplaceProps> = ({
     }
 
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: unknown;
+      let bValue: unknown;
 
       switch (sortBy) {
         case "popular":

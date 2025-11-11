@@ -73,7 +73,7 @@ function state(): LoadState {
 }
 
 function ok<T>(data: T, extraHeaders?: Record<string, string>): NextResponse {
-  return NextResponse.json(data as any, {
+  return NextResponse.json(data as unknown, {
     status: 200,
     headers: {
       'Cache-Control': 'no-store',
@@ -168,7 +168,7 @@ async function loadViaService(
 
   // 1) Validate target model
   const models = await modelSelectionService.getAvailableModels();
-  const target = models.find((m: any) => m.id === model_id);
+  const target = models.find((m: unknown) => m.id === model_id);
   if (!target) {
     return {
       exists: false,
@@ -179,11 +179,11 @@ async function loadViaService(
   }
 
   // 2) If service exposes a real loader, use it; else pretend-success
-  const canLoad = typeof (modelSelectionService as any).loadModel === 'function';
+  const canLoad = typeof (modelSelectionService as unknown).loadModel === 'function';
 
   if (canLoad) {
     const res = await withTimeout<LoadModelResult>(
-      (modelSelectionService as any).loadModel(model_id, {
+      (modelSelectionService as unknown).loadModel(model_id, {
         provider: provider || target.provider,
         preserveContext: options.preserve_context,
         forceReload: options.force_reload,
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const success = Boolean((result as any).success ?? true);
+      const success = Boolean((result as unknown).success ?? true);
       st.lastSuccess = success;
 
       const response: LoadModelResponse = {
@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
         capabilities: result.capabilities || [],
         ...(result.memory_usage ? { memory_usage: result.memory_usage } : {}),
         message:
-          (result as any).message ||
+          (result as unknown).message ||
           (success ? 'Model loaded successfully' : 'Model load failed'),
       };
 
@@ -303,7 +303,7 @@ export async function POST(request: NextRequest) {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (e: any) {
+    } catch (e: Event) {
       st.lastSuccess = false;
       st.lastError = e?.message || 'Unknown loading error';
       st.finishedAt = Date.now();
@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
         model_id,
       });
     }
-  } catch (error: any) {
+  } catch (error: Error) {
     return err(
       400,
       'INVALID_REQUEST',
@@ -330,7 +330,7 @@ export async function GET(_request: NextRequest) {
   try {
     // We prefer reading some live info from modelSelectionService if helpful,
     // but we don’t fail if it’s unavailable.
-    let stats: any = {};
+    let stats: unknown = {};
     try {
       const { modelSelectionService } = await import('@/lib/model-selection-service');
       stats = (await modelSelectionService.getSelectionStats?.()) || {};
@@ -365,7 +365,7 @@ export async function GET(_request: NextRequest) {
     };
 
     return ok(payload);
-  } catch (error: any) {
+  } catch (error: Error) {
     return err(500, 'STATUS_CHECK_FAILED', error?.message || 'Unknown error');
   }
 }

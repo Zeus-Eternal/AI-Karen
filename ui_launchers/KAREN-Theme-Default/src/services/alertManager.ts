@@ -5,7 +5,7 @@
  * rate limiting, prioritization, and user preference management.
  */
 import { toast } from '@/hooks/use-toast';
-import type { KarenAlert, AlertSettings, AlertHistory, StoredAlert, AlertMetrics, AlertResult, AlertType, AlertVariant, AlertPriority, ErrorRecoveryConfig } from '@/types/karen-alerts';
+import type { AlertAction, KarenAlert, AlertSettings, AlertHistory, StoredAlert, AlertMetrics, AlertResult, AlertType, AlertPriority, ErrorRecoveryConfig } from '@/types/karen-alerts';
 import { DEFAULT_ALERT_SETTINGS, DEFAULT_ERROR_RECOVERY_CONFIG } from '@/types/karen-alerts';
 // Storage keys for persistence
 const ALERT_SETTINGS_KEY = 'karen-alert-settings';
@@ -20,7 +20,7 @@ export type AlertEventType = 'alert-shown' | 'alert-dismissed' | 'alert-action-c
  */
 export interface AlertEventListener {
   type: AlertEventType;
-  callback: (data: any) => void;
+  callback: (data: unknown) => void;
 }
 /**
  * Rate limiting tracker
@@ -224,7 +224,7 @@ class AlertManager {
   /**
    * Add event listener
    */
-  public addEventListener(type: AlertEventType, callback: (data: any) => void): () => void {
+  public addEventListener(type: AlertEventType, callback: (data: unknown) => void): () => void {
     const listener: AlertEventListener = { type, callback };
     this.eventListeners.push(listener);
     // Return unsubscribe function
@@ -392,12 +392,13 @@ class AlertManager {
         return this.settings.durations.info;
     }
   }
-  private async handleAlertAction(alert: KarenAlert, action: any): Promise<void> {
+  private async handleAlertAction(alert: KarenAlert, action: AlertAction): Promise<void> {
     try {
       await action.action();
       this.updateMetrics('action-clicked', alert);
       this.emitEvent('alert-action-clicked', { alert, action });
     } catch (error) {
+      console.debug('Alert action failed', error);
     }
   }
   private addToHistory(alert: KarenAlert, dismissed: boolean): void {
@@ -432,13 +433,14 @@ class AlertManager {
     }
     this.saveMetrics();
   }
-  private emitEvent(type: AlertEventType, data: any): void {
+  private emitEvent(type: AlertEventType, data: unknown): void {
     this.eventListeners
       .filter(listener => listener.type === type)
       .forEach(listener => {
         try {
           listener.callback(data);
         } catch (error) {
+          console.warn('AlertManager listener failed', { type, error });
         }
       });
   }
@@ -451,12 +453,13 @@ class AlertManager {
     this.history.alerts = this.history.alerts.filter(alert => alert.timestamp > cutoffDate);
     this.saveHistory();
   }
-  private handleError(type: string, error: any, context?: string): AlertResult {
+  private handleError(type: string, error: unknown, context?: string): AlertResult {
     const errorMessage = error instanceof Error ? error.message : String(error);
     // Log error for debugging
     // Apply fallback behavior
     switch (this.errorRecoveryConfig.fallbackBehavior) {
       case 'console':
+        console.error(`[AlertManager:${type}]`, errorMessage, { context, error });
         break;
       case 'basic-alert':
         if (typeof window !== 'undefined' && window.alert) {
@@ -465,7 +468,7 @@ class AlertManager {
         break;
       case 'silent':
       default:
-        // Do nothing
+        console.debug(`[AlertManager:${type}] silent fallback`, { context, error });
         break;
     }
     return {
@@ -483,6 +486,7 @@ class AlertManager {
         this.settings = { ...DEFAULT_ALERT_SETTINGS, ...parsed.settings };
       }
     } catch (error) {
+      console.debug('AlertManager failed to load settings', error);
       this.settings = DEFAULT_ALERT_SETTINGS;
     }
   }
@@ -495,6 +499,7 @@ class AlertManager {
       };
       localStorage.setItem(ALERT_SETTINGS_KEY, JSON.stringify(data));
     } catch (error) {
+      console.debug('AlertManager failed to save settings', error);
     }
   }
   private async loadHistory(): Promise<void> {
@@ -504,12 +509,14 @@ class AlertManager {
         this.history = JSON.parse(stored);
       }
     } catch (error) {
+      console.debug('AlertManager failed to load history', error);
     }
   }
   private async saveHistory(): Promise<void> {
     try {
       localStorage.setItem(ALERT_HISTORY_KEY, JSON.stringify(this.history));
     } catch (error) {
+      console.debug('AlertManager failed to save history', error);
     }
   }
   private async loadMetrics(): Promise<void> {
@@ -519,12 +526,14 @@ class AlertManager {
         this.metrics = { ...this.metrics, ...JSON.parse(stored) };
       }
     } catch (error) {
+      console.debug('AlertManager failed to load metrics', error);
     }
   }
   private async saveMetrics(): Promise<void> {
     try {
       localStorage.setItem(ALERT_METRICS_KEY, JSON.stringify(this.metrics));
     } catch (error) {
+      console.debug('AlertManager failed to save metrics', error);
     }
   }
 }

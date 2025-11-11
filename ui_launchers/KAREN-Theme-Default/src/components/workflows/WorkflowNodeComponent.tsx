@@ -10,7 +10,7 @@ export interface WorkflowNodeData {
   label: string;
   description?: string;
   nodeType: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   inputs?: Array<{
     id: string;
     name: string;

@@ -9,7 +9,7 @@
 
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
 import type { ComponentType, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
@@ -22,12 +22,12 @@ export interface ErrorContextType {
   
   // Error handling functions
   analyzeError: (error: Error | string, context?: Partial<ErrorAnalysisRequest>) => Promise<void>;
-  handleApiError: (error: any, requestContext?: {
+  handleApiError: (error: Error, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
   }) => void;
-  handleBoundaryError: (error: Error, errorInfo?: any) => void;
+  handleBoundaryError: (error: Error, errorInfo?: unknown) => void;
   
   // Error management
   clearError: () => void;
@@ -49,13 +49,7 @@ export interface ErrorContextType {
 
 const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
 
-export const useError = () => {
-  const context = useContext(ErrorContext);
-  if (context === undefined) {
-    throw new Error('useError must be used within an ErrorProvider');
-  }
-  return context;
-};
+// Hook moved to separate file for React Fast Refresh compatibility
 
 export interface ErrorProviderProps {
   children: ReactNode;
@@ -81,16 +75,37 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }>>([]);
 
   // Main intelligent error hook
+  const {
+    onAnalysisComplete: optionsOnAnalysisComplete,
+    onAnalysisError: optionsOnAnalysisError,
+    ...intelligentOptions
+  } = options;
+
+  const handleAnalysisComplete = useCallback((analysis: ErrorAnalysisResponse) => {
+    onErrorAnalyzed?.(analysis);
+    optionsOnAnalysisComplete?.(analysis);
+    setGlobalErrors(prev => {
+      const updated = [...prev];
+      const errorIndex = updated.findIndex(e => e.analysis === null);
+      if (errorIndex !== -1) {
+        updated[errorIndex] = {
+          ...updated[errorIndex],
+          analysis,
+        };
+      }
+      return updated;
+    });
+  }, [onErrorAnalyzed, optionsOnAnalysisComplete]);
+
+  const handleAnalysisError = useCallback((error: Error) => {
+    onAnalysisError?.(error);
+    optionsOnAnalysisError?.(error);
+  }, [onAnalysisError, optionsOnAnalysisError]);
+
   const intelligentError = useIntelligentError({
-    ...options,
-    onAnalysisComplete: (analysis) => {
-      onErrorAnalyzed?.(analysis);
-      options.onAnalysisComplete?.(analysis);
-    },
-    onAnalysisError: (error) => {
-      onAnalysisError?.(error);
-      options.onAnalysisError?.(error);
-    },
+    ...intelligentOptions,
+    onAnalysisComplete: handleAnalysisComplete,
+    onAnalysisError: handleAnalysisError,
   });
 
   // Error boundary hook
@@ -150,7 +165,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [intelligentError, boundaryError, apiError]);
 
   // Handle boundary errors
-  const handleBoundaryError = useCallback((error: Error, errorInfo?: any) => {
+  const handleBoundaryError = useCallback((error: Error, errorInfo?: unknown) => {
     safeError('Error boundary caught error:', error, { useStructuredLogging: true });
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
@@ -175,7 +190,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
-  const handleApiError = useCallback((error: any, requestContext?: {
+  const handleApiError = useCallback((error: Error, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
@@ -206,24 +221,6 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     // Use API error hook for analysis
     apiError.handleApiError(error, requestContext);
   }, [addGlobalError, apiError]);
-
-  // Update global errors with analysis results
-  useEffect(() => {
-    if (intelligentError.analysis) {
-      setGlobalErrors(prev => {
-        const updated = [...prev];
-        // Find the most recent error without analysis and update it
-        const errorIndex = updated.findIndex(e => e.analysis === null);
-        if (errorIndex !== -1) {
-          updated[errorIndex] = {
-            ...updated[errorIndex],
-            analysis: intelligentError.analysis,
-          };
-        }
-        return updated;
-      });
-    }
-  }, [intelligentError.analysis]);
 
   // Context value
   const contextValue: ErrorContextType = {

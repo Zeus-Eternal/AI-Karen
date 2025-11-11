@@ -5,7 +5,7 @@ export interface ExtensionHealth {
   status: string;
 }
 
-export function useExtensionHealth(extensionId: string) {
+export function useExtensionHealth(_extensionId: string) {
   const [health, setHealth] = useState<ExtensionHealth | null>(null);
 
   // Placeholder implementation

@@ -46,7 +46,7 @@ export interface ErrorEvent {
   recovered: boolean;
   recoveryTime?: number;       // ms
   recoveryAttempts: number;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export type TrendTimer = ReturnType<typeof setInterval> | null;
@@ -76,7 +76,7 @@ function incr(map: Record<string, number>, key: string, by = 1) {
 function makeId(): string {
   // Prefer crypto if available
   try {
-    const g = (globalThis as any);
+    const g = (globalThis as { crypto?: { randomUUID?: () => string } });
     if (g?.crypto?.randomUUID) return 'err-' + g.crypto.randomUUID();
   } catch (err) {
     // Expected in older browsers/environments, fall through to backup
@@ -149,7 +149,7 @@ export class ErrorMetricsCollector {
     section: string,
     component?: string,
     stack?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): string {
     const id = makeId();
     const evt: ErrorEvent = {

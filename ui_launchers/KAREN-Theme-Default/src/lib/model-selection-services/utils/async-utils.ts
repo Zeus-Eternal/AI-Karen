@@ -33,13 +33,13 @@ export async function retry<T>(
   maxDelayMs: number = 10000,
   backoffMultiplier: number = 2
 ): Promise<T> {
-  let lastError: any;
+  let lastError: unknown;
   let delayMs = baseDelayMs;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await operation();
-    } catch (error) {
+    } catch (error: unknown) {
       lastError = error;
       
       if (attempt === maxAttempts) {
@@ -61,8 +61,8 @@ export async function parallelLimit<T, R>(
   items: T[],
   operation: (item: T, index: number) => Promise<R>,
   limit: number = 5
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
+): Promise<Array<R | unknown>> {
+  const results: Array<R | unknown> = new Array(items.length);
   const executing: Promise<void>[] = [];
   let index = 0;
 
@@ -74,9 +74,9 @@ export async function parallelLimit<T, R>(
 
     try {
       results[currentIndex] = await operation(items[currentIndex], currentIndex);
-    } catch (error) {
+    } catch (error: unknown) {
       // Store error as result - caller can handle it
-      results[currentIndex] = error as any;
+      results[currentIndex] = error;
     }
 
     return executeNext();
@@ -113,13 +113,12 @@ export async function executeBatches<T, R>(
 /**
  * Create a debounced async function
  */
-export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
-  func: T,
-  waitMs: number
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+export function debounceAsync<
+  T extends (...args: unknown[]) => Promise<unknown>
+>(func: T, waitMs: number): (...args: Parameters<T>) => Promise<ReturnType<T>> {
   let timeoutId: NodeJS.Timeout | null = null;
   let resolvePromise: ((value: ReturnType<T>) => void) | null = null;
-  let rejectPromise: ((reason: any) => void) | null = null;
+  let rejectPromise: ((reason: unknown) => void) | null = null;
 
   return (...args: Parameters<T>): Promise<ReturnType<T>> => {
     return new Promise((resolve, reject) => {
@@ -135,7 +134,7 @@ export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
       timeoutId = setTimeout(async () => {
         try {
           const result = await func(...args);
-          resolvePromise?.(result);
+          resolvePromise?.(result as ReturnType<T>);
         } catch (error) {
           rejectPromise?.(error);
         }
@@ -151,10 +150,9 @@ export function debounceAsync<T extends (...args: any[]) => Promise<any>>(
 /**
  * Create a throttled async function
  */
-export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
-  func: T,
-  limitMs: number
-): (...args: Parameters<T>) => Promise<ReturnType<T> | null> {
+export function throttleAsync<
+  T extends (...args: unknown[]) => Promise<unknown>
+>(func: T, limitMs: number): (...args: Parameters<T>) => Promise<ReturnType<T> | null> {
   let lastCall = 0;
   let isExecuting = false;
 
@@ -170,7 +168,7 @@ export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
 
     try {
       const result = await func(...args);
-      return result;
+      return result as ReturnType<T>;
     } finally {
       isExecuting = false;
     }
@@ -181,7 +179,7 @@ export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
  * Create a queue for sequential execution of async operations
  */
 export class AsyncQueue {
-  private queue: Array<() => Promise<any>> = [];
+  private queue: Array<() => Promise<unknown>> = [];
   private isProcessing = false;
 
   /**
@@ -310,10 +308,11 @@ export class Semaphore {
 /**
  * Create a circuit breaker for async operations
  */
-export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
+export class CircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>> {
   private failures = 0;
   private lastFailureTime = 0;
   private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private successCount = 0;
 
   constructor(
     private operation: T,
@@ -330,6 +329,7 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
       if (Date.now() - this.lastFailureTime > this.resetTimeoutMs) {
         this.state = 'half-open';
         this.failures = 0;
+        this.successCount = 0;
       } else {
         throw new Error('Circuit breaker is open');
       }
@@ -339,14 +339,19 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
       const result = await this.operation(...args);
       
       if (this.state === 'half-open') {
-        this.failures = 0;
-        this.state = 'closed';
+        this.successCount++;
+        if (this.successCount >= this.successThreshold) {
+          this.failures = 0;
+          this.state = 'closed';
+          this.successCount = 0;
+        }
       }
       
-      return result;
+      return result as ReturnType<T>;
     } catch (error) {
       this.failures++;
       this.lastFailureTime = Date.now();
+      this.successCount = 0;
       
       if (this.failures >= this.failureThreshold) {
         this.state = 'open';
@@ -377,6 +382,7 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
     this.failures = 0;
     this.lastFailureTime = 0;
     this.state = 'closed';
+    this.successCount = 0;
   }
 }
 
@@ -385,7 +391,7 @@ export class CircuitBreaker<T extends (...args: any[]) => Promise<any>> {
  */
 export async function allSettled<T>(
   promises: Promise<T>[]
-): Promise<Array<{ status: 'fulfilled'; value: T } | { status: 'rejected'; reason: any }>> {
+): Promise<Array<{ status: 'fulfilled'; value: T } | { status: 'rejected'; reason: unknown }>> {
   return Promise.allSettled(promises);
 }
 
@@ -393,7 +399,7 @@ export async function allSettled<T>(
  * Create a promise that resolves with the first successful result
  */
 export async function firstSuccessful<T>(promises: Promise<T>[]): Promise<T> {
-  const errors: any[] = [];
+  const errors: unknown[] = [];
   
   return new Promise((resolve, reject) => {
     let completed = 0;
@@ -406,7 +412,10 @@ export async function firstSuccessful<T>(promises: Promise<T>[]): Promise<T> {
           completed++;
 
           if (completed === promises.length) {
-            reject(new Error(`All promises failed: ${errors.map(e => e.message).join(', ')}`));
+            const errorMessages = errors.map(e =>
+              e instanceof Error ? e.message : String(e)
+            );
+            reject(new Error(`All promises failed: ${errorMessages.join(', ')}`));
           }
         });
     });

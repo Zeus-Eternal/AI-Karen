@@ -71,7 +71,7 @@ function buildNextResponse(origin: Response): NextResponse {
   });
 
   // Preserve multiple Set-Cookie headers
-  const getAll = (origin.headers as any).getAll?.bind(origin.headers);
+  const getAll = (origin.headers as unknown).getAll?.bind(origin.headers);
   const setCookieHeaders: string[] = getAll ? getAll('set-cookie') ?? [] : [];
   if (setCookieHeaders.length === 0) {
     const single = origin.headers.get('set-cookie');
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     acceptHeader.includes('text/event-stream') ||
     headers['Accept']?.includes('text/event-stream');
 
-  let lastError: any = null;
+  let lastError: unknown = null;
   let response: Response | null = null;
 
   const bases = BACKEND_BASES;
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
         // Success (or client error we should propagate)
         break;
-      } catch (err: any) {
+      } catch (err: Error) {
         if (timeout) clearTimeout(timeout);
         lastError = err;
 

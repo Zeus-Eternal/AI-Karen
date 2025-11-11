@@ -64,18 +64,16 @@ export interface PerformanceAlert {
 
 export type AlertCallback = (alert: PerformanceAlert) => void;
 
-const isNode = typeof process !== 'undefined' && !!(process as any).versions?.node;
+const isNode = typeof process !== 'undefined' && !!(process as unknown as { versions?: { node?: string } }).versions?.node;
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 /** Safe dynamic imports/refs guarded for Node environments */
-let perfHooks: any = null;
-let osMod: any = null;
+let perfHooks: typeof import('perf_hooks') | null = null;
+let osMod: typeof import('os') | null = null;
 if (isNode) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    perfHooks = require('perf_hooks');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    osMod = require('os');
+    perfHooks = eval('require')('perf_hooks');
+    osMod = eval('require')('os');
   } catch {
     // ignore
   }
@@ -88,11 +86,11 @@ export class PerformanceTracker {
 
   // Observers
   private browserPerfObserver: PerformanceObserver | null = null;
-  private nodeGCObserver: any = null;
+  private nodeGCObserver: PerformanceObserver | null = null;
 
   // Event loop tools (Node)
-  private elu: any = null; // eventLoopUtilization handle
-  private eld: any = null; // monitorEventLoopDelay histogram
+  private elu: { idle: number; active: number; utilization: number } | null = null; // eventLoopUtilization handle
+  private eld: { mean: number; reset: () => void; enable: () => void; disable: () => void } | null = null; // monitorEventLoopDelay histogram
 
   // Intervals / loops
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -154,13 +152,14 @@ export class PerformanceTracker {
     // Initialize Node monitors
     if (isNode && perfHooks) {
       try {
-        const { monitorEventLoopDelay, eventLoopUtilization } = perfHooks;
+        const { monitorEventLoopDelay } = perfHooks;
         if (typeof monitorEventLoopDelay === 'function') {
-          this.eld = monitorEventLoopDelay({ resolution: 10 });
-          this.eld.enable();
+          this.eld = monitorEventLoopDelay({ resolution: 10 }) as { mean: number; reset: () => void; enable: () => void; disable: () => void };
+          this.eld?.enable();
         }
-        if (typeof eventLoopUtilization === 'function') {
-          this.elu = eventLoopUtilization();
+        // eventLoopUtilization is available in newer Node versions
+        if ('eventLoopUtilization' in perfHooks && typeof perfHooks.eventLoopUtilization === 'function') {
+          this.elu = perfHooks.eventLoopUtilization();
         }
         this.setupNodeGCObserver();
       } catch {
@@ -232,7 +231,7 @@ export class PerformanceTracker {
         for (const entry of list.getEntries()) {
           switch (entry.entryType) {
             case 'paint': {
-              if ((entry as any).name === 'first-contentful-paint') {
+              if ((entry as PerformancePaintTiming).name === 'first-contentful-paint') {
                 this.metrics.rendering.paintTime = entry.startTime;
               }
               break;
@@ -283,10 +282,10 @@ export class PerformanceTracker {
         frameCount = 0;
         lastTime = now;
       }
-      this.rAFId = (window as any).requestAnimationFrame(tick);
+      this.rAFId = window.requestAnimationFrame(tick);
     };
 
-    this.rAFId = (window as any).requestAnimationFrame(tick);
+    this.rAFId = window.requestAnimationFrame(tick);
   }
 
   private stopFrameRateLoop() {
@@ -294,7 +293,7 @@ export class PerformanceTracker {
     this.rafActive = false;
     if (this.rAFId) {
       try {
-        (window as any).cancelAnimationFrame(this.rAFId);
+        window.cancelAnimationFrame(this.rAFId);
       } catch {
         // ignore
       }
@@ -322,20 +321,23 @@ export class PerformanceTracker {
     if (!isNode || !perfHooks) return;
     try {
       const { PerformanceObserver } = perfHooks;
-      this.nodeGCObserver = new PerformanceObserver((list: any) => {
+      this.nodeGCObserver = new PerformanceObserver((list) => {
         for (const e of list.getEntries()) {
           if (e.entryType === 'gc') {
             this.metrics.gc.collections++;
             this.metrics.gc.duration += e.duration || 0;
             // reclaimedBytes are not reliably reported; keep at 0 unless available
-            if (typeof e.detail?.reclaimed === 'number') {
-              this.metrics.gc.reclaimedBytes += e.detail.reclaimed;
+            const gcEntry = e as PerformanceEntry & { detail?: { reclaimed?: number } };
+            if (typeof gcEntry.detail?.reclaimed === 'number') {
+              this.metrics.gc.reclaimedBytes += gcEntry.detail.reclaimed;
             }
             this.checkGCPerformance(e.duration || 0);
           }
         }
-      });
-      this.nodeGCObserver.observe({ entryTypes: ['gc'] });
+      }) as PerformanceObserver;
+      if (this.nodeGCObserver) {
+        this.nodeGCObserver.observe({ entryTypes: ['gc'] });
+      }
     } catch {
       // ignore
     }
@@ -360,12 +362,12 @@ export class PerformanceTracker {
         rss: m.rss,
         heapTotal: m.heapTotal,
         heapUsed: m.heapUsed,
-        external: (m as any).external ?? 0,
-        arrayBuffers: (m as any).arrayBuffers ?? 0,
+        external: (m as NodeJS.MemoryUsage & { external?: number }).external ?? 0,
+        arrayBuffers: (m as NodeJS.MemoryUsage & { arrayBuffers?: number }).arrayBuffers ?? 0,
         heapUsagePercent,
       };
-    } else if (isBrowser && (performance as any).memory) {
-      const mem = (performance as any).memory;
+    } else if (isBrowser && (performance as Performance & { memory?: { totalJSHeapSize?: number; usedJSHeapSize?: number } }).memory) {
+      const mem = (performance as Performance & { memory: { totalJSHeapSize?: number; usedJSHeapSize?: number } }).memory;
       const total = mem.totalJSHeapSize || 0;
       const used = mem.usedJSHeapSize || 0;
       this.metrics.memory = {
@@ -413,9 +415,9 @@ export class PerformanceTracker {
 
   private collectEventLoopMetrics() {
     // Utilization
-    if (isNode && perfHooks?.eventLoopUtilization && this.elu) {
+    if (isNode && perfHooks && 'eventLoopUtilization' in perfHooks && this.elu) {
       try {
-        const { eventLoopUtilization } = perfHooks;
+        const eventLoopUtilization = perfHooks.eventLoopUtilization as (elu?: { idle: number; active: number; utilization: number }) => { idle: number; active: number; utilization: number };
         const current = eventLoopUtilization(this.elu);
         this.metrics.eventLoop.utilization = Math.max(0, Math.min(1, current.utilization ?? 0));
       } catch {

@@ -74,7 +74,7 @@ export async function handleError(
   options?: {
     enableRecovery?: boolean;
     enableLogging?: boolean;
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
   }
 ) {
   return errorHandler.getInstance().handleError(error, options);
@@ -88,7 +88,7 @@ export function withErrorHandling<T extends any[], R>(
   options?: {
     maxRetryAttempts?: number;
     enableRecovery?: boolean;
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
   }
 ): (...args: T) => Promise<R> {
   return errorHandler.getInstance().createErrorHandledFunction(fn, options);
@@ -102,7 +102,7 @@ export async function withRetry<T>(
   options?: {
     maxRetryAttempts?: number;
     baseRetryDelay?: number;
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
   }
 ): Promise<T> {
   return errorHandler.getInstance().handleWithRetry(operation, options);

@@ -142,8 +142,8 @@ export class ApiErrorBoundary extends Component<
       msg.includes("network") ||
       msg.includes("cors") ||
       msg.includes("timeout") ||
-      (e as any).status !== undefined ||
-      (e as any).endpoint !== undefined
+      (e as unknown).status !== undefined ||
+      (e as unknown).endpoint !== undefined
     );
   }
 

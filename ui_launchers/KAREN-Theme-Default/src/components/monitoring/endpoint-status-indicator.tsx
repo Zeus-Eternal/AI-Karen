@@ -77,7 +77,7 @@ export function EndpointStatusIndicator({
         diagnosticLogger
           .getLogs?.(100, "network")
           ?.filter(
-            (log: any) =>
+            (log: unknown) =>
               log?.level === "error" &&
               new Date(log?.timestamp).getTime() > fiveMinutesAgo
           ) ?? [];
@@ -94,7 +94,7 @@ export function EndpointStatusIndicator({
       }) ?? (() => {});
 
     const unsubscribeLogs =
-      diagnosticLogger.onLog?.((newLog: any) => {
+      diagnosticLogger.onLog?.((newLog: unknown) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
           // Auto-decay the error counter after 5 minutes
@@ -119,7 +119,7 @@ export function EndpointStatusIndicator({
 
     const endpoints = metrics.endpoints ?? {};
     const hasErrors = Object.values(endpoints).some(
-      (e: any) => e?.status === "error"
+      (e: Event) => e?.status === "error"
     );
     if (hasErrors) return "error";
 
@@ -187,7 +187,7 @@ export function EndpointStatusIndicator({
   const overallStatus = getOverallStatus();
   const healthyEndpoints = metrics
     ? Object.values(metrics.endpoints ?? {}).filter(
-        (e: any) => e?.status === "healthy"
+        (e: Event) => e?.status === "healthy"
       ).length
     : 0;
   const totalEndpoints = metrics
@@ -309,7 +309,7 @@ export function EndpointStatusIndicator({
               {/* Individual Endpoints */}
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {Object.entries(metrics.endpoints ?? {}).map(
-                  ([endpoint, result]: any) => (
+                  ([endpoint, result]: unknown) => (
                     <div
                       key={endpoint}
                       className="flex items-center justify-between text-xs"

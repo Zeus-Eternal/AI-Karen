@@ -10,7 +10,7 @@ export interface PerformanceProfile {
   endTime: number;
   duration: number;
   type: 'function' | 'component' | 'api' | 'render' | 'user-interaction';
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   children: PerformanceProfile[];
   bottleneck: boolean;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -78,6 +78,12 @@ const isBrowser =
   typeof window !== 'undefined' &&
   typeof performance !== 'undefined' &&
   typeof document !== 'undefined';
+
+type ReactDevToolsHook = {
+  __REACT_DEVTOOLS_GLOBAL_HOOK__?: {
+    onCommitFiberRoot?: (...args: unknown[]) => void;
+  };
+};
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -179,9 +185,11 @@ export class PerformanceProfiler {
           this.analyzeNavigationTiming(e as PerformanceNavigationTiming);
         }
       });
-      navigationObserver.observe({ type: 'navigation', buffered: true } as any);
+      navigationObserver.observe({ type: 'navigation', buffered: true });
       this.observers.push(navigationObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
 
     // Resource
     try {
@@ -190,9 +198,11 @@ export class PerformanceProfiler {
           this.analyzeResourceTiming(e as PerformanceResourceTiming);
         }
       });
-      resourceObserver.observe({ type: 'resource', buffered: true } as any);
+      resourceObserver.observe({ type: 'resource', buffered: true });
       this.observers.push(resourceObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
 
     // Paint (FCP lives here for some browsers)
     try {
@@ -201,9 +211,11 @@ export class PerformanceProfiler {
           this.analyzePaintTiming(e);
         }
       });
-      paintObserver.observe({ type: 'paint', buffered: true } as any);
+      paintObserver.observe({ type: 'paint', buffered: true });
       this.observers.push(paintObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   private setupUserTimingCapture(): void {
@@ -216,7 +228,9 @@ export class PerformanceProfiler {
       });
       userTimingObserver.observe({ entryTypes: ['measure', 'mark'] });
       this.observers.push(userTimingObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   private setupLongTaskDetection(): void {
@@ -225,16 +239,17 @@ export class PerformanceProfiler {
       const longTaskObserver = new PerformanceObserver(list => {
         for (const e of list.getEntries()) {
           // Long Tasks API entries have .duration and .name === 'self'
-          const duration = (e as any).duration ?? 0;
+          const duration = (e as PerformanceEntry).duration ?? 0;
           if (duration > 50) {
             this.detectLongTaskBottleneck(e);
           }
         }
       });
-      // @ts-ignore – 'longtask' is not in TS lib by default
-      longTaskObserver.observe({ type: 'longtask', buffered: true } as any);
+      longTaskObserver.observe({ entryTypes: ['longtask'], buffered: true });
       this.observers.push(longTaskObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   private setupWebVitals(): void {
@@ -244,7 +259,7 @@ export class PerformanceProfiler {
     try {
       const lcpObserver = new PerformanceObserver(list => {
         for (const e of list.getEntries()) {
-          const entry = e as any; // LargestContentfulPaint
+          const entry = e as LargestContentfulPaint;
           const profile: PerformanceProfile = {
             id: `lcp-${Date.now()}`,
             name: 'Largest Contentful Paint',
@@ -278,17 +293,18 @@ export class PerformanceProfiler {
           this.trimProfiles();
         }
       });
-      // @ts-ignore
-      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'], buffered: true });
       this.observers.push(lcpObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
 
     // CLS
     try {
       let cumulativeLayoutShift = 0;
       const clsObserver = new PerformanceObserver(list => {
         for (const e of list.getEntries()) {
-          const entry = e as any; // LayoutShift
+          const entry = e as LayoutShift;
           if (!entry.hadRecentInput) {
             cumulativeLayoutShift += entry.value || 0;
           }
@@ -309,20 +325,22 @@ export class PerformanceProfiler {
           });
         }
       });
-      // @ts-ignore
-      clsObserver.observe({ type: 'layout-shift', buffered: true });
+      clsObserver.observe({ entryTypes: ['layout-shift'], buffered: true });
       this.observers.push(clsObserver);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   private setupRenderProfiler(): void {
     if (!isBrowser) return;
 
     // (Optional) React DevTools integration hook placeholder
-    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    const hook = (window as Window & ReactDevToolsHook).__REACT_DEVTOOLS_GLOBAL_HOOK__;
     if (hook && typeof hook.onCommitFiberRoot === 'function') {
       // You can wire a bridge here if you want component-level timings
       // Leaving as a no-op placeholder to avoid runtime coupling
+      void 0;
     }
 
     // DOM mutation storms
@@ -368,7 +386,7 @@ export class PerformanceProfiler {
   startProfile(
     name: string,
     type: PerformanceProfile['type'] = 'function',
-    metadata: Record<string, any> = {}
+    metadata: Record<string, unknown> = {}
   ): string {
     if (!this.isEnabled || !isBrowser) return '';
     const id = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -387,7 +405,9 @@ export class PerformanceProfiler {
     this.activeProfiles.set(id, profile);
     try {
       performance.mark?.(`${name}-start`);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     return id;
   }
 
@@ -400,7 +420,9 @@ export class PerformanceProfiler {
     try {
       performance.mark?.(`${profile.name}-end`);
       performance.measure?.(profile.name, `${profile.name}-start`, `${profile.name}-end`);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     this.analyzeProfileForBottlenecks(profile);
     this.profiles.push(profile);
     this.trimProfiles();
@@ -408,7 +430,7 @@ export class PerformanceProfiler {
     return profile;
   }
 
-  profileFunction<T>(name: string, fn: () => T, metadata?: Record<string, any>): T {
+  profileFunction<T>(name: string, fn: () => T, metadata?: Record<string, unknown>): T {
     const id = this.startProfile(name, 'function', metadata);
     try {
       return fn();
@@ -417,7 +439,7 @@ export class PerformanceProfiler {
     }
   }
 
-  async profileAsync<T>(name: string, fn: () => Promise<T>, metadata?: Record<string, any>): Promise<T> {
+  async profileAsync<T>(name: string, fn: () => Promise<T>, metadata?: Record<string, unknown>): Promise<T> {
     const id = this.startProfile(name, 'function', metadata);
     try {
       const result = await fn();
@@ -598,7 +620,7 @@ export class PerformanceProfiler {
   }
 
   private detectLongTaskBottleneck(entry: PerformanceEntry): void {
-    const duration = (entry as any).duration ?? 0;
+    const duration = entry.duration ?? 0;
     if (duration <= 50) return;
     this.createBottleneck({
       type: 'javascript',
@@ -626,7 +648,9 @@ export class PerformanceProfiler {
       severity = profile.duration > 5000 ? 'critical' : profile.duration > 2000 ? 'high' : 'medium';
     }
 
-    if (profile.metadata.memoryUsage && profile.metadata.memoryUsage > 50 * 1024 * 1024) {
+    const profileMemoryUsage =
+      typeof profile.metadata.memoryUsage === 'number' ? profile.metadata.memoryUsage : 0;
+    if (profileMemoryUsage > 50 * 1024 * 1024) {
       isB = true;
       severity = 'high';
     }
@@ -714,8 +738,12 @@ export class PerformanceProfiler {
     this.bottlenecks.push(item);
     this.trimBottlenecks();
     // notify listeners
-    this.bottleneckListeners.forEach(cb => {
-      try { cb(item); } catch {}
+    this.bottleneckListeners.forEach((cb) => {
+      try {
+        cb(item);
+      } catch (error) {
+        void error;
+      }
     });
   }
 
@@ -789,8 +817,12 @@ const expensive = useMemo(() => heavyCalc(data), [data]);`,
 
   private pushSuggestion(s: OptimizationSuggestion): void {
     this.suggestions.push(s);
-    this.suggestionListeners.forEach(cb => {
-      try { cb(s); } catch {}
+    this.suggestionListeners.forEach((cb) => {
+      try {
+        cb(s);
+      } catch (error) {
+        void error;
+      }
     });
   }
 
@@ -916,7 +948,9 @@ const expensive = useMemo(() => heavyCalc(data), [data]);`,
 
   private metricsFor(profiles: PerformanceProfile[]): PerformanceMetrics {
     const durations = profiles.map(p => p.duration);
-    const mem = profiles.map(p => p.metadata.memoryUsage || 0);
+    const mem = profiles.map((p) => {
+      return typeof p.metadata.memoryUsage === 'number' ? p.metadata.memoryUsage : 0;
+    });
     const avg = (arr: number[]) => (arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : 0);
     return {
       duration: avg(durations),

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Parse JSON body safely
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch (e) {
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Forward Set-Cookie from backend if present (array or string)
     try {
       const setCookie =
-        (result.headers as any)?.['set-cookie'] ?? (result.headers as any)?.['Set-Cookie'];
+        (result.headers as unknown)?.['set-cookie'] ?? (result.headers as unknown)?.['Set-Cookie'];
       if (setCookie) {
         if (Array.isArray(setCookie)) {
           // Append each cookie header
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     return nextResponse;
-  } catch (error: any) {
+  } catch (error: Error) {
     // Typed failure path
     const totalResponseTime = Date.now() - startTime;
     let errorType: ErrorResponse['errorType'] = 'server';

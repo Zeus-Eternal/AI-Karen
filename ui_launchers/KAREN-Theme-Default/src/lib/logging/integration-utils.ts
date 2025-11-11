@@ -26,8 +26,6 @@ export async function loggedFetch(
   const headers = new Headers(options.headers);
   headers.set('X-Correlation-ID', correlationId);
   
-  const startTime = Date.now();
-  
   try {
     connectivityLogger.logConnectivity(
       'debug',
@@ -188,7 +186,7 @@ export function logAuthenticationAttempt<T>(
           operationType,
           undefined,
           {
-            startTime,
+            startTime: Date.now() - duration,
             endTime: Date.now(),
             duration,
             responseTime: duration
@@ -210,7 +208,7 @@ export function logAuthenticationAttempt<T>(
           operationType,
           error as Error,
           {
-            startTime,
+            startTime: Date.now() - duration,
             endTime: Date.now(),
             duration,
             responseTime: duration
@@ -226,11 +224,11 @@ export function logAuthenticationAttempt<T>(
 /**
  * Performance monitoring wrapper for React components
  */
-export function withPerformanceLogging<T extends (...args: any[]) => any>(
+export function withPerformanceLogging<T extends (...args: unknown[]) => unknown>(
   fn: T,
   operationName: string
 ): T {
-  return ((...args: any[]) => {
+  return ((...args: unknown[]) => {
     const { result, metrics } = performanceTracker.trackSyncOperation(
       operationName,
       () => fn(...args)
@@ -256,11 +254,11 @@ export function withPerformanceLogging<T extends (...args: any[]) => any>(
 /**
  * Async performance monitoring wrapper
  */
-export function withAsyncPerformanceLogging<T extends (...args: any[]) => Promise<any>>(
+export function withAsyncPerformanceLogging<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   operationName: string
 ): T {
-  return (async (...args: any[]) => {
+  return (async (...args: unknown[]) => {
     const { result, metrics } = await performanceTracker.trackOperation(
       operationName,
       () => fn(...args)

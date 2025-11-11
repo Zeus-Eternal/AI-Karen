@@ -487,7 +487,7 @@ export class ExtensionAuthManager {
   /**
    * Handle token refresh failures with exponential backoff
    */
-  private handleRefreshFailure(error: any): void {
+  private handleRefreshFailure(error: Error): void {
     this.authState.failureCount++;
     
     // Calculate exponential backoff delay

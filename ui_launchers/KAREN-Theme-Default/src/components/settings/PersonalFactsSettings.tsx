@@ -35,22 +35,22 @@ function mergeSettings(base: KarenSettings, partial?: Partial<KarenSettings>): K
   return {
     ...base,
     ...p,
-    notifications: { ...base.notifications, ...(p as any).notifications },
-    personalFacts: Array.isArray((p as any).personalFacts) ? (p as any).personalFacts : base.personalFacts,
-    ttsVoiceURI: (p as any).ttsVoiceURI === undefined ? base.ttsVoiceURI : (p as any).ttsVoiceURI,
+    notifications: { ...base.notifications, ...(p as unknown).notifications },
+    personalFacts: Array.isArray((p as unknown).personalFacts) ? (p as unknown).personalFacts : base.personalFacts,
+    ttsVoiceURI: (p as unknown).ttsVoiceURI === undefined ? base.ttsVoiceURI : (p as unknown).ttsVoiceURI,
     customPersonaInstructions:
-      typeof (p as any).customPersonaInstructions === "string"
-        ? (p as any).customPersonaInstructions
+      typeof (p as unknown).customPersonaInstructions === "string"
+        ? (p as unknown).customPersonaInstructions
         : base.customPersonaInstructions,
-    memoryDepth: (p as any).memoryDepth ?? base.memoryDepth,
-    personalityTone: (p as any).personalityTone ?? base.personalityTone,
-    personalityVerbosity: (p as any).personalityVerbosity ?? base.personalityVerbosity,
-    activeListenMode: typeof (p as any).activeListenMode === "boolean" ? (p as any).activeListenMode : base.activeListenMode,
-    temperatureUnit: (p as any).temperatureUnit ?? base.temperatureUnit,
-    weatherService: (p as any).weatherService ?? base.weatherService,
-    weatherApiKey: (p as any).weatherApiKey === undefined ? base.weatherApiKey : (p as any).weatherApiKey,
+    memoryDepth: (p as unknown).memoryDepth ?? base.memoryDepth,
+    personalityTone: (p as unknown).personalityTone ?? base.personalityTone,
+    personalityVerbosity: (p as unknown).personalityVerbosity ?? base.personalityVerbosity,
+    activeListenMode: typeof (p as unknown).activeListenMode === "boolean" ? (p as unknown).activeListenMode : base.activeListenMode,
+    temperatureUnit: (p as unknown).temperatureUnit ?? base.temperatureUnit,
+    weatherService: (p as unknown).weatherService ?? base.weatherService,
+    weatherApiKey: (p as unknown).weatherApiKey === undefined ? base.weatherApiKey : (p as unknown).weatherApiKey,
     defaultWeatherLocation:
-      (p as any).defaultWeatherLocation === undefined ? base.defaultWeatherLocation : (p as any).defaultWeatherLocation,
+      (p as unknown).defaultWeatherLocation === undefined ? base.defaultWeatherLocation : (p as unknown).defaultWeatherLocation,
   };
 }
 

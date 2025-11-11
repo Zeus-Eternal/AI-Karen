@@ -235,7 +235,7 @@ export default function LLMSettings() {
         checkDegradedMode(),
       ]);
     } catch (error) {
-      if ((error as any)?.status === 401 || (error as any)?.message?.includes("401")) {
+      if ((error as unknown)?.status === 401 || (error as unknown)?.message?.includes("401")) {
         if (process.env.NODE_ENV !== "development") {
           toast({
             title: "Authentication Required",
@@ -244,7 +244,7 @@ export default function LLMSettings() {
           });
         }
       } else {
-        const info = (error as any)?.errorInfo || handleApiError(error as any, "loadSettings");
+        const info = (error as unknown)?.errorInfo || handleApiError(error as unknown, "loadSettings");
         toast({
           title: info.title || "Error Loading Settings",
           description: info.message || "Could not load LLM provider settings. Using defaults.",
@@ -726,16 +726,16 @@ export default function LLMSettings() {
             />
 
             {/* Existing Model Browser */}
-            <ModelBrowser models={allModels as any} setModels={setAllModels as any} providers={providers} />
+            <ModelBrowser models={allModels as unknown} setModels={setAllModels as unknown} providers={providers} />
           </div>
         </TabsContent>
 
         <TabsContent value="profiles" className="space-y-6">
           <ProfileManager
-            profiles={profiles as any}
-            setProfiles={setProfiles as any}
+            profiles={profiles as unknown}
+            setProfiles={setProfiles as unknown}
             activeProfile={activeProfile}
-            setActiveProfile={setActiveProfile as any}
+            setActiveProfile={setActiveProfile as unknown}
             providers={providers}
           />
         </TabsContent>

@@ -66,7 +66,7 @@ export interface HealthCheck {
   critical: boolean;
   details?: {
     message: string;
-    data?: Record<string, any>;
+    data?: Record<string, unknown>;
     suggestions?: string[];
   };
 }
@@ -78,7 +78,7 @@ export interface HealthEvent {
   checkId: string;
   message: string;
   severity: Severity;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export type RecoveryType = "restart" | "reset_config" | "clear_cache" | "reconnect" | "custom";

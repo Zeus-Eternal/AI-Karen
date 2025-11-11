@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useEffect, useCallback, useRef, useMemo } from "react"
 
 // Types for keyboard shortcuts
 export interface KeyboardShortcut {
@@ -36,7 +36,11 @@ export function useKeyboardShortcuts(
   target: EventTarget | null = null
 ) {
   const shortcutsRef = useRef(shortcuts)
-  shortcutsRef.current = shortcuts
+  
+  // Update shortcuts ref in effect to avoid updating during render
+  useEffect(() => {
+    shortcutsRef.current = shortcuts
+  }, [shortcuts])
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return
@@ -406,6 +410,40 @@ export function useShortcutDisplay(shortcut: KeyboardShortcut): string {
   return parts.join(isMac ? "" : "+")
 }
 
+// Helper function to format shortcut display
+function formatShortcutDisplay(shortcut: KeyboardShortcutConfig): string {
+  const parts: string[] = []
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+
+  if (shortcut.ctrlKey || shortcut.metaKey) {
+    parts.push(isMac ? "⌘" : "Ctrl")
+  }
+  if (shortcut.altKey) {
+    parts.push(isMac ? "⌥" : "Alt")
+  }
+  if (shortcut.shiftKey) {
+    parts.push(isMac ? "⇧" : "Shift")
+  }
+
+  let keyName = shortcut.key
+  if (isMac) {
+    const keyMap: Record<string, string> = {
+      ArrowUp: "↑",
+      ArrowDown: "↓",
+      ArrowLeft: "←",
+      ArrowRight: "→",
+      Backspace: "⌫",
+      Enter: "↵",
+      Tab: "⇥",
+      Space: "Space",
+    }
+    keyName = keyMap[keyName] || keyName
+  }
+
+  parts.push(keyName)
+  return parts.join(isMac ? "" : "+")
+}
+
 // Helper function to check if event matches shortcut
 function matchesShortcut(event: KeyboardEvent, shortcut: KeyboardShortcut): boolean {
   // Check key
@@ -436,17 +474,19 @@ function matchesShortcut(event: KeyboardEvent, shortcut: KeyboardShortcut): bool
  * @returns Object with categorized shortcuts for help display
  */
 export function useShortcutHelp(shortcuts: KeyboardShortcutConfig[]) {
-  const categorizedShortcuts = shortcuts.reduce((acc, shortcut) => {
-    const category = shortcut.category || "General"
-    if (!acc[category]) {
-      acc[category] = []
-    }
-    acc[category].push({
-      ...shortcut,
-      display: useShortcutDisplay(shortcut),
-    })
-    return acc
-  }, {} as Record<string, Array<KeyboardShortcutConfig & { display: string }>>)
+  const categorizedShortcuts = useMemo(() => {
+    return shortcuts.reduce((acc, shortcut) => {
+      const category = shortcut.category || "General"
+      if (!acc[category]) {
+        acc[category] = []
+      }
+      acc[category].push({
+        ...shortcut,
+        display: formatShortcutDisplay(shortcut),
+      })
+      return acc
+    }, {} as Record<string, Array<KeyboardShortcutConfig & { display: string }>>)
+  }, [shortcuts])
 
   return categorizedShortcuts
 }

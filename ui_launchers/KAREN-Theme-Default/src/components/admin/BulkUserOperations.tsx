@@ -180,7 +180,7 @@ export function BulkUserOperations({
 
       // Give the UX a beat, then notify parent
       setTimeout(() => onOperationComplete(), 600);
-    } catch (err: any) {
+    } catch (_err: Error) {
       const msg = err?.message || "Operation failed";
       failProgress(msg);
       toast({ title: "Bulk operation failed", description: msg, variant: "destructive" });
@@ -236,7 +236,7 @@ export function BulkUserOperations({
         description: `${data.data?.imported_count ?? 0} user(s) imported successfully.`
       });
       onOperationComplete();
-    } catch (err: any) {
+    } catch (_err: Error) {
       const msg = err?.message || "Import failed";
       failProgress(msg);
       toast({ title: "Import failed", description: msg, variant: "destructive" });
@@ -475,7 +475,7 @@ export function BulkUserOperations({
 
 async function safeJson(res: Response) {
   try {
-    return (await res.json()) as any;
+    return (await res.json()) as unknown;
   } catch {
     return null;
   }

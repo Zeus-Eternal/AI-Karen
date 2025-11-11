@@ -8,17 +8,11 @@ import { handleError, withErrorHandling, withRetry } from './index';
  * Example 1: Basic error handling with categorization
  */
 export async function basicErrorHandlingExample() {
-  try {
-    // Simulate a network error
-    throw new Error('ECONNREFUSED: Connection refused');
-  } catch (error) {
-    const result = await handleError(error as Error, {
-      enableRecovery: true,
-      enableLogging: true,
-      context: { operation: 'api-call', endpoint: '/api/users' }
-    });
-    return result;
-  }
+  return handleError(new Error('ECONNREFUSED: Connection refused'), {
+    enableRecovery: true,
+    enableLogging: true,
+    context: { operation: 'api-call', endpoint: '/api/users' }
+  });
 }
 /**
  * Example 2: Automatic retry with error handling
@@ -32,20 +26,15 @@ export async function retryExample() {
     }
     return { success: true, data: 'Operation completed' };
   };
-  try {
-    const result = await withRetry(unstableOperation, {
-      maxRetryAttempts: 5,
-      context: { operation: 'data-fetch' }
-    });
-    return result;
-  } catch (error) {
-    throw error;
-  }
+  return withRetry(unstableOperation, {
+    maxRetryAttempts: 5,
+    context: { operation: 'data-fetch' }
+  });
 }
 /**
  * Example 3: Function wrapper with error handling
  */
-export const authenticatedApiCall = withErrorHandling(async (endpoint: string, data?: any) => {
+export const authenticatedApiCall = withErrorHandling(async (endpoint: string, data?: unknown) => {
   // Simulate authentication check
   const isAuthenticated = Math.random() > 0.3;
   if (!isAuthenticated) {
@@ -93,7 +82,7 @@ export const databaseOperation = withErrorHandling(async (query: string) => {
 /**
  * Example 5: Configuration validation with error handling
  */
-export async function validateConfiguration(config: any) {
+export async function validateConfiguration(config: Record<string, unknown>) {
   try {
     if (!config.backendUrl) {
       throw new Error('Invalid backend URL configuration');
@@ -101,16 +90,15 @@ export async function validateConfiguration(config: any) {
     if (!config.apiKey) {
       throw new Error('Missing environment variable: API_KEY');
     }
-    // Simulate URL validation
     try {
-      new URL(config.backendUrl);
+      new URL(config.backendUrl as string);
     } catch {
       throw new Error('Invalid URL format in configuration');
     }
     return { valid: true, config };
   } catch (error) {
-    const result = await handleError(error as Error, {
-      enableRecovery: false, // Configuration errors usually need manual intervention
+    await handleError(error as Error, {
+      enableRecovery: false,
       context: { operation: 'config-validation', config }
     });
     throw error;
@@ -140,17 +128,20 @@ export class UserService {
       context: { service: 'UserService', method: 'getUser', userId }
     })();
   }
-  async createUser(userData: any) {
+  async createUser(userData: unknown) {
     return this.handleServiceError(async () => {
+      // Type guard for userData
+      const user = userData as { email?: string; name?: string };
+      
       // Simulate validation
-      if (!userData.email) {
+      if (!user.email) {
         throw new Error('Validation error: Email is required');
       }
-      if (!userData.email.includes('@')) {
+      if (!user.email.includes('@')) {
         throw new Error('Validation error: Invalid email format');
       }
       // Simulate database call
-      const dbResult = await databaseOperation(`INSERT INTO users (email, name) VALUES ('${userData.email}', '${userData.name}')`);
+      await databaseOperation(`INSERT INTO users (email, name) VALUES ('${user.email}', '${user.name || 'Unknown'}')`);
       return {
         success: true,
         userId: 'new-user-id',
@@ -180,13 +171,13 @@ export async function demonstrateErrorHandling() {
   }
   // Example 3: Authenticated API call
   try {
-    const result = await authenticatedApiCall('/api/data');
+    await authenticatedApiCall('/api/data');
   } catch (error) {
     console.error('API call failed', error);
   }
   // Example 4: Database operation
   try {
-    const result = await databaseOperation('SELECT * FROM users');
+    await databaseOperation('SELECT * FROM users');
   } catch (error) {
     console.error('Database operation failed', error);
   }

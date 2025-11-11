@@ -150,7 +150,7 @@ export const createFormAria = (
   describedBy?: string,
   errorId?: string
 ): AriaStateProps & AriaLabelProps => {
-  const props: AriaStateProps & AriaLabelProps = {} as any;
+  const props: AriaStateProps & AriaLabelProps = {} as AriaStateProps & AriaLabelProps;
   if (invalid !== undefined) props['aria-invalid'] = invalid;
   if (required !== undefined) props['aria-required'] = required;
 

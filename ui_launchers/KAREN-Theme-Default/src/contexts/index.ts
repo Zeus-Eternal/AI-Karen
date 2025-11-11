@@ -16,9 +16,11 @@ export type { AuthSnapshot, Listener } from './AuthStateManager';
 export { ErrorProvider, withErrorProvider, useError, default as Errorprovider } from './ErrorProvider';
 export type { ErrorProviderProps, ErrorContextType } from './ErrorProvider';
 
-export { HookProvider, useHooks } from './HookContext';
+export { HookProvider } from './HookContext';
+export { useHooks } from '../hooks/use-hooks';
 export type { HookContextType, HookRegistration, HookProviderProps, HookResult } from './HookContext';
 
-export { SessionProvider, useSession, withSessionProvider, default as Sessionprovider } from './SessionProvider';
+export { SessionProvider, withSessionProvider, default as Sessionprovider } from './SessionProvider';
+export { useSession } from '../hooks/use-session';
 export type { SessionUser, SessionProviderProps, SessionContextType } from './SessionProvider';
 

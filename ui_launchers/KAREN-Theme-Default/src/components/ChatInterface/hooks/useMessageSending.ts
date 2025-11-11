@@ -13,7 +13,7 @@ interface UseMessageSendingOptions {
   settings: ChatSettings;
   sessionId: string | null;
   conversationId: string | null;
-  user: any;
+  user: unknown;
   useCopilotKit: boolean;
   enableCodeAssistance: boolean;
   enableContextualHelp: boolean;

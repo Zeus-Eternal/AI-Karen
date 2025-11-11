@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     const contentType = chosenResponse.headers.get('content-type') || '';
     // Try to parse JSON if advertised; otherwise treat as text and wrap
     if (contentType.includes(JSON_CT)) {
-      let payload: any = {};
+      let payload: unknown = {};
       try {
         payload = await chosenResponse.json();
       } catch {
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
         }),
       });
     }
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json(
       { error: 'Internal server error', detail: error?.message ?? String(error) },
       { status: 500, headers: noCacheHeaders({ 'Content-Type': JSON_CT }) },

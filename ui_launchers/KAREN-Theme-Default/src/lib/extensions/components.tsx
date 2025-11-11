@@ -7,7 +7,7 @@ import {
   useExtensionTaskMonitoring,
   useExtensionTasks
 } from './hooks';
-import { formatResourceUsage, formatUptime, getStatusColorClass } from './extensionUtils';
+import { formatResourceUsage, getStatusColorClass } from './extensionUtils';
 import type { ExtensionStatus } from './extension-integration';
 
 /**
@@ -152,7 +152,7 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
   const handleExecuteTask = useCallback(async (taskName: string) => {
     try {
       await executeTask(taskName);
-    } catch (error) {
+    } catch (_error) {
       // Handle task execution error
     }
   }, [executeTask]);

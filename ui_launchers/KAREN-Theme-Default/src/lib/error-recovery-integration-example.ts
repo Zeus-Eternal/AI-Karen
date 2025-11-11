@@ -239,7 +239,7 @@ export class EnhancedErrorHandler {
               ...context,
               timestamp: new Date().toISOString(),
               connection_type: isBrowser()
-                ? (navigator as any).connection?.effectiveType || "unknown"
+                ? (navigator as any).connection?.effectiveType || "any"
                 : "server",
             },
           },
@@ -357,8 +357,8 @@ export async function fetchWithRecovery(
       }
 
       return response;
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      lastError = error as Error;
 
       if (attempt < maxRetries) {
         const errorMessage = lastError instanceof Error

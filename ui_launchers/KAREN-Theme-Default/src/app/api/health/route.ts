@@ -36,7 +36,7 @@ interface HealthCheck {
   status: 'healthy' | 'unhealthy' | 'degraded';
   responseTime?: number;
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface MemoryMetrics {

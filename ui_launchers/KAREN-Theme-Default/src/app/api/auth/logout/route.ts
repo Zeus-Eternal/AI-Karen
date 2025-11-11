@@ -87,7 +87,7 @@ async function checkDegradedMode(): Promise<boolean> {
     if (!resp.ok) return false;
     const ct = (resp.headers.get('content-type') || '').toLowerCase();
     if (!ct.includes('application/json')) return false;
-    const data: any = await resp.json();
+    const data: unknown = await resp.json();
     return Boolean(data?.is_active || data?.degraded_mode);
   } catch {
     return false;
@@ -96,7 +96,7 @@ async function checkDegradedMode(): Promise<boolean> {
 
 // ---------- Routes ----------
 export async function POST(request: NextRequest) {
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Non-stream JSON fallback (some backends can reply JSON on errors)
-    let data: any = {};
+    let data: unknown = {};
     try {
       data = await upstream.json();
     } catch {
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(upstream.status),
       }
     });
-  } catch (err: any) {
+  } catch (err: Error) {
     // Backend unreachable / timeout → graceful SSE fallback
     const lastUserMsg =
       (Array.isArray(body?.messages) && body.messages.length

@@ -92,7 +92,7 @@ export function PerformanceDashboard({ className = "" }: PerformanceDashboardPro
       const controller = new AbortController();
       const serverData = await fetchServerReport(controller.signal);
       if (serverData) setReport(serverData);
-    } catch (e: any) {
+    } catch (e: Event) {
       setError(e?.message ?? "Failed to load performance data");
     } finally {
       setLoading(false);

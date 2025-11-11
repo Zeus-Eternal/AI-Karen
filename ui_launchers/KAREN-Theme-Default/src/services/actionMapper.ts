@@ -20,7 +20,7 @@ export interface SuggestedAction {
     | 'export_note'
     | 'search_memory'
     | 'create_conversation';
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
   confidence?: number;
   description?: string;
   icon?: string;
@@ -30,13 +30,13 @@ export interface SuggestedAction {
 export interface ActionResult {
   success: boolean;
   message?: string;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
 export interface ActionHandler {
   type: string;
-  handler: (params: Record<string, any>) => Promise<ActionResult>;
+  handler: (params: Record<string, unknown>) => Promise<ActionResult>;
   description: string;
   requiredParams?: string[];
   optionalParams?: string[];
@@ -45,6 +45,33 @@ export interface ActionHandler {
 export type EventListenerFn = (event: CustomEvent) => void;
 
 const isBrowser = typeof window !== 'undefined';
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+
+const parseDateLike = (value: unknown): Date | undefined => {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  return undefined;
+};
+
+const toIsoDateString = (value: unknown): string | undefined =>
+  parseDateLike(value)?.toISOString();
+
+const asDateRange = (value: unknown): [Date, Date] | undefined => {
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const start = parseDateLike(value[0]);
+  const end = parseDateLike(value[1]);
+  return start && end ? [start, end] : undefined;
+};
+
+type ExportFormat = 'markdown' | 'txt';
 
 /**
  * Action Registry for managing suggested actions
@@ -71,7 +98,11 @@ export class ActionRegistry {
       requiredParams: ['title'],
       optionalParams: ['description', 'priority', 'dueDate', 'tags'],
       handler: async (params) => {
-        const { title, description, priority = 'medium', dueDate, tags = [] } = params;
+        const title = asString(params.title)?.trim();
+        const description = asString(params.description);
+        const priority = asString(params.priority) ?? 'medium';
+        const dueDate = toIsoDateString(params.dueDate);
+        const tags = asStringArray(params.tags);
         if (!title) return { success: false, error: 'Task title is required' };
 
         try {
@@ -121,7 +152,11 @@ export class ActionRegistry {
       requiredParams: ['content'],
       optionalParams: ['title', 'tags', 'importance'],
       handler: async (params) => {
-        const { content, title, tags = [], importance = 8 } = params;
+        const content = asString(params.content);
+        const title = asString(params.title);
+        const tags = asStringArray(params.tags);
+        const importance =
+          typeof params.importance === 'number' ? params.importance : 8;
         if (!content) return { success: false, error: 'Memory content is required' };
 
         try {
@@ -163,24 +198,28 @@ export class ActionRegistry {
       requiredParams: ['url'],
       optionalParams: ['title', 'type'],
       handler: async (params) => {
-        const { url, title, type = 'external' } = params;
+        const url = asString(params.url);
+        const title = asString(params.title);
+        const docType = asString(params.type) ?? 'external';
         if (!url) return { success: false, error: 'Document URL is required' };
+
+        const displayTitle = title || 'Document';
 
         try {
           this.dispatchEvent('kari:document_open', {
             url,
-            title: title || 'Document',
-            type,
+            title: displayTitle,
+            type: docType,
             openedAt: new Date().toISOString(),
           });
 
-          await this.memoryService.storeMemory(`Opened document: ${title || url}`, {
-            tags: ['document', 'reference', type],
+          await this.memoryService.storeMemory(`Opened document: ${displayTitle || url}`, {
+            tags: ['document', 'reference', docType],
             metadata: {
               type: 'document_reference',
               url,
-              title,
-              documentType: type,
+              title: displayTitle,
+              documentType: docType,
               accessedAt: new Date().toISOString(),
             },
           });
@@ -188,7 +227,7 @@ export class ActionRegistry {
           return {
             success: true,
             message: `Document "${title || 'Document'}" opened`,
-            data: { url, title, type },
+            data: { url, title: displayTitle, type: docType },
           };
         } catch (error) {
           return {
@@ -206,14 +245,20 @@ export class ActionRegistry {
       requiredParams: ['content'],
       optionalParams: ['title', 'format', 'filename'],
       handler: async (params) => {
-        const { content, title, format = 'markdown', filename } = params;
+        const content = asString(params.content);
         if (!content) return { success: false, error: 'Note content is required' };
+        const title = asString(params.title);
+        const rawFormat = asString(params.format);
+        const format: ExportFormat = rawFormat === 'txt' ? 'txt' : 'markdown';
+        const filename = asString(params.filename);
 
         try {
-          const noteTitle = title || 'Exported Note';
-          const noteFilename =
-            filename ||
-            `${noteTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')}.${format}`;
+          const noteTitle = (title && title.trim()) || 'Exported Note';
+          const sanitizedTitle = noteTitle
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+          const safeName = sanitizedTitle || 'note';
+          const noteFilename = filename || `${safeName}.${format}`;
 
           // Create file body
           let exportContent = content;
@@ -256,7 +301,7 @@ export class ActionRegistry {
 
           return {
             success: true,
-            message: `Note "${noteTitle}" exported as ${String(format).toUpperCase()}`,
+            message: `Note "${noteTitle}" exported as ${format.toUpperCase()}`,
             data: { title: noteTitle, format, filename: noteFilename },
           };
         } catch (error) {
@@ -275,13 +320,17 @@ export class ActionRegistry {
       requiredParams: ['query'],
       optionalParams: ['maxResults', 'tags', 'timeRange'],
       handler: async (params) => {
-        const { query, maxResults = 10, tags, timeRange } = params;
+        const query = asString(params.query);
+        const maxResults =
+          typeof params.maxResults === 'number' ? params.maxResults : 10;
+        const tags = asStringArray(params.tags);
+        const dateRange = asDateRange(params.timeRange);
         if (!query) return { success: false, error: 'Search query is required' };
 
         try {
           const searchResults = await this.memoryService.searchMemories(query, {
             tags,
-            dateRange: timeRange,
+            dateRange,
             maxResults,
           });
 
@@ -316,7 +365,9 @@ export class ActionRegistry {
       requiredParams: [],
       optionalParams: ['title', 'initialMessage', 'tags'],
       handler: async (params) => {
-        const { title, initialMessage, tags = [] } = params;
+        const title = asString(params.title);
+        const initialMessage = asString(params.initialMessage);
+        const tags = asStringArray(params.tags);
         try {
           // If your chat service supports creation, prefer doing it here
           // const conv = await this.chatService.createConversation(...)
@@ -360,7 +411,7 @@ export class ActionRegistry {
     Object.entries(legacyEventMap).forEach(([legacyEvent, actionType]) => {
       const listener = (event: Event) => {
         const ce = event as CustomEvent;
-        this.performAction(actionType, (ce.detail as Record<string, any>) || {});
+        this.performAction(actionType, (ce.detail as Record<string, unknown>) || {});
       };
       window.addEventListener(legacyEvent, listener as EventListener);
       // Track listener so we can re-emit through local listeners too
@@ -388,7 +439,7 @@ export class ActionRegistry {
   /**
    * Perform a suggested action
    */
-  async performAction(type: string, params: Record<string, any> = {}): Promise<ActionResult> {
+  async performAction(type: string, params: Record<string, unknown> = {}): Promise<ActionResult> {
     const handler = this.handlers.get(type);
     if (!handler) {
       return { success: false, error: `Unknown action type: ${type}` };
@@ -443,7 +494,7 @@ export class ActionRegistry {
   /**
    * Dispatch custom event and notify local listeners
    */
-  private dispatchEvent(eventName: string, detail: any): void {
+  private dispatchEvent(eventName: string, detail: unknown): void {
     if (isBrowser) {
       const event = new CustomEvent(eventName, { detail });
       window.dispatchEvent(event);

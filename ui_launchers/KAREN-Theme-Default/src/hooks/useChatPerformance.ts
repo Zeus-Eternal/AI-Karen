@@ -51,7 +51,8 @@ export const useChatPerformance = () => {
   // Get memory usage in MB and log warnings if too high
   const getMemoryUsage = useCallback(() => {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as { memory?: { usedJSHeapSize: number } }).memory;
+      if (!memory) return 0;
       const memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
 
       // Measure memory usage

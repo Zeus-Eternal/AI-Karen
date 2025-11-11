@@ -73,8 +73,9 @@ export async function getCurrentTime(location?: string): Promise<string> {
         return successMsg;
       }
       throw new Error(`TimeAPI.io returned unexpected data for "${timeApiLocation}". Primary source failed.`);
-    } catch (error: any) {
-      logs.push(`getCurrentTime: TimeAPI.io Error: ${error?.message || String(error)}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logs.push(`getCurrentTime: TimeAPI.io Error: ${err?.message || String(error)}`);
       // Fallthrough to WorldTimeAPI
     }
 
@@ -99,7 +100,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
           const errorData = JSON.parse(responseText);
           if (errorData?.error) {
             errorDetail += ` Message: ${errorData.error}`;
-            if (String(errorData.error).toLowerCase().includes('unknown location')) {
+            if (String(errorData.error).toLowerCase().includes('any location')) {
               errorDetail += ` Location "${originalLocation}" not recognized by WorldTimeAPI.`;
             }
           }
@@ -122,8 +123,9 @@ export async function getCurrentTime(location?: string): Promise<string> {
         return successMsg;
       }
       throw new Error(`WorldTimeAPI returned unexpected data for "${originalLocation}". Backup source failed.`);
-    } catch (error: any) {
-      logs.push(`getCurrentTime: WorldTimeAPI (original) Error: ${error?.message || String(error)}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logs.push(`getCurrentTime: WorldTimeAPI (original) Error: ${err?.message || String(error)}`);
     }
 
     // Attempt 3: Simplified city part if original had comma
@@ -148,7 +150,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
               const errorData = JSON.parse(responseText);
               if (errorData?.error) {
                 errorDetail += ` Message: ${errorData.error}`;
-                if (String(errorData.error).toLowerCase().includes('unknown location')) {
+                if (String(errorData.error).toLowerCase().includes('any location')) {
                   errorDetail += ` Location "${cityPart}" not recognized by WorldTimeAPI.`;
                 }
               }
@@ -173,8 +175,9 @@ export async function getCurrentTime(location?: string): Promise<string> {
           throw new Error(
             `WorldTimeAPI returned unexpected data for simplified location "${cityPart}". Simplified city attempt failed.`
           );
-        } catch (error: any) {
-          logs.push(`getCurrentTime: WorldTimeAPI (simplified city) Error: ${error?.message || String(error)}`);
+        } catch (error: unknown) {
+          const err = error as Error;
+          logs.push(`getCurrentTime: WorldTimeAPI (simplified city) Error: ${err?.message || String(error)}`);
         }
       }
     }
@@ -205,7 +208,7 @@ export async function getCurrentTime(location?: string): Promise<string> {
               const errorData = JSON.parse(responseText);
               if (errorData?.error) {
                 errorDetail += ` Message: ${errorData.error}`;
-                if (String(errorData.error).toLowerCase().includes('unknown location')) {
+                if (String(errorData.error).toLowerCase().includes('any location')) {
                   errorDetail += ` Location "${locationWithoutSuffix}" not recognized by WorldTimeAPI.`;
                 }
               }
@@ -230,8 +233,9 @@ export async function getCurrentTime(location?: string): Promise<string> {
           throw new Error(
             `WorldTimeAPI returned unexpected data for suffix-removed location "${locationWithoutSuffix}". Suffix-removed attempt failed.`
           );
-        } catch (error: any) {
-          logs.push(`getCurrentTime: WorldTimeAPI (suffix-removed) Error: ${error?.message || String(error)}`);
+        } catch (error: unknown) {
+          const err = error as Error;
+          logs.push(`getCurrentTime: WorldTimeAPI (suffix-removed) Error: ${err?.message || String(error)}`);
         }
       }
     }
@@ -319,8 +323,9 @@ export async function getWeather(
       logs.push(`getWeather: Success using OpenWeatherMap: ${weatherStr}`);
       console.log(logs.join('\n'));
       return weatherStr;
-    } catch (error: any) {
-      logs.push(`getWeather: OpenWeatherMap error: ${error?.message || String(error)}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      logs.push(`getWeather: OpenWeatherMap error: ${err?.message || String(error)}`);
       console.warn(logs.join('\n'));
       return `Sorry, I encountered an error while trying to fetch the weather for "${locationToUse}".`;
     }
@@ -342,7 +347,7 @@ export async function getWeather(
     if (!response.ok) {
       let errorInfo = `HTTP error ${response.status}`;
       const lower = responseText.toLowerCase();
-      if (lower.includes('unknown location')) {
+      if (lower.includes('any location')) {
         errorInfo = `Unknown location "${locationToUse}" according to wttr.in.`;
       } else if (responseText.length > 0 && responseText.length < 100) {
         errorInfo += ` - Server message: ${responseText}`;
@@ -383,9 +388,9 @@ export async function getWeather(
       return weatherString;
     }
 
-    // Some edge-patterns indicating invalid/unknown
+    // Some edge-patterns indicating invalid/any
     if (
-      data?.nearest_area?.[0]?.areaName?.[0]?.value?.toLowerCase?.().includes('unknown')
+      data?.nearest_area?.[0]?.areaName?.[0]?.value?.toLowerCase?.().includes('any')
     ) {
       logs.push(`getWeather: Unknown location indicated by nearest_area for "${locationToUse}"`);
       throw new Error(`Sorry, I couldn't find weather data for "${locationToUse}". Please ensure the location is correct.`);
@@ -397,13 +402,14 @@ export async function getWeather(
 
     logs.push(`getWeather: Unexpected data structure from wttr.in for location: ${locationToUse}`);
     throw new Error(`Sorry, I received an unexpected response when fetching weather for "${locationToUse}".`);
-  } catch (error: any) {
-    logs.push(`getWeather: Network or other error: ${error?.message || String(error)}`);
+  } catch (error: unknown) {
+    const err = error as Error;
+    logs.push(`getWeather: Network or other error: ${err?.message || String(error)}`);
     console.warn(logs.join('\n'));
     const baseErrorMessage =
-      (error?.message || '').startsWith("Sorry, I couldn't find") ||
-      (error?.message || '').startsWith('Failed to fetch weather')
-        ? error.message
+      (err?.message || '').startsWith("Sorry, I couldn't find") ||
+      (err?.message || '').startsWith('Failed to fetch weather')
+        ? err.message
         : `Sorry, I encountered an error while trying to fetch the weather for "${locationToUse}". Please check your connection or try again.`;
     return baseErrorMessage;
   }
@@ -431,11 +437,12 @@ export async function executeKarenPlugin(
         : `Failed to execute ${pluginName} plugin: ${result.error}`,
       timestamp: result.timestamp,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return JSON.stringify({
       success: false,
       plugin: pluginName,
-      error: error?.message || 'Unknown error',
+      error: err?.message || 'Unknown error',
       message: `I encountered an error while trying to execute the ${pluginName} plugin.`,
     });
   }
@@ -488,11 +495,12 @@ export async function queryKarenMemory(
         message: "I couldn't find any relevant memories for that query.",
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return JSON.stringify({
       success: false,
       query: queryText,
-      error: error?.message || 'Unknown error',
+      error: err?.message || 'Unknown error',
       message: 'I had trouble searching through my memories right now.',
     });
   }
@@ -532,10 +540,11 @@ export async function storeKarenMemory(
         message: 'I had trouble storing that information in my memory.',
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return JSON.stringify({
       success: false,
-      error: error?.message || 'Unknown error',
+      error: err?.message || 'Unknown error',
       message: 'I encountered an issue while trying to store that information.',
     });
   }
@@ -562,10 +571,11 @@ export async function getKarenSystemStatus(): Promise<string> {
       },
       message: `System is ${health.status}. CPU: ${metrics.cpu_usage}%, Memory: ${metrics.memory_usage}%, Uptime: ${metrics.uptime_hours}h`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return JSON.stringify({
       success: false,
-      error: error?.message || 'Unknown error',
+      error: err?.message || 'Unknown error',
       message: "I'm having trouble checking my system status right now.",
     });
   }
@@ -588,11 +598,12 @@ export async function getKarenAnalytics(timeRange: string = '24h'): Promise<stri
       },
       message: `In the last ${timeRange}: ${analytics.total_interactions} interactions from ${analytics.unique_users} users. Satisfaction: ${analytics.user_satisfaction}/5.0`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     return JSON.stringify({
       success: false,
       timeRange,
-      error: error?.message || 'Unknown error',
+      error: err?.message || 'Unknown error',
       message: "I couldn't retrieve analytics data right now.",
     });
   }

@@ -49,7 +49,7 @@ export async function fetchProviderDiscovery(): Promise<ProviderDiscoveryItem[]>
   try {
     const result = await getJson<ProviderDiscoveryItem[]>('/api/providers/discovery');
     return Array.isArray(result) ? result : [];
-  } catch (err) {
+  } catch (_err) {
     // Fallback to public endpoint if auth is required
     try {
       const result = await getJson<ProviderDiscoveryItem[]>('/api/public/providers/discovery');
@@ -126,11 +126,12 @@ export async function getProvidersWithModels(): Promise<ProviderDiscoveryItem[]>
         if (hasModels) {
           providersWithModels.push(provider);
         }
-      } catch (error) {
+      } catch (_error) {
+        // Silently ignore errors when checking for models
       }
     }
     return providersWithModels;
-  } catch (error) {
+  } catch (_error) {
     return [];
   }
 }
@@ -146,10 +147,11 @@ export async function listAllAvailableModels(): Promise<ContractModelInfo[]> {
     try {
       const openaiModels = await listOpenaiModels();
       allModels.push(...openaiModels);
-    } catch (error) {
+    } catch (_error) {
+      // Silently ignore errors when fetching cloud models
     }
     return allModels;
-  } catch (error) {
+  } catch (_error) {
     return [];
   }
 }

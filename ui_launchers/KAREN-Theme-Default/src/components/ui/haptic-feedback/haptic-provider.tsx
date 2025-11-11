@@ -1,33 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { HapticContextType, HapticProviderProps, HapticPattern } from './types';
+import { HapticContext } from './context';
 import { isHapticSupported, isHapticEnabled, setHapticEnabled, triggerHapticFeedback } from './haptic-utils';
 
-const HapticContext = createContext<HapticContextType | undefined>(undefined);
-
-export function useHapticContext() {
-  const context = useContext(HapticContext);
-  if (context === undefined) {
-    throw new Error('useHapticContext must be used within a HapticProvider');
-  }
-  return context;
-}
-
-export function HapticProvider({ 
-  children, 
-  defaultEnabled = true 
+export function HapticProvider({
+  children,
+  defaultEnabled = true
 }: HapticProviderProps) {
-  const [enabled, setEnabled] = useState(defaultEnabled);
-  const [supported, setSupported] = useState(false);
-
-  useEffect(() => {
-    // Check if haptic feedback is supported
-    setSupported(isHapticSupported());
-    
-    // Load user preference
-    setEnabled(isHapticEnabled());
-  }, []);
+  const supported = useMemo(() => isHapticSupported(), []);
+  const [enabled, setEnabled] = useState(() => isHapticEnabled(defaultEnabled));
 
   const handleSetEnabled = (newEnabled: boolean) => {
     setEnabled(newEnabled);

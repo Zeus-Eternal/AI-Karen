@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useLocale } from "../../providers/i18n-provider";
+import { useLocale } from "../../providers/i18n-hooks";
 import { cn } from "../../lib/utils";
 
 export interface DirectionalContentProps {

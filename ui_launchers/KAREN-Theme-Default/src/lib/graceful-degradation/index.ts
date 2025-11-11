@@ -159,7 +159,7 @@ export function useProgressiveData<T>({
         sharedExtensionCache.set<T>(key, result, { ttl });
         setData(result);
         setFromCache(false);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
         setError(e instanceof Error ? e : new Error(String(e)));
 
@@ -205,8 +205,9 @@ export function initializeGracefulDegradation() {
   }
 
   const rejectionHandler = (event: PromiseRejectionEvent) => {
-    const error: any = event?.reason;
-    const msg = (error?.message || "").toString();
+    const error: unknown = event?.reason;
+    const errorObj = error as { message?: string };
+    const msg = (errorObj?.message || "").toString();
 
     // Map common failure signatures -> feature flags
     if (

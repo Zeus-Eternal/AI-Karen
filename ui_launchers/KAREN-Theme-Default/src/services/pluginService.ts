@@ -127,7 +127,7 @@ export class PluginService {
    */
   async executePlugin(
     pluginName: string,
-    parameters: Record<string, any> = {},
+    parameters: Record<string, unknown> = {},
     options: PluginExecutionOptions = {}
   ): Promise<PluginExecutionResult> {
     try {
@@ -186,7 +186,7 @@ export class PluginService {
    */
   async validatePluginInput(
     pluginName: string,
-    parameters: Record<string, any>
+    parameters: Record<string, unknown>
   ): Promise<PluginValidationResult> {
     try {
       const response = await fetch(`${this.backend['config'].baseUrl}/api/plugins/validate`, {
@@ -308,7 +308,7 @@ export class PluginService {
   /**
    * Get plugin schema for input validation
    */
-  async getPluginSchema(pluginName: string): Promise<Record<string, any> | null> {
+  async getPluginSchema(pluginName: string): Promise<Record<string, unknown> | null> {
     try {
       const response = await fetch(`${this.backend['config'].baseUrl}/api/plugins/${encodeURIComponent(pluginName)}/schema`, {
         headers: {
@@ -353,7 +353,7 @@ export class PluginService {
   private updatePluginMetrics(
     pluginName: string,
     result: PluginExecutionResult,
-    parameters: Record<string, any>
+    parameters: Record<string, unknown>
   ): void {
     let metrics = this.metricsCache.get(pluginName);
     

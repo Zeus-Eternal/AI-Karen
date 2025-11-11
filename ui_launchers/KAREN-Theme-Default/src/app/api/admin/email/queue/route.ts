@@ -95,8 +95,8 @@ export async function GET(request: NextRequest) {
         // Optional filter if items support a "status" field
         if (status !== "all") {
           // Gracefully handle if items don't have a "status" field
-          // @ts-ignore — tolerate heterogeneous shapes
-          allItems = allItems.filter((it: any) => (it?.status ?? "unknown") === status);
+          // @ts-expect-error — tolerate heterogeneous shapes
+          allItems = allItems.filter((it: unknown) => (it?.status ?? "unknown") === status);
         }
 
         items = allItems.slice(0, limit);
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       },
       { status: 200, headers: SECURITY_HEADERS }
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     await safeAudit(request, "unknown", "email_queue_error", "email_queue", {
       error: String(error?.message || error),
     });
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 400, headers: SECURITY_HEADERS }
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     await safeAudit(request, "unknown", "email_queue_error", "email_queue", {
       error: String(error?.message || error),
     });

@@ -1,12 +1,13 @@
 
 "use client";
+
 import * as React from 'react';
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { HelpCircle, ExternalLink } from 'lucide-react';
-import { getHelpContent, type HelpContent } from '@/lib/help-content';
+import { getHelpContent } from '@/lib/help-content';
 
 import { 
   Tooltip,
@@ -57,13 +58,9 @@ export function HelpTooltip({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [dialogOpen]);
 
-  if (!helpContent) {
-    return null;
-  }
-
   const iconSize = size === 'sm' ? 'h-3 w-3' : size === 'md' ? 'h-4 w-4' : 'h-5 w-5';
   
-  const TriggerComponent = () => {
+  const triggerElement = React.useMemo(() => {
     switch (variant) {
       case 'text':
         return (
@@ -88,7 +85,11 @@ export function HelpTooltip({
           </Button>
         );
     }
-  };
+  }, [variant, iconSize, className]);
+
+  if (!helpContent) {
+    return null;
+  }
 
   return (
     <TooltipProvider>
@@ -96,8 +97,8 @@ export function HelpTooltip({
         <TooltipTrigger asChild>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <div>
-                <TriggerComponent />
+            <div>
+                {triggerElement}
               </div>
             </DialogTrigger>
             <DialogContent className="max-w-2xl ">

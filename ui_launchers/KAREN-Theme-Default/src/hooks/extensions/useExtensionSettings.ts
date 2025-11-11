@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 
-export type ExtensionSettings = Record<string, any>;
+export type ExtensionSettings = Record<string, unknown>;
 
-export function useExtensionSettings(extensionId: string) {
+export function useExtensionSettings(_extensionId: string) {
   const [settings, setSettings] = useState<ExtensionSettings>({});
 
   // Placeholder save

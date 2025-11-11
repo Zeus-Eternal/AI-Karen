@@ -59,7 +59,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
       const response = await backend.makeRequestPublic(`/api/providers/${provider.name}/model-recommendations`);
       setRecommendations(response);
     } catch (error) {
-      const info = handleApiError(error as any, 'fetchRecommendations');
+      const info = handleApiError(error as unknown, 'fetchRecommendations');
       toast({
         title: info.title,
         description: info.message,
@@ -383,7 +383,7 @@ export default function ProviderManagement({
         notifyError(providerName, response.message, 'API_KEY_INVALID');
       }
     } catch (error) {
-      const errorMessage = (error as any)?.message || 'Validation failed - check network connection';
+      const errorMessage = (error as unknown)?.message || 'Validation failed - check network connection';
       setKeyValidationResults(prev => ({
         ...prev,
         [providerName]: {
@@ -425,7 +425,7 @@ export default function ProviderManagement({
   const runHealthCheck = async () => {
     try {
       setHealthChecking(true);
-      const response = await backend.makeRequestPublic<Record<string, any>>('/api/providers/health-check-all', {
+      const response = await backend.makeRequestPublic<Record<string, unknown>>('/api/providers/health-check-all', {
         method: 'POST'
       }) || {};
 
@@ -462,7 +462,7 @@ export default function ProviderManagement({
         description: `${healthyCount}/${providers.length} providers are healthy.`,
       });
     } catch (error) {
-      const info = (error as any)?.errorInfo || handleApiError(error as any, 'runHealthCheck');
+      const info = (error as unknown)?.errorInfo || handleApiError(error as unknown, 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
@@ -572,7 +572,7 @@ export default function ProviderManagement({
   // Convert LLMProvider to ProviderStatus for the new components
   const convertToProviderStatus = (provider: LLMProvider): ProviderStatus => ({
     name: provider.name,
-    status: provider.health_status as any,
+    status: provider.health_status as unknown,
     health_score: provider.health_status === 'healthy' ? 85 : provider.health_status === 'unhealthy' ? 25 : 50,
     last_successful_request: provider.last_health_check ? new Date(provider.last_health_check).toISOString() : undefined,
     error_count: 0,

@@ -252,7 +252,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as unknown)}>
                 <SelectTrigger className="w-44 h-8 text-xs" aria-label="Sort by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>

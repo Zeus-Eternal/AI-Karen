@@ -75,10 +75,7 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
-function supportsCSS(): boolean {
-  const css = getCSS();
-  return typeof css !== 'undefined' && typeof css.supports === 'function';
-}
+// Removed unused function _supportsCSS
 
 function safeCSSSupports(prop: string, value: string): boolean {
   try {
@@ -89,16 +86,7 @@ function safeCSSSupports(prop: string, value: string): boolean {
   }
 }
 
-function safeCSSSupportsSyntax(syntax: string): boolean {
-  // CSS.supports(property, value) form is more widely supported;
-  // this helper is here if we ever need CSS.supports('(condition)') form.
-  try {
-    const css = getCSS();
-    return css ? css.supports(syntax) : false;
-  } catch {
-    return false;
-  }
-}
+// Removed unused function _safeCSSSupportsSyntax
 
 function canUseStorage(storage: 'localStorage' | 'sessionStorage'): boolean {
   if (!isBrowser()) return false;
@@ -462,7 +450,7 @@ export function useFeatureDetection() {
       }
     }
     return unsub;
-  }, []);
+  }, [features]);
 
   return {
     features,

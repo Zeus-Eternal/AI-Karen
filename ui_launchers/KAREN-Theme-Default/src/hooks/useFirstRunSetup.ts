@@ -3,7 +3,6 @@
  * Checks if super admin exists and manages setup flow
  */
 import { useState, useEffect, useCallback } from 'react';
-import type { FirstRunSetup, AdminApiResponse } from '@/types/admin';
 /**
  * First-run setup hook state
  */
@@ -167,7 +166,7 @@ export function useSetupCompletion() {
     completionError: null as string | null
   });
 
-  const completeSetup = useCallback(async (userData: any) => {
+  const completeSetup = useCallback(async (_userData: unknown) => {
     setCompletionState({ isCompleting: true, completionError: null });
     try {
       // Setup completion logic would go here

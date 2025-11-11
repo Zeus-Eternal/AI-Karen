@@ -29,7 +29,7 @@ import {
   PieChart,
 } from "lucide-react";
 
-import { useHooks } from "@/contexts/HookContext";
+import { useHooks } from "@/hooks/use-hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -136,7 +136,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     }
 
     const base: AgChartOptions = {
-      data: processedData as any,
+      data: processedData as unknown,
       theme: "ag-default",
       background: { fill: "transparent" },
       padding: { top: 20, right: 20, bottom: 40, left: 60 },
@@ -154,7 +154,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
                 type: "pie",
                 angleKey: "messageCount",
                 labelKey: "formattedTime",
-              } as any,
+              } as unknown,
             ],
           } as AgChartOptions;
         }
@@ -163,13 +163,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           title: { text: "Message Volume Over Time" },
           series: [
             {
-              type: chartType as any,
+              type: chartType as unknown,
               xKey: "formattedTime",
               yKey: "messageCount",
               yName: "Messages",
               stroke: "#3b82f6",
               fill: chartType === "area" ? "#3b82f680" : "#3b82f6",
-            } as any,
+            } as unknown,
           ],
           axes: [
             { type: "category", position: "bottom", title: { text: "Time" } },
@@ -183,13 +183,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           title: { text: "Response Time Trends" },
           series: [
             {
-              type: chartType === "pie" ? ("line" as any) : (chartType as any),
+              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
               xKey: "formattedTime",
               yKey: "responseTime",
               yName: "Response Time (ms)",
               stroke: "#f59e0b",
               fill: chartType === "area" ? "#f59e0b80" : "#f59e0b",
-            } as any,
+            } as unknown,
           ],
           axes: [
             { type: "category", position: "bottom", title: { text: "Time" } },
@@ -203,13 +203,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           title: { text: "User Satisfaction Scores" },
           series: [
             {
-              type: chartType === "pie" ? ("line" as any) : (chartType as any),
+              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
               xKey: "formattedTime",
               yKey: "userSatisfaction",
               yName: "Satisfaction (1-5)",
               stroke: "#10b981",
               fill: chartType === "area" ? "#10b98180" : "#10b981",
-            } as any,
+            } as unknown,
           ],
           axes: [
             { type: "category", position: "bottom", title: { text: "Time" } },
@@ -236,7 +236,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
 
         return {
           ...base,
-          data: providerData as any,
+          data: providerData as unknown,
           title: { text: "LLM Provider Usage Distribution" },
           series: [
             {
@@ -245,9 +245,9 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               labelKey: "provider",
               label: {
                 enabled: true,
-                formatter: ({ datum }: any) => `${datum.provider}: ${datum.percentage}%`,
+                formatter: ({ datum }: unknown) => `${datum.provider}: ${datum.percentage}%`,
               },
-            } as any,
+            } as unknown,
           ],
         };
       }
@@ -258,13 +258,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           title: { text: "Token Usage Over Time" },
           series: [
             {
-              type: chartType === "pie" ? ("line" as any) : (chartType as any),
+              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
               xKey: "formattedTime",
               yKey: "tokenUsage",
               yName: "Token Usage",
               stroke: "#ef4444",
               fill: chartType === "area" ? "#ef444480" : "#ef4444",
-            } as any,
+            } as unknown,
           ],
           axes: [
             { type: "category", position: "bottom", title: { text: "Time" } },
@@ -278,13 +278,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
           title: { text: "AI Insights Over Time" },
           series: [
             {
-              type: chartType === "pie" ? ("line" as any) : (chartType as any),
+              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
               xKey: "formattedTime",
               yKey: "aiInsights",
               yName: "AI Insights",
               stroke: "#8b5cf6",
               fill: chartType === "area" ? "#8b5cf680" : "#8b5cf6",
-            } as any,
+            } as unknown,
           ],
           axes: [
             { type: "category", position: "bottom", title: { text: "Time" } },
@@ -382,7 +382,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     change,
     suffix = "",
   }: {
-    icon: any;
+    icon: unknown;
     title: string;
     value: number | string;
     change?: number;
@@ -561,7 +561,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
                   <AgCharts
                     options={
                       {
-                        data: processedData as any,
+                        data: processedData as unknown,
                         theme: "ag-default",
                         background: { fill: "transparent" },
                         title: { text: "Secondary Analysis" },
@@ -572,7 +572,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
                             yKey: "userSatisfaction",
                             yName: "Satisfaction",
                             stroke: "#10b981",
-                          } as any,
+                          } as unknown,
                         ],
                         axes: [
                           { type: "category", position: "bottom", title: { text: "Time" } },
@@ -591,7 +591,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
               <AgCharts
                 options={
                   {
-                    data: processedData as any,
+                    data: processedData as unknown,
                     theme: "ag-default",
                     background: { fill: "transparent" },
                     title: { text: "Multi-Metric Comparison" },
@@ -602,14 +602,14 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
                         yKey: "messageCount",
                         yName: "Messages",
                         stroke: "#3b82f6",
-                      } as any,
+                      } as unknown,
                       {
                         type: "line",
                         xKey: "formattedTime",
                         yKey: "aiInsights",
                         yName: "AI Insights",
                         stroke: "#8b5cf6",
-                      } as any,
+                      } as unknown,
                     ],
                     axes: [
                       { type: "category", position: "bottom", title: { text: "Time" } },

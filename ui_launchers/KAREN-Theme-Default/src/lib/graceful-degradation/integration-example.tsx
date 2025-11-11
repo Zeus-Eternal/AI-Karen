@@ -89,28 +89,31 @@ export function FixedModelProviderIntegration() {
             </Button>
           </div>
           <div className="grid gap-4">
-            {providers.map((provider: any) => (
-              <div
-                key={provider.id}
-                className="p-4 border rounded-lg hover:border-gray-300"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">{provider.name}</h4>
-                    <p className="text-sm text-gray-600">{provider.description}</p>
-                  </div>
-                  <div className={`
-                    px-2 py-1 rounded text-xs
-                    ${provider.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
-                    }
-                  `}>
-                    {provider.status}
+            {providers.map((provider: unknown) => {
+              const p = provider as { id: string; name: string; description: string; status: string };
+              return (
+                <div
+                  key={p.id}
+                  className="p-4 border rounded-lg hover:border-gray-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">{p.name}</h4>
+                      <p className="text-sm text-gray-600">{p.description}</p>
+                    </div>
+                    <div className={`
+                      px-2 py-1 rounded text-xs
+                      ${p.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                      }
+                    `}>
+                      {p.status}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

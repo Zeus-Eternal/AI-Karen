@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 export interface PerformanceMetrics {
   name: string;
@@ -9,7 +9,14 @@ export interface PerformanceMetrics {
   endTime: number;
 }
 
-export function usePerformanceMonitor(name: string, enabled = process.env.NODE_ENV === 'development') {
+type GtagWindow = Window & {
+  gtag?: (...args: unknown[]) => void;
+};
+
+export function usePerformanceMonitor(
+  name: string,
+  enabled = process.env.NODE_ENV === "development"
+) {
   const startTimeRef = useRef<number | null>(null);
   const metricsRef = useRef<PerformanceMetrics[]>([]);
 
@@ -35,21 +42,26 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
     metricsRef.current.push(metrics);
 
     // Log performance metrics
-    console.log(`⚡ Performance: ${metrics.name} took ${duration.toFixed(2)}ms`);
+    console.log(
+      `⚡ Performance: ${metrics.name} took ${duration.toFixed(2)}ms`
+    );
 
     // Report to analytics if available
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'timing_complete', {
-        name: metrics.name,
-        value: Math.round(duration),
-      });
+    if (typeof window !== "undefined") {
+      const win = window as GtagWindow;
+      if (win.gtag) {
+        win.gtag("event", "timing_complete", {
+          name: metrics.name,
+          value: Math.round(duration),
+        });
+      }
     }
 
     startTimeRef.current = null;
   };
 
   // Measure a function's execution time synchronously
-  const measure = <T extends any>(fn: () => T, metricName?: string): T => {
+  const measure = <T>(fn: () => T, metricName?: string): T => {
     if (!enabled) return fn();
     start();
     const result = fn();
@@ -58,8 +70,8 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
   };
 
   // Measure an async function's execution time
-  const measureAsync = async <T extends any>(
-    fn: () => Promise<T>, 
+  const measureAsync = async <T>(
+    fn: () => Promise<T>,
     metricName?: string
   ): Promise<T> => {
     if (!enabled) return fn();
@@ -68,9 +80,9 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
       const result = await fn();
       end(metricName);
       return result;
-    } catch (error) {
+    } catch (_error) {
       end(`${metricName || name}_error`);
-      throw error;
+      throw _error;
     }
   };
 
@@ -103,23 +115,24 @@ export function usePerformanceMonitor(name: string, enabled = process.env.NODE_E
 // Web Vitals monitoring
 export function useWebVitals() {
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     // Largest Contentful Paint (LCP)
     const observer = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries();
       const lastEntry = entries[entries.length - 1];
-      if ('gtag' in window) {
-        (window as any).gtag('event', 'web_vitals', {
-          metric_name: 'LCP',
+      const win = window as GtagWindow;
+      if (win.gtag) {
+        win.gtag("event", "web_vitals", {
+          metric_name: "LCP",
           metric_value: Math.round(lastEntry.startTime),
         });
       }
     });
 
     try {
-      observer.observe({ entryTypes: ['largest-contentful-paint'] });
-    } catch (e) {
+      observer.observe({ entryTypes: ["largest-contentful-paint"] });
+    } catch {
       // LCP not supported
     }
 
@@ -127,11 +140,12 @@ export function useWebVitals() {
     const fidObserver = new PerformanceObserver((entryList) => {
       const entries = entryList.getEntries();
       entries.forEach((entry) => {
-        const firstInputEntry = entry as any; // PerformanceEventTiming
+        const firstInputEntry = entry as PerformanceEventTiming;
         const fid = firstInputEntry.processingStart - firstInputEntry.startTime;
-        if ('gtag' in window) {
-          (window as any).gtag('event', 'web_vitals', {
-            metric_name: 'FID',
+        const win = window as GtagWindow;
+        if (win.gtag) {
+          win.gtag("event", "web_vitals", {
+            metric_name: "FID",
             metric_value: Math.round(fid),
           });
         }
@@ -139,8 +153,8 @@ export function useWebVitals() {
     });
 
     try {
-      fidObserver.observe({ entryTypes: ['first-input'] });
-    } catch (e) {
+      fidObserver.observe({ entryTypes: ["first-input"] });
+    } catch {
       // FID not supported
     }
 

@@ -20,7 +20,7 @@ export interface UseActionRegistryOptions {
 
 export interface UseActionRegistryReturn {
   // Action execution
-  performAction: (type: string, params?: Record<string, any>) => Promise<ActionResult>;
+  performAction: (type: string, params?: Record<string, unknown>) => Promise<ActionResult>;
   performActions: (actions: SuggestedAction[]) => Promise<ActionResult[]>;
   performSuggestedAction: (action: SuggestedAction) => Promise<ActionResult>;
   
@@ -65,7 +65,7 @@ export function useActionRegistry(options: UseActionRegistryOptions = {}): UseAc
   // Perform single action
   const performAction = useCallback(async (
     type: string, 
-    params: Record<string, any> = {}
+    params: Record<string, unknown> = {}
   ): Promise<ActionResult> => {
     setIsLoading(true);
     setError(null);
@@ -262,6 +262,7 @@ export function useActionEvents(
     return () => {
       removeEventListener(eventName, handler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventName, handler, addEventListener, removeEventListener, ...deps]);
 }
 

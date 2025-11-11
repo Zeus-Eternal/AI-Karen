@@ -372,7 +372,7 @@ export const AppShellSidebar = React.forwardRef<
       className={cn(
         // Base width when visible; ensure width is defined for expanded/collapsed
         "will-change-transform",
-        appShellSidebarVariants({ state: state as any, position: position as any }),
+        appShellSidebarVariants({ state: state as unknown, position: position as unknown }),
         className
       )}
       aria-label="Main navigation"

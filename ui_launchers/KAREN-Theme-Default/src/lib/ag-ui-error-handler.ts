@@ -29,17 +29,17 @@ export interface AGUIErrorContext {
   component: string;
   errorType: AGUIErrorType;
   originalError: Error;
-  data?: any[];
-  columns?: any[];
+  data?: unknown[];
+  columns?: unknown[];
   timestamp: string;
   retryCount: number;
 }
 
 export interface FallbackResponse {
   strategy: FallbackStrategy;
-  component: React.ComponentType<any> | null;
-  data: any[];
-  columns: any[];
+  component: React.ComponentType<Record<string, unknown>> | null;
+  data: unknown[];
+  columns: unknown[];
   message: string;
   retryAvailable: boolean;
   degradedFeatures: string[];
@@ -60,7 +60,7 @@ export type CacheEntry<T> = {
 export class AGUIErrorHandler {
   private static instance: AGUIErrorHandler;
 
-  private errorCache: Map<string, CacheEntry<any>> = new Map();
+  private errorCache: Map<string, CacheEntry<unknown>> = new Map();
   private circuitBreakers: Map<string, CircuitBreakerState> = new Map();
   private retryAttempts: Map<string, number> = new Map();
 
@@ -89,7 +89,7 @@ export class AGUIErrorHandler {
         this.circuitBreakers.set(component, {
           isOpen: false,
           failureCount: 0,
-          lastFailureTime: 0 || now,
+          lastFailureTime: now,
           halfOpenAttempts: 0,
         });
       }
@@ -102,8 +102,8 @@ export class AGUIErrorHandler {
   public async handleGridError(
     error: Error,
     gridApi?: GridApi,
-    data?: any[],
-    columns?: any[]
+    data?: unknown[],
+    columns?: unknown[]
   ): Promise<FallbackResponse> {
     const context: AGUIErrorContext = {
       component: 'grid',
@@ -155,8 +155,8 @@ export class AGUIErrorHandler {
    */
   public async handleChartError(
     error: Error,
-    chartData?: any[],
-    chartOptions?: any
+    chartData?: unknown[],
+    _chartOptions?: unknown
   ): Promise<FallbackResponse> {
     const context: AGUIErrorContext = {
       component: 'chart',
@@ -201,13 +201,13 @@ export class AGUIErrorHandler {
   public async handleComponentError(
     error: Error,
     component: string,
-    data?: any
+    data?: unknown
   ): Promise<FallbackResponse> {
     const context: AGUIErrorContext = {
       component,
       errorType: this.classifyGeneralError(error),
       originalError: error,
-      data,
+      data: Array.isArray(data) ? data : data ? [data] : [],
       columns: [],
       timestamp: new Date().toISOString(),
       retryCount: this.getRetryCount(component),
@@ -285,11 +285,12 @@ export class AGUIErrorHandler {
     const cached = this.errorCache.get(cacheKey);
 
     if (cached && this.isCacheValid(cached.timestamp)) {
+      const cachedPayload = cached.payload as { data?: unknown[]; columns?: unknown[] };
       return {
         strategy: FallbackStrategy.CACHED_DATA,
         component: null, // Use original grid with cached data
-        data: cached.payload?.data ?? [],
-        columns: cached.payload?.columns ?? (context.columns || []),
+        data: cachedPayload?.data ?? [],
+        columns: cachedPayload?.columns ?? (context.columns || []),
         message: 'Using cached data due to loading error',
         retryAvailable: true,
         degradedFeatures: ['real-time-updates'],
@@ -334,11 +335,12 @@ export class AGUIErrorHandler {
     const cacheKey = `${context.component}_data`;
     const cached = this.errorCache.get(cacheKey);
     if (cached && this.isCacheValid(cached.timestamp)) {
+      const cachedPayload = cached.payload as { data?: unknown[]; columns?: unknown[] };
       return {
         strategy: FallbackStrategy.CACHED_DATA,
         component: null,
-        data: cached.payload?.data ?? [],
-        columns: cached.payload?.columns ?? [],
+        data: cachedPayload?.data ?? [],
+        columns: cachedPayload?.columns ?? [],
         message: 'Using cached data due to fetch error',
         retryAvailable: true,
         degradedFeatures: ['real-time-updates'],
@@ -396,29 +398,32 @@ export class AGUIErrorHandler {
 
   // ---------- Helpers ----------
 
-  private simplifyColumns(columns: any[]): any[] {
+  private simplifyColumns(columns: unknown[]): unknown[] {
     if (!Array.isArray(columns)) return [];
-    return columns.map((col) => ({
-      field: col?.field,
-      headerName: col?.headerName || col?.field || 'Column',
-      sortable: false,
-      filter: false,
-      resizable: true,
-      cellRenderer: undefined, // Remove custom renderers
-    }));
+    return columns.map((col) => {
+      const column = col as { field?: string; headerName?: string };
+      return {
+        field: column?.field,
+        headerName: column?.headerName || column?.field || 'Column',
+        sortable: false,
+        filter: false,
+        resizable: true,
+        cellRenderer: undefined, // Remove custom renderers
+      };
+    });
   }
 
-  private simplifyChartData(data: any[]): any[] {
+  private simplifyChartData(data: unknown[]): unknown[] {
     const maxPoints = 100;
     if (!Array.isArray(data)) return [];
     return data.length > maxPoints ? data.slice(0, maxPoints) : data;
   }
 
-  private extractSimpleColumns(data: any[]): any[] {
+  private extractSimpleColumns(data: unknown[]): unknown[] {
     if (!Array.isArray(data) || data.length === 0) {
       return [{ field: 'message', headerName: 'Status' }];
     }
-    const firstRow = data[0] ?? {};
+    const firstRow = (data[0] ?? {}) as Record<string, unknown>;
     return Object.keys(firstRow).map((key) => ({
       field: key,
       headerName: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
@@ -500,7 +505,7 @@ export class AGUIErrorHandler {
   /**
    * Cache successful data for fallback use
    */
-  public cacheData(component: string, data: any[], columns?: any[]): void {
+  public cacheData(component: string, data: unknown[], columns?: unknown[]): void {
     const cacheKey = `${component}_data`;
     this.errorCache.set(cacheKey, {
       payload: { data, columns },

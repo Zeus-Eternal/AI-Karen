@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return okJson(data);
-  } catch (e: any) {
+  } catch (e: Event) {
     // Fallback to defaults if backend is unavailable
     console.warn('Backend unavailable, using defaults:', e.message);
     return okJson(DEFAULT_PREFERENCES);
@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
       message: result.message || 'Model preferences updated successfully',
       status: result.status,
     });
-  } catch (e: any) {
+  } catch (e: Event) {
     console.warn('Backend unavailable for preferences update:', e.message);
     return errJson('Failed to update user model preferences', 500, {
       hint: 'Backend unavailable',

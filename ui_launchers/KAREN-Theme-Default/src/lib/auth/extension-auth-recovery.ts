@@ -28,7 +28,7 @@ export interface RecoveryAttemptResult {
   strategy: ExtensionAuthRecoveryStrategy;
   message: string;
   nextAttemptDelay?: number;
-  fallbackData?: any;
+  fallbackData?: unknown;
   requiresUserAction: boolean;
 }
 

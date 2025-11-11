@@ -59,7 +59,7 @@ function assertNonEmpty(text: string, message: string) {
 
 export interface BatchOperationConfig {
   type: "delete" | "update" | "merge" | "tag" | "cluster";
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   confirmationRequired: boolean;
 }
 

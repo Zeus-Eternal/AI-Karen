@@ -65,7 +65,7 @@ export interface PermissionRule {
 export interface PermissionCondition {
   type: 'time' | 'location' | 'resource' | 'context';
   operator: 'equals' | 'contains' | 'matches' | 'in_range';
-  value: any;
+  value: unknown;
   description: string;
 }
 
@@ -131,7 +131,7 @@ export interface AccessContext {
   userAgent?: string;
   resource?: string;
   action?: string;
-  additionalContext?: Record<string, any>;
+  additionalContext?: Record<string, unknown>;
 }
 
 export interface PermissionCheckResult {
@@ -198,7 +198,7 @@ export interface EvilModeAction {
   resource: string;
   impact: 'low' | 'medium' | 'high' | 'critical';
   reversible: boolean;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 // Predefined system roles

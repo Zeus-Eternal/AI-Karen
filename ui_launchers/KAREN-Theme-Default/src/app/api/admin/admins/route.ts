@@ -13,7 +13,7 @@ import type { AdminApiResponse, CreateUserRequest, User } from '@/types/admin';
 /**
  * GET /api/admin/admins - List admin users (super admin only)
  */
-export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
+export const GET = requireSuperAdmin(async (_request: NextRequest, _context) => {
   try {
     const adminUtils = getAdminDatabaseUtils();
     // Get all admin and super admin users
@@ -42,7 +42,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-    const response: AdminApiResponse<{ admins: typeof sanitizedAdmins; statistics: any }> = {
+    const response: AdminApiResponse<{ admins: typeof sanitizedAdmins; statistics: unknown }> = {
       success: true,
       data: {
         admins: sanitizedAdmins,

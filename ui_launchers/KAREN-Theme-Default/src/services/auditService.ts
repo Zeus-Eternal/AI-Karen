@@ -6,7 +6,7 @@ export interface AuditLogEntry {
   action: string;
   resource_type?: string;
   resource_id?: string;
-  details?: any;
+  details?: unknown;
   created_at?: string;
 }
 

@@ -51,7 +51,7 @@ interface ISpeechRecognition extends EventTarget {
   abort(): void;
   onstart: ((this: ISpeechRecognition, ev: Event) => any) | null;
   onend: ((this: ISpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: ISpeechRecognition, ev: any) => any) | null;
+  onerror: ((this: ISpeechRecognition, ev: unknown) => any) | null;
   onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
 }
 
@@ -78,7 +78,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   // SSR guard
   const getSR = useCallback(() => {
     if (typeof window === "undefined") return undefined;
-    const win = window as any;
+    const win = window as unknown;
     return win.SpeechRecognition || win.webkitSpeechRecognition;
   }, []);
 
@@ -109,7 +109,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: Event) => {
       setIsProcessing(false);
       // Handle mic permission explicitly
       if (event?.error === "not-allowed" || event?.error === "service-not-allowed") {

@@ -29,8 +29,8 @@ export interface QueryMetrics {
 
 export interface QueryCacheEntry {
   query: string;
-  params: any[];
-  result: any;
+  params: unknown[];
+  result: unknown;
   timestamp: number;
   ttl: number;
   accessCount: number;
@@ -48,7 +48,7 @@ export interface PreparedStatement {
 
 export interface QueryPlan {
   query: string;
-  plan: any;
+  plan: unknown;
   cost: number;
   timestamp: number;
 }
@@ -97,9 +97,9 @@ export class DatabaseQueryOptimizer {
    */
   async executeAuthQuery(
     query: string,
-    params: any[] = [],
+    params: unknown[] = [],
     options: { skipCache?: boolean; cacheTtl?: number } = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const startTime = Date.now();
     this.metrics.totalQueries++;
 
@@ -158,7 +158,7 @@ export class DatabaseQueryOptimizer {
   /**
    * Mock execute query implementation - replace with actual DB query execution logic
    */
-  private async executeQuery(query: string, params: any[], preparedStatement?: PreparedStatement | null): Promise<any> {
+  private async executeQuery(query: string, params: unknown[], preparedStatement?: PreparedStatement | null): Promise<unknown> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 10)); // Simulate query time
     if (query.includes('SELECT') && query.includes('users')) {
       if (params[0] === 'admin@example.com') {
@@ -182,7 +182,7 @@ export class DatabaseQueryOptimizer {
   /**
    * Logging slow queries for analysis
    */
-  private logSlowQuery(query: string, params: any[], executionTime: number) {
+  private logSlowQuery(query: string, params: unknown[], executionTime: number) {
     console.warn(`Slow query detected (${executionTime}ms):`, {
       query: query.replace(/\s+/g, ' ').trim(),
       params,
@@ -197,8 +197,8 @@ export class DatabaseQueryOptimizer {
   private cacheResult(
     cacheKey: string,
     query: string,
-    params: any[],
-    result: any,
+    params: unknown[],
+    result: unknown,
     executionTime: number,
     customTtl?: number
   ): void {
@@ -222,7 +222,7 @@ export class DatabaseQueryOptimizer {
   /**
    * Generate a unique cache key based on query and parameters
    */
-  private generateCacheKey(query: string, params: any[]): string {
+  private generateCacheKey(query: string, params: unknown[]): string {
     const normalizedQuery = this.normalizeQuery(query);
     const paramsStr = JSON.stringify(params);
     return `${normalizedQuery}|${paramsStr}`;
@@ -351,7 +351,7 @@ export class DatabaseQueryOptimizer {
 
   private resolvePreparedStatement(
     query: string,
-    params: any[]
+    params: unknown[]
   ): { statement: PreparedStatement; hit: boolean } | null {
     const normalizedQuery = this.normalizeQuery(query);
     const existing = this.preparedStatements.get(normalizedQuery);

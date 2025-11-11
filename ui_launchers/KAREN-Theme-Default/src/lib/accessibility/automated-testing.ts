@@ -179,11 +179,11 @@ export class AutomatedAccessibilityTester {
       };
       
       if (config.include) {
-        (runOptions as any).include = config.include;
+        (runOptions as unknown).include = config.include;
       }
       
       if (config.exclude) {
-        (runOptions as any).exclude = config.exclude;
+        (runOptions as unknown).exclude = config.exclude;
       }
       
       // Run axe-core analysis

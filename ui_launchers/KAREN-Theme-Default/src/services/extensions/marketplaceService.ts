@@ -4,8 +4,17 @@ import type { ExtensionAPIResponse, ExtensionQueryParams, ExtensionInstallReques
 export async function listMarketplaceExtensions(
   params: ExtensionQueryParams = {},
 ): Promise<ExtensionAPIResponse> {
-  const query = new URLSearchParams(params as any).toString();
-  return extensionAPI({ method: 'GET', endpoint: `/api/marketplace?${query}` });
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    searchParams.append(key, String(value));
+  }
+
+  const query = searchParams.toString();
+  const endpoint = query ? `/api/marketplace?${query}` : '/api/marketplace';
+  return extensionAPI({ method: 'GET', endpoint });
 }
 
 export async function installExtension(data: ExtensionInstallRequest): Promise<ExtensionAPIResponse> {

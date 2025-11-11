@@ -29,8 +29,8 @@ import {
 const SECRET_KEYS = new Set(['smtp_password', 'api_key', 'api_secret', 'token', 'webhook_secret']);
 const MASK = '***';
 
-function redactSecrets<T extends Record<string, any>>(obj: T): T {
-  const clone: any = {};
+function redactSecrets<T extends Record<string, unknown>>(obj: T): T {
+  const clone: unknown = {};
   for (const [k, v] of Object.entries(obj || {})) {
     if (SECRET_KEYS.has(k)) {
       clone[k] = v ? MASK : '';
@@ -41,8 +41,8 @@ function redactSecrets<T extends Record<string, any>>(obj: T): T {
   return clone;
 }
 
-function summarizeChanges(body: Record<string, any>) {
-  const summary: Record<string, any> = {};
+function summarizeChanges(body: Record<string, unknown>) {
+  const summary: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body || {})) {
     if (SECRET_KEYS.has(k)) summary[k] = '***updated***';
     else summary[k] = isTriviallySerializable(v) ? v : '[complex]';
@@ -50,18 +50,18 @@ function summarizeChanges(body: Record<string, any>) {
   return summary;
 }
 
-function isTriviallySerializable(v: any) {
+function isTriviallySerializable(v: unknown) {
   return v == null || ['string', 'number', 'boolean'].includes(typeof v);
 }
 
-function jsonError(message: string, status = 400, details?: any) {
+function jsonError(message: string, status = 400, details?: unknown) {
   return NextResponse.json(
     { success: false, error: message, details },
     { status, headers: { 'Cache-Control': 'no-store' } },
   );
 }
 
-function toETag(payload: any) {
+function toETag(payload: unknown) {
   const buf = Buffer.from(JSON.stringify(payload));
   return `"W/${crypto.createHash('sha256').update(buf).digest('base64url')}"`;
 }
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
         },
       },
     );
-  } catch (error: any) {
+  } catch {
     return jsonError('Failed to get email configuration', 500);
   }
 }
@@ -208,7 +208,7 @@ export async function PUT(request: NextRequest) {
         details: {
           provider: merged.provider,
           enabled: merged.enabled,
-          changes: summarizeChanges(body as Record<string, any>),
+          changes: summarizeChanges(body as Record<string, unknown>),
         },
         request,
       },
@@ -221,7 +221,7 @@ export async function PUT(request: NextRequest) {
       },
       { headers: { 'Cache-Control': 'no-store' } },
     );
-  } catch (error: any) {
+  } catch {
     return jsonError('Failed to update email configuration', 500);
   }
 }

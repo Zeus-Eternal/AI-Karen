@@ -96,7 +96,7 @@ export interface PluginConfigField {
   label: string;
   description?: string;
   required?: boolean;
-  default?: any;
+  default?: unknown;
   options?: Array<{ label: string; value: string }>;
   validation?: { pattern?: string; min?: number; max?: number };
 }
@@ -171,7 +171,7 @@ export interface PluginMarketplaceEntry {
   manifest: PluginManifest;
 }
 
-export type PluginConfig = Record<string, any>;
+export type PluginConfig = Record<string, unknown>;
 
 export interface PluginInstallationRequest {
   source: "marketplace" | "file" | "url" | "git";
@@ -640,7 +640,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
 
       await installPlugin(request);
       setState((prev) => ({ ...prev, step: "complete" }));
-    } catch (err: any) {
+    } catch (err: Error) {
       setState((prev) => ({
         ...prev,
         installationError: err?.message ?? "Installation failed",
@@ -1038,7 +1038,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
 
     const renderField = (field: PluginConfigField) => {
       const value = state.configuration[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
-      const update = (v: any) =>
+      const update = (v: unknown) =>
         setState((prev) => ({ ...prev, configuration: { ...prev.configuration, [field.key]: v } }));
 
       switch (field.type) {

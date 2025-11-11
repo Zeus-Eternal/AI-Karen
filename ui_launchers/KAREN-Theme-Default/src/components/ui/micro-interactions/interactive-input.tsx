@@ -59,15 +59,23 @@ export const InteractiveInput = React.forwardRef<HTMLInputElement, InteractiveIn
 
     // Trigger shake animation when error state changes to true
     useEffect(() => {
+      let startTimer: ReturnType<typeof setTimeout> | null = null;
+      let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
       if (error && animationVariant === 'shake') {
-        setShouldShake(true);
         if (hapticFeedback && enableHaptics) {
           triggerHapticFeedback('error');
         }
-        // Reset shake state after animation
-        const timer = setTimeout(() => setShouldShake(false), 500);
-        return () => clearTimeout(timer);
+        startTimer = setTimeout(() => {
+          setShouldShake(true);
+          resetTimer = setTimeout(() => setShouldShake(false), 500);
+        }, 0);
       }
+
+      return () => {
+        if (startTimer) clearTimeout(startTimer);
+        if (resetTimer) clearTimeout(resetTimer);
+      };
     }, [error, animationVariant, hapticFeedback, enableHaptics]);
 
     // Trigger success haptic feedback

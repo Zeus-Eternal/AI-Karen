@@ -1,9 +1,9 @@
 export class ErrorRecoveryService {
-  async attemptRecovery(error: Error): Promise<boolean> {
+  async attemptRecovery(_error: Error): Promise<boolean> {
     // Mock error recovery service
     return false;
   }
-  async getRecoveryStrategy(error: Error, context: any): Promise<any> {
+  async getRecoveryStrategy(_error: Error, _context: unknown): Promise<unknown> {
     // Mock recovery strategy
     return {
       canRecover: false,

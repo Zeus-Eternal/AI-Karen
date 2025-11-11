@@ -18,7 +18,7 @@ export interface ProviderNotification {
     action: 'retry' | 'configure' | 'dismiss' | 'view_details';
     variant?: 'default' | 'destructive' | 'outline';
   }>;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 export interface NotificationSettings {
   provider_status_changes: boolean;
@@ -59,7 +59,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
   useEffect(() => {
     loadNotifications();
     loadSettings();
-  }, []);
+  }, [loadNotifications, loadSettings]);
   // Set up real-time updates
   useEffect(() => {
     if (!realTimeUpdates) return;
@@ -76,7 +76,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
           try {
             const notification: ProviderNotification = JSON.parse(event.data);
             addNotification(notification);
-          } catch (error) {
+        } catch (_error) {
             // Handle parsing error silently
           }
         };
@@ -89,7 +89,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
             }, 30000); // Poll every 30 seconds
           }
         };
-      } catch (error) {
+      } catch (_error) {
         // Fallback to polling
         pollInterval = setInterval(() => {
           loadNotifications();
@@ -105,19 +105,19 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         clearInterval(pollInterval);
       }
     };
-  }, [realTimeUpdates]);
-  const loadNotifications = async () => {
+  }, [realTimeUpdates, loadNotifications]);
+  const loadNotifications = useCallback(async () => {
     try {
       const response = await backend.makeRequestPublic<ProviderNotification[]>('/api/providers/notifications');
       setNotifications(response || []);
-    } catch (error) {
+    } catch (_error) {
       // Use mock data for development
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  };
-  const loadSettings = async () => {
+  }, [backend]);
+  const loadSettings = useCallback(async () => {
     try {
       // Try to load from backend first
       const response = await backend.makeRequestPublic<NotificationSettings>('/api/providers/notifications/settings');
@@ -125,7 +125,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         setSettings(response);
         return;
       }
-    } catch (error) {
+    } catch (_error) {
       // Handle error silently
     }
     // Fallback to localStorage
@@ -134,10 +134,10 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       if (savedSettings) {
         setSettings(JSON.parse(savedSettings));
       }
-    } catch (error) {
+    } catch (_error) {
       // Handle error silently
     }
-  };
+  }, [backend]);
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
     try {
       // Try to save to backend first
@@ -145,13 +145,13 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         method: 'POST',
         body: JSON.stringify(newSettings)
       });
-    } catch (error) {
+    } catch (_error) {
       // Handle error silently
     }
     // Always save to localStorage as backup
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
-    } catch (error) {
+    } catch (_error) {
       // Handle error silently
     }
     setSettings(newSettings);
@@ -187,7 +187,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/read`, {
       method: 'POST'
-    }).catch(error => {
+    }).catch(_error => {
       // Handle error silently
     });
   }, [backend]);
@@ -198,7 +198,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/dismiss`, {
       method: 'POST'
-    }).catch(error => {
+    }).catch(_error => {
       // Handle error silently
     });
   }, [backend]);
@@ -207,7 +207,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     // Update backend
     backend.makeRequestPublic('/api/providers/notifications/clear-all', {
       method: 'POST'
-    }).catch(error => {
+    }).catch(_error => {
       // Handle error silently
     });
   }, [backend]);

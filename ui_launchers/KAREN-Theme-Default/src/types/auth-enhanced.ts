@@ -118,7 +118,7 @@ export interface AuthEvent {
   timestamp: Date;
   userId?: string;
   sessionId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   error?: AuthenticationError;
 }
 
@@ -227,13 +227,13 @@ export interface EnhancedAuthProviderProps {
 // ---------------------------------------------------------------------------
 export const AuthTypeGuards = {
   isUser(value: unknown): value is User {
-    return !!value && typeof value === 'object' && 'user_id' in (value as any) && 'email' in (value as any);
+    return !!value && typeof value === 'object' && 'user_id' in (value as Record<string, unknown>) && 'email' in (value as Record<string, unknown>);
   },
   isAuthenticationError(value: unknown): value is AuthenticationError {
-    return !!value && typeof value === 'object' && 'type' in (value as any) && 'message' in (value as any);
+    return !!value && typeof value === 'object' && 'type' in (value as Record<string, unknown>) && 'message' in (value as Record<string, unknown>);
   },
   isFeedbackMessage(value: unknown): value is FeedbackMessage {
-    return !!value && typeof value === 'object' && 'type' in (value as any) && 'title' in (value as any) && 'message' in (value as any);
+    return !!value && typeof value === 'object' && 'type' in (value as Record<string, unknown>) && 'title' in (value as Record<string, unknown>) && 'message' in (value as Record<string, unknown>);
   },
   isValidationErrors(value: unknown): value is ValidationErrors {
     return !!value && typeof value === 'object';

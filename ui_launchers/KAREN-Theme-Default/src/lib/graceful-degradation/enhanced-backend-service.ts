@@ -16,7 +16,7 @@ export interface EnhancedRequestOptions {
   enableCaching?: boolean;
   useStaleOnError?: boolean;
   maxStaleAge?: number;
-  fallbackData?: any;
+  fallbackData?: unknown;
   serviceName?: string;
 }
 
@@ -35,7 +35,7 @@ export class EnhancedBackendService {
   private readonly maxRetries: number;
   private readonly baseRetryDelay: number;
 
-  constructor(private originalService: { makeRequest: (endpoint: string, init?: RequestInit) => Promise<any> }, opts?: { maxRetries?: number; baseRetryDelayMs?: number }) {
+  constructor(private originalService: { makeRequest: (endpoint: string, init?: RequestInit) => Promise<unknown> }, opts?: { maxRetries?: number; baseRetryDelayMs?: number }) {
     this.maxRetries = Math.max(1, opts?.maxRetries ?? MAX_RETRIES_DEFAULT);
     this.baseRetryDelay = Math.max(250, opts?.baseRetryDelayMs ?? BASE_RETRY_DELAY_MS);
   }
@@ -87,7 +87,7 @@ export class EnhancedBackendService {
             ttl: 5 * 60 * 1000, // 5 minutes
           });
         } else {
-          result = await this.originalService.makeRequest(endpoint, requestOptions);
+          result = await this.originalService.makeRequest(endpoint, requestOptions) as T;
         }
 
         // Success: mark healthy and return
@@ -126,7 +126,7 @@ export class EnhancedBackendService {
   private async handleDisabledService<T>(
     serviceName: string,
     cacheKey?: string,
-    fallbackData?: any,
+    fallbackData?: unknown,
     useStaleOnError?: boolean,
     maxStaleAge?: number
   ): Promise<T> {
@@ -141,7 +141,7 @@ export class EnhancedBackendService {
   private async handleUnhealthyService<T>(
     serviceName: string,
     cacheKey?: string,
-    fallbackData?: any,
+    fallbackData?: unknown,
     useStaleOnError?: boolean,
     maxStaleAge?: number
   ): Promise<T> {
@@ -158,7 +158,7 @@ export class EnhancedBackendService {
     _endpoint: string,
     error: Error,
     cacheKey?: string,
-    fallbackData?: any,
+    fallbackData?: unknown,
     useStaleOnError?: boolean,
     maxStaleAge?: number
   ): Promise<T> {
@@ -180,7 +180,7 @@ export class EnhancedBackendService {
     error: Error,
     attempt: number,
     cacheKey?: string,
-    fallbackData?: any,
+    fallbackData?: unknown,
     useStaleOnError?: boolean,
     maxStaleAge?: number
   ): Promise<T> {
@@ -201,7 +201,7 @@ export class EnhancedBackendService {
     _endpoint: string,
     error: Error,
     cacheKey?: string,
-    fallbackData?: any,
+    fallbackData?: unknown,
     useStaleOnError?: boolean,
     maxStaleAge?: number
   ): Promise<T> {
@@ -218,14 +218,16 @@ export class EnhancedBackendService {
 
   /** ---------- Heuristics & helpers ---------- */
 
-  private isAuthenticationError(error: any): boolean {
-    const msg = String(error?.message ?? "").toLowerCase();
-    return error?.status === 401 || error?.status === 403 || msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("forbidden");
+  private isAuthenticationError(error: unknown): boolean {
+    const errorObj = error as { status?: number; message?: string };
+    const msg = String(errorObj?.message ?? "").toLowerCase();
+    return errorObj?.status === 401 || errorObj?.status === 403 || msg.includes("authentication") || msg.includes("unauthorized") || msg.includes("forbidden");
   }
 
-  private isServiceUnavailableError(error: any): boolean {
-    const msg = String(error?.message ?? "").toLowerCase();
-    return error?.status === 502 || error?.status === 503 || error?.status === 504 || msg.includes("service unavailable") || msg.includes("network error") || msg.includes("timeout");
+  private isServiceUnavailableError(error: unknown): boolean {
+    const errorObj = error as { status?: number; message?: string };
+    const msg = String(errorObj?.message ?? "").toLowerCase();
+    return errorObj?.status === 502 || errorObj?.status === 503 || errorObj?.status === 504 || msg.includes("service unavailable") || msg.includes("network error") || msg.includes("timeout");
   }
 
   private getServiceNameFromEndpoint(endpoint: string): string {
@@ -289,8 +291,8 @@ export class EnhancedBackendService {
 
   /** ---------- Convenience endpoints ---------- */
 
-  async getExtensions(useCache: boolean = true): Promise<any[]> {
-    return this.makeEnhancedRequest<any[]>({
+  async getExtensions(useCache: boolean = true): Promise<unknown[]> {
+    return this.makeEnhancedRequest<unknown[]>({
       endpoint: "/api/extensions/",
       cacheKey: useCache ? "extensions-list" : undefined,
       enableCaching: useCache,
@@ -299,8 +301,8 @@ export class EnhancedBackendService {
     });
   }
 
-  async getBackgroundTasks(useCache: boolean = true): Promise<any[]> {
-    return this.makeEnhancedRequest<any[]>({
+  async getBackgroundTasks(useCache: boolean = true): Promise<unknown[]> {
+    return this.makeEnhancedRequest<unknown[]>({
       endpoint: "/api/extensions/background-tasks/",
       cacheKey: useCache ? "background-tasks" : undefined,
       enableCaching: useCache,
@@ -309,8 +311,8 @@ export class EnhancedBackendService {
     });
   }
 
-  async getModelProviders(useCache: boolean = true): Promise<any[]> {
-    return this.makeEnhancedRequest<any[]>({
+  async getModelProviders(useCache: boolean = true): Promise<unknown[]> {
+    return this.makeEnhancedRequest<unknown[]>({
       endpoint: "/api/models/providers/",
       cacheKey: useCache ? "model-providers" : undefined,
       enableCaching: useCache,
@@ -319,8 +321,8 @@ export class EnhancedBackendService {
     });
   }
 
-  async getExtensionHealth(extensionName: string, useCache: boolean = true): Promise<any> {
-    return this.makeEnhancedRequest<any>({
+  async getExtensionHealth(extensionName: string, useCache: boolean = true): Promise<unknown> {
+    return this.makeEnhancedRequest<unknown>({
       endpoint: `/api/extensions/${extensionName}/health/`,
       cacheKey: useCache ? `extension-health-${extensionName}` : undefined,
       enableCaching: useCache,

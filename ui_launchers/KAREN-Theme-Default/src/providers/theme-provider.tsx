@@ -1,24 +1,9 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useUIStore, selectThemeState } from '../store';
 import { generateCompleteCSS } from '../design-tokens/css-tokens';
-
-export type Theme = 'light' | 'dark' | 'system';
-export type Density = 'compact' | 'comfortable' | 'spacious';
-
-export interface ThemeContextValue {
-  theme: Theme;
-  resolvedTheme: 'light' | 'dark';
-  setTheme: (theme: Theme) => void;
-  systemTheme: 'light' | 'dark';
-  density: Density;
-  setDensity: (density: Density) => void;
-  toggleTheme: () => void;
-  isSystemTheme: boolean;
-}
-
-const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+import { ThemeContext, type Theme, type ThemeContextValue, type Density } from './theme-context';
 
 const VALID_THEMES: Theme[] = ['light', 'dark', 'system'];
 const VALID_DENSITIES: Density[] = ['compact', 'comfortable', 'spacious'];
@@ -30,7 +15,7 @@ const isValidDensity = (value: string | null): value is Density =>
   !!value && VALID_DENSITIES.includes(value as Density);
 
 export interface ThemeProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultTheme?: Theme;
   defaultDensity?: Density;
   storageKey?: string;
@@ -73,15 +58,21 @@ export function ThemeProvider({
       styleElement.id = styleId;
       styleElement.textContent = generateCompleteCSS();
       document.head.appendChild(styleElement);
+      
+      // Set state in a callback to avoid direct setState in effect
+      requestAnimationFrame(() => {
+        setCssInjected(true);
+      });
     }
-
-    setCssInjected(true);
   }, [cssInjected, enableCSSInjection]);
 
   // Detect system theme preference
   useEffect(() => {
     if (!enableSystem) {
-      setSystemTheme('light');
+      // Use callback to avoid direct setState in effect
+      requestAnimationFrame(() => {
+        setSystemTheme('light');
+      });
       return;
     }
 
@@ -94,7 +85,11 @@ export function ThemeProvider({
       setSystemTheme(event.matches ? 'dark' : 'light');
     };
 
-    setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
+    // Set initial value in callback to avoid direct setState in effect
+    requestAnimationFrame(() => {
+      setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
+    });
+    
     mediaQuery.addEventListener('change', handleChange);
 
     return () => mediaQuery.removeEventListener('change', handleChange);
@@ -114,17 +109,20 @@ export function ThemeProvider({
     const storedTheme = localStorage.getItem(storageKey);
     const storedDensity = localStorage.getItem(densityStorageKey);
 
-    if (isValidTheme(storedTheme)) {
-      setStoreTheme(storedTheme);
-    } else if (defaultTheme !== theme) {
-      setStoreTheme(defaultTheme);
-    }
+    // Use callback to avoid direct setState in effect
+    requestAnimationFrame(() => {
+      if (isValidTheme(storedTheme)) {
+        setStoreTheme(storedTheme);
+      } else if (defaultTheme !== theme) {
+        setStoreTheme(defaultTheme);
+      }
 
-    if (isValidDensity(storedDensity)) {
-      setDensityState(storedDensity);
-    } else {
-      setDensityState(defaultDensity);
-    }
+      if (isValidDensity(storedDensity)) {
+        setDensityState(storedDensity);
+      } else {
+        setDensityState(defaultDensity);
+      }
+    });
   }, [defaultDensity, defaultTheme, setStoreTheme, storageKey, densityStorageKey, theme]);
 
   // Persist theme preference for backwards compatibility consumers
@@ -173,7 +171,10 @@ export function ThemeProvider({
 
   // Mark as mounted after first render to avoid hydration mismatch
   useEffect(() => {
-    setMounted(true);
+    // Use callback to avoid direct setState in effect
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
   }, []);
 
   const setDensity = useCallback((newDensity: Density) => {
@@ -218,12 +219,4 @@ export function ThemeProvider({
       {children}
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
 }

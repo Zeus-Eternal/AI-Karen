@@ -22,7 +22,7 @@ export class ConnectionError extends Error {
   public category: ErrorCategory;
   public retryable: boolean;
   public statusCode?: number;
-  public originalError?: any;
+  public originalError?: unknown;
   public retryCount?: number;
 
   constructor(
@@ -30,7 +30,7 @@ export class ConnectionError extends Error {
     category: ErrorCategory,
     retryable: boolean = false,
     statusCode?: number,
-    originalError?: any,
+    originalError?: unknown,
     retryCount?: number
   ) {
     super(message);
@@ -58,7 +58,7 @@ export interface ConnectionOptions extends RequestConfig {
 }
 
 // Response interface
-export interface ConnectionResponse<T = any> {
+export interface ConnectionResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
@@ -68,7 +68,7 @@ export interface ConnectionResponse<T = any> {
 }
 
 // Request result interface (alias for compatibility)
-export interface RequestResult<T = any> extends ConnectionResponse<T> {}
+export type RequestResult<T = unknown> = ConnectionResponse<T>;
 
 // Connection status interface
 export interface ConnectionStatus {
@@ -215,7 +215,7 @@ export class ConnectionManager {
    * Handle request errors and convert to ConnectionError
    */
   private handleRequestError(
-    error: any,
+    error: Error,
     url: string,
     attempt: number
   ): ConnectionError {

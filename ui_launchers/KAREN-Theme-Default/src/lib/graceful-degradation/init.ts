@@ -137,7 +137,7 @@ function enableDevelopmentMode() {
 
   // Add dev helpers to window
   if (typeof window !== "undefined") {
-    (window as any).gracefulDegradation = {
+    (window as { gracefulDegradation?: unknown } & Window).gracefulDegradation = {
       featureFlagManager,
       extensionCache,
       simulateFailure: (serviceName: string) => {

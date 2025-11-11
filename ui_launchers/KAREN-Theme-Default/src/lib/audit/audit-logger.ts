@@ -117,7 +117,7 @@ export class AuditLogger {
     resourceType: string,
     options: {
       resourceId?: string;
-      details?: Record<string, any>;
+      details?: Record<string, unknown>;
       request?: NextRequest;
       ip_address?: string;
       user_agent?: string;
@@ -147,7 +147,7 @@ export class AuditLogger {
     adminUserId: string,
     action: string,
     targetUserId: string,
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     request?: NextRequest
   ): Promise<string> {
     return await this.log(adminUserId, action, AUDIT_RESOURCE_TYPES.USER, {
@@ -163,7 +163,7 @@ export class AuditLogger {
   async logAuthAction(
     userId: string,
     action: string,
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     request?: NextRequest
   ): Promise<string> {
     return await this.log(userId, action, AUDIT_RESOURCE_TYPES.SESSION, {
@@ -179,7 +179,7 @@ export class AuditLogger {
     adminUserId: string,
     action: string,
     configKey: string,
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     request?: NextRequest
   ): Promise<string> {
     return await this.log(
@@ -200,7 +200,7 @@ export class AuditLogger {
   async logSecurityEvent(
     userId: string,
     action: string,
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     request?: NextRequest
   ): Promise<string> {
     return await this.log(
@@ -226,7 +226,7 @@ export class AuditLogger {
     action: string,
     resourceType: string,
     resourceIds: string[],
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     request?: NextRequest
   ): Promise<string> {
     return await this.log(adminUserId, action, resourceType, {
@@ -425,7 +425,7 @@ export const auditLog = {
   userUpdated: (
     adminId: string,
     userId: string,
-    changes: Record<string, any>,
+    changes: Record<string, unknown>,
     request?: NextRequest
   ) =>
     getAuditLogger().logUserAction(
@@ -494,8 +494,8 @@ export const auditLog = {
   configUpdated: (
     adminId: string,
     key: string,
-    oldValue: any,
-    newValue: any,
+    oldValue: unknown,
+    newValue: unknown,
     request?: NextRequest
   ) =>
     getAuditLogger().logSystemConfigAction(
@@ -509,7 +509,7 @@ export const auditLog = {
   // Security events
   securityBreach: (
     userId: string,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     request?: NextRequest
   ) =>
     getAuditLogger().logSecurityEvent(
@@ -521,7 +521,7 @@ export const auditLog = {
 
   suspiciousActivity: (
     userId: string,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     request?: NextRequest
   ) =>
     getAuditLogger().logSecurityEvent(

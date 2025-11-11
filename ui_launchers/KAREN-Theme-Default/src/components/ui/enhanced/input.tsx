@@ -8,7 +8,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 // Enhanced input variants using design tokens
-export const enhancedInputVariants = cva(
+const enhancedInputVariants = cva(
   [
     'flex w-full rounded-[var(--radius-md)]',
     'border border-[var(--color-neutral-300)]',
@@ -75,7 +75,7 @@ export const enhancedInputVariants = cva(
     },
   }
 );
-export interface EnhancedInputProps
+interface EnhancedInputProps
   extends Omit<React.ComponentProps<'input'>, 'size'>,
     VariantProps<typeof enhancedInputVariants> {
   leftIcon?: React.ReactNode;
@@ -101,7 +101,8 @@ export const EnhancedInput = React.forwardRef<HTMLInputElement, EnhancedInputPro
     id,
     ...props 
   }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = React.useId();
+    const inputId = id ?? `input-${generatedId}`;
     const hasError = state === 'error' || !!errorText;
     const actualState = hasError ? 'error' : state;
     return (

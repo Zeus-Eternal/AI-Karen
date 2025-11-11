@@ -1,296 +1,367 @@
 // ui_launchers/KAREN-Theme-Default/src/hooks/use-unified-api.ts
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { getUnifiedApiClient, type CopilotAssistRequest, type CopilotAssistResponse, type MemorySearchRequest, type MemorySearchResponse, type MemoryCommitRequest, type MemoryCommitResponse } from '@/lib/unified-api-client';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  getUnifiedApiClient,
+  type CopilotAssistRequest,
+  type CopilotAssistResponse,
+  type MemorySearchRequest,
+  type MemorySearchResponse,
+  type MemoryCommitRequest,
+  type MemoryCommitResponse,
+} from "@/lib/unified-api-client";
 
 export interface UseUnifiedApiOptions {
   autoToast?: boolean;
   enableCaching?: boolean;
   cacheTimeout?: number;
   onError?: (error: Error, operation: string) => void;
-  onSuccess?: (data: any, operation: string) => void;
+  onSuccess?: (data: unknown, operation: string) => void;
 }
 
 export interface UseUnifiedApiReturn {
   // Copilot operations
-  copilotAssist: (request: Omit<CopilotAssistRequest, 'user_id'>) => Promise<CopilotAssistResponse>;
-  
+  copilotAssist: (
+    request: Omit<CopilotAssistRequest, "user_id">
+  ) => Promise<CopilotAssistResponse>;
+
   // Memory operations
-  memorySearch: (request: Omit<MemorySearchRequest, 'user_id'>) => Promise<MemorySearchResponse>;
-  memoryCommit: (request: Omit<MemoryCommitRequest, 'user_id'>) => Promise<MemoryCommitResponse>;
-  memoryUpdate: (memoryId: string, updates: Partial<MemoryCommitRequest>) => Promise<MemoryCommitResponse>;
-  memoryDelete: (memoryId: string, options?: { hard_delete?: boolean }) => Promise<{ success: boolean; correlation_id: string }>;
-  
+  memorySearch: (
+    request: Omit<MemorySearchRequest, "user_id">
+  ) => Promise<MemorySearchResponse>;
+  memoryCommit: (
+    request: Omit<MemoryCommitRequest, "user_id">
+  ) => Promise<MemoryCommitResponse>;
+  memoryUpdate: (
+    memoryId: string,
+    updates: Partial<MemoryCommitRequest>
+  ) => Promise<MemoryCommitResponse>;
+  memoryDelete: (
+    memoryId: string,
+    options?: { hard_delete?: boolean }
+  ) => Promise<{ success: boolean; correlation_id: string }>;
+
   // Batch operations
-  batchMemoryOperations: (operations: Array<{ type: string; data: any }>) => Promise<Array<{ success: boolean; result?: any; error?: string }>>;
-  
+  batchMemoryOperations: (
+    operations: Array<{ type: string; data: unknown }>
+  ) => Promise<Array<{ success: boolean; result?: unknown; error?: string }>>;
+
   // Utility operations
-  healthCheck: () => Promise<any>;
-  
+  healthCheck: () => Promise<unknown>;
+
   // State
   isLoading: boolean;
   error: Error | null;
-  lastResponse: any;
-  
+  lastResponse: unknown;
+
   // Cache management
   clearCache: () => void;
-  getCacheStats: () => any;
+  getCacheStats: () => Record<string, unknown>;
 }
 
 export interface CacheEntry {
-  data: any;
+  data: unknown;
   timestamp: number;
   key: string;
 }
 
-export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApiReturn {
+export function useUnifiedApi(
+  options: UseUnifiedApiOptions = {}
+): UseUnifiedApiReturn {
   const {
     autoToast = true,
     enableCaching = true,
     cacheTimeout = 300000, // 5 minutes
     onError,
-    onSuccess
+    onSuccess,
   } = options;
 
   const { user } = useAuth();
   const { toast } = useToast();
   const apiClient = getUnifiedApiClient();
-  
+
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [lastResponse, setLastResponse] = useState<any>(null);
-  
+  const [lastResponse, setLastResponse] = useState<unknown>(null);
+
   // Cache
   const cache = useRef<Map<string, CacheEntry>>(new Map());
-  const activeRequests = useRef<Map<string, Promise<any>>>(new Map());
+  const activeRequests = useRef<Map<string, Promise<unknown>>>(new Map());
 
   // Generate cache key
-  const generateCacheKey = useCallback((operation: string, params: any): string => {
-    return `${operation}_${JSON.stringify(params)}`;
-  }, []);
+  const generateCacheKey = useCallback(
+    (operation: string, params: Record<string, unknown> = {}): string => {
+      return `${operation}_${JSON.stringify(params)}`;
+    },
+    []
+  );
 
   // Check cache
-  const getCachedData = useCallback((key: string): any | null => {
-    if (!enableCaching) return null;
-    
-    const entry = cache.current.get(key);
-    if (!entry) return null;
-    
-    const isExpired = Date.now() - entry.timestamp > cacheTimeout;
-    if (isExpired) {
-      cache.current.delete(key);
-      return null;
-    }
-    
-    return entry.data;
-  }, [enableCaching, cacheTimeout]);
+  const getCachedData = useCallback(
+    (key: string): unknown | null => {
+      if (!enableCaching) return null;
+
+      const entry = cache.current.get(key);
+      if (!entry) return null;
+
+      const isExpired = Date.now() - entry.timestamp > cacheTimeout;
+      if (isExpired) {
+        cache.current.delete(key);
+        return null;
+      }
+
+      return entry.data;
+    },
+    [enableCaching, cacheTimeout]
+  );
 
   // Set cache data
-  const setCachedData = useCallback((key: string, data: any): void => {
-    if (!enableCaching) return;
-    
-    cache.current.set(key, {
-      data,
-      timestamp: Date.now(),
-      key
-    });
-  }, [enableCaching]);
+  const setCachedData = useCallback(
+    (key: string, data: unknown): void => {
+      if (!enableCaching) return;
+
+      cache.current.set(key, {
+        data,
+        timestamp: Date.now(),
+        key,
+      });
+    },
+    [enableCaching]
+  );
 
   // Handle API request with caching and deduplication
-  const handleApiRequest = useCallback(async <T>(
-    operation: string,
-    requestFn: () => Promise<T>,
-    params?: any
-  ): Promise<T> => {
-    const cacheKey = params ? generateCacheKey(operation, params) : operation;
-    
-    // Check cache first
-    const cachedData = getCachedData(cacheKey);
-    if (cachedData) {
-      setLastResponse(cachedData);
-      return cachedData;
-    }
-    
-    // Check for active request (deduplication)
-    const activeRequest = activeRequests.current.get(cacheKey);
-    if (activeRequest) {
-      return activeRequest;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    
-    const requestPromise = requestFn();
-    activeRequests.current.set(cacheKey, requestPromise);
-    
-    try {
-      const result = await requestPromise;
-      
-      // Cache the result
-      setCachedData(cacheKey, result);
-      setLastResponse(result);
-      
-      if (onSuccess) {
-        onSuccess(result, operation);
+  const handleApiRequest = useCallback(
+    async <T>(
+      operation: string,
+      requestFn: () => Promise<T>,
+      params?: Record<string, unknown>
+    ): Promise<T> => {
+      const cacheKey = params ? generateCacheKey(operation, params) : operation;
+
+      // Check cache first
+      const cachedData = getCachedData(cacheKey);
+      if (cachedData) {
+        setLastResponse(cachedData);
+        return cachedData as T;
       }
-      
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Unknown error');
-      setError(error);
-      
-      if (autoToast) {
-        toast({
-          variant: 'destructive',
-          title: 'API Error',
-          description: error.message,
-          duration: 5000
-        });
+
+      // Check for active request (deduplication)
+      const activeRequest = activeRequests.current.get(cacheKey);
+      if (activeRequest) {
+        return activeRequest as Promise<T>;
       }
-      
-      if (onError) {
-        onError(error, operation);
+
+      setIsLoading(true);
+      setError(null);
+
+      const requestPromise = requestFn();
+      activeRequests.current.set(cacheKey, requestPromise);
+
+      try {
+        const result = await requestPromise;
+
+        // Cache the result
+        setCachedData(cacheKey, result);
+        setLastResponse(result);
+
+        if (onSuccess) {
+          onSuccess(result, operation);
+        }
+
+        return result;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Unknown error");
+        setError(error);
+
+        if (autoToast) {
+          toast({
+            variant: "destructive",
+            title: "API Error",
+            description: error.message,
+            duration: 5000,
+          });
+        }
+
+        if (onError) {
+          onError(error, operation);
+        }
+
+        throw error;
+      } finally {
+        setIsLoading(false);
+        activeRequests.current.delete(cacheKey);
       }
-      
-      throw error;
-    } finally {
-      setIsLoading(false);
-      activeRequests.current.delete(cacheKey);
-    }
-  }, [generateCacheKey, getCachedData, setCachedData, autoToast, toast, onSuccess, onError]);
+    },
+    [
+      generateCacheKey,
+      getCachedData,
+      setCachedData,
+      autoToast,
+      toast,
+      onSuccess,
+      onError,
+    ]
+  );
 
   // Copilot Assist
-  const copilotAssist = useCallback(async (
-    request: Omit<CopilotAssistRequest, 'user_id'>
-  ): Promise<CopilotAssistResponse> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
+  const copilotAssist = useCallback(
+    async (
+      request: Omit<CopilotAssistRequest, "user_id">
+    ): Promise<CopilotAssistResponse> => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
+      }
 
-    return handleApiRequest(
-      'copilot_assist',
-      () => apiClient.copilotAssist({
-        ...request,
-        user_id: user.userId,
-        org_id: user.tenantId
-      }),
-      request
-    );
-  }, [user, apiClient, handleApiRequest]);
+      return handleApiRequest(
+        "copilot_assist",
+        () =>
+          apiClient.copilotAssist({
+            ...request,
+            user_id: user.userId,
+            org_id: user.tenantId,
+          }),
+        request
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Memory Search
-  const memorySearch = useCallback(async (
-    request: Omit<MemorySearchRequest, 'user_id'>
-  ): Promise<MemorySearchResponse> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
+  const memorySearch = useCallback(
+    async (
+      request: Omit<MemorySearchRequest, "user_id">
+    ): Promise<MemorySearchResponse> => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
+      }
 
-    return handleApiRequest(
-      'memory_search',
-      () => apiClient.memorySearch({
-        ...request,
-        user_id: user.userId,
-        org_id: user.tenantId
-      }),
-      request
-    );
-  }, [user, apiClient, handleApiRequest]);
+      return handleApiRequest(
+        "memory_search",
+        () =>
+          apiClient.memorySearch({
+            ...request,
+            user_id: user.userId,
+            org_id: user.tenantId,
+          }),
+        request
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Memory Commit
-  const memoryCommit = useCallback(async (
-    request: Omit<MemoryCommitRequest, 'user_id'>
-  ): Promise<MemoryCommitResponse> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
+  const memoryCommit = useCallback(
+    async (
+      request: Omit<MemoryCommitRequest, "user_id">
+    ): Promise<MemoryCommitResponse> => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
+      }
 
-    return handleApiRequest(
-      'memory_commit',
-      () => apiClient.memoryCommit({
-        ...request,
-        user_id: user.userId,
-        org_id: user.tenantId
-      }),
-      request
-    );
-  }, [user, apiClient, handleApiRequest]);
+      return handleApiRequest(
+        "memory_commit",
+        () =>
+          apiClient.memoryCommit({
+            ...request,
+            user_id: user.userId,
+            org_id: user.tenantId,
+          }),
+        request
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Memory Update
-  const memoryUpdate = useCallback(async (
-    memoryId: string,
-    updates: Partial<MemoryCommitRequest>
-  ): Promise<MemoryCommitResponse> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
+  const memoryUpdate = useCallback(
+    async (
+      memoryId: string,
+      updates: Partial<MemoryCommitRequest>
+    ): Promise<MemoryCommitResponse> => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
+      }
 
-    return handleApiRequest(
-      'memory_update',
-      () => apiClient.memoryUpdate(memoryId, {
-        ...updates,
-        user_id: user.userId,
-        org_id: user.tenantId
-      }),
-      { memoryId, updates }
-    );
-  }, [user, apiClient, handleApiRequest]);
+      return handleApiRequest(
+        "memory_update",
+        () =>
+          apiClient.memoryUpdate(memoryId, {
+            ...updates,
+            user_id: user.userId,
+            org_id: user.tenantId,
+          }),
+        { memoryId, updates }
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Memory Delete
-  const memoryDelete = useCallback(async (
-    memoryId: string,
-    options: { hard_delete?: boolean } = {}
-  ): Promise<{ success: boolean; correlation_id: string }> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
+  const memoryDelete = useCallback(
+    async (
+      memoryId: string,
+      options: { hard_delete?: boolean } = {}
+    ): Promise<{ success: boolean; correlation_id: string }> => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
+      }
 
-    return handleApiRequest(
-      'memory_delete',
-      () => apiClient.memoryDelete(memoryId, {
-        user_id: user.userId,
-        org_id: user.tenantId,
-        ...options
-      }),
-      { memoryId, options }
-    );
-  }, [user, apiClient, handleApiRequest]);
+      return handleApiRequest(
+        "memory_delete",
+        () =>
+          apiClient.memoryDelete(memoryId, {
+            user_id: user.userId,
+            org_id: user.tenantId,
+            ...options,
+          }),
+        { memoryId, options }
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Batch Memory Operations
-  const batchMemoryOperations = useCallback(async (
-    operations: Array<{ type: string; data: any }>
-  ): Promise<Array<{ success: boolean; result?: any; error?: string }>> => {
-    if (!user?.userId) {
-      throw new Error('User authentication required');
-    }
-
-    // Add user context to all operations
-    const operationsWithUser = operations.map(op => ({
-      ...op,
-      data: {
-        ...op.data,
-        user_id: user.userId,
-        org_id: user.tenantId
+  const batchMemoryOperations = useCallback(
+    async (
+      operations: Array<{ type: string; data: unknown }>
+    ): Promise<
+      Array<{ success: boolean; result?: unknown; error?: string }>
+    > => {
+      if (!user?.userId) {
+        throw new Error("User authentication required");
       }
-    }));
 
-    return handleApiRequest(
-      'batch_memory_operations',
-      () => apiClient.batchMemoryOperations(operationsWithUser as Array<{ type: "search" | "delete" | "commit" | "update"; data: any }>),
-      operations
-    );
-  }, [user, apiClient, handleApiRequest]);
+      // Add user context to all operations
+      const operationsWithUser = operations.map((op) => ({
+        ...op,
+        data: {
+          ...(typeof op.data === "object" && op.data !== null
+            ? (op.data as Record<string, unknown>)
+            : { value: op.data }),
+          user_id: user.userId,
+          org_id: user.tenantId,
+        },
+      }));
+
+      return handleApiRequest(
+        "batch_memory_operations",
+        () =>
+          apiClient.batchMemoryOperations(
+            operationsWithUser as Parameters<typeof apiClient.batchMemoryOperations>[0] // Type assertion needed due to complex discriminated union
+          ),
+        { operations }
+      );
+    },
+    [user, apiClient, handleApiRequest]
+  );
 
   // Health Check
   const healthCheck = useCallback(async () => {
-    return handleApiRequest(
-      'health_check',
-      () => apiClient.healthCheck()
-    );
+    return handleApiRequest("health_check", () => apiClient.healthCheck());
   }, [apiClient, handleApiRequest]);
 
   // Clear cache
@@ -304,14 +375,15 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
     return {
       cacheSize: cache.current.size,
       cacheKeys: Array.from(cache.current.keys()),
-      apiStats: apiClient.getEndpointStats()
+      apiStats: apiClient.getEndpointStats(),
     };
   }, [apiClient]);
 
   // Cleanup on unmount
   useEffect(() => {
+    const currentActiveRequests = activeRequests.current;
     return () => {
-      activeRequests.current.clear();
+      currentActiveRequests.clear();
     };
   }, []);
 
@@ -324,15 +396,15 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
     memoryDelete,
     batchMemoryOperations,
     healthCheck,
-    
+
     // State
     isLoading,
     error,
     lastResponse,
-    
+
     // Cache management
     clearCache,
-    getCacheStats
+    getCacheStats,
   };
 }
 
@@ -341,12 +413,12 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
  */
 export function useCopilotApi(options?: UseUnifiedApiOptions) {
   const api = useUnifiedApi(options);
-  
+
   return {
     assist: api.copilotAssist,
     isLoading: api.isLoading,
     error: api.error,
-    lastResponse: api.lastResponse
+    lastResponse: api.lastResponse,
   };
 }
 
@@ -355,7 +427,7 @@ export function useCopilotApi(options?: UseUnifiedApiOptions) {
  */
 export function useMemoryApi(options?: UseUnifiedApiOptions) {
   const api = useUnifiedApi(options);
-  
+
   return {
     search: api.memorySearch,
     commit: api.memoryCommit,
@@ -365,7 +437,7 @@ export function useMemoryApi(options?: UseUnifiedApiOptions) {
     isLoading: api.isLoading,
     error: api.error,
     lastResponse: api.lastResponse,
-    clearCache: api.clearCache
+    clearCache: api.clearCache,
   };
 }
 
@@ -376,5 +448,5 @@ export type {
   MemorySearchRequest,
   MemorySearchResponse,
   MemoryCommitRequest,
-  MemoryCommitResponse
+  MemoryCommitResponse,
 };

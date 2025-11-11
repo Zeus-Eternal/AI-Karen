@@ -60,14 +60,22 @@ class PerformanceMetricsStore {
   }
 }
 const metricsStore = new PerformanceMetricsStore();
+const getHeapUsed = (): number => {
+  if (typeof performance === 'undefined') {
+    return 0;
+  }
+  const perf = performance as Performance & { memory?: { usedJSHeapSize?: number } };
+  return perf.memory?.usedJSHeapSize ?? 0;
+};
+
 // Database query performance monitoring
 export class DatabasePerformanceMonitor {
   static startQuery(queryName: string, query: string): () => DatabaseQueryMetric {
     const startTime = performance.now();
-    const startMemory = (performance as any).memory?.usedJSHeapSize || 0;
+    const startMemory = getHeapUsed();
     return () => {
       const endTime = performance.now();
-      const endMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      const endMemory = getHeapUsed();
       const duration = endTime - startTime;
       const memoryUsed = endMemory - startMemory;
       const metric: DatabaseQueryMetric = {
@@ -139,10 +147,10 @@ export class ApiPerformanceMonitor {
 export class ComponentPerformanceMonitor {
   static startRender(componentName: string): () => ComponentRenderMetric {
     const startTime = performance.now();
-    const startMemory = (performance as any).memory?.usedJSHeapSize || 0;
+    const startMemory = getHeapUsed();
     return () => {
       const endTime = performance.now();
-      const endMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      const endMemory = getHeapUsed();
       const duration = endTime - startTime;
       const memoryUsed = endMemory - startMemory;
       const metric: ComponentRenderMetric = {
@@ -285,15 +293,17 @@ export function usePerformanceMonitoring(componentName: string) {
 }
 // Performance middleware for API routes
 export function withPerformanceMonitoring(
-  handler: (req: any, res: any) => Promise<any>
+  handler: (req: unknown, res: unknown) => Promise<unknown>
 ) {
-  return async (req: any, res: any) => {
-    const endpoint = req.url || 'unknown';
-    const method = req.method || 'GET';
+  return async (req: unknown, res: unknown) => {
+    const request = req as { url?: string; method?: string };
+    const response = res as { statusCode?: number };
+    const endpoint = request.url ?? 'unknown';
+    const method = request.method ?? 'GET';
     const endRequest = ApiPerformanceMonitor.startRequest(endpoint, method);
     try {
       const result = await handler(req, res);
-      endRequest(res.statusCode || 200);
+      endRequest(response.statusCode ?? 200);
       return result;
     } catch (error) {
       endRequest(500);

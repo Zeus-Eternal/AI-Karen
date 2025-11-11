@@ -25,7 +25,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useHooks } from "@/contexts/HookContext";
+import { useHooks } from "@/hooks/use-hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -260,8 +260,8 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
                 strokeOpacity: 0.25,
                 marker: { enabled: false },
                 tooltip: { enabled: false },
-              } as any,
-            ] as any[])
+              } as unknown,
+            ] as unknown[])
           : []),
         // nodes
         {
@@ -281,7 +281,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             strokeWidth: 2,
             stroke: "#ffffff",
             fillOpacity: 0.95,
-            formatter: ({ datum }: any) => {
+            formatter: ({ datum }: unknown) => {
               return {
                 fill: datum.color,
                 size: datum.size,
@@ -289,7 +289,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             },
           },
           tooltip: {
-            renderer: ({ datum }: any) => ({
+            renderer: ({ datum }: unknown) => ({
               content: `
                 <div class="p-2">
                   <div class="font-semibold">${datum.label}</div>
@@ -305,7 +305,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
             }),
           },
           listeners: {
-            nodeClick: (event: any) => {
+            nodeClick: (event: Event) => {
               const d = event.datum;
               if (!d) return;
               const node: MemoryNode = {
@@ -323,7 +323,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
               );
             },
           },
-        } as any,
+        } as unknown,
       ],
     };
 
@@ -390,7 +390,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         description: "Memory network data has been updated successfully.",
       });
       await handleChartReady();
-    } catch (error: any) {
+    } catch (error: Error) {
       toast({
         variant: "destructive",
         title: "Refresh Failed",

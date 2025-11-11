@@ -49,7 +49,7 @@ export function ExtensionNavigation({
   className,
   compact = false,
 }: ExtensionNavigationProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const navItems = useExtensionNavigation();
 
   const groupedNavItems = useMemo(() => {
@@ -249,12 +249,23 @@ export function ExtensionNavigationBreadcrumbs({
   const navItems = useExtensionNavigation();
 
   const currentItem = useMemo(() => {
+    if (!pathname) return null;
+    const safePathname = pathname;
     return navItems.find(
-      (item) => pathname === item.path || pathname.startsWith(item.path + "/")
+      (item) =>
+        safePathname === item.path || safePathname.startsWith(item.path + "/")
     );
   }, [pathname, navItems]);
 
-  if (!currentItem || !pathname.startsWith("/extensions/")) {
+  if (!currentItem) {
+    return null;
+  }
+
+  if (!pathname) {
+    return null;
+  }
+
+  if (!pathname.startsWith("/extensions/")) {
     return null;
   }
 

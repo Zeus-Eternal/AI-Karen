@@ -16,7 +16,7 @@ export async function copyToClipboard(
   text: string, 
   options: CopyToClipboardOptions = {}
 ): Promise<void> {
-  const { onSuccess, onError, showToast = false } = options;
+  const { onSuccess, onError } = options;
   try {
     // Check if modern Clipboard API is available
     if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -54,6 +54,7 @@ export async function copyToClipboard(
     if (onError) {
       onError(copyError);
     } else {
+      // Error will be thrown below
     }
     throw copyError;
   }

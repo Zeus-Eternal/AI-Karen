@@ -95,7 +95,7 @@ export async function POST(
     );
 
     // Optionally re-read for response integrity (if supported)
-    let updatedAlert: any = null;
+    let updatedAlert: unknown = null;
     try {
       updatedAlert = await adminUtils.getSecurityAlert(alertId);
     } catch {

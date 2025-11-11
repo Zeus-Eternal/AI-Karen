@@ -47,7 +47,7 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
   const fetchJSON = useCallback(async <T,>(url: string, signal: AbortSignal): Promise<T> => {
     const res = await fetch(url, { signal, headers: { "Cache-Control": "no-store" } });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} while fetching ${url}`);
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as unknown;
     return (data?.data ?? data) as T;
   }, []);
 
@@ -66,7 +66,7 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
       ]);
       setUserStats(stats);
       setActivitySummary(activity);
-    } catch (err: any) {
+    } catch (_err: Error) {
       if (err?.name !== "AbortError") {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data");
       }

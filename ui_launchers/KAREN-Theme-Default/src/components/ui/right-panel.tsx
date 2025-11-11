@@ -572,9 +572,9 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
 /**
  * Compound component pattern export
  */
-(RightPanel as any).Header = RightPanelHeader;
-(RightPanel as any).Navigation = RightPanelNavigation;
-(RightPanel as any).Content = RightPanelContent;
+(RightPanel as unknown).Header = RightPanelHeader;
+(RightPanel as unknown).Navigation = RightPanelNavigation;
+(RightPanel as unknown).Content = RightPanelContent;
 
 // ============================================================================
 // HOOKS

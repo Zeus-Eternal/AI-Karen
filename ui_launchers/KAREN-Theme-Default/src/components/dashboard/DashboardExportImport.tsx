@@ -184,7 +184,7 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
             templateCount > 0 ? `, ${templateCount} template(s)` : ""
           }`,
           widgets: Object.values(dashboards || {}).reduce(
-            (total: number, d: any) => total + (d.widgets?.length || 0),
+            (total: number, d: unknown) => total + (d.widgets?.length || 0),
             0
           ),
           description: "Multiple dashboards and templates",

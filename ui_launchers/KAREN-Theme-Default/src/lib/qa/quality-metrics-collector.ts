@@ -128,7 +128,7 @@ function readFileUtf8(p: string): string | null {
   try { return fs.readFileSync(p, 'utf8'); } catch { return null; }
 }
 
-function tryJson<T = any>(text: string | null): T | null {
+function tryJson<T = unknown>(text: string | null): T | null {
   if (!text) return null;
   try { return JSON.parse(text) as T; } catch { return null; }
 }
@@ -137,11 +137,11 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
-function percent(n: number) {
+function _percent(n: number) {
   return Math.round(n * 100);
 }
 
-function safeDivide(num: number, den: number) {
+function _safeDivide(num: number, den: number) {
   if (!den || Number.isNaN(den)) return 0;
   return num / den;
 }
@@ -155,8 +155,9 @@ function safeExec(cmd: string, cwd: string): { ok: boolean; out: string; err?: s
       timeout: 5 * 60 * 1000, // 5 minutes guard
     });
     return { ok: true, out };
-  } catch (e: any) {
-    return { ok: false, out: e?.stdout?.toString?.() ?? '', err: e?.stderr?.toString?.() ?? e?.message ?? 'exec error' };
+  } catch (e: unknown) {
+    const error = e as { stdout?: { toString?: () => string }; stderr?: { toString?: () => string }; message?: string };
+    return { ok: false, out: error?.stdout?.toString?.() ?? '', err: error?.stderr?.toString?.() ?? error?.message ?? 'exec error' };
   }
 }
 
@@ -165,7 +166,7 @@ function safeExec(cmd: string, cwd: string): { ok: boolean; out: string; err?: s
  * --------------------------- */
 export class QualityMetricsCollector {
   private projectRoot: string;
-  private metricsCache = new Map<string, CacheEntry<any>>();
+  private metricsCache = new Map<string, CacheEntry<unknown>>();
   private cacheTimeout: number;
   private commands: NormalizedCommands;
   private paths: NormalizedPaths;
@@ -387,7 +388,7 @@ export class QualityMetricsCollector {
     try {
       const fullPath = safePathJoin(this.projectRoot, reportPath);
       if (!fileExists(fullPath)) return 0;
-      const coverageData = tryJson<any>(readFileUtf8(fullPath));
+      const coverageData = tryJson<{ total?: { lines?: { pct?: number }; statements?: { pct?: number } } }>(readFileUtf8(fullPath));
       if (!coverageData?.total?.lines?.pct && !coverageData?.total?.statements?.pct) return 0;
       // Prefer lines; fallback to statements
       const pct =
@@ -422,7 +423,7 @@ export class QualityMetricsCollector {
     if (cached) return cached;
 
     const { ok, out } = safeExec(this.commands.tests, this.projectRoot);
-    const testData = ok ? tryJson<any>(out) : null;
+    const testData = ok ? tryJson<{ numTotalTests?: number; numPassedTests?: number; numFailedTests?: number; numPendingTests?: number }>(out) : null;
 
     const total = Number(testData?.numTotalTests ?? 0);
     const passed = Number(testData?.numPassedTests ?? 0);
@@ -472,7 +473,7 @@ export class QualityMetricsCollector {
 
       let totalLoad = 0, totalInter = 0, totalMem = 0, totalErr = 0, n = 0;
       for (const f of reportFiles) {
-        const data = tryJson<any>(readFileUtf8(safePathJoin(dir, f)));
+        const data = tryJson<{ metrics?: { averageLoadTime?: number; averageInteractionTime?: number; peakMemoryUsage?: number; errorRate?: number } }>(readFileUtf8(safePathJoin(dir, f)));
         if (data?.metrics) {
           totalLoad += Number(data.metrics.averageLoadTime ?? 0);
           totalInter += Number(data.metrics.averageInteractionTime ?? 0);
@@ -505,7 +506,7 @@ export class QualityMetricsCollector {
     if (cached) return cached;
 
     const { ok, out } = safeExec(this.commands.accessibility, this.projectRoot);
-    const a11yData = ok ? tryJson<any>(out) : null;
+    const a11yData = ok ? tryJson<{ score?: number; violations?: unknown[]; warnings?: unknown[]; passes?: unknown[] }>(out) : null;
 
     const accessibility = {
       score: Math.round(Number(a11yData?.score ?? 0)),
@@ -524,7 +525,7 @@ export class QualityMetricsCollector {
     if (cached) return cached;
 
     const { ok, out } = safeExec(this.commands.audit, this.projectRoot);
-    const auditData = ok ? tryJson<any>(out) : null;
+    const auditData = ok ? tryJson<{ metadata?: { vulnerabilities?: { critical?: number; high?: number; medium?: number; low?: number } } }>(out) : null;
 
     const vulnerabilities = {
       critical: Number(auditData?.metadata?.vulnerabilities?.critical ?? 0),

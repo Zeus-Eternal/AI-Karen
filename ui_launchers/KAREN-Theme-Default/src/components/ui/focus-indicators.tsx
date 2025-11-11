@@ -179,12 +179,12 @@ export function withFocusIndicator<P extends object>(
     // Create props object that may or may not include ref
     const componentProps = { ...props } as any;
     if (ref) {
-      componentProps.ref = ref;
+      (componentProps as any).ref = ref;
     }
     
     return (
       <FocusIndicator {...indicatorProps}>
-        <Component {...componentProps} />
+        <Component {...(componentProps as any)} />
       </FocusIndicator>
     );
   });

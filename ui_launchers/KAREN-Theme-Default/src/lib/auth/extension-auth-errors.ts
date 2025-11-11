@@ -69,7 +69,7 @@ export interface ExtensionAuthError {
   retryable: boolean;
   userActionRequired: boolean;
   resolutionSteps: string[];
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -80,7 +80,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create token expired error
    */
-  static createTokenExpiredError(context?: Record<string, any>): ExtensionAuthError {
+  static createTokenExpiredError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.TOKEN_EXPIRED,
       severity: ExtensionAuthErrorSeverity.MEDIUM,
@@ -104,7 +104,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create token invalid error
    */
-  static createTokenInvalidError(context?: Record<string, any>): ExtensionAuthError {
+  static createTokenInvalidError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.TOKEN_INVALID,
       severity: ExtensionAuthErrorSeverity.HIGH,
@@ -128,7 +128,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create token missing error
    */
-  static createTokenMissingError(context?: Record<string, any>): ExtensionAuthError {
+  static createTokenMissingError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.TOKEN_MISSING,
       severity: ExtensionAuthErrorSeverity.HIGH,
@@ -152,7 +152,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create refresh failed error
    */
-  static createRefreshFailedError(context?: Record<string, any>): ExtensionAuthError {
+  static createRefreshFailedError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.REFRESH_FAILED,
       severity: ExtensionAuthErrorSeverity.HIGH,
@@ -177,7 +177,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create permission denied error
    */
-  static createPermissionDeniedError(context?: Record<string, any>): ExtensionAuthError {
+  static createPermissionDeniedError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.PERMISSION_DENIED,
       severity: ExtensionAuthErrorSeverity.HIGH,
@@ -202,7 +202,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create service unavailable error
    */
-  static createServiceUnavailableError(context?: Record<string, any>): ExtensionAuthError {
+  static createServiceUnavailableError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.SERVICE_UNAVAILABLE,
       severity: ExtensionAuthErrorSeverity.MEDIUM,
@@ -227,7 +227,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create network error
    */
-  static createNetworkError(context?: Record<string, any>): ExtensionAuthError {
+  static createNetworkError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.NETWORK_ERROR,
       severity: ExtensionAuthErrorSeverity.MEDIUM,
@@ -252,7 +252,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create configuration error
    */
-  static createConfigurationError(context?: Record<string, any>): ExtensionAuthError {
+  static createConfigurationError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.CONFIGURATION_ERROR,
       severity: ExtensionAuthErrorSeverity.CRITICAL,
@@ -277,7 +277,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create rate limited error
    */
-  static createRateLimitedError(context?: Record<string, any>): ExtensionAuthError {
+  static createRateLimitedError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.RATE_LIMITED,
       severity: ExtensionAuthErrorSeverity.MEDIUM,
@@ -302,7 +302,7 @@ export class ExtensionAuthErrorFactory {
   /**
    * Create development mode error
    */
-  static createDevelopmentModeError(context?: Record<string, any>): ExtensionAuthError {
+  static createDevelopmentModeError(context?: Record<string, unknown>): ExtensionAuthError {
     return {
       category: ExtensionAuthErrorCategory.DEVELOPMENT_MODE,
       severity: ExtensionAuthErrorSeverity.LOW,
@@ -330,7 +330,7 @@ export class ExtensionAuthErrorFactory {
   static createFromHttpStatus(
     status: number, 
     message?: string, 
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): ExtensionAuthError {
     switch (status) {
       case 401:
@@ -356,7 +356,7 @@ export class ExtensionAuthErrorFactory {
    */
   static createFromException(
     error: Error, 
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): ExtensionAuthError {
     const errorMessage = error.message.toLowerCase();
 

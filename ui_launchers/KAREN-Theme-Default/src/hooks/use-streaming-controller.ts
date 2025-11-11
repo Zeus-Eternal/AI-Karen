@@ -8,7 +8,7 @@ export interface StreamOptions {
   url: string;
   method?: 'GET' | 'POST';
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
   signal?: AbortSignal;
   onToken?: (token: string) => void;
   onComplete?: (fullText: string) => void;

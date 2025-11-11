@@ -91,11 +91,11 @@ export class ChatErrorBoundary extends Component<Props, State> {
               ? { width: window.innerWidth, height: window.innerHeight }
               : null,
           memory:
-            typeof (performance as any)?.memory !== "undefined"
+            typeof (performance as unknown)?.memory !== "undefined"
               ? {
-                  usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-                  totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
-                  jsHeapSizeLimit: (performance as any).memory.jsHeapSizeLimit,
+                  usedJSHeapSize: (performance as unknown).memory.usedJSHeapSize,
+                  totalJSHeapSize: (performance as unknown).memory.totalJSHeapSize,
+                  jsHeapSizeLimit: (performance as unknown).memory.jsHeapSizeLimit,
                 }
               : null,
         },

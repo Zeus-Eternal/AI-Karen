@@ -404,7 +404,7 @@ export const PerformanceAnalyticsDashboard: React.FC<
                         <Scatter
                           dataKey="duration"
                           fill="#8884d8"
-                          onClick={(e: any) => {
+                          onClick={(e: Event) => {
                             // e.payload.index maps to original array index
                             const idx = e?.payload?.index ?? null;
                             if (idx != null && profiles[idx]) {

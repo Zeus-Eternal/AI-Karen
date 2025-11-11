@@ -127,7 +127,7 @@ export class CacheKeyGenerator {
   /**
    * Generate a cache key for model selection options
    */
-  static forModelSelection(options: Record<string, any>): string {
+  static forModelSelection(options: Record<string, unknown>): string {
     const sortedKeys = Object.keys(options).sort();
     const keyParts = sortedKeys.map(key => `${key}=${options[key]}`);
     return `model_selection:${keyParts.join(':')}`;
@@ -136,7 +136,10 @@ export class CacheKeyGenerator {
   /**
    * Generate a cache key for directory scan
    */
-  static forDirectoryScan(directory: string, options?: Record<string, any>): string {
+  static forDirectoryScan(
+    directory: string,
+    options?: Record<string, unknown>
+  ): string {
     const optionsPart = options ? `:${JSON.stringify(options)}` : '';
     return `directory_scan:${directory}${optionsPart}`;
   }
@@ -269,7 +272,7 @@ export function simpleHash(str: string): number {
 /**
  * Create a cache key from an object by hashing its JSON representation
  */
-export function createHashedKey(prefix: string, obj: any): string {
+export function createHashedKey(prefix: string, obj: Record<string, unknown>): string {
   const jsonStr = JSON.stringify(obj, Object.keys(obj).sort());
   const hash = simpleHash(jsonStr);
   return `${prefix}:${hash}`;
@@ -279,19 +282,22 @@ export function createHashedKey(prefix: string, obj: any): string {
  * Cache decorator for methods (experimental)
  */
 export function cached(ttl: number = 30000) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
-    const cache = new MemoryCache<any>(ttl);
+  return function (target: object, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
+    const cache = new MemoryCache<unknown>(ttl);
 
-    descriptor.value = async function (...args: any[]) {
-      const cacheKey = createHashedKey(propertyKey, args);
+    descriptor.value = async function (this: unknown, ...args: unknown[]) {
+      const cacheKey = createHashedKey(
+        propertyKey,
+        args as unknown as Record<string, unknown>
+      );
       
       const cached = cache.get(cacheKey);
       if (cached !== undefined) {
         return cached;
       }
 
-      const result = await originalMethod.apply(this, args);
+      const result = await Promise.resolve(originalMethod.apply(this, args));
       cache.set(cacheKey, result);
       return result;
     };

@@ -44,7 +44,7 @@ export interface ConversionJob {
   progress: number;
   source_path: string;
   target_path?: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   logs: string[];
   created_at: number;
   updated_at: number;
@@ -255,7 +255,7 @@ export default function ModelUploadManager({
       setSelectedArchitecture('auto');
       setVocabOnly(false);
     } catch (error) {
-      const info = handleApiError(error as any, 'convertToGGUF');
+      const info = handleApiError(error as unknown, 'convertToGGUF');
       toast({
         variant: 'destructive',
         title: info.title || "Conversion Failed",
@@ -301,7 +301,7 @@ export default function ModelUploadManager({
       setQuantizationFormat('Q4_K_M');
       setAllowRequantize(false);
     } catch (error) {
-      const info = handleApiError(error as any, 'quantizeModel');
+      const info = handleApiError(error as unknown, 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title || "Quantization Failed",
@@ -347,7 +347,7 @@ export default function ModelUploadManager({
       setLoraOutputPath('');
       setLoraAlpha('1.0');
     } catch (error) {
-      const info = handleApiError(error as any, 'mergeLoRA');
+      const info = handleApiError(error as unknown, 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title || "LoRA Merge Failed",
@@ -374,7 +374,7 @@ export default function ModelUploadManager({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as unknown)}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />

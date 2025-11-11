@@ -12,7 +12,7 @@ export interface PerformanceContextValue {
     metadata?: Record<string, unknown>;
   }) => void;
   measureFunction: (name: string, fn: () => any) => any;
-  measureAsyncFunction: (name: string, fn: () => Promise<any>) => Promise<any>;
+  measureAsyncFunction: (name: string, fn: () => Promise<unknown>) => Promise<unknown>;
   startMeasure: (name: string) => void;
   endMeasure: (name: string, metadata?: Record<string, unknown>) => void;
   monitor: typeof performanceMonitor;
@@ -43,11 +43,11 @@ export function PerformanceProvider({
     }
   }, [enableReporting]);
 
-  const measureFunction = useCallback((name: string, fn: () => any): any => {
+  const measureFunction = useCallback((name: string, fn: () => any): unknown => {
     return performanceMonitor.measureFunction(name, fn);
   }, []);
 
-  const measureAsyncFunction = useCallback(async (name: string, fn: () => Promise<any>): Promise<any> => {
+  const measureAsyncFunction = useCallback(async (name: string, fn: () => Promise<unknown>): Promise<unknown> => {
     return performanceMonitor.measureAsyncFunction(name, fn);
   }, []);
 
@@ -91,9 +91,12 @@ export function withPerformanceMeasurement(
   const WrappedComponent = React.forwardRef<any, any>((props, ref) => {
     const { measureFunction } = usePerformanceContext();
     const componentName = measurementName || Component.displayName || Component.name || 'Component';
-    return measureFunction(`${componentName}-render`, () =>
-      React.createElement(Component, { ...props, ref })
-    );
+    
+    return React.useMemo(() => {
+      return measureFunction(`${componentName}-render`, () =>
+        React.createElement(Component, props)
+      );
+    }, [measureFunction, componentName, props]);
   });
 
   WrappedComponent.displayName = `withPerformanceMeasurement(${Component.displayName || Component.name})`;
@@ -118,7 +121,7 @@ export function useComponentPerformance(componentName: string) {
     };
   }, [componentName, recordMetric]);
 
-  const measureRender = useCallback((fn: () => any): any => {
+  const measureRender = useCallback((fn: () => any): unknown => {
     const start = performance.now();
     const result = fn();
     const end = performance.now();
@@ -131,7 +134,7 @@ export function useComponentPerformance(componentName: string) {
     return result;
   }, [componentName, recordMetric]);
 
-  const measureAsync = useCallback(async (name: string, fn: () => Promise<any>): Promise<any> => {
+  const measureAsync = useCallback(async (name: string, fn: () => Promise<unknown>): Promise<unknown> => {
     const start = performance.now();
     const result = await fn();
     const end = performance.now();

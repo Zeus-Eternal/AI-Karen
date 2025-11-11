@@ -150,9 +150,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
     }
 
     // Execute operation
-    let result: any = {};
+    let result: unknown = {};
     let auditAction = '';
-    let auditDetails: any = {};
+    let auditDetails: unknown = {};
 
     switch (body.operation as AllowedOperation) {
       case 'activate': {

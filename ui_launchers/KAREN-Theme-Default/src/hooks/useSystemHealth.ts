@@ -29,7 +29,6 @@ export const useSystemHealth = (options: UseSystemHealthOptions = {}) => {
   const checkSystemHealth = useCallback(async (): Promise<SystemHealth> => {
     try {
       const performanceStats = performanceTracker.getPerformanceStats();
-      const recentMetrics = performanceTracker.getRecentMetrics(100);
 
       const avgResponseTime = performanceStats.averageTime || 1000;
       const errorRate = Math.random() * 3; // Simulated error rate

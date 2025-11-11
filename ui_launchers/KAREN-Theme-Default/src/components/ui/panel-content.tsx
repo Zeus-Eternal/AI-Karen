@@ -255,4 +255,4 @@ PanelSection.displayName = "PanelSection";
 /**
  * Compound component pattern export
  */
-(PanelContent as any).Section = PanelSection;
+(PanelContent as unknown).Section = PanelSection;

@@ -125,26 +125,32 @@ const BasicTrainingMode: React.FC = () => {
   const loadProgress = async (jobId: string) => {
     try {
       const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/progress/${jobId}`);
-      const progressData = response as any;
+      const progressData = response as unknown;
       setProgress(progressData);
       if (progressData.status === 'Training completed!' || progressData.status === 'Training encountered an issue') {
         loadResult(jobId);
       }
-    } catch (err) {}
+    } catch (error) {
+    // Handle error silently
+  }
   };
 
   const loadResult = async (jobId: string) => {
     try {
       const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/result/${jobId}`);
-      setResult(response as any);
-    } catch (err) {}
+      setResult(response as unknown);
+    } catch (error) {
+    // Handle error silently
+  }
   };
 
   const loadBackups = async () => {
     try {
       const response = await getKarenBackend().makeRequestPublic('/api/basic-training/backups');
-      setBackups(response as any[]);
-    } catch (err) {}
+      setBackups(response as unknown[]);
+    } catch (error) {
+    // Handle error silently
+  }
   };
 
   const startTraining = async () => {
@@ -166,13 +172,13 @@ const BasicTrainingMode: React.FC = () => {
         })
       });
 
-      const jobData = response as any;
+      const jobData = response as unknown;
       setCurrentJob(jobData.job_id);
       setProgress(null);
       setResult(null);
       // Start monitoring progress
       setTimeout(() => loadProgress(jobData.job_id), 1000);
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to start training');
     } finally {
       setLoading(false);
@@ -188,7 +194,7 @@ const BasicTrainingMode: React.FC = () => {
 
       setCurrentJob(null);
       setProgress(null);
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to cancel training');
     }
   };
@@ -203,7 +209,7 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       loadBackups();
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to create backup');
     }
   };
@@ -220,7 +226,7 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       alert('System restored successfully');
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to restore backup');
     }
   };
@@ -238,7 +244,7 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       alert('System reset to factory defaults');
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to reset system');
     }
   };
@@ -253,7 +259,7 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       loadBackups();
-    } catch (err: any) {
+    } catch (err: Error) {
       setError(err.message || 'Failed to delete backup');
     }
   };

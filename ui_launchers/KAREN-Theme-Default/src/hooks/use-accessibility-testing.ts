@@ -178,19 +178,28 @@ export function useAccessibilityTesting(
 
   // Set up automatic testing
   useEffect(() => {
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
+
     if (autoTest && testSuiteRef.current) {
       intervalRef.current = setInterval(() => {
         runTest('basic');
       }, testInterval);
 
-      // Run initial test
-      runTest('basic');
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-      };
+      // Run initial test asynchronously
+      initialTimer = setTimeout(() => {
+        runTest('basic');
+      }, 0);
     }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (initialTimer) {
+        clearTimeout(initialTimer);
+      }
+    };
   }, [autoTest, testInterval, runTest]);
 
   // Test on component updates

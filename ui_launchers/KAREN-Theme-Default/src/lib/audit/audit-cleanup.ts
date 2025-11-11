@@ -129,7 +129,7 @@ export class AuditCleanupManager {
    */
   async getCleanupStats(policyId?: string): Promise<CleanupStats> {
     const whereClause = '';
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
 
     if (policyId) {
       // This would require implementing policy-specific filtering
@@ -145,7 +145,7 @@ export class AuditCleanupManager {
     `;
 
     const result = await this.db.query(statsQuery, queryParams);
-    const stats = result.rows[0];
+    const stats = result.rows[0] as Record<string, unknown>;
 
     // Calculate logs to delete based on default 90-day retention
     const cutoffDate = new Date();
@@ -157,13 +157,14 @@ export class AuditCleanupManager {
     `;
 
     const deleteResult = await this.db.query(deleteCountQuery, [cutoffDate]);
+    const deleteRow = deleteResult.rows[0] as Record<string, unknown>;
 
     return {
-      total_logs: parseInt(stats.total_logs),
-      logs_to_delete: parseInt(deleteResult.rows[0].logs_to_delete),
+      total_logs: parseInt(stats.total_logs as string),
+      logs_to_delete: parseInt(deleteRow.logs_to_delete as string),
       logs_to_archive: 0, // Archive functionality not implemented yet
-      oldest_log_date: stats.oldest_log_date ? new Date(stats.oldest_log_date) : null,
-      newest_log_date: stats.newest_log_date ? new Date(stats.newest_log_date) : null,
+      oldest_log_date: stats.oldest_log_date ? new Date(stats.oldest_log_date as string) : null,
+      newest_log_date: stats.newest_log_date ? new Date(stats.newest_log_date as string) : null,
       size_estimate_mb: 0 // Would need to parse pg_size_pretty result
     };
   }
@@ -183,7 +184,7 @@ export class AuditCleanupManager {
 
     try {
       const whereConditions = ['timestamp < $1'];
-      const queryParams: any[] = [cutoffDate];
+      const queryParams: unknown[] = [cutoffDate];
       let paramIndex = 2;
 
       // Add resource type filter
@@ -209,7 +210,8 @@ export class AuditCleanupManager {
       `;
 
       const countResult = await this.db.query(countQuery, queryParams);
-      const deleteCount = parseInt(countResult.rows[0].count);
+      const countRow = countResult.rows[0] as Record<string, unknown>;
+      const deleteCount = parseInt(countRow.count as string);
 
       if (dryRun) {
         return {
@@ -303,7 +305,7 @@ export class AuditCleanupManager {
       await this.createArchiveTable();
 
       const whereConditions = ['timestamp < $1'];
-      const queryParams: any[] = [cutoffDate];
+      const queryParams: unknown[] = [cutoffDate];
       let paramIndex = 2;
 
       // Add filters
@@ -421,12 +423,12 @@ export class AuditCleanupManager {
       `;
 
       const result = await this.db.query(statsQuery);
-      const stats = result.rows[0];
+      const stats = result.rows[0] as Record<string, unknown>;
 
       return {
-        total_archived: parseInt(stats.total_archived || '0'),
-        oldest_archived: stats.oldest_archived ? new Date(stats.oldest_archived) : null,
-        newest_archived: stats.newest_archived ? new Date(stats.newest_archived) : null,
+        total_archived: parseInt((stats.total_archived as string) || '0'),
+        oldest_archived: stats.oldest_archived ? new Date(stats.oldest_archived as string) : null,
+        newest_archived: stats.newest_archived ? new Date(stats.newest_archived as string) : null,
         archive_size_mb: 0 // Would need to parse pg_size_pretty result
       };
     } catch (error) {

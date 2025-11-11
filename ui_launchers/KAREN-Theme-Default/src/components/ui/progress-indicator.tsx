@@ -59,6 +59,19 @@ export function ProgressIndicator({
   showDetails = true
 }: ProgressIndicatorProps) {
   const [showErrorDetails, setShowErrorDetails] = React.useState(false);
+  const [now, setNow] = React.useState(() => Date.now());
+
+  React.useEffect(() => {
+    if (progress.endTime) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [progress.endTime]);
 
   const overallProgress = progress.totalItems > 0
     ? Math.round((progress.processedItems / progress.totalItems) * 100)
@@ -67,7 +80,7 @@ export function ProgressIndicator({
   const isCompleted = progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled';
   const duration = progress.endTime
     ? Math.round((progress.endTime.getTime() - progress.startTime.getTime()) / 1000)
-    : Math.round((Date.now() - progress.startTime.getTime()) / 1000);
+    : Math.round((now - progress.startTime.getTime()) / 1000);
 
   const getStatusIcon = (
     status: ProgressStep['status'] | BulkOperationProgress['status']

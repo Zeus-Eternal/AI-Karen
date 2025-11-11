@@ -24,8 +24,9 @@ export function useExtensions(): UseExtensionsResult {
       const data = await res.json();
       setExtensions(Array.isArray(data.extensions) ? data.extensions : []);
       setError(null);
-    } catch (err: any) {
-      setError(err.message ?? "Failed to fetch extensions");
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message ?? "Failed to fetch extensions");
     } finally {
       setLoading(false);
     }

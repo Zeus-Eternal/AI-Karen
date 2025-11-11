@@ -192,10 +192,10 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
     }
 
     // Validate role permissions
-    const requestedRole: 'user' | 'admin' = (body.role as any) === 'admin' ? 'admin' : 'user';
+    const requestedRole: 'user' | 'admin' = (body.role as unknown) === 'admin' ? 'admin' : 'user';
 
     // Disallow creating super_admin via this endpoint (defense in depth)
-    if ((body.role as any) === 'super_admin') {
+    if ((body.role as unknown) === 'super_admin') {
       return NextResponse.json(
         {
           success: false,
@@ -228,8 +228,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
 
     // Email uniqueness (prefer exact lookup if available)
     let emailExists = false;
-    if (typeof (adminUtils as any).findUserByEmail === 'function') {
-      const found = await (adminUtils as any).findUserByEmail(body.email);
+    if (typeof (adminUtils as unknown).findUserByEmail === 'function') {
+      const found = await (adminUtils as unknown).findUserByEmail(body.email);
       emailExists = !!found;
     } else {
       const existing = await adminUtils.getUsersWithRoleFilter({ search: body.email });

@@ -2,6 +2,9 @@
  * Structured logging system for connectivity and authentication monitoring
  */
 
+import { connectivityLogger } from './connectivity-logger';
+import type { PerformanceMetrics } from './types';
+
 export * from './types';
 export * from './correlation-tracker';
 export * from './performance-tracker';
@@ -17,9 +20,8 @@ export const logAuthAttempt = (
   email: string,
   success: boolean,
   failureReason?: string,
-  metrics?: any
+  metrics?: PerformanceMetrics
 ) => {
-  const { connectivityLogger } = require('./connectivity-logger');
   connectivityLogger.logAuthentication(
     success ? 'info' : 'warn',
     `Authentication attempt ${success ? 'succeeded' : 'failed'}`,
@@ -40,9 +42,8 @@ export const logConnectivityIssue = (
   method: string,
   error: Error,
   retryAttempt?: number,
-  metrics?: any
+  metrics?: PerformanceMetrics
 ) => {
-  const { connectivityLogger } = require('./connectivity-logger');
   connectivityLogger.logConnectivity(
     'error',
     `Connectivity issue with ${method} ${url}`,
@@ -61,7 +62,6 @@ export const logPerformanceIssue = (
   duration: number,
   threshold: number
 ) => {
-  const { connectivityLogger } = require('./connectivity-logger');
   connectivityLogger.logPerformance(
     duration > threshold ? 'warn' : 'info',
     `Performance ${duration > threshold ? 'issue' : 'metric'} for ${operation}`,

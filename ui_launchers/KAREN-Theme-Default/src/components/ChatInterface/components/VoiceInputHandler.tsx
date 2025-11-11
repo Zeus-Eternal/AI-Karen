@@ -74,7 +74,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    const win = window as any;
+    const win = window as unknown;
     const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
     setIsSupported(Boolean(SpeechRecognition));
 
@@ -100,7 +100,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: Event) => {
       setIsProcessing(false);
       const errorMessage = `Speech recognition error: ${event.error}`;
       onError?.(errorMessage);

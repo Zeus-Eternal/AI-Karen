@@ -83,7 +83,7 @@ export interface SystemModelInfo {
   memory_usage?: number;
   load_time?: number;
   inference_time?: number;
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   is_system_model: boolean;
 }
 
@@ -94,7 +94,7 @@ export interface HardwareRecommendations {
     gpu_available: boolean;
     gpu_memory_gb: number;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface PerformanceMetrics {
@@ -114,7 +114,7 @@ export interface SystemModelConfigProps {
 
 export default function SystemModelConfig({ selectedModel, onClose }: SystemModelConfigProps) {
   const [model, setModel] = useState<SystemModelInfo | null>(selectedModel);
-  const [configuration, setConfiguration] = useState<Record<string, any>>({});
+  const [configuration, setConfiguration] = useState<Record<string, unknown>>({});
   const [transformerConfiguration, setTransformerConfiguration] = useState<TransformerConfig>({
     precision: 'fp16',
     torch_dtype: 'auto',
@@ -217,7 +217,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     }
   };
 
-  const validateConfiguration = async (config: Record<string, any>) => {
+  const validateConfiguration = async (config: Record<string, unknown>) => {
     if (!selectedModel) return;
     try {
       const response = await backend.makeRequestPublic(
@@ -240,11 +240,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     try {
       // Validate first
       const validation = await validateConfiguration(configuration);
-      if (!(validation as any).valid) {
+      if (!(validation as unknown).valid) {
         toast({
           variant: 'destructive',
           title: "Configuration Invalid",
-          description: (validation as any).error || "Please check your settings",
+          description: (validation as unknown).error || "Please check your settings",
         });
         return;
       }
@@ -319,14 +319,14 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       if (model) {
         setModel({
           ...model,
-          status: (response as any).status,
-          last_health_check: (response as any).last_health_check,
-          error_message: (response as any).error_message
+          status: (response as unknown).status,
+          last_health_check: (response as unknown).last_health_check,
+          error_message: (response as unknown).error_message
         });
       }
       toast({
         title: "Health Check Complete",
-        description: `Model status: ${(response as any).status}`,
+        description: `Model status: ${(response as unknown).status}`,
       });
     } catch (error) {
       toast({
@@ -339,7 +339,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     }
   };
 
-  const updateConfigValue = (key: string, value: any) => {
+  const updateConfigValue = (key: string, value: unknown) => {
     const newConfig = { ...configuration, [key]: value };
     setConfiguration(newConfig);
     // Validate in real-time
@@ -646,7 +646,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     const handleTransformerConfigChange = (newConfig: TransformerConfig) => {
       setTransformerConfiguration(newConfig);
       // Also update the generic configuration for consistency
-      setConfiguration(newConfig as Record<string, any>);
+      setConfiguration(newConfig as Record<string, unknown>);
     };
 
     return (

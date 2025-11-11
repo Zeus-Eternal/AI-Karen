@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { ButtonProps } from '@/components/ui/button';
-import type { InputProps } from '@/components/ui/input';
+import type { InputProps } from '@/components/ui/input-types';
 import type { HTMLMotionProps, Variants } from 'framer-motion';
 
 export type AnimationSpeed = 'fast' | 'normal' | 'slow';

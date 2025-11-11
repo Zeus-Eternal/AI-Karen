@@ -11,7 +11,7 @@ export interface FileInfo {
   size: number;
   upload_date: string;
   user_id: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   tags: string[];
   processing_status: 'pending' | 'processing' | 'completed' | 'failed';
   thumbnail_url?: string;
@@ -20,7 +20,7 @@ export interface FileInfo {
 
 export interface FileUploadRequest {
   file: File;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   tags?: string[];
 }
 

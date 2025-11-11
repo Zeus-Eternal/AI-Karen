@@ -36,7 +36,7 @@ export interface UseAdminErrorHandlerReturn {
     operation: () => Promise<T>,
     context?: Partial<ErrorContext>
   ) => Promise<T | null>;
-  retry: () => Promise<void>;
+  retry: () => Promise<unknown>;
   clearError: () => void;
   canRetry: boolean;
 }
@@ -51,6 +51,8 @@ export function useAdminErrorHandler(
     logErrors = true,
     context: defaultContext = {}
   } = options;
+  const normalizedMaxRetries = Math.max(0, maxRetries);
+  const normalizedRetryDelay = Math.max(0, retryDelay);
 
   const [errorState, setErrorState] = useState<ErrorState>({
     error: null,
@@ -60,11 +62,21 @@ export function useAdminErrorHandler(
   });
 
   const lastOperationRef = useRef<{
-    operation: () => Promise<any>;
+    operation: () => Promise<unknown>;
     context?: Partial<ErrorContext>;
   } | null>(null);
 
   const { announce } = useAriaLiveRegion();
+
+  const shouldAttemptRetry = useCallback(
+    (adminError: AdminError, attemptNumber: number) => {
+      if (attemptNumber > normalizedMaxRetries) {
+        return false;
+      }
+      return AdminErrorHandler.shouldRetry(adminError, attemptNumber);
+    },
+    [normalizedMaxRetries]
+  );
 
   const setError = useCallback((error: AdminError | null) => {
     setErrorState(prev => ({
@@ -170,7 +182,8 @@ export function useAdminErrorHandler(
     const { error } = errorState;
     const lastOperation = lastOperationRef.current;
 
-    if (!error || !lastOperation || !AdminErrorHandler.shouldRetry(error, errorState.retryCount + 1)) {
+    const attemptNumber = errorState.retryCount + 1;
+    if (!error || !lastOperation || !shouldAttemptRetry(error, attemptNumber)) {
       return;
     }
 
@@ -188,9 +201,10 @@ export function useAdminErrorHandler(
       }
 
       // Calculate delay with exponential backoff
-      const delay = AdminErrorHandler.getRetryDelay(error, errorState.retryCount + 1);
-      if (delay > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
+      const serverDelay = AdminErrorHandler.getRetryDelay(error, attemptNumber);
+      const computedDelay = Math.max(normalizedRetryDelay, serverDelay);
+      if (computedDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, computedDelay));
       }
 
       // Retry the operation
@@ -234,7 +248,16 @@ export function useAdminErrorHandler(
         announce(`Retry failed: ${newAdminError.message}`, 'assertive');
       }
     }
-  }, [errorState, announceErrors, announce, logErrors, defaultContext]);
+  }, [
+    announce,
+    announceErrors,
+    defaultContext,
+    errorState,
+    logErrors,
+    normalizedRetryDelay,
+    normalizedMaxRetries,
+    shouldAttemptRetry,
+  ]);
 
   const clearError = useCallback(() => {
     setErrorState({
@@ -247,7 +270,7 @@ export function useAdminErrorHandler(
   }, []);
 
   const canRetry = errorState.error
-    ? AdminErrorHandler.shouldRetry(errorState.error, errorState.retryCount + 1)
+    ? shouldAttemptRetry(errorState.error, errorState.retryCount + 1)
     : false;
 
   return {

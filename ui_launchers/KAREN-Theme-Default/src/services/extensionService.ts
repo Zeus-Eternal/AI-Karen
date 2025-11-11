@@ -11,7 +11,7 @@ export interface ExtensionEvent {
   id: string
   capsule: string
   event_type: string
-  payload: Record<string, any>
+  payload: Record<string, unknown>
   risk: number
 }
 export class ExtensionService {
@@ -21,7 +21,8 @@ export class ExtensionService {
     try {
       const list = await this.backend['makeRequest']<ExtensionInfo[]>('/extensions')
       return list
-    } catch (err) {
+    } catch {
+      // Return empty array if request fails
       return []
     }
   }
@@ -29,7 +30,8 @@ export class ExtensionService {
     try {
       await this.backend['makeRequest'](`/extensions/${encodeURIComponent(name)}/load`, { method: 'POST' })
       return true
-    } catch (err) {
+    } catch {
+      // Return false if load fails
       return false
     }
   }
@@ -37,7 +39,8 @@ export class ExtensionService {
     try {
       await this.backend['makeRequest'](`/extensions/${encodeURIComponent(name)}/unload`, { method: 'POST' })
       return true
-    } catch (err) {
+    } catch {
+      // Return false if unload fails
       return false
     }
   }
@@ -49,7 +52,8 @@ export class ExtensionService {
       try {
         const events = await this.backend['makeRequest']<ExtensionEvent[]>('/api/events/', {}, false)
         if (events.length) callback(events)
-      } catch (err) {
+      } catch {
+        // Ignore polling errors and continue
       }
       setTimeout(poll, interval)
     }

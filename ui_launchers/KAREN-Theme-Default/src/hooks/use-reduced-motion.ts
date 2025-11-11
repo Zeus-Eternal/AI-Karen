@@ -11,7 +11,13 @@ import { useState, useEffect } from 'react';
  * @returns boolean indicating if reduced motion is preferred
  */
 export function useReducedMotion(): boolean {
-  const [reducedMotion, setReducedMotion] = useState(false);
+  // Use lazy initial state to avoid setting state in effect
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
 
   useEffect(() => {
     // Check if we're in a browser environment
@@ -22,9 +28,6 @@ export function useReducedMotion(): boolean {
     // Check for prefers-reduced-motion media query
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     
-    // Set initial value
-    setReducedMotion(mediaQuery.matches);
-
     // Listen for changes
     const handleChange = (event: MediaQueryListEvent) => {
       setReducedMotion(event.matches);

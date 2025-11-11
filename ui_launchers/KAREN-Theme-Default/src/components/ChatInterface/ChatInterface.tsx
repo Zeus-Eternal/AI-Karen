@@ -286,7 +286,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
 
         {showTabs ? (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as unknown)} className="flex-1 flex flex-col">
             <TabsList className="w-full justify-start border-b rounded-none">
               <TabsTrigger value="chat">Chat</TabsTrigger>
               {enableCodeAssistance && <TabsTrigger value="code">Code</TabsTrigger>}

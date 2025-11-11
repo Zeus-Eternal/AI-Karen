@@ -9,7 +9,7 @@ export interface ThemeStyle {
   typography?: Record<string, string>;
   icons?: Record<string, string>;
   widgets?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Theme {
@@ -20,7 +20,7 @@ export interface Theme {
   scope: ThemeScope;
   layout: string;
   style: ThemeStyle;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

@@ -261,13 +261,13 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
           queryOptimizer.getQueryPerformanceAnalysis(),
           queryOptimizer.getTableStatistics(),
         ]);
-        (report as any).database_analysis = {
+        (report as unknown).database_analysis = {
           query_performance: queryPerformance,
           table_statistics: tableStats,
         };
       } catch {
         // If DB analysis fails, we still return base report
-        (report as any).database_analysis = { error: 'db_analysis_failed' };
+        (report as unknown).database_analysis = { error: 'db_analysis_failed' };
       }
     }
 
@@ -276,8 +276,8 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
     // CSV path
     if (format === 'csv') {
       const csvData =
-        typeof (PerformanceReporter as any).exportMetrics === 'function'
-          ? (PerformanceReporter as any).exportMetrics('csv')
+        typeof (PerformanceReporter as unknown).exportMetrics === 'function'
+          ? (PerformanceReporter as unknown).exportMetrics('csv')
           : exportCSV(report, recommendations);
 
       const filename = `admin-performance-report-${new Date().toISOString().split('T')[0]}.csv`;
@@ -311,7 +311,7 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
     }, userId);
 
     return NextResponse.json(payload, { headers: SECURITY_HEADERS });
-  } catch (error: any) {
+  } catch (error: Error) {
     await auditError(request, String(error?.message || error), userId);
     return NextResponse.json(
       {
@@ -349,7 +349,7 @@ async function handlePOST(request: NextRequest, context: AdminAuthContext) {
       },
       { headers: SECURITY_HEADERS }
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     await auditError(request, String(error?.message || error), userId);
     return NextResponse.json(
       {
@@ -379,7 +379,7 @@ async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
       },
       { headers: SECURITY_HEADERS }
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     await auditError(request, String(error?.message || error), userId);
     return NextResponse.json(
       {

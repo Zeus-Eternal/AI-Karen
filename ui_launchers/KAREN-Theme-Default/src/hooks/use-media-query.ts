@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 
 /**
  * Hook to track media query matches
@@ -8,35 +8,32 @@ import { useState, useEffect } from "react"
  * @param query - The media query string to track
  * @returns boolean indicating if the media query matches
  */
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
-
-  useEffect(() => {
-    // Check if we're in a browser environment
+function createMediaQueryStore(query: string) {
+  const getSnapshot = () => {
     if (typeof window === "undefined") {
-      return
+      return false
+    }
+    return window.matchMedia(query).matches
+  }
+
+  const subscribe = (notify: () => void) => {
+    if (typeof window === "undefined") {
+      return () => undefined
     }
 
     const mediaQuery = window.matchMedia(query)
-    
-    // Set initial value
-    setMatches(mediaQuery.matches)
+    const handler = () => notify()
+    mediaQuery.addEventListener("change", handler)
 
-    // Listen for changes
-    const handleChange = (event: MediaQueryListEvent) => {
-      setMatches(event.matches)
-    }
+    return () => mediaQuery.removeEventListener("change", handler)
+  }
 
-    // Add event listener
-    mediaQuery.addEventListener("change", handleChange)
+  return { getSnapshot, subscribe }
+}
 
-    // Cleanup
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange)
-    }
-  }, [query])
-
-  return matches
+export function useMediaQuery(query: string): boolean {
+  const { getSnapshot, subscribe } = useMemo(() => createMediaQueryStore(query), [query])
+  return useSyncExternalStore(subscribe, getSnapshot, () => false)
 }
 
 /**
@@ -48,97 +45,64 @@ export function useMediaQuery(query: string): boolean {
 export function useMediaQueries<T extends Record<string, string>>(
   queries: T
 ): Record<keyof T, boolean> {
-  const [matches, setMatches] = useState<Record<keyof T, boolean>>(() => {
-    const initialState = {} as Record<keyof T, boolean>
-    Object.keys(queries).forEach((key) => {
-      initialState[key as keyof T] = false
-    })
-    return initialState
-  })
+  const entries = useMemo(
+    () => Object.entries(queries) as Array<[keyof T, string]>,
+    [queries]
+  )
 
-  useEffect(() => {
+  const getSnapshot = () => {
     if (typeof window === "undefined") {
-      return
+      return entries.reduce((acc, [key]) => {
+        acc[key] = false
+        return acc
+      }, {} as Record<keyof T, boolean>)
+    }
+    return entries.reduce((acc, [key, query]) => {
+      acc[key] = window.matchMedia(query).matches
+      return acc
+    }, {} as Record<keyof T, boolean>)
+  }
+
+  const subscribe = (notify: () => void) => {
+    if (typeof window === "undefined") {
+      return () => undefined
     }
 
-    const mediaQueries = Object.entries(queries).map(([key, query]) => ({
-      key: key as keyof T,
-      mediaQuery: window.matchMedia(query as string),
-    }))
-
-    // Set initial values
-    const initialMatches = {} as Record<keyof T, boolean>
-    mediaQueries.forEach(({ key, mediaQuery }) => {
-      initialMatches[key] = mediaQuery.matches
-    })
-    setMatches(initialMatches)
-
-    // Create handlers
-    const handlers = mediaQueries.map(({ key, mediaQuery }) => {
-      const handler = (event: MediaQueryListEvent) => {
-        setMatches((prev) => ({
-          ...prev,
-          [key]: event.matches,
-        }))
-      }
+    const unsubscribers = entries.map(([, query]) => {
+      const mediaQuery = window.matchMedia(query)
+      const handler = () => notify()
       mediaQuery.addEventListener("change", handler)
-      return { mediaQuery, handler }
+      return () => mediaQuery.removeEventListener("change", handler)
     })
 
-    // Cleanup
-    return () => {
-      handlers.forEach(({ mediaQuery, handler }) => {
-        mediaQuery.removeEventListener("change", handler)
-      })
-    }
-  }, [queries])
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+  }
 
-  return matches
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
+
+const useBreakpointMobile = () => useMediaQuery("(max-width: 639px)")
+const useBreakpointTablet = () =>
+  useMediaQuery("(min-width: 640px) and (max-width: 1023px)")
+const useBreakpointDesktop = () => useMediaQuery("(min-width: 1024px)")
+const useBreakpointSm = () => useMediaQuery("(min-width: 640px)")
+const useBreakpointMd = () => useMediaQuery("(min-width: 768px)")
+const useBreakpointLg = () => useMediaQuery("(min-width: 1024px)")
+const useBreakpointXl = () => useMediaQuery("(min-width: 1280px)")
+const useBreakpoint2xl = () => useMediaQuery("(min-width: 1536px)")
 
 /**
  * Predefined breakpoint hooks for common responsive design patterns
  */
 export const useBreakpoint = {
-  /**
-   * Hook to check if screen is mobile size (< 640px)
-   */
-  mobile: () => useMediaQuery("(max-width: 639px)"),
-  
-  /**
-   * Hook to check if screen is tablet size (640px - 1023px)
-   */
-  tablet: () => useMediaQuery("(min-width: 640px) and (max-width: 1023px)"),
-  
-  /**
-   * Hook to check if screen is desktop size (>= 1024px)
-   */
-  desktop: () => useMediaQuery("(min-width: 1024px)"),
-  
-  /**
-   * Hook to check if screen is small (>= 640px)
-   */
-  sm: () => useMediaQuery("(min-width: 640px)"),
-  
-  /**
-   * Hook to check if screen is medium (>= 768px)
-   */
-  md: () => useMediaQuery("(min-width: 768px)"),
-  
-  /**
-   * Hook to check if screen is large (>= 1024px)
-   */
-  lg: () => useMediaQuery("(min-width: 1024px)"),
-  
-  /**
-   * Hook to check if screen is extra large (>= 1280px)
-   */
-  xl: () => useMediaQuery("(min-width: 1280px)"),
-  
-  /**
-   * Hook to check if screen is 2x extra large (>= 1536px)
-   */
-  "2xl": () => useMediaQuery("(min-width: 1536px)"),
+  mobile: useBreakpointMobile,
+  tablet: useBreakpointTablet,
+  desktop: useBreakpointDesktop,
+  sm: useBreakpointSm,
+  md: useBreakpointMd,
+  lg: useBreakpointLg,
+  xl: useBreakpointXl,
+  "2xl": useBreakpoint2xl,
 }
 
 /**
@@ -163,37 +127,23 @@ export function useCurrentBreakpoint(): "xs" | "sm" | "md" | "lg" | "xl" | "2xl"
   return "xs"
 }
 
+const useDeviceHover = () => useMediaQuery("(hover: hover)")
+const useDevicePointer = () => useMediaQuery("(pointer: fine)")
+const useDeviceTouch = () => useMediaQuery("(pointer: coarse)")
+const useDeviceDarkMode = () =>
+  useMediaQuery("(prefers-color-scheme: dark)")
+const useDeviceLightMode = () =>
+  useMediaQuery("(prefers-color-scheme: light)")
+const useDeviceHighContrast = () => useMediaQuery("(prefers-contrast: high)")
+
 /**
  * Hook to check device capabilities
  */
 export const useDeviceCapabilities = {
-  /**
-   * Hook to check if device supports hover
-   */
-  hover: () => useMediaQuery("(hover: hover)"),
-  
-  /**
-   * Hook to check if device has a pointer (mouse)
-   */
-  pointer: () => useMediaQuery("(pointer: fine)"),
-  
-  /**
-   * Hook to check if device is touch-capable
-   */
-  touch: () => useMediaQuery("(pointer: coarse)"),
-  
-  /**
-   * Hook to check if user prefers dark color scheme
-   */
-  darkMode: () => useMediaQuery("(prefers-color-scheme: dark)"),
-  
-  /**
-   * Hook to check if user prefers light color scheme
-   */
-  lightMode: () => useMediaQuery("(prefers-color-scheme: light)"),
-  
-  /**
-   * Hook to check if user prefers high contrast
-   */
-  highContrast: () => useMediaQuery("(prefers-contrast: high)"),
+  hover: useDeviceHover,
+  pointer: useDevicePointer,
+  touch: useDeviceTouch,
+  darkMode: useDeviceDarkMode,
+  lightMode: useDeviceLightMode,
+  highContrast: useDeviceHighContrast,
 }

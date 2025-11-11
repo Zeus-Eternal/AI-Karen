@@ -44,11 +44,18 @@ export type TestExtensionErrorRecoveryResult = TestResultSuccess | TestResultErr
 const PREFIX = '[ExtensionFix]';
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
+interface ExtensionFixWindow extends Window {
+  __EXT_FIX_PATCHED__?: { type: 'immediate' | 'standard' };
+  extensionErrorIntegration?: unknown;
+  handleKarenBackendError?: unknown;
+}
+
 // Optional: a more reliable signal your fetch patch can set.
-// e.g. when patching, do: (window as any).__EXT_FIX_PATCHED__ = { type: 'immediate' | 'standard' }
+// e.g. when patching, do: (window as ExtensionFixWindow).__EXT_FIX_PATCHED__ = { type: 'immediate' | 'standard' }
 function readPatchedFlag(): { patched: boolean; type: 'immediate' | 'standard' | 'unknown' } {
   if (!isBrowser) return { patched: false, type: 'unknown' };
-  const flag = (window as any).__EXT_FIX_PATCHED__;
+  const win = window as ExtensionFixWindow;
+  const flag = win.__EXT_FIX_PATCHED__;
   if (flag && (flag.type === 'immediate' || flag.type === 'standard')) {
     return { patched: true, type: flag.type };
   }
@@ -72,6 +79,8 @@ export function verifyExtensionFix(): VerifyResult | { status: 'not_browser'; me
     return { status: 'not_browser', message: 'Not running in browser environment' };
   }
 
+  const win = window as ExtensionFixWindow;
+
   const checks: VerifyChecks = {
     fetchPatched: false,
     immediateFixApplied: false,
@@ -86,7 +95,7 @@ export function verifyExtensionFix(): VerifyResult | { status: 'not_browser'; me
   } else {
     // 2) Fallback to heuristic via fetch.toString()
     try {
-      const fetchString = Function.prototype.toString.call(window.fetch);
+      const fetchString = Function.prototype.toString.call(win.fetch);
       checks.fetchPatched =
         safeIncludes(fetchString, 'api/extensions') ||
         safeIncludes(fetchString, 'EXTENSION-FIX') ||
@@ -101,8 +110,8 @@ export function verifyExtensionFix(): VerifyResult | { status: 'not_browser'; me
 
   // 3) Error recovery integration presence
   checks.errorRecoveryLoaded =
-    Boolean((window as any).extensionErrorIntegration) ||
-    Boolean((window as any).handleKarenBackendError);
+    Boolean(win.extensionErrorIntegration) ||
+    Boolean(win.handleKarenBackendError);
 
   const allChecksPass = checks.fetchPatched || checks.immediateFixApplied || checks.errorRecoveryLoaded;
 
@@ -155,7 +164,7 @@ export async function testExtensionErrorRecovery(): Promise<TestExtensionErrorRe
       response.headers.get('X-Fallback-Mode') === '1' ||
       response.headers.get('X-Fallback-Mode') === 'true';
 
-    const body = (data ?? {}) as Record<string, any>;
+    const body = (data ?? {}) as Record<string, unknown>;
     const bodyFallback =
       body.fallback_mode === true ||
       body.fallback === true ||

@@ -8,15 +8,15 @@ export class ModelSelectionError extends Error {
   public readonly code: string;
   public readonly service: string;
   public readonly timestamp: string;
-  public readonly context?: Record<string, any>;
+  public readonly context?: Record<string, unknown>;
   constructor(
-    message: string, 
-    code: string, 
-    service: string, 
-    context?: Record<string, any>
+    message: string,
+    code: string,
+    service: string,
+    context?: Record<string, unknown>
   ) {
     super(message);
-    this.name = 'ModelSelectionError';
+    this.name = "ModelSelectionError";
     this.code = code;
     this.service = service;
     this.timestamp = new Date().toISOString();
@@ -27,7 +27,7 @@ export class ModelSelectionError extends Error {
   /**
    * Convert error to a serializable object
    */
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       message: this.message,
@@ -35,7 +35,7 @@ export class ModelSelectionError extends Error {
       service: this.service,
       timestamp: this.timestamp,
       context: this.context,
-      stack: this.stack
+      stack: this.stack,
     };
   }
   /**
@@ -52,13 +52,13 @@ export class ModelScanError extends ModelSelectionError {
   public readonly directory?: string;
   public readonly scanType?: string;
   constructor(
-    message: string, 
-    directory?: string, 
+    message: string,
+    directory?: string,
     scanType?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'SCAN_ERROR', 'ModelScanner', context);
-    this.name = 'ModelScanError';
+    super(message, "SCAN_ERROR", "ModelScanner", context);
+    this.name = "ModelScanError";
     this.directory = directory;
     this.scanType = scanType;
     Object.setPrototypeOf(this, ModelScanError.prototype);
@@ -78,14 +78,14 @@ export class ResourceError extends ModelSelectionError {
   public readonly requiredAmount?: number;
   public readonly availableAmount?: number;
   constructor(
-    message: string, 
+    message: string,
     resourceType?: string,
     requiredAmount?: number,
     availableAmount?: number,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'RESOURCE_ERROR', 'ResourceMonitor', context);
-    this.name = 'ResourceError';
+    super(message, "RESOURCE_ERROR", "ResourceMonitor", context);
+    this.name = "ResourceError";
     this.resourceType = resourceType;
     this.requiredAmount = requiredAmount;
     this.availableAmount = availableAmount;
@@ -105,13 +105,13 @@ export class ModelHealthError extends ModelSelectionError {
   public readonly modelId?: string;
   public readonly healthIssue?: string;
   constructor(
-    message: string, 
-    modelId?: string, 
+    message: string,
+    modelId?: string,
     healthIssue?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'HEALTH_ERROR', 'ModelHealthMonitor', context);
-    this.name = 'ModelHealthError';
+    super(message, "HEALTH_ERROR", "ModelHealthMonitor", context);
+    this.name = "ModelHealthError";
     this.modelId = modelId;
     this.healthIssue = healthIssue;
     Object.setPrototypeOf(this, ModelHealthError.prototype);
@@ -130,13 +130,13 @@ export class PerformanceError extends ModelSelectionError {
   public readonly modelId?: string;
   public readonly metricType?: string;
   constructor(
-    message: string, 
-    modelId?: string, 
+    message: string,
+    modelId?: string,
     metricType?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'PERFORMANCE_ERROR', 'PerformanceMonitor', context);
-    this.name = 'PerformanceError';
+    super(message, "PERFORMANCE_ERROR", "PerformanceMonitor", context);
+    this.name = "PerformanceError";
     this.modelId = modelId;
     this.metricType = metricType;
     Object.setPrototypeOf(this, PerformanceError.prototype);
@@ -155,13 +155,13 @@ export class PreferencesError extends ModelSelectionError {
   public readonly preferenceKey?: string;
   public readonly operation?: string;
   constructor(
-    message: string, 
-    preferenceKey?: string, 
+    message: string,
+    preferenceKey?: string,
     operation?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'PREFERENCES_ERROR', 'PreferencesService', context);
-    this.name = 'PreferencesError';
+    super(message, "PREFERENCES_ERROR", "PreferencesService", context);
+    this.name = "PreferencesError";
     this.preferenceKey = preferenceKey;
     this.operation = operation;
     Object.setPrototypeOf(this, PreferencesError.prototype);
@@ -180,13 +180,13 @@ export class DirectoryWatchError extends ModelSelectionError {
   public readonly directory?: string;
   public readonly watchOperation?: string;
   constructor(
-    message: string, 
-    directory?: string, 
+    message: string,
+    directory?: string,
     watchOperation?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'WATCH_ERROR', 'DirectoryWatcher', context);
-    this.name = 'DirectoryWatchError';
+    super(message, "WATCH_ERROR", "DirectoryWatcher", context);
+    this.name = "DirectoryWatchError";
     this.directory = directory;
     this.watchOperation = watchOperation;
     Object.setPrototypeOf(this, DirectoryWatchError.prototype);
@@ -205,13 +205,13 @@ export class ModelRegistryError extends ModelSelectionError {
   public readonly registryOperation?: string;
   public readonly modelId?: string;
   constructor(
-    message: string, 
-    registryOperation?: string, 
+    message: string,
+    registryOperation?: string,
     modelId?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'REGISTRY_ERROR', 'ModelRegistry', context);
-    this.name = 'ModelRegistryError';
+    super(message, "REGISTRY_ERROR", "ModelRegistry", context);
+    this.name = "ModelRegistryError";
     this.registryOperation = registryOperation;
     this.modelId = modelId;
     Object.setPrototypeOf(this, ModelRegistryError.prototype);
@@ -229,16 +229,16 @@ export class ModelRegistryError extends ModelSelectionError {
 export class ConfigurationError extends ModelSelectionError {
   public readonly configKey?: string;
   public readonly expectedType?: string;
-  public readonly actualValue?: any;
+  public readonly actualValue?: unknown;
   constructor(
-    message: string, 
-    configKey?: string, 
+    message: string,
+    configKey?: string,
     expectedType?: string,
-    actualValue?: any,
-    context?: Record<string, any>
+    actualValue?: unknown,
+    context?: Record<string, unknown>
   ) {
-    super(message, 'CONFIG_ERROR', 'Configuration', context);
-    this.name = 'ConfigurationError';
+    super(message, "CONFIG_ERROR", "Configuration", context);
+    this.name = "ConfigurationError";
     this.configKey = configKey;
     this.expectedType = expectedType;
     this.actualValue = actualValue;
@@ -246,7 +246,9 @@ export class ConfigurationError extends ModelSelectionError {
   }
   getUserMessage(): string {
     if (this.configKey && this.expectedType) {
-      return `Invalid configuration for "${this.configKey}": expected ${this.expectedType}, got ${typeof this.actualValue}`;
+      return `Invalid configuration for "${this.configKey}": expected ${
+        this.expectedType
+      }, got ${typeof this.actualValue}`;
     }
     return `Configuration error: ${this.message}`;
   }
@@ -258,13 +260,13 @@ export class TimeoutError extends ModelSelectionError {
   public readonly operation?: string;
   public readonly timeoutMs?: number;
   constructor(
-    message: string, 
-    operation?: string, 
+    message: string,
+    operation?: string,
     timeoutMs?: number,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
-    super(message, 'TIMEOUT_ERROR', 'General', context);
-    this.name = 'TimeoutError';
+    super(message, "TIMEOUT_ERROR", "General", context);
+    this.name = "TimeoutError";
     this.operation = operation;
     this.timeoutMs = timeoutMs;
     Object.setPrototypeOf(this, TimeoutError.prototype);
@@ -283,75 +285,83 @@ export class ErrorUtils {
   /**
    * Check if an error is a model selection error
    */
-  static isModelSelectionError(error: any): error is ModelSelectionError {
+  static isModelSelectionError(error: unknown): error is ModelSelectionError {
     return error instanceof ModelSelectionError;
   }
   /**
    * Extract error code from any error
    */
-  static getErrorCode(error: any): string {
+  static getErrorCode(error: unknown): string {
     if (this.isModelSelectionError(error)) {
       return error.code;
     }
-    return 'UNKNOWN_ERROR';
+    return "UNKNOWN_ERROR";
   }
   /**
    * Extract service name from any error
    */
-  static getServiceName(error: any): string {
+  static getServiceName(error: unknown): string {
     if (this.isModelSelectionError(error)) {
       return error.service;
     }
-    return 'Unknown';
+    return "Unknown";
   }
   /**
    * Get user-friendly error message
    */
-  static getUserMessage(error: any): string {
+  static getUserMessage(error: unknown): string {
     if (this.isModelSelectionError(error)) {
       return error.getUserMessage();
     }
-    return error.message || 'An unknown error occurred';
+    return (error as Error).message || "An unknown error occurred";
   }
   /**
    * Create error context from additional information
    */
-  static createContext(additionalInfo: Record<string, any> = {}): Record<string, any> {
+  static createContext(
+    additionalInfo: Record<string, unknown> = {}
+  ): Record<string, unknown> {
     return {
       timestamp: new Date().toISOString(),
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
-      ...additionalInfo
+      userAgent:
+        typeof navigator !== "undefined" ? navigator.userAgent : "Unknown",
+      ...additionalInfo,
     };
   }
   /**
    * Wrap a non-model-selection error
    */
   static wrapError(
-    error: any, 
-    service: string, 
+    error: unknown,
+    service: string,
     operation: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): ModelSelectionError {
     if (this.isModelSelectionError(error)) {
       return error;
     }
     return new ModelSelectionError(
-      `${operation} failed: ${error.message || error}`,
-      'WRAPPED_ERROR',
+      `${operation} failed: ${(error as Error).message || String(error)}`,
+      "WRAPPED_ERROR",
       service,
-      { ...context, originalError: error.toString() }
+      { ...context, originalError: String(error) }
     );
   }
   /**
    * Log error with appropriate level
    */
-  static logError(error: any, logger?: { error: (msg: string, ...args: any[]) => void }): void {
+  static logError(
+    error: unknown,
+    logger?: { error: (msg: string, ...args: unknown[]) => void }
+  ): void {
     const message = this.getUserMessage(error);
     const code = this.getErrorCode(error);
     const service = this.getServiceName(error);
     if (logger) {
       logger.error(`[${service}:${code}] ${message}`, error);
     } else {
+      // Fallback to console.error when no logger is provided
+      console.error(`[${service}:${code}] ${message}`, error);
     }
   }
 }

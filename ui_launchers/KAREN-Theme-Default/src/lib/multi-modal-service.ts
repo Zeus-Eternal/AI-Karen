@@ -433,10 +433,11 @@ class MultiModalService {
         result.status = "failed";
         result.error = "Invalid response from server";
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       result.status = "failed";
+      const errorObj = error as { name?: string };
       result.error =
-        error?.name === "AbortError" ? "Generation timed out" :
+        errorObj?.name === "AbortError" ? "Generation timed out" :
         error instanceof Error ? error.message : "Unknown error";
       this.telemetry?.track?.("generation_failed_exception", {
         id: result.id,
@@ -485,7 +486,7 @@ class MultiModalService {
   }
 
   private generateId(): string {
-    return `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `gen_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private isArtisticPrompt(prompt: string): boolean {

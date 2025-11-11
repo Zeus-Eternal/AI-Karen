@@ -37,19 +37,19 @@ const ComponentThatThrows = ({ errorType }: { errorType: string }) => {
       throw new Error("Generic component error");
     }
     case "api": {
-      const apiError = new Error("API request failed") as any;
+      const apiError = new Error("API request failed") as unknown;
       apiError.name = "ApiError";
       apiError.status = 500;
       apiError.endpoint = "/api/example";
       throw apiError;
     }
     case "network": {
-      const networkError = new Error("Network connection failed") as any;
+      const networkError = new Error("Network connection failed") as unknown;
       networkError.isNetworkError = true;
       throw networkError;
     }
     case "auth": {
-      const authError = new Error("Unauthorized access") as any;
+      const authError = new Error("Unauthorized access") as unknown;
       authError.status = 401;
       throw authError;
     }

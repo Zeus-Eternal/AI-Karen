@@ -79,7 +79,7 @@ export const AuthenticatedHeader: React.FC = () => {
                 <p className="text-xs leading-none text-muted-foreground">
                   {Array.isArray(user?.roles)
                     ? user.roles.join(", ")
-                    : (user?.roles as any) ?? ""}
+                    : (user?.roles as unknown) ?? ""}
                 </p>
               </div>
             </DropdownMenuLabel>

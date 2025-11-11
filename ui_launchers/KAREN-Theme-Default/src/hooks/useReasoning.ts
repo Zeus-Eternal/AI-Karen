@@ -3,23 +3,30 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { reasoningService, ReasoningRequest, ReasoningResponse } from '@/services/reasoningService';
+import {
+  reasoningService,
+  ReasoningRequest,
+  ReasoningResponse,
+  ReasoningSystemStatus,
+} from '@/services/reasoningService';
 import { safeError } from '@/lib/safe-console';
 
 export interface UseReasoningReturn {
-  analyze: (input: string, context?: any) => Promise<ReasoningResponse>;
+  analyze: (input: string, context?: unknown) => Promise<ReasoningResponse>;
   isLoading: boolean;
   error: string | null;
   lastResponse: ReasoningResponse | null;
-  systemStatus: any;
+  systemStatus: ReasoningSystemStatus | null;
   isConnected: boolean;
 }
 
 export function useReasoning(): UseReasoningReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastResponse, setLastResponse] = useState<ReasoningResponse | null>(null);
-  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [lastResponse, setLastResponse] = useState<ReasoningResponse | null>(
+    null
+  );
+  const [systemStatus, setSystemStatus] = useState<ReasoningSystemStatus | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   // Check connection status on mount
@@ -28,7 +35,7 @@ export function useReasoning(): UseReasoningReturn {
       try {
         const connected = await reasoningService.testConnection();
         setIsConnected(connected);
-        
+
         if (connected) {
           const status = await reasoningService.getSystemStatus();
           setSystemStatus(status);
@@ -40,62 +47,66 @@ export function useReasoning(): UseReasoningReturn {
     };
 
     checkConnection();
-    
+
     // Check connection every 30 seconds
     const interval = setInterval(checkConnection, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const analyze = useCallback(async (input: string, context?: any): Promise<ReasoningResponse> => {
-    setIsLoading(true);
-    setError(null);
+  const analyze = useCallback(
+    async (input: string, context?: unknown): Promise<ReasoningResponse> => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const request: ReasoningRequest = {
-        input,
-        context: {
-          user_id: 'anonymous',
-          conversation_id: `chat_${Date.now()}`,
-          ...context,
-        },
-      };
-
-      const response = await reasoningService.analyze(request);
-      setLastResponse(response);
-      
-      if (!response.success) {
-        setError(response.errors?.ai_error || 'Analysis failed');
-      }
-
-      return response;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      
-      // Return fallback response
-      const fallbackResponse: ReasoningResponse = {
-        success: true,
-        response: {
-          content: `I'm having trouble processing your request right now. You asked: "${input}". I'm running in offline mode but still here to help.`,
-          type: 'text',
-          metadata: {
-            fallback_mode: true,
-            local_processing: true,
+      try {
+        const request: ReasoningRequest = {
+          input,
+          context: {
+            user_id: 'anonymous',
+            conversation_id: `chat_${Date.now()}`,
+            ...(typeof context === 'object' && context !== null ? (context as Record<string, unknown>) : {}),
           },
-        },
-        reasoning_method: 'hook_fallback',
-        fallback_used: true,
-        errors: {
-          ai_error: errorMessage,
-        },
-      };
-      
-      setLastResponse(fallbackResponse);
-      return fallbackResponse;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        };
+
+        const response = await reasoningService.analyze(request);
+        setLastResponse(response);
+
+        if (!response.success) {
+          setError(response.errors?.ai_error || "Analysis failed");
+        }
+
+        return response;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
+
+        // Return fallback response
+        const fallbackResponse: ReasoningResponse = {
+          success: true,
+          response: {
+            content: `I'm having trouble processing your request right now. You asked: "${input}". I'm running in offline mode but still here to help.`,
+            type: 'text',
+            metadata: {
+              fallback_mode: true,
+              local_processing: true,
+            },
+          },
+          reasoning_method: 'hook_fallback',
+          fallback_used: true,
+          errors: {
+            ai_error: errorMessage,
+          },
+        };
+
+        setLastResponse(fallbackResponse);
+        return fallbackResponse;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   return {
     analyze,

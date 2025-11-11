@@ -9,7 +9,7 @@ import { BarChart3, MessageSquare, Clock, Target, Activity, Brain, TrendingUp, C
 import type { ChatMessage } from '@/components/ChatInterface';
 
 interface AnalyticsTabProps {
-  analytics: any;
+  analytics: unknown;
   messages: ChatMessage[];
 }
 

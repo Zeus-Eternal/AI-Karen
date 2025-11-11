@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
     const bases = CANDIDATE_BACKENDS;
-    let lastErr: any = null;
+    let lastErr: unknown = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     for (const base of bases) {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       }
     }
       // Process health response
-      let healthData: any = { status: 'unknown' };
+      let healthData: unknown = { status: 'unknown' };
       if (healthResponse && healthResponse.status === 'fulfilled' && healthResponse.value.ok) {
         const contentType = healthResponse.value.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         }
       }
       // Process providers response
-      let providersData: any = null;
+      let providersData: unknown = null;
       if (providersResponse && providersResponse.status === 'fulfilled' && providersResponse.value.ok) {
         try {
           providersData = await providersResponse.value.json();
@@ -89,18 +89,18 @@ export async function GET(request: NextRequest) {
       const statusValue = (healthData.status || healthData.state || '').toString().toLowerCase();
       const normalizedStatus = ['ok', 'healthy', 'up'].includes(statusValue) ? 'healthy' : 'degraded';
       const providers = providersData?.providers || [];
-      const totalModels = providers.reduce((total: number, provider: any) =>
+      const totalModels = providers.reduce((total: number, provider: unknown) =>
         total + (provider.total_models || provider.cached_models_count || 0), 0);
-      const localFallbackReady = providers.some((provider: any) =>
+      const localFallbackReady = providers.some((provider: unknown) =>
         provider.provider_type === 'local' &&
         ['healthy', 'degraded', 'unknown'].includes((provider.health_status || '').toLowerCase())
       );
       const remoteProviderOutages = providers
-        .filter((provider: any) =>
+        .filter((provider: unknown) =>
           provider.provider_type !== 'local' &&
           ['degraded', 'unhealthy', 'unknown'].includes((provider.health_status || '').toLowerCase())
         )
-        .map((provider: any) => provider.name);
+        .map((provider: unknown) => provider.name);
       const aiStatus = remoteProviderOutages.length > 0 && !localFallbackReady
         ? 'degraded'
         : (healthData.ai_status || normalizedStatus);

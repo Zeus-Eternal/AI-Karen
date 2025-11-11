@@ -189,7 +189,7 @@ async function safeParseJson<T>(request: NextRequest): Promise<T> {
  * Send email verification to newly created super admin
  */
 async function sendSuperAdminVerificationEmail(email: string, fullName: string, userId: string): Promise<void> {
-  const verificationToken = generateEmailVerificationToken(email, userId);
+  const verificationToken = await generateEmailVerificationToken(email, userId);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const verificationLink = `${baseUrl}/verify-email?token=${verificationToken}`;
 
@@ -273,7 +273,7 @@ This is an automated message from {{system_name}}. Please do not reply to this e
  * Generate a signed email verification token (base64url payload + random suffix)
  * Uses Web Crypto where available (Edge/Node18+)
  */
-function generateEmailVerificationToken(email: string, userId: string): string {
+async function generateEmailVerificationToken(email: string, userId: string): Promise<string> {
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24h
   const payload = { email, userId, type: 'email_verification', timestamp: Date.now(), expires: expiresAt };
 
@@ -281,19 +281,19 @@ function generateEmailVerificationToken(email: string, userId: string): string {
   const base64url = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
   // 16 random bytes suffix
-  const rand = webcryptoGetRandomBytesHex(16);
+  const rand = await webcryptoGetRandomBytesHex(16);
 
   return `${base64url}.${rand}`;
 }
 
-function webcryptoGetRandomBytesHex(len: number): string {
+async function webcryptoGetRandomBytesHex(len: number): Promise<string> {
   const bytes = new Uint8Array(len);
   // Prefer globalThis.crypto if available (Edge runtime / Node 18+)
   if (typeof globalThis.crypto?.getRandomValues === 'function') {
     globalThis.crypto.getRandomValues(bytes);
   } else {
     // Fallback to Node crypto
-    const nodeCrypto = require('crypto') as typeof import('crypto');
+    const nodeCrypto = await import('crypto');
     const buf: Buffer = nodeCrypto.randomBytes(len);
     buf.copy(Buffer.from(bytes.buffer));
   }

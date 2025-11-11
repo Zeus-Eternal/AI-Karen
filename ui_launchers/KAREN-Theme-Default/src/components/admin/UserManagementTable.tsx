@@ -159,7 +159,7 @@ export function UserManagementTable({
       setUsers(data.data.data || []);
       setTotalPages(data.data.pagination.total_pages || 1);
       setTotalUsers(data.data.pagination.total || 0);
-    } catch (err: any) {
+    } catch (err: Error) {
       if (err?.name === "AbortError") return; // ignore aborts
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {

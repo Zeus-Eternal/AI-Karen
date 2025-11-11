@@ -21,7 +21,7 @@ export class ErrorCategorizer {
    */
   categorizeError(
     error: Error | string, 
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): CategorizedError {
     const errorMessage = typeof error === 'string' ? error : (error?.message || 'Unknown error');
     const errorStack = typeof error === 'object' && error ? error.stack : undefined;
@@ -88,7 +88,7 @@ export class ErrorCategorizer {
   private getUserMessage(
     category: ErrorCategory, 
     errorMessage: string, 
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): string {
     const categoryMessages = USER_ERROR_MESSAGES[category];
     

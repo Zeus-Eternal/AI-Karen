@@ -175,8 +175,10 @@ export class EnvironmentConfigManager {
     // Log deprecation warnings for legacy variables
     if (legacyUrls.length > 0) {
       if (this.getEnvVar('API_BASE_URL', '')) {
+        console.warn('API_BASE_URL is deprecated. Use KAREN_BACKEND_URL instead.');
       }
       if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
+        console.warn('NEXT_PUBLIC_API_BASE_URL is deprecated. Use KAREN_BACKEND_URL instead.');
       }
     }
     // Use standardized variables first, then fall back to legacy
@@ -186,14 +188,16 @@ export class EnvironmentConfigManager {
     }
     // Generate URL based on detected environment
     switch (this.environment.networkMode) {
-      case 'container':
+      case 'container': {
         const containerHost = this.getEnvVar('KAREN_CONTAINER_BACKEND_HOST', 'backend');
         const containerPort = this.getEnvVar('KAREN_CONTAINER_BACKEND_PORT', '8000');
         return `http://${containerHost}:${containerPort}`;
-      case 'external':
+      }
+      case 'external': {
         const externalHost = this.getEnvVar('KAREN_EXTERNAL_HOST', this.environment.detectedHostname || 'localhost');
         const externalPort = this.getEnvVar('KAREN_EXTERNAL_BACKEND_PORT', '8000');
         return `http://${externalHost}:${externalPort}`;
+      }
       case 'localhost':
       default:
         return 'http://localhost:8000';
@@ -239,7 +243,7 @@ export class EnvironmentConfigManager {
           fallbacks.push(...urls);
         }
       }
-    } catch (error) {
+    } catch {
       // If URL parsing fails, add sensible defaults
       fallbacks.push('http://localhost:8000', 'http://127.0.0.1:8000');
     }
@@ -533,6 +537,7 @@ export class EnvironmentConfigManager {
     // Log migration recommendations
     const migrations = this.getMigrationRecommendations();
     if (migrations.length > 0) {
+      console.log('Migration Recommendations:', migrations);
     }
     console.groupEnd();
     // Validate and show warnings/errors

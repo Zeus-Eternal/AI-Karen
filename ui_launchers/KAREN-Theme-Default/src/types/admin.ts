@@ -5,7 +5,7 @@
  * including enhanced user models, audit logging, system configuration, and permissions.
  */
 
-import type { User as BaseUser, UserPreferences } from './auth';
+import type { User as BaseUser } from './auth';
 
 /**
  * Enhanced admin user interface extending the base User with admin-specific fields
@@ -38,7 +38,7 @@ export interface AuditLog {
   action: string;
   resource_type: string;
   resource_id?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
   timestamp: Date;
@@ -99,7 +99,7 @@ export interface UpdateUserRequest {
   role?: 'super_admin' | 'admin' | 'user';
   is_active?: boolean;
   is_verified?: boolean;
-  preferences?: Record<string, any>;
+  preferences?: Record<string, unknown>;
   two_factor_enabled?: boolean;
 }
 
@@ -122,7 +122,7 @@ export interface AdminInvitation {
 export interface BulkUserOperation {
   operation: 'activate' | 'deactivate' | 'delete' | 'export' | 'import' | 'role_change';
   user_ids: string[];
-  parameters?: Record<string, any>; // For operations that need additional data
+  parameters?: Record<string, unknown>; // For operations that need additional data
 }
 
 // User list filter interface
@@ -181,9 +181,9 @@ export interface AdminApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
 }
 
 // User statistics interface
@@ -223,7 +223,7 @@ export interface SecurityEvent {
   user_id?: string;
   ip_address?: string;
   user_agent?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   severity: 'low' | 'medium' | 'high' | 'critical';
   resolved: boolean;
   resolved_by?: string;
@@ -378,7 +378,7 @@ export type AuditLogEntry = {
   action: string;
   resource_type: string;
   resource_id?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ip_address?: string;
   user_agent?: string;
   created_at?: Date;
@@ -414,7 +414,7 @@ export interface AdminError {
   type: AdminErrorType;
   message: string;
   field?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Performance and Caching Types
@@ -426,7 +426,7 @@ export interface PerformanceMetric {
   startTime: number;
   endTime: number;
   duration: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface DatabaseQueryMetric extends PerformanceMetric {
@@ -553,5 +553,5 @@ export interface BulkOperationResult {
   success: boolean;
   updatedCount: number;
   errors: string[];
-  data?: any[];
+  data?: unknown[];
 }

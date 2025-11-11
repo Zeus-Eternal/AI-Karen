@@ -177,7 +177,7 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
 
 /* -------------------------------- OVERVIEW -------------------------------- */
 
-function OverviewDashboard({ statistics, loading }: { statistics: any; loading: boolean }) {
+function OverviewDashboard({ statistics, loading }: { statistics: unknown; loading: boolean }) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 
@@ -268,7 +268,7 @@ function OverviewDashboard({ statistics, loading }: { statistics: any; loading: 
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(statistics.topUsers || []).slice(0, 5).map((user: any, index: number) => (
+              {(statistics.topUsers || []).slice(0, 5).map((user: unknown, index: number) => (
                 <div key={user.userId ?? index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">
@@ -289,7 +289,7 @@ function OverviewDashboard({ statistics, loading }: { statistics: any; loading: 
 
 /* ------------------------------ EVENT ANALYSIS ----------------------------- */
 
-function EventAnalysis({ statistics, loading }: { statistics: any; loading: boolean }) {
+function EventAnalysis({ statistics, loading }: { statistics: unknown; loading: boolean }) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 
@@ -392,13 +392,13 @@ function UserBehaviorAnalysis({
   behaviorLoading,
   behaviorError,
 }: {
-  statistics: any;
+  statistics: unknown;
   loading: boolean;
   selectedUser: string;
   onUserSelect: (userId: string) => void;
   userBehavior: UserBehaviorPattern | null;
   behaviorLoading: boolean;
-  behaviorError: any;
+  behaviorError: unknown;
 }) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
@@ -416,7 +416,7 @@ function UserBehaviorAnalysis({
               <SelectValue placeholder="Select a user to analyze" />
             </SelectTrigger>
             <SelectContent>
-              {(statistics.topUsers || []).map((user: any) => (
+              {(statistics.topUsers || []).map((user: unknown) => (
                 <SelectItem key={user.userId} value={String(user.userId)}>
                   {user.username ?? user.userId} ({Number(user.eventCount || 0)} events)
                 </SelectItem>
@@ -550,7 +550,7 @@ function UserBehaviorAnalysis({
 
 /* ------------------------------ SECURITY TRENDS ---------------------------- */
 
-function SecurityTrends({ statistics, loading }: { statistics: any; loading: boolean }) {
+function SecurityTrends({ statistics, loading }: { statistics: unknown; loading: boolean }) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 

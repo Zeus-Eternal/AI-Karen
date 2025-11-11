@@ -770,15 +770,16 @@ export const useDashboardStore = create<DashboardStore>()(
 
               set((state) => {
                 // Dashboards
-                Object.values(ds || {}).forEach((dashboard: any) => {
+                Object.values(ds || {}).forEach((dashboard: unknown) => {
+                  const dash = dashboard as DashboardConfig;
                   const newId = generateId();
                   const importedDashboard: DashboardConfig = {
-                    ...dashboard,
+                    ...dash,
                     id: newId,
-                    name: `${dashboard.name} (Imported)`,
+                    name: `${dash.name} (Imported)`,
                     createdAt: new Date(),
                     updatedAt: new Date(),
-                    widgets: (dashboard.widgets || []).map((w: any) => ({
+                    widgets: (dash.widgets || []).map((w: WidgetConfig) => ({
                       ...w,
                       id: generateWidgetId(),
                     })),
@@ -788,10 +789,11 @@ export const useDashboardStore = create<DashboardStore>()(
                 });
 
                 // User templates only
-                (ts || []).forEach((template: any) => {
+                (ts || []).forEach((template: unknown) => {
+                  const tmpl = template as DashboardTemplate;
                   const newTid = generateId();
                   state.templates[newTid] = {
-                    ...template,
+                    ...tmpl,
                     id: newTid,
                     category: 'user',
                   };
@@ -802,8 +804,9 @@ export const useDashboardStore = create<DashboardStore>()(
             }
 
             throw new Error('Invalid import data format');
-          } catch (error: any) {
-            throw new Error(`Import failed: ${error?.message ?? 'Unknown error'}`);
+          } catch (error: unknown) {
+            const err = error as Error;
+            throw new Error(`Import failed: ${err?.message ?? 'Unknown error'}`);
           } finally {
             set((state) => {
               state.importInProgress = false;

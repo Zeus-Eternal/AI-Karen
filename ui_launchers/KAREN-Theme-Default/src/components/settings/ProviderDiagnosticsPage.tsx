@@ -87,7 +87,7 @@ export interface DiagnosticInfo {
     error_type: string;
     message: string;
     stack_trace?: string;
-    request_context?: Record<string, any>;
+    request_context?: Record<string, unknown>;
   }>;
   recovery_suggestions: Array<{
     priority: "high" | "medium" | "low";
@@ -144,7 +144,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       ]);
       setDiagnostics(diagnosticsResponse || null);
       setRepairActions(Array.isArray(repairActionsResponse) ? repairActionsResponse : []);
-    } catch (error: any) {
+    } catch (error: Error) {
       toast({
         title: "Diagnostics Failed",
         description:
@@ -195,7 +195,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       } else {
         throw new Error(response?.message || "Repair action failed");
       }
-    } catch (error: any) {
+    } catch (error: Error) {
       toast({
         title: "Repair Failed",
         description: `Could not execute repair: ${error?.message || "Unknown error"}`,

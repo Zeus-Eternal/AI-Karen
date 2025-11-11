@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useExtensionContext } from '../../../extensions/ExtensionContext';
+import { useExtensionContext } from '@/hooks/use-extension-context';
 
 export interface ExtensionHeaderProps {
   /** Optional custom title. Defaults to current category */

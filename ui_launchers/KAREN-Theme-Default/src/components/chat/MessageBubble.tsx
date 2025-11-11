@@ -11,7 +11,7 @@ export interface MessageBubbleProps {
     role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp?: Date;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 }
 

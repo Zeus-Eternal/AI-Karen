@@ -37,7 +37,7 @@ import {
   BarChart3,
   Download,
 } from "lucide-react";
-import { useHooks } from "@/contexts/HookContext";
+import { useHooks } from "@/hooks/use-hooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
@@ -121,7 +121,7 @@ const InteractionTypeRenderer = (params: ICellRendererParams<UserEngagementRow>)
 
   return (
     <Badge
-      variant={(variants as any)[type] ?? "outline"}
+      variant={(variants as unknown)[type] ?? "outline"}
       className="text-xs flex items-center gap-1 sm:text-sm md:text-base"
     >
       {iconMap[type]}
@@ -280,7 +280,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         width: 160,
         sortable: true,
         filter: "agTextColumnFilter",
-        cellStyle: { fontSize: "12px", fontFamily: "monospace" } as any,
+        cellStyle: { fontSize: "12px", fontFamily: "monospace" } as unknown,
       },
       {
         field: "interactionType",
@@ -312,7 +312,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         width: 220,
         sortable: false,
         filter: "agTextColumnFilter",
-        cellStyle: { color: "#ef4444", fontSize: "12px" } as any,
+        cellStyle: { color: "#ef4444", fontSize: "12px" } as unknown,
         valueFormatter: (p) => p.value ?? "-",
       },
       {
@@ -410,9 +410,9 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
   );
 
   const onSelectionChanged = useCallback(
-    async (event: any) => {
+    async (event: Event) => {
       const selectedNodes = event.api.getSelectedNodes();
-      const selectedData = selectedNodes.map((n: any) => n.data as UserEngagementRow);
+      const selectedData = selectedNodes.map((n: unknown) => n.data as UserEngagementRow);
       setSelectedRows(selectedData);
 
       if (selectedData.length > 0 && onRowSelect) {
@@ -627,7 +627,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             onGridReady={onGridReady}
-            onSelectionChanged={(e) => onSelectionChanged(e as any)}
+            onSelectionChanged={(e) => onSelectionChanged(e as unknown)}
             rowSelection="multiple"
             animateRows
             getRowId={(params) => params.data.id}

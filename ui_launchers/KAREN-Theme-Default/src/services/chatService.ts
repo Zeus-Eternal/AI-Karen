@@ -4,9 +4,9 @@
  */
 import { getKarenBackend } from '@/lib/karen-backend';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
+import { getServiceErrorHandler } from './errorHandler';
 import { generateUUID } from '@/lib/uuid';
-import type { ChatMessage, KarenSettings, HandleUserMessageResult, AiData } from '@/lib/types';
+import type { ChatMessage, KarenSettings, HandleUserMessageResult } from '@/lib/types';
 export interface ConversationSession {
   conversationId: string;
   sessionId: string;
@@ -14,10 +14,10 @@ export interface ConversationSession {
   createdAt: Date;
   updatedAt: Date;
   messages: ChatMessage[];
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   summary?: string;
 }
-export type Toolset = Record<string, (...args: any[]) => unknown>;
+export type Toolset = Record<string, (...args: unknown[]) => unknown>;
 
 export interface ProcessMessageOptions {
   userId?: string;
@@ -28,6 +28,43 @@ export interface ProcessMessageOptions {
   preferredModel?: string;
   tools?: Toolset;
 }
+
+interface MessageMetadataPayload {
+  ai_data?: ChatMessage['aiData'];
+  should_auto_play?: boolean;
+}
+
+interface ApiConversationMessage {
+  id: string;
+  role: ChatMessage['role'];
+  content: string;
+  created_at?: string;
+  timestamp?: string;
+  metadata?: MessageMetadataPayload;
+}
+
+interface ApiConversationPayload {
+  id: string;
+  session_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  messages?: ApiConversationMessage[];
+  metadata?: Record<string, unknown>;
+  summary?: string;
+}
+
+const mapApiMessageToChatMessage = (msg: ApiConversationMessage): ChatMessage => {
+  const timestampValue = msg.created_at ?? msg.timestamp;
+  return {
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: timestampValue ? new Date(timestampValue) : new Date(),
+    aiData: msg.metadata?.ai_data,
+    shouldAutoPlay: msg.metadata?.should_auto_play,
+  };
+};
 export class ChatService {
   private backend = getKarenBackend();
   private apiClient = enhancedApiClient;
@@ -110,6 +147,7 @@ export class ChatService {
       });
 
     } catch (error) {
+      console.warn('Failed to add message to conversation', conversationId, error);
     }
   }
   async getConversation(sessionId: string): Promise<ConversationSession | null> {
@@ -118,30 +156,28 @@ export class ChatService {
         return this.cache.get(sessionId)!;
       }
       const response = await this.apiClient.get(`/api/conversations/by-session/${sessionId}`);
-      const data = response.data;
+      const data: ApiConversationPayload = response.data;
       const session: ConversationSession = {
         conversationId: data.id,
         sessionId: data.session_id,
         userId: data.user_id,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
-        messages: data.messages.map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.created_at),
-          aiData: msg.metadata?.ai_data,
-          shouldAutoPlay: msg.metadata?.should_auto_play,
-        })),
+        messages: (data.messages || []).map(mapApiMessageToChatMessage),
         context: data.metadata || {},
         summary: data.summary,
       };
       this.cache.set(sessionId, session);
       return session;
-    } catch (error: any) {
-      if (error.status === 404) {
+    } catch (error) {
+      let status: number | undefined;
+      if (typeof error === 'object' && error !== null && 'status' in error) {
+        status = (error as { status?: number }).status;
+      }
+      if (status === 404) {
         return null;
       }
+      console.error('Failed to load conversation', sessionId, error);
       return null;
     }
   }
@@ -150,30 +186,26 @@ export class ChatService {
       const response = await this.apiClient.post(`/api/conversations/${sessionId}/summary`);
       return response.data.summary;
     } catch (error) {
+      console.warn('Failed to generate conversation summary', sessionId, error);
       return null;
     }
   }
   async getUserConversations(_userId: string): Promise<ConversationSession[]> {
     try {
       const response = await this.apiClient.get('/api/conversations');
-      return response.data.conversations.map((conv: any) => ({
+      const conversations = (response.data.conversations || []) as ApiConversationPayload[];
+      return conversations.map((conv) => ({
         conversationId: conv.id,
         sessionId: conv.session_id,
         userId: conv.user_id,
         createdAt: new Date(conv.created_at),
         updatedAt: new Date(conv.updated_at),
-        messages: (conv.messages || []).map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.timestamp),
-          aiData: msg.metadata?.ai_data,
-          shouldAutoPlay: msg.metadata?.should_auto_play,
-        })),
+        messages: (conv.messages || []).map(mapApiMessageToChatMessage),
         context: conv.metadata || {},
         summary: conv.summary,
       }));
     } catch (error) {
+      console.warn('Failed to load user conversations', error);
       return [];
     }
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useI18n } from '../../providers/i18n-provider';
+import { useI18n } from '../../providers/i18n-hooks';
 import type { InterpolationOptions, PluralOptions } from '../../lib/i18n';
 
 export interface LocalizedTextProps {
@@ -24,7 +24,7 @@ export interface LocalizedTextProps {
   as?: keyof JSX.IntrinsicElements;
 
   /** Additional props to pass to the element */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function LocalizedText({
@@ -39,7 +39,7 @@ export function LocalizedText({
   const { t } = useI18n();
   
   // Build translation options dynamically to match the expected type
-  const translationOptions: any = {
+  const translationOptions: unknown = {
     ...values,
   };
   

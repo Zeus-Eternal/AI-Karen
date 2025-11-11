@@ -17,7 +17,7 @@ export interface PerformanceMetrics {
   responseTime?: number;
   retryCount?: number;
   errorCount?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 export interface BaseLogEntry {
   level: 'debug' | 'info' | 'warn' | 'error';
@@ -40,7 +40,7 @@ export interface BaseLogEntry {
     stack?: string;
     code?: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 export interface ConnectivityLogEntry extends BaseLogEntry {
   category: 'connectivity';

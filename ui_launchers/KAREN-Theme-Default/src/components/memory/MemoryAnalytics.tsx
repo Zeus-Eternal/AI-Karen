@@ -277,7 +277,7 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
           { type: 'number', position: 'left', title: { text: 'Memory Count' } }
         ],
         title: { text: 'Confidence Score Distribution' }
-      } as any,
+      } as unknown,
 
       clusterDistribution: {
         data: analytics.content.clusterDistribution,
@@ -288,7 +288,7 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
           label: { enabled: true }
         }],
         title: { text: 'Memory Distribution by Cluster' }
-      } as any,
+      } as unknown,
 
       retentionCurve: {
         data: analytics.trends.retentionCurve,

@@ -66,7 +66,7 @@ export function formatVersion(version: string): string {
  */
 export function getExtensionIcon(extension: ExtensionBase): string {
   const defaultIcon = EXTENSION_ICONS.extension ?? "puzzle";
-  const type = (extension as any)?.type;
+  const type = 'type' in extension ? extension.type : undefined;
   if (!type) return defaultIcon;
 
   switch (type) {
@@ -74,15 +74,15 @@ export function getExtensionIcon(extension: ExtensionBase): string {
       return EXTENSION_ICONS.plugin ?? defaultIcon;
     case "provider": {
       const provider = extension as ExtensionProvider;
-      const key = (provider as any)?.providerType ?? "provider";
-      return (EXTENSION_ICONS as any)[key] ?? EXTENSION_ICONS.plugin ?? defaultIcon;
+      const key = 'providerType' in provider ? String(provider.providerType) : "provider";
+      return (EXTENSION_ICONS as Record<string, string>)[key] ?? EXTENSION_ICONS.plugin ?? defaultIcon;
     }
     case "model":
       return EXTENSION_ICONS.plugin ?? defaultIcon;
     case "system_extension": {
       const systemExt = extension as SystemExtension;
-      const k = (systemExt as any)?.extensionType ?? "extension";
-      return (EXTENSION_ICONS as any)[k] ?? defaultIcon;
+      const k = 'extensionType' in systemExt ? String(systemExt.extensionType) : "extension";
+      return (EXTENSION_ICONS as Record<string, string>)[k] ?? defaultIcon;
     }
     default:
       return defaultIcon;
@@ -225,7 +225,7 @@ export function getStatusColorClass(status: string): string {
  */
 export function validateExtensionSettings(
   settings: ExtensionSetting[],
-  values: Record<string, any>
+  values: Record<string, unknown>
 ): { valid: boolean; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
 
@@ -281,7 +281,7 @@ export function validateExtensionSettings(
       case "multiselect": {
         if (validation.options && Array.isArray(value)) {
           const validValues = validation.options.map((opt) => opt.value);
-          const invalidValues = value.filter((v: any) => !validValues.includes(v));
+          const invalidValues = value.filter((v: unknown) => !validValues.includes(v));
           if (invalidValues.length > 0) {
             errors[setting.key] = `${label} contains invalid values: ${invalidValues.join(", ")}`;
           }
@@ -339,14 +339,14 @@ export function sortExtensions<T extends ExtensionBase>(
         break;
       }
       case "updated": {
-        const at = Date.parse(safeStr((a as any).updatedAt));
-        const bt = Date.parse(safeStr((b as any).updatedAt));
+        const at = Date.parse(safeStr((a as Record<string, unknown>).updatedAt));
+        const bt = Date.parse(safeStr((b as Record<string, unknown>).updatedAt));
         comparison = cmp(isFinite(at) ? at : 0, isFinite(bt) ? bt : 0);
         break;
       }
       case "enabled": {
-        const av = (a as any)?.enabled ? 1 : 0;
-        const bv = (b as any)?.enabled ? 1 : 0;
+        const av = (a as Record<string, unknown>)?.enabled ? 1 : 0;
+        const bv = (b as Record<string, unknown>)?.enabled ? 1 : 0;
         comparison = cmp(av, bv);
         break;
       }
@@ -372,9 +372,9 @@ export function filterExtensions<T extends ExtensionBase>(
 
   return (extensions ?? []).filter((ext) => {
     const name = safeStr(ext.name).toLowerCase();
-    const desc = safeStr((ext as any).description).toLowerCase();
+    const desc = safeStr((ext as Record<string, unknown>).description).toLowerCase();
     const author = safeStr(ext.author).toLowerCase();
-    const tags = (ext as any)?.tags?.map((t: any) => safeStr(t).toLowerCase()) ?? [];
+    const tags = ('tags' in ext && Array.isArray(ext.tags)) ? ext.tags.map((t: unknown) => safeStr(t).toLowerCase()) : [];
     return (
       name.includes(q) ||
       desc.includes(q) ||
@@ -396,7 +396,7 @@ export function hasUpdates(extension: ExtensionBase): boolean {
  * Gets extension display name with fallback to ID
  */
 export function getExtensionDisplayName(extension: ExtensionBase): string {
-  return safeStr(extension.name) || safeStr((extension as any).id) || "Unknown Extension";
+  return safeStr(extension.name) || ('id' in extension ? safeStr(extension.id) : "") || "Unknown Extension";
 }
 
 /**
@@ -416,18 +416,18 @@ export function calculateTrustScore(extension: ExtensionBase): number {
   if (ver.includes("beta") || ver.includes("alpha") || ver.includes("rc")) score -= 15;
 
   // Dependency pressure (fewer is better)
-  const deps = Array.isArray((extension as any)?.dependencies)
-    ? ((extension as any).dependencies as any[])
+  const deps = ('dependencies' in extension && Array.isArray(extension.dependencies))
+    ? extension.dependencies
     : [];
   score -= Math.min(deps.length * 2, 20);
 
   // Marketplace signals (plugins)
   const plugin = extension as ExtensionPlugin;
-  const market = (plugin as any)?.marketplace;
-  if (market) {
-    const rating = Number((market as any).rating) || 0; // assume 0..5
+  const market = ('marketplace' in plugin) ? plugin.marketplace : undefined;
+  if (market && typeof market === 'object' && market !== null) {
+    const rating = Number(('rating' in market) ? market.rating : 0) || 0; // assume 0..5
     score += Math.min(rating * 10, 30);
-    if ((market as any).verified) score += 20;
+    if (('verified' in market) && market.verified) score += 20;
   }
 
   return clamp(Math.round(score), 0, 100);

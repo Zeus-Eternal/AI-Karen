@@ -52,7 +52,7 @@ export interface ProviderNotification {
     action: 'retry' | 'configure' | 'dismiss' | 'view_details';
     variant?: 'default' | 'destructive' | 'outline';
   }>;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProviderNotificationSystemProps {

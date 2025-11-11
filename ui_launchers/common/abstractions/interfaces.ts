@@ -70,7 +70,7 @@ export interface ISettingsComponent extends BaseComponent {
   getSetting<K extends keyof KarenSettings>(key: K): KarenSettings[K];
   
   // Event handling
-  onSettingChanged(callback: (key: string, value: any) => void): void;
+  onSettingChanged(callback: (key: string, value: unknown) => void): void;
   onSettingsSaved(callback: (settings: KarenSettings) => void): void;
   
   // State management
@@ -88,7 +88,7 @@ export interface IPluginComponent extends BaseComponent {
   
   // Plugin execution
   executePlugin(request: PluginExecutionRequest): Promise<PluginExecutionResult>;
-  validatePluginParameters(pluginName: string, parameters: Record<string, any>): boolean;
+  validatePluginParameters(pluginName: string, parameters: Record<string, unknown>): boolean;
   
   // Event handling
   onPluginExecuted(callback: (result: PluginExecutionResult) => void): void;
@@ -98,9 +98,9 @@ export interface IPluginComponent extends BaseComponent {
 // Memory management interface
 export interface IMemoryComponent extends BaseComponent {
   // Memory operations
-  storeMemory(content: string, metadata: Record<string, any>, tags: string[]): Promise<string>;
+  storeMemory(content: string, metadata: Record<string, unknown>, tags: string[]): Promise<string>;
   queryMemories(query: MemoryQuery): Promise<MemoryEntry[]>;
-  getMemoryStats(userId: string): Promise<Record<string, any>>;
+  getMemoryStats(userId: string): Promise<Record<string, unknown>>;
   deleteMemory(memoryId: string): Promise<void>;
   
   // Memory visualization
@@ -139,7 +139,7 @@ export interface IThemeManager {
   
   // CSS generation
   generateCSS(theme: Theme): string;
-  generateTailwindConfig(theme: Theme): Record<string, any>;
+  generateTailwindConfig(theme: Theme): Record<string, unknown>;
   generateStreamlitCSS(theme: Theme): string;
   
   // Event handling
@@ -148,22 +148,22 @@ export interface IThemeManager {
 
 // Service interfaces for backend communication
 export interface IChatService {
-  sendMessage(content: string, conversationHistory: string, settings: KarenSettings): Promise<any>;
+  sendMessage(content: string, conversationHistory: string, settings: KarenSettings): Promise<unknown>;
   getSuggestedStarter(context: string): Promise<string>;
 }
 
 export interface IMemoryService {
-  storeMemory(content: string, metadata: Record<string, any>, tags: string[], userId: string, sessionId: string): Promise<string>;
+  storeMemory(content: string, metadata: Record<string, unknown>, tags: string[], userId: string, sessionId: string): Promise<string>;
   queryMemories(query: MemoryQuery): Promise<MemoryEntry[]>;
-  buildContext(query: string, userId: string, sessionId: string): Promise<Record<string, any>>;
-  getMemoryStats(userId: string): Promise<Record<string, any>>;
+  buildContext(query: string, userId: string, sessionId: string): Promise<Record<string, unknown>>;
+  getMemoryStats(userId: string): Promise<Record<string, unknown>>;
 }
 
 export interface IPluginService {
   listPlugins(): Promise<PluginInfo[]>;
   executePlugin(request: PluginExecutionRequest): Promise<PluginExecutionResult>;
   getPluginInfo(pluginName: string): Promise<PluginInfo | null>;
-  validatePlugin(pluginName: string, parameters: Record<string, any>): Promise<boolean>;
+  validatePlugin(pluginName: string, parameters: Record<string, unknown>): Promise<boolean>;
 }
 
 export interface IAnalyticsService {
@@ -177,11 +177,11 @@ export interface IFrameworkAdapter {
   framework: 'react' | 'streamlit' | 'tauri';
   
   // Component creation
-  createChatComponent(containerId: string, options?: any): IChatComponent;
-  createSettingsComponent(containerId: string, options?: any): ISettingsComponent;
-  createPluginComponent(containerId: string, options?: any): IPluginComponent;
-  createMemoryComponent(containerId: string, options?: any): IMemoryComponent;
-  createAnalyticsComponent(containerId: string, options?: any): IAnalyticsComponent;
+  createChatComponent(containerId: string, options?: unknown): IChatComponent;
+  createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent;
+  createPluginComponent(containerId: string, options?: unknown): IPluginComponent;
+  createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent;
+  createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent;
   
   // Theme management
   getThemeManager(): IThemeManager;
@@ -193,9 +193,9 @@ export interface IFrameworkAdapter {
   createAnalyticsService(): IAnalyticsService;
   
   // Framework-specific utilities
-  createElement(type: string, props: any, children?: any[]): any;
-  renderComponent(component: any, container: string | Element): void;
-  destroyComponent(component: any): void;
+  createElement(type: string, props: Record<string, unknown>, children?: unknown[]): unknown;
+  renderComponent(component: unknown, container: string | Element): void;
+  destroyComponent(component: unknown): void;
 }
 
 // Configuration interface

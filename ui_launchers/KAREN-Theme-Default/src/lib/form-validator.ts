@@ -299,7 +299,7 @@ export class FormValidator {
    */
   removeValidationRule(field: FormFieldType, message: string): void {
     if (this.config[field]) {
-      this.config[field] = this.config[field]!.filter(rule => rule.message !== message);
+      this.config[field] = this.config[field]!.filter(_rule => _rule.message !== message);
     }
   }
 

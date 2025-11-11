@@ -32,7 +32,7 @@ interface ReadinessCheckResult {
 interface ReadinessCheck {
   status: 'ready' | 'not_ready';
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface BackendHealthResult {
@@ -101,7 +101,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
 
     const responseTime = Date.now() - startTime;
 
-    let parsed: any = null;
+    let parsed: unknown = null;
     try {
       parsed = await response.json();
     } catch (parseError) {

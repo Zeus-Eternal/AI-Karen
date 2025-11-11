@@ -51,7 +51,7 @@ export interface Job {
   description?: string;
   source_path?: string;
   target_path?: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   logs: string[];
   created_at: number;
   updated_at: number;
@@ -245,7 +245,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      const info = handleApiError(error as any, `${action}Job`);
+      const info = handleApiError(error as unknown, `${action}Job`);
       toast({
         variant: "destructive",
         title: info.title || `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`,
@@ -264,7 +264,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      const info = handleApiError(error as any, "deleteJob");
+      const info = handleApiError(error as unknown, "deleteJob");
       toast({
         variant: "destructive",
         title: info.title || "Delete Failed",
@@ -285,7 +285,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       });
       await loadStorageInfo();
     } catch (error) {
-      const info = handleApiError(error as any, "cleanupStorage");
+      const info = handleApiError(error as unknown, "cleanupStorage");
       toast({
         variant: "destructive",
         title: info.title || "Cleanup Failed",
@@ -458,7 +458,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         </Card>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as unknown)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />

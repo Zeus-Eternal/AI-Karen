@@ -25,7 +25,7 @@ export interface UIState {
   // Modal states
   modals: Record<string, {
     isOpen: boolean;
-    data?: any;
+    data?: unknown;
   }>;
   
   // Loading states
@@ -56,9 +56,9 @@ export interface UIActions {
   setPanelSize: (panelId: string, size: number) => void;
   
   // Modal actions
-  openModal: (modalId: string, data?: any) => void;
+  openModal: (modalId: string, data?: unknown) => void;
   closeModal: (modalId: string) => void;
-  toggleModal: (modalId: string, data?: any) => void;
+  toggleModal: (modalId: string, data?: unknown) => void;
   
   // Loading actions
   setLoading: (key: string, loading: boolean) => void;
@@ -90,7 +90,7 @@ const initialState: UIState = {
 // Create the store with persistence and immer middleware
 export const useUIStore = create<UIStore>()(
   persist(
-    immer((set, get) => ({
+    immer((set, _get) => ({
       ...initialState,
       
       // Layout actions
@@ -154,7 +154,7 @@ export const useUIStore = create<UIStore>()(
       }),
       
       // Modal actions
-      openModal: (modalId: string, data?: any) => set((state) => {
+      openModal: (modalId: string, data?: unknown) => set((state) => {
         state.modals[modalId] = { isOpen: true, data };
       }),
       
@@ -165,7 +165,7 @@ export const useUIStore = create<UIStore>()(
         }
       }),
       
-      toggleModal: (modalId: string, data?: any) => set((state) => {
+      toggleModal: (modalId: string, data?: unknown) => set((state) => {
         if (state.modals[modalId]) {
           state.modals[modalId].isOpen = !state.modals[modalId].isOpen;
           if (state.modals[modalId].isOpen && data !== undefined) {

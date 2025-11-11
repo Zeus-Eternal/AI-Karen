@@ -46,9 +46,10 @@ export const buildChatContext = (
     language: settings.language,
     recentMessages: recentMessages.map((message) => ({
       role: message.role,
-      content: message.content.length > 200
-        ? `${message.content.slice(0, 197)}...`
-        : message.content,
+      content:
+        message.content.length > 200
+          ? `${message.content.slice(0, 197)}...`
+          : message.content,
       timestamp: message.timestamp,
     })),
     codeContext: {

@@ -197,7 +197,8 @@ export default function ModelLibrary() {
       if (savedSortBy) setSortBy(savedSortBy as SortOption);
       if (savedSortOrder) setSortOrder(savedSortOrder as SortOrder);
     } catch (error) {
-    }
+    // Handle error silently
+  }
   };
   const savePreferences = useCallback(() => {
     try {
@@ -209,7 +210,8 @@ export default function ModelLibrary() {
       localStorage.setItem(LOCAL_STORAGE_KEYS.sortBy, sortBy);
       localStorage.setItem(LOCAL_STORAGE_KEYS.sortOrder, sortOrder);
     } catch (error) {
-    }
+    // Handle error silently
+  }
   }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
   const loadModels = async () => {
     try {
@@ -375,7 +377,7 @@ export default function ModelLibrary() {
             body: JSON.stringify({ model_id: modelId })
           });
 
-          if (response && (response as any).task_id) {
+          if (response && (response as unknown).task_id) {
             // The download status hook will automatically pick up this task
             showSuccess(
               "Download Started", 

@@ -87,7 +87,7 @@ export async function validateSession(): Promise<boolean> {
     // Invalid session or error response
     clearSession();
     return false;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Any error means invalid session
     clearSession();
     return false;
@@ -189,7 +189,7 @@ export async function login(
   totpCode?: string
 ): Promise<void> {
   try {
-    const credentials: any = { email, password };
+    const credentials: Record<string, any> = { email, password };
     if (totpCode) {
       credentials.totp_code = totpCode;
     }
@@ -223,7 +223,7 @@ export async function login(
       permissions: userData.permissions,
     };
     setSession(sessionData);
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearSession();
     throw error;
   }

@@ -3,7 +3,7 @@
  * Utilities for integrating modern components into existing pages
  */
 
-import React, { ReactNode } from 'react';
+import React from 'react';
 
 export interface PageIntegrationConfig {
   useModernLayout: boolean;
@@ -24,21 +24,25 @@ export const defaultPageConfig: PageIntegrationConfig = {
 /**
  * Wraps page content with modern layout and providers
  */
-export function withModernPageLayout(
-  Component: React.ComponentType<any>,
+export function withModernPageLayout<P extends Record<string, unknown>>(
+  Component: React.ComponentType<P>,
   config: Partial<PageIntegrationConfig> = {}
 ) {
   const finalConfig = { ...defaultPageConfig, ...config };
-  
-  return function ModernPageWrapper(props: any) {
+
+  return function ModernPageWrapper(props: P): React.ReactElement {
     if (finalConfig.useModernLayout) {
-      return React.createElement('div', { className: 'modern-page-wrapper' },
-        React.createElement('div', { className: 'modern-layout-container' },
+      return React.createElement(
+        'div',
+        { className: 'modern-page-wrapper' },
+        React.createElement(
+          'div',
+          { className: 'modern-layout-container' },
           React.createElement(Component, props)
         )
       );
     }
-    
+
     return React.createElement(Component, props);
   };
 }

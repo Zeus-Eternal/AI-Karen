@@ -94,7 +94,7 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
           )}
         >
           {toasts.map(({ id, title, description, action, ...props }) => {
-            const { className, variant, ...rest } = props as any;
+            const { className, variant, ...rest } = props as unknown;
 
             return (
               <Toast

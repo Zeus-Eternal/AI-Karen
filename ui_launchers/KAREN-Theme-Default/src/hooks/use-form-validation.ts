@@ -3,10 +3,10 @@
  * Provides debounced validation and error state management
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { ValidationErrors, LoginCredentials } from '@/types/auth';
 import type { FormFieldType } from '@/types/auth-form';
-import { FormValidator, createFormValidator, type FieldValidationResult, type FormValidationResult } from '@/lib/form-validator';
+import { createFormValidator, type FieldValidationResult, type FormValidationResult } from '@/lib/form-validator';
 
 /**
  * Field validation state
@@ -101,13 +101,11 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
   const {
     validateOnChange = true,
     validateOnBlur = true,
-    debounceDelay = 300,
     enhanced = false,
   } = config;
 
   // Create validator instance
-  const validatorRef = useRef<FormValidator>(createFormValidator(enhanced));
-  const validator = validatorRef.current;
+  const [validator] = useState(() => createFormValidator(enhanced));
 
   // Validation state
   const [validationState, setValidationState] = useState<FormValidationState>(createInitialValidationState());
@@ -127,8 +125,8 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
         [field]: { ...prev.fields[field], ...updates },
       };
 
-      const hasErrors = Object.values(newFields).some(fieldState => fieldState.error !== null);
-      const isValidating = Object.values(newFields).some(fieldState => fieldState.isValidating);
+      const hasErrors = Object.values(newFields).some((fieldState: FieldValidationState) => fieldState.error !== null);
+      const isValidating = Object.values(newFields).some((fieldState: FieldValidationState) => fieldState.isValidating);
       const isValid = !hasErrors && !isValidating;
 
       return {
@@ -182,7 +180,7 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
 
     // Update all field states with validation results
     Object.entries(result.errors).forEach(([field, error]) => {
-      updateFieldState(field as FormFieldType, { error, touched: true });
+      updateFieldState(field as FormFieldType, { error: (error as string) || null, touched: true });
     });
 
     // Clear errors for fields that are now valid
@@ -308,7 +306,7 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
  * Hook for simple field validation without full form state
  */
 export function useFieldValidation(field: FormFieldType, enhanced: boolean = false) {
-  const validator = useRef(createFormValidator(enhanced)).current;
+  const validator = useMemo(() => createFormValidator(enhanced), [enhanced]);
   const [state, setState] = useState<FieldValidationState>(createInitialFieldState());
 
   const validate = useCallback((value: string) => {

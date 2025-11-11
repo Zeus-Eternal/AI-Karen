@@ -57,7 +57,7 @@ export interface FileMetadata {
   conversation_id?: string;
   user_id?: string;
   security_scan_result?: 'safe' | 'suspicious' | 'malicious' | 'scan_failed';
-  analysis_results?: Record<string, any>;
+  analysis_results?: Record<string, unknown>;
 }
 
 interface FileMetadataGridProps {
@@ -399,7 +399,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     }
   }, [onFileSelect]);
 
-  const getRowStyle = useCallback((params: any) => {
+  const getRowStyle = useCallback((params: Record<string, unknown>) => {
     const file = params.data as FileMetadata;
     if (!file) return undefined;
     if (file.security_scan_result === 'malicious' || file.processing_status === 'quarantined') {

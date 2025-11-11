@@ -39,7 +39,7 @@ export class SharedVoiceRecorder {
   private callbacks: VoiceRecorderCallbacks;
   private theme: Theme;
   
-  private recognition: any = null;
+  private recognition: unknown = null;
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -142,7 +142,7 @@ export class SharedVoiceRecorder {
       }
     };
 
-    this.recognition.onresult = (event: any) => {
+    this.recognition.onresult = (event: Event) => {
       let interimTranscript = '';
       let finalTranscript = '';
 
@@ -165,7 +165,7 @@ export class SharedVoiceRecorder {
       }
     };
 
-    this.recognition.onerror = (event: any) => {
+    this.recognition.onerror = (event: Event) => {
       const errorMessage = this.getErrorMessage(event.error);
       this.updateState({
         error: errorMessage,

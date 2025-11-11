@@ -26,7 +26,7 @@ export interface ProviderConfigField {
   label: string;
   description?: string;
   required: boolean;
-  default?: any;
+  default?: unknown;
   options?: { value: string; label: string }[];
   validation?: FieldValidation;
   sensitive?: boolean;
@@ -52,7 +52,7 @@ export interface ProviderDependency {
   field: string;
   dependsOn: string;
   condition: 'equals' | 'not_equals' | 'contains' | 'not_contains';
-  value: any;
+  value: unknown;
 }
 
 export interface ProviderConfig {
@@ -60,8 +60,8 @@ export interface ProviderConfig {
   name: string;
   type: string;
   enabled: boolean;
-  configuration: Record<string, any>;
-  credentials: Record<string, any>;
+  configuration: Record<string, unknown>;
+  credentials: Record<string, unknown>;
   metadata: ProviderMetadata;
   createdAt: Date;
   updatedAt: Date;
@@ -126,7 +126,7 @@ export interface RecommendationReason {
   type: 'performance' | 'cost' | 'capability' | 'availability' | 'history' | 'popularity';
   weight: number;
   description: string;
-  evidence?: any;
+  evidence?: unknown;
 }
 
 export interface TaskSuitability {
@@ -354,7 +354,7 @@ export interface FallbackProvider {
 export interface FallbackCondition {
   type: 'error' | 'latency' | 'availability' | 'cost' | 'custom';
   operator: 'gt' | 'lt' | 'eq' | 'ne' | 'contains';
-  value: any;
+  value: unknown;
   action: 'skip' | 'fallback' | 'retry' | 'alert';
 }
 
@@ -388,7 +388,7 @@ export interface FailoverTrigger {
 export interface FailoverAction {
   type: 'switch' | 'load_balance' | 'circuit_break' | 'alert';
   target?: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 export interface RecoveryConfig {
@@ -486,7 +486,7 @@ export interface ModelWarmupConfig {
 export interface WarmupTrigger {
   type: 'schedule' | 'usage_pattern' | 'manual' | 'api_call';
   condition: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 export interface ResourceLimits {
@@ -518,6 +518,6 @@ export interface BenchmarkMetric {
 export interface BenchmarkEnvironment {
   hardware: string;
   software: string;
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   dataset: string;
 }

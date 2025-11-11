@@ -26,27 +26,31 @@ export function triggerHapticFeedback(pattern: HapticPattern = 'light'): void {
     } else {
       navigator.vibrate(config.pattern);
     }
-  } catch (error) {
+  } catch {
     // Silently fail if vibration is not supported or blocked
   }
 }
 export function isHapticSupported(): boolean {
   return 'vibrate' in navigator && typeof navigator.vibrate === 'function';
 }
-export function isHapticEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
+export function isHapticEnabled(defaultEnabled = true): boolean {
+  if (typeof window === 'undefined') return defaultEnabled;
   try {
     const stored = localStorage.getItem('haptic-feedback-enabled');
-    return stored !== 'false'; // Default to true if not set
+    if (stored === null) {
+      return defaultEnabled;
+    }
+    return stored !== 'false';
   } catch {
-    return true; // Default to true if localStorage is not available
+    return defaultEnabled;
   }
 }
 export function setHapticEnabled(enabled: boolean): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem('haptic-feedback-enabled', enabled.toString());
-  } catch (error) {
+  } catch {
+    // Silently ignore failures writing to storage
   }
 }
 export function getHapticPatternInfo(pattern: HapticPattern): { 

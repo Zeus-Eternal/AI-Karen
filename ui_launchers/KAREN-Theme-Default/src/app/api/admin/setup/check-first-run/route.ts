@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Generate a setup token only if this is first run
     let setupToken: string | undefined;
     if (!superAdminExists) {
-      setupToken = generateSetupToken(); // format: setup_<timestamp>_<32hex>
+      setupToken = await generateSetupToken(); // format: setup_<timestamp>_<32hex>
     }
 
     const setupData: FirstRunSetup = {
@@ -72,9 +72,9 @@ export async function GET(request: NextRequest) {
  * Format: setup_<timestamp>_<32 hex chars>
  * TTL enforcement is performed by verifySetupToken (24h).
  */
-function generateSetupToken(): string {
+async function generateSetupToken(): Promise<string> {
   const timestamp = Date.now();
-  const randomHex = getRandomHex(16); // 16 bytes → 32 hex chars
+  const randomHex = await getRandomHex(16); // 16 bytes → 32 hex chars
   return `setup_${timestamp}_${randomHex}`;
 }
 
@@ -124,13 +124,13 @@ function verifySetupToken(
  * Crypto-safe random bytes → hex string
  * Works in Edge runtime or Node 18+.
  */
-function getRandomHex(byteLen: number): string {
+async function getRandomHex(byteLen: number): Promise<string> {
   const bytes = new Uint8Array(byteLen);
   if (typeof globalThis.crypto?.getRandomValues === 'function') {
     globalThis.crypto.getRandomValues(bytes);
   } else {
     // Node fallback
-    const nodeCrypto = require('crypto') as typeof import('crypto');
+    const nodeCrypto = await import('crypto');
     const buf = nodeCrypto.randomBytes(byteLen);
     for (let i = 0; i < byteLen; i++) bytes[i] = buf[i];
   }

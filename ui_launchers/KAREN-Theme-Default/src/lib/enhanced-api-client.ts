@@ -395,14 +395,15 @@ export class EnhancedApiClient {
           }
         }
         return data;
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
+        const err = error as Error;
         // Handle different error types
-        if (error.name === "AbortError") {
+        if (err.name === "AbortError") {
           lastError = new ApiError("Request timeout", "TIMEOUT", 408);
         } else if (
           error instanceof TypeError &&
-          error.message.includes("fetch")
+          err.message.includes("fetch")
         ) {
           lastError = new ApiError("Network error", "NETWORK_ERROR", 0);
         } else if (error instanceof ApiError) {

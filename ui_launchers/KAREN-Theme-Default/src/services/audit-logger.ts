@@ -33,7 +33,11 @@ export type Timer = ReturnType<typeof setInterval>;
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 const KB = 1024;
-const MB = 1024 * KB;
+
+const THREAT_LEVELS = ['none', 'low', 'medium', 'high', 'critical'] as const;
+type ThreatLevel = (typeof THREAT_LEVELS)[number];
+const isThreatLevel = (value: unknown): value is ThreatLevel =>
+  typeof value === 'string' && THREAT_LEVELS.includes(value as ThreatLevel);
 
 class AuditLoggerService {
   private config: AuditConfig | null = null;
@@ -112,7 +116,9 @@ class AuditLoggerService {
           title: 'Audit Backlog Growing',
           message: `Audit queue size ${this.eventQueue.length}. Check network or server health.`,
         });
-      } catch {}
+      } catch (error) {
+        console.debug('[audit] Notification failed', error);
+      }
     }
 
     // Immediate flush for critical/security
@@ -130,7 +136,7 @@ class AuditLoggerService {
       'auth:login' | 'auth:logout' | 'auth:failed_login' | 'auth:password_change' | 'auth:session_expired'
     >,
     outcome: AuditOutcome,
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     await this.logEvent(eventType, `User ${eventType.split(':')[1]}`, {
       outcome,
@@ -152,7 +158,7 @@ class AuditLoggerService {
     >,
     resource: string,
     outcome: AuditOutcome,
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     const severity: AuditSeverity = eventType.includes('evil_mode')
       ? 'critical'
@@ -173,7 +179,7 @@ class AuditLoggerService {
     resourceType: string,
     resourceId: string,
     outcome: AuditOutcome,
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     const severity: AuditSeverity =
       eventType === 'data:delete' ? 'high' : eventType === 'data:export' ? 'medium' : 'low';
@@ -194,7 +200,7 @@ class AuditLoggerService {
     >,
     component: string,
     outcome: AuditOutcome,
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     const severity: AuditSeverity = eventType === 'system:error' ? 'high' : eventType === 'system:warning' ? 'medium' : 'low';
     await this.logEvent(eventType, `System ${eventType.split(':')[1]}`, {
@@ -209,7 +215,7 @@ class AuditLoggerService {
   async logUI(
     eventType: Extract<AuditEventType, 'ui:page_view' | 'ui:action_performed' | 'ui:feature_used' | 'ui:error_encountered'>,
     action: string,
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     const severity: AuditSeverity = eventType === 'ui:error_encountered' ? 'medium' : 'low';
     await this.logEvent(eventType, action, {
@@ -227,7 +233,7 @@ class AuditLoggerService {
     >,
     description: string,
     severity: AuditSeverity = 'high',
-    details: Record<string, any> = {}
+    details: Record<string, unknown> = {}
   ): Promise<void> {
     await this.logEvent(eventType, description, {
       outcome: 'unknown',
@@ -403,7 +409,9 @@ class AuditLoggerService {
                 keepalive: true,
                 credentials: 'include',
               }).catch(() => {});
-            } catch {}
+            } catch (error) {
+              console.warn('[audit] beforeunload sendBeacon fallback failed', error);
+            }
           }
         } else {
           try {
@@ -414,7 +422,9 @@ class AuditLoggerService {
               keepalive: true,
               credentials: 'include',
             }).catch(() => {});
-          } catch {}
+          } catch (error) {
+            console.warn('[audit] beforeunload fetch failed', error);
+          }
         }
       }
     });
@@ -425,6 +435,7 @@ class AuditLoggerService {
   private createAuditEvent(eventType: AuditEventType, action: string, options: Partial<AuditEvent>): AuditEvent {
     const store = safeGetStore();
     const user = store?.user;
+    const username = user?.name || user?.email;
 
     const base: AuditEvent = {
       id: this.generateEventId(),
@@ -437,7 +448,7 @@ class AuditLoggerService {
 
       // User context
       userId: user?.id,
-      username: user?.username,
+      username,
       sessionId: this.getSessionId(),
 
       // Request context
@@ -482,19 +493,20 @@ class AuditLoggerService {
     if (bytes <= this.MAX_EVENT_BYTES) return masked;
 
     // try trimming details/customFields/description progressively
-    const shrink = (obj: any, keys: string[]) => {
+    const shrink = (obj: Record<string, unknown>, keys: string[]) => {
       for (const k of keys) {
-        if (!obj[k]) continue;
-        if (typeof obj[k] === 'string') {
-          obj[k] = this.truncateString(obj[k], Math.max(0, obj[k].length - 256));
-        } else if (typeof obj[k] === 'object') {
-          obj[k] = this.trimObject(obj[k], 0.5); // drop half of keys heuristically
+        const value = obj[k];
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'string') {
+          obj[k] = this.truncateString(value, Math.max(0, value.length - 256));
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
+          obj[k] = this.trimObject(value as Record<string, unknown>, 0.5); // drop half of keys heuristically
         }
       }
     };
 
     const candidate = { ...masked };
-    shrink(candidate, ['details', 'customFields', 'description']);
+    shrink(candidate as Record<string, unknown>, ['details', 'customFields', 'description']);
 
     json = JSON.stringify(candidate);
     bytes = this.byteLen(json);
@@ -502,6 +514,7 @@ class AuditLoggerService {
     if (bytes <= this.MAX_EVENT_BYTES) return candidate;
 
     // Final attempt: keep minimal shape
+    const maskedRecord = masked as AuditEvent & Record<string, unknown>;
     const minimal: AuditEvent = {
       id: masked.id,
       timestamp: masked.timestamp,
@@ -522,15 +535,16 @@ class AuditLoggerService {
       customFields: {},
       ipAddress: masked.ipAddress,
       userAgent: masked.userAgent,
-      url: masked.url,
-      referrer: masked.referrer,
-      locale: masked.locale,
-      timezone: masked.timezone,
-      resourceId: masked.resourceId,
-      resourceType: masked.resourceType,
-      resourceName: (masked as any).resourceName,
+      url: maskedRecord.url as string | undefined,
+      referrer: maskedRecord.referrer as string | undefined,
+      locale: maskedRecord.locale as string | undefined,
+      timezone: maskedRecord.timezone as string | undefined,
+      resourceId: maskedRecord.resourceId as string | undefined,
+      resourceType: maskedRecord.resourceType as string | undefined,
+      resourceName:
+        typeof maskedRecord.resourceName === 'string' ? maskedRecord.resourceName : undefined,
       riskScore: masked.riskScore,
-      threatLevel: (masked as any).threatLevel,
+      threatLevel: isThreatLevel(maskedRecord.threatLevel) ? maskedRecord.threatLevel : undefined,
     };
 
     json = JSON.stringify(minimal);
@@ -543,15 +557,16 @@ class AuditLoggerService {
     return null;
   }
 
-  private maskObject(obj: any, sensitive: Set<string>): any {
+  private maskObject(obj: AuditEvent, sensitive: Set<string>): AuditEvent {
     if (!obj || typeof obj !== 'object') return obj;
 
-    const mask = (val: any) => (typeof val === 'string' ? '***' : val && typeof val === 'object' ? '[REDACTED]' : '***');
+    const mask = (val: unknown): unknown =>
+      typeof val === 'string' ? '***' : val && typeof val === 'object' ? '[REDACTED]' : '***';
 
-    const recurse = (value: any): any => {
+    const recurse = (value: unknown): unknown => {
       if (!value || typeof value !== 'object') return value;
       if (Array.isArray(value)) return value.map(recurse);
-      const out: any = {};
+      const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value)) {
         if (sensitive.has(k.toLowerCase())) {
           out[k] = mask(v);
@@ -564,17 +579,20 @@ class AuditLoggerService {
 
     // mask details/customFields only, preserve top-level structure
     const out = { ...obj };
-    if (out.details) out.details = recurse(out.details);
-    if (out.customFields) out.customFields = recurse(out.customFields);
+    if (out.details) out.details = recurse(out.details) as Record<string, unknown>;
+    if (out.customFields) out.customFields = recurse(out.customFields) as Record<string, unknown>;
     return out;
   }
 
-  private trimObject(o: any, keepRatio = 0.5): any {
+  private trimObject(o: Record<string, unknown>, keepRatio = 0.5): Record<string, unknown> {
     if (!o || typeof o !== 'object' || Array.isArray(o)) return o;
     const keys = Object.keys(o);
     const keep = Math.max(1, Math.floor(keys.length * keepRatio));
-    const out: any = {};
-    for (let i = 0; i < keep; i++) out[keys[i]] = o[keys[i]];
+    const out: Record<string, unknown> = {};
+    for (let i = 0; i < keep; i++) {
+      const key = keys[i];
+      out[key] = o[key];
+    }
     return out;
   }
 
@@ -606,7 +624,8 @@ class AuditLoggerService {
     if (!isBrowser) return 'server';
     try {
       return sessionStorage.getItem('sessionId') || 'unknown';
-    } catch {
+    } catch (error) {
+      console.debug('[audit] sessionStorage read failed', error);
       return 'unknown';
     }
   }
@@ -653,7 +672,9 @@ class AuditLoggerService {
             credentials: 'include',
           }).catch(() => {});
         }
-      } catch {}
+      } catch (error) {
+        console.warn('[audit] Destroy flush failed', error);
+      }
     }
   }
 
@@ -713,10 +734,11 @@ class AuditLoggerService {
 }
 
 // ---- helpers ----
-function safeGetStore(): any {
+function safeGetStore(): ReturnType<typeof useAppStore.getState> | null {
   try {
     return useAppStore.getState();
-  } catch {
+  } catch (error) {
+    console.debug('[audit] safe store access failed', error);
     return null;
   }
 }

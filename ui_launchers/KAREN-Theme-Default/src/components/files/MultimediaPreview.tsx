@@ -68,7 +68,7 @@ interface MultimediaAnalysis {
     transcription?: string;
     language_detected?: string;
     speaker_count?: number;
-    audio_properties: Record<string, any>;
+    audio_properties: Record<string, unknown>;
     sentiment_analysis?: {
       overall: "positive" | "negative" | "neutral" | string;
       confidence: number;
@@ -78,10 +78,10 @@ interface MultimediaAnalysis {
     frame_analysis: Array<{
       frame_path: string;
       timestamp: number;
-      objects_detected: any[];
+      objects_detected: unknown[];
       scene_description: string;
     }>;
-    video_properties: Record<string, any>;
+    video_properties: Record<string, unknown>;
     scene_changes: number[];
     key_frames: string[];
   };
@@ -154,21 +154,21 @@ const ImagePreview: React.FC<{
           type: "bar",
           xKey: "category",
           yKey: "confidence",
-        } as any,
+        } as unknown,
       ],
       axes: [
         {
           type: "category",
           position: "bottom",
           title: { text: "Analysis Type" },
-        } as any,
+        } as unknown,
         {
           type: "number",
           position: "left",
           title: { text: "Confidence (%)" },
           min: 0,
           max: 100,
-        } as any,
+        } as unknown,
       ],
       title: { text: "Analysis Confidence Scores" },
       height: 300,

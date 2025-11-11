@@ -10,7 +10,7 @@ import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 // Enhanced select trigger variants using design tokens
-export const enhancedSelectTriggerVariants = cva(
+const enhancedSelectTriggerVariants = cva(
   [
     'flex h-10 w-full items-center justify-between',
     'rounded-[var(--radius-md)] border border-[var(--color-neutral-300)]',
@@ -77,7 +77,7 @@ export const enhancedSelectTriggerVariants = cva(
     },
   }
 );
-export interface EnhancedSelectTriggerProps
+interface EnhancedSelectTriggerProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>,
     VariantProps<typeof enhancedSelectTriggerVariants> {}
 export const EnhancedSelectTrigger = React.forwardRef<
@@ -233,7 +233,7 @@ EnhancedSelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 // Enhanced select value
 export const EnhancedSelectValue = SelectPrimitive.Value;
 // Main enhanced select component
-export interface EnhancedSelectProps {
+interface EnhancedSelectProps {
   children: React.ReactNode;
   label?: string;
   helperText?: string;
@@ -262,7 +262,8 @@ export const EnhancedSelect = React.forwardRef<
   placeholder,
   ...props 
 }, ref) => {
-  const selectId = `select-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = React.useId();
+  const selectId = `select-${generatedId}`;
   const hasError = state === 'error' || !!errorText;
   const actualState = hasError ? 'error' : state;
   return (

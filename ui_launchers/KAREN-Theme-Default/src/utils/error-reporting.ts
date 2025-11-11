@@ -181,17 +181,20 @@ class ErrorReportingService {
   private captureNetworkErrors() {
     if (typeof window === 'undefined') return;
 
+    const recordBreadcrumb = (breadcrumb: Omit<ErrorBreadcrumb, 'timestamp'>) => {
+      this.addBreadcrumb(breadcrumb);
+    };
+
     // Patch fetch
     if (typeof window.fetch === 'function') {
       const originalFetch = window.fetch.bind(window);
-      const self = this;
       window.fetch = async (...args: Parameters<typeof fetch>) => {
         const startTime = Date.now();
         try {
           const response = await originalFetch(...args);
           const duration = Date.now() - startTime;
           try {
-            self.addBreadcrumb({
+            recordBreadcrumb({
               category: 'http',
               message: `${response.status} ${String(args[0])}`,
               level: response.ok ? 'info' : 'error',
@@ -209,7 +212,7 @@ class ErrorReportingService {
         } catch (error) {
           const duration = Date.now() - startTime;
           try {
-            self.addBreadcrumb({
+            recordBreadcrumb({
               category: 'http',
               message: `Network error: ${String(args[0])}`,
               level: 'error',
@@ -232,8 +235,6 @@ class ErrorReportingService {
     if (typeof XMLHttpRequest !== 'undefined') {
       const originalXHROpen = XMLHttpRequest.prototype.open;
       const originalXHRSend = XMLHttpRequest.prototype.send;
-      const self = this;
-
       XMLHttpRequest.prototype.open = function (
         method: string,
         url: string | URL,
@@ -253,7 +254,7 @@ class ErrorReportingService {
           try {
             if (data) {
               const duration = Date.now() - data.startTime;
-              self.addBreadcrumb({
+              recordBreadcrumb({
                 category: 'http',
                 message: `${xhr.status} ${data.url}`,
                 level: statusLabel,
@@ -277,7 +278,7 @@ class ErrorReportingService {
           try {
             if (data) {
               const duration = Date.now() - data.startTime;
-              self.addBreadcrumb({
+              recordBreadcrumb({
                 category: 'http',
                 message: `Network error: ${data.url}`,
                 level: 'error',

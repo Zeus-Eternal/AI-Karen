@@ -19,7 +19,7 @@ export function useLocalStorage<T>(
     try {
       const item = window.localStorage.getItem(key)
       return item ? JSON.parse(item) : initialValue
-    } catch (error) {
+    } catch {
       return initialValue
     }
   })
@@ -41,7 +41,8 @@ export function useLocalStorage<T>(
             })
           )
         }
-      } catch (error) {
+      } catch {
+        // Handle error silently
       }
     },
     [key, storedValue]
@@ -59,8 +60,9 @@ export function useLocalStorage<T>(
           })
         )
       }
-    } catch (error) {
-    }
+  } catch {
+    // Handle error silently
+  }
   }, [key, initialValue])
   // Listen for changes in localStorage from other tabs/windows
   useEffect(() => {
@@ -72,7 +74,8 @@ export function useLocalStorage<T>(
         try {
           const newValue = e.newValue ? JSON.parse(e.newValue) : initialValue
           setStoredValue(newValue)
-        } catch (error) {
+        } catch {
+          // Handle error silently
         }
       } else if ("detail" in e && e.detail?.key === key) {
         // Handle custom event for same-tab synchronization
@@ -108,7 +111,7 @@ export function useSessionStorage<T>(
     try {
       const item = window.sessionStorage.getItem(key)
       return item ? JSON.parse(item) : initialValue
-    } catch (error) {
+    } catch {
       return initialValue
     }
   })
@@ -120,7 +123,8 @@ export function useSessionStorage<T>(
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem(key, JSON.stringify(valueToStore))
         }
-      } catch (error) {
+      } catch {
+        // Handle error silently
       }
     },
     [key, storedValue]
@@ -131,8 +135,9 @@ export function useSessionStorage<T>(
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem(key)
       }
-    } catch (error) {
-    }
+  } catch {
+    // Handle error silently
+  }
   }, [key, initialValue])
   return [storedValue, setValue, removeValue]
 }
@@ -174,19 +179,19 @@ export function usePersistentUIState() {
  * Hook for managing form state persistence
  * Useful for preserving form data across page refreshes
  */
-export function usePersistentForm<T extends Record<string, any>>(
+export function usePersistentForm<T extends Record<string, unknown>>(
   formId: string,
   initialValues: T,
   options: {
-    clearOnSubmit?: boolean
     storage?: "localStorage" | "sessionStorage"
   } = {}
 ) {
-  const { clearOnSubmit = true, storage = "sessionStorage" } = options
+  const { storage = "sessionStorage" } = options
   const storageKey = `form:${formId}`
-  const [values, setValues] = storage === "localStorage" 
-    ? useLocalStorage(storageKey, initialValues)
-    : useSessionStorage(storageKey, initialValues)
+  const localStorageHook = useLocalStorage(storageKey, initialValues)
+  const sessionStorageHook = useSessionStorage(storageKey, initialValues)
+  const storageTuple = storage === "localStorage" ? localStorageHook : sessionStorageHook
+  const [values, setValues, removeValue] = storageTuple
   const updateField = useCallback(
     (field: keyof T, value: T[keyof T]) => {
       setValues((prev) => ({ ...prev, [field]: value }))
@@ -203,14 +208,8 @@ export function usePersistentForm<T extends Record<string, any>>(
     setValues(initialValues)
   }, [setValues, initialValues])
   const clearForm = useCallback(() => {
-    if (storage === "localStorage") {
-      const [, , removeValue] = useLocalStorage(storageKey, initialValues)
-      removeValue()
-    } else {
-      const [, , removeValue] = useSessionStorage(storageKey, initialValues)
-      removeValue()
-    }
-  }, [storageKey, initialValues, storage])
+    removeValue()
+  }, [removeValue])
   return {
     values,
     setValues,

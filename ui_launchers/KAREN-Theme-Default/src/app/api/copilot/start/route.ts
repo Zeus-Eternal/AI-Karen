@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     const ct = (response.headers.get('content-type') || '').toLowerCase();
-    let data: any = {};
+    let data: unknown = {};
 
     if (ct.includes('application/json')) {
       try {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(response.status),
       },
     });
-  } catch (err: any) {
+  } catch (err: Error) {
     // Graceful “ghost-start” fallback (explicitly marked)
     const fallback = {
       status: 'started',

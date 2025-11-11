@@ -205,7 +205,7 @@ export function useNonBlockingLoading(
 }
 
 // Hook for wrapping async operations with non-blocking loading
-export function useNonBlockingOperation<T = any>(
+export function useNonBlockingOperation<T = unknown>(
   key: string,
   operation: () => Promise<T>,
   options: NonBlockingLoadingOptions = {}
@@ -248,22 +248,26 @@ export function useNonBlockingOperation<T = any>(
   };
 }
 
+type NonBlockingLoadingReturn = ReturnType<typeof useNonBlockingLoading>;
+
 // Hook for managing multiple non-blocking operations
 export function useMultipleNonBlockingOperations() {
-  const [operations, setOperations] = useState<Record<string, NonBlockingLoadingState>>({});
+  const [operations, setOperations] = useState<Record<string, NonBlockingLoadingReturn>>({});
 
-  const createOperation = useCallback((key: string, options: NonBlockingLoadingOptions = {}) => {
-    const loading = useNonBlockingLoading(key, options);
-
-    // Update operations state when loading state changes
-    useEffect(() => {
-      setOperations(prev => ({
-        ...prev,
-        [key]: loading,
-      }));
-    }, [loading]);
+  const createOperation = useCallback((key: string, loading: NonBlockingLoadingReturn) => {
+    setOperations(prev => ({
+      ...prev,
+      [key]: loading,
+    }));
 
     return loading;
+  }, []);
+
+  const removeOperation = useCallback((key: string) => {
+    setOperations(prev => {
+      const { [key]: _removed, ...rest } = prev;
+      return rest;
+    });
   }, []);
 
   const getOperation = useCallback((key: string) => {
@@ -283,6 +287,7 @@ export function useMultipleNonBlockingOperations() {
   return {
     operations,
     createOperation,
+    removeOperation,
     getOperation,
     isAnyLoading,
     getLoadingOperations,

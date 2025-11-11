@@ -36,8 +36,7 @@ export const setupGlobalMocks = () => {
   let authModule: { useAuth: () => AuthContextType } | null = null;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    authModule = require('@/contexts/AuthContext');
+    authModule = eval('require')('@/contexts/AuthContext');
     if (authModule && !vi.isMockFunction(authModule.useAuth)) {
       const authSpy = vi
         .spyOn(authModule, 'useAuth')
@@ -49,8 +48,7 @@ export const setupGlobalMocks = () => {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const roleModule = require('@/hooks/useRole') as { useRole: () => UseRoleReturn };
+    const roleModule = eval('require')('@/hooks/useRole') as { useRole: () => UseRoleReturn };
     if (!vi.isMockFunction(roleModule.useRole)) {
       const roleSpy = vi.spyOn(roleModule, 'useRole').mockImplementation(() => {
         const { auth } = createDefaultAuthAndRole();
@@ -200,7 +198,7 @@ export const createMockUseRole = (
     hasRole: vi.fn((requiredRole: AuthRole) => {
       if (!user) return false;
       if (user.role) return user.role === requiredRole;
-      return user.roles.includes(requiredRole);
+      return user.roles?.includes(requiredRole) ?? false;
     }),
     hasPermission: vi.fn((permission: string) => !!user?.permissions?.includes(permission)),
     isAdmin: !!(user && (user.role === 'admin' || user.role === 'super_admin')),
@@ -345,18 +343,16 @@ export const createTestMocks = (options: {
 // ---------------------------------------------------------------------------
 export const resetToDefaultMocks = () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useAuth } = require('@/contexts/AuthContext');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useRole } = require('@/hooks/useRole');
+    const { useAuth } = eval('require')('@/contexts/AuthContext');
+    const { useRole } = eval('require')('@/hooks/useRole');
 
     if (vi.isMockFunction(useAuth)) {
-      (useAuth as any).mockReturnValue(
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockAuthContext(null, false),
       );
     }
     if (vi.isMockFunction(useRole)) {
-      (useRole as any).mockReturnValue(
+      (useRole as ReturnType<typeof vi.fn>).mockReturnValue(
         createUseRoleReturnFromAuth(createMockAuthContext(null, false)),
       );
     }

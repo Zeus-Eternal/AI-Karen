@@ -34,7 +34,7 @@ export interface ErrorAnalysisRequest {
   status_code?: number;
   provider_name?: string;
   request_path?: string;
-  user_context?: Record<string, any>;
+  user_context?: Record<string, unknown>;
   use_ai_analysis?: boolean;
 }
 
@@ -66,7 +66,7 @@ export interface IntelligentErrorPanelProps {
   statusCode?: number;
   providerName?: string;
   requestPath?: string;
-  userContext?: Record<string, any>;
+  userContext?: Record<string, unknown>;
   useAiAnalysis?: boolean;
   onRetry?: () => void;
   onDismiss?: () => void;
@@ -166,7 +166,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       );
 
       setAnalysis(response.data);
-    } catch (err: any) {
+    } catch (err: Error) {
       setFetchError(err?.message || "Failed to analyze error");
 
       // Fallback analysis (minimal, but valid)

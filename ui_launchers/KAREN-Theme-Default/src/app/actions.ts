@@ -20,7 +20,6 @@ import {
 } from '@/ai/tools/core-tools';
 
 import type {
-  AiData,
   KarenSettings,
   HandleUserMessageResult,
   ChatMessage
@@ -90,7 +89,7 @@ function parseConversationHistory(raw: string): ChatMessage[] {
 function withSystemPrompt(messages: ChatMessage[]): ChatMessage[] {
   const sys: ChatMessage = {
     id: 'sys_kro',
-    role: 'system' as any, // keep compatibility with your ChatMessage typing if role union is limited
+    role: 'system' as unknown, // keep compatibility with your ChatMessage typing if role union is limited
     content: getKROSystemPrompt(),
     timestamp: new Date()
   };
@@ -263,8 +262,8 @@ export async function handleUserMessageWithKarenBackend(
  * ------------------------------------------------------------------------------------------------- */
 export async function getKarenSystemHealth(): Promise<{
   status: string;
-  services: Record<string, any>;
-  metrics: Record<string, any>;
+  services: Record<string, unknown>;
+  metrics: Record<string, unknown>;
 }> {
   try {
     const backend = getKarenBackend();
@@ -311,9 +310,9 @@ export async function getKarenPlugins(): Promise<
 
 export async function executeKarenPluginAction(
   pluginName: string,
-  parameters: Record<string, any>,
+  parameters: Record<string, unknown>,
   userId?: string
-): Promise<{ success: boolean; result?: any; error?: string }> {
+): Promise<{ success: boolean; result?: unknown; error?: string }> {
   try {
     const pluginService = getPluginService();
     const result = await pluginService.executePlugin(pluginName, parameters, { userId });

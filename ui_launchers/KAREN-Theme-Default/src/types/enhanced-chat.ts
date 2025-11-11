@@ -76,7 +76,7 @@ export interface AttachmentMetadata {
   duration?: number;
   language?: string;
   encoding?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AttachmentAnalysis {

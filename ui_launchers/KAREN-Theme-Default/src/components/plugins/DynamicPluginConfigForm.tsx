@@ -184,7 +184,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     })).filter(group => group.fields.length > 0);
   }, [fieldGroups, searchQuery]);
   // Validate a single field
-  const validateField = (field: PluginConfigField, value: any): ValidationError | null => {
+  const validateField = (field: PluginConfigField, value: unknown): ValidationError | null => {
     if (field.required && (value === undefined || value === null || value === '')) {
       return {
         field: field.key,
@@ -253,7 +253,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     return errors;
   };
   // Handle field value changes
-  const handleFieldChange = (fieldKey: string, value: any) => {
+  const handleFieldChange = (fieldKey: string, value: unknown) => {
     setConfig(prev => ({ ...prev, [fieldKey]: value }));
     setIsDirty(true);
     // Clear validation error for this field

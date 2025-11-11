@@ -53,7 +53,7 @@ export async function GET(_request: NextRequest) {
       testResults,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json(
       {
         error: 'Test failed',

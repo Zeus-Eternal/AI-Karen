@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import { promises as fsp } from "fs";
 import * as path from "path";
+import { homedir } from "os";
 import { BaseModelService } from "./base-service";
 import { DirectoryWatchError } from "./errors/model-selection-errors";
 
@@ -63,7 +64,6 @@ export interface IDirectoryWatcher {
 import {
   directoryExists,
   readDirectory,
-  getFileModTime,
   normalizePath,
 } from "./utils/file-utils";
 
@@ -617,7 +617,7 @@ export class DirectoryWatcher
     for (const dir of defaultDirs) {
       const expanded =
         dir.startsWith("~/") || dir === "~"
-          ? path.join(require("os").homedir(), dir.replace(/^~\//, ""))
+          ? path.join(homedir(), dir.replace(/^~\//, ""))
           : dir;
 
       if (await directoryExists(expanded)) {

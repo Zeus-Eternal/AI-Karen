@@ -48,7 +48,7 @@ export class MemoryService {
     content: string,
     options: {
       tags?: string[];
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
       userId?: string;
       sessionId?: string;
     } = {}
@@ -180,20 +180,20 @@ export class MemoryService {
       const stats = await this.backend.getMemoryStats(userId);
       
       return {
-        totalMemories: stats.total_memories || 0,
-        memoriesByTag: stats.memories_by_tag || {},
-        recentActivity: stats.recent_activity || [],
-        averageSimilarity: stats.average_similarity || 0,
-        topTags: stats.top_tags || [],
+        totalMemories: (stats.total_memories as number) || 0,
+        memoriesByTag: (stats.memories_by_tag as Record<string, number>) || ({} as Record<string, number>),
+        recentActivity: (stats.recent_activity as Array<{ date: string; count: number; }>) || ([] as Array<{ date: string; count: number; }>),
+        averageSimilarity: (stats.average_similarity as number) || 0,
+        topTags: (stats.top_tags as Array<{ tag: string; count: number; }>) || ([] as Array<{ tag: string; count: number; }>),
       };
     } catch (error) {
       safeError('MemoryService: Failed to get memory stats:', error);
       return {
         totalMemories: 0,
-        memoriesByTag: {},
-        recentActivity: [],
+        memoriesByTag: {} as Record<string, number>,
+        recentActivity: [] as Array<{ date: string; count: number; }>,
         averageSimilarity: 0,
-        topTags: [],
+        topTags: [] as Array<{ tag: string; count: number; }>,
       };
     }
   }
@@ -368,7 +368,10 @@ export class MemoryService {
   /**
    * Generate cache key for query
    */
-  private generateCacheKey(query: string, options: any): string {
+  private generateCacheKey(
+    query: string,
+    options: MemorySearchOptions & { userId?: string; sessionId?: string }
+  ): string {
     const keyParts = [
       query,
       options.userId || 'anon',
@@ -378,6 +381,26 @@ export class MemoryService {
       options.similarityThreshold || 0.6,
     ];
     return keyParts.join('_');
+  }
+
+  private ensureRecord(value: unknown): Record<string, unknown> {
+    if (typeof value === 'object' && value !== null) {
+      return value as Record<string, unknown>;
+    }
+    return {};
+  }
+
+  private parseDate(value: unknown): Date | undefined {
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? undefined : date;
+    }
+
+    return undefined;
   }
 
   /**
@@ -438,7 +461,7 @@ export class MemoryService {
     query: string;
     timestamp: Date;
     resultCount: number;
-    filters?: any;
+    filters?: unknown;
     userId: string;
   }>> {
     try {
@@ -453,10 +476,14 @@ export class MemoryService {
 
       if (response.ok) {
         const data = await response.json();
-        return (data.history || []).map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp),
-        }));
+        return (data.history || []).map((item: unknown) => {
+          const record = this.ensureRecord(item);
+          const timestamp = this.parseDate(record.timestamp) ?? new Date();
+          return {
+            ...record,
+            timestamp,
+          };
+        });
       }
 
       return [];
@@ -473,7 +500,7 @@ export class MemoryService {
     id: string;
     name: string;
     query: string;
-    filters?: any;
+    filters?: unknown;
     userId: string;
     createdAt: Date;
     lastUsed?: Date;
@@ -491,11 +518,15 @@ export class MemoryService {
 
       if (response.ok) {
         const data = await response.json();
-        return (data.searches || []).map((item: any) => ({
-          ...item,
-          createdAt: new Date(item.createdAt),
-          lastUsed: item.lastUsed ? new Date(item.lastUsed) : undefined,
-        }));
+        return (data.searches || []).map((item: unknown) => {
+          const record = this.ensureRecord(item);
+          const createdAt = this.parseDate(record.createdAt) ?? new Date();
+          return {
+            ...record,
+            createdAt,
+            lastUsed: this.parseDate(record.lastUsed),
+          };
+        });
       }
 
       return [];
@@ -512,7 +543,7 @@ export class MemoryService {
     userId: string;
     name: string;
     query: string;
-    filters?: any;
+    filters?: unknown;
   }): Promise<{ id: string } | null> {
     try {
       const response = await fetch(
@@ -582,10 +613,14 @@ export class MemoryService {
 
       if (response.ok) {
         const data = await response.json();
-        return (data.backups || []).map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp),
-        }));
+        return (data.backups || []).map((item: unknown) => {
+          const record = this.ensureRecord(item);
+          const timestamp = this.parseDate(record.timestamp) ?? new Date();
+          return {
+            ...record,
+            timestamp,
+          };
+        });
       }
 
       return [];

@@ -9,7 +9,7 @@ import { HEALTH_STATUS, HEALTH_COLORS } from './constants';
 export interface HealthCheckResult {
   status: HealthStatus['status'];
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: string;
   checks: HealthCheck[];
 }
@@ -19,7 +19,7 @@ export interface HealthCheck {
   status: 'pass' | 'fail' | 'warn';
   message: string;
   duration: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -183,7 +183,12 @@ function checkResourceUsage(resources: ResourceUsage): HealthCheck {
     status,
     message,
     duration: Date.now() - startTime,
-    details: resources,
+    details: {
+      cpu: resources.cpu,
+      memory: resources.memory,
+      network: resources.network,
+      storage: resources.storage
+    },
   };
 }
 

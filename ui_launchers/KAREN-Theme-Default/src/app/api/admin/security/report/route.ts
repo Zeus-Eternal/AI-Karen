@@ -47,10 +47,10 @@ interface ReportData {
   generatedAt: string;
   summary: ReportSummary;
   details: {
-    securityAlerts: any[];
+    securityAlerts: unknown[];
     alertsByType: Record<string, number>;
-    topBlockedIPs: any[];
-    recentAdminActions: any[];
+    topBlockedIPs: unknown[];
+    recentAdminActions: unknown[];
     failedLoginTrends: Array<{ date: string; count: number; uniqueIPs: number }>;
   };
   recommendations: Array<{
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     // Audit log (error)
     try {
       const auditLogger = getAuditLogger();
@@ -175,7 +175,7 @@ function byteLengthOf(obj: unknown): number {
 }
 
 async function safeAudit(
-  auditLogger: any,
+  auditLogger: unknown,
   args: {
     userId: string;
     event: string;
@@ -199,7 +199,7 @@ async function safeAudit(
 /**
  * Generate comprehensive security report data
  */
-async function generateSecurityReport(adminUtils: any, days: number): Promise<ReportData> {
+async function generateSecurityReport(adminUtils: unknown, days: number): Promise<ReportData> {
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -228,9 +228,9 @@ async function generateSecurityReport(adminUtils: any, days: number): Promise<Re
     },
     securityOverview: {
       totalAlerts: securityAlerts.length,
-      criticalAlerts: securityAlerts.filter((a: any) => a.severity === 'critical').length,
-      highAlerts: securityAlerts.filter((a: any) => a.severity === 'high').length,
-      resolvedAlerts: securityAlerts.filter((a: any) => a.resolved).length,
+      criticalAlerts: securityAlerts.filter((a: unknown) => a.severity === 'critical').length,
+      highAlerts: securityAlerts.filter((a: unknown) => a.severity === 'high').length,
+      resolvedAlerts: securityAlerts.filter((a: unknown) => a.resolved).length,
       blockedIPs: blockedIPs.length,
       failedLogins: failedLogins.length,
     },
@@ -248,7 +248,7 @@ async function generateSecurityReport(adminUtils: any, days: number): Promise<Re
   };
 
   const alertsByType: Record<string, number> = securityAlerts.reduce(
-    (acc: Record<string, number>, alert: any) => {
+    (acc: Record<string, number>, alert: unknown) => {
       const key = String(alert.type ?? 'unknown');
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -257,12 +257,12 @@ async function generateSecurityReport(adminUtils: any, days: number): Promise<Re
   );
 
   const topBlockedIPs = [...blockedIPs]
-    .sort((a: any, b: any) => (b.failedAttempts ?? 0) - (a.failedAttempts ?? 0))
+    .sort((a: unknown, b: unknown) => (b.failedAttempts ?? 0) - (a.failedAttempts ?? 0))
     .slice(0, 10);
 
   const recentAdminActions = [...adminActions]
     .sort(
-      (a: any, b: any) =>
+      (a: unknown, b: unknown) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )
     .slice(0, 50);
@@ -326,7 +326,7 @@ function generateFailedLoginTrends(
 function generateSecurityRecommendations(
   summary: ReportSummary,
   alertsByType: Record<string, number>,
-  blockedIPs: any[]
+  blockedIPs: unknown[]
 ) {
   const recs: ReportData['recommendations'] = [];
 

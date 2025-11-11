@@ -44,7 +44,7 @@ export interface ProcessMessageOptions {
   generateSummary?: boolean;
   preferredLLMProvider?: string;
   preferredModel?: string;
-  tools?: Record<string, (...args: any[]) => unknown>;
+  tools?: Record<string, (...args: unknown[]) => unknown>;
 }
 
 export interface ChatRuntimeClient {

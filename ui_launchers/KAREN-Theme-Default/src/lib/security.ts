@@ -8,7 +8,7 @@ const purifyConfig = {
   ],
   ALLOWED_ATTR: ['href', 'title', 'target', 'rel'],
   ALLOW_DATA_ATTR: false,
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   ADD_ATTR: ['target'],
   FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'textarea', 'select', 'option'],
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'style']
@@ -118,6 +118,7 @@ export const sanitizeUrl = (url: string): string | null => {
 
     return urlObj.toString();
   } catch (error) {
+    console.debug('URL sanitization failed:', error);
     return null;
   }
 };

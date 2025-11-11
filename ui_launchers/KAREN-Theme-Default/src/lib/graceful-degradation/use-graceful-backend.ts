@@ -212,7 +212,7 @@ export function useGracefulDegradation(featureName: string) {
 
 // Hook for model providers with graceful degradation
 export function useModelProviders(options: UseGracefulBackendOptions = {}) {
-  return useGracefulBackend<any[]>('/api/models/providers', {
+  return useGracefulBackend<unknown[]>('/api/models/providers', {
     ...options,
     cacheKey: 'model-providers',
     fallbackData: [],

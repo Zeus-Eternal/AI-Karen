@@ -108,7 +108,7 @@ class OptimisticErrorBoundaryClass extends Component<
 
     // Best-effort telemetry
     try {
-      const anyWindow = window as any;
+      const anyWindow = window as unknown;
       if (typeof anyWindow?.gtag === "function") {
         anyWindow.gtag("event", "exception", {
           description: error?.message ?? String(error),

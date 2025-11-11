@@ -143,7 +143,7 @@ export function AdminDetailsStep({
 
       // Proceed to next step
       onNext();
-    } catch (err: any) {
+    } catch (err: Error) {
       setErrors({ general: err?.message ?? "Failed to proceed. Please try again." });
     } finally {
       setSubmitting(false);

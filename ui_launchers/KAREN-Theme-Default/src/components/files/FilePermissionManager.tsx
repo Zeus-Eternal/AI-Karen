@@ -71,7 +71,7 @@ export interface FilePermission {
   granted_by: string;
   granted_at: string;
   expires_at?: string;
-  conditions?: Record<string, any>;
+  conditions?: Record<string, unknown>;
   is_active: boolean;
 }
 
@@ -82,7 +82,7 @@ export interface PermissionRule {
   file_types: string[];
   user_roles: string[];
   permissions: PermissionType[];
-  conditions: Record<string, any>;
+  conditions: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -333,21 +333,21 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         field: "user_role",
         flex: 1,
         minWidth: 150,
-        cellRenderer: UserRenderer as any,
+        cellRenderer: UserRenderer as unknown,
         filter: "agTextColumnFilter",
       },
       {
         headerName: "Permission",
         field: "permission_type",
         width: 140,
-        cellRenderer: PermissionTypeRenderer as any,
+        cellRenderer: PermissionTypeRenderer as unknown,
         filter: "agSetColumnFilter",
       },
       {
         headerName: "Status",
         field: "status",
         width: 130,
-        cellRenderer: StatusRenderer as any,
+        cellRenderer: StatusRenderer as unknown,
         filter: "agSetColumnFilter",
       },
       {
@@ -380,7 +380,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
         sortable: false,
         filter: false,
         pinned: "right",
-        cellRenderer: (params: any) => (
+        cellRenderer: (params: Record<string, unknown>) => (
           <ActionsRenderer
             data={params.data}
             onEdit={handleEditPermission}
@@ -737,7 +737,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                   }
                   return undefined;
                 }}
-                noRowsOverlayComponent={NoRowsOverlay as any}
+                noRowsOverlayComponent={NoRowsOverlay as unknown}
               />
             </div>
           </CardContent>

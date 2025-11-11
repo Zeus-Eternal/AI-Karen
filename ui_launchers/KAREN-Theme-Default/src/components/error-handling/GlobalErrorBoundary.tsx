@@ -270,8 +270,8 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   private async reportToMonitoringServices(errorReport: ErrorReport) {
     // Sentry (if injected on window)
     try {
-      if (typeof window !== "undefined" && (window as any)?.Sentry) {
-        (window as any).Sentry.captureException(this.state.error, {
+      if (typeof window !== "undefined" && (window as unknown)?.Sentry) {
+        (window as unknown).Sentry.captureException(this.state.error, {
           tags: {
             section: errorReport.section,
             severity: errorReport.severity,
@@ -359,7 +359,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
   };
 
-  private async executeRecoveryStrategy(strategy: any) {
+  private async executeRecoveryStrategy(strategy: unknown) {
     const delay = typeof strategy?.delay === "number" ? strategy.delay : 1000;
 
     this.recoveryTimeout = setTimeout(() => {
@@ -422,11 +422,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
   private getMemoryInfo(): any {
     try {
-      if (typeof performance !== "undefined" && (performance as any)?.memory) {
+      if (typeof performance !== "undefined" && (performance as unknown)?.memory) {
         return {
-          usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-          totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
-          jsHeapSizeLimit: (performance as any).memory.jsHeapSizeLimit,
+          usedJSHeapSize: (performance as unknown).memory.usedJSHeapSize,
+          totalJSHeapSize: (performance as unknown).memory.totalJSHeapSize,
+          jsHeapSizeLimit: (performance as unknown).memory.jsHeapSizeLimit,
         };
       }
     } catch {
@@ -513,7 +513,7 @@ export function withGlobalErrorBoundary<P extends object>(
   );
 
   WithGlobalErrorBoundaryComponent.displayName = `withGlobalErrorBoundary(${
-    (WrappedComponent as any).displayName ||
+    (WrappedComponent as unknown).displayName ||
     WrappedComponent.name ||
     "Component"
   })`;

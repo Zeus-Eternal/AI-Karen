@@ -53,7 +53,7 @@ export interface TrainableModel {
   supports_lora: boolean;
   supports_full_training: boolean;
   training_frameworks: string[];
-  hardware_requirements: Record<string, any>;
+  hardware_requirements: Record<string, unknown>;
   memory_requirements?: number; // GB
   training_complexity: "easy" | "medium" | "hard" | string;
   license?: string;
@@ -64,7 +64,7 @@ export interface CompatibilityReport {
   is_compatible: boolean;
   compatibility_score: number; // 0..1
   supported_operations: string[];
-  hardware_requirements: Record<string, any>;
+  hardware_requirements: Record<string, unknown>;
   framework_compatibility: Record<string, boolean>;
   warnings: string[];
   recommendations: string[];

@@ -57,13 +57,13 @@ apiClient.interceptors.response.use(
 export interface ChatRequest {
   message: string
   conversation_id?: string
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 }
 
 export interface ChatResponse {
   response: string
   conversation_id: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface Plugin {
@@ -94,7 +94,7 @@ export const chatAPI = {
     return data
   },
 
-  getConversation: async (id: string): Promise<any> => {
+  getConversation: async (id: string): Promise<unknown> => {
     const { data } = await apiClient.get(`/api/chat/conversations/${id}`)
     return data
   },
@@ -120,7 +120,7 @@ export const pluginAPI = {
     return data
   },
 
-  execute: async (id: string, payload: any): Promise<any> => {
+  execute: async (id: string, payload: unknown): Promise<unknown> => {
     const { data } = await apiClient.post(`/api/plugins/${id}/execute`, payload)
     return data
   },
@@ -132,28 +132,28 @@ export const systemAPI = {
     return data
   },
 
-  metrics: async (): Promise<any> => {
+  metrics: async (): Promise<unknown> => {
     const { data } = await apiClient.get('/api/system/metrics')
     return data
   },
 
-  settings: async (): Promise<Record<string, any>> => {
+  settings: async (): Promise<Record<string, unknown>> => {
     const { data} = await apiClient.get('/api/system/settings')
     return data
   },
 
-  updateSettings: async (settings: Record<string, any>): Promise<void> => {
+  updateSettings: async (settings: Record<string, unknown>): Promise<void> => {
     await apiClient.put('/api/system/settings', settings)
   },
 }
 
 export const analyticsAPI = {
-  getStats: async (): Promise<any> => {
+  getStats: async (): Promise<unknown> => {
     const { data } = await apiClient.get('/api/analytics/stats')
     return data
   },
 
-  getUsage: async (period: string = '7d'): Promise<any> => {
+  getUsage: async (period: string = '7d'): Promise<unknown> => {
     const { data } = await apiClient.get(`/api/analytics/usage?period=${period}`)
     return data
   },

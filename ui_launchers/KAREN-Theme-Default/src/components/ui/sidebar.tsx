@@ -99,7 +99,7 @@ export type SidebarTriggerProps = React.ComponentPropsWithoutRef<'button'> & {
 const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
   ({ className, asChild = false, onClick, ...props }, ref) => {
     const { toggle, isOpen } = useSidebar();
-    const Comp = asChild ? Slot : 'button';
+    const Comp = asChild ? Slot : Button;
 
     return (
       <Comp
@@ -178,7 +178,7 @@ const SidebarGroupLabel = React.forwardRef<
   const Comp = asChild ? Slot : 'div';
   return (
     <Comp
-      ref={ref as any}
+      ref={ref}
       className={cn('px-2 text-xs font-semibold uppercase text-muted-foreground', className)}
       {...props}
     />
@@ -223,7 +223,7 @@ const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonP
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
-        ref={ref as any}
+        ref={ref}
         type={asChild ? undefined : 'button'}
         data-active={isActive ? 'true' : undefined}
         className={cn(

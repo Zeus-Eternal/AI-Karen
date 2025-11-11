@@ -28,7 +28,7 @@ export interface TimeoutConfig {
 }
 
 // Timeout settings interface (alias for compatibility)
-export interface TimeoutSettings extends TimeoutConfig {}
+export type TimeoutSettings = TimeoutConfig;
 
 // Operation timeout mappings
 export interface OperationTimeouts {

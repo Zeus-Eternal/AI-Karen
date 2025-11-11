@@ -32,7 +32,8 @@ export type {
 // ============================================================================
 
 // Re-export RBAC provider and hook
-export { RBACProvider, useRBAC } from '@/providers/rbac-provider';
+export { RBACProvider } from '@/providers/rbac-provider';
+export { useRBAC } from '@/providers/rbac-hooks';
 export type { RBACContextValue } from '@/providers/rbac-provider';
 
 // Re-export RBAC types

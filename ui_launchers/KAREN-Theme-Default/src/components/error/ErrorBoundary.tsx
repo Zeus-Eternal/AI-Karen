@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Lightweight browser telemetry (gtag or dataLayer if present)
     try {
-      const anyWindow = window as any;
+      const anyWindow = window as unknown;
       if (typeof anyWindow?.gtag === "function") {
         anyWindow.gtag("event", "exception", {
           description: error?.message ?? String(error),

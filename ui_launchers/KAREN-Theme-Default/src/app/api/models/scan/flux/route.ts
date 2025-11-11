@@ -24,7 +24,7 @@ type FluxModelRecord = {
   modified: string;
   type: ModelType;
   tags: string[]; // quick-hints: ['flux', 'dit', 'transformer', 'sdxl-vae', 'clip', 't5']
-  meta: Record<string, any> | null; // parsed from file/dir names + partial configs
+  meta: Record<string, unknown> | null; // parsed from file/dir names + partial configs
 };
 
 const DEFAULTS = {
@@ -118,10 +118,10 @@ function paginate<T>(items: T[], page: number, pageSize: number) {
 /**
  * Quick filename → metadata heuristics for Flux/DiT family.
  */
-function inferFluxMetaFromName(name: string): { tags: string[]; meta: Record<string, any> } {
+function inferFluxMetaFromName(name: string): { tags: string[]; meta: Record<string, unknown> } {
   const lower = name.toLowerCase();
   const tags = new Set<string>();
-  const meta: Record<string, any> = {};
+  const meta: Record<string, unknown> = {};
 
   if (lower.includes('flux')) tags.add('flux');
   if (lower.includes('dit')) tags.add('dit');
@@ -202,7 +202,7 @@ async function isFluxDiffusersModelDirectory(dirPath: string): Promise<boolean> 
  * Read a diffusers-style Flux model’s top-level config (model_index.json),
  * plus transformer/dit config if present.
  */
-async function readFluxDiffusersConfig(dirPath: string): Promise<Record<string, any> | null> {
+async function readFluxDiffusersConfig(dirPath: string): Promise<Record<string, unknown> | null> {
   try {
     const modelIndexPath = path.join(dirPath, 'model_index.json');
     const configContent = await fs.readFile(modelIndexPath, 'utf-8');
@@ -409,7 +409,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json(
       {
         models: [],

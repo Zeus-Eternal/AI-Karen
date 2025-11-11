@@ -10,7 +10,11 @@
  */
 
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
-import type { BlockedIpEntry, IpWhitelistEntry } from '@/lib/database/admin-utils';
+import type {
+  AdminDatabaseUtils,
+  BlockedIpEntry,
+  IpWhitelistEntry,
+} from '@/lib/database/admin-utils';
 export type { IpWhitelistEntry };
 import type { User, SecurityEvent } from '@/types/admin';
 import { securityManager } from './security-manager';
@@ -114,8 +118,9 @@ function stripPort(host: string): string {
       const u = new URL(host);
       return u.hostname;
     }
-  } catch {
+  } catch (error) {
     // Continue with manual parsing
+    console.debug('URL parsing failed:', error);
   }
 
   // Manual strip
@@ -169,7 +174,8 @@ function isValidIpFormat(ip: string): boolean {
       // Try to expand to validate
       const expanded = expandIPv6(ip);
       return expanded !== null;
-    } catch {
+    } catch (error) {
+      console.debug('IPv6 expansion failed:', error);
       return false;
     }
   }
@@ -268,7 +274,8 @@ function matchesIpOrCidr(needle: string, ip: string): boolean {
   try {
     if (needle.includes('/')) return cidrMatch(ip, needle);
     return normalizeIp(needle) === ip;
-  } catch {
+  } catch (error) {
+    console.debug('CIDR match failed:', error);
     return false;
   }
 }
@@ -805,12 +812,15 @@ export class IpSecurityManager {
           if (this.adminUtils.unblockIp) {
             await this.adminUtils.unblockIp(ip); 
           }
-        } catch {}
+        } catch (error) {
+          console.debug('Failed to unblock IP:', error);
+        }
         return false;
       }
       
       return true;
-    } catch {
+    } catch (error) {
+      console.debug('IP block check failed:', error);
       return false; // If we can't determine, allow access
     }
   }
@@ -1020,10 +1030,13 @@ export class IpSecurityManager {
           const ok = await this.adminUtils.isIpWhitelisted(ip, userId, role);
           if (typeof ok === 'boolean') return ok;
         }
-      } catch {}
+      } catch (error) {
+        console.debug('Backend whitelist check failed:', error);
+      }
 
       return false;
-    } catch {
+    } catch (error) {
+      console.debug('Whitelist check failed:', error);
       return false; // Default to not whitelisted on error
     }
   }
@@ -1037,7 +1050,7 @@ export class IpSecurityManager {
     action: string,
     resourceType: string,
     resourceId: string,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     ipAddress?: string,
     userAgent?: string
   ): Promise<void> {
@@ -1075,9 +1088,14 @@ export class IpSecurityManager {
   private async getIpLocation(
     ip: string
   ): Promise<IpAccessRecord['location'] | undefined> {
+    type AdminUtilsWithIp = AdminDatabaseUtils & {
+      getIpLocation?: (ip: string) => Promise<IpAccessRecord['location'] | undefined>;
+    };
+
     try {
-      if (this.adminUtils && typeof (this.adminUtils as any).getIpLocation === 'function') {
-        const result = await (this.adminUtils as any).getIpLocation(ip);
+      const utils = this.adminUtils as AdminUtilsWithIp | null;
+      if (utils?.getIpLocation) {
+        const result = await utils.getIpLocation(ip);
         if (result && typeof result === 'object') {
           return {
             country: result.country,

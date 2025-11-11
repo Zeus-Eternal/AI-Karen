@@ -67,8 +67,20 @@ class UIDiagnostics {
   }
 
   checkMemoryUsage(): void {
-    if (!isBrowser || !(performance as any)?.memory) return;
-    const mem = (performance as any).memory;
+    if (!isBrowser || typeof performance === 'undefined') return;
+    
+    // Type guard for performance.memory (Chrome-specific)
+    const perfWithMemory = performance as typeof performance & {
+      memory?: {
+        usedJSHeapSize: number;
+        totalJSHeapSize: number;
+        jsHeapSizeLimit: number;
+      };
+    };
+    
+    if (!perfWithMemory.memory) return;
+    
+    const mem = perfWithMemory.memory;
     const usedMB = mem.usedJSHeapSize / 1048576;
     const totalMB = mem.totalJSHeapSize / 1048576;
 
@@ -143,7 +155,7 @@ class UIDiagnostics {
       const needed = isLarge ? 3 : 4.5;
 
       if (ratio < needed) {
-        contrastProblems.push({ node: el, fg, bg, ratio: Number(ratio.toFixed(2)) as any });
+        contrastProblems.push({ node: el, fg, bg, ratio: Number(ratio.toFixed(2)) });
       }
     });
 
@@ -329,12 +341,15 @@ class UIDiagnostics {
   }
 
   private parseColorToRgb(cssColor: string): { r: number; g: number; b: number } | null {
-    const ctx = (document as any).__colorCtx || (() => {
+    // Type-safe way to cache canvas context
+    const docWithCache = document as typeof document & { __colorCtx?: CanvasRenderingContext2D | null };
+    
+    const ctx = docWithCache.__colorCtx || (() => {
       const canvas = document.createElement('canvas');
       canvas.width = 1;
       canvas.height = 1;
       const c = canvas.getContext('2d');
-      (document as any).__colorCtx = c;
+      docWithCache.__colorCtx = c;
       return c;
     })();
     if (!ctx) return null;

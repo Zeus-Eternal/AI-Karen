@@ -1,9 +1,7 @@
 "use client";
 
-export {
-  ThemeProvider,
-  useTheme,
-} from '@/providers/theme-provider';
+export { ThemeProvider } from '@/providers/theme-provider';
+export { useTheme } from '@/providers/theme-hooks';
 
 export type {
   ThemeProviderProps,

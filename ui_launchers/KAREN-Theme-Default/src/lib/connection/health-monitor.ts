@@ -36,7 +36,7 @@ export interface HealthCheckResult {
   responseTime: number;
   timestamp: Date;
   error?: string;
-  details?: any;
+  details?: unknown;
 }
 
 export interface MonitoringConfig {
@@ -60,7 +60,7 @@ export interface HealthEvent {
   type: HealthEventType;
   timestamp: Date;
   endpoint: string;
-  data?: any;
+  data?: unknown;
 }
 
 export class HealthMonitor {
@@ -351,7 +351,7 @@ export class HealthMonitor {
     }
   }
 
-  private emitEvent(type: HealthEventType, endpoint: string, data?: any): void {
+  private emitEvent(type: HealthEventType, endpoint: string, data?: unknown): void {
     const event: HealthEvent = {
       type,
       timestamp: new Date(),

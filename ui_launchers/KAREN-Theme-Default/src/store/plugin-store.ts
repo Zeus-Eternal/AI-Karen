@@ -528,8 +528,8 @@ export const selectFilteredPlugins = (state: PluginStore) => {
 
   // Sort (copy to avoid mutating state)
   const sorted = [...filtered].sort((a, b) => {
-    let aValue: any;
-    let bValue: any;
+    let aValue: unknown;
+    let bValue: unknown;
 
     switch (state.sortBy) {
       case 'name':
@@ -556,8 +556,8 @@ export const selectFilteredPlugins = (state: PluginStore) => {
         return 0;
     }
 
-    if (aValue < bValue) return state.sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return state.sortOrder === 'asc' ? 1 : -1;
+    if ((aValue as number | string) < (bValue as number | string)) return state.sortOrder === 'asc' ? -1 : 1;
+    if ((aValue as number | string) > (bValue as number | string)) return state.sortOrder === 'asc' ? 1 : -1;
     return 0;
   });
 

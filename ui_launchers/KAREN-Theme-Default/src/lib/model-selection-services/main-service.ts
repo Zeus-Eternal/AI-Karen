@@ -302,9 +302,7 @@ export class ModelSelectionService extends BaseModelService {
     includeDynamicScan = true
   ): Promise<Model[]> {
     const now = Date.now();
-    const cacheDuration =
-      // @ts-ignore optional on BaseModelService
-      (this as any).CACHE_DURATION ?? this.CACHE_DURATION_FALLBACK;
+    const cacheDuration = this.CACHE_DURATION_FALLBACK;
     const cacheExpired = now - this.lastFetchTime > cacheDuration;
 
     if (!forceRefresh && !cacheExpired && this.cachedModels.length > 0) {
@@ -508,10 +506,10 @@ export class ModelSelectionService extends BaseModelService {
             return (a.size || 0) - (b.size || 0);
           case "performance": {
             const aPerf = Number(
-              (a.health as any)?.performance_metrics?.inference_speed || 0
+              (a.health as unknown as Record<string, Record<string, unknown>>)?.performance_metrics?.inference_speed || 0
             );
             const bPerf = Number(
-              (b.health as any)?.performance_metrics?.inference_speed || 0
+              (b.health as unknown as Record<string, Record<string, unknown>>)?.performance_metrics?.inference_speed || 0
             );
             return bPerf - aPerf;
           }

@@ -35,8 +35,8 @@ import { getEnvironmentConfigManager } from '../../../../lib/config/index';
 import { getConnectionManager, ConnectionError } from '../../../../lib/connection/connection-manager';
 
 describe('Backend Utilities', () => {
-  let mockConfigManager: any;
-  let mockConnectionManager: any;
+  let mockConfigManager: unknown;
+  let mockConnectionManager: unknown;
 
   beforeEach(() => {
     // Reset mocks

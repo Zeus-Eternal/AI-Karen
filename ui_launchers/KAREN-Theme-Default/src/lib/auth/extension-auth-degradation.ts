@@ -57,7 +57,7 @@ export interface ExtensionFeatureConfig {
  * Cached extension data interface
  */
 export interface CachedExtensionData {
-  data: any;
+  data: unknown;
   timestamp: Date;
   ttl: number;
   source: string;
@@ -292,7 +292,7 @@ export class ExtensionAuthDegradationManager {
   /**
    * Get fallback data for feature
    */
-  getFallbackData(featureName: string): any | null {
+  getFallbackData(featureName: string): unknown | null {
     const feature = this.featureConfigs.get(featureName);
     if (!feature || !feature.fallbackAvailable) return null;
 
@@ -307,7 +307,7 @@ export class ExtensionAuthDegradationManager {
   /**
    * Cache extension data for fallback use
    */
-  cacheData(key: string, data: any, source: string, ttl?: number): void {
+  cacheData(key: string, data: unknown, source: string, ttl?: number): void {
     const cacheEntry: CachedExtensionData = {
       data,
       timestamp: new Date(),
@@ -328,7 +328,7 @@ export class ExtensionAuthDegradationManager {
   /**
    * Get cached data if available and valid
    */
-  getCachedData(key: string): any | null {
+  getCachedData(key: string): unknown | null {
     const cached = this.cachedData.get(key);
     if (!cached) return null;
 
@@ -536,7 +536,7 @@ export class ExtensionAuthDegradationManager {
   /**
    * Get static fallback data for features
    */
-  private getStaticFallbackData(featureName: string): any {
+  private getStaticFallbackData(featureName: string): unknown {
     switch (featureName) {
       case 'extension_list':
         return {
@@ -623,5 +623,5 @@ export const isExtensionFeatureAvailable = (featureName: string) =>
 export const getExtensionFallbackData = (featureName: string) => 
   extensionAuthDegradationManager.getFallbackData(featureName);
 
-export const cacheExtensionData = (key: string, data: any, source: string, ttl?: number) => 
+export const cacheExtensionData = (key: string, data: unknown, source: string, ttl?: number) => 
   extensionAuthDegradationManager.cacheData(key, data, source, ttl);

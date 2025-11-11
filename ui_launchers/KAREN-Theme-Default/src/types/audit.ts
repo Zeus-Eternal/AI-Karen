@@ -87,7 +87,7 @@ export interface AuditEvent {
   // Action details
   action: string;
   description: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   
   // Security context
   riskScore?: number;
@@ -109,7 +109,7 @@ export interface AuditEvent {
   
   // Metadata
   tags?: string[];
-  customFields?: Record<string, any>;
+  customFields?: Record<string, unknown>;
 }
 
 export interface AuditFilter {
@@ -193,7 +193,7 @@ export interface AnomalyDetectionConfig {
   algorithms: Array<{
     name: string;
     enabled: boolean;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
   }>;
   thresholds: {
     loginFrequency: number;

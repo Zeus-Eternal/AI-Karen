@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     const hasMore = nextOffset < total;
 
     const response: AdminApiResponse<{
-      items: any[];
+      items: unknown[];
       pagination: {
         total: number;
         limit: number;

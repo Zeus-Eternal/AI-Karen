@@ -33,7 +33,7 @@ export interface TestResult {
   success: boolean;
   duration_ms: number;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -115,7 +115,7 @@ export function ProviderTestingInterface({
       // Update test results
       if (testResults) {
         const updatedResults = { ...testResults };
-        (updatedResults as any)[testType] = response;
+        (updatedResults as unknown)[testType] = response;
         setTestResults(updatedResults);
       }
       toast({

@@ -37,12 +37,12 @@ export interface ModelCategories {
 export class ModelRegistryError extends Error {
   public operation?: string;
   public field?: string;
-  public context?: any;
+  public context?: unknown;
   constructor(
     message: string,
     operation?: string,
     field?: string,
-    context?: any
+    context?: unknown
   ) {
     super(message);
     this.name = "ModelRegistryError";
@@ -54,7 +54,7 @@ export class ModelRegistryError extends Error {
 }
 
 export const ErrorUtils = {
-  createContext(ctx: any) {
+  createContext(ctx: unknown) {
     return ctx;
   },
 };
@@ -64,7 +64,7 @@ export interface ModelRegistryData {
   models: Model[];
   categories: ModelCategories;
   lastUpdate: number;
-  scanMetadata?: any;
+  scanMetadata?: unknown;
 }
 
 /**
@@ -417,7 +417,7 @@ export class ModelRegistryService
   /**
    * Get latest scan statistics
    */
-  private getLatestScanStats(scanOptions?: DirectoryWatchOptions): any {
+  private getLatestScanStats(scanOptions?: DirectoryWatchOptions): unknown {
     // This would typically come from the scanner service
     // For now, return basic metadata
     return {

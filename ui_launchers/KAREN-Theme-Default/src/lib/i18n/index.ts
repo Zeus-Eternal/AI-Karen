@@ -37,7 +37,7 @@ export interface FormatOptions {
 }
 export interface PluralOptions {
   count: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 export interface InterpolationOptions {
   [key: string]: string | number | boolean;
@@ -188,7 +188,7 @@ export class I18nManager {
     }
     try {
       return new Intl.NumberFormat(locale, formatOptions).format(value);
-    } catch (error) {
+    } catch {
       return value.toString();
     }
   }
@@ -210,7 +210,7 @@ export class I18nManager {
     }
     try {
       return new Intl.DateTimeFormat(locale, formatOptions).format(resolvedDate);
-    } catch (error) {
+    } catch {
       return resolvedDate instanceof Date && !Number.isNaN(resolvedDate.getTime())
         ? resolvedDate.toISOString()
         : '';
@@ -223,7 +223,7 @@ export class I18nManager {
     const locale = options.locale || this.currentLocale;
     try {
       return new Intl.RelativeTimeFormat(locale, { numeric: options.numeric || 'auto' }).format(value, unit);
-    } catch (error) {
+    } catch {
       return `${value} ${unit}`;
     }
   }
@@ -287,11 +287,11 @@ export class I18nManager {
   // Private methods
   private getTranslation(key: string, namespace: string): string | null {
     const keys = key.split('.');
-    let current: any = this.resources[this.currentLocale]?.[namespace];
+    let current: unknown = this.resources[this.currentLocale]?.[namespace];
     // Try current locale first
     for (const k of keys) {
       if (current && typeof current === 'object' && k in current) {
-        current = current[k];
+        current = (current as Record<string, unknown>)[k];
       } else {
         current = null;
         break;
@@ -305,7 +305,7 @@ export class I18nManager {
       current = this.resources[this.config.fallbackLocale]?.[namespace];
       for (const k of keys) {
         if (current && typeof current === 'object' && k in current) {
-          current = current[k];
+          current = (current as Record<string, unknown>)[k];
         } else {
           current = null;
           break;
@@ -377,7 +377,7 @@ export class I18nManager {
     }
     try {
       localStorage.setItem('i18n-locale', locale);
-    } catch (error) {
+    } catch {
       // Ignore storage errors
     }
   }
@@ -386,8 +386,8 @@ export class I18nManager {
     this.listeners.forEach(callback => {
       try {
         callback(locale);
-      } catch (error) {
-        // Ignore callback errors
+      } catch (listenerError) {
+        console.debug("[i18n] Locale listener failed", { listenerError });
       }
     });
   }

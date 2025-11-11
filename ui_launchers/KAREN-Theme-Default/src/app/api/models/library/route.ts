@@ -27,7 +27,7 @@ interface EnhancedModelInfo {
   description?: string;
   capabilities: string[];
   size?: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   health?: ModelHealthStatus;
   path?: string;
   format?: string;
@@ -46,12 +46,12 @@ type LibraryResponse = {
   local_count: number;
   available_count: number;
   healthy_count?: number;
-  scan_metadata?: Record<string, any>;
+  scan_metadata?: Record<string, unknown>;
   source: 'backend' | 'enhanced_dynamic_scan' | 'fallback_scan' | 'minimal_fallback' | 'error_fallback';
   message?: string;
 };
 
-function okJson(data: any, status = 200, headers: Record<string, string> = {}) {
+function okJson(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return NextResponse.json(data, {
     status,
     headers: {
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       const modelsRaw = await modelSelectionService.getAvailableModels(forceRefresh);
 
       // Optional narrow by type/provider (client-side filter)
-      let models = (modelsRaw || []).map((m: any) => ({
+      let models = (modelsRaw || []).map((m: unknown) => ({
         ...m,
         type: m.type || 'unknown',
         last_scanned: new Date().toISOString(),
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       const categorized = categorize(models);
       const healthyCount = includeHealth ? models.filter((m) => m.health?.is_healthy).length : undefined;
 
-      const stats = await modelSelectionService.getSelectionStats().catch(() => ({} as any));
+      const stats = await modelSelectionService.getSelectionStats().catch(() => ({} as unknown));
       const response: LibraryResponse = {
         models,
         categorized_models: categorized,
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
         fullUrl,
         status: resp.status,
       });
-    } catch (e: any) {
+    } catch (e: Event) {
       clearTimeout(timer);
       lastError = e?.message || 'Fetch failed';
       logger.warn('Backend candidate fetch error', { requestId, fullUrl, error: lastError });
@@ -254,7 +254,7 @@ export async function GET(request: NextRequest) {
 
   if (resp) {
     const contentType = resp.headers.get('content-type') || '';
-    let data: any;
+    let data: unknown;
 
     try {
       if (contentType.includes('application/json')) {
@@ -268,7 +268,7 @@ export async function GET(request: NextRequest) {
           contentType,
         });
       }
-    } catch (parseErr: any) {
+    } catch (parseErr: unknown) {
       logger.error('Failed to parse backend payload', {
         requestId,
         usedUrl,
@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
         includeHealth: false,
       });
 
-      const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: any) => ({
+      const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: unknown) => ({
         ...m,
         type: m.type || 'unknown',
         last_scanned: new Date().toISOString(),
@@ -336,7 +336,7 @@ export async function GET(request: NextRequest) {
     });
 
     return okJson(response, 200, { 'X-Models-Count': String(response.total_count) });
-  } catch (fallbackErr: any) {
+  } catch (fallbackErr: unknown) {
     logger.error('Fallback local scan failed', {
       requestId,
       error: fallbackErr?.message || String(fallbackErr),

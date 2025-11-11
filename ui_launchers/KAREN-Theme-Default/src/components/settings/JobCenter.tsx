@@ -50,13 +50,13 @@ export interface Job {
   title: string;
   description: string;
   logs: string[];
-  result: Record<string, any>;
+  result: Record<string, unknown>;
   error?: string;
   created_at: number;
   started_at?: number;
   completed_at?: number;
   updated_at: number;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
 }
 
 export interface JobCenterProps {
@@ -115,7 +115,7 @@ export default function JobCenter({
     } catch (error) {
       // Only show error toast if we have no jobs cached (prevents noise during polling)
       if (!jobs.length) {
-        const info = handleApiError(error as any, "loadJobs");
+        const info = handleApiError(error as unknown, "loadJobs");
         toast({
           variant: "destructive",
           title: info.title,
@@ -154,7 +154,7 @@ export default function JobCenter({
 
       loadJobs();
     } catch (error) {
-      const info = handleApiError(error as any, `${action}Job`);
+      const info = handleApiError(error as unknown, `${action}Job`);
       toast({
         variant: "destructive",
         title: info.title,
@@ -177,7 +177,7 @@ export default function JobCenter({
       setJobs((prev) => prev.filter((job) => job.id !== jobId));
       if (selectedJob?.id === jobId) setSelectedJob(null);
     } catch (error) {
-      const info = handleApiError(error as any, "deleteJob");
+      const info = handleApiError(error as unknown, "deleteJob");
       toast({
         variant: "destructive",
         title: info.title,
@@ -200,7 +200,7 @@ export default function JobCenter({
       });
       loadJobs();
     } catch (error) {
-      const info = handleApiError(error as any, "clearJobs");
+      const info = handleApiError(error as unknown, "clearJobs");
       toast({
         variant: "destructive",
         title: info.title,

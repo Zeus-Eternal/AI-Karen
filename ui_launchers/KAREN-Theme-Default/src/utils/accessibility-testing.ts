@@ -151,7 +151,7 @@ export async function runAccessibilityTest(
       nodes: v.nodes.map((n) => ({
         target: n.target as string[],
         html: n.html ?? "",
-        failureSummary: (n as any).failureSummary || "",
+        failureSummary: (n as unknown as Record<string, unknown>).failureSummary as string || "",
       })),
     }));
 

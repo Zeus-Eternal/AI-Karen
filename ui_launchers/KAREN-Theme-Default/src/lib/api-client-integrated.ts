@@ -36,17 +36,23 @@ function isFormLike(body: unknown): body is FormData | Blob | ArrayBuffer | Read
     || (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream);
 }
 
-function isPlainObject(v: unknown): v is Record<string, any> {
+function isPlainObject(v: unknown): v is Record<string, unknown> {
   return Object.prototype.toString.call(v) === '[object Object]';
 }
 
-function extractStatus(err: any): number | undefined {
+function extractStatus(err: Error): number | undefined {
   // Support multiple error shapes: fetch, axios-like, custom
+  const errorWithStatus = err as Error & { 
+    status?: number; 
+    response?: { status?: number }; 
+    data?: { status?: number }; 
+    code?: string | number; 
+  };
   return (
-    err?.status ??
-    err?.response?.status ??
-    err?.data?.status ??
-    (typeof err?.code === 'number' ? err.code : undefined)
+    errorWithStatus?.status ??
+    errorWithStatus?.response?.status ??
+    errorWithStatus?.data?.status ??
+    (typeof errorWithStatus?.code === 'number' ? errorWithStatus.code : undefined)
   );
 }
 
@@ -99,8 +105,8 @@ export class IntegratedApiClient {
 
     try {
       return await this.apiClient.request<T>(endpoint, config);
-    } catch (error: any) {
-      const status = extractStatus(error);
+    } catch (error: unknown) {
+      const status = extractStatus(error as Error);
 
       const isNetworkLike401 =
         this.options.treatNetworkErrorsAs401 && (status === undefined || status === 0);
@@ -129,11 +135,11 @@ export class IntegratedApiClient {
 
     if (hasBody && merged.body != null && !isFormLike(merged.body)) {
       if (isPlainObject(merged.body) || Array.isArray(merged.body)) {
-        const headers = new Headers(merged.headers as any);
+        const headers = new Headers(merged.headers as HeadersInit);
         if (!headers.has('Content-Type')) {
           headers.set('Content-Type', 'application/json');
         }
-        merged.headers = headers as any;
+        merged.headers = headers as HeadersInit;
         merged.body = JSON.stringify(merged.body);
       }
       // else: let strings pass-through as-is
@@ -174,26 +180,26 @@ export class IntegratedApiClient {
 
   async post<T = any>(
     endpoint: string,
-    body?: any,
+    body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
   ): Promise<ApiResponse<T>> {
     return this.makeAuthenticatedRequest<T>({
       endpoint,
       method: 'POST',
-      body,
+      body: body as BodyInit,
       ...(options || {}),
     });
   }
 
   async put<T = any>(
     endpoint: string,
-    body?: any,
+    body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
   ): Promise<ApiResponse<T>> {
     return this.makeAuthenticatedRequest<T>({
       endpoint,
       method: 'PUT',
-      body,
+      body: body as BodyInit,
       ...(options || {}),
     });
   }
@@ -211,13 +217,13 @@ export class IntegratedApiClient {
 
   async patch<T = any>(
     endpoint: string,
-    body?: any,
+    body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
   ): Promise<ApiResponse<T>> {
     return this.makeAuthenticatedRequest<T>({
       endpoint,
       method: 'PATCH',
-      body,
+      body: body as BodyInit,
       ...(options || {}),
     });
   }
@@ -246,7 +252,7 @@ export class IntegratedApiClient {
       body: formData,
       ...(options || {}),
       // Ensure no JSON headers override; browser sets multipart boundary
-      headers: options?.headers, 
+      headers: options?.headers as HeadersInit, 
     });
   }
 

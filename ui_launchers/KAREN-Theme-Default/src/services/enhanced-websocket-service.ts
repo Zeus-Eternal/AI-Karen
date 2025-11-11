@@ -17,10 +17,26 @@ import * as React from 'react';
 import { useAppStore } from '@/store/app-store';
 import { invalidateQueries } from '@/lib/query-client';
 
+export type WebSocketPayload = Record<string, unknown>;
+
+type NotificationType = 'info' | 'error' | 'success' | 'warning';
+
+const isNotificationType = (value: unknown): value is NotificationType =>
+  value === 'info' || value === 'error' || value === 'success' || value === 'warning';
+
+const normalizeNotificationPayload = (payload: WebSocketPayload | undefined) => {
+  const data = payload ?? {};
+  return {
+    type: isNotificationType(data.type) ? data.type : 'info',
+    title: typeof data.title === 'string' ? data.title : 'Notification',
+    message: typeof data.message === 'string' ? data.message : '',
+  };
+};
+
 export interface WebSocketMessage {
   type: WebSocketEventType | string;
   channel: string;
-  data: any;
+  data: WebSocketPayload;
   timestamp: string; // ISO
   id: string;
   priority?: 'low' | 'normal' | 'high' | 'critical';
@@ -82,8 +98,8 @@ export interface QueuedMessage {
 export interface Subscription {
   id: string;
   eventType: string; // allow wildcards if needed
-  callback: (data: any, raw: WebSocketMessage) => void;
-  filter?: (data: any, raw: WebSocketMessage) => boolean;
+  callback: (data: WebSocketPayload, raw: WebSocketMessage) => void;
+  filter?: (data: WebSocketPayload, raw: WebSocketMessage) => boolean;
   once?: boolean;
 }
 
@@ -214,7 +230,7 @@ export class EnhancedWebSocketService {
 
         this.ws.onmessage = (event) => this.handleMessage(event);
 
-        this.ws.onclose = (evt) => {
+        this.ws.onclose = () => {
           this.clearConnectionTimeout();
           this.stopHeartbeat();
           this.connectionMetrics.errorCount++;
@@ -254,7 +270,9 @@ export class EnhancedWebSocketService {
   private safeClose(reason: string) {
     try {
       if (this.ws) this.ws.close(1000, reason);
-    } catch {}
+    } catch (error) {
+      console.warn('Error closing WebSocket', error);
+    }
     this.ws = null;
   }
 
@@ -315,7 +333,7 @@ export class EnhancedWebSocketService {
 
   public send(
     type: string,
-    data: any,
+    data: WebSocketPayload,
     channel = 'default',
     options: {
       priority?: 'low' | 'normal' | 'high' | 'critical';
@@ -358,7 +376,8 @@ export class EnhancedWebSocketService {
       this.ws.send(JSON.stringify(message));
       this.connectionMetrics.messagesSent++;
       return true;
-    } catch {
+    } catch (error) {
+      console.warn('WebSocket send failed, requeueing', error);
       this.queueMessage(message);
       return false;
     }
@@ -439,8 +458,8 @@ export class EnhancedWebSocketService {
 
   public subscribe(
     eventType: WebSocketEventType | string,
-    callback: (data: any, raw: WebSocketMessage) => void,
-    options: { filter?: (data: any, raw: WebSocketMessage) => boolean; once?: boolean } = {}
+    callback: (data: WebSocketPayload, raw: WebSocketMessage) => void,
+    options: { filter?: (data: WebSocketPayload, raw: WebSocketMessage) => boolean; once?: boolean } = {}
   ): () => void {
     const sub: Subscription = {
       id: this.generateId('sub'),
@@ -487,15 +506,17 @@ export class EnhancedWebSocketService {
           if (sub.filter && !sub.filter(msg.data, msg)) continue;
           try {
             sub.callback(msg.data, msg);
-          } catch {}
+          } catch (error) {
+            console.error('Subscriber callback failed', { subscriptionId: sub.id, error });
+          }
           if (sub.once) this.subscriptions.delete(sub.id);
         }
       }
 
       // app-specific handlers (optional)
       this.handleSpecificMessage(msg);
-    } catch {
-      // ignore malformed
+    } catch (error) {
+      console.warn('Malformed websocket message', error, event.data);
     }
   }
 
@@ -509,12 +530,12 @@ export class EnhancedWebSocketService {
   private handleSpecificMessage(message: WebSocketMessage): void {
     // Decoupled invalidation/notifications via app store
     const store = useAppStore?.getState?.();
+    const notificationPayload = normalizeNotificationPayload(message.data);
+
     switch (message.type) {
       case 'notification':
         store?.addNotification?.({
-          type: message.data?.type || 'info',
-          title: message.data?.title ?? 'Notification',
-          message: message.data?.message ?? '',
+          ...notificationPayload,
         });
         break;
       case 'system.health':
@@ -522,14 +543,22 @@ export class EnhancedWebSocketService {
         invalidateQueries?.system?.();
         break;
       case 'system.alert':
-        store?.addNotification?.({ type: 'warning', title: 'System Alert', message: message.data?.message ?? '' });
+        store?.addNotification?.({
+          ...notificationPayload,
+          type: 'warning',
+          title: 'System Alert',
+        });
         invalidateQueries?.system?.();
         break;
       case 'plugin.status':
       case 'plugin.install':
       case 'plugin.error':
         if (message.type === 'plugin.error') {
-          store?.addNotification?.({ type: 'error', title: 'Plugin Error', message: message.data?.message ?? '' });
+          store?.addNotification?.({
+            ...notificationPayload,
+            type: 'error',
+            title: 'Plugin Error',
+          });
         }
         invalidateQueries?.plugins?.();
         break;
@@ -566,7 +595,9 @@ export class EnhancedWebSocketService {
   private safeStoreSetQuality(quality: 'good' | 'poor' | 'offline') {
     try {
       useAppStore.getState().setConnectionQuality?.(quality);
-    } catch {}
+    } catch (error) {
+      console.warn('Failed to update connection quality', error);
+    }
   }
 
   public getConnectionState(): ConnectionState {
@@ -597,7 +628,9 @@ export class EnhancedWebSocketService {
       try {
         useAppStore.getState().setOnline?.(true);
         this.safeStoreSetQuality('good');
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to update online status', error);
+      }
       if (this.connectionState === 'disconnected' || this.connectionState === 'suspended') {
         this.connect().catch(() => {});
       }
@@ -607,7 +640,9 @@ export class EnhancedWebSocketService {
       try {
         useAppStore.getState().setOnline?.(false);
         this.safeStoreSetQuality('offline');
-      } catch {}
+      } catch (error) {
+        console.warn('Failed to update offline status', error);
+      }
       this.setConnectionState('suspended');
     });
 
@@ -637,14 +672,17 @@ export class EnhancedWebSocketService {
           priority: 'high',
         });
       }
-    } catch {}
+    } catch (error) {
+      console.warn('Failed to send auth payload', error);
+    }
   }
 
   private getAuthToken(): string | null {
     if (!isBrowser) return null;
     try {
       return localStorage.getItem('auth-token');
-    } catch {
+    } catch (error) {
+      console.warn('Unable to read auth token', error);
       return null;
     }
   }
@@ -693,14 +731,14 @@ export function useEnhancedWebSocket() {
     disconnect: () => enhancedWebSocketService.disconnect(),
     send: (
       type: string,
-      data: any,
+      data: WebSocketPayload,
       channel?: string,
       options?: { priority?: 'low' | 'normal' | 'high' | 'critical'; ttl?: number; retry?: boolean }
     ) => enhancedWebSocketService.send(type, data, channel, options),
     subscribe: (
       eventType: WebSocketEventType | string,
-      callback: (data: any, raw: WebSocketMessage) => void,
-      options?: { filter?: (data: any, raw: WebSocketMessage) => boolean; once?: boolean }
+      callback: (data: WebSocketPayload, raw: WebSocketMessage) => void,
+      options?: { filter?: (data: WebSocketPayload, raw: WebSocketMessage) => boolean; once?: boolean }
     ) => enhancedWebSocketService.subscribe(eventType, callback, options),
     connectionState: enhancedWebSocketService.getConnectionState(),
     isConnected: enhancedWebSocketService.isConnected(),
@@ -712,9 +750,9 @@ export function useEnhancedWebSocket() {
 
 export function useEnhancedWebSocketSubscription(
   eventType: WebSocketEventType | string,
-  callback: (data: any, raw: WebSocketMessage) => void,
+  callback: (data: WebSocketPayload, raw: WebSocketMessage) => void,
   options: {
-    filter?: (data: any, raw: WebSocketMessage) => boolean;
+    filter?: (data: WebSocketPayload, raw: WebSocketMessage) => boolean;
     once?: boolean;
     deps?: React.DependencyList;
   } = {}

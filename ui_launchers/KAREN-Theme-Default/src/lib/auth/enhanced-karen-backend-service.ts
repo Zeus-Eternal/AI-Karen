@@ -41,14 +41,14 @@ export class ExtensionApiError extends Error {
   public status: number;
   public category: ErrorCategory;
   public retryable: boolean;
-  public originalError?: any;
+  public originalError?: unknown;
 
   constructor(
     message: string,
     status: number,
     category: ErrorCategory = ErrorCategory.HTTP_ERROR,
     retryable: boolean = false,
-    originalError?: any
+    originalError?: unknown
   ) {
     super(message);
     this.name = 'ExtensionApiError';
@@ -256,9 +256,9 @@ export class EnhancedKarenBackendService {
    * Handle request errors and convert to ExtensionApiError
    */
   private handleRequestError(
-    error: any,
-    endpoint: string,
-    attempt: number
+    error: Error,
+    _endpoint: string,
+    _attempt: number
   ): ExtensionApiError {
     if (error instanceof ConnectionError) {
       return ExtensionApiError.fromConnectionError(error);
@@ -291,11 +291,12 @@ export class EnhancedKarenBackendService {
     }
 
     // Handle HTTP errors
-    if (error.status) {
-      const isRetryable = ExtensionApiError.isRetryableStatus(error.status);
+    if ((error as any).status) {
+      const status = (error as any).status;
+      const isRetryable = ExtensionApiError.isRetryableStatus(status);
       return new ExtensionApiError(
-        error.message || `HTTP ${error.status}`,
-        error.status,
+        error.message || `HTTP ${status}`,
+        status,
         ErrorCategory.HTTP_ERROR,
         isRetryable,
         error
@@ -322,7 +323,7 @@ export class EnhancedKarenBackendService {
   /**
    * Get extensions list with authentication
    */
-  async getExtensions(): Promise<any[]> {
+  async getExtensions(): Promise<unknown[]> {
     try {
       return await this.makeAuthenticatedRequest('/api/extensions/');
     } catch (error) {
@@ -334,7 +335,7 @@ export class EnhancedKarenBackendService {
   /**
    * Get background tasks with authentication
    */
-  async getBackgroundTasks(extensionName?: string): Promise<any[]> {
+  async getBackgroundTasks(extensionName?: string): Promise<unknown[]> {
     try {
       const params = extensionName ? `?extension_name=${encodeURIComponent(extensionName)}` : '';
       return await this.makeAuthenticatedRequest(`/api/extensions/background-tasks/${params}`);
@@ -347,7 +348,7 @@ export class EnhancedKarenBackendService {
   /**
    * Register background task with authentication
    */
-  async registerBackgroundTask(taskData: any): Promise<any> {
+  async registerBackgroundTask(taskData: unknown): Promise<unknown> {
     try {
       return await this.makeAuthenticatedRequest(
         '/api/extensions/background-tasks/',
@@ -365,7 +366,7 @@ export class EnhancedKarenBackendService {
   /**
    * Load extension with authentication
    */
-  async loadExtension(extensionName: string): Promise<any> {
+  async loadExtension(extensionName: string): Promise<unknown> {
     try {
       return await this.makeAuthenticatedRequest(
         `/api/extensions/${encodeURIComponent(extensionName)}/load`,
@@ -382,7 +383,7 @@ export class EnhancedKarenBackendService {
   /**
    * Unload extension with authentication
    */
-  async unloadExtension(extensionName: string): Promise<any> {
+  async unloadExtension(extensionName: string): Promise<unknown> {
     try {
       return await this.makeAuthenticatedRequest(
         `/api/extensions/${encodeURIComponent(extensionName)}/unload`,
@@ -399,7 +400,7 @@ export class EnhancedKarenBackendService {
   /**
    * Get extension health status
    */
-  async getExtensionHealth(): Promise<any> {
+  async getExtensionHealth(): Promise<unknown> {
     try {
       return await this.makeAuthenticatedRequest('/api/extensions/health', {}, {
         requireAuth: false, // Health checks might not require auth

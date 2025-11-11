@@ -398,33 +398,33 @@ export class NotificationService {
   async sendAdminActionNotification(
     type: EmailNotificationType,
     recipientEmail: string,
-    data: Record<string, any>
+    data: Record<string, unknown>
   ): Promise<SendEmailResponse> {
     switch (type) {
       case 'admin_invitation':
         return this.emailService.sendAdminInvitation(
           recipientEmail,
-          data.fullName,
-          data.invitedByName,
-          data.invitationLink,
-          data.expiryDate,
-          data.customMessage
+          data.fullName as string,
+          data.invitedByName as string,
+          data.invitationLink as string,
+          data.expiryDate as Date,
+          data.customMessage as string | undefined
         );
       case 'user_welcome':
         return this.emailService.sendUserWelcome(
           recipientEmail,
-          data.fullName,
-          data.role,
-          data.createdByName,
-          data.setupLink
+          data.fullName as string,
+          data.role as string,
+          data.createdByName as string,
+          data.setupLink as string
         );
       case 'security_alert':
         return this.emailService.sendSecurityAlert(
           recipientEmail,
-          data.alertType,
-          data.alertDescription,
-          data.ipAddress,
-          data.actionRequired
+          data.alertType as string,
+          data.alertDescription as string,
+          data.ipAddress as string,
+          data.actionRequired as string | undefined
         );
       default:
         return {
@@ -438,7 +438,7 @@ export class NotificationService {
    */
   async sendBulkNotifications(
     type: EmailNotificationType,
-    recipients: Array<{ email: string; data: Record<string, any> }>
+    recipients: Array<{ email: string; data: Record<string, unknown> }>
   ): Promise<{ success: number; failed: number; errors: string[] }> {
     const results = {
       success: 0,

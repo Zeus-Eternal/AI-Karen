@@ -1,8 +1,6 @@
 "use client";
 
 import React, {
-  createContext,
-  useContext,
   useCallback,
   useMemo,
 } from "react";
@@ -25,58 +23,11 @@ import {
   type RBACUser,
 } from "@/types/rbac";
 
+import { RBACContext, type RBACContextValue } from './rbac-context';
+
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 import { useAppStore } from "@/store/app-store";
 import type { User as StoreUser } from "@/store/app-store";
-
-/* ----------------------------------------------------------------------------
- * Context Types
- * ------------------------------------------------------------------------- */
-
-export interface RBACContextValue {
-  // Current user and permissions
-  currentUser: RBACUser | null;
-  userRoles: Role[];
-  effectivePermissions: Permission[];
-
-  // Permission checking
-  hasPermission: (
-    permission: Permission,
-    context?: Partial<AccessContext>
-  ) => boolean;
-  checkPermission: (
-    permission: Permission,
-    context?: Partial<AccessContext>
-  ) => PermissionCheckResult;
-  hasAnyPermission: (permissions: Permission[]) => boolean;
-  hasAllPermissions: (permissions: Permission[]) => boolean;
-
-  // Role management
-  getUserRoles: (userId: string) => Promise<Role[]>;
-  assignRole: (userId: string, roleId: string) => Promise<void>;
-  removeRole: (userId: string, roleId: string) => Promise<void>;
-
-  // Evil Mode
-  isEvilModeEnabled: boolean;
-  canEnableEvilMode: boolean;
-  enableEvilMode: (
-    justification: string,
-    additionalAuth?: string
-  ) => Promise<void>;
-  disableEvilMode: () => Promise<void>;
-  evilModeSession: EvilModeSession | null;
-
-  // Configuration
-  rbacConfig: RBACConfig;
-  evilModeConfig: EvilModeConfig;
-
-  // Loading / error state
-  isLoading: boolean;
-  isError: boolean;
-  error: Error | null;
-}
-
-const RBACContext = createContext<RBACContextValue | null>(null);
 
 export interface RBACProviderProps {
   children: React.ReactNode;
@@ -576,14 +527,6 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
  * Hook
  * ------------------------------------------------------------------------- */
 
-export function useRBAC(): RBACContextValue {
-  const context = useContext(RBACContext);
-  if (!context) {
-    throw new Error("useRBAC must be used within an RBACProvider");
-  }
-  return context;
-}
-
 /* ----------------------------------------------------------------------------
  * Defaults & Helpers
  * ------------------------------------------------------------------------- */
@@ -633,16 +576,41 @@ function buildRoleHierarchyKey(userRoles: Role[]): string[] {
   return [...new Set(userRoles.map((r) => r.id))].sort();
 }
 
+type RBACMetadataInput = Partial<{
+  createdAt: Date | string | number;
+  lastLogin: Date | string | number;
+  isActive: boolean;
+  requiresPasswordChange: boolean;
+}>;
+
+function parseDate(value: unknown): Date | undefined {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  return undefined;
+}
+
 function normalizeRBACUser(
   user: StoreUser | RBACUser | null | undefined
 ): RBACUser | null {
   if (!user) return null;
 
   const candidate = user as RBACUser & StoreUser;
-  const metadata = candidate.metadata ?? {
-    createdAt: new Date(),
-    isActive: true,
-    requiresPasswordChange: false,
+  const metadataInput: RBACMetadataInput = candidate.metadata ?? {};
+
+  const normalizedMetadata = {
+    createdAt: parseDate(metadataInput.createdAt) ?? new Date(),
+    lastLogin: parseDate(metadataInput.lastLogin),
+    isActive:
+      typeof metadataInput.isActive === "boolean"
+        ? metadataInput.isActive
+        : true,
+    requiresPasswordChange:
+      metadataInput.requiresPasswordChange ?? false,
   };
 
   return {
@@ -653,47 +621,26 @@ function normalizeRBACUser(
       candidate.email ??
       candidate.id,
     email: candidate.email,
-    roles: Array.isArray(candidate.roles)
-      ? candidate.roles
-      : [],
+    roles: Array.isArray(candidate.roles) ? candidate.roles : [],
     directPermissions: candidate.directPermissions ?? [],
     restrictions: candidate.restrictions ?? [],
-    metadata: {
-      createdAt:
-        metadata.createdAt instanceof Date
-          ? metadata.createdAt
-          : new Date(
-              (metadata as any).createdAt ?? Date.now()
-            ),
-      lastLogin:
-        metadata.lastLogin instanceof Date
-          ? metadata.lastLogin
-          : metadata.lastLogin
-          ? new Date(metadata.lastLogin as any)
-          : undefined,
-      isActive:
-        typeof metadata.isActive === "boolean"
-          ? metadata.isActive
-          : true,
-      requiresPasswordChange:
-        metadata.requiresPasswordChange ?? false,
-    },
+    metadata: normalizedMetadata,
   };
 }
 
 function normalizeIPRestrictionConfig(
   config: Record<string, unknown>
 ): { allowedIPs: string[]; blockedIPs: string[] } {
-  const rawAllowed = (config as any).allowedIPs;
-  const rawBlocked = (config as any).blockedIPs;
+  const resolveIpList = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((entry): entry is string => typeof entry === "string")
+      : [];
 
-  const allowedIPs = Array.isArray(rawAllowed)
-    ? rawAllowed.filter((v): v is string => typeof v === "string")
-    : [];
+  const rawAllowed = config["allowedIPs"];
+  const rawBlocked = config["blockedIPs"];
 
-  const blockedIPs = Array.isArray(rawBlocked)
-    ? rawBlocked.filter((v): v is string => typeof v === "string")
-    : [];
-
-  return { allowedIPs, blockedIPs };
+  return {
+    allowedIPs: resolveIpList(rawAllowed),
+    blockedIPs: resolveIpList(rawBlocked),
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useFormatting, useLocale } from "../../providers/i18n-provider";
+import { useFormatting, useLocale } from "../../providers/i18n-hooks";
 import type { FormatOptions } from "../../lib/i18n";
 
 /* ===========================

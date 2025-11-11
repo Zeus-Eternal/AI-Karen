@@ -74,7 +74,7 @@ export default function ExtensionManagementPage() {
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }, []);
   const handleSaveConfiguration = useCallback(
-    async (settings: Record<string, any>) => {
+    async (settings: Record<string, unknown>) => {
       // Simulate saving configuration
       console.log("Saving configuration:", settings);
       await new Promise((resolve) => setTimeout(resolve, 1000));

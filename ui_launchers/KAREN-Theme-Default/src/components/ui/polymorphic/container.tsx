@@ -170,7 +170,7 @@ type ContainerBaseProps = {
 export type ContainerProps<T extends React.ElementType = "div"> =
   PolymorphicComponentPropWithRef<T, ContainerBaseProps>;
 
-type ContainerPolymorphicComponent<P = {}> =
+type ContainerPolymorphicComponent<P = Record<string, never>> =
   PolymorphicComponentWithDisplayName<"div", ContainerBaseProps & P>;
 
 type ContainerComponent = ContainerPolymorphicComponent;

@@ -10,7 +10,6 @@ import {
   AuditLog,
   SystemConfig,
   Permission,
-  RolePermission,
   UserListFilter,
   AuditLogFilter,
   PaginationParams,
@@ -183,7 +182,7 @@ interface SecurityAlertRecord {
   type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   message: string;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   detected_at: Date;
   resolved_at?: Date | null;
   resolved_by?: string | null;
@@ -195,7 +194,7 @@ export interface SecurityAlert {
   type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   message: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   detectedAt: string;
   resolved: boolean;
   resolvedAt?: string | null;
@@ -317,7 +316,7 @@ export class AdminDatabaseUtils {
   private async executeQuery<T>(
     operation: string,
     query: string,
-    params: any[] = []
+    params: unknown[] = []
   ): Promise<T[]> {
     try {
       const result = await this.db.query(query, params);
@@ -351,7 +350,7 @@ export class AdminDatabaseUtils {
       type: row.type,
       severity: row.severity,
       message: row.message,
-      metadata: (row.metadata as Record<string, any> | null) ?? null,
+      metadata: (row.metadata as Record<string, unknown> | null) ?? null,
       detectedAt: new Date(row.detected_at).toISOString(),
       resolved: Boolean(row.resolved_at),
       resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
@@ -445,7 +444,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<any>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -530,7 +529,7 @@ export class AdminDatabaseUtils {
     const limit = Math.min(Math.max(1, pagination.limit || this.DEFAULT_PAGE_SIZE), 1000); // Cap at 1000 for safety
     
     const whereConditions: string[] = [];
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     let paramIndex = 1;
 
     // Build WHERE conditions based on filter
@@ -756,7 +755,7 @@ export class AdminDatabaseUtils {
     const limit = Math.min(Math.max(1, pagination.limit || this.DEFAULT_AUDIT_LOG_SIZE), 1000);
     
     const whereConditions: string[] = [];
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     let paramIndex = 1;
 
     // Build WHERE conditions
@@ -826,23 +825,23 @@ export class AdminDatabaseUtils {
       `;
 
       const dataParams = [...queryParams, limit, offset];
-      const dataResult = await this.executeQuery<any>('getAuditLogsData', dataQuery, dataParams);
+      const dataResult = await this.executeQuery<Record<string, unknown>>('getAuditLogsData', dataQuery, dataParams);
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: any) => ({
-        id: row.id,
-        user_id: row.user_id,
-        action: row.action,
-        resource_type: row.resource_type,
-        resource_id: row.resource_id,
-        details: row.details,
-        ip_address: row.ip_address,
-        user_agent: row.user_agent,
-        timestamp: row.timestamp,
+      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        user_id: row.user_id as string,
+        action: row.action as string,
+        resource_type: row.resource_type as string,
+        resource_id: row.resource_id as string | null,
+        details: row.details as Record<string, unknown> | null,
+        ip_address: row.ip_address as string | null,
+        user_agent: row.user_agent as string | null,
+        timestamp: row.timestamp as Date,
         user: row.user_email ? {
-          user_id: row.user_id,
-          email: row.user_email,
-          full_name: row.user_full_name
+          user_id: row.user_id as string,
+          email: row.user_email as string,
+          full_name: row.user_full_name as string | null
         } : undefined
       }));
 
@@ -887,7 +886,7 @@ export class AdminDatabaseUtils {
       LEFT JOIN auth_users u ON sc.updated_by = u.user_id
     `;
     
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     
     if (category) {
       query += ` WHERE sc.category = $1`;
@@ -897,22 +896,22 @@ export class AdminDatabaseUtils {
     query += ` ORDER BY sc.category, sc.key`;
     
     try {
-      const result = await this.executeQuery<any>('getSystemConfig', query, queryParams);
+      const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
       
-      return result.map((row: any) => ({
-        id: row.id,
-        key: row.key,
-        value: this.parseConfigValue(row.value, row.value_type),
-        value_type: row.value_type,
-        category: row.category,
-        description: row.description,
-        updated_by: row.updated_by,
-        updated_at: row.updated_at,
-        created_at: row.created_at,
+      return result.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        key: row.key as string,
+        value: this.parseConfigValue(row.value as string, row.value_type as string),
+        value_type: row.value_type as string,
+        category: row.category as string,
+        description: row.description as string | null,
+        updated_by: row.updated_by as string,
+        updated_at: row.updated_at as Date,
+        created_at: row.created_at as Date,
         updated_by_user: row.updated_by_email ? {
-          user_id: row.updated_by,
-          email: row.updated_by_email,
-          full_name: row.updated_by_name
+          user_id: row.updated_by as string,
+          email: row.updated_by_email as string,
+          full_name: row.updated_by_name as string | null
         } : undefined
       }));
     } catch (error) {
@@ -1253,7 +1252,7 @@ export class AdminDatabaseUtils {
       two_factor_enabled?: boolean;
       two_factor_secret?: string | null;
       is_active?: boolean;
-      preferences?: Record<string, any>;
+      preferences?: Record<string, unknown>;
     }
   ): Promise<void> {
     if (!userId) {
@@ -1261,7 +1260,7 @@ export class AdminDatabaseUtils {
     }
 
     const updateFields: string[] = [];
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     let paramIndex = 1;
 
     if (updates.last_login_at !== undefined) {
@@ -1354,7 +1353,7 @@ export class AdminDatabaseUtils {
     userId: string,
     action: string,
     resourceType: string,
-    resourceId?: string
+    _resourceId?: string
   ): Promise<boolean> {
     if (!userId || !action || !resourceType) {
       return false;
@@ -1370,7 +1369,7 @@ export class AdminDatabaseUtils {
       // Check specific permissions
       const requiredPermission = `${resourceType}.${action}`;
       return roleQuery.permissions.includes(requiredPermission);
-    } catch (error) {
+    } catch (_error) {
       // If we can't determine permissions, deny access
       return false;
     }
@@ -1385,9 +1384,10 @@ export class AdminDatabaseUtils {
     }
 
     switch (type) {
-      case 'number':
+      case 'number': {
         const num = parseFloat(value);
         return isNaN(num) ? value : num;
+      }
       case 'boolean':
         return value.toLowerCase() === 'true' || value === '1';
       case 'object':
@@ -1762,7 +1762,7 @@ export class AdminDatabaseUtils {
     resolved?: boolean;
   }): Promise<{ data: SecurityAlert[]; total: number }> {
     const filters: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     if (params.severity) {
       values.push(params.severity);
@@ -1887,7 +1887,7 @@ export class AdminDatabaseUtils {
       'is_active IS DISTINCT FROM FALSE',
       `(ip_or_cidr = $1 OR (POSITION('/' IN ip_or_cidr) > 0 AND inet($1) <<= inet(ip_or_cidr)))`,
     ];
-    const params: any[] = [ip];
+    const params: unknown[] = [ip];
     let index = 2;
 
     if (userId) {

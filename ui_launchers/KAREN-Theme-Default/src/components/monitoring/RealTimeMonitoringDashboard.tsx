@@ -288,7 +288,7 @@ export const RealTimeMonitoringDashboard: React.FC<
                 <span className="text-xl font-bold">System Health Dashboard</span>
                 <div className="flex items-center space-x-3">
                   <Badge
-                    variant={getOverallStatusBadge(systemHealth.overall) as any}
+                    variant={getOverallStatusBadge(systemHealth.overall) as unknown}
                     className="text-sm md:text-base lg:text-lg"
                   >
                     {systemHealth.overall.toUpperCase()}

@@ -3,13 +3,28 @@
  * Provides consistent error handling, retry logic, and user-friendly error messages
  */
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
+
+type ErrorRecord = Record<string, unknown> & {
+  status?: number;
+  isNetworkError?: boolean;
+  isTimeoutError?: boolean;
+  isCorsError?: boolean;
+  endpoint?: string;
+};
+
+function normalizeError(error: unknown): ErrorRecord {
+  if (typeof error === 'object' && error !== null) {
+    return error as ErrorRecord;
+  }
+  return {};
+}
 export interface ServiceError extends Error {
   code: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   retryable: boolean;
   userMessage: string;
   technicalMessage: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   timestamp: number;
 }
 export interface ErrorHandlerConfig {
@@ -18,7 +33,7 @@ export interface ErrorHandlerConfig {
   retryDelay: number;
   enableLogging: boolean;
   enableUserNotification: boolean;
-  fallbackValues: Record<string, any>;
+  fallbackValues: Record<string, unknown>;
 }
 export interface RetryOptions {
   maxAttempts?: number;
@@ -49,14 +64,14 @@ export class ServiceErrorHandler {
    * Handle and transform errors into ServiceError format
    */
   public handleError(
-    error: any,
+    error: unknown,
     context: {
       service: string;
       method: string;
       endpoint?: string;
       userId?: string;
       sessionId?: string;
-      additionalContext?: Record<string, any>;
+      additionalContext?: Record<string, unknown>;
     }
   ): ServiceError {
     const serviceError = this.transformError(error, context);
@@ -91,6 +106,7 @@ export class ServiceErrorHandler {
         const result = await fn();
         // Log successful retry if this wasn't the first attempt
         if (attempt > 0 && this.config.enableLogging) {
+          console.log(`ServiceErrorHandler: ${context.service}.${context.method} succeeded after ${attempt} retries`);
         }
         return result;
       } catch (error) {
@@ -129,8 +145,9 @@ export class ServiceErrorHandler {
     try {
       return await fn();
     } catch (error) {
-      const serviceError = this.handleError(error, context);
+      this.handleError(error, context);
       if (this.config.enableLogging) {
+        console.log(`ServiceErrorHandler: ${context.service}.${context.method} failed, using fallback value`);
       }
       return fallbackValue;
     }
@@ -150,8 +167,9 @@ export class ServiceErrorHandler {
   ): Promise<T> {
     try {
       return await this.withRetry(fn, context, retryOptions);
-    } catch (error) {
+    } catch {
       if (this.config.enableLogging) {
+        console.log(`ServiceErrorHandler: ${context.service}.${context.method} failed after retries, using fallback value`);
       }
       return fallbackValue;
     }
@@ -159,64 +177,67 @@ export class ServiceErrorHandler {
   /**
    * Transform various error types into ServiceError
    */
-  private transformError(error: any, context: any): ServiceError {
+  private transformError(error: unknown, context: Record<string, unknown>): ServiceError {
     let code = 'UNKNOWN_ERROR';
     let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
     let retryable = false;
     let userMessage = 'An unexpected error occurred. Please try again.';
-    let technicalMessage = error?.message || 'Unknown error';
+    const baseError = error instanceof Error ? error : undefined;
+    let technicalMessage = baseError?.message || 'Unknown error';
+    const record = normalizeError(error);
+
     // Handle API errors
-    if (error?.name === 'ApiError' || error?.name === 'EnhancedApiError') {
-      code = this.getApiErrorCode(error);
-      severity = this.getApiErrorSeverity(error);
-      retryable = this.isApiErrorRetryable(error);
-      userMessage = this.getApiErrorUserMessage(error);
-      technicalMessage = `${error.message} (${error.endpoint || 'unknown endpoint'})`;
+    if (baseError?.name === 'ApiError' || baseError?.name === 'EnhancedApiError') {
+      code = this.getApiErrorCode(record);
+      severity = this.getApiErrorSeverity(record);
+      retryable = this.isApiErrorRetryable(record);
+      userMessage = this.getApiErrorUserMessage(record);
+      technicalMessage = `${baseError.message} (${record.endpoint || 'unknown endpoint'})`;
     }
     // Handle network errors
-    else if (error?.isNetworkError || error?.message?.includes('fetch') || error?.message?.includes('Network')) {
+    else if (record.isNetworkError || baseError?.message?.includes('fetch') || baseError?.message?.includes('Network')) {
       code = 'NETWORK_ERROR';
       severity = 'medium';
       retryable = true;
       userMessage = 'Network connection issue. Please check your internet connection and try again.';
     }
     // Handle timeout errors
-    else if (error?.isTimeoutError || error?.name === 'TimeoutError' || error?.message?.includes('timeout')) {
+    else if (record.isTimeoutError || baseError?.name === 'TimeoutError' || baseError?.message?.includes('timeout')) {
       code = 'TIMEOUT_ERROR';
       severity = 'medium';
       retryable = true;
       userMessage = 'Request timed out. Please try again.';
     }
     // Handle CORS errors
-    else if (error?.isCorsError || error?.message?.includes('CORS')) {
+    else if (record.isCorsError || baseError?.message?.includes('CORS')) {
       code = 'CORS_ERROR';
       severity = 'high';
       retryable = false;
       userMessage = 'Configuration error. Please contact support.';
     }
     // Handle authentication errors
-    else if (error?.status === 401 || error?.message?.includes('unauthorized')) {
+    else if (record.status === 401 || baseError?.message?.includes('unauthorized')) {
       code = 'AUTH_ERROR';
       severity = 'high';
       retryable = false;
       userMessage = 'Authentication required. Please log in again.';
     }
     // Handle authorization errors
-    else if (error?.status === 403 || error?.message?.includes('forbidden')) {
+    else if (record.status === 403 || baseError?.message?.includes('forbidden')) {
       code = 'AUTHORIZATION_ERROR';
       severity = 'high';
       retryable = false;
       userMessage = 'You do not have permission to perform this action.';
     }
     // Handle validation errors
-    else if (error?.status === 400 || error?.message?.includes('validation')) {
+    else if (record.status === 400 || baseError?.message?.includes('validation')) {
       code = 'VALIDATION_ERROR';
       severity = 'low';
       retryable = false;
       userMessage = 'Invalid input. Please check your data and try again.';
     }
     // Handle server errors
-    else if (error?.status >= 500) {
+    else if (typeof record.status === 'number' && record.status >= 500) {
       code = 'SERVER_ERROR';
       severity = 'high';
       retryable = true;
@@ -232,49 +253,52 @@ export class ServiceErrorHandler {
     serviceError.context = {
       ...context,
       originalError: {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack,
-        status: error?.status,
-        endpoint: error?.endpoint,
+        name: (error as Error)?.name,
+        message: (error as Error)?.message,
+        stack: (error as Error)?.stack,
+        status: record.status,
+        endpoint: record.endpoint,
       },
     };
     serviceError.timestamp = Date.now();
     return serviceError;
   }
-  private getApiErrorCode(error: any): string {
-    if (error.status) {
-      if (error.status >= 500) return 'API_SERVER_ERROR';
-      if (error.status === 429) return 'API_RATE_LIMIT';
-      if (error.status === 404) return 'API_NOT_FOUND';
-      if (error.status === 403) return 'API_FORBIDDEN';
-      if (error.status === 401) return 'API_UNAUTHORIZED';
-      if (error.status === 400) return 'API_BAD_REQUEST';
+  private getApiErrorCode(error: ErrorRecord): string {
+    const status = typeof error.status === 'number' ? error.status : undefined;
+    if (status) {
+      if (status >= 500) return 'API_SERVER_ERROR';
+      if (status === 429) return 'API_RATE_LIMIT';
+      if (status === 404) return 'API_NOT_FOUND';
+      if (status === 403) return 'API_FORBIDDEN';
+      if (status === 401) return 'API_UNAUTHORIZED';
+      if (status === 400) return 'API_BAD_REQUEST';
     }
     return 'API_ERROR';
   }
-  private getApiErrorSeverity(error: any): 'low' | 'medium' | 'high' | 'critical' {
-    if (error.status >= 500) return 'high';
-    if (error.status === 401 || error.status === 403) return 'high';
-    if (error.status === 429) return 'medium';
-    if (error.status >= 400) return 'low';
+  private getApiErrorSeverity(error: ErrorRecord): 'low' | 'medium' | 'high' | 'critical' {
+    const status = typeof error.status === 'number' ? error.status : undefined;
+    if (status && status >= 500) return 'high';
+    if (status === 401 || status === 403) return 'high';
+    if (status === 429) return 'medium';
+    if (status && status >= 400) return 'low';
     if (error.isNetworkError || error.isTimeoutError) return 'medium';
     return 'medium';
   }
-  private isApiErrorRetryable(error: any): boolean {
+  private isApiErrorRetryable(error: ErrorRecord): boolean {
     const retryableStatuses = [408, 429, 500, 502, 503, 504];
     return (
       error.isNetworkError ||
       error.isTimeoutError ||
-      (error.status && retryableStatuses.includes(error.status))
+      (typeof error.status === 'number' && retryableStatuses.includes(error.status))
     );
   }
-  private getApiErrorUserMessage(error: any): string {
-    if (error.status === 401) return 'Please log in to continue.';
-    if (error.status === 403) return 'You do not have permission to access this resource.';
-    if (error.status === 404) return 'The requested resource was not found.';
-    if (error.status === 429) return 'Too many requests. Please wait a moment and try again.';
-    if (error.status >= 500) return 'Server error. Please try again in a moment.';
+  private getApiErrorUserMessage(error: ErrorRecord): string {
+    const status = typeof error.status === 'number' ? error.status : undefined;
+    if (status === 401) return 'Please log in to continue.';
+    if (status === 403) return 'You do not have permission to access this resource.';
+    if (status === 404) return 'The requested resource was not found.';
+    if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+    if (status && status >= 500) return 'Server error. Please try again in a moment.';
     if (error.isNetworkError) return 'Network connection issue. Please check your internet connection.';
     if (error.isTimeoutError) return 'Request timed out. Please try again.';
     return 'An error occurred while communicating with the server.';
@@ -289,13 +313,15 @@ export class ServiceErrorHandler {
       return (error as ServiceError).retryable;
     }
     // Default retry conditions for raw errors
+    const normalized = normalizeError(error);
     const message = error.message.toLowerCase();
+    const status = typeof normalized.status === 'number' ? normalized.status : undefined;
     return (
       message.includes('network') ||
       message.includes('timeout') ||
       message.includes('connection') ||
       message.includes('fetch') ||
-      (error as any).status >= 500
+      (status !== undefined && status >= 500)
     );
   };
   private logError(error: ServiceError): void {
@@ -318,12 +344,16 @@ export class ServiceErrorHandler {
     };
     switch (error.severity) {
       case 'critical':
+        console.error('CRITICAL ERROR:', logData);
         break;
       case 'high':
+        console.error('HIGH SEVERITY ERROR:', logData);
         break;
       case 'medium':
+        console.warn('MEDIUM SEVERITY ERROR:', logData);
         break;
       case 'low':
+        console.log('LOW SEVERITY ERROR:', logData);
         break;
     }
   }
@@ -357,7 +387,7 @@ export class ServiceErrorHandler {
       // Count by code
       stats.byCode[error.code] = (stats.byCode[error.code] || 0) + 1;
       // Count by service
-      const service = error.context?.service || 'unknown';
+      const service = String(error.context?.service ?? 'unknown');
       stats.byService[service] = (stats.byService[service] || 0) + 1;
     });
 
@@ -392,14 +422,14 @@ export function initializeServiceErrorHandler(config?: Partial<ErrorHandlerConfi
  * Utility function to create user-friendly error messages
  */
 export function createUserFriendlyError(
-  error: any,
+  error: unknown,
   context: string = 'operation'
 ): string {
-  if (error?.userMessage) {
-    return error.userMessage;
+  if ((error as ServiceError)?.userMessage) {
+    return (error as ServiceError).userMessage;
   }
-  if (error?.status) {
-    switch (error.status) {
+  if ((error as Record<string, unknown>)?.status) {
+    switch ((error as Record<string, unknown>).status) {
       case 401: return 'Please log in to continue.';
       case 403: return 'You do not have permission to perform this action.';
       case 404: return 'The requested resource was not found.';
@@ -408,10 +438,10 @@ export function createUserFriendlyError(
       default: return `An error occurred during ${context}. Please try again.`;
     }
   }
-  if (error?.isNetworkError || error?.message?.includes('fetch')) {
+  if ((error as Record<string, unknown>)?.isNetworkError || (error as Error)?.message?.includes('fetch')) {
     return 'Network connection issue. Please check your internet connection and try again.';
   }
-  if (error?.isTimeoutError || error?.message?.includes('timeout')) {
+  if ((error as Record<string, unknown>)?.isTimeoutError || (error as Error)?.message?.includes('timeout')) {
     return 'Request timed out. Please try again.';
   }
   return `An unexpected error occurred during ${context}. Please try again.`;

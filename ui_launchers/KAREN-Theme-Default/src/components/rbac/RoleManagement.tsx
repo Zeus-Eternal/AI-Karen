@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Role, User, Permission } from "@/types/rbac";
-import { useRBAC } from "@/providers/rbac-provider";
+import { useRBAC } from "@/providers/rbac-hooks";
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 
 import { PermissionGate } from "./PermissionGate";
@@ -456,7 +456,7 @@ function RoleHierarchyView() {
         </AlertDescription>
       </Alert>
 
-      {hierarchy.map((item: any) => (
+      {hierarchy.map((item: unknown) => (
         <Card key={item.roleId}>
           <CardHeader>
             <CardTitle>{item.roleName}</CardTitle>
@@ -487,7 +487,7 @@ function RoleHierarchyView() {
                 </Label>
                 <div className="space-y-2 mt-1">
                   {item.conflicts.map(
-                    (conflict: any, index: number) => (
+                    (conflict: unknown, index: number) => (
                       <Alert key={index} variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>

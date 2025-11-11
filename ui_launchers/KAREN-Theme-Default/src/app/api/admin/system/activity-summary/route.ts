@@ -71,26 +71,26 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     // --- Metrics -------------------------------------------------------------
 
     // 1) User registrations
-    const userRegistrations = auditLogs.filter((log: any) => log?.action === 'user.create').length;
+    const userRegistrations = auditLogs.filter((log: unknown) => log?.action === 'user.create').length;
 
     // 2) Admin actions (broad: admin.*, user.*, system.*)
-    const adminActions = auditLogs.filter((log: any) => {
+    const adminActions = auditLogs.filter((log: unknown) => {
       const a = String(log?.action || '');
       return a.startsWith('admin.') || a.startsWith('user.') || a.startsWith('system.');
     }).length;
 
     // 3) Logins
     const successfulLogins = auditLogs.filter(
-      (log: any) => log?.action === 'user.login' && Boolean(log?.details?.success) === true
+      (log: unknown) => log?.action === 'user.login' && Boolean(log?.details?.success) === true
     ).length;
 
-    const failedLogins = auditLogs.filter((log: any) => {
+    const failedLogins = auditLogs.filter((log: unknown) => {
       const a = String(log?.action || '');
       return a === 'user.login_failed' || (a === 'user.login' && Boolean(log?.details?.success) === false);
     }).length;
 
     // 4) Security-ish events (approx)
-    const securityEvents = auditLogs.filter((log: any) => {
+    const securityEvents = auditLogs.filter((log: unknown) => {
       const a = String(log?.action || '').toLowerCase();
       return a.includes('security') || a.includes('failed') || a.includes('locked');
     }).length;

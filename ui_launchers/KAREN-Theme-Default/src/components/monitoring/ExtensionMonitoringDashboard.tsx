@@ -98,7 +98,7 @@ export interface DashboardData {
   service_health: ServiceHealthMetrics;
   api_performance: ApiPerformanceMetrics;
   active_alerts: ActiveAlert[];
-  alert_history: any[];
+  alert_history: unknown[];
 }
 
 const fetchDashboard = async (signal?: AbortSignal): Promise<DashboardData> => {

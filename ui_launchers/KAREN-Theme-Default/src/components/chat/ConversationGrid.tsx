@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Filter, Download, RefreshCw } from 'lucide-react';
-import { useHooks } from '@/contexts/HookContext';
+import { useHooks } from '@/hooks/use-hooks';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
@@ -92,7 +92,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       flex: 2,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellStyle: { fontWeight: '500' } as any
+      cellStyle: { fontWeight: '500' } as unknown
     },
     {
       field: 'lastMessage',
@@ -104,7 +104,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
-      } as any
+      } as unknown
     },
     {
       field: 'lastActivity',
@@ -121,7 +121,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       width: 100,
       sortable: true,
       filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'center' } as any
+      cellStyle: { textAlign: 'center' } as unknown
     },
     {
       field: 'participants',

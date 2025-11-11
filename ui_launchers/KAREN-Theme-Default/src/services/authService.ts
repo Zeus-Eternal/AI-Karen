@@ -1,6 +1,10 @@
-import { LoginCredentials, LoginResponse, User, DeepPartial } from '@/types/auth';
+import { LoginCredentials, LoginResponse, User } from '@/types/auth';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
+import { getServiceErrorHandler } from './errorHandler';
+
+const normalizeError = (error: unknown): Error => {
+  return error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Unknown error');
+};
 export class AuthService {
   private apiClient = enhancedApiClient;
   private errorHandler = getServiceErrorHandler();
@@ -11,8 +15,9 @@ export class AuthService {
     try {
       const response = await this.apiClient.post('/api/auth/login', credentials);
       return response.data;
-    } catch (error: any) {
-      const serviceError = this.errorHandler.handleError(error, {
+    } catch (error: unknown) {
+      const normalizedError = normalizeError(error);
+      const serviceError = this.errorHandler.handleError(normalizedError, {
         service: 'AuthService',
         method: 'login',
         endpoint: '/api/auth/login',
@@ -26,46 +31,47 @@ export class AuthService {
     try {
       const response = await this.apiClient.get('/api/auth/setup_2fa');
       return response.data;
-    } catch (error: any) {
-      throw new Error(`Failed to start 2FA setup: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to start 2FA setup: ${normalizeError(error).message}`);
     }
   }
   async confirmTwoFactor(code: string): Promise<void> {
     try {
       await this.apiClient.post('/api/auth/confirm_2fa', { code });
-    } catch (error: any) {
-      throw new Error(`Failed to enable 2FA: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to enable 2FA: ${normalizeError(error).message}`);
     }
   }
   async register(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       const response = await this.apiClient.post('/api/auth/register', credentials);
       return response.data;
-    } catch (error: any) {
-      throw new Error(`Register failed: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Register failed: ${normalizeError(error).message}`);
     }
   }
   async getCurrentUser(): Promise<User> {
     try {
       const response = await this.apiClient.get('/api/auth/me');
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { status?: number; isNetworkError?: boolean; isTimeoutError?: boolean; message?: string };
       // Handle authentication errors specifically
-      if (error.status === 401) {
+      if (err.status === 401) {
         // User is not authenticated - this is expected behavior, not an error
         throw new Error('Not authenticated');
-      } else if (error.status === 403) {
+      } else if (err.status === 403) {
         // User is authenticated but not authorized
         throw new Error('Access forbidden');
-      } else if (error.isNetworkError) {
+      } else if (err.isNetworkError) {
         // Actual network connectivity issue
         throw new Error('Network error. Please check your connection and try again.');
-      } else if (error.isTimeoutError) {
+      } else if (err.isTimeoutError) {
         // Request timeout
         throw new Error('Request timeout. Please try again.');
       } else {
         // Other server errors
-        throw new Error(`Server error: ${error.message}`);
+        throw new Error(`Server error: ${err.message || 'Unknown error'}`);
       }
     }
   }
@@ -77,37 +83,37 @@ export class AuthService {
       });
 
       return response.data;
-    } catch (error: any) {
-      throw new Error(`Failed to update credentials: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to update credentials: ${normalizeError(error).message}`);
     }
   }
-  async updateUserPreferences(_token: string, preferences: any): Promise<void> {
+  async updateUserPreferences(_token: string, preferences: unknown): Promise<void> {
     try {
       await this.apiClient.put('/api/users/me/preferences', preferences);
-    } catch (error: any) {
-      throw new Error(`Failed to update preferences: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to update preferences: ${normalizeError(error).message}`);
     }
   }
   async uploadAvatar(file: File): Promise<string> {
     try {
       const response = await this.apiClient.upload<{ avatar_url: string }>('/api/users/me/avatar', file);
       return response.data.avatar_url;
-    } catch (error: any) {
-      throw new Error(`Failed to upload avatar: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to upload avatar: ${normalizeError(error).message}`);
     }
   }
   async logout(): Promise<void> {
     try {
       await this.apiClient.post('/api/auth/logout');
-    } catch (error) {
+    } catch {
       // Logout should not throw errors, just log them
     }
   }
   async requestPasswordReset(email: string): Promise<void> {
     try {
       await this.apiClient.post('/api/auth/request_password_reset', { email });
-    } catch (error: any) {
-      throw new Error(`Failed to request password reset: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to request password reset: ${normalizeError(error).message}`);
     }
   }
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -117,8 +123,8 @@ export class AuthService {
         new_password: newPassword 
       });
 
-    } catch (error: any) {
-      throw new Error(`Failed to reset password: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to reset password: ${normalizeError(error).message}`);
     }
   }
   // Token and user persistence removed for HttpOnly cookie approach

@@ -49,8 +49,11 @@ export function ConfirmationDialog({
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
-      setTypedText('');
-      setIsValid(!requiresTyping);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setTypedText('');
+        setIsValid(!requiresTyping);
+      }, 0);
       // Focus the cancel button by default for safety
       setTimeout(() => cancelButtonRef.current?.focus(), 100);
     }
@@ -58,7 +61,10 @@ export function ConfirmationDialog({
   // Validate typed text
   useEffect(() => {
     if (requiresTyping && confirmationText) {
-      setIsValid(typedText.trim().toLowerCase() === confirmationText.toLowerCase());
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setIsValid(typedText.trim().toLowerCase() === confirmationText.toLowerCase());
+      }, 0);
     }
   }, [typedText, confirmationText, requiresTyping]);
   // Handle keyboard navigation

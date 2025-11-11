@@ -173,8 +173,8 @@ class PerformanceAlertService {
   private logAlert(alert: PerformanceAlert): void {
     const level = alert.severity === 'high' ? 'warn' : 'info';
     const emoji = this.getAlertEmoji(alert.type);
-    const endpoint = (alert as any)?.metrics?.endpoint ?? 'unknown';
-    const duration = (alert as any)?.metrics?.duration ?? 'unknown';
+    const endpoint = (alert as any)?.metrics?.endpoint ?? 'any';
+    const duration = (alert as any)?.metrics?.duration ?? 'any';
 
     // Keep logs clean; no large objects
     console[level](`${emoji} Karen Performance: ${alert.message}`, {

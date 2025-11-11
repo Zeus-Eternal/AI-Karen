@@ -147,8 +147,6 @@ export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
     if (!focused && container.tabIndex >= 0) {
       container.focus();
     }
-    setIsActive(true);
-    onFocusEnter?.();
   }, [
     enabled,
     restoreFocus,
@@ -156,7 +154,6 @@ export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
     fallbackFocus,
     focusElement,
     focusFirst,
-    onFocusEnter,
   ]);
 
   // Restore focus when component becomes inactive
@@ -164,7 +161,7 @@ export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
     if (restoreFocus && previouslyFocusedElement.current) {
       try {
         previouslyFocusedElement.current.focus();
-      } catch (error) {
+      } catch {
         // Element might no longer exist or be focusable
       }
     }
@@ -253,18 +250,28 @@ export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
   // Initialize focus when enabled
   useEffect(() => {
     if (enabled) {
-      initializeFocus();
+      // Use setTimeout to avoid synchronous setState in effect
+      const timeoutId = setTimeout(() => {
+        initializeFocus();
+      }, 0);
+      return () => clearTimeout(timeoutId);
     } else {
-      restorePreviousFocus();
+      // Use setTimeout to avoid synchronous setState in effect
+      const timeoutId = setTimeout(() => {
+        restorePreviousFocus();
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
+  }, [enabled, initializeFocus, restorePreviousFocus]);
 
-    // Cleanup on unmount
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (enabled) {
         restorePreviousFocus();
       }
     };
-  }, [enabled, initializeFocus, restorePreviousFocus]);
+  }, [enabled, restorePreviousFocus]);
 
   return {
     containerRef,
@@ -312,7 +319,9 @@ export const useFocusRestore = () => {
     if (previouslyFocusedElement.current) {
       try {
         previouslyFocusedElement.current.focus();
-      } catch (error) {}
+      } catch {
+        // ignore focus restoration errors
+      }
     }
   }, []);
 

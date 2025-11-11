@@ -201,8 +201,8 @@ export class ResourceMonitor extends BaseModelService {
    * Monitor resource usage during model operations
    */
   async monitorResourceUsage(
-    modelId: string,
-    operation: "loading" | "inference" | "generation"
+    _modelId: string,
+    _operation: "loading" | "inference" | "generation"
   ): Promise<{
     start_time: string;
     end_time?: string;

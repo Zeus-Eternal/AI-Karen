@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import {  EmailTemplate, CreateEmailTemplateRequest, UpdateEmailTemplateRequest, EmailTemplateFilter } from '@/lib/email/types';
+import {  EmailTemplate, CreateEmailTemplateRequest, EmailTemplateFilter } from '@/lib/email/types';
 import { PaginatedResponse } from '@/types/admin';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       }
     );
     return NextResponse.json(response);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to list email templates' },
       { status: 500 }
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       data: template,
       validation: validation.warnings.length > 0 ? { warnings: validation.warnings } : undefined
     }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create email template' },
       { status: 500 }

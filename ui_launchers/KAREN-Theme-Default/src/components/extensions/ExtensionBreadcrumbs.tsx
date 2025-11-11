@@ -8,7 +8,7 @@
 import React, { memo, useCallback } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { useExtensionContext } from "@/extensions";
+import { useExtensionContext } from "@/hooks/use-extension-context";
 import type { BreadcrumbItem } from "@/extensions";
 
 export type Crumb = BreadcrumbItem;

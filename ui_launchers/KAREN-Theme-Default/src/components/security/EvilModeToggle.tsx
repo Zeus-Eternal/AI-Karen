@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRBAC } from "@/providers/rbac-provider";
+import { useRBAC } from "@/providers/rbac-hooks";
 import { auditLogger } from "@/services/audit-logger";
 import type { EvilModeSession } from "@/types/rbac";
 
@@ -331,7 +331,7 @@ export function EvilModeToggle({ className }: EvilModeToggleProps) {
 
 export interface EvilModeStatusProps {
   session: EvilModeSession | null;
-  config: any;
+  config: Record<string, unknown>;
 }
 
 function EvilModeStatus({ session, config }: EvilModeStatusProps) {

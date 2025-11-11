@@ -15,6 +15,25 @@
 // --------------------------------------------------
 let _url = new URL('http://localhost:3000/test-path');
 
+interface RouterLocationMock {
+  href: string;
+  pathname: string;
+  search: string;
+  hash: string;
+  origin: string;
+  protocol: string;
+  host: string;
+  hostname: string;
+  port: string;
+  assign: (href: string) => void;
+  replace: (href: string) => void;
+  reload: () => void;
+}
+
+interface WindowWithRouterMock extends Window {
+  __ROUTER_MOCK_LOC__?: RouterLocationMock;
+}
+
 // A tiny ReadonlyURLSearchParams shim compatible with Next's hook return type
 class ReadonlyURLSearchParams implements Iterable<[string, string]> {
   private readonly usp: URLSearchParams;
@@ -44,15 +63,19 @@ class ReadonlyURLSearchParams implements Iterable<[string, string]> {
 // --------------------------------------------------
 export type MockRouter = ReturnType<typeof createMockRouter>;
 
-function setURL(next: string | URL, mode: 'push' | 'replace' = 'push') {
+function setURL(next: string | URL, _mode: 'push' | 'replace' = 'push') {
   const nextUrl = typeof next === 'string' ? new URL(next, _url.origin) : next;
   _url = nextUrl;
   // Update window.location if our shim is installed
-  if (typeof window !== 'undefined' && (window as any).__ROUTER_MOCK_LOC__) {
-    (window as any).__ROUTER_MOCK_LOC__.href = _url.toString();
-    (window as any).__ROUTER_MOCK_LOC__.pathname = _url.pathname;
-    (window as any).__ROUTER_MOCK_LOC__.search = _url.search;
-    (window as any).__ROUTER_MOCK_LOC__.hash = _url.hash;
+  if (typeof window !== 'undefined') {
+    const routerWindow = window as WindowWithRouterMock;
+    const routerLoc = routerWindow.__ROUTER_MOCK_LOC__;
+    if (routerLoc) {
+      routerLoc.href = _url.toString();
+      routerLoc.pathname = _url.pathname;
+      routerLoc.search = _url.search;
+      routerLoc.hash = _url.hash;
+    }
   }
   return Promise.resolve();
 }
@@ -110,31 +133,50 @@ export function installWindowLocationMock(initialHref = _url.toString()) {
   if (ORIGINALS.location) return; // already installed
   ORIGINALS.location = window.location;
 
-  const loc = {
+  const loc: RouterLocationMock = {
     href: initialHref,
-    get pathname() { return new URL(this.href).pathname; },
-    set pathname(v: string) { this.href = new URL(v, this.href).toString(); },
-    get search() { return new URL(this.href).search; },
-    set search(v: string) { this.href = new URL(`${new URL(this.href).pathname}${v}`, this.href).toString(); },
-    get hash() { return new URL(this.href).hash; },
-    set hash(v: string) { this.href = new URL(`${this.href.split('#')[0]}${v}`, this.href).toString(); },
+    get pathname() {
+      return new URL(this.href).pathname;
+    },
+    set pathname(value: string) {
+      this.href = new URL(value, this.href).toString();
+    },
+    get search() {
+      return new URL(this.href).search;
+    },
+    set search(value: string) {
+      this.href = new URL(`${new URL(this.href).pathname}${value}`, this.href).toString();
+    },
+    get hash() {
+      return new URL(this.href).hash;
+    },
+    set hash(value: string) {
+      this.href = new URL(`${this.href.split('#')[0]}${value}`, this.href).toString();
+    },
     origin: new URL(initialHref).origin,
     protocol: new URL(initialHref).protocol,
     host: new URL(initialHref).host,
     hostname: new URL(initialHref).hostname,
     port: new URL(initialHref).port,
-    assign: vi.fn((href: string) => { loc.href = new URL(href, loc.href).toString(); }),
-    replace: vi.fn((href: string) => { loc.href = new URL(href, loc.href).toString(); }),
+    assign: vi.fn((href: string) => {
+      loc.href = new URL(href, loc.href).toString();
+    }),
+    replace: vi.fn((href: string) => {
+      loc.href = new URL(href, loc.href).toString();
+    }),
     reload: vi.fn(() => {}),
-  } as any;
+  };
 
   Object.defineProperty(window, 'location', {
     configurable: true,
     enumerable: true,
     get: () => loc,
-    set: (v: any) => { (loc as any).href = String(v); },
+    set: (value: string) => {
+      loc.href = new URL(value, loc.href).toString();
+    },
   });
-  (window as any).__ROUTER_MOCK_LOC__ = loc;
+  const routerWindow = window as WindowWithRouterMock;
+  routerWindow.__ROUTER_MOCK_LOC__ = loc;
 }
 
 export function restoreWindowLocationMock() {
@@ -144,7 +186,8 @@ export function restoreWindowLocationMock() {
     enumerable: true,
     value: ORIGINALS.location,
   });
-  delete (window as any).__ROUTER_MOCK_LOC__;
+  const routerWindow = window as WindowWithRouterMock;
+  delete routerWindow.__ROUTER_MOCK_LOC__;
   ORIGINALS.location = undefined;
 }
 

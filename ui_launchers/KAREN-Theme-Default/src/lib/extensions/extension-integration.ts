@@ -32,11 +32,11 @@ export interface ExtensionUIComponent {
     | "toolbar"
     | "dashboard"
     | "settings";
-  component: React.ComponentType<any>;
+  component: React.ComponentType<Record<string, unknown>>;
   route?: string;
   icon?: string;
   permissions?: string[];
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   enabled: boolean;
   category?: string;
   order?: number;
@@ -45,7 +45,7 @@ export interface ExtensionUIComponent {
 
 export interface ExtensionRoute {
   path: string;
-  component: React.ComponentType<any>;
+  component: React.ComponentType<Record<string, unknown>>;
   extensionId: string;
   permissions?: string[];
   exact?: boolean;
@@ -79,7 +79,7 @@ export interface ExtensionStatus {
 }
 
 /** ---------- Service Singleton ---------- */
-export type Listener = (payload: any) => void;
+export type Listener = (payload: unknown) => void;
 export type TimerRef = ReturnType<typeof setInterval>;
 
 export class ExtensionIntegrationService {
@@ -241,11 +241,10 @@ export class ExtensionIntegrationService {
       const backend = getKarenBackend();
       const response = await backend.makeRequestPublic("/api/extensions/");
 
-      if (response && (response as any).extensions) {
-        for (const [extensionId, extensionData] of Object.entries(
-          (response as any).extensions
-        )) {
-          await this.processExtension(extensionId, extensionData as any);
+      if (response && typeof response === 'object' && response !== null && 'extensions' in response) {
+        const extensions = (response as { extensions: Record<string, Record<string, unknown>> }).extensions;
+        for (const [extensionId, extensionData] of Object.entries(extensions)) {
+          await this.processExtension(extensionId, extensionData as Record<string, unknown>);
         }
       } else {
         await this.loadSampleExtensions();
@@ -353,7 +352,7 @@ export class ExtensionIntegrationService {
     safeLog("ExtensionIntegrationService: Loaded sample extensions for demonstration");
   }
 
-  private async processExtension(extensionId: string, extensionData: any): Promise<void> {
+  private async processExtension(extensionId: string, extensionData: Record<string, unknown>): Promise<void> {
     try {
       const resourceUsage = this.generateResourceUsage(extensionData);
       const healthStatus = this.generateHealthStatus(extensionData);
@@ -361,7 +360,7 @@ export class ExtensionIntegrationService {
 
       this.updateExtensionStatus(extensionId, {
         id: extensionId,
-        name: extensionData.display_name || extensionData.name || extensionId,
+        name: String(extensionData.display_name || extensionData.name || extensionId),
         status:
           extensionData.status === "active"
             ? "active"
@@ -375,12 +374,16 @@ export class ExtensionIntegrationService {
       });
 
       // UI surface
-      if (extensionData.capabilities?.provides_ui) {
+      if (extensionData.capabilities && typeof extensionData.capabilities === 'object' && 
+          extensionData.capabilities !== null && 'provides_ui' in extensionData.capabilities &&
+          extensionData.capabilities.provides_ui) {
         await this.registerExtensionUIComponents(extensionId, extensionData);
       }
 
       // Tasks surface
-      if (extensionData.capabilities?.provides_background_tasks) {
+      if (extensionData.capabilities && typeof extensionData.capabilities === 'object' && 
+          extensionData.capabilities !== null && 'provides_background_tasks' in extensionData.capabilities &&
+          extensionData.capabilities.provides_background_tasks) {
         await this.registerBackgroundTaskMonitoring(extensionId);
       }
     } catch (error) {
@@ -390,7 +393,7 @@ export class ExtensionIntegrationService {
       );
       this.updateExtensionStatus(extensionId, {
         id: extensionId,
-        name: extensionData.display_name || extensionData.name || extensionId,
+        name: String(extensionData.display_name || extensionData.name || extensionId),
         status: "error",
         health: {
           status: "error",
@@ -405,7 +408,7 @@ export class ExtensionIntegrationService {
 
   private async registerExtensionUIComponents(
     extensionId: string,
-    extensionData: any
+    extensionData: Record<string, unknown>
   ): Promise<void> {
     // Management page
     this.registerComponent({
@@ -426,7 +429,7 @@ export class ExtensionIntegrationService {
     this.registerNavItem({
       id: `${extensionId}-nav`,
       extensionId,
-      label: extensionData.display_name || extensionData.name || extensionId,
+      label: String(extensionData.display_name || extensionData.name || extensionId),
       path: `/extensions/${extensionId}`,
       icon: this.getExtensionIcon(extensionData),
       permissions: ["user"],
@@ -503,8 +506,8 @@ export class ExtensionIntegrationService {
 
   /** ---------- UI Factories ---------- */
 
-  private getExtensionIcon(extensionData: any): string {
-    const category = extensionData.category || "general";
+  private getExtensionIcon(extensionData: Record<string, unknown>): string {
+    const category = String(extensionData.category || "general");
     const iconMap: Record<string, string> = {
       analytics: "chart",
       automation: "zap",
@@ -521,133 +524,81 @@ export class ExtensionIntegrationService {
 
   private createExtensionManagementComponent(
     extensionId: string,
-    extensionData: any
-  ): React.ComponentType<any> {
+    extensionData: Record<string, unknown>
+  ): React.ComponentType<Record<string, unknown>> {
     return function ExtensionManagementComponent() {
       return React.createElement(
         "div",
         { className: "p-6 max-w-4xl mx-auto space-y-6" },
-        [
+        React.createElement("div", { key: "header", className: "flex items-center justify-between" },
           React.createElement(
             "div",
-            { key: "header", className: "flex items-center justify-between" },
-            [
-              React.createElement(
-                "div",
-                { key: "title-section" },
-                [
-                  React.createElement(
-                    "h1",
-                    { key: "title", className: "text-3xl font-bold text-gray-900" },
-                    `${extensionData.display_name} Management`
-                  ),
-                  React.createElement(
-                    "p",
-                    { key: "subtitle", className: "text-gray-600 mt-1" },
-                    extensionData.description
-                  ),
-                ]
-              ),
-              React.createElement(
-                "div",
-                {
-                  key: "status-badge",
-                  className: `inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    extensionData.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : extensionData.status === "error"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`,
-                },
-                extensionData.status
-              ),
-            ]
-          ),
-
-          React.createElement(
-            "div",
-            { key: "info-card", className: "bg-white rounded-lg shadow border p-6" },
-            [
-              React.createElement(
-                "h2",
-                { key: "info-title", className: "text-lg font-semibold mb-4" },
-                "Extension Information"
-              ),
-              React.createElement(
-                "dl",
-                { key: "info-list", className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
-                [
-                  ["Name", extensionData.display_name],
-                  ["Version", extensionData.version],
-                  ["Author", extensionData.author || "Unknown"],
-                  ["Category", extensionData.category || "General"],
-                ].map(([k, v]) =>
-                  React.createElement("div", { key: String(k) }, [
-                    React.createElement(
-                      "dt",
-                      { key: "label", className: "font-medium text-gray-500" },
-                      k
-                    ),
-                    React.createElement(
-                      "dd",
-                      { key: "val", className: "mt-1 text-gray-900" },
-                      String(v)
-                    ),
-                  ])
-                )
-              ),
-            ]
-          ),
-
-          extensionData.capabilities &&
+            { key: "title-section" },
             React.createElement(
-              "div",
-              { key: "capabilities-card", className: "bg-white rounded-lg shadow border p-6" },
-              [
-                React.createElement(
-                  "h2",
-                  { key: "cap-title", className: "text-lg font-semibold mb-4" },
-                  "Capabilities"
-                ),
-                React.createElement(
-                  "div",
-                  { key: "cap-grid", className: "grid grid-cols-2 md:grid-cols-4 gap-4" },
-                  Object.entries(extensionData.capabilities).map(([key, value]) =>
-                    React.createElement(
-                      "div",
-                      {
-                        key,
-                        className: `flex items-center gap-2 p-3 rounded-lg ${
-                          value ? "bg-green-50 text-green-800" : "bg-gray-50 text-gray-500"
-                        }`,
-                      },
-                      [
-                        React.createElement("div", {
-                          key: "dot",
-                          className: `w-2 h-2 rounded-full ${
-                            value ? "bg-green-500" : "bg-gray-300"
-                          }`,
-                        }),
-                        React.createElement(
-                          "span",
-                          { key: "label", className: "text-sm font-medium" },
-                          key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-                        ),
-                      ]
-                    )
-                  )
-                ),
-              ]
+              "h1",
+              { key: "title", className: "text-3xl font-bold text-gray-900" },
+              `${String(extensionData.display_name || extensionId)} Management`
             ),
-        ]
+            React.createElement(
+              "p",
+              { key: "subtitle", className: "text-gray-600 mt-1" },
+              String(extensionData.description || "")
+            )
+          ),
+          React.createElement(
+            "div",
+            {
+              key: "status-badge",
+              className: `inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                extensionData.status === "active"
+                  ? "bg-green-100 text-green-800"
+                  : extensionData.status === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
+              }`,
+            },
+            String(extensionData.status || "unknown")
+          )
+        ),
+        React.createElement(
+          "div",
+          { key: "info-card", className: "bg-white rounded-lg shadow border p-6" },
+          React.createElement(
+            "h2",
+            { key: "info-title", className: "text-lg font-semibold mb-4" },
+            "Extension Information"
+          ),
+          React.createElement(
+            "dl",
+            { key: "info-list", className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
+            ...[
+              ["Name", String(extensionData.display_name || "")],
+              ["Version", String(extensionData.version || "")],
+              ["Author", String(extensionData.author || "Unknown")],
+              ["Category", String(extensionData.category || "General")],
+            ].map(([k, v]) =>
+              React.createElement("div", { key: String(k) },
+                React.createElement(
+                  "dt",
+                  { key: "label", className: "font-medium text-gray-500" },
+                  String(k)
+                ),
+                React.createElement(
+                  "dd",
+                  { key: "val", className: "mt-1 text-gray-900" },
+                  String(v)
+                )
+              )
+            )
+          )
+        )
       );
     };
   }
 
   private createExtensionStatusWidget(
     extensionId: string
-  ): React.ComponentType<any> {
+  ): React.ComponentType<Record<string, unknown>> {
     return function ExtensionStatusWidget() {
       const service = ExtensionIntegrationService.getInstance();
       const status = service.getExtensionStatus(extensionId);
@@ -733,8 +684,8 @@ export class ExtensionIntegrationService {
 
   private createExtensionDashboardWidget(
     extensionId: string,
-    extensionData: any
-  ): React.ComponentType<any> {
+    extensionData: Record<string, unknown>
+  ): React.ComponentType<Record<string, unknown>> {
     return function ExtensionDashboardWidget() {
       const service = ExtensionIntegrationService.getInstance();
       const status = service.getExtensionStatus(extensionId);
@@ -746,7 +697,7 @@ export class ExtensionIntegrationService {
             React.createElement(
               "h3",
               { key: "ttl", className: "text-lg font-semibold text-gray-900" },
-              extensionData.display_name
+              String(extensionData.display_name || "")
             ),
             React.createElement("div", {
               key: "dot",
@@ -763,7 +714,7 @@ export class ExtensionIntegrationService {
         React.createElement(
           "div",
           { key: "desc", className: "text-sm text-gray-600" },
-          extensionData.description
+          String(extensionData.description || "")
         ),
         status &&
           React.createElement(
@@ -790,8 +741,8 @@ export class ExtensionIntegrationService {
 
   private createExtensionSettingsComponent(
     extensionId: string,
-    extensionData: any
-  ): React.ComponentType<any> {
+    extensionData: Record<string, unknown>
+  ): React.ComponentType<Record<string, unknown>> {
     return function ExtensionSettingsComponent() {
       return React.createElement("div", { className: "p-6 max-w-4xl mx-auto space-y-6" }, [
         React.createElement("div", { key: "hdr" }, [
@@ -885,7 +836,7 @@ export class ExtensionIntegrationService {
     };
   }
 
-  private emit(event: string, data: any): void {
+  private emit(event: string, data: unknown): void {
     const listeners = this.eventListeners.get(event);
     if (!listeners) return;
     listeners.forEach((fn) => {
@@ -970,7 +921,7 @@ export class ExtensionIntegrationService {
 
   /** ---------- Synthetic Metrics ---------- */
 
-  private generateResourceUsage(extensionData: any): ResourceUsage {
+  private generateResourceUsage(extensionData: Record<string, unknown>): ResourceUsage {
     const category = extensionData.category || "general";
     const baseUsage = {
       analytics: { cpu: 15, memory: 256, network: 50, storage: 100 },
@@ -981,7 +932,7 @@ export class ExtensionIntegrationService {
       general: { cpu: 8, memory: 128, network: 20, storage: 50 },
     } as const;
 
-    const base = (baseUsage as any)[category] || baseUsage.general;
+    const base = (baseUsage as Record<string, { cpu: number; memory: number; network: number; storage: number }>)[String(category)] || baseUsage.general;
     const variance = 0.3;
     return {
       cpu: Math.max(0, base.cpu + (Math.random() - 0.5) * base.cpu * variance),
@@ -996,7 +947,7 @@ export class ExtensionIntegrationService {
     // NOTE: replace synthetic with real telemetry when backend exposes it.
   }
 
-  private generateHealthStatus(extensionData: any): HealthStatus {
+  private generateHealthStatus(extensionData: Record<string, unknown>): HealthStatus {
     const now = new Date().toISOString();
     switch (extensionData.status) {
       case "active":
@@ -1031,11 +982,13 @@ export class ExtensionIntegrationService {
   }
 
   private generateBackgroundTasksInfo(
-    extensionData: any
+    extensionData: Record<string, unknown>
   ):
     | { active: number; total: number; lastExecution?: string }
     | undefined {
-    if (!extensionData.capabilities?.provides_background_tasks) return undefined;
+    if (!(extensionData.capabilities && typeof extensionData.capabilities === 'object' && 
+          extensionData.capabilities !== null && 'provides_background_tasks' in extensionData.capabilities &&
+          extensionData.capabilities.provides_background_tasks)) return undefined;
 
     const category = extensionData.category || "general";
     const taskCounts = {
@@ -1047,7 +1000,8 @@ export class ExtensionIntegrationService {
       general: { total: 3, activeRatio: 0.6 },
     } as const;
 
-    const cfg = (taskCounts as any)[category] || taskCounts.general;
+    const taskCountsTyped = taskCounts as Record<string, { total: number; activeRatio: number }>;
+    const cfg = taskCountsTyped[String(category)] || taskCountsTyped.general;
     const total = cfg.total;
     const active = Math.floor(total * cfg.activeRatio);
     const lastExecution = new Date(Date.now() - Math.random() * 86_400_000).toISOString();

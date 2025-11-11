@@ -158,7 +158,7 @@ async function parseJSONUsers(
   if (!Array.isArray(json)) {
     throw new Error('JSON must be an array of user objects');
   }
-  const users = (json as any[]).slice(0, MAX_ROWS).map((item) => {
+  const users = (json as unknown[]).slice(0, MAX_ROWS).map((item) => {
     const email = sanitizeString(item?.email);
     const full_name =
       sanitizeString(item?.full_name) || sanitizeString(item?.name);

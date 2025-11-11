@@ -170,7 +170,7 @@ export class StreamingErrorBoundary extends Component<Props, State> {
 
   private getConnectionType(): string {
     if (typeof navigator !== "undefined" && "connection" in navigator) {
-      const connection = (navigator as any).connection;
+      const connection = (navigator as unknown).connection;
       return connection?.effectiveType || connection?.type || "unknown";
     }
     return "unknown";

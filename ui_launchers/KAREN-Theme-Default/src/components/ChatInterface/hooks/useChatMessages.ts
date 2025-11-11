@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useHooks } from "@/contexts/HookContext";
+import { useHooks } from "@/hooks/use-hooks";
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
@@ -14,7 +14,7 @@ interface BackendChatRuntimeRequest {
   message: string;
   conversation_id?: string;
   stream: boolean;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   tools?: string[];
   memory_context?: string;
   user_preferences: {
@@ -40,7 +40,7 @@ export const useChatMessages = (
   settings: ChatSettings,
   sessionId: string | null,
   conversationId: string | null,
-  user: any,
+  user: unknown,
   useCopilotKit: boolean,
   enableCodeAssistance: boolean,
   enableContextualHelp: boolean,
@@ -61,7 +61,7 @@ export const useChatMessages = (
       type: ChatMessage["type"] = "text",
       options: {
         language?: string;
-        context?: any;
+        context?: unknown;
         enableAnalysis?: boolean;
       } = {}
     ) => {
@@ -209,7 +209,7 @@ export const useChatMessages = (
             preferred_model: selectedModelOnly || settings.model,
           };
 
-          const runtimeContext: Record<string, any> = {
+          const runtimeContext: Record<string, unknown> = {
             type,
             language: options.language || settings.language,
             session_id: sessionId,
@@ -341,7 +341,7 @@ export const useChatMessages = (
             stream: chatRuntimePayload.stream,
           });
 
-          const executeRequest = async (url: string, body: any) => {
+          const executeRequest = async (url: string, body: unknown) => {
             safeDebug("🔍 useChatMessages: Executing request", {
               url,
               method: "POST",
@@ -373,9 +373,9 @@ export const useChatMessages = (
                   errorText ? ` - ${errorText}` : ""
                 }`
               );
-              (error as any).status = response.status;
-              (error as any).statusText = response.statusText;
-              (error as any).endpoint = chatRuntimeUrl;
+              (error as unknown).status = response.status;
+              (error as unknown).statusText = response.statusText;
+              (error as unknown).endpoint = chatRuntimeUrl;
               throw error;
             }
             responseOrigin = "chat-runtime";
@@ -446,7 +446,7 @@ export const useChatMessages = (
 
           // Handle streaming or complete response
           let fullText = "";
-          let metadata: any = {};
+          let metadata: Record<string, unknown> = {};
 
           const ct = response.headers.get("content-type") || "";
           const isStream =
@@ -488,7 +488,7 @@ export const useChatMessages = (
                   const json = JSON.parse(data);
 
                   // Merge metadata
-                  const jsonType = (json as any)?.type;
+                  const jsonType = (json as unknown)?.type;
 
                   if (
                     jsonType !== "token" &&
@@ -505,10 +505,10 @@ export const useChatMessages = (
                     const usage = json.usage || json.token_usage || {};
                     const baseMeta =
                       json.metadata || json.meta || json.data || {};
-                    const metaUpdate: any = { ...(baseMeta as any) };
+                    const metaUpdate: unknown = { ...(baseMeta as unknown) };
                     // If KIRE metadata present under 'kire' or 'kire_metadata', keep it nested
-                    if ((json as any).kire_metadata && !metaUpdate.kire)
-                      metaUpdate.kire = (json as any).kire_metadata;
+                    if ((json as unknown).kire_metadata && !metaUpdate.kire)
+                      metaUpdate.kire = (json as unknown).kire_metadata;
                     if (json.model && !metaUpdate.model)
                       metaUpdate.model = json.model;
                     if (typeof json.confidence === "number")
@@ -528,10 +528,10 @@ export const useChatMessages = (
                       metaUpdate.tokens = metaUpdate.total_tokens;
                     }
                     if (
-                      typeof (metaUpdate as any).totalTokens === "number" &&
+                      typeof (metaUpdate as unknown).totalTokens === "number" &&
                       metaUpdate.tokens === undefined
                     ) {
-                      metaUpdate.tokens = (metaUpdate as any).totalTokens;
+                      metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
                     }
                     if (json.cost !== undefined) metaUpdate.cost = json.cost;
                     if (metaUpdate.origin === undefined)
@@ -613,7 +613,7 @@ export const useChatMessages = (
                 : tail;
               try {
                 const json = JSON.parse(data);
-                const jsonTypeTail = (json as any)?.type;
+                const jsonTypeTail = (json as unknown)?.type;
                 if (
                   typeof json === "string" ||
                   json.content ||
@@ -664,9 +664,9 @@ export const useChatMessages = (
                   const usage = json.usage || json.token_usage || {};
                   const baseMeta =
                     json.metadata || json.meta || json.data || {};
-                  const metaUpdate: any = { ...(baseMeta as any) };
-                  if ((json as any).kire_metadata && !metaUpdate.kire)
-                    metaUpdate.kire = (json as any).kire_metadata;
+                  const metaUpdate: unknown = { ...(baseMeta as unknown) };
+                  if ((json as unknown).kire_metadata && !metaUpdate.kire)
+                    metaUpdate.kire = (json as unknown).kire_metadata;
                   if (json.model && !metaUpdate.model)
                     metaUpdate.model = json.model;
                   if (
@@ -684,10 +684,10 @@ export const useChatMessages = (
                     metaUpdate.tokens = metaUpdate.total_tokens;
                   }
                   if (
-                    typeof (metaUpdate as any).totalTokens === "number" &&
+                    typeof (metaUpdate as unknown).totalTokens === "number" &&
                     metaUpdate.tokens === undefined
                   ) {
-                    metaUpdate.tokens = (metaUpdate as any).totalTokens;
+                    metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
                   }
                   if (json.cost !== undefined) metaUpdate.cost = json.cost;
                   if (metaUpdate.origin === undefined)
@@ -734,7 +734,7 @@ export const useChatMessages = (
                   typeof result.confidence === "number"
                     ? result.confidence
                     : result.metadata?.confidence ?? result.meta?.confidence,
-              } as any;
+              } as unknown;
             } else {
               fullText = await response.text();
             }
@@ -759,7 +759,7 @@ export const useChatMessages = (
             metadataKeys: metadata ? Object.keys(metadata) : [],
             modelFromMetadata: metadata?.model,
             modelFromSettings: settings.model,
-            finalModel: (metadata && (metadata as any).model) || settings.model,
+            finalModel: (metadata && (metadata as unknown).model) || settings.model,
           });
 
           // Create final message
@@ -770,9 +770,9 @@ export const useChatMessages = (
             metadata: {
               ...metadata,
               latencyMs: latency,
-              model: (metadata && (metadata as any).model) || settings.model,
+              model: (metadata && (metadata as unknown).model) || settings.model,
               tokens:
-                (metadata && (metadata as any).tokens) ||
+                (metadata && (metadata as unknown).tokens) ||
                 Math.ceil(fullText.length / 4),
               cost: metadata.cost || 0,
               origin: metadata.origin ?? responseOrigin,
@@ -837,17 +837,17 @@ export const useChatMessages = (
             );
           }
         } catch (error) {
-          if ((error as any)?.name === "AbortError") {
+          if ((error as unknown)?.name === "AbortError") {
             setIsTyping(false);
             return;
           }
 
           // Prevent console error interceptor issues by using structured logging
           const errorDetails = {
-            name: (error as any)?.name || "UnknownError",
-            message: (error as any)?.message || "Unknown error occurred",
-            stack: (error as any)?.stack,
-            cause: (error as any)?.cause,
+            name: (error as unknown)?.name || "UnknownError",
+            message: (error as unknown)?.message || "Unknown error occurred",
+            stack: (error as unknown)?.stack,
+            cause: (error as unknown)?.cause,
             timestamp: new Date().toISOString(),
             context: {
               sessionId,
@@ -926,8 +926,8 @@ export const useChatMessages = (
           "Critical error in sendMessage",
           {
             error: outerError,
-            message: (outerError as any)?.message,
-            stack: (outerError as any)?.stack,
+            message: (outerError as unknown)?.message,
+            stack: (outerError as unknown)?.stack,
             timestamp: new Date().toISOString(),
           },
           {

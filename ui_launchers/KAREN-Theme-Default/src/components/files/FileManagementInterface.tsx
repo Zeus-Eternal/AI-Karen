@@ -84,7 +84,7 @@ const DEFAULT_STATS: FileStats = {
   typeDistribution: {},
 };
 
-const computeStats = (files: FileMetadata[], apiStats?: any): FileStats => {
+const computeStats = (files: FileMetadata[], apiStats?: unknown): FileStats => {
   return {
     totalFiles: apiStats?.total_count ?? files.length,
     totalSize: apiStats?.total_size_formatted ?? "0 B",

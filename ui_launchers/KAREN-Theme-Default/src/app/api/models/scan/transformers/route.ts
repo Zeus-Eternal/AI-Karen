@@ -107,7 +107,7 @@ async function calculateDirectorySizeWithBudget(
 
   async function walk(p: string): Promise<void> {
     if (Date.now() > deadline) return; // time budget exceeded
-    let entries: any[];
+    let entries: unknown[];
     try {
       entries = await fs.readdir(p, { withFileTypes: true });
     } catch { return; }
@@ -244,7 +244,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json({
       models: [],
       directory: opts.directory,

@@ -239,8 +239,8 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
     }
 
     // Optional email update with validation (if your schema allows it)
-    if (typeof (body as any).email === 'string') {
-      const newEmail = String((body as any).email).trim();
+    if (typeof (body as unknown).email === 'string') {
+      const newEmail = String((body as unknown).email).trim();
       if (!validateEmail(newEmail)) {
         return NextResponse.json(
           {
@@ -274,12 +274,12 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
 
     // Build update query dynamically (users table assumed)
     const updateFields: string[] = [];
-    const updateValues: any[] = [];
+    const updateValues: unknown[] = [];
     let paramIndex = 1;
 
-    if ((body as any).email !== undefined) {
+    if ((body as unknown).email !== undefined) {
       updateFields.push(`email = $${paramIndex++}`);
-      updateValues.push((body as any).email);
+      updateValues.push((body as unknown).email);
     }
     if (body.full_name !== undefined) {
       updateFields.push(`full_name = $${paramIndex++}`);

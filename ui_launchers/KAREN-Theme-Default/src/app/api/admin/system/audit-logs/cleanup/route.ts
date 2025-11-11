@@ -166,7 +166,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             details: {
               dry_run,
               policy_results: results,
-              total_deleted: results.reduce((sum: number, r: any) => sum + (r.deleted_count || 0), 0),
+              total_deleted: results.reduce((sum: number, r: unknown) => sum + (r.deleted_count || 0), 0),
             },
             request,
           }
@@ -178,7 +178,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             data: {
               policy_results: results,
               dry_run,
-              total_deleted: results.reduce((sum: number, r: any) => sum + (r.deleted_count || 0), 0),
+              total_deleted: results.reduce((sum: number, r: unknown) => sum + (r.deleted_count || 0), 0),
               warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
             },
           } as AdminApiResponse<any>,

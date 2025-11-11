@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       systemHealth
     };
     return NextResponse.json(stats);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to load dashboard statistics' },
       { status: 500 }

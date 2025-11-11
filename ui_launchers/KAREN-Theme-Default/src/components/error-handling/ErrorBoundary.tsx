@@ -91,8 +91,9 @@ export class ErrorBoundary extends Component<Props, State> {
         userId: this.getCurrentUserId(),
         sessionId: this.getSessionId(),
       });
-    } catch (reportingError) {
-    }
+    } catch (error) {
+    // Handle error silently
+  }
   }
   private getCurrentUserId(): string | null {
     // Get from auth context or local storage
@@ -116,8 +117,9 @@ export class ErrorBoundary extends Component<Props, State> {
         if (recoveryStrategy.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
-      } catch (recoveryError) {
-      } finally {
+      } catch (error) {
+    // Handle error silently
+  } finally {
         this.setState({ isRecovering: false });
       }
     }
@@ -133,7 +135,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return 3;
     }
   }
-  private async executeRecoveryStrategy(strategy: any) {
+  private async executeRecoveryStrategy(strategy: unknown) {
     const delay = strategy.retryDelay || 1000;
     this.retryTimeout = setTimeout(() => {
       this.setState(prevState => ({

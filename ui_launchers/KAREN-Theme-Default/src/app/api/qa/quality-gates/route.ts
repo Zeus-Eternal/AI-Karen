@@ -7,7 +7,7 @@ import {
 
 const collector = new QualityMetricsCollector();
 
-function json(data: any, status = 200, extraHeaders: Record<string, string> = {}) {
+function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return NextResponse.json(data, {
     status,
     headers: {
@@ -66,7 +66,7 @@ export async function GET(_request: NextRequest) {
       },
       200
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     return json(
       {
         success: false,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action. Use "override" or "recalculate".' },
       400
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     return json(
       {
         success: false,

@@ -57,7 +57,7 @@ export interface ExecuteOptions {
 
 export interface QueuedRequest<T = any> {
   resolve: (value: T) => void;
-  reject: (error: any) => void;
+  reject: (error: Error) => void;
   request: () => Promise<T>;
   createdAt: number;
   attempt: number;
@@ -280,19 +280,20 @@ export class RateLimiter {
     try {
       const out = await q.request();
       q.resolve(out);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle retriable errors (429 or explicit flag)
-      const retriable = this.isRetriableError(err);
+      const retriable = this.isRetriableError(err as Error);
       if (retriable) {
         q.attempt += 1;
-        const retryDelay = this.nextBackoffMs(q.attempt, err?.__retryAfterMs);
+        const errorObj = err as { __retryAfterMs?: number } | null;
+        const retryDelay = this.nextBackoffMs(q.attempt, errorObj?.__retryAfterMs);
         await this.delay(retryDelay);
 
         // Put back at front with the same options
         this.queue.unshift(q);
         return;
       }
-      q.reject(err);
+      q.reject(err as Error);
     }
   }
 
@@ -338,7 +339,7 @@ export class RateLimiter {
     return status === 429 || (status >= 500 && status < 600);
   }
 
-  private isRetriableError(err: any): boolean {
+  private isRetriableError(err: Error): boolean {
     const msg = (err?.message ?? '').toString();
     if (msg.includes('429')) return true;
     if (msg.startsWith('HTTP 5')) return true;

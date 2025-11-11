@@ -5,8 +5,8 @@ export const normalizeCopilotActions = (actions: CopilotAction[]) => {
   const categoryOrder = DEFAULT_COPILOT_ACTION_CATEGORIES;
   return actions.slice().sort((a, b) => {
     const categoryDiff =
-      categoryOrder.indexOf(a.category as any) -
-      categoryOrder.indexOf(b.category as any);
+      categoryOrder.indexOf(a.category as unknown) -
+      categoryOrder.indexOf(b.category as unknown);
     if (categoryDiff !== 0) return categoryDiff;
     return a.title.localeCompare(b.title);
   });

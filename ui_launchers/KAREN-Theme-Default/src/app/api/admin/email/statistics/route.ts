@@ -53,14 +53,14 @@ export async function GET(request: NextRequest) {
     }
     // Else assume an object with { success, status, error, user }
     if (!('success' in authResult) || !authResult.success) {
-      const status = 'status' in authResult ? (authResult as any).status ?? 401 : 401;
+      const status = 'status' in authResult ? (authResult as unknown).status ?? 401 : 401;
       return NextResponse.json(
         {
           success: false,
           error: {
             code: 'UNAUTHORIZED',
             message: 'Unauthorized',
-            details: { reason: ('error' in authResult && (authResult as any).error) || 'RBAC check failed' },
+            details: { reason: ('error' in authResult && (authResult as unknown).error) || 'RBAC check failed' },
           },
         } satisfies AdminApiResponse<never>,
         { status },
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload: AdminApiResponse<{
-      statistics: any;
+      statistics: unknown;
       filters: StatisticsFilters;
       generated_at: string;
     }> = {

@@ -269,14 +269,14 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   );
 
   const handleTimeRangeChange = useCallback(
-    (timeRange: any) => {
+    (timeRange: unknown) => {
       setGlobalTimeRange(timeRange);
     },
     [setGlobalTimeRange]
   );
 
   const handleFiltersChange = useCallback(
-    (filters: any[]) => {
+    (filters: unknown[]) => {
       if (config.id) {
         // Remove existing then upsert new
         (config.filters || []).forEach((f) => {
@@ -336,7 +336,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       <WidgetBase
         key={widget.id}
         config={widget}
-        data={data as any}
+        data={data as unknown}
         loading={data?.loading}
         error={data?.error}
         onConfigChange={(newConfig) =>
@@ -348,7 +348,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       >
         <WidgetComponent
           config={widget}
-          data={data as any}
+          data={data as unknown}
           onConfigChange={(newConfig: WidgetConfig) =>
             handleWidgetConfigChange(widget.id, newConfig)
           }

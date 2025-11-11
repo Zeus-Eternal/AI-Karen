@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
 
 type BackendPluginsResponse = {
-  enabled?: any[];
-  available?: any[];
+  enabled?: unknown[];
+  available?: unknown[];
   count?: number;
 };
 
 const DEFAULT_RESPONSE = {
-  plugins: [] as any[],
+  plugins: [] as unknown[],
   total_count: 0,
   enabled_count: 0,
   disabled_count: 0,
@@ -59,7 +59,7 @@ export async function GET(_request: NextRequest) {
     };
 
     return NextResponse.json(transformed);
-  } catch (err: any) {
+  } catch (err: Error) {
     // Optionally log for observability without leaking details to clients
     if (err?.name === 'AbortError') {
       console.warn('[GET /api/plugins] Backend request aborted (timeout).');

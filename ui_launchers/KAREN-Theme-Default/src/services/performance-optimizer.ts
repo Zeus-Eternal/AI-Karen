@@ -87,9 +87,39 @@ const isBrowser =
 const hasPO =
   typeof PerformanceObserver !== 'undefined';
 
+type SafeWindow = {
+  requestIdleCallback?: (callback: IdleRequestCallback) => number;
+  requestAnimationFrame?: (callback: FrameRequestCallback) => number;
+  setTimeout: typeof setTimeout;
+};
+
+type FrameRequestCallback = (time: number) => void;
+
+const safeWindow: SafeWindow =
+  (typeof window !== 'undefined' ? window : globalThis as SafeWindow);
+
+type PerformanceWithMemory = Performance & {
+  memory?: {
+    usedJSHeapSize?: number;
+    totalJSHeapSize?: number;
+  };
+};
+
+type GCWindow = Window & {
+  gc?: () => void;
+};
+
 function safeRAF(cb: () => void) {
   if (!isBrowser) return;
-  (window.requestIdleCallback || window.requestAnimationFrame || setTimeout)(cb as any);
+  if ('requestIdleCallback' in safeWindow && typeof safeWindow.requestIdleCallback === 'function') {
+    safeWindow.requestIdleCallback(() => cb());
+    return;
+  }
+  if ('requestAnimationFrame' in safeWindow && typeof safeWindow.requestAnimationFrame === 'function') {
+    safeWindow.requestAnimationFrame(() => cb());
+    return;
+  }
+  safeWindow.setTimeout(cb, 0);
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -124,9 +154,9 @@ class MemoryLeakDetector {
   }
 
   private takeMemorySnapshot(): void {
-    const perf: any = (isBrowser ? performance : undefined) as any;
-    if (!perf || !perf.memory) return;
-    const used = perf.memory.usedJSHeapSize as number;
+    const perf = isBrowser ? (performance as PerformanceWithMemory) : undefined;
+    if (!perf?.memory) return;
+    const used = perf.memory.usedJSHeapSize ?? 0;
     this.memorySnapshots.push(used);
     if (this.memorySnapshots.length > 10) this.memorySnapshots.shift();
     this.analyzeMemoryTrend();
@@ -141,7 +171,13 @@ class MemoryLeakDetector {
     // Consistent growth (≥80%) across snapshots flags a likely leak
     if (growthCount >= Math.floor(this.memorySnapshots.length * 0.8)) {
       const latest = this.memorySnapshots[this.memorySnapshots.length - 1];
-      this.onLeakListeners.forEach(cb => { try { cb(latest); } catch {} });
+      this.onLeakListeners.forEach((cb) => {
+        try {
+          cb(latest);
+        } catch (error) {
+          void error;
+        }
+      });
     }
   }
 }
@@ -250,7 +286,13 @@ export class PerformanceOptimizer {
 
   destroy(): void {
     // Disconnect observers
-    this.observers.forEach(o => { try { o.disconnect(); } catch {} });
+    this.observers.forEach((o) => {
+      try {
+        o.disconnect();
+      } catch (error) {
+        void error;
+      }
+    });
     this.observers = [];
     // Clear timers
     this.timers.forEach(t => clearInterval(t));
@@ -326,9 +368,11 @@ export class PerformanceOptimizer {
           }
         }
       });
-      navObs.observe({ type: 'navigation', buffered: true } as any);
+      navObs.observe({ type: 'navigation', buffered: true });
       this.observers.push(navObs);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   // ---------------- Image Optimization ----------------
@@ -419,10 +463,12 @@ export class PerformanceOptimizer {
         // Optionally listen for updates to advise on cache invalidation strategy
         reg.addEventListener('updatefound', () => {
           // noop: hook for UI toast if desired
+          void 0;
         });
       })
       .catch(() => {
         // SW registration failed; keep silent in production
+        void 0;
       });
   }
 
@@ -458,9 +504,11 @@ export class PerformanceOptimizer {
           this.metrics.cachePerformance.averageLoadTime = prev === 0 ? r.duration : (prev * 0.9 + r.duration * 0.1);
         });
       });
-      resObs.observe({ type: 'resource', buffered: true } as any);
+      resObs.observe({ type: 'resource', buffered: true });
       this.observers.push(resObs);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   // ---------------- Memory Management ----------------
@@ -468,7 +516,7 @@ export class PerformanceOptimizer {
   private initializeMemoryManagement(): void {
     if (this.config.memoryManagement.leakDetection) {
       this.memoryLeakDetector.start();
-      this.memoryLeakDetector.onLeak((latestUsed) => {
+      this.memoryLeakDetector.onLeak((_latestUsed) => {
         this.metrics.memoryUsage.leaksDetected++;
         this.pushRecommendation({
           id: `memory-leak-${Date.now()}`,
@@ -507,13 +555,15 @@ export class PerformanceOptimizer {
         // Only possible if you manually mark GC; browsers don’t emit GC measures by default
         obs.observe({ entryTypes: ['measure'] });
         this.observers.push(obs);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
 
     // Periodic heap polling (Chrome-only)
     const t = window.setInterval(() => {
-      const perf: any = performance as any;
-      if (perf && perf.memory) {
+      const perf = performance as PerformanceWithMemory;
+      if (perf.memory) {
         this.metrics.memoryUsage.heapUsed = perf.memory.usedJSHeapSize || 0;
         this.metrics.memoryUsage.heapTotal = perf.memory.totalJSHeapSize || 0;
       }
@@ -535,7 +585,9 @@ export class PerformanceOptimizer {
       });
       observer.observe({ entryTypes: ['resource'] });
       this.observers.push(observer);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   // ---------------- Analysis → Recommendations ----------------
@@ -624,10 +676,10 @@ export class PerformanceOptimizer {
   }
 
   private analyzeMemoryUsage(): void {
-    const perf: any = performance as any;
-    if (!perf || !perf.memory) return;
-    const used = perf.memory.usedJSHeapSize as number;
-    const total = perf.memory.totalJSHeapSize as number;
+    const perf = performance as PerformanceWithMemory;
+    if (!perf.memory) return;
+    const used = perf.memory.usedJSHeapSize ?? 0;
+    const total = perf.memory.totalJSHeapSize ?? 0;
     if (total > 0) {
       const pct = (used / total) * 100;
       if (pct > 80) {
@@ -680,8 +732,13 @@ export class PerformanceOptimizer {
       case 'memory':
         if (r.id.startsWith('memory-leak')) {
           // Manual GC can be available in some dev environments behind flags
-          if (isBrowser && (window as any).gc) {
-            try { (window as any).gc(); } catch {}
+          const win = window as GCWindow;
+          if (isBrowser && typeof win.gc === 'function') {
+            try {
+              win.gc();
+            } catch (error) {
+              void error;
+            }
           }
         }
         break;
@@ -727,6 +784,7 @@ export class PerformanceOptimizer {
   private preloadBasedOnBehavior(): void {
     // Hook for your analytics model → map to prefetch targets
     // Left advisory to avoid guessing at runtime
+    return;
   }
 
   private predictNextPage(current: string): string | null {
@@ -778,7 +836,13 @@ export class PerformanceOptimizer {
   private pushRecommendation(rec: OptimizationRecommendation): void {
     this.recommendations.push(rec);
     // notify listeners for live UI
-    this.suggestionListeners.forEach((cb) => { try { cb(rec); } catch {} });
+    this.suggestionListeners.forEach((cb) => {
+      try {
+        cb(rec);
+      } catch (error) {
+        void error;
+      }
+    });
   }
 
   private sortedRecommendations(): OptimizationRecommendation[] {

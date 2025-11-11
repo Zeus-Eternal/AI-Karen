@@ -148,7 +148,8 @@ export default function SecuritySettingsPanel() {
         setAlerts(data);
       }
     } catch (error) {
-    }
+    // Handle error silently
+  }
   };
   const loadBlockedIPs = async () => {
     try {
@@ -158,13 +159,14 @@ export default function SecuritySettingsPanel() {
         setBlockedIPs(data);
       }
     } catch (error) {
-    }
+    // Handle error silently
+  }
   };
-  const handleSettingsChange = (path: string, value: any) => {
+  const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
       const keys = path.split('.');
       const updated = { ...prev };
-      let current: any = updated;
+      let current: unknown = updated;
       for (let i = 0; i < keys.length - 1; i++) {
         current[keys[i]] = { ...current[keys[i]] };
         current = current[keys[i]];

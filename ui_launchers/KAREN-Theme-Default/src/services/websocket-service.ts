@@ -9,11 +9,15 @@ import * as React from 'react';
 import { useAppStore } from '@/store/app-store';
 import { invalidateQueries } from '@/lib/query-client';
 
+type NotificationType = 'info' | 'success' | 'warning' | 'error';
+const isNotificationType = (value: unknown): value is NotificationType =>
+  value === 'info' || value === 'success' || value === 'warning' || value === 'error';
+
 // WebSocket message types
 export interface WebSocketMessage {
   type: string;
   channel: string;
-  data: any;
+  data: unknown;
   timestamp: string;
   id?: string;
 }
@@ -50,7 +54,7 @@ export class WebSocketService {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  private listeners: Map<WebSocketEventType, Set<(data: any) => void>> = new Map();
+  private listeners: Map<WebSocketEventType, Set<(data: unknown) => void>> = new Map();
 
   private connectionState: ConnectionState = 'disconnected';
   private isManualClose = false;
@@ -89,7 +93,10 @@ export class WebSocketService {
       if (this.ws) {
         try {
           this.ws.close();
-        } catch {}
+        } catch (error) {
+          // Ignore close errors
+          void error;
+        }
         this.ws = null;
       }
     });
@@ -146,11 +153,11 @@ export class WebSocketService {
           }
         };
 
-        this.ws.onerror = (error) => {
+        this.ws.onerror = () => {
           this.setConnectionState('error');
           const { setConnectionQuality } = useAppStore.getState();
           setConnectionQuality('poor');
-          reject(error);
+          reject(new Error('WebSocket connection error'));
         };
       } catch (error) {
         this.setConnectionState('error');
@@ -172,7 +179,10 @@ export class WebSocketService {
     if (this.ws) {
       try {
         this.ws.close();
-      } catch {}
+      } catch (error) {
+        // Ignore close errors
+        void error;
+      }
       this.ws = null;
     }
 
@@ -180,7 +190,7 @@ export class WebSocketService {
   }
 
   // Send message through WebSocket
-  public send(type: string, data: any, channel = 'default'): boolean {
+  public send(type: string, data: unknown, channel = 'default'): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return false;
     }
@@ -200,7 +210,7 @@ export class WebSocketService {
   }
 
   // Subscribe to WebSocket events
-  public subscribe(eventType: WebSocketEventType, callback: (data: any) => void): () => void {
+  public subscribe(eventType: WebSocketEventType, callback: (data: unknown) => void): () => void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
@@ -241,8 +251,9 @@ export class WebSocketService {
         listeners.forEach((cb) => {
           try {
             cb(message.data);
-          } catch {
-            /* swallow listener errors */
+          } catch (error) {
+            // swallow listener errors
+            void error;
           }
         });
       }
@@ -251,6 +262,7 @@ export class WebSocketService {
       this.handleSpecificMessage(message);
     } catch {
       // ignore malformed messages
+      return;
     }
   }
 
@@ -261,11 +273,14 @@ export class WebSocketService {
     switch (message.type as WebSocketEventType) {
       case 'notification': {
         // message.data: { type?: 'info'|'success'|'warning'|'error', title: string, message: string }
-        const payload = message.data || {};
+        const payload = (message.data as Record<string, unknown>) || {};
+        const normalizedType = isNotificationType(payload.type) ? payload.type : 'info';
+        const title = typeof payload.title === 'string' ? payload.title : 'Notification';
+        const text = typeof payload.message === 'string' ? payload.message : '';
         addNotification?.({
-          type: payload.type || 'info',
-          title: payload.title ?? 'Notification',
-          message: payload.message ?? '',
+          type: normalizedType,
+          title,
+          message: text,
         });
         break;
       }
@@ -376,9 +391,9 @@ export function useWebSocket() {
   return {
     connect: () => websocketService.connect(),
     disconnect: () => websocketService.disconnect(),
-    send: (type: string, data: any, channel?: string) =>
+    send: (type: string, data: unknown, channel?: string) =>
       websocketService.send(type, data, channel),
-    subscribe: (eventType: WebSocketEventType, callback: (data: any) => void) =>
+    subscribe: (eventType: WebSocketEventType, callback: (data: unknown) => void) =>
       websocketService.subscribe(eventType, callback),
     connectionState,
     isConnected,
@@ -388,7 +403,7 @@ export function useWebSocket() {
 // React hook for subscribing to WebSocket events
 export function useWebSocketSubscription(
   eventType: WebSocketEventType,
-  callback: (data: any) => void,
+  callback: (data: unknown) => void,
   deps: React.DependencyList = []
 ) {
   React.useEffect(() => {

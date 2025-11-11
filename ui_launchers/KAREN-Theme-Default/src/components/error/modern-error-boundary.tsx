@@ -173,8 +173,8 @@ export class ModernErrorBoundary extends Component<
       };
 
       // Example GA bridge (non-blocking, guarded)
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        (window as any).gtag("event", "exception", {
+      if (typeof window !== "undefined" && (window as unknown).gtag) {
+        (window as unknown).gtag("event", "exception", {
           description: `${payload.section}: ${payload.message}`,
           fatal: false,
           error_id: payload.errorId,

@@ -33,8 +33,6 @@ export const useDashboardUrlSync = () => {
     setGlobalTimeRange,
     globalFilters,
     addGlobalFilter,
-    updateGlobalFilter,
-    removeGlobalFilter,
     clearGlobalFilters,
     isEditing,
     setEditing,
@@ -71,7 +69,9 @@ export const useDashboardUrlSync = () => {
       try {
         JSON.parse(decodeURIComponent(filtersParam));
         state.filters = filtersParam;
-      } catch (error) {}
+      } catch {
+        // Handle error silently
+      }
     }
 
     // Layout
@@ -195,7 +195,9 @@ export const useDashboardUrlSync = () => {
             addGlobalFilter(filterData);
           });
         }
-      } catch (error) {}
+      } catch {
+        // Handle error silently
+      }
     }
 
     // Set layout
@@ -239,7 +241,7 @@ export const useDashboardUrlSync = () => {
     const currentTimeRange = {
       start: globalTimeRange.start.toISOString(),
       end: globalTimeRange.end.toISOString(),
-      preset: globalTimeRange.preset
+      preset: globalTimeRange.preset as string | undefined
     };
 
     if (

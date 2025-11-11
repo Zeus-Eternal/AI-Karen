@@ -23,7 +23,7 @@ function buildEndpointUrl(endpoint: string, params?: Record<string, unknown>): s
   return `${endpoint}${separator}${query.toString()}`;
 }
 
-async function parseResponseBody(response: Response): Promise<any> {
+async function parseResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') ?? '';
 
   if (contentType.includes('application/json')) {
@@ -37,7 +37,7 @@ async function parseResponseBody(response: Response): Promise<any> {
 
   try {
     return JSON.parse(text);
-  } catch (error) {
+  } catch {
     return text;
   }
 }
@@ -57,16 +57,27 @@ export async function extensionAPI<T = unknown>(
     });
 
     const payload = await parseResponseBody(response);
+    const payloadObject =
+      payload && typeof payload === 'object'
+        ? (payload as Record<string, unknown>)
+        : null;
 
     if (!response.ok) {
       return {
         success: false,
         error: {
           code: `http_${response.status}`,
-          message:
-            (payload && typeof payload === 'object'
-              ? payload.detail || payload.message
-              : undefined) ?? response.statusText,
+          message: (() => {
+            const detailValue = payloadObject?.detail;
+            const messageValue = payloadObject?.message;
+            if (typeof detailValue === 'string') {
+              return detailValue;
+            }
+            if (typeof messageValue === 'string') {
+              return messageValue;
+            }
+            return response.statusText;
+          })(),
           details: payload,
         },
       };
@@ -92,12 +103,13 @@ export async function extensionAPI<T = unknown>(
       data: payload as T,
       meta: Object.keys(meta).length > 0 ? meta : undefined,
     };
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as Error;
     return {
       success: false,
       error: {
         code: 'network_error',
-        message: error?.message ?? 'Network request failed',
+        message: err?.message ?? 'Network request failed',
         details: error,
       },
     };

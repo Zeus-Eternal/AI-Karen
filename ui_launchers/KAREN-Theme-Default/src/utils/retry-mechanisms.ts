@@ -12,7 +12,7 @@
  * - SSR-safe and side‑effect free on import
  */
 
-import React from "react";
+import * as React from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -345,11 +345,11 @@ class RetryMechanismService {
   public cleanup(): void {
     const now = Date.now();
     const maxAge = this.defaultCircuitBreakerConfig.monitoringPeriod;
-    for (const [id, st] of this.circuitBreakers.entries()) {
+    Array.from(this.circuitBreakers.entries()).forEach(([id, st]) => {
       if (st.failures === 0 && now - st.lastFailureTime > maxAge) {
         this.circuitBreakers.delete(id);
       }
-    }
+    });
   }
 }
 
@@ -362,7 +362,7 @@ export const retryMechanism = new RetryMechanismService();
 export function useRetry<T>(
   operation: () => Promise<T>,
   config: Partial<RetryConfig> = {},
-  dependencies: React.DependencyList = []
+  _dependencies: React.DependencyList = []
 ) {
   const [state, setState] = React.useState<{
     data: T | null;
@@ -439,7 +439,7 @@ export function useRetry<T>(
     } finally {
       off();
     }
-  }, [operation, JSON.stringify(config), ...dependencies]);
+  }, [operation, config]);
 
   const retry = React.useCallback(() => {
     if (state.canRetry && !state.isLoading) {
@@ -517,7 +517,7 @@ export function useRetryFetch(
       return res;
     },
     config,
-    [url, JSON.stringify(options)]
+    [url, options]
   );
 }
 

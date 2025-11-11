@@ -10,7 +10,7 @@
  * No diffs, no TODOs, no placeholders. Dragon-mode engaged.
  */
 
-export type AnyFn = (...args: any[]) => any;
+export type AnyFn = (...args: unknown[]) => any;
 
 export type KarenBackendPatchState = {
   earlyFetchPatched?: boolean;
@@ -36,9 +36,9 @@ export interface PatchController {
 }
 
 export type Logger = {
-  info: (msg: string, meta?: any) => void;
-  warn: (msg: string, meta?: any) => void;
-  error: (msg: string, meta?: any) => void;
+  info: (msg: string, meta?: unknown) => void;
+  warn: (msg: string, meta?: unknown) => void;
+  error: (msg: string, meta?: unknown) => void;
 };
 
 const defaultLogger: Logger = {
@@ -143,7 +143,7 @@ export function patchFetchForKarenBackend(logger: Logger = defaultLogger): void 
     const url = typeof input === 'string' ? input : input.toString();
 
     try {
-      const res = await originalFetch(input as any, init);
+      const res = await originalFetch(input as unknown, init);
 
       // If not targeting extensions, or response ok, pass through
       if (!isExtensionsUrl(url) || res.ok) return res;
@@ -211,12 +211,13 @@ export function patchKarenBackendDirectly(logger: Logger = defaultLogger): void 
     const originalMakeRequest = makeRequest.bind(kb);
     window.__KAREN_BACKEND_PATCH__!.originalMakeRequest = originalMakeRequest;
 
-    kb.makeRequest = async function (endpoint: string, ...args: any[]) {
+    kb.makeRequest = async function (endpoint: string, ...args: unknown[]) {
       try {
         const result = await originalMakeRequest(endpoint, ...args);
         return result;
-      } catch (error: any) {
-        const status = error?.status ?? error?.response?.status;
+      } catch (error: unknown) {
+        const errorObj = error as { status?: number; response?: { status?: number } };
+        const status = errorObj?.status ?? errorObj?.response?.status;
         if (typeof endpoint === 'string' && isExtensionsUrl(endpoint) && shouldFallbackStatus(Number(status))) {
           logger.warn(`KarenBackend error ${status} for ${endpoint}, returning fallback.`);
           if (isListEndpoint(endpoint)) {

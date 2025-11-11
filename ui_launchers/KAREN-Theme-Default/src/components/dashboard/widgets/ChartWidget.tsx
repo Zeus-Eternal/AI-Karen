@@ -131,14 +131,14 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       series,
       axes: [
         {
-          type: xAxisType as any,
+          type: xAxisType as unknown,
           position: "bottom",
           title: { text: chartData.xAxis?.label || "" },
           ...(xAxisType === "time" && {
             tick: { count: 10 },
             label: { format: "%H:%M" },
           }),
-        } as any,
+        } as unknown,
         {
           type: "number",
           position: "left",

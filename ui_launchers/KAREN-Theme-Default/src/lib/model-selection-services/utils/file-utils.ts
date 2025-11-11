@@ -2,8 +2,10 @@
  * File system utilities for model selection services
  */
 
-import { promises as fs } from 'fs';
+import { promises as fs, Stats, watch } from 'fs';
 import * as path from 'path';
+import * as os from 'os';
+import { execSync } from 'child_process';
 
 /**
  * Check if a file exists
@@ -59,8 +61,8 @@ export async function getFileModTime(filePath: string): Promise<Date | null> {
 export async function ensureDirectory(dirPath: string): Promise<void> {
   try {
     await fs.mkdir(dirPath, { recursive: true });
-  } catch (error: any) {
-    if (error.code !== 'EEXIST') {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code !== 'EEXIST') {
       throw error;
     }
   }
@@ -76,8 +78,8 @@ export async function readDirectory(
     recursive?: boolean;
     includeStats?: boolean;
   } = {}
-): Promise<Array<{ name: string; path: string; stats?: any }>> {
-  const results: Array<{ name: string; path: string; stats?: any }> = [];
+): Promise<Array<{ name: string; path: string; stats?: Stats }>> {
+  const results: Array<{ name: string; path: string; stats?: Stats }> = [];
   
   try {
     const entries = await fs.readdir(dirPath);
@@ -105,7 +107,7 @@ export async function readDirectory(
         });
       }
     }
-  } catch (error) {
+  } catch {
     // Directory doesn't exist or can't be read
     return [];
   }
@@ -232,7 +234,7 @@ export async function deleteDirectory(dirPath: string): Promise<boolean> {
 /**
  * Read JSON file safely
  */
-export async function readJsonFile<T = any>(filePath: string): Promise<T | null> {
+export async function readJsonFile<T = unknown>(filePath: string): Promise<T | null> {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(content);
@@ -244,7 +246,7 @@ export async function readJsonFile<T = any>(filePath: string): Promise<T | null>
 /**
  * Write JSON file safely
  */
-export async function writeJsonFile(filePath: string, data: any): Promise<boolean> {
+export async function writeJsonFile(filePath: string, data: unknown): Promise<boolean> {
   try {
     const content = JSON.stringify(data, null, 2);
     await fs.writeFile(filePath, content, 'utf-8');
@@ -342,7 +344,7 @@ export function createTempFilePath(prefix: string = 'temp', extension: string = 
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2);
   const fileName = `${prefix}_${timestamp}_${random}${extension}`;
-  return joinPaths(require('os').tmpdir(), fileName);
+  return joinPaths(os.tmpdir(), fileName);
 }
 
 /**
@@ -352,8 +354,7 @@ export function watchFile(
   filePath: string,
   callback: (eventType: string, filename: string | null) => void
 ): () => void {
-  const fs = require('fs');
-  const watcher = fs.watch(filePath, callback);
+  const watcher = watch(filePath, callback);
   
   return () => {
     watcher.close();
@@ -368,8 +369,7 @@ export function watchDirectory(
   callback: (eventType: string, filename: string | null) => void,
   recursive: boolean = false
 ): () => void {
-  const fs = require('fs');
-  const watcher = fs.watch(dirPath, { recursive }, callback);
+  const watcher = watch(dirPath, { recursive }, callback);
   
   return () => {
     watcher.close();
@@ -385,7 +385,6 @@ export async function getDiskUsage(dirPath: string): Promise<{
   available: number;
 } | null> {
   try {
-    const { execSync } = require('child_process');
     let command: string;
     
     if (process.platform === 'win32') {

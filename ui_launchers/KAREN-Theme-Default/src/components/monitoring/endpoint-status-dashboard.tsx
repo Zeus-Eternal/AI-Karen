@@ -482,7 +482,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               <Label>Filter:</Label>
               <select
                 value={logFilter}
-                onChange={(e) => setLogFilter(e.target.value as any)}
+                onChange={(e) => setLogFilter(e.target.value as unknown)}
                 className="rounded border px-3 py-1 text-sm md:text-base lg:text-lg"
               >
                 <option value="all">All Logs</option>

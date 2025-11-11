@@ -23,7 +23,7 @@
   // ---------------------------
   const originalConsoleError = console.error.bind(console);
 
-  function isSuppressedExtensionError(args: unknown[]): boolean {
+  function isSuppressedExtensionError(args: any[]): boolean {
     const first = args[0];
     const hasExtObj =
       args.some(

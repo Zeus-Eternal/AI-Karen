@@ -153,7 +153,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
       .filter((s) => s.fields.length > 0);
   }, [sections, searchQuery]);
 
-  const validateField = (field: PluginConfigField, value: any): string | null => {
+  const validateField = (field: PluginConfigField, value: unknown): string | null => {
     if (field.required && (value === undefined || value === null || value === "")) {
       return `${field.label} is required`;
     }
@@ -177,14 +177,14 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
   const validateConfig = (): ValidationError[] => {
     const errors: ValidationError[] = [];
     for (const field of plugin.manifest.configSchema || []) {
-      const value = (config as any)[field.key];
+      const value = (config as unknown)[field.key];
       const error = validateField(field, value);
       if (error) errors.push({ field: field.key, message: error });
     }
     return errors;
   };
 
-  const handleFieldChange = (fieldKey: string, value: any) => {
+  const handleFieldChange = (fieldKey: string, value: unknown) => {
     setConfig((prev) => ({ ...prev, [fieldKey]: value }));
     // Clear validation error for this field
     setValidationErrors((prev) => prev.filter((e) => e.field !== fieldKey));
@@ -236,7 +236,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
   };
 
   const renderField = (field: PluginConfigField) => {
-    const value = (config as any)[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
+    const value = (config as unknown)[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
     const error = validationErrors.find((e) => e.field === field.key);
     const isPassword = field.type === "password";
     const showPassword = !!showPasswords[field.key];

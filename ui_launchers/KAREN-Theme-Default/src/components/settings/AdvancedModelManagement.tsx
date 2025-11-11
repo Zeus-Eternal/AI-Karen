@@ -79,7 +79,7 @@ export default function AdvancedModelManagement() {
       setStorageInfo(storageResponse);
       setSystemHealth(healthResponse);
     } catch (error) {
-      const info = handleApiError(error as any, 'loadSystemInfo');
+      const info = handleApiError(error as unknown, 'loadSystemInfo');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -119,7 +119,7 @@ export default function AdvancedModelManagement() {
         loadSystemInfo();
       }, 2000);
     } catch (error) {
-      const info = handleApiError(error as any, 'runCleanup');
+      const info = handleApiError(error as unknown, 'runCleanup');
       toast({
         variant: 'destructive',
         title: info.title,

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Permission, AccessContext } from '@/types/rbac';
-import { useRBAC } from '@/providers/rbac-provider';
+import { useRBAC } from '@/providers/rbac-hooks';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShieldX, Lock, AlertTriangle } from 'lucide-react';
 
@@ -67,7 +67,7 @@ export function PermissionGate({
 }
 
 export interface PermissionDeniedFallbackProps {
-  permissionResult: any;
+  permissionResult: unknown;
 }
 
 function PermissionDeniedFallback({ permissionResult }: PermissionDeniedFallbackProps) {

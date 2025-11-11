@@ -68,7 +68,7 @@ function logSessionValidationAttempt(attempt: SessionValidationAttempt): void {
 }
 
 /** Heuristics for retryable errors */
-function isRetryableError(error: any): boolean {
+function isRetryableError(error: Error): boolean {
   if (!error) return false;
   const msg = String(error.message || error).toLowerCase();
   const isAbort = error.name === 'AbortError' || msg.includes('timeout');
@@ -109,7 +109,7 @@ async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
       error: `Backend health check failed with status ${response.status}`,
       timestamp: new Date(),
     };
-  } catch (error: any) {
+  } catch (error: Error) {
     return {
       isConnected: false,
       responseTime: Date.now() - start,
@@ -183,12 +183,12 @@ export async function GET(request: NextRequest) {
       exponentialBackoff: retryPolicy.jitterEnabled,
       headers,
       // extra retry guards for transient failures
-      shouldRetry: (status?: number, error?: any) =>
+      shouldRetry: (status?: number, error?: unknown) =>
         (typeof status === 'number' && isRetryableStatus(status)) || isRetryableError(error),
     };
 
     let result: {
-      data: any;
+      data: unknown;
       statusCode?: number;
       retryCount?: number;
     };

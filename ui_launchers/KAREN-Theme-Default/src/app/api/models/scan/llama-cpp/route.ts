@@ -11,7 +11,7 @@ type ModelRecord = {
   size: number;
   size_human: string;
   modified: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   header?: {
     gguf: boolean;
     version?: number;
@@ -104,8 +104,8 @@ function parseQuery(request: NextRequest) {
 /**
  * Extract GGUF-ish metadata from filename patterns, robust to many community conventions.
  */
-function extractGGUFMetadataFromFilename(filename: string): Record<string, any> {
-  const meta: Record<string, any> = {};
+function extractGGUFMetadataFromFilename(filename: string): Record<string, unknown> {
+  const meta: Record<string, unknown> = {};
   const fn = filename;
   const lower = fn.toLowerCase();
 
@@ -348,7 +348,7 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: any) {
+  } catch (error: Error) {
     return NextResponse.json(
       {
         models: [],

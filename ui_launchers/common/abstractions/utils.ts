@@ -233,7 +233,7 @@ export function parseMarkdown(markdown: string): string {
     .replace(/\n/g, '<br>');
 }
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -245,7 +245,7 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => any>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -276,7 +276,7 @@ export function deepClone<T>(obj: T): T {
   return obj;
 }
 
-export function mergeDeep<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+export function mergeDeep<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
   const result = { ...target };
   
   for (const key in source) {
@@ -363,7 +363,7 @@ export class StorageManager {
     this.prefix = prefix;
   }
 
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     try {
       const serialized = JSON.stringify(value);
       localStorage.setItem(`${this.prefix}-${key}`, serialized);
@@ -425,7 +425,7 @@ export class EventEmitter {
     this.events[event] = this.events[event].filter(cb => cb !== callback);
   }
 
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: unknown[]): void {
     if (!this.events[event]) return;
     this.events[event].forEach(callback => {
       try {
@@ -437,7 +437,7 @@ export class EventEmitter {
   }
 
   once(event: string, callback: Function): void {
-    const onceCallback = (...args: any[]) => {
+    const onceCallback = (...args: unknown[]) => {
       callback(...args);
       this.off(event, onceCallback);
     };

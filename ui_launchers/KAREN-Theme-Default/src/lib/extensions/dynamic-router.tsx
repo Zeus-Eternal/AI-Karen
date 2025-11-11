@@ -66,20 +66,19 @@ export function DynamicExtensionRouter({ children, fallback: Fallback }: Dynamic
  * Renders an extension route with proper error boundaries
  */
 function ExtensionRouteRenderer({ route }: { route: ExtensionRoute }) {
-  try {
-    const Component = route.component;
-    
-    return (
-      <ExtensionErrorBoundary extensionId={route.extensionId} routePath={route.path}>
-        <div className={`extension-route extension-${route.extensionId}`} data-extension-id={route.extensionId}>
-          <Component />
-        </div>
-      </ExtensionErrorBoundary>
-    );
-  } catch (error) {
-    safeError(`DynamicExtensionRouter: Error rendering route ${route.path}:`, error);
-    return <ExtensionErrorFallback extensionId={route.extensionId} error={error} />;
+  const Component = route.component;
+  if (!Component) {
+    safeError(`DynamicExtensionRouter: Missing component for route ${route.path}`);
+    return <ExtensionErrorFallback extensionId={route.extensionId} routePath={route.path} />;
   }
+
+  return (
+    <ExtensionErrorBoundary extensionId={route.extensionId} routePath={route.path}>
+      <div className={`extension-route extension-${route.extensionId}`} data-extension-id={route.extensionId}>
+        <Component />
+      </div>
+    </ExtensionErrorBoundary>
+  );
 }
 
 /**
@@ -100,15 +99,22 @@ function ExtensionLoadingFallback({ extensionId }: { extensionId: string }) {
 /**
  * Error boundary for extension routes
  */
+interface ExtensionErrorBoundaryProps {
+  children: React.ReactNode;
+  extensionId: string;
+  routePath: string;
+}
+
+interface ExtensionErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
 class ExtensionErrorBoundary extends React.Component<
-  { 
-    children: React.ReactNode; 
-    extensionId: string; 
-    routePath: string;
-  },
-  { hasError: boolean; error?: Error }
+  ExtensionErrorBoundaryProps,
+  ExtensionErrorBoundaryState
 > {
-  constructor(props: any) {
+  constructor(props: ExtensionErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -150,7 +156,7 @@ function ExtensionErrorFallback({
   routePath 
 }: { 
   extensionId: string; 
-  error?: any;
+  error?: unknown;
   routePath?: string;
 }) {
   const handleRetry = () => {
@@ -175,13 +181,13 @@ function ExtensionErrorFallback({
           <p className="text-sm text-gray-500 mb-4">Route: {routePath}</p>
         )}
         
-        {error && (
+        {error != null && (
           <details className="text-left bg-gray-100 rounded p-3 mb-4">
             <summary className="cursor-pointer text-sm font-medium text-gray-700">
               View technical details
             </summary>
             <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
-              {error.toString()}
+              {String(error)}
             </pre>
           </details>
         )}
@@ -208,6 +214,7 @@ function ExtensionErrorFallback({
 /**
  * Hook to check if current path matches an extension route
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useIsExtensionRoute() {
   const pathname = usePathname();
   const routes = useExtensionRoutes();
@@ -222,6 +229,7 @@ export function useIsExtensionRoute() {
 /**
  * Hook to get the current extension route
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCurrentExtensionRoute() {
   const pathname = usePathname();
   const routes = useExtensionRoutes();

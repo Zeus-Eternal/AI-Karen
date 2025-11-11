@@ -26,14 +26,14 @@ type AvailableModel = {
   name?: string;
   provider: string;
   capabilities?: string[];
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 type SwitchResult = {
   success: boolean;
   message?: string;
   error?: string;
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 // --- Utility: safe JSON body parse with strict validation
@@ -47,7 +47,7 @@ async function readBody(req: NextRequest): Promise<SwitchModelRequest> {
   if (!raw || typeof raw !== 'object') {
     throw new Error('Request body must be a JSON object');
   }
-  const b = raw as Record<string, any>;
+  const b = raw as Record<string, unknown>;
 
   const to_model_id = typeof b.to_model_id === 'string' ? b.to_model_id.trim() : '';
   if (!to_model_id) {
@@ -96,13 +96,13 @@ async function auditLogSafe(
   userId: string | undefined,
   action: string,
   resource: string,
-  details: Record<string, any>,
+  details: Record<string, unknown>,
   req: NextRequest,
 ): Promise<void> {
   try {
     const mod = await import('@/lib/audit/audit-logger');
-    if ((mod as any)?.auditLogger?.log) {
-      await (mod as any).auditLogger.log(userId || 'unknown', action, resource, {
+    if ((mod as unknown)?.auditLogger?.log) {
+      await (mod as unknown).auditLogger.log(userId || 'unknown', action, resource, {
         resourceId: details?.to_model_id ?? details?.from_model_id,
         details,
         request: req,
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
         }),
       },
     );
-  } catch (err: any) {
+  } catch (err: Error) {
     const msg = err?.message ?? 'Request processing failed';
 
     // Distinguish 4xx from 5xx based on common validation errors

@@ -109,8 +109,8 @@ class TelemetryService {
       timestamp: new Date().toISOString(),
       sessionId: this.sessionId,
       userId: this.getUserId(),
-      userAgent: isBrowser ? navigator.userAgent : 'unknown',
-      url: isBrowser ? window.location.href : 'unknown',
+      userAgent: isBrowser ? navigator.userAgent : 'any',
+      url: isBrowser ? window.location.href : 'any',
     };
 
     // Enforce queue cap (drop oldest)

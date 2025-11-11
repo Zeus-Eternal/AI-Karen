@@ -112,7 +112,7 @@ export function FixedModelProviderIntegration() {
           </div>
 
           <div className="grid gap-4">
-            {providers.map((provider: any) => (
+            {providers.map((provider: unknown) => (
               <div
                 key={provider.id ?? provider.name}
                 className="p-4 border rounded-lg hover:border-gray-300"

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useUIStore, selectErrorState } from '../store';
 
 export interface ErrorRecoveryOptions {
@@ -19,9 +19,17 @@ export interface ErrorRecoveryState {
   lastRetryAt: Date | null;
 }
 
+const createDefaultErrorRecoveryState = (): ErrorRecoveryState => ({
+  error: null,
+  retryCount: 0,
+  isRetrying: false,
+  canRetry: true,
+  lastRetryAt: null,
+});
+
 export function useErrorRecovery(
   key: string,
-  operation: () => Promise<any>,
+  operation: () => Promise<unknown>,
   options: ErrorRecoveryOptions = {}
 ) {
   const {
@@ -34,13 +42,17 @@ export function useErrorRecovery(
     onRecovery,
   } = options;
   
-  const [state, setState] = useState<ErrorRecoveryState>({
-    error: null,
-    retryCount: 0,
-    isRetrying: false,
-    canRetry: true,
-    lastRetryAt: null,
-  });
+  const initialState = useMemo(() => createDefaultErrorRecoveryState(), []);
+  const [state, setState] = useState<ErrorRecoveryState>(initialState);
+  const stateRef = useRef<ErrorRecoveryState>(initialState);
+
+  const syncState = useCallback((updater: (prev: ErrorRecoveryState) => ErrorRecoveryState) => {
+    setState(prev => {
+      const next = updater(prev);
+      stateRef.current = next;
+      return next;
+    });
+  }, []);
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { setError, clearError } = useUIStore(selectErrorState(key));
@@ -49,61 +61,53 @@ export function useErrorRecovery(
     return retryDelay * Math.pow(backoffMultiplier, retryCount);
   }, [retryDelay, backoffMultiplier]);
   
-  const executeOperation = useCallback(async (isRetry = false) => {
+  const executeOperation = useCallback(async function executeOperationImpl(isRetry = false) {
     try {
-      setState(prev => ({
+      syncState(prev => ({
         ...prev,
         isRetrying: isRetry,
         error: null,
       }));
-      
+
       clearError();
-      
+
       const result = await operation();
-      
-      // Reset state on success
-      setState({
-        error: null,
-        retryCount: 0,
-        isRetrying: false,
-        canRetry: true,
-        lastRetryAt: null,
-      });
-      
+
+      syncState(() => createDefaultErrorRecoveryState());
+
       if (isRetry && onRecovery) {
         onRecovery();
       }
-      
+
       return result;
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      
-      setState(prev => {
-        const newRetryCount = prev.retryCount + 1;
-        const canStillRetry = newRetryCount < maxAutoRetries;
-        const shouldRetryError = shouldRetry ? shouldRetry(errorObj, newRetryCount) : true;
-        
-        return {
-          error: errorObj,
-          retryCount: newRetryCount,
-          isRetrying: false,
-          canRetry: canStillRetry && shouldRetryError,
-          lastRetryAt: isRetry ? new Date() : prev.lastRetryAt,
-        };
-      });
-      
+      const currentState = stateRef.current;
+      const nextRetryCount = currentState.retryCount + 1;
+      const canStillRetry = nextRetryCount < maxAutoRetries;
+      const shouldRetryError = shouldRetry ? shouldRetry(errorObj, nextRetryCount) : true;
+      const nextState: ErrorRecoveryState = {
+        error: errorObj,
+        retryCount: nextRetryCount,
+        isRetrying: false,
+        canRetry: canStillRetry && shouldRetryError,
+        lastRetryAt: isRetry ? new Date() : currentState.lastRetryAt,
+      };
+
+      syncState(() => nextState);
+
       setError(errorObj.message);
-      
-      if (autoRetry && state.canRetry) {
-        const delay = calculateDelay(state.retryCount);
-        
+
+      if (autoRetry && nextState.canRetry) {
+        const delay = calculateDelay(currentState.retryCount);
+
         timeoutRef.current = setTimeout(() => {
-          executeOperation(true);
+          executeOperationImpl(true);
         }, delay);
-      } else if (state.retryCount >= maxAutoRetries && onMaxRetriesReached) {
+      } else if (nextRetryCount >= maxAutoRetries && onMaxRetriesReached) {
         onMaxRetriesReached(errorObj);
       }
-      
+
       throw errorObj;
     }
   }, [
@@ -116,8 +120,7 @@ export function useErrorRecovery(
     calculateDelay,
     clearError,
     setError,
-    state.retryCount,
-    state.canRetry,
+    syncState,
   ]);
   
   const manualRetry = useCallback(() => {
@@ -133,16 +136,10 @@ export function useErrorRecovery(
       clearTimeout(timeoutRef.current);
     }
     
-    setState({
-      error: null,
-      retryCount: 0,
-      isRetrying: false,
-      canRetry: true,
-      lastRetryAt: null,
-    });
+    syncState(() => createDefaultErrorRecoveryState());
     
     clearError();
-  }, [clearError]);
+  }, [clearError, syncState]);
   
   useEffect(() => {
     return () => {
@@ -162,7 +159,7 @@ export function useErrorRecovery(
 
 export function useNetworkErrorRecovery(
   key: string,
-  operation: () => Promise<any>,
+  operation: () => Promise<unknown>,
   options: ErrorRecoveryOptions = {}
 ) {
   const networkAwareOptions: ErrorRecoveryOptions = {
@@ -189,10 +186,10 @@ export function useNetworkErrorRecovery(
 
 export function useFormErrorRecovery(
   key: string,
-  submitFn: (data: any) => Promise<any>,
+  submitFn: (data: unknown) => Promise<unknown>,
   options: ErrorRecoveryOptions = {}
 ) {
-  const [formData, setFormData] = useState<any>(null);
+  const [formData, setFormData] = useState<unknown>(null);
   
   const formAwareOptions: ErrorRecoveryOptions = {
     ...options,
@@ -216,7 +213,7 @@ export function useFormErrorRecovery(
   
   const recovery = useErrorRecovery(key, operation, formAwareOptions);
   
-  const submitForm = useCallback(async (data: any) => {
+  const submitForm = useCallback(async (data: unknown) => {
     setFormData(data);
     return recovery.execute();
   }, [recovery]);

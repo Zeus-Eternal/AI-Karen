@@ -122,7 +122,8 @@ export class AccessibilityDocumentationGenerator {
           this.componentRegistry.set(componentInfo.name, componentInfo);
         }
       } catch (error) {
-      }
+    // Handle error silently
+  }
     }
   }
   /**
@@ -230,7 +231,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Analyze AST for accessibility patterns
    */
-  private analyzeAST(ast: any, content: string): any {
+  private analyzeAST(ast: unknown, content: string): any {
     const analysis = {
       ariaAttributes: new Set<string>(),
       eventHandlers: new Set<string>(),
@@ -274,7 +275,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify accessibility features
    */
-  private identifyAccessibilityFeatures(analysis: any): AccessibilityFeature[] {
+  private identifyAccessibilityFeatures(analysis: unknown): AccessibilityFeature[] {
     const features: AccessibilityFeature[] = [];
     // Check for semantic HTML
     const semanticElements = ['button', 'nav', 'main', 'header', 'footer', 'section', 'article'];
@@ -312,7 +313,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Extract ARIA attributes with documentation
    */
-  private extractAriaAttributes(analysis: any): AriaAttribute[] {
+  private extractAriaAttributes(analysis: unknown): AriaAttribute[] {
     const ariaAttributes: AriaAttribute[] = [];
     const ariaDocumentation: Record<string, { purpose: string; usage: string; required: boolean }> = {
       'aria-label': {
@@ -363,7 +364,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify keyboard support patterns
    */
-  private identifyKeyboardSupport(analysis: any): KeyboardSupport[] {
+  private identifyKeyboardSupport(analysis: unknown): KeyboardSupport[] {
     const keyboardSupport: KeyboardSupport[] = [];
     // Standard keyboard patterns based on component type
     if (analysis.htmlElements.has('button')) {
@@ -411,7 +412,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify screen reader support features
    */
-  private identifyScreenReaderSupport(analysis: any): ScreenReaderFeature[] {
+  private identifyScreenReaderSupport(analysis: unknown): ScreenReaderFeature[] {
     const features: ScreenReaderFeature[] = [];
     if (analysis.ariaAttributes.has('aria-label')) {
       features.push({
@@ -442,7 +443,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate usage examples
    */
-  private generateExamples(componentName: string, analysis: any): AccessibilityExample[] {
+  private generateExamples(componentName: string, analysis: unknown): AccessibilityExample[] {
     const examples: AccessibilityExample[] = [];
     // Good example
     examples.push({
@@ -465,7 +466,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate good example code
    */
-  private generateGoodExample(componentName: string, analysis: any): string {
+  private generateGoodExample(componentName: string, analysis: unknown): string {
     const hasAriaLabel = analysis.ariaAttributes.has('aria-label');
     const hasKeyboard = analysis.eventHandlers.has('onKeyDown');
     const hasButton = analysis.htmlElements.has('button');
@@ -500,7 +501,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate accessibility guidelines
    */
-  private generateGuidelines(componentName: string, analysis: any): string[] {
+  private generateGuidelines(componentName: string, analysis: unknown): string[] {
     const guidelines: string[] = [];
     guidelines.push('Always provide meaningful labels for interactive elements');
     guidelines.push('Ensure keyboard accessibility for all interactive features');
@@ -518,7 +519,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify common accessibility issues
    */
-  private identifyCommonIssues(componentName: string, analysis: any): AccessibilityIssue[] {
+  private identifyCommonIssues(componentName: string, analysis: unknown): AccessibilityIssue[] {
     const issues: AccessibilityIssue[] = [];
     // Generic issues
     issues.push({
@@ -546,7 +547,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate testing instructions
    */
-  private generateTestingInstructions(componentName: string, analysis: any): TestingInstruction[] {
+  private generateTestingInstructions(componentName: string, analysis: unknown): TestingInstruction[] {
     const instructions: TestingInstruction[] = [];
     // Keyboard testing
     instructions.push({

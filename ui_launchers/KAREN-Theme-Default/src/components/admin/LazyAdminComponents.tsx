@@ -2,7 +2,7 @@
  * Email Template Preview API (Production Hardened)
  *
  * POST /api/admin/email/templates/[id]/preview
- * Body: { variables?: Record<string, any> }
+ * Body: { variables?: Record<string, unknown> }
  *
  * Features:
  * - Strict auth (admin | super_admin)
@@ -132,7 +132,7 @@ export async function POST(
     }
 
     // Auth
-    const authResult: any = await adminAuthMiddleware(request, ['admin', 'super_admin']);
+    const authResult: unknown = await adminAuthMiddleware(request, ['admin', 'super_admin']);
     // Middleware in your codebase can return either a NextResponse or a structured object
     if (authResult instanceof NextResponse) {
       // Pass through but ensure correlation header
@@ -209,7 +209,7 @@ export async function POST(
             name: template.name,
             template_type: template.template_type,
             variables: template.variables,
-            updated_at: (template as any)?.updated_at ?? undefined,
+            updated_at: (template as unknown)?.updated_at ?? undefined,
           },
           meta: {
             correlation_id: correlationId,
@@ -225,7 +225,7 @@ export async function POST(
     res.headers.set('cache-control', 'no-store');
 
     return res;
-  } catch (err: any) {
+  } catch (err: Error) {
     // Best-effort audit for failures
     try {
       await auditLogger.log('system', 'email_template_preview_failed', 'email_template', {

@@ -62,13 +62,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Export the context for testing purposes
 export { AuthContext };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+// Hook moved to separate file for React Fast Refresh compatibility
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Enhanced authentication state with error handling and loading states
@@ -351,7 +345,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         logout();
       }
     }, sessionRefreshInterval);
-  }, [refreshSession, logout]);
+  }, [refreshSession, logout, sessionRefreshInterval]);
 
   // Enhanced login method with improved error handling and ConnectionManager integration
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -459,9 +453,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Small delay to ensure state is fully updated before callback
       await new Promise((resolve) => setTimeout(resolve, 10));
-    } catch (error) {
+    } catch (err) {
       // Enhanced error handling with categorization
-      const authError = createAuthError(error);
+      const authError = createAuthError(err);
 
       // Clear authentication state
       setUser(null);
@@ -476,11 +470,11 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       stopSessionRefreshTimer();
 
       const errorObject =
-        error instanceof Error ? error : new Error(String(error));
+        err instanceof Error ? err : new Error(String(err));
       const retryCount =
-        error instanceof ConnectionError &&
-        typeof error.retryCount === "number"
-          ? error.retryCount
+        err instanceof ConnectionError &&
+        typeof err.retryCount === "number"
+          ? err.retryCount
           : undefined;
 
       connectivityLogger.logAuthentication(
@@ -507,7 +501,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      throw error;
+      throw err;
     }
   };
 
@@ -795,7 +789,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return () => {
       stopSessionRefreshTimer();
     };
-  }, []);
+  }, [checkAuth, isAuthenticated, stopSessionRefreshTimer]);
 
   // Update activity timestamp on user interaction
   useEffect(() => {

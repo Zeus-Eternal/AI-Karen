@@ -82,13 +82,13 @@ export interface SettingsState {
 // Event interfaces
 export interface ChatEvent {
   type: 'message_sent' | 'message_received' | 'recording_started' | 'recording_stopped' | 'settings_changed';
-  payload: any;
+  payload: unknown;
   timestamp: Date;
 }
 
 export interface SettingsEvent {
   type: 'setting_changed' | 'settings_saved' | 'settings_reset';
-  payload: any;
+  payload: unknown;
   timestamp: Date;
 }
 
@@ -160,13 +160,13 @@ export interface PluginInfo {
   version: string;
   category: string;
   enabled: boolean;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   author: string;
 }
 
 export interface PluginExecutionRequest {
   pluginName: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   userId?: string;
   sessionId?: string;
   timeout?: number;
@@ -174,7 +174,7 @@ export interface PluginExecutionRequest {
 
 export interface PluginExecutionResult {
   success: boolean;
-  result?: any;
+  result?: unknown;
   stdout?: string;
   stderr?: string;
   error?: string;
@@ -186,7 +186,7 @@ export interface PluginExecutionResult {
 export interface MemoryEntry {
   id: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   tags: string[];
   userId?: string;
   sessionId?: string;
@@ -209,7 +209,7 @@ export interface AnalyticsEvent {
   id: string;
   userId?: string;
   eventType: string;
-  eventData: Record<string, any>;
+  eventData: Record<string, unknown>;
   timestamp: Date;
 }
 

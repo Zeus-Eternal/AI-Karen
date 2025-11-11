@@ -28,8 +28,8 @@ import './karen-backend-direct-patch';
 declare global {
   interface Window {
     __KAREN_BACKEND_PATCH__?: KarenBackendPatchState;
-    extensionErrorIntegration?: unknown;
-    handleKarenBackendError?: unknown;
+    extensionErrorIntegration?: any;
+    handleKarenBackendError?: any;
   }
 }
 
@@ -95,7 +95,7 @@ export function initializeExtensionErrorRecovery(): InitResult {
         'Read-only capability shielding'
       ]
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to initialize extension error recovery system:', error);
     return {
       success: false,

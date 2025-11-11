@@ -67,7 +67,8 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
         setSelectedModelState(result.selectedModel.id);
         setSelectedModelInfo(result.selectedModel);
         setSelectionReason(result.selectionReason);
-        setIsModelReady(await modelSelectionService.isModelReady(result.selectedModel.id));
+        const ready = await modelSelectionService.isModelReady(result.selectedModel.id);
+        setIsModelReady(ready);
         
         // Update last selected model in preferences
         await modelSelectionService.updateLastSelectedModel(result.selectedModel.id);
@@ -79,7 +80,7 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
           id: result.selectedModel.id,
           name: result.selectedModel.name,
           reason: result.selectionReason,
-          ready: isModelReady
+          ready,
         });
       } else {
         setSelectedModelState(null);
@@ -105,14 +106,14 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
         setSelectedModelState(modelId);
         setSelectedModelInfo(model);
         setSelectionReason('user_selected');
-        setIsModelReady(await modelSelectionService.isModelReady(modelId));
+        const ready = await modelSelectionService.isModelReady(modelId);
+        setIsModelReady(ready);
         
         // Update last selected model in preferences
         await modelSelectionService.updateLastSelectedModel(modelId);
         
         onModelSelected?.(model, 'user_selected');
-        
-        safeLog('User selected model:', modelId);
+        safeLog('User selected model:', { id: modelId, ready });
       } else {
         safeError('Model not found:', modelId);
       }

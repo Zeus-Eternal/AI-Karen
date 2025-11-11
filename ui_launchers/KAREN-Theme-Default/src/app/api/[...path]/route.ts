@@ -10,7 +10,7 @@ const BACKEND_URL =
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     // Safely resolve params with error handling
-    let resolvedParams;
+    let resolvedParams: { path: string[] };
     try {
       resolvedParams = await params;
     } catch (error) {
@@ -45,7 +45,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();
-      } catch (e) {
+      } catch {
         // Body might be empty
       }
     }
@@ -94,7 +94,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     // Retry transient fetch errors (e.g., aborted/other side closed)
     const maxAttempts = (isProviderEndpoint || isAuthEndpoint || isModelEndpoint || isHealthEndpoint) ? 2 : 1;
     let response: Response | null = null;
-    let lastError: any = null;
+    let lastError: unknown = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         response = await fetch(backendUrl, {
@@ -104,17 +104,17 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
           // Forward cookies if any (Next.js app routes run server-side)
           // Note: We intentionally do not set credentials here; cookies are forwarded via headers
           signal: controller.signal,
-          // @ts-ignore undici option in Node runtime
           keepalive: true,
           cache: 'no-store',
         });
         lastError = null;
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
         lastError = err;
         // If aborted or UND_ERR_SOCKET and we have attempts left, small backoff
-        const msg = String(err?.message || err);
-        const isAbort = err?.name === 'AbortError';
+        const error = err as Error;
+        const msg = String(error?.message || err);
+        const isAbort = error?.name === 'AbortError';
         const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
         if (attempt < maxAttempts && (isAbort || isSocket)) {
           await new Promise(res => setTimeout(res, 300));
@@ -136,7 +136,6 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
           headers: { ...headers, Connection: 'keep-alive' },
           body: body || undefined,
           signal: controller.signal,
-          // @ts-ignore undici option in Node runtime
           keepalive: true,
           cache: 'no-store',
         });
@@ -144,11 +143,11 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         if (fallbackResp) {
           response = fallbackResp;
         }
-      } catch (e) {
+      } catch {
         // ignore, will continue with original response
       }
     }
-    let data;
+    let data: any;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {
@@ -159,7 +158,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {

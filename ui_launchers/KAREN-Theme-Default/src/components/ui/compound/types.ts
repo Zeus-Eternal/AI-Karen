@@ -51,9 +51,9 @@ export interface FormFieldProps<
 > {
   name: TName
   control?: any
-  render: ({ field }: { field: any }) => React.ReactElement
+  render: ({ field }: { field: unknown }) => React.ReactElement
   defaultValue?: any
-  rules?: any
+  rules?: unknown
 }
 
 export interface FormLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
@@ -162,7 +162,7 @@ export type CompoundComponent<T> = T & {
   displayName?: string
 }
 
-export type CompoundComponentCollection<T extends Record<string, any>> = {
+export type CompoundComponentCollection<T extends Record<string, unknown>> = {
   [K in keyof T]: CompoundComponent<T[K]>
 }
 

@@ -38,7 +38,7 @@ export interface SettingsSection {
 }
 
 export interface SettingsPanelCallbacks {
-  onSettingChange?: (key: keyof KarenSettings, value: any, oldValue: any) => void;
+  onSettingChange?: (key: keyof KarenSettings, value: unknown, oldValue: unknown) => void;
   onSettingsSave?: (settings: KarenSettings) => void;
   onSettingsReset?: () => void;
   onSettingsImport?: (settings: KarenSettings) => void;
@@ -57,7 +57,7 @@ export class SharedSettingsPanel implements ISettingsComponent {
   private callbacks: SettingsPanelCallbacks;
   private config: ComponentConfig;
   private debouncedSave: () => void;
-  private changeCallbacks: Array<(key: string, value: any) => void> = [];
+  private changeCallbacks: Array<(key: string, value: unknown) => void> = [];
   private saveCallbacks: Array<(settings: KarenSettings) => void> = [];
 
   constructor(
@@ -273,7 +273,7 @@ export class SharedSettingsPanel implements ISettingsComponent {
     return this.state.settings[key];
   }
 
-  onSettingChanged(callback: (key: string, value: any) => void): void {
+  onSettingChanged(callback: (key: string, value: unknown) => void): void {
     this.changeCallbacks.push(callback);
   }
 
@@ -505,7 +505,7 @@ export class SharedSettingsPanel implements ISettingsComponent {
     }
 
     // Listen for settings changes from other components
-    eventEmitter.on('settings-external-change', (data: { key: string; value: any }) => {
+    eventEmitter.on('settings-external-change', (data: { key: string; value: unknown }) => {
       if (data.key in this.state.settings) {
         this.updateSetting(data.key as keyof KarenSettings, data.value);
       }

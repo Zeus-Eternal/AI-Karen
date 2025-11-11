@@ -53,13 +53,13 @@ export interface PluginConfigField {
   label: string;
   description?: string;
   required: boolean;
-  default?: any;
-  options?: Array<{ label: string; value: any }>;
+  default?: unknown;
+  options?: Array<{ label: string; value: unknown }>;
   validation?: {
     min?: number;
     max?: number;
     pattern?: string;
-    custom?: (value: any) => string | null;
+    custom?: (value: unknown) => string | null;
   };
 }
 /**
@@ -197,7 +197,7 @@ export interface PluginInstallationProgress {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 // Plugin Marketplace Types
@@ -244,7 +244,7 @@ export interface PluginLogEntry {
   timestamp: Date;
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   source: string;
   userId?: string;
 }
@@ -255,7 +255,7 @@ export interface PluginAuditEntry {
   timestamp: Date;
   action: 'install' | 'uninstall' | 'enable' | 'disable' | 'configure' | 'update' | 'permission_grant' | 'permission_revoke';
   userId: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
 }

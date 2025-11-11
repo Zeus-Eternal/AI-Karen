@@ -17,7 +17,6 @@ import {
   login as sessionLogin,
   logout as sessionLogout,
   getSession,
-  clearSession,
   type SessionData
 } from '@/lib/auth/session';
 
@@ -47,15 +46,7 @@ export interface SessionContextType {
   sessionData: SessionData | null;
 }
 
-const SessionContext = createContext<SessionContextType | undefined>(undefined);
-
-export const useSession = () => {
-  const context = useContext(SessionContext);
-  if (context === undefined) {
-    throw new Error('useSession must be used within a SessionProvider');
-  }
-  return context;
-};
+export const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export interface SessionProviderProps {
   children: ReactNode;
