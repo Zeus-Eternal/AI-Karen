@@ -18,6 +18,25 @@ export interface User {
   permissions?: string[];
 }
 
+interface UserApiResponse {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
+}
+
+interface LoginResponse {
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -263,7 +282,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<SessionValidationResponse>(
         validateUrl,
         {
           method: "GET",
@@ -281,7 +300,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
+        const userData = (result.data.user || result.data.user_data) as UserApiResponse;
         const user: User = {
           userId: userData.user_id,
           email: userData.email,
@@ -374,7 +393,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<LoginResponse>(
         loginUrl,
         {
           method: "POST",
@@ -393,7 +412,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = result.data.user || result.data.user_data;
+      const userData = (result.data.user || result.data.user_data) as UserApiResponse | undefined;
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -494,7 +513,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           retryCount,
           metadata: {
             statusCode:
-              error instanceof ConnectionError ? error.statusCode : undefined,
+              err instanceof ConnectionError ? err.statusCode : undefined,
           },
         }
       );
@@ -623,7 +642,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<SessionValidationResponse>(
         validateUrl,
         {
           method: "GET",
@@ -641,7 +660,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
+        const userData = (result.data.user || result.data.user_data) as UserApiResponse;
         const user: User = {
           userId: userData.user_id,
           email: userData.email,

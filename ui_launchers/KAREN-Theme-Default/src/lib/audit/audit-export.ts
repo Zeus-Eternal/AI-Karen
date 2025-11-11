@@ -357,7 +357,17 @@ export class AuditLogExporter {
       case 'user_agent':
         return log.user_agent || '';
       default:
-        return String((log as unknown)[field] || '');
+        if (field in log) {
+          const value = log[field as keyof AuditLog];
+          if (value instanceof Date) {
+            return this.formatDate(value, dateFormat);
+          }
+          if (value === null || value === undefined) {
+            return '';
+          }
+          return String(value);
+        }
+        return '';
     }
   }
 

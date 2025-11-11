@@ -154,6 +154,70 @@ export function WorkflowBuilder({
     setSelectedNode(null);
   }, []);
 
+  const convertToWorkflowDefinition = React.useCallback((): WorkflowDefinition => {
+    const allowedNodeTypes: WorkflowNode['type'][] = ['input', 'output', 'llm', 'memory', 'plugin', 'condition', 'loop', 'custom'];
+
+    const workflowNodes: WorkflowNode[] = nodes.map((node) => {
+      const nodeData = node.data as WorkflowNode['data'];
+      const resolvedType = allowedNodeTypes.includes(nodeData?.nodeType as WorkflowNode['type'])
+        ? (nodeData.nodeType as WorkflowNode['type'])
+        : 'custom';
+
+      const styleRecord = node.style
+        ? (Object.fromEntries(Object.entries(node.style)) as Record<string, unknown>)
+        : undefined;
+
+      return {
+        id: node.id,
+        type: resolvedType,
+        position: node.position,
+        data: nodeData,
+        style: styleRecord,
+      };
+    });
+
+    const allowedEdgeTypes: WorkflowEdge['type'][] = ['default', 'straight', 'step', 'smoothstep'];
+
+    const workflowEdges: WorkflowEdge[] = edges.map((edge) => {
+      const normalizedType = allowedEdgeTypes.includes(edge.type as WorkflowEdge['type'])
+        ? (edge.type as WorkflowEdge['type'])
+        : 'default';
+
+      const styleRecord = edge.style
+        ? (Object.fromEntries(Object.entries(edge.style)) as Record<string, unknown>)
+        : undefined;
+
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle ?? undefined,
+        targetHandle: edge.targetHandle ?? undefined,
+        type: normalizedType,
+        animated: edge.animated,
+        style: styleRecord,
+        data: edge.data,
+      };
+    });
+
+    return {
+      id: workflow?.id || `workflow-${Date.now()}`,
+      name: workflow?.name || 'Untitled Workflow',
+      description: workflow?.description || '',
+      version: workflow?.version || '1.0.0',
+      nodes: workflowNodes,
+      edges: workflowEdges,
+      variables: workflow?.variables || [],
+      tags: workflow?.tags || [],
+      metadata: workflow?.metadata || {
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'current-user',
+        status: 'draft',
+      },
+    };
+  }, [nodes, edges, workflow]);
+
   const validateWorkflow = React.useCallback(async () => {
     setIsValidating(true);
     try {
@@ -179,62 +243,6 @@ export function WorkflowBuilder({
       setIsTesting(false);
     }
   }, [convertToWorkflowDefinition, onTest]);
-
-  const convertToWorkflowDefinition = React.useCallback((): WorkflowDefinition => {
-    const allowedNodeTypes: WorkflowNode['type'][] = ['input', 'output', 'llm', 'memory', 'plugin', 'condition', 'loop', 'custom'];
-
-    const workflowNodes: WorkflowNode[] = nodes.map((node) => {
-      const nodeData = node.data as WorkflowNode['data'];
-      const resolvedType = allowedNodeTypes.includes(nodeData?.nodeType as WorkflowNode['type'])
-        ? (nodeData.nodeType as WorkflowNode['type'])
-        : 'custom';
-
-      return {
-        id: node.id,
-        type: resolvedType,
-        position: node.position,
-        data: nodeData,
-        style: node.style,
-      };
-    });
-
-    const allowedEdgeTypes: WorkflowEdge['type'][] = ['default', 'straight', 'step', 'smoothstep'];
-
-    const workflowEdges: WorkflowEdge[] = edges.map((edge) => {
-      const normalizedType = allowedEdgeTypes.includes(edge.type as WorkflowEdge['type'])
-        ? (edge.type as WorkflowEdge['type'])
-        : 'default';
-
-      return {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle ?? undefined,
-        targetHandle: edge.targetHandle ?? undefined,
-        type: normalizedType,
-        animated: edge.animated,
-        style: edge.style,
-        data: edge.data,
-      };
-    });
-
-    return {
-      id: workflow?.id || `workflow-${Date.now()}`,
-      name: workflow?.name || 'Untitled Workflow',
-      description: workflow?.description || '',
-      version: workflow?.version || '1.0.0',
-      nodes: workflowNodes,
-      edges: workflowEdges,
-      variables: workflow?.variables || [],
-      tags: workflow?.tags || [],
-      metadata: workflow?.metadata || {
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: 'current-user',
-        status: 'draft',
-      },
-    };
-  }, [nodes, edges, workflow]);
 
   const handleSave = React.useCallback(() => {
     if (!onSave) return;

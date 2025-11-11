@@ -466,7 +466,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<UserRecord>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -855,8 +855,8 @@ export class AdminDatabaseUtils {
         user_id: row.user_id as string,
         action: row.action as string,
         resource_type: row.resource_type as string,
-        resource_id: row.resource_id as string | null,
-        details: row.details as Record<string, unknown> | null,
+        resource_id: (row.resource_id as string | null) ?? undefined,
+        details: (row.details as Record<string, unknown> | null) ?? {},
         ip_address: row.ip_address as string | null,
         user_agent: row.user_agent as string | null,
         timestamp: row.timestamp as Date,
@@ -919,13 +919,13 @@ export class AdminDatabaseUtils {
     
     try {
       const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
-      
+
       return result.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         key: row.key as string,
         value: this.parseConfigValue(row.value as string, row.value_type as string),
-        value_type: row.value_type as string,
-        category: row.category as string,
+        value_type: row.value_type as SystemConfig['value_type'],
+        category: row.category as SystemConfig['category'],
         description: row.description as string | null,
         updated_by: row.updated_by as string,
         updated_at: row.updated_at as Date,

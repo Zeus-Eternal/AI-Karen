@@ -10,9 +10,17 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { FC, ReactNode } from 'react';
+import type { FC, ReactNode, ErrorInfo } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
+
+interface ExtendedApiError extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
 
 export interface ErrorContextType {
   // Current error analysis
@@ -22,12 +30,12 @@ export interface ErrorContextType {
   
   // Error handling functions
   analyzeError: (error: Error | string, context?: Partial<ErrorAnalysisRequest>) => Promise<void>;
-  handleApiError: (error: Error, requestContext?: {
+  handleApiError: (error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
   }) => void;
-  handleBoundaryError: (error: Error, errorInfo?: unknown) => void;
+  handleBoundaryError: (error: Error, errorInfo?: ErrorInfo) => void;
   
   // Error management
   clearError: () => void;
@@ -167,7 +175,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [intelligentError, boundaryError, apiError]);
 
   // Handle boundary errors
-  const handleBoundaryError = useCallback((error: Error, errorInfo?: unknown) => {
+  const handleBoundaryError = useCallback((error: Error, errorInfo?: ErrorInfo) => {
     safeError('Error boundary caught error:', error, { useStructuredLogging: true });
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
@@ -192,7 +200,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
-  const handleApiError = useCallback((error: Error, requestContext?: {
+  const handleApiError = useCallback((error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;

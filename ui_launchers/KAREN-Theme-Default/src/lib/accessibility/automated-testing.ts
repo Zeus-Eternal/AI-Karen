@@ -1,9 +1,14 @@
 // ui_launchers/KAREN-Theme-Default/src/lib/accessibility/automated-testing.ts
 import * as axe from 'axe-core';
-import { AxeResults, RunOptions, RuleObject } from 'axe-core';
+import { AxeResults, ElementContext, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
 
 type AxeWindow = Window & { axe: typeof axe };
+
+type ExtendedRunOptions = RunOptions & {
+  include?: ElementContext;
+  exclude?: ElementContext;
+};
 
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
@@ -188,20 +193,20 @@ export class AutomatedAccessibilityTester {
   ): Promise<AccessibilityTestResult> {
     try {
       // Configure axe-core
-      const runOptions: RunOptions = {
+      const runOptions: ExtendedRunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
         },
         rules: config.rules || {}
       };
-      
+
       if (config.include) {
-        (runOptions as unknown).include = config.include;
+        runOptions.include = config.include;
       }
-      
+
       if (config.exclude) {
-        (runOptions as unknown).exclude = config.exclude;
+        runOptions.exclude = config.exclude;
       }
       
       // Run axe-core analysis
@@ -256,7 +261,7 @@ export class AutomatedAccessibilityTester {
       });
 
       // Run axe analysis in the page context
-      const runOptions: RunOptions = {
+      const runOptions: ExtendedRunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
@@ -266,8 +271,8 @@ export class AutomatedAccessibilityTester {
         ...(config.exclude && { exclude: config.exclude })
       };
 
-      const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options: RunOptions) => {
-        const axeInstance = (window as AxeWindow).axe;
+      const axeResults = await page.evaluate<AxeResults, ExtendedRunOptions>(async (options: ExtendedRunOptions) => {
+        const axeInstance = (window as unknown as AxeWindow).axe;
         if (!axeInstance) {
           throw new Error('axe-core is not available in the page context');
         }

@@ -94,26 +94,34 @@ function stableStringify(obj: unknown): string {
 }
 
 function headersToObject(headers: HeaderLike): Record<string, string> {
-  if (!headers) return {};
+  if (!headers) {
+    return {};
+  }
+
+  const normalized: Record<string, string> = {};
+
   if (Array.isArray(headers)) {
-    const out: Record<string, string> = {};
-    for (const [k, v] of headers) out[String(k).toLowerCase()] = String(v);
-    return out;
-  }
-  if (headers instanceof Headers) {
-    const out: Record<string, string> = {};
-    headers.forEach((v, k) => (out[k.toLowerCase()] = v));
-    return out;
-  }
-  // Record<string, string>
-  const headerRecord = headers as Record<string, string | number | boolean | undefined>;
-  for (const k of Object.keys(headerRecord)) {
-    const value = headerRecord[k];
-    if (value !== undefined) {
-      out[k.toLowerCase()] = String(value);
+    for (const [k, v] of headers) {
+      normalized[String(k).toLowerCase()] = String(v);
     }
+    return normalized;
   }
-  return out;
+
+  if (headers instanceof Headers) {
+    headers.forEach((v, k) => {
+      normalized[k.toLowerCase()] = v;
+    });
+    return normalized;
+  }
+
+  const headerRecord = headers as Record<string, string | number | boolean | undefined>;
+  Object.entries(headerRecord).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalized[key.toLowerCase()] = String(value);
+    }
+  });
+
+  return normalized;
 }
 
 function methodAllowsDefaultCaching(method?: string) {

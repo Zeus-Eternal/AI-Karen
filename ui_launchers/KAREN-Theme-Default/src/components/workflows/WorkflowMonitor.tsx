@@ -510,11 +510,12 @@ function ExecutionDetailsPanel({
               <div className="space-y-2">
                 {filteredLogs.map((log, index) => {
                   const logColor = logLevelColors[log.level] ?? logLevelColors.debug;
+                  const hasLogData = log.data !== undefined && log.data !== null;
                   return (
                     <div
                       key={log.id || index}
-                    className={`p-3 rounded border text-sm ${logColor}`}
-                  >
+                      className={`p-3 rounded border text-sm ${logColor}`}
+                    >
                     <div className="flex items-center justify-between mb-1">
                       <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {log.level.toUpperCase()}
@@ -529,7 +530,7 @@ function ExecutionDetailsPanel({
                         Node: {log.nodeId}
                       </p>
                     )}
-                    {log.data && (
+                    {hasLogData && (
                       <details className="mt-2">
                         <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
                         </summary>

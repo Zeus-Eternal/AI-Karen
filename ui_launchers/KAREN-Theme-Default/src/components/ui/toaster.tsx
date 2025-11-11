@@ -93,8 +93,8 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
             stackJustifyClasses[position],
           )}
         >
-          {toasts.map(({ id, title, description, action, ...props }) => {
-            const { className, variant, ...rest } = props as unknown;
+          {toasts.map(({ id, title, description, action, ...toastProps }) => {
+            const { className, variant, ...rest } = toastProps as ToastProps;
 
             return (
               <Toast

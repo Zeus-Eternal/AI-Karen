@@ -117,14 +117,14 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: ElementContext;
-  private options: RunOptions;
+  private readonly container: Document | Element;
+  private readonly options: RunOptions;
 
   constructor(
     container: ElementContext = document,
     options: RunOptions = {}
   ) {
-    this.container = container;
+    this.container = this.normalizeContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -132,6 +132,41 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       },
       ...options,
     };
+  }
+
+  private normalizeContainer(container: ElementContext): Document | Element {
+    if (typeof container === "string") {
+      const resolved = document.querySelector(container);
+      return resolved ?? document;
+    }
+
+    if (container instanceof Document || container instanceof Element) {
+      return container;
+    }
+
+    if (Array.isArray(container)) {
+      const [first] = container;
+      if (first instanceof Element || first instanceof Document) {
+        return first;
+      }
+    }
+
+    if (typeof NodeList !== "undefined" && container instanceof NodeList) {
+      const first = container[0];
+      if (first instanceof Element) {
+        return first;
+      }
+    }
+
+    return document;
+  }
+
+  private getDocument(): Document {
+    if (this.container instanceof Document) {
+      return this.container;
+    }
+
+    return this.container.ownerDocument ?? document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -199,8 +234,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = this.container.querySelectorAll(
-      focusableSelectors.join(", ")
+    const focusableElements = Array.from(
+      this.container.querySelectorAll<HTMLElement>(
+        focusableSelectors.join(", ")
+      )
     );
     const unreachableElements: string[] = [];
     const focusOrderIssues: string[] = [];
@@ -208,26 +245,23 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const skipLinkIssues: string[] = [];
 
     focusableElements.forEach((element) => {
-      const htmlElement = element as HTMLElement;
-
-      if (htmlElement.tabIndex < 0 && !htmlElement.hasAttribute("disabled")) {
-        unreachableElements.push(this.getElementSelector(htmlElement));
+      if (element.tabIndex < 0 && !element.hasAttribute("disabled")) {
+        unreachableElements.push(this.getElementSelector(element));
       }
 
-      if (htmlElement.tabIndex > 0) {
+      if (element.tabIndex > 0) {
         focusOrderIssues.push(
           `Element has positive tabindex: ${this.getElementSelector(
-            htmlElement
+            element
           )}`
         );
       }
     });
 
-    const focusTraps = this.container.querySelectorAll(
-      '[data-focus-trap="true"]'
+    const focusTraps = Array.from(
+      this.container.querySelectorAll<HTMLElement>('[data-focus-trap="true"]')
     );
-    focusTraps.forEach((trap) => {
-      const trapElement = trap as HTMLElement;
+    focusTraps.forEach((trapElement) => {
       const focusableInTrap = trapElement.querySelectorAll(
         focusableSelectors.join(", ")
       );
@@ -241,8 +275,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const skipLinks = this.container.querySelectorAll(
-      '.skip-links a, [href^="#"]'
+    const skipLinks = Array.from(
+      this.container.querySelectorAll<HTMLAnchorElement>(
+        '.skip-links a, [href^="#"]'
+      )
     );
     skipLinks.forEach((link) => {
       const href = link.getAttribute("href");
@@ -352,10 +388,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     ];
 
     const focusTrapCandidates = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         '[data-focus-trap], [aria-modal="true"], [role="dialog"]'
       )
-    ) as HTMLElement[];
+    );
 
     const focusTraps = focusTrapCandidates.map((element) => {
       const innerFocusable = element.querySelectorAll(
@@ -371,10 +407,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     });
 
     const restoreTargets = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         "[data-focus-restore], [data-focus-restoration]"
       )
-    ) as HTMLElement[];
+    );
 
     const focusRestoration = restoreTargets.map((element) => ({
       element: this.getElementSelector(element),
@@ -384,8 +420,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }));
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors.join(", "))
-    ) as HTMLElement[];
+      this.container.querySelectorAll<HTMLElement>(
+        focusableSelectors.join(", ")
+      )
+    );
 
     const focusIndicators = focusableElements.slice(0, 25).map((element) => {
       if (typeof window === "undefined") {
@@ -519,12 +557,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const brokenReferences = new Set<string>();
 
     const allElements = Array.from(
-      this.container.querySelectorAll("*")
-    ) as HTMLElement[];
-    const scopeDocument =
-      this.container instanceof Document
-        ? this.container
-        : this.container.ownerDocument || document;
+      this.container.querySelectorAll<HTMLElement>("*")
+    );
+    const scopeDocument = this.getDocument();
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();
@@ -664,12 +699,17 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     return [...new Set(recommendations)];
   }
 
-  private getElementSelector(element: HTMLElement): string {
-    if (element.id) return `#${element.id}`;
-    if (element.className)
+  private getElementSelector(element: Element): string {
+    if (element.id) {
+      return `#${element.id}`;
+    }
+
+    if (element instanceof HTMLElement && element.className) {
       return `${element.tagName.toLowerCase()}.${
         element.className.split(" ")[0]
       }`;
+    }
+
     return element.tagName.toLowerCase();
   }
 
