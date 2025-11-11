@@ -7,7 +7,7 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Server, Zap, HardDrive } from 'lucide-react';
+import { Server, HardDrive } from 'lucide-react';
 
 export interface CardModel { name: string; description: string; provider: string; size: string; capabilities: string[]; }
 export interface ModelCardProps { model: CardModel; onSelect?: () => void; className?: string; }

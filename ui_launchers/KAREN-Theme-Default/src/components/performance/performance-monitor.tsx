@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Activity, Clock, Zap, X } from "lucide-react";
+import { Activity, Zap, X } from "lucide-react";
 
 export interface PerformanceMetrics {
   // Core Web Vitals / key timings (milliseconds unless noted)
@@ -34,9 +34,6 @@ export interface PerformanceMonitorProps {
   /** Analytics endpoint URL */
   analyticsEndpoint?: string;
 }
-
-/** Utility: now in ms with high resolution */
-const nowMs = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 /** Try to read modern NavigationTiming first, fallback to legacy */
 function readNavigationTimings(): { ttfb?: number; loadTime?: number } {

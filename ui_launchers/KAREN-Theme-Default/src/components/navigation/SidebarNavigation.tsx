@@ -16,6 +16,7 @@ import React, {
   useRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -258,7 +259,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       if (autoFocus && localNavRef.current) {
         localNavRef.current.focus();
       }
-    }, [autoFocus]);
+    }, [autoFocus, navRef]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {

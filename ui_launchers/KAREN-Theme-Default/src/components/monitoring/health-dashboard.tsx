@@ -55,6 +55,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const unsubscribeMetrics = monitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
+      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
     const unsubscribeAlerts = monitor.onAlert((newAlert) => {

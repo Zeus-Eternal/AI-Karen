@@ -71,6 +71,7 @@ export function PerformanceDashboard() {
       setMetrics(metricsData);
       setRecommendations(recommendationsData);
     } catch (error) {
+      console.error('Failed to fetch performance metrics', error);
       setMetrics({
         connectionPool: { totalConnections: 0, activeConnections: 0, connectionReuse: 0, averageConnectionTime: 0 },
         responseCache: { hitRate: 0, totalEntries: 0, memoryUsage: 0, compressionRatio: 0 },
@@ -105,21 +106,6 @@ export function PerformanceDashboard() {
     const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) return `${ms.toFixed(0)}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    if (ms < 3600000) return `${(ms / 60000).toFixed(1)}m`;
-    return `${(ms / 3600000).toFixed(1)}h`;
-  };
 
   const getPerformanceStatus = (value: number, thresholds: { good: number; warning: number }): 'good' | 'warning' | 'error' => {
     if (value <= thresholds.good) return 'good';

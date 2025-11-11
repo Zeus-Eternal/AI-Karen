@@ -8,7 +8,7 @@ import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Send, Inbox, Settings, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
+import { Mail, Send, Inbox, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
 import { Switch } from "@/components/ui/switch";
@@ -74,11 +74,11 @@ export default function GmailPluginPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="gmail-user">Gmail Username</Label>
-            <input id="gmail-user" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Input id="gmail-user" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="gmail-pass" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80 "/>App Password</Label>
-            <input id="gmail-pass" type="password" value={appPassword} onChange={(e) => setAppPassword(e.target.value)} />
+            <Input id="gmail-pass" type="password" value={appPassword} onChange={(e) => setAppPassword(e.target.value)} />
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Use a Gmail app password for SMTP/IMAP access.</p>
           </div>
         </CardContent>
@@ -140,11 +140,11 @@ export default function GmailPluginPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email-check-criteria">Criteria for "Important" (conceptual)</Label>
-            <input id="email-check-criteria" type="text" placeholder="e.g., From:boss@example.com, Subject contains:Urgent" disabled />
+            <Input id="email-check-criteria" type="text" placeholder="e.g., From:boss@example.com, Subject contains:Urgent" disabled />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email-check-frequency">Check frequency (conceptual)</Label>
-            <input id="email-check-frequency" type="text" placeholder="e.g., Every 30 minutes, Hourly" disabled />
+            <Input id="email-check-frequency" type="text" placeholder="e.g., Every 30 minutes, Hourly" disabled />
           </div>
             <Alert className={alertClassName("default", "bg-background")}>
             <Info className="h-4 w-4 " />
