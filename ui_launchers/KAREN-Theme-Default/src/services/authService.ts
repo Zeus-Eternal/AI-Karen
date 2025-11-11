@@ -13,7 +13,10 @@ export class AuthService {
   }
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await this.apiClient.post('/api/auth/login', credentials);
+      const response = await this.apiClient.post<LoginResponse>(
+        '/api/auth/login',
+        credentials
+      );
       return response.data;
     } catch (error: unknown) {
       const normalizedError = normalizeError(error);
@@ -29,7 +32,9 @@ export class AuthService {
   }
   async setupTwoFactor(): Promise<{ otpauth_url: string }> {
     try {
-      const response = await this.apiClient.get('/api/auth/setup_2fa');
+      const response = await this.apiClient.get<{ otpauth_url: string }>(
+        '/api/auth/setup_2fa'
+      );
       return response.data;
     } catch (error: unknown) {
       throw new Error(`Failed to start 2FA setup: ${normalizeError(error).message}`);
@@ -44,7 +49,10 @@ export class AuthService {
   }
   async register(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await this.apiClient.post('/api/auth/register', credentials);
+      const response = await this.apiClient.post<LoginResponse>(
+        '/api/auth/register',
+        credentials
+      );
       return response.data;
     } catch (error: unknown) {
       throw new Error(`Register failed: ${normalizeError(error).message}`);
@@ -52,7 +60,7 @@ export class AuthService {
   }
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await this.apiClient.get('/api/auth/me');
+      const response = await this.apiClient.get<User>('/api/auth/me');
       return response.data;
     } catch (error: unknown) {
       const err = error as { status?: number; isNetworkError?: boolean; isTimeoutError?: boolean; message?: string };
@@ -77,10 +85,13 @@ export class AuthService {
   }
   async updateCredentials(newUsername?: string, newPassword?: string): Promise<LoginResponse> {
     try {
-      const response = await this.apiClient.post('/api/auth/update_credentials', {
-        new_username: newUsername,
-        new_password: newPassword,
-      });
+      const response = await this.apiClient.post<LoginResponse>(
+        '/api/auth/update_credentials',
+        {
+          new_username: newUsername,
+          new_password: newPassword,
+        }
+      );
 
       return response.data;
     } catch (error: unknown) {

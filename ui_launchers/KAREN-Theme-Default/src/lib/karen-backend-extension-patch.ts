@@ -15,7 +15,14 @@ import type { HandleKarenBackendErrorFn } from './error-recovery-integration-exa
  */
 export function patchKarenBackendForExtensions() {
   // Check if window.handleKarenBackendError exists (from error-recovery-integration)
-  const win = window as Window & { handleKarenBackendError?: HandleKarenBackendErrorFn };
+  const win = window as Window & {
+    handleKarenBackendError?: HandleKarenBackendErrorFn;
+    handleExtensionError?: (
+      status: number,
+      url: string,
+      operation?: string,
+    ) => ReturnType<typeof handleExtensionError> | null;
+  };
   if (typeof window !== 'undefined' && win.handleKarenBackendError) {
     logger.info('KarenBackend extension error handling already integrated');
     return;
@@ -24,20 +31,22 @@ export function patchKarenBackendForExtensions() {
   // Add extension error handling to window for KarenBackend to use
   if (typeof window !== 'undefined') {
     win.handleExtensionError = (status: number, url: string, operation?: string) => {
+      const result = handleExtensionError(status, url, operation);
+
       if (shouldUseExtensionFallback(status, url)) {
-        const result = handleExtensionError(status, url, operation);
-        
         // Show user-friendly message for certain errors
         if (status === 403 && url.includes('/api/extensions')) {
           const message = getExtensionErrorMessage(status, url);
           // You could show a toast notification here
           logger.info(`Extension Error: ${message}`);
         }
-        
+
         return result;
       }
-      
-      return null; // Let KarenBackend handle other errors normally
+
+      // For non-extension fallback scenarios, return the base handler result so callers
+      // can decide how to proceed without TypeScript type mismatches.
+      return result;
     };
 
     logger.info('KarenBackend extension error handling patched');

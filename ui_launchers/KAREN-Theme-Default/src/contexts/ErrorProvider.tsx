@@ -10,7 +10,7 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { FC, ReactNode, ErrorInfo } from 'react';
+import type { ErrorInfo, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -27,7 +27,7 @@ export interface ErrorContextType {
     method?: string;
     provider?: string;
   }) => void;
-  handleBoundaryError: (error: Error, errorInfo?: unknown) => void;
+  handleBoundaryError: (error: Error, errorInfo?: ErrorInfo) => void;
   
   // Error management
   clearError: () => void;
@@ -52,6 +52,14 @@ const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
 export { ErrorContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
+
+interface ApiErrorLike extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
 
 export interface ErrorProviderProps {
   children: ReactNode;
@@ -181,10 +189,12 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
 
+    const boundaryInfo = errorInfo as { componentStack?: string } | undefined;
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -194,9 +204,9 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 
     // Add to global errors
     addGlobalError(error, context);
-    
+
     // Use boundary error hook for analysis
-    boundaryError.handleError(error, errorInfo);
+    boundaryError.handleError(error, boundaryInfo);
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors

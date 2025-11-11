@@ -24,6 +24,23 @@ export interface LoginCredentials {
   totp_code?: string;
 }
 
+interface AuthResponseUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  role?: "super_admin" | "admin" | "user";
+  permissions?: string[];
+}
+
+interface AuthApiResponse {
+  valid?: boolean;
+  success?: boolean;
+  user?: AuthResponseUserData;
+  user_data?: AuthResponseUserData;
+  [key: string]: unknown;
+}
+
 export interface AuthError {
   message: string;
   category: ErrorCategory;
@@ -58,7 +75,7 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
-interface RawAuthUserData {
+interface ApiUserData {
   user_id: string;
   email: string;
   roles?: string[];
@@ -66,83 +83,35 @@ interface RawAuthUserData {
   permissions?: string[];
 }
 
-interface SessionValidationResponse {
-  valid?: boolean;
-  user?: RawAuthUserData;
-  user_data?: RawAuthUserData;
+interface AuthApiResponseRaw {
+  valid?: unknown;
+  user?: unknown;
+  user_data?: unknown;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every(item => typeof item === "string");
-
-const isRawAuthUserData = (value: unknown): value is RawAuthUserData => {
-  if (!isRecord(value)) {
+function isApiUserData(value: unknown): value is ApiUserData {
+  if (!value || typeof value !== "object") {
     return false;
   }
 
-  const hasUserId = typeof value.user_id === "string";
-  const hasEmail = typeof value.email === "string";
-  const hasTenant = value.tenant_id === undefined || typeof value.tenant_id === "string";
-  const hasRoles =
-    value.roles === undefined ||
-    isStringArray(value.roles);
-  const hasPermissions =
-    value.permissions === undefined ||
-    isStringArray(value.permissions);
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.user_id === "string" &&
+    typeof record.email === "string"
+  );
+}
 
-  return hasUserId && hasEmail && hasTenant && hasRoles && hasPermissions;
-};
-
-const parseSessionResponse = (data: unknown): SessionValidationResponse | null => {
-  if (!isRecord(data)) {
-    return null;
-  }
-
-  const response: SessionValidationResponse = {};
-
-  if (typeof data.valid === "boolean") {
-    response.valid = data.valid;
-  }
-
-  if (isRawAuthUserData(data.user)) {
-    response.user = data.user;
-  }
-
-  if (isRawAuthUserData(data.user_data)) {
-    response.user_data = data.user_data;
-  }
-
-  if (
-    response.valid === undefined &&
-    !response.user &&
-    !response.user_data
-  ) {
-    return null;
-  }
-
-  return response;
-};
-
-const getUserDataFromResponse = (
-  response: SessionValidationResponse | null
-): RawAuthUserData | null => {
-  if (!response) {
-    return null;
-  }
-
-  if (response.user) {
+function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+  if (response.user && isApiUserData(response.user)) {
     return response.user;
   }
 
-  if (response.user_data) {
+  if (response.user_data && isApiUserData(response.user_data)) {
     return response.user_data;
   }
 
   return null;
-};
+}
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
@@ -176,6 +145,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     if (roles.includes("admin")) return "admin";
     return "user";
   }, []);
+
+  const createUserFromApiData = useCallback(
+    (apiUser: ApiUserData): User => ({
+      userId: apiUser.user_id,
+      email: apiUser.email,
+      roles: apiUser.roles ?? [],
+      tenantId: apiUser.tenant_id ?? "default",
+      role: determineUserRole(apiUser.roles ?? []),
+      permissions: apiUser.permissions,
+    }),
+    [determineUserRole]
+  );
 
   // Convert technical errors to user-friendly messages
   const getUserFriendlyErrorMessage = useCallback((error: ConnectionError): string => {
@@ -349,7 +330,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -366,10 +347,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      const sessionResponse = parseSessionResponse(result.data);
-      const userData = getUserDataFromResponse(sessionResponse);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
 
-      if (sessionResponse?.valid && userData) {
+      if (data?.valid && userData) {
         const user: User = {
           userId: userData.user_id,
           email: userData.email,
@@ -407,7 +388,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
-    determineUserRole,
+    createUserFromApiData,
   ]);
 
   // Session refresh timer management
@@ -462,7 +443,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         loginUrl,
         {
           method: "POST",
@@ -481,8 +462,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const sessionResponse = parseSessionResponse(result.data);
-      const userData = getUserDataFromResponse(sessionResponse);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -493,14 +474,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Create user object
-      const user: User = {
-        userId: userData.user_id,
-        email: userData.email,
-        roles: userData.roles || [],
-        tenantId: userData.tenant_id || "default",
-        role: determineUserRole(userData.roles || []),
-        permissions: userData.permissions,
-      };
+      const user = createUserFromApiData(userData);
 
       // Update authentication state
       setUser(user);
@@ -712,7 +686,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -729,10 +703,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      const sessionResponse = parseSessionResponse(result.data);
-      const userData = getUserDataFromResponse(sessionResponse);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
 
-      if (sessionResponse?.valid && userData) {
+      if (data?.valid && userData) {
         const user: User = {
           userId: userData.user_id,
           email: userData.email,
@@ -844,7 +818,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [
     connectionManager,
     createAuthError,
-    determineUserRole,
+    createUserFromApiData,
     isAuthenticated,
     startSessionRefreshTimer,
     stopSessionRefreshTimer,

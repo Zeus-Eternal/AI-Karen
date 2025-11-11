@@ -1,6 +1,5 @@
 import axe, {
   type AxeResults,
-  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,
@@ -117,11 +116,11 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: Document | HTMLElement;
+  private container: Document | Element;
   private options: RunOptions;
 
   constructor(
-    container: ElementContext = document,
+    container: Document | Element = document,
     options: RunOptions = {}
   ) {
     this.container = this.resolveContainer(container);
@@ -134,33 +133,21 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     };
   }
 
-  private resolveContainer(context: ElementContext): Document | HTMLElement {
-    if (typeof window === "undefined") {
-      if (typeof document !== "undefined") {
-        return document;
-      }
-
-      return ({} as Document);
+  private resolveContainer(container: ElementContext): Document | Element {
+    if (typeof container === "string") {
+      return document.querySelector(container) ?? document;
     }
 
-    if (typeof context === "string") {
-      const element = document.querySelector<HTMLElement>(context);
-      return element ?? document;
+    if (container instanceof Element || container instanceof Document) {
+      return container;
     }
 
-    if (Array.isArray(context)) {
-      const element = context.find((item): item is HTMLElement | Document =>
-        item instanceof HTMLElement || item instanceof Document
-      );
-      return element ?? document;
+    if (Array.isArray(container)) {
+      return container[0] ?? document;
     }
 
-    if (context instanceof HTMLElement || context instanceof Document) {
-      return context;
-    }
-
-    if ((context as Document)?.querySelectorAll) {
-      return context as Document | HTMLElement;
+    if (container instanceof NodeList) {
+      return container[0] ?? document;
     }
 
     return document;
@@ -185,7 +172,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -201,7 +188,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: {
           type: "tag",
@@ -231,7 +218,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = this.container.querySelectorAll(
+    const focusableElements = this.container.querySelectorAll<HTMLElement>(
       focusableSelectors.join(", ")
     );
     const unreachableElements: string[] = [];
@@ -255,7 +242,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const focusTraps = this.container.querySelectorAll(
+    const focusTraps = this.container.querySelectorAll<HTMLElement>(
       '[data-focus-trap="true"]'
     );
     focusTraps.forEach((trap) => {
@@ -273,7 +260,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const skipLinks = this.container.querySelectorAll(
+    const skipLinks = this.container.querySelectorAll<HTMLAnchorElement>(
       '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
@@ -384,10 +371,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     ];
 
     const focusTrapCandidates = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         '[data-focus-trap], [aria-modal="true"], [role="dialog"]'
       )
-    ) as HTMLElement[];
+    );
 
     const focusTraps = focusTrapCandidates.map((element) => {
       const innerFocusable = element.querySelectorAll(
@@ -403,10 +390,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     });
 
     const restoreTargets = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         "[data-focus-restore], [data-focus-restoration]"
       )
-    ) as HTMLElement[];
+    );
 
     const focusRestoration = restoreTargets.map((element) => ({
       element: this.getElementSelector(element),
@@ -416,8 +403,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }));
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors.join(", "))
-    ) as HTMLElement[];
+      this.container.querySelectorAll<HTMLElement>(
+        focusableSelectors.join(", ")
+      )
+    );
 
     const focusIndicators = focusableElements.slice(0, 25).map((element) => {
       if (typeof window === "undefined") {
@@ -551,12 +540,12 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const brokenReferences = new Set<string>();
 
     const allElements = Array.from(
-      this.container.querySelectorAll("*")
-    ) as HTMLElement[];
+      this.container.querySelectorAll<HTMLElement>("*")
+    );
     const scopeDocument =
       this.container instanceof Document
         ? this.container
-        : this.container.ownerDocument || document;
+        : this.container.ownerDocument ?? document;
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();
@@ -625,7 +614,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const violations: AccessibilityViolation[] = results.violations.map(
       (violation: Result): AccessibilityViolation => ({
         id: violation.id,
-        impact: (violation.impact ?? "serious") as AccessibilityViolation["impact"],
+        impact: (violation.impact ?? "minor") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,

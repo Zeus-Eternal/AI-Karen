@@ -1,3 +1,5 @@
+import type { ExtensionErrorIntegration } from './extension-error-integration';
+
 /**
  * Verify Extension Fix (production-grade)
  *
