@@ -356,8 +356,14 @@ export class AuditLogExporter {
         return log.ip_address || '';
       case 'user_agent':
         return log.user_agent || '';
-      default:
-        return String((log as unknown)[field] || '');
+      default: {
+        const logRecord = log as unknown as Record<string, unknown>;
+        const rawValue = logRecord[field];
+        if (rawValue == null) {
+          return '';
+        }
+        return String(rawValue);
+      }
     }
   }
 

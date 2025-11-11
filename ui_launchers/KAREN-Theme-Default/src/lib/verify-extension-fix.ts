@@ -8,6 +8,9 @@
  * - Minimal dev logging
  */
 
+import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
+import type { ExtensionErrorIntegration } from './extension-error-integration';
+
 export type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
 
 export interface VerifyChecks {
@@ -46,8 +49,8 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 
 interface ExtensionFixWindow extends Window {
   __EXT_FIX_PATCHED__?: { type: 'immediate' | 'standard' };
-  extensionErrorIntegration?: unknown;
-  handleKarenBackendError?: unknown;
+  extensionErrorIntegration?: ExtensionErrorIntegration;
+  handleKarenBackendError?: HandleKarenBackendErrorFn;
 }
 
 // Optional: a more reliable signal your fetch patch can set.

@@ -26,18 +26,19 @@ export function patchKarenBackendForExtensions() {
     win.handleExtensionError = (status: number, url: string, operation?: string) => {
       if (shouldUseExtensionFallback(status, url)) {
         const result = handleExtensionError(status, url, operation);
-        
+
         // Show user-friendly message for certain errors
         if (status === 403 && url.includes('/api/extensions')) {
           const message = getExtensionErrorMessage(status, url);
           // You could show a toast notification here
           logger.info(`Extension Error: ${message}`);
         }
-        
+
         return result;
       }
-      
-      return null; // Let KarenBackend handle other errors normally
+
+      // For non-extension errors, return an empty response so normal handling continues
+      return {};
     };
 
     logger.info('KarenBackend extension error handling patched');

@@ -95,13 +95,12 @@ function stableStringify(obj: unknown): string {
 
 function headersToObject(headers: HeaderLike): Record<string, string> {
   if (!headers) return {};
+  const out: Record<string, string> = {};
   if (Array.isArray(headers)) {
-    const out: Record<string, string> = {};
     for (const [k, v] of headers) out[String(k).toLowerCase()] = String(v);
     return out;
   }
   if (headers instanceof Headers) {
-    const out: Record<string, string> = {};
     headers.forEach((v, k) => (out[k.toLowerCase()] = v));
     return out;
   }

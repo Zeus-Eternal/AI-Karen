@@ -414,8 +414,9 @@ export function integrateWithExistingErrorHandling(): void {
 
   // Idempotent guard
   const __key = "__RECOVERY_FETCH_WRAP__";
-  const win = window as RecoveryWindow & Record<string, unknown>;
-  if (win[__key]) return;
+  const win = window as RecoveryWindow;
+  const flagStore = win as unknown as Record<string, unknown>;
+  if (flagStore[__key]) return;
 
   const originalFetch = window.fetch.bind(window);
 
@@ -440,14 +441,14 @@ export function integrateWithExistingErrorHandling(): void {
     }
   };
 
-  win[__key] = true;
+  flagStore[__key] = true;
   logger.info("Integrated enhanced fetch with recovery pipeline");
 }
 
 export function integrateWithKarenBackend(): void {
   if (!isBrowser()) return;
 
-  const win = window as RecoveryWindow & Record<string, unknown>;
+  const win = window as RecoveryWindow;
   win.handleKarenBackendError = async (
     status: number,
     url: string,
