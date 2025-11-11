@@ -20,6 +20,34 @@ const TIME_RANGE_PRESETS: ReadonlyArray<NonNullable<TimeRange['preset']>> = [
 const isTimeRangePreset = (value: unknown): value is NonNullable<TimeRange['preset']> =>
   typeof value === 'string' && TIME_RANGE_PRESETS.includes(value as NonNullable<TimeRange['preset']>);
 
+const isDashboardFilter = (value: unknown): value is DashboardFilter => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<DashboardFilter>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.type === 'string' &&
+    'value' in candidate &&
+    typeof candidate.enabled === 'boolean'
+  );
+};
+
+const parseFiltersParam = (value: string): DashboardFilter[] | null => {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value)) as unknown;
+    if (Array.isArray(parsed) && parsed.every(isDashboardFilter)) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 export interface DashboardUrlState {
   dashboardId?: string;
   timeRange?: {
@@ -76,13 +104,8 @@ export const useDashboardUrlSync = () => {
 
     // Filters
     const filtersParam = params.get('filters');
-    if (filtersParam) {
-      try {
-        JSON.parse(decodeURIComponent(filtersParam));
-        state.filters = filtersParam;
-      } catch {
-        // Handle error silently
-      }
+    if (filtersParam && parseFiltersParam(filtersParam)) {
+      state.filters = filtersParam;
     }
 
     // Layout
@@ -193,23 +216,20 @@ export const useDashboardUrlSync = () => {
 
     // Set filters
     if (urlState.filters) {
-      try {
-        const filters: DashboardFilter[] = JSON.parse(decodeURIComponent(urlState.filters));
+      const filters = parseFiltersParam(urlState.filters);
 
-        // Compare with current filters
+      if (filters) {
         const currentFiltersJson = JSON.stringify(globalFilters);
         const urlFiltersJson = JSON.stringify(filters);
 
         if (currentFiltersJson !== urlFiltersJson) {
           clearGlobalFilters();
           filters.forEach(filter => {
-            const { id: _ignoredId, ...filterData } = filter;
-            void _ignoredId;
-            addGlobalFilter(filterData);
+            const sanitizedFilter = { ...filter };
+            delete sanitizedFilter.id;
+            addGlobalFilter(sanitizedFilter as Omit<DashboardFilter, 'id'>);
           });
         }
-      } catch {
-        // Handle error silently
       }
     }
 

@@ -15,14 +15,7 @@ export type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
-type ActionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-}
-
-const ACTION_TYPES: ActionTypes = {
+const ACTION_TYPES = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
   DISMISS_TOAST: "DISMISS_TOAST",
