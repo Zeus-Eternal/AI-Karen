@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/monitoring/endpoint-status-indicator.tsx
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -96,57 +96,80 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const snapshotRef = useRef<MonitorSnapshot | null>(null);
-  if (snapshotRef.current === null) {
-    snapshotRef.current = resolveInitialSnapshot();
-  }
+  const initialSnapshot = useMemo(() => resolveInitialSnapshot(), []);
+  const snapshotRef = useRef<MonitorSnapshot>(initialSnapshot);
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(snapshotRef.current.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(snapshotRef.current.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(snapshotRef.current.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(snapshotRef.current.recentErrors);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
+  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
+  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
 
   useEffect(() => {
-    // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
+    const snapshot = snapshotRef.current;
+    const monitor = snapshot.monitor ?? getHealthMonitor?.() ?? null;
+    const logger = snapshot.logger ?? getDiagnosticLogger?.() ?? null;
 
-    if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      return;
-    }
-  }
+    snapshotRef.current = {
+      ...snapshot,
+      monitor,
+      logger,
+    };
 
     if (!monitor || !logger) {
-      return;
+      return undefined;
     }
+
+    const readIsMonitoring = () => {
+      try {
+        return !!monitor.getStatus?.().isMonitoring;
+      } catch {
+        return false;
+      }
+    };
+
+    const initializeMetrics = () => {
+      try {
+        const currentMetrics = monitor.getMetrics?.() ?? null;
+        setMetrics(currentMetrics);
+        if (currentMetrics) {
+          setLastUpdate(new Date().toLocaleTimeString());
+        }
+      } catch {
+        setMetrics(null);
+      }
+      setIsMonitoring(readIsMonitoring());
+    };
+
+    initializeMetrics();
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        setIsMonitoring(readIsMonitoring());
       }) ?? (() => {});
 
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
+      logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
+            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
+          timers.add(timeoutId);
         }
       }) ?? (() => {});
 
     return () => {
-      try {
-        unsubscribeMetrics();
-        unsubscribeLogs();
-      } catch {
-        // noop
-      }
+      unsubscribeMetrics();
+      unsubscribeLogs();
+      timers.forEach((timeoutId) => clearTimeout(timeoutId));
+      timers.clear();
     };
-  }, [diagnosticLogger, healthMonitor]);
+  }, []);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";
