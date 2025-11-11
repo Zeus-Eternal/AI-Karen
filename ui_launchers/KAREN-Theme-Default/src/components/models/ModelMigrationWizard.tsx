@@ -53,7 +53,7 @@ export default function ModelMigrationWizard({ sourceModel, targetModel, onCompl
       <CardContent className="space-y-4">
         <Progress value={progress} />
         <div className="space-y-2">
-          {steps.map((step, i) => (
+          {steps.map((step) => (
             <div key={step.id} className="flex items-center justify-between p-3 border rounded">
               <div className="flex items-center gap-3">
                 {step.status === 'complete' ? (

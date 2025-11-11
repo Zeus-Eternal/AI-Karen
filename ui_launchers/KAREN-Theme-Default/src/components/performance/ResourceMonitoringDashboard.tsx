@@ -126,7 +126,15 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = Date.now() - timeRanges[selectedTimeframe];
+    const lastHistoricalTimestamp =
+      historicalMetrics.length > 0
+        ? historicalMetrics[historicalMetrics.length - 1].timestamp
+        : undefined;
+    const referenceTimestamp =
+      lastHistoricalTimestamp ?? currentMetrics?.timestamp ?? 0;
+    const cutoff = referenceTimestamp
+      ? referenceTimestamp - timeRanges[selectedTimeframe]
+      : 0;
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({
@@ -137,7 +145,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [historicalMetrics, selectedTimeframe]);
+  }, [currentMetrics, historicalMetrics, selectedTimeframe]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);

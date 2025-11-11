@@ -5,8 +5,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,34 +22,41 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
-  const [alerts, setAlerts] = useState<HealthAlert[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const monitorRef = useRef<ReturnType<typeof getHealthMonitor> | null>(null);
+  if (monitorRef.current === null) {
+    monitorRef.current = getHealthMonitor();
+  }
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() =>
+    monitorRef.current?.getMetrics?.() ?? null
+  );
+  const [alerts, setAlerts] = useState<HealthAlert[]>(() =>
+    monitorRef.current?.getAlerts?.(20) ?? []
+  );
+  const [isMonitoring, setIsMonitoring] = useState(() =>
+    monitorRef.current?.getStatus?.().isMonitoring ?? false
+  );
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    const healthMonitor = getHealthMonitor();
+    const healthMonitor = monitorRef.current;
+    if (!healthMonitor) {
+      return () => {};
+    }
 
-    // Get initial state
-    setMetrics(healthMonitor.getMetrics());
-    setAlerts(healthMonitor.getAlerts(20));
-    setIsMonitoring(healthMonitor.getStatus().isMonitoring);
+    if (!healthMonitor.getStatus().isMonitoring) {
+      healthMonitor.start();
+    }
 
-    // Set up listeners
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
+      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
     const unsubscribeAlerts = healthMonitor.onAlert((newAlert) => {
-      setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
+      setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
     });
-
-    // Start monitoring if not already started
-    if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
-      setIsMonitoring(true);
-    }
 
     return () => {
       unsubscribeMetrics();
@@ -82,15 +89,6 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const healthMonitor = getHealthMonitor();
     healthMonitor.clearAlerts();
     setAlerts([]);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'text-green-600';
-      case 'degraded': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-gray-600';
-    }
   };
 
   const getStatusIcon = (status: string) => {

@@ -6,17 +6,10 @@ import {
   ErrorBoundary,
   type ErrorFallbackProps,
 } from "@/components/error-handling/ErrorBoundary";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -205,6 +198,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
     } catch (error) {
+      console.error("Failed to apply performance optimizations", error);
     } finally {
       setIsOptimizing(false);
     }

@@ -16,6 +16,7 @@ import React, {
   useRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -238,20 +239,22 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       []
     );
 
-    // Auto-expand active sections
-    useEffect(() => {
-      const activeItem = findActiveItem(items, pathname || '/');
-      if (activeItem?.parent) {
-        setExpandedItems((prev) => new Set([...prev, activeItem.parent!]));
+    const effectiveExpandedItems = useMemo(() => {
+      const activeItem = findActiveItem(items, pathname || "/");
+      if (!activeItem?.parent) {
+        return expandedItems;
       }
-    }, [pathname, items]);
+      const combined = new Set(expandedItems);
+      combined.add(activeItem.parent);
+      return combined;
+    }, [expandedItems, items, pathname]);
 
     // Auto-focus navigation when requested
     useEffect(() => {
       if (autoFocus && navRef.current) {
         navRef.current.focus();
       }
-    }, [autoFocus]);
+    }, [autoFocus, navRef]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {
@@ -260,7 +263,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       const flatten = (nodes: NavigationItem[], level = 0, parent?: string) => {
         nodes.forEach((node) => {
           flattened.push({ item: node, level, parent });
-          if (node.children && expandedItems.has(node.id)) {
+          if (node.children && effectiveExpandedItems.has(node.id)) {
             flatten(node.children, level + 1, node.id);
           }
         });
@@ -268,7 +271,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       flatten(items);
       return flattened;
-    }, [items, expandedItems]);
+    }, [effectiveExpandedItems, items]);
 
     // Toggle expand/collapse
     const toggleExpanded = useCallback((itemId: string) => {
@@ -375,7 +378,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardNavigation, flattenedItems, expandedItems, toggleExpanded, handleItemClick]);
+    }, [enableKeyboardNavigation, flattenedItems, effectiveExpandedItems, toggleExpanded, handleItemClick, navRef]);
 
     return (
       <nav
@@ -403,7 +406,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
               <NavigationItemComponent
                 key={item.id}
                 item={item}
-                isExpanded={expandedItems.has(item.id)}
+                isExpanded={effectiveExpandedItems.has(item.id)}
                 isActive={isItemActive(item, pathname || '/')}
                 isCollapsed={sidebarCollapsed}
                 onToggle={() => toggleExpanded(item.id)}

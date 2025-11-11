@@ -16,7 +16,7 @@ export interface PerformanceMetricsDisplayProps {
 export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps> = ({
   metrics,
   className = '',
-  showTrends = false
+  showTrends: _showTrends = false
 }) => {
   const formatTime = (time: number) => {
     if (time < 1000) {
