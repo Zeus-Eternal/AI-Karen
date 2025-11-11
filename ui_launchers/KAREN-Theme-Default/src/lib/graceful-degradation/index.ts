@@ -14,7 +14,7 @@
 import * as React from "react";
 import { featureFlagManager as _ffm } from "./feature-flags";
 import { extensionCache as sharedExtensionCache } from "./cache-manager";
-// @ts-ignore -- JSX module is handled by the UI bundler configuration
+// @ts-expect-error -- JSX module is handled by the UI bundler configuration
 import { ProgressiveEnhancement as ProgressiveEnhancementComponent } from "./fallback-ui";
 
 /* ----------------------------------------
@@ -30,7 +30,7 @@ export {
 /* ----------------------------------------
  * Re-exports: Fallback UI components
  * -------------------------------------- */
-// @ts-ignore -- JSX module is handled by the UI bundler configuration
+// @ts-expect-error -- JSX module is handled by the UI bundler configuration
 export {
   ServiceUnavailable,
   ExtensionUnavailable,

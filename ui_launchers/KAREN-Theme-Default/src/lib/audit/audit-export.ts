@@ -263,7 +263,7 @@ export class AuditLogExporter {
         fields_included: string[];
         date_format: string;
         timezone: string;
-        filter_applied: AuditLogFilter | {};
+        filter_applied: AuditLogFilter | null;
       };
     } = {
       logs: transformedLogs,
@@ -277,7 +277,7 @@ export class AuditLogExporter {
         fields_included: fields,
         date_format: dateFormat,
         timezone: options.timezone || 'UTC',
-        filter_applied: options.filter || {}
+        filter_applied: options.filter ?? null
       };
     }
 

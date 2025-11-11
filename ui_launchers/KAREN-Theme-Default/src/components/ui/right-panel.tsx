@@ -401,10 +401,6 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
     const headerAnimationVariants = useAnimationVariants(headerVariants, reducedMotionVariants);
     const navigationAnimationVariants = useAnimationVariants(navigationVariants, reducedMotionVariants);
 
-    const widthClass = PANEL_WIDTH_CLASSES[width];
-
-    if (!isOpen) return null;
-
     // Filter out props that conflict with Framer Motion
     const filteredProps = React.useMemo(() => {
       const sanitizedProps: typeof props = { ...props };
@@ -419,6 +415,10 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
 
       return sanitizedProps;
     }, [props]);
+
+    const widthClass = PANEL_WIDTH_CLASSES[width];
+
+    if (!isOpen) return null;
 
     return (
       <>
