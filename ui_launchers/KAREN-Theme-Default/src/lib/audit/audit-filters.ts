@@ -5,7 +5,7 @@
  * for audit logs with support for complex queries and date ranges.
  */
 
-import { AuditLogFilter, PaginationParams } from '@/types/admin';
+import { AuditLog, AuditLogFilter, PaginationParams } from '@/types/admin';
 
 /**
  * Predefined filter presets for common audit log queries
@@ -256,7 +256,13 @@ export class AuditSearchParser {
     let textSearch = query.trim();
 
     // Parse special search operators
-    const operators = [
+    type SearchOperator<K extends keyof AuditLogFilter> = {
+      pattern: RegExp;
+      key: K;
+      transform?: (value: string) => AuditLogFilter[K];
+    };
+
+    const operators: SearchOperator<keyof AuditLogFilter>[] = [
       { pattern: /user:(\S+)/g, key: 'user_id' },
       { pattern: /action:(\S+)/g, key: 'action' },
       { pattern: /resource:(\S+)/g, key: 'resource_type' },
@@ -265,13 +271,22 @@ export class AuditSearchParser {
       { pattern: /to:(\S+)/g, key: 'end_date', transform: (value: string) => new Date(value) }
     ];
 
-    operators.forEach(({ pattern, key, transform }) => {
+    const applyOperator = <K extends keyof AuditLogFilter>(
+      pattern: RegExp,
+      key: K,
+      transform?: (value: string) => AuditLogFilter[K]
+    ) => {
       const matches = Array.from(textSearch.matchAll(pattern));
       matches.forEach(match => {
-        const value = transform ? transform(match[1]) : match[1];
-        (filters as any)[key] = value;
+        const rawValue = match[1];
+        const value = transform ? transform(rawValue) : rawValue;
+        filters[key] = value as AuditLogFilter[K];
         textSearch = textSearch.replace(match[0], '').trim();
       });
+    };
+
+    operators.forEach(({ pattern, key, transform }) => {
+      applyOperator(pattern, key, transform);
     });
 
     // Generate suggestions based on partial input
@@ -342,7 +357,7 @@ export class AuditLogExporter {
   /**
    * Export audit logs to CSV format
    */
-  static toCsv(logs: any[], includeHeaders: boolean = true): string {
+  static toCsv(logs: AuditLog[], includeHeaders: boolean = true): string {
     if (logs.length === 0) return '';
 
     const headers = [
@@ -380,7 +395,7 @@ export class AuditLogExporter {
   /**
    * Export audit logs to JSON format
    */
-  static toJson(logs: any[], pretty: boolean = false): string {
+  static toJson(logs: AuditLog[], pretty: boolean = false): string {
     return JSON.stringify(logs, null, pretty ? 2 : 0);
   }
 

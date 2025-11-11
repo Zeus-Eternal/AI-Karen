@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import axios, { AxiosInstance } from 'axios'
+import type { Conversation, ConversationResponse } from '@/types/chat'
 
 type ImportMetaWithEnv = ImportMeta & {
   env?: Record<string, string | undefined>
@@ -89,12 +90,12 @@ export const chatAPI = {
     return data
   },
 
-  getConversations: async (): Promise<any[]> => {
+  getConversations: async (): Promise<Conversation[]> => {
     const { data } = await apiClient.get('/api/chat/conversations')
     return data
   },
 
-  getConversation: async (id: string): Promise<unknown> => {
+  getConversation: async (id: string): Promise<ConversationResponse> => {
     const { data } = await apiClient.get(`/api/chat/conversations/${id}`)
     return data
   },
