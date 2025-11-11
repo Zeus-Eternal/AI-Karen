@@ -25,19 +25,22 @@ export default function WorkflowList() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Placeholder data; normally fetched from Workflow Builder extension
-    setWorkflows([
-      {
-        id: "wf1",
-        name: "Release Pipeline",
-        status: "idle",
-        steps: [
-          { name: "Build", action: "build" },
-          { name: "Test", action: "test" },
-          { name: "Deploy", action: "deploy" },
-        ],
-      },
-    ]);
+    const frame = requestAnimationFrame(() => {
+      setWorkflows([
+        {
+          id: "wf1",
+          name: "Release Pipeline",
+          status: "idle",
+          steps: [
+            { name: "Build", action: "build" },
+            { name: "Test", action: "test" },
+            { name: "Deploy", action: "deploy" },
+          ],
+        },
+      ]);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const executeWorkflow = (id: string) => {

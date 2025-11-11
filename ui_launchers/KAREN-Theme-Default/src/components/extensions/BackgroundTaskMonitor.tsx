@@ -39,9 +39,15 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
   const { history, loading } = useExtensionTasks(selectedExtension ?? extensionId);
 
   useEffect(() => {
-    if (extensionId) {
-      setSelectedExtension(extensionId);
+    if (!extensionId) {
+      return;
     }
+
+    const frame = requestAnimationFrame(() => {
+      setSelectedExtension(extensionId);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, [extensionId]);
 
   const taskStats = useMemo(() => {

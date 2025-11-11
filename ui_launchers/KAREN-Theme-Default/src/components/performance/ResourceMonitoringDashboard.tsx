@@ -92,7 +92,8 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const timeWindowAnchorRef = useRef<number>(Date.now());
+  const initialAnchor = useMemo(() => Date.now(), []);
+  const timeWindowAnchorRef = useRef<number>(initialAnchor);
 
   useEffect(() => {
     const updateData = () => {
@@ -107,7 +108,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       timeWindowAnchorRef.current = Date.now();
     };
 
-    updateData();
+    const frame = requestAnimationFrame(updateData);
     const interval = setInterval(updateData, refreshInterval);
 
     const unsubscribe = resourceMonitor.onAlert((alert) => {
@@ -115,20 +116,11 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     });
 
     return () => {
+      cancelAnimationFrame(frame);
       clearInterval(interval);
       unsubscribe();
     };
   }, [refreshInterval, showCapacityPlanning]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setNow(Date.now());
-    }, 60_000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   const filteredHistoricalData = useMemo(() => {
     const timeRanges = {

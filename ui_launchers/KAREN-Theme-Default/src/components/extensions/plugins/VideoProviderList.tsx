@@ -15,11 +15,14 @@ export default function VideoProviderList() {
   const [providers, setProviders] = useState<VideoProvider[]>([]);
 
   useEffect(() => {
-    // Placeholder data. Real implementation would check backend for available visual providers
-    setProviders([
-      { id: "d-id", name: "D-ID", status: "ready" },
-      { id: "synthesia", name: "Synthesia", status: "unavailable" },
-    ]);
+    const frame = requestAnimationFrame(() => {
+      setProviders([
+        { id: "d-id", name: "D-ID", status: "ready" },
+        { id: "synthesia", name: "Synthesia", status: "unavailable" },
+      ]);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return (

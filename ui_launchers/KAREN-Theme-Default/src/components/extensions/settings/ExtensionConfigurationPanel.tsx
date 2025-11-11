@@ -536,6 +536,7 @@ export function ExtensionConfigurationPanel({
         permission.key === key ? { ...permission, granted } : permission
       ));
     } catch (error) {
+      console.error(`Failed to update permission ${key}`, error);
     }
   }, [onPermissionChange]);
   const handleSave = useCallback(async () => {

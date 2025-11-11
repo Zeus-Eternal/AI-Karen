@@ -172,31 +172,35 @@ export function ExtensionPerformanceMonitor({
 
   // Sample alerts
   useEffect(() => {
-    const sampleAlerts: ResourceAlert[] = [
-      {
-        id: "1",
-        type: "memory",
-        severity: "warning",
-        message: "Memory usage approaching limit",
-        timestamp: new Date(Date.now() - 300000).toISOString(),
-        extensionId: "analytics-dashboard",
-        extensionName: "Analytics Dashboard",
-        value: 450,
-        threshold: 500,
-      },
-      {
-        id: "2",
-        type: "cpu",
-        severity: "critical",
-        message: "CPU usage critically high",
-        timestamp: new Date(Date.now() - 600000).toISOString(),
-        extensionId: "automation-engine",
-        extensionName: "Automation Engine",
-        value: 85,
-        threshold: 80,
-      },
-    ];
-    setAlerts(sampleAlerts);
+    const frame = requestAnimationFrame(() => {
+      const sampleAlerts: ResourceAlert[] = [
+        {
+          id: "1",
+          type: "memory",
+          severity: "warning",
+          message: "Memory usage approaching limit",
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          extensionId: "analytics-dashboard",
+          extensionName: "Analytics Dashboard",
+          value: 450,
+          threshold: 500,
+        },
+        {
+          id: "2",
+          type: "cpu",
+          severity: "critical",
+          message: "CPU usage critically high",
+          timestamp: new Date(Date.now() - 600000).toISOString(),
+          extensionId: "automation-engine",
+          extensionName: "Automation Engine",
+          value: 85,
+          threshold: 80,
+        },
+      ];
+      setAlerts(sampleAlerts);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Auto-refresh

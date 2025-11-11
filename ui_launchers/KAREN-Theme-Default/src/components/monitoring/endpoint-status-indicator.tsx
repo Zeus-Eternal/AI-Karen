@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/monitoring/endpoint-status-indicator.tsx
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -96,30 +96,38 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const snapshotRef = useRef<MonitorSnapshot | null>(null);
-  if (snapshotRef.current === null) {
-    snapshotRef.current = resolveInitialSnapshot();
-  }
+  const initialSnapshot = useMemo(resolveInitialSnapshot, []);
+  const monitorRef = useRef<MonitorSnapshot["monitor"]>(initialSnapshot.monitor);
+  const loggerRef = useRef<MonitorSnapshot["logger"]>(initialSnapshot.logger);
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(snapshotRef.current.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(snapshotRef.current.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(snapshotRef.current.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(snapshotRef.current.recentErrors);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
+  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
+  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
 
   useEffect(() => {
-    // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
+    const monitor = monitorRef.current ?? getHealthMonitor?.() ?? null;
+    const logger = loggerRef.current ?? getDiagnosticLogger?.() ?? null;
 
-    if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      return;
-    }
-  }
+    monitorRef.current = monitor;
+    loggerRef.current = logger;
 
     if (!monitor || !logger) {
       return;
     }
+
+    const refreshSnapshot = () => {
+      try {
+        const latestMetrics = monitor.getMetrics?.() ?? null;
+        setMetrics(latestMetrics);
+        setLastUpdate(new Date().toLocaleTimeString());
+        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+      } catch (error) {
+        console.error("Failed to refresh health metrics", error);
+      }
+    };
+
+    const frame = requestAnimationFrame(refreshSnapshot);
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
@@ -128,25 +136,30 @@ export function EndpointStatusIndicator({
         setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
       }) ?? (() => {});
 
+    const timeouts: Array<ReturnType<typeof setTimeout>> = [];
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
+      logger.onLog?.((newLog: { level?: string; category?: string }) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
           }, 5 * 60 * 1000);
+          timeouts.push(timeout);
         }
       }) ?? (() => {});
 
     return () => {
+      cancelAnimationFrame(frame);
       try {
         unsubscribeMetrics();
         unsubscribeLogs();
-      } catch {
-        // noop
+      } catch (error) {
+        console.error("Failed to cleanup health monitor listeners", error);
       }
+      timeouts.forEach(clearTimeout);
     };
-  }, [diagnosticLogger, healthMonitor]);
+  }, []);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";

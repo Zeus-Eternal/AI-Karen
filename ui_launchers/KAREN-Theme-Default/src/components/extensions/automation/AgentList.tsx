@@ -21,11 +21,14 @@ export default function AgentList() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Placeholder data - normally fetched from backend extension API
-    setAgents([
-      { id: "build-agent", name: "Build Agent", status: "running", trigger: "on commit", action: "build" },
-      { id: "review-agent", name: "Review Agent", status: "stopped", trigger: "manual", action: "review" },
-    ]);
+    const frame = requestAnimationFrame(() => {
+      setAgents([
+        { id: "build-agent", name: "Build Agent", status: "running", trigger: "on commit", action: "build" },
+        { id: "review-agent", name: "Review Agent", status: "stopped", trigger: "manual", action: "review" },
+      ]);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const toggleAgent = (id: string, enabled: boolean) => {

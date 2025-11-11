@@ -17,12 +17,14 @@ export default function LLMProviderList() {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
 
   useEffect(() => {
-    // Placeholder provider data. In a real implementation this would be fetched
-    // from the backend service.
-    setProviders([
-      { id: "openai", name: "OpenAI", status: "healthy", model: "gpt-3.5-turbo" },
-      { id: "anthropic", name: "Anthropic", status: "unknown", model: "claude-3" },
-    ]);
+    const frame = requestAnimationFrame(() => {
+      setProviders([
+        { id: "openai", name: "OpenAI", status: "healthy", model: "gpt-3.5-turbo" },
+        { id: "anthropic", name: "Anthropic", status: "unknown", model: "claude-3" },
+      ]);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return (

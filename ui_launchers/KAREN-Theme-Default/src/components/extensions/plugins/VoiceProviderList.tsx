@@ -15,10 +15,13 @@ export default function VoiceProviderList() {
   const [providers, setProviders] = useState<VoiceProvider[]>([]);
 
   useEffect(() => {
-    // Placeholder providers. Real implementation would detect installed voices or fetch from backend
-    setProviders([
-      { id: "system", name: "System Voices", previewText: "Hello from your system" },
-    ]);
+    const frame = requestAnimationFrame(() => {
+      setProviders([
+        { id: "system", name: "System Voices", previewText: "Hello from your system" },
+      ]);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const handlePreview = (text?: string) => {

@@ -265,7 +265,11 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
     }, [enableKeyboardShortcuts, mounted, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
 
     useEffect(() => {
-      setMounted(true);
+      const frame = requestAnimationFrame(() => {
+        setMounted(true);
+      });
+
+      return () => cancelAnimationFrame(frame);
     }, []);
 
     const contextValue: AppShellContextType = {
