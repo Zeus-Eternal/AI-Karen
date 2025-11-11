@@ -389,11 +389,14 @@ export default function IntelligentModelSelector({
   const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
 
   const effectiveSelectedModelId = useMemo(() => {
+    if (manualSelectedModelId) {
+      return manualSelectedModelId;
+    }
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
       return topRecommendation.model.id;
     }
-    return selectedModelId;
-  }, [autoSelect, selectedModelId, topRecommendation]);
+    return '';
+  }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
@@ -417,9 +420,10 @@ export default function IntelligentModelSelector({
       onModelSelect(topRecommendation.model.id);
     }
     if (checked) {
+      setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [selectedModelId, topRecommendation, onModelSelect]);
+  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
 
   if (!contextAnalysis) {
     return (
