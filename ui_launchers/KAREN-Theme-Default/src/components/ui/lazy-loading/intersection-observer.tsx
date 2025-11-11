@@ -1,80 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React from 'react';
 
-export interface IntersectionObserverOptions {
-  threshold?: number | number[];
-  rootMargin?: string;
-  root?: Element | null;
-  triggerOnce?: boolean;
-  skip?: boolean;
-}
-
-export interface UseIntersectionObserverReturn {
-  ref: React.RefObject<HTMLElement>;
-  isIntersecting: boolean;
-  entry: IntersectionObserverEntry | null;
-}
-
-// Hook for intersection observer
-export function useIntersectionObserver(
-  options: IntersectionObserverOptions = {}
-): UseIntersectionObserverReturn {
-  const {
-    threshold = 0,
-    rootMargin = '0px',
-    root = null,
-    triggerOnce = false,
-    skip = false,
-  } = options;
-
-  const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
-  const [isIntersecting, setIsIntersecting] = useState(false);
-  const elementRef = useRef<HTMLElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  useEffect(() => {
-    const element = elementRef.current;
-    
-    if (!element || skip) return;
-
-    // Disconnect previous observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
-      ([entry]) => {
-        setEntry(entry);
-        setIsIntersecting(entry.isIntersecting);
-
-        // If triggerOnce is true, disconnect after first intersection
-        if (entry.isIntersecting && triggerOnce && observerRef.current) {
-          observerRef.current.disconnect();
-        }
-      },
-      {
-        threshold,
-        rootMargin,
-        root,
-      }
-    );
-
-    observerRef.current.observe(element);
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [threshold, rootMargin, root, triggerOnce, skip]);
-
-  return {
-    ref: elementRef,
-    isIntersecting,
-    entry,
-  };
-}
+import {
+  useIntersectionObserver,
+  type IntersectionObserverOptions,
+} from './use-intersection-observer';
 
 // Component wrapper for intersection observer
 export interface IntersectionObserverWrapperProps {
@@ -98,6 +29,11 @@ export const IntersectionObserverWrapper: React.FC<IntersectionObserverWrapperPr
     </Component>
   );
 };
+
+export type {
+  IntersectionObserverOptions,
+  UseIntersectionObserverReturn,
+} from './use-intersection-observer';
 
 // Lazy content component that renders children only when in view
 export interface LazyContentProps {
@@ -124,63 +60,7 @@ export const LazyContent: React.FC<LazyContentProps> = ({
   );
 };
 
-// Hook for multiple intersection observers
-export function useMultipleIntersectionObserver(
-  elements: (HTMLElement | null)[],
-  options: IntersectionObserverOptions = {}
-) {
-  const [entries, setEntries] = useState<Map<HTMLElement, IntersectionObserverEntry>>(new Map());
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  const updateEntry = useCallback((entry: IntersectionObserverEntry) => {
-    setEntries(prev => new Map(prev.set(entry.target as HTMLElement, entry)));
-  }, []);
-
-  useEffect(() => {
-    const validElements = elements.filter((el): el is HTMLElement => el !== null);
-    
-    if (validElements.length === 0) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(updateEntry);
-      },
-      options
-    );
-
-    validElements.forEach(element => {
-      observerRef.current?.observe(element);
-    });
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [elements, options, updateEntry]);
-
-  const isIntersecting = useCallback(
-    (element: HTMLElement | null) => {
-      if (!element) return false;
-      return entries.get(element)?.isIntersecting ?? false;
-    },
-    [entries]
-  );
-
-  const getEntry = useCallback(
-    (element: HTMLElement | null) => {
-      if (!element) return null;
-      return entries.get(element) ?? null;
-    },
-    [entries]
-  );
-
-  return {
-    isIntersecting,
-    getEntry,
-    entries: Array.from(entries.values()),
-  };
-}
+// Hook helpers are exported from use-intersection-observer.ts
 
 // Virtualized list component using intersection observer
 export interface VirtualizedListProps<T> {
@@ -268,5 +148,3 @@ export function VirtualizedList<T>({
     </div>
   );
 }
-
-export default useIntersectionObserver;

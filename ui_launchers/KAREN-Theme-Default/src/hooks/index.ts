@@ -63,6 +63,8 @@ export type { ErrorAnalysisRequest, UseIntelligentErrorReturn, ErrorAnalysisResp
 export { useKarenAlerts, useSimpleAlerts } from './use-karen-alerts';
 export type { UseKarenAlertsState, UseKarenAlertsReturn } from './use-karen-alerts';
 
+export { useKarenToaster } from './use-karen-toaster';
+
 export { useKeyboardNavigation, useRovingTabIndex, useGridNavigation } from './use-keyboard-navigation';
 export type { KeyMap, GridNavigationOptions, KeyboardNavigationOptions } from './use-keyboard-navigation';
 

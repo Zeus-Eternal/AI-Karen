@@ -1,21 +1,11 @@
 "use client";
 
-import React, {
-  Suspense,
-  type ComponentType,
-  type LazyExoticComponent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 type SimpleComponent = React.ComponentType<Record<string, unknown>>;
-type ComponentProps<T> = T extends ComponentType<infer P> ? P : never;
-
 export interface LazyComponentProps {
   fallback?: SimpleComponent;
   errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
@@ -140,70 +130,5 @@ export const LazyComponent: React.FC<LazyComponentProps> = ({
     <Suspense fallback={<FallbackComponent />}>{children}</Suspense>
   </LazyComponentErrorBoundary>
 );
-
-export function createLazyComponent<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  options: LazyLoadOptions = {}
-): LazyExoticComponent<T> {
-  const { delay = 0, fallback, errorFallback } = options;
-
-  return React.lazy(async () => {
-    if (delay > 0) {
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, delay);
-      });
-    }
-
-    const module = await importFn();
-    const LoadedComponent = module.default;
-
-    const WrappedComponent = (props: ComponentProps<T>) => (
-      <LazyComponent fallback={fallback} errorFallback={errorFallback}>
-        <LoadedComponent {...props} />
-      </LazyComponent>
-    );
-
-    WrappedComponent.displayName = `LazyComponent(${LoadedComponent.displayName ?? LoadedComponent.name ?? "Component"})`;
-
-    return {
-      default: WrappedComponent as unknown as T,
-    };
-  });
-}
-
-export function useLazyPreload<T extends ComponentType<any>>(
-  importFn: () => Promise<{ default: T }>,
-  options: { preloadOnMount?: boolean } = {}
-) {
-  const { preloadOnMount = false } = options;
-  const importFnRef = useRef(importFn);
-  const [isPreloaded, setIsPreloaded] = useState(false);
-
-  useEffect(() => {
-    importFnRef.current = importFn;
-  }, [importFn]);
-
-  const preload = useCallback(() => {
-    if (isPreloaded) {
-      return;
-    }
-
-    void importFnRef.current()
-      .then(() => {
-        setIsPreloaded(true);
-      })
-      .catch(() => {
-        // ignore preload errors; they'll surface during actual render
-      });
-  }, [isPreloaded]);
-
-  useEffect(() => {
-    if (preloadOnMount) {
-      preload();
-    }
-  }, [preload, preloadOnMount]);
-
-  return { preload, isPreloaded };
-}
 
 export default LazyComponent;

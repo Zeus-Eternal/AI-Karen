@@ -1,27 +1,22 @@
 // Lazy loading components and utilities
-export { 
+export {
   default as LazyComponent,
-  LazyComponentErrorBoundary, 
-  createLazyComponent, 
-  useLazyPreload 
+  LazyComponentErrorBoundary,
 } from './lazy-component';
+export { createLazyComponent, useLazyPreload } from './lazy-component-utils';
 
-export { 
-  default as LazyImage, 
-  useImagePreloader 
-} from './lazy-image';
+export { default as LazyImage } from './lazy-image';
+export { useImagePreloader } from './use-image-preloader';
 
-export { 
-  default as RouteLazyLoader, 
-  createLazyRoute, 
-  useRoutePreloader, 
-  withLazyLoading 
-} from './route-lazy-loader';
+export { default as RouteLazyLoader } from './route-lazy-loader';
+export { createLazyRoute, useRoutePreloader, withLazyLoading } from './route-lazy-loader-utils';
 
-export { 
-  default as useIntersectionObserver, 
-  useMultipleIntersectionObserver 
+export {
+  IntersectionObserverWrapper,
+  LazyContent,
+  VirtualizedList,
 } from './intersection-observer';
+export { default as useIntersectionObserver, useMultipleIntersectionObserver } from './use-intersection-observer';
 
 // Re-export types
 export type { 

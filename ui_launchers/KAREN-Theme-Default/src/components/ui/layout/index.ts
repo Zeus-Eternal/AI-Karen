@@ -23,17 +23,16 @@ export {
 } from './flex-container';
 
 // Responsive Container Components
-export { 
-  useContainerQuery,
-  useContainerSize,
+export {
   type ResponsiveContainerProps,
   type ResponsiveContainerVariants,
   type ContainerBreakpoints,
   type ContainerSize,
   type ResponsiveValue as ContainerResponsiveValue,
-  defaultContainerBreakpoints,
-  containerSizes,
 } from './responsive-container';
+
+export { useContainerQuery, useContainerSize } from './responsive-container-hooks';
+export { defaultContainerBreakpoints, containerSizes } from './responsive-container-constants';
 
 // Re-export common types
 export type ResponsiveValue<T> = {

@@ -11,6 +11,8 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+import type { CSSCustomPropertyStyles } from './css-custom-properties';
+
 // ============================================================================
 // TYPES AND INTERFACES
 // ============================================================================
@@ -163,10 +165,10 @@ const flexContainerVariants = cva(
 function processResponsiveValue<T>(
   value: T | ResponsiveValue<T>,
   processor?: (val: T) => string
-): Record<string, string> | string {
+): Record<`--${string}`, string> | string {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const responsiveValue = value as ResponsiveValue<T>;
-    const result: Record<string, string> = {};
+    const result: Record<`--${string}`, string> = {};
     
     Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
       if (val !== undefined) {
@@ -206,8 +208,8 @@ export interface FlexStyleProps {
 /**
  * Generate CSS custom properties for responsive flex
  */
-function generateFlexStyles(props: FlexStyleProps): React.CSSProperties {
-  const styles: React.CSSProperties = {};
+function generateFlexStyles(props: FlexStyleProps): CSSCustomPropertyStyles {
+  const styles: CSSCustomPropertyStyles = {};
   
   // Process gap
   if (props.gap) {
@@ -216,7 +218,7 @@ function generateFlexStyles(props: FlexStyleProps): React.CSSProperties {
       styles.gap = gapValue;
     } else {
       Object.entries(gapValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }
