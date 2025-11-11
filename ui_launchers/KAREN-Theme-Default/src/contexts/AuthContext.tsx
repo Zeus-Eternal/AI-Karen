@@ -323,6 +323,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
+    determineUserRole,
   ]);
 
   // Session refresh timer management

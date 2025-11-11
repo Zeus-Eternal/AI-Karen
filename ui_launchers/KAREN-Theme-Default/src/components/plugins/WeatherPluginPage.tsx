@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
-import { useMemo, useState } from "react";
+import * as React from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,48 +22,45 @@ import { Separator } from '../ui/separator';
  * responses are used. This page lets users set preferences for the future
  * full integration.
  */
-const useInitialSettings = () =>
-  useMemo<Pick<
-    KarenSettings,
-    "temperatureUnit" | "weatherService" | "weatherApiKey" | "defaultWeatherLocation"
-  >>(() => {
-    const fallbackSettings = {
+export default function WeatherPluginPage() {
+  const [settings, setSettings] = useState<Pick<KarenSettings, 'temperatureUnit' | 'weatherService' | 'weatherApiKey' | 'defaultWeatherLocation'>>(() => {
+    const defaults = {
       temperatureUnit: DEFAULT_KAREN_SETTINGS.temperatureUnit,
       weatherService: DEFAULT_KAREN_SETTINGS.weatherService,
       weatherApiKey: DEFAULT_KAREN_SETTINGS.weatherApiKey,
       defaultWeatherLocation: DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
     };
 
-    if (typeof window === "undefined") {
-      return fallbackSettings;
+    if (typeof window === 'undefined') {
+      return defaults;
     }
 
     try {
       const storedSettingsStr = window.localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       if (!storedSettingsStr) {
-        return fallbackSettings;
+        return defaults;
       }
 
       const parsedSettings: Partial<KarenSettings> = JSON.parse(storedSettingsStr);
+
       return {
-        temperatureUnit:
-          parsedSettings.temperatureUnit ?? DEFAULT_KAREN_SETTINGS.temperatureUnit,
-        weatherService:
-          parsedSettings.weatherService ?? DEFAULT_KAREN_SETTINGS.weatherService,
+        ...defaults,
+        temperatureUnit: parsedSettings.temperatureUnit || defaults.temperatureUnit,
+        weatherService: parsedSettings.weatherService || defaults.weatherService,
         weatherApiKey:
-          parsedSettings.weatherApiKey ?? DEFAULT_KAREN_SETTINGS.weatherApiKey,
+          typeof parsedSettings.weatherApiKey === 'string'
+            ? parsedSettings.weatherApiKey
+            : defaults.weatherApiKey,
         defaultWeatherLocation:
-          parsedSettings.defaultWeatherLocation ?? DEFAULT_KAREN_SETTINGS.defaultWeatherLocation,
+          typeof parsedSettings.defaultWeatherLocation === 'string' && parsedSettings.defaultWeatherLocation.trim()
+            ? parsedSettings.defaultWeatherLocation
+            : defaults.defaultWeatherLocation,
       };
     } catch (error) {
-      console.warn("Failed to parse stored weather settings", error);
-      return fallbackSettings;
+      console.error('Failed to read stored weather settings:', error);
+      return defaults;
     }
-  }, []);
-
-export default function WeatherPluginPage() {
-  const initialSettings = useInitialSettings();
-  const [settings, setSettings] = useState(initialSettings);
+  });
 
   const { toast } = useToast();
   const handleUnitChange = (unit: TemperatureUnit) => {
@@ -99,7 +96,7 @@ export default function WeatherPluginPage() {
         description: "Your weather service settings have been updated.",
       });
     } catch (error) {
-      console.error("Failed to save weather preferences", error);
+      console.error('Failed to save weather preferences:', error);
       toast({
         variant: "destructive",
         title: "Save Error",
