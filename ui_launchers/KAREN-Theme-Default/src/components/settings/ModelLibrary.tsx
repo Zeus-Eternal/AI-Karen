@@ -27,18 +27,15 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
-import { 
-  errorHandler, 
-  handleApiError, 
-  handleDownloadError, 
+import {
+  handleApiError,
   handleModelManagementError,
   createConfirmationDialog,
   showSuccess,
-  showInfo,
-  showWarning
+  showInfo
 } from '@/lib/error-handler';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
-import { ContextualHelp, HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
+import { HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
 import { useDownloadStatus } from '@/hooks/use-download-status';
 import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import ModelCard from './ModelCard';
@@ -153,34 +150,10 @@ export default function ModelLibrary() {
     activeDownloads,
     cancelDownload,
     pauseDownload,
-    resumeDownload,
-    retryDownload
+    resumeDownload
   } = useDownloadStatus();
   // Load settings and preferences on mount
-  useEffect(() => {
-    loadModels();
-    loadSavedPreferences();
-  }, []);
-  // Set a timeout to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
-    return () => clearTimeout(timeout);
-  }, [loading]);
-  // Auto-save preferences when they change
-  useEffect(() => {
-    savePreferences();
-  }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
-  // Auto-show download manager when downloads start
-  useEffect(() => {
-    if (activeDownloads.length > 0 && !showDownloadManager) {
-      setShowDownloadManager(true);
-    }
-  }, [activeDownloads.length, showDownloadManager]);
-  const loadSavedPreferences = () => {
+  const loadSavedPreferences = useCallback(() => {
     try {
       const savedSearch = localStorage.getItem(LOCAL_STORAGE_KEYS.searchQuery);
       const savedProvider = localStorage.getItem(LOCAL_STORAGE_KEYS.filterProvider);
@@ -189,6 +162,7 @@ export default function ModelLibrary() {
       const savedCapability = localStorage.getItem(LOCAL_STORAGE_KEYS.filterCapability);
       const savedSortBy = localStorage.getItem(LOCAL_STORAGE_KEYS.sortBy);
       const savedSortOrder = localStorage.getItem(LOCAL_STORAGE_KEYS.sortOrder);
+
       if (savedSearch) setSearchQuery(savedSearch);
       if (savedProvider) setFilterProvider(savedProvider);
       if (savedStatus) setFilterStatus(savedStatus);
@@ -197,43 +171,18 @@ export default function ModelLibrary() {
       if (savedSortBy) setSortBy(savedSortBy as SortOption);
       if (savedSortOrder) setSortOrder(savedSortOrder as SortOrder);
     } catch (error) {
-    // Handle error silently
-  }
-  };
-  const savePreferences = useCallback(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.searchQuery, searchQuery);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.filterProvider, filterProvider);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.filterStatus, filterStatus);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.filterSize, filterSize);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.filterCapability, filterCapability);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.sortBy, sortBy);
-      localStorage.setItem(LOCAL_STORAGE_KEYS.sortOrder, sortOrder);
-    } catch (error) {
-    // Handle error silently
-  }
-  }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
-  const loadModels = async () => {
-    try {
-      setLoading(true);
-      // Load models and stats from backend
-      await Promise.all([
-        loadAvailableModels(),
-        loadModelStats()
-      ]);
-    } catch (error) {
-      handleApiError(error, 'load model library');
-    } finally {
-      setLoading(false);
+      console.error('Failed to load saved model library preferences', error);
     }
-  };
-  const loadAvailableModels = async () => {
+  }, []);
+
+  const loadAvailableModels = useCallback(async (): Promise<ModelInfo[]> => {
     try {
       const response = await backend.makeRequestPublic<{
         models: ModelInfo[];
         total?: number;
         status?: string;
       }>('/api/models/library');
+
       console.log('📚 ModelLibrary: API response received:', {
         responseType: typeof response,
         isObject: response && typeof response === 'object',
@@ -246,21 +195,80 @@ export default function ModelLibrary() {
 
       if (response && 'models' in response && Array.isArray(response.models)) {
         setModels(response.models);
-      } else {
-        setModels(getFallbackModels());
+        return response.models;
       }
+
+      const fallbackModels = getFallbackModels();
+      setModels(fallbackModels);
+      return fallbackModels;
     } catch (error) {
-      setModels(getFallbackModels());
+      console.error('Failed to load available models, using fallback list', error);
+      const fallbackModels = getFallbackModels();
+      setModels(fallbackModels);
+      return fallbackModels;
     }
-  };
-  const loadModelStats = async () => {
+  }, [backend]);
+
+  const loadModelStats = useCallback(async (modelList: ModelInfo[]) => {
     try {
       const response = await backend.makeRequestPublic<ModelLibraryStats>('/api/models/stats');
-      setStats(response || calculateStatsFromModels(models));
+      setStats(response || calculateStatsFromModels(modelList));
     } catch (error) {
-      setStats(calculateStatsFromModels(models));
+      console.error('Failed to load model stats, calculating from current models', error);
+      setStats(calculateStatsFromModels(modelList));
     }
-  };
+  }, [backend]);
+
+  const savePreferences = useCallback(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.searchQuery, searchQuery);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.filterProvider, filterProvider);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.filterStatus, filterStatus);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.filterSize, filterSize);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.filterCapability, filterCapability);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.sortBy, sortBy);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.sortOrder, sortOrder);
+    } catch (error) {
+      console.error('Failed to save model library preferences', error);
+    }
+  }, [searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
+
+  const loadModels = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Load models and stats from backend
+      const availableModels = await loadAvailableModels();
+      await loadModelStats(availableModels);
+    } catch (error) {
+      handleApiError(error, 'load model library');
+    } finally {
+      setLoading(false);
+    }
+  }, [loadAvailableModels, loadModelStats]);
+
+  useEffect(() => {
+    void loadModels();
+    loadSavedPreferences();
+  }, [loadModels, loadSavedPreferences]);
+  // Set a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+    return () => clearTimeout(timeout);
+  }, [loading]);
+  // Auto-save preferences when they change
+  useEffect(() => {
+    savePreferences();
+  }, [savePreferences, searchQuery, filterProvider, filterStatus, filterSize, filterCapability, sortBy, sortOrder]);
+  // Auto-show download manager when downloads start
+  useEffect(() => {
+    if (activeDownloads.length > 0 && !showDownloadManager) {
+      setShowDownloadManager(true);
+    }
+  }, [activeDownloads.length, showDownloadManager]);
   const getFallbackModels = (): ModelInfo[] => [
     {
       id: 'tinyllama-1.1b-chat-q4',
@@ -354,7 +362,7 @@ export default function ModelLibrary() {
           try {
             await executeModelAction(modelId, action, modelName);
             setConfirmationDialog(prev => ({ ...prev, open: false }));
-          } catch (error) {
+          } catch (_error) {
             // Error is already handled in executeModelAction
           } finally {
             setConfirmationDialog(prev => ({ ...prev, loading: false }));
@@ -371,7 +379,7 @@ export default function ModelLibrary() {
     setModelActionLoading(modelId, action, true);
     try {
       switch (action) {
-        case 'download':
+        case 'download': {
           const response = await backend.makeRequestPublic(`/api/models/download`, {
             method: 'POST',
             body: JSON.stringify({ model_id: modelId })
@@ -380,7 +388,7 @@ export default function ModelLibrary() {
           if (response && (response as unknown).task_id) {
             // The download status hook will automatically pick up this task
             showSuccess(
-              "Download Started", 
+              "Download Started",
               `Download of ${modelName} has been initiated. Check the Download Manager for progress.`
             );
             // Show download manager if there are active downloads
@@ -389,14 +397,16 @@ export default function ModelLibrary() {
             }
           }
           break;
-        case 'delete':
+        }
+        case 'delete': {
           await backend.makeRequestPublic(`/api/models/${modelId}`, {
             method: 'DELETE'
           });
 
           showSuccess("Model Deleted", `${modelName} has been removed from local storage.`);
           break;
-        case 'cancel':
+        }
+        case 'cancel': {
           // Find the task ID for this model
           const task = downloadTasks.find(t => t.modelId === modelId);
           if (task) {
@@ -410,20 +420,23 @@ export default function ModelLibrary() {
             showInfo("Download Cancelled", `Download of ${modelName} has been cancelled.`);
           }
           break;
-        case 'pause':
+        }
+        case 'pause': {
           const pauseTask = downloadTasks.find(t => t.modelId === modelId);
           if (pauseTask) {
             await pauseDownload(pauseTask.id);
             showInfo("Download Paused", `Download of ${modelName} has been paused.`);
           }
           break;
-        case 'resume':
+        }
+        case 'resume': {
           const resumeTask = downloadTasks.find(t => t.modelId === modelId);
           if (resumeTask) {
             await resumeDownload(resumeTask.id);
             showInfo("Download Resumed", `Download of ${modelName} has been resumed.`);
           }
           break;
+        }
       }
       // Refresh models after action
       await loadModels();
@@ -503,31 +516,30 @@ export default function ModelLibrary() {
     if (filterCapability !== 'all') count++;
     return count;
   };
-  const toggleSort = (newSortBy: SortOption) => {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
-    }
-  };
   // Update model status based on download tasks
-  const modelsWithDownloadStatus = Array.isArray(models) ? models.map(model => {
-    const downloadTask = downloadTasks.find(task => task.modelId === model.id);
-    if (downloadTask) {
+  const modelsWithDownloadStatus = useMemo(() => {
+    if (!Array.isArray(models)) {
+      return [];
+    }
+
+    return models.map(model => {
+      const downloadTask = downloadTasks.find(task => task.modelId === model.id);
+      if (!downloadTask) {
+        return model;
+      }
+
+      const derivedStatus =
+        downloadTask.status === 'downloading' ? 'downloading' :
+        downloadTask.status === 'completed' ? 'local' :
+        downloadTask.status === 'error' ? 'error' : model.status;
+
       return {
         ...model,
-        status: downloadTask.status === 'downloading' ? 'downloading' :
-                downloadTask.status === 'completed' ? 'local' :
-                downloadTask.status === 'error' ? 'error' : model.status,
+        status: derivedStatus,
         downloadProgress: downloadTask.progress
       };
-    }
-    return model;
-  }) : [];
-  // Log if models is not an array
-  if (!Array.isArray(models)) {
-  }
+    });
+  }, [downloadTasks, models]);
   // Helper functions for filtering and sorting
   const getSizeCategory = (size: number): string => {
     if (size < 1024 * 1024 * 1024) return 'small'; // < 1GB
