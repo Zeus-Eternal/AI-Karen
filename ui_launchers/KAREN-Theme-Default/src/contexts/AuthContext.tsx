@@ -58,6 +58,92 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
+interface RawAuthUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id?: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid?: boolean;
+  user?: RawAuthUserData;
+  user_data?: RawAuthUserData;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(item => typeof item === "string");
+
+const isRawAuthUserData = (value: unknown): value is RawAuthUserData => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const hasUserId = typeof value.user_id === "string";
+  const hasEmail = typeof value.email === "string";
+  const hasTenant = value.tenant_id === undefined || typeof value.tenant_id === "string";
+  const hasRoles =
+    value.roles === undefined ||
+    isStringArray(value.roles);
+  const hasPermissions =
+    value.permissions === undefined ||
+    isStringArray(value.permissions);
+
+  return hasUserId && hasEmail && hasTenant && hasRoles && hasPermissions;
+};
+
+const parseSessionResponse = (data: unknown): SessionValidationResponse | null => {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const response: SessionValidationResponse = {};
+
+  if (typeof data.valid === "boolean") {
+    response.valid = data.valid;
+  }
+
+  if (isRawAuthUserData(data.user)) {
+    response.user = data.user;
+  }
+
+  if (isRawAuthUserData(data.user_data)) {
+    response.user_data = data.user_data;
+  }
+
+  if (
+    response.valid === undefined &&
+    !response.user &&
+    !response.user_data
+  ) {
+    return null;
+  }
+
+  return response;
+};
+
+const getUserDataFromResponse = (
+  response: SessionValidationResponse | null
+): RawAuthUserData | null => {
+  if (!response) {
+    return null;
+  }
+
+  if (response.user) {
+    return response.user;
+  }
+
+  if (response.user_data) {
+    return response.user_data;
+  }
+
+  return null;
+};
+
 // Hook moved to separate file for React Fast Refresh compatibility
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
@@ -280,13 +366,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
+      const sessionResponse = parseSessionResponse(result.data);
+      const userData = getUserDataFromResponse(sessionResponse);
+
+      if (sessionResponse?.valid && userData) {
         const user: User = {
           userId: userData.user_id,
           email: userData.email,
           roles: userData.roles || [],
-          tenantId: userData.tenant_id,
+          tenantId: userData.tenant_id || "default",
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };
@@ -393,7 +481,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = result.data.user || result.data.user_data;
+      const sessionResponse = parseSessionResponse(result.data);
+      const userData = getUserDataFromResponse(sessionResponse);
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -408,7 +497,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         userId: userData.user_id,
         email: userData.email,
         roles: userData.roles || [],
-        tenantId: userData.tenant_id,
+        tenantId: userData.tenant_id || "default",
         role: determineUserRole(userData.roles || []),
         permissions: userData.permissions,
       };
@@ -494,7 +583,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           retryCount,
           metadata: {
             statusCode:
-              error instanceof ConnectionError ? error.statusCode : undefined,
+              err instanceof ConnectionError ? err.statusCode : undefined,
           },
         }
       );
@@ -640,13 +729,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
+      const sessionResponse = parseSessionResponse(result.data);
+      const userData = getUserDataFromResponse(sessionResponse);
+
+      if (sessionResponse?.valid && userData) {
         const user: User = {
           userId: userData.user_id,
           email: userData.email,
           roles: userData.roles || [],
-          tenantId: userData.tenant_id,
+          tenantId: userData.tenant_id || "default",
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };

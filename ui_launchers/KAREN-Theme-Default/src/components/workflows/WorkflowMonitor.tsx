@@ -529,7 +529,7 @@ function ExecutionDetailsPanel({
                         Node: {log.nodeId}
                       </p>
                     )}
-                    {log.data && (
+                    {log.data != null && (
                       <details className="mt-2">
                         <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
                         </summary>

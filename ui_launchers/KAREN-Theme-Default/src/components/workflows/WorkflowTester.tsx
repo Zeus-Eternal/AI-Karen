@@ -358,7 +358,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                       {log.nodeId && (
                         <p className="text-xs opacity-75 mt-1 sm:text-sm md:text-base">Node: {log.nodeId}</p>
                       )}
-                      {log.data && (
+                      {log.data != null && (
                         <details className="mt-2">
                           <summary className="text-xs cursor-pointer sm:text-sm md:text-base">View Data</summary>
                           <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">

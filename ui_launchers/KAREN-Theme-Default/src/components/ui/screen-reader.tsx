@@ -13,26 +13,40 @@ import { useScreenReaderAnnouncements } from './use-screen-reader-announcements'
 /**
  * ScreenReaderOnly - Content visible only to screen readers
  */
-export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLElement> {
   /** Content to show only to screen readers */
   children: React.ReactNode;
   /** Whether to use a div instead of span */
   asDiv?: boolean;
 }
 
-export const ScreenReaderOnly = React.forwardRef<HTMLElement, ScreenReaderOnlyProps>(
+export const ScreenReaderOnly = React.forwardRef<
+  HTMLSpanElement | HTMLDivElement,
+  ScreenReaderOnlyProps
+>(
   ({ children, asDiv = false, className, ...props }, ref) => {
-    const Component = asDiv ? 'div' : 'span';
     const sharedClassName = cn('sr-only', className);
 
+    if (asDiv) {
+      return (
+        <div
+          ref={ref as React.Ref<HTMLDivElement>}
+          className={sharedClassName}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
+
     return (
-      <Component
-        ref={ref}
+      <span
+        ref={ref as React.Ref<HTMLSpanElement>}
         className={sharedClassName}
         {...props}
       >
         {children}
-      </Component>
+      </span>
     );
   }
 );

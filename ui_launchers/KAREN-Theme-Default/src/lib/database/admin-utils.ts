@@ -466,7 +466,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<UserRecord>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -850,22 +850,46 @@ export class AdminDatabaseUtils {
       const dataResult = await this.executeQuery<Record<string, unknown>>('getAuditLogsData', dataQuery, dataParams);
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        user_id: row.user_id as string,
-        action: row.action as string,
-        resource_type: row.resource_type as string,
-        resource_id: row.resource_id as string | null,
-        details: row.details as Record<string, unknown> | null,
-        ip_address: row.ip_address as string | null,
-        user_agent: row.user_agent as string | null,
-        timestamp: row.timestamp as Date,
-        user: row.user_email ? {
+      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => {
+        const resourceId = row.resource_id;
+        const rawDetails = row.details as Record<string, unknown> | string | null | undefined;
+        let details: Record<string, unknown> = {};
+
+        if (rawDetails && typeof rawDetails === 'object') {
+          details = rawDetails as Record<string, unknown>;
+        } else if (typeof rawDetails === 'string') {
+          try {
+            const parsed = JSON.parse(rawDetails);
+            if (parsed && typeof parsed === 'object') {
+              details = parsed as Record<string, unknown>;
+            }
+          } catch {
+            details = { raw: rawDetails };
+          }
+        }
+
+        return {
+          id: row.id as string,
           user_id: row.user_id as string,
-          email: row.user_email as string,
-          full_name: row.user_full_name as string | null
-        } : undefined
-      }));
+          action: row.action as string,
+          resource_type: row.resource_type as string,
+          resource_id:
+            resourceId === null || resourceId === undefined
+              ? undefined
+              : String(resourceId),
+          details,
+          ip_address: (row.ip_address as string | null) ?? undefined,
+          user_agent: (row.user_agent as string | null) ?? undefined,
+          timestamp: new Date(row.timestamp as string | Date),
+          user: row.user_email
+            ? {
+                user_id: row.user_id as string,
+                email: row.user_email as string,
+                full_name: (row.user_full_name as string | null) ?? undefined,
+              }
+            : undefined,
+        } satisfies AuditLog;
+      });
 
       return {
         data,
@@ -920,22 +944,32 @@ export class AdminDatabaseUtils {
     try {
       const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
       
-      return result.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        key: row.key as string,
-        value: this.parseConfigValue(row.value as string, row.value_type as string),
-        value_type: row.value_type as string,
-        category: row.category as string,
-        description: row.description as string | null,
-        updated_by: row.updated_by as string,
-        updated_at: row.updated_at as Date,
-        created_at: row.created_at as Date,
-        updated_by_user: row.updated_by_email ? {
-          user_id: row.updated_by as string,
-          email: row.updated_by_email as string,
-          full_name: row.updated_by_name as string | null
-        } : undefined
-      }));
+      return result.map((row: Record<string, unknown>) => {
+        const rawValueType = typeof row.value_type === 'string' ? row.value_type : 'string';
+        const allowedValueTypes: SystemConfig['value_type'][] = ['string', 'number', 'boolean', 'json'];
+        const valueType = allowedValueTypes.includes(rawValueType as SystemConfig['value_type'])
+          ? (rawValueType as SystemConfig['value_type'])
+          : 'string';
+
+        return {
+          id: row.id as string,
+          key: row.key as string,
+          value: this.parseConfigValue(row.value as string, rawValueType),
+          value_type: valueType,
+          category: row.category as string,
+          description: (row.description as string | null) ?? undefined,
+          updated_by: row.updated_by as string,
+          updated_at: new Date(row.updated_at as string | Date),
+          created_at: new Date(row.created_at as string | Date),
+          updated_by_user: row.updated_by_email
+            ? {
+                user_id: row.updated_by as string,
+                email: row.updated_by_email as string,
+                full_name: (row.updated_by_name as string | null) ?? undefined,
+              }
+            : undefined,
+        } satisfies SystemConfig;
+      });
     } catch (error) {
       throw new AdminDatabaseError(
         'Failed to fetch system configuration',

@@ -117,14 +117,14 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: ElementContext;
+  private container: Document | HTMLElement;
   private options: RunOptions;
 
   constructor(
     container: ElementContext = document,
     options: RunOptions = {}
   ) {
-    this.container = container;
+    this.container = this.resolveContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -132,6 +132,38 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       },
       ...options,
     };
+  }
+
+  private resolveContainer(context: ElementContext): Document | HTMLElement {
+    if (typeof window === "undefined") {
+      if (typeof document !== "undefined") {
+        return document;
+      }
+
+      return ({} as Document);
+    }
+
+    if (typeof context === "string") {
+      const element = document.querySelector<HTMLElement>(context);
+      return element ?? document;
+    }
+
+    if (Array.isArray(context)) {
+      const element = context.find((item): item is HTMLElement | Document =>
+        item instanceof HTMLElement || item instanceof Document
+      );
+      return element ?? document;
+    }
+
+    if (context instanceof HTMLElement || context instanceof Document) {
+      return context;
+    }
+
+    if ((context as Document)?.querySelectorAll) {
+      return context as Document | HTMLElement;
+    }
+
+    return document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -591,9 +623,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     duration: number
   ): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map(
-      (violation: Result) => ({
+      (violation: Result): AccessibilityViolation => ({
         id: violation.id,
-        impact: violation.impact,
+        impact: (violation.impact ?? "serious") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,

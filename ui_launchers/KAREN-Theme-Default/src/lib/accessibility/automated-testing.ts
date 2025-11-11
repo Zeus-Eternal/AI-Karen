@@ -4,6 +4,7 @@ import { AxeResults, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
 
 type AxeWindow = Window & { axe: typeof axe };
+type ExtendedRunOptions = RunOptions & { include?: string[]; exclude?: string[] };
 
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
@@ -188,20 +189,20 @@ export class AutomatedAccessibilityTester {
   ): Promise<AccessibilityTestResult> {
     try {
       // Configure axe-core
-      const runOptions: RunOptions = {
+      const runOptions: ExtendedRunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
         },
         rules: config.rules || {}
       };
-      
+
       if (config.include) {
-        (runOptions as unknown).include = config.include;
+        runOptions.include = config.include;
       }
-      
+
       if (config.exclude) {
-        (runOptions as unknown).exclude = config.exclude;
+        runOptions.exclude = config.exclude;
       }
       
       // Run axe-core analysis
@@ -267,7 +268,7 @@ export class AutomatedAccessibilityTester {
       };
 
       const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options: RunOptions) => {
-        const axeInstance = (window as AxeWindow).axe;
+        const axeInstance = (window as unknown as AxeWindow).axe;
         if (!axeInstance) {
           throw new Error('axe-core is not available in the page context');
         }

@@ -5,11 +5,15 @@ import FocusIndicator, { type FocusIndicatorProps } from './focus-indicators';
 /**
  * Higher-order component helper that wraps the provided component with the FocusIndicator.
  */
+type ComponentWithRef<P, RefType> = React.ForwardRefExoticComponent<
+  React.PropsWithoutRef<P> & React.RefAttributes<RefType>
+>;
+
 export function withFocusIndicator<P extends object, RefType = unknown>(
-  Component: React.ComponentType<P & React.RefAttributes<RefType>>,
+  Component: ComponentWithRef<P, RefType>,
   indicatorProps?: Partial<FocusIndicatorProps>
 ) {
-  const WrappedComponent = React.forwardRef<RefType, P>((props, ref) => (
+  const WrappedComponent = React.forwardRef<RefType, React.PropsWithoutRef<P>>((props, ref) => (
     <FocusIndicator {...indicatorProps}>
       <Component {...props} ref={ref} />
     </FocusIndicator>
