@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,25 +20,22 @@ interface WorkflowInfo {
   steps: WorkflowStep[];
 }
 
-export default function WorkflowList() {
-  const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
-  const { toast } = useToast();
+const INITIAL_WORKFLOWS: WorkflowInfo[] = [
+  {
+    id: "wf1",
+    name: "Release Pipeline",
+    status: "idle",
+    steps: [
+      { name: "Build", action: "build" },
+      { name: "Test", action: "test" },
+      { name: "Deploy", action: "deploy" },
+    ],
+  },
+];
 
-  useEffect(() => {
-    // Placeholder data; normally fetched from Workflow Builder extension
-    setWorkflows([
-      {
-        id: "wf1",
-        name: "Release Pipeline",
-        status: "idle",
-        steps: [
-          { name: "Build", action: "build" },
-          { name: "Test", action: "test" },
-          { name: "Deploy", action: "deploy" },
-        ],
-      },
-    ]);
-  }, []);
+export default function WorkflowList() {
+  const [workflows, setWorkflows] = useState<WorkflowInfo[]>(INITIAL_WORKFLOWS);
+  const { toast } = useToast();
 
   const executeWorkflow = (id: string) => {
     setWorkflows(prev => prev.map(w => w.id === id ? { ...w, status: "running" } : w));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,17 +13,13 @@ interface ProviderInfo {
   model: string;
 }
 
-export default function LLMProviderList() {
-  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+const INITIAL_PROVIDERS: ProviderInfo[] = [
+  { id: "openai", name: "OpenAI", status: "healthy", model: "gpt-3.5-turbo" },
+  { id: "anthropic", name: "Anthropic", status: "unknown", model: "claude-3" },
+];
 
-  useEffect(() => {
-    // Placeholder provider data. In a real implementation this would be fetched
-    // from the backend service.
-    setProviders([
-      { id: "openai", name: "OpenAI", status: "healthy", model: "gpt-3.5-turbo" },
-      { id: "anthropic", name: "Anthropic", status: "unknown", model: "claude-3" },
-    ]);
-  }, []);
+export default function LLMProviderList() {
+  const [providers] = useState<ProviderInfo[]>(INITIAL_PROVIDERS);
 
   return (
     <div className="space-y-4">

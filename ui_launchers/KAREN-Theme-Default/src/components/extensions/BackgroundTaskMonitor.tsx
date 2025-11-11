@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ExtensionTaskHistoryEntry } from '@/extensions/types';
 import type { ExtensionStatus } from '@/lib/extensions/extension-integration';
 import { useExtensionTaskMonitoring, useExtensionTasks, type ExtensionTaskMonitoringSummary } from '@/lib/extensions/hooks';
@@ -33,16 +33,12 @@ export interface BackgroundTaskMonitorProps {
 
 export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTaskMonitorProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedExtension, setSelectedExtension] = useState<string | null>(extensionId || null);
+  const [manualSelectedExtension, setManualSelectedExtension] = useState<string | null>(null);
+
+  const selectedExtension = manualSelectedExtension ?? extensionId ?? null;
 
   const taskData = useExtensionTaskMonitoring(extensionId);
-  const { history, loading } = useExtensionTasks(selectedExtension ?? extensionId);
-
-  useEffect(() => {
-    if (extensionId) {
-      setSelectedExtension(extensionId);
-    }
-  }, [extensionId]);
+  const { history, loading } = useExtensionTasks(selectedExtension ?? undefined);
 
   const taskStats = useMemo(() => {
     const recentExecutions = history.slice(0, 10);
@@ -162,7 +158,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
           <ExtensionTaskList
             extensions={taskData.statuses}
             selectedExtension={selectedExtension}
-            onSelectExtension={(id) => setSelectedExtension(id)}
+            onSelectExtension={(id) => setManualSelectedExtension(id)}
           />
         </TabsContent>
 
