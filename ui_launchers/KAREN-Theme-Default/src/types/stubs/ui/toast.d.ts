@@ -10,6 +10,7 @@ declare module '@/components/ui/toast' {
     onOpenChange?: (open: boolean) => void;
     duration?: number;
     variant?: 'default' | 'destructive' | string;
+    className?: string;
   }
 
   export type ToastActionElement = ReactNode;

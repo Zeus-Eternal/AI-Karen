@@ -13,7 +13,7 @@ export interface User {
   userId: string;
   email: string;
   roles: string[];
-  tenantId: string;
+  tenantId?: string;
   role?: "super_admin" | "admin" | "user";
   permissions?: string[];
 }
@@ -57,6 +57,59 @@ export interface AuthContextType {
 export interface AuthProviderProps {
   children: ReactNode;
 }
+
+interface SessionUserPayload {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id?: string;
+  permissions?: string[];
+  [key: string]: unknown;
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: SessionUserPayload | null;
+  user_data?: SessionUserPayload | null;
+}
+
+interface LoginResponse {
+  user?: SessionUserPayload | null;
+  user_data?: SessionUserPayload | null;
+  [key: string]: unknown;
+}
+
+const isSessionUserPayload = (value: unknown): value is SessionUserPayload => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.user_id === "string" && typeof candidate.email === "string";
+};
+
+const isSessionValidationResponse = (
+  data: unknown,
+): data is SessionValidationResponse => {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const candidate = data as Record<string, unknown>;
+  return typeof candidate.valid === "boolean";
+};
+
+const extractUserPayload = (
+  data: { user?: SessionUserPayload | null; user_data?: SessionUserPayload | null },
+): SessionUserPayload | null => {
+  if (data.user && isSessionUserPayload(data.user)) {
+    return data.user;
+  }
+  if (data.user_data && isSessionUserPayload(data.user_data)) {
+    return data.user_data;
+  }
+  return null;
+};
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
@@ -263,7 +316,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<SessionValidationResponse>(
         validateUrl,
         {
           method: "GET",
@@ -280,27 +333,30 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+      if (isSessionValidationResponse(result.data)) {
+        const userData = extractUserPayload(result.data);
 
-        setUser(user);
-        setIsAuthenticated(true);
-        setAuthState((prev) => ({
-          ...prev,
-          error: null,
-          lastActivity: new Date(),
-          isRefreshing: false,
-        }));
+        if (result.data.valid && userData) {
+          const user: User = {
+            userId: userData.user_id,
+            email: userData.email,
+            roles: userData.roles || [],
+            tenantId: userData.tenant_id,
+            role: determineUserRole(userData.roles || []),
+            permissions: userData.permissions,
+          };
 
-        return true;
+          setUser(user);
+          setIsAuthenticated(true);
+          setAuthState((prev) => ({
+            ...prev,
+            error: null,
+            lastActivity: new Date(),
+            isRefreshing: false,
+          }));
+
+          return true;
+        }
       }
 
       setUser(null);
@@ -374,7 +430,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<LoginResponse>(
         loginUrl,
         {
           method: "POST",
@@ -393,7 +449,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = result.data.user || result.data.user_data;
+      const userData = extractUserPayload(result.data);
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -494,7 +550,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           retryCount,
           metadata: {
             statusCode:
-              error instanceof ConnectionError ? error.statusCode : undefined,
+              err instanceof ConnectionError ? err.statusCode : undefined,
           },
         }
       );
@@ -623,7 +679,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<SessionValidationResponse>(
         validateUrl,
         {
           method: "GET",
@@ -640,13 +696,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
+      if (isSessionValidationResponse(result.data)) {
+        const userData = extractUserPayload(result.data);
+        if (result.data.valid && userData) {
+          const user: User = {
+            userId: userData.user_id,
+            email: userData.email,
+            roles: userData.roles || [],
+            tenantId: userData.tenant_id,
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };
@@ -664,29 +721,30 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           startSessionRefreshTimer();
         }
 
-        connectivityLogger.logAuthentication(
-          "info",
-          "Session validation succeeded",
-          {
-            email: user.email,
-            success: true,
-          },
-          "session_validation",
-          undefined,
-          {
-            startTime: validationStartTime,
-            duration:
-              result.duration ??
-              ((typeof performance !== "undefined"
-                ? performance.now()
-                : Date.now()) - validationStartTime),
-            retryCount: result.retryCount,
-            metadata: {
-              statusCode: result.status,
+          connectivityLogger.logAuthentication(
+            "info",
+            "Session validation succeeded",
+            {
+              email: user.email,
+              success: true,
             },
-          }
-        );
-        return true;
+            "session_validation",
+            undefined,
+            {
+              startTime: validationStartTime,
+              duration:
+                result.duration ??
+                ((typeof performance !== "undefined"
+                  ? performance.now()
+                  : Date.now()) - validationStartTime),
+              retryCount: result.retryCount,
+              metadata: {
+                statusCode: result.status,
+              },
+            }
+          );
+          return true;
+        }
       }
 
       // Invalid session

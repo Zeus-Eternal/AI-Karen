@@ -119,12 +119,14 @@ export interface AriaReport {
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private container: ElementContext;
   private options: RunOptions;
+  private root: Document | Element;
 
   constructor(
     container: ElementContext = document,
     options: RunOptions = {}
   ) {
     this.container = container;
+    this.root = this.resolveContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -132,6 +134,50 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       },
       ...options,
     };
+  }
+
+  private resolveContainer(context: ElementContext): Document | Element {
+    if (typeof document === "undefined") {
+      throw new Error("Accessibility tests require a DOM environment");
+    }
+
+    if (typeof context === "string") {
+      const element = document.querySelector(context);
+      return element ?? document;
+    }
+
+    if (Array.isArray(context)) {
+      for (const entry of context) {
+        const resolved = this.resolveContainer(entry);
+        if (resolved) {
+          return resolved;
+        }
+      }
+      return document;
+    }
+
+    if (context instanceof Element || context instanceof Document) {
+      return context;
+    }
+
+    if (context && typeof context === "object") {
+      const contextObject = context as { context?: ElementContext; include?: ElementContext };
+      if (contextObject.context) {
+        return this.resolveContainer(contextObject.context);
+      }
+      if (contextObject.include) {
+        return this.resolveContainer(contextObject.include);
+      }
+    }
+
+    return document;
+  }
+
+  private getOwnerDocument(): Document {
+    if (this.root instanceof Document) {
+      return this.root;
+    }
+    return this.root.ownerDocument ?? document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -199,7 +245,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = this.container.querySelectorAll(
+    const focusableElements = this.root.querySelectorAll<HTMLElement>(
       focusableSelectors.join(", ")
     );
     const unreachableElements: string[] = [];
@@ -208,46 +254,49 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const skipLinkIssues: string[] = [];
 
     focusableElements.forEach((element) => {
-      const htmlElement = element as HTMLElement;
-
-      if (htmlElement.tabIndex < 0 && !htmlElement.hasAttribute("disabled")) {
-        unreachableElements.push(this.getElementSelector(htmlElement));
+      if (element.tabIndex < 0 && !element.hasAttribute("disabled")) {
+        unreachableElements.push(this.getElementSelector(element));
       }
 
-      if (htmlElement.tabIndex > 0) {
+      if (element.tabIndex > 0) {
         focusOrderIssues.push(
           `Element has positive tabindex: ${this.getElementSelector(
-            htmlElement
+            element
           )}`
         );
       }
     });
 
-    const focusTraps = this.container.querySelectorAll(
+    const focusTraps = this.root.querySelectorAll(
       '[data-focus-trap="true"]'
     );
     focusTraps.forEach((trap) => {
-      const trapElement = trap as HTMLElement;
-      const focusableInTrap = trapElement.querySelectorAll(
+      if (!(trap instanceof HTMLElement)) {
+        return;
+      }
+      const focusableInTrap = trap.querySelectorAll(
         focusableSelectors.join(", ")
       );
 
       if (focusableInTrap.length === 0) {
         trapIssues.push(
           `Focus trap has no focusable elements: ${this.getElementSelector(
-            trapElement
+            trap
           )}`
         );
       }
     });
 
-    const skipLinks = this.container.querySelectorAll(
+    const skipLinks = this.root.querySelectorAll(
       '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return;
+      }
       const href = link.getAttribute("href");
       if (href && href.startsWith("#")) {
-        const target = this.container.querySelector(href);
+        const target = this.root.querySelector(href);
         if (!target) {
           skipLinkIssues.push(`Skip link target not found: ${href}`);
         }
@@ -289,14 +338,15 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       };
     }
 
-    const elements = Array.from(
-      this.container.querySelectorAll<HTMLElement>("*")
-    );
+    const elements = Array.from(this.root.querySelectorAll("*"));
     const failedElements: ColorContrastReport["failedElements"] = [];
     let totalRatio = 0;
     let sampled = 0;
 
     elements.slice(0, 200).forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
       const styles = window.getComputedStyle(element);
       const foreground = styles.color || "#000000";
       const background = styles.backgroundColor || "#ffffff";
@@ -352,10 +402,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     ];
 
     const focusTrapCandidates = Array.from(
-      this.container.querySelectorAll(
+      this.root.querySelectorAll(
         '[data-focus-trap], [aria-modal="true"], [role="dialog"]'
       )
-    ) as HTMLElement[];
+    ).filter((element): element is HTMLElement => element instanceof HTMLElement);
 
     const focusTraps = focusTrapCandidates.map((element) => {
       const innerFocusable = element.querySelectorAll(
@@ -371,7 +421,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     });
 
     const restoreTargets = Array.from(
-      this.container.querySelectorAll(
+      this.root.querySelectorAll(
         "[data-focus-restore], [data-focus-restoration]"
       )
     ) as HTMLElement[];
@@ -384,7 +434,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }));
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors.join(", "))
+      this.root.querySelectorAll(focusableSelectors.join(", "))
     ) as HTMLElement[];
 
     const focusIndicators = focusableElements.slice(0, 25).map((element) => {
@@ -518,13 +568,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const incorrectRoles = new Set<string>();
     const brokenReferences = new Set<string>();
 
-    const allElements = Array.from(
-      this.container.querySelectorAll("*")
-    ) as HTMLElement[];
-    const scopeDocument =
-      this.container instanceof Document
-        ? this.container
-        : this.container.ownerDocument || document;
+    const allElements = Array.from(this.root.querySelectorAll("*")).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement
+    );
+    const scopeDocument = this.getOwnerDocument();
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();
@@ -591,18 +638,22 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     duration: number
   ): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map(
-      (violation: Result) => ({
-        id: violation.id,
-        impact: violation.impact,
-        description: violation.description,
-        help: violation.help,
-        helpUrl: violation.helpUrl,
-        elements: violation.nodes.map((node: NodeResult) => ({
-          target: node.target.join(" "),
-          html: node.html,
-          failureSummary: node.failureSummary || "",
-        })),
-      })
+      (violation: Result) => {
+        const impact = (violation.impact ?? "serious") as AccessibilityViolation["impact"];
+
+        return {
+          id: violation.id,
+          impact,
+          description: violation.description,
+          help: violation.help,
+          helpUrl: violation.helpUrl,
+          elements: violation.nodes.map((node: NodeResult) => ({
+            target: node.target.join(" "),
+            html: node.html,
+            failureSummary: node.failureSummary || "",
+          })),
+        };
+      }
     );
 
     const summary = {

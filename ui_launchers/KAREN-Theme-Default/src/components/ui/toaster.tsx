@@ -68,6 +68,10 @@ function buildToastClassName(
 
 export function Toaster({ position = "bottom-right", richColors = false }: AppToasterProps) {
   const { toasts } = useToast();
+  const ToastComponent = React.useMemo(
+    () => Toast as React.ComponentType<Record<string, unknown>>,
+    []
+  );
 
   return (
     <ToastProvider>
@@ -94,13 +98,18 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
           )}
         >
           {toasts.map(({ id, title, description, action, ...props }) => {
-            const { className, variant, ...rest } = props as unknown;
+            const toastProps = props as Record<string, unknown> & {
+              className?: string;
+              variant?: ToastProps["variant"];
+            };
+            const { className, variant, ...rest } = toastProps;
+            const typedVariant = variant as ToastProps["variant"];
 
             return (
-              <Toast
+              <ToastComponent
                 key={id}
-                variant={variant}
-                className={buildToastClassName(variant, className, richColors)}
+                variant={typedVariant}
+                className={buildToastClassName(typedVariant, className, richColors)}
                 {...rest}
               >
                 <div className="grid gap-1">
@@ -109,7 +118,7 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
                 </div>
                 {action}
                 <ToastClose />
-              </Toast>
+              </ToastComponent>
             );
           })}
         </div>

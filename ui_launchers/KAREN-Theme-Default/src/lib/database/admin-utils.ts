@@ -466,7 +466,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<UserRecord>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -850,22 +850,33 @@ export class AdminDatabaseUtils {
       const dataResult = await this.executeQuery<Record<string, unknown>>('getAuditLogsData', dataQuery, dataParams);
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        user_id: row.user_id as string,
-        action: row.action as string,
-        resource_type: row.resource_type as string,
-        resource_id: row.resource_id as string | null,
-        details: row.details as Record<string, unknown> | null,
-        ip_address: row.ip_address as string | null,
-        user_agent: row.user_agent as string | null,
-        timestamp: row.timestamp as Date,
-        user: row.user_email ? {
+      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => {
+        const resourceId = row.resource_id as string | null | undefined;
+        const details: Record<string, unknown> =
+          (row.details as Record<string, unknown> | null | undefined) ?? {};
+        const timestampValue = row.timestamp as Date | string;
+        const timestamp = timestampValue instanceof Date ? timestampValue : new Date(timestampValue);
+        const fullName = row.user_full_name as string | null | undefined;
+
+        return {
+          id: row.id as string,
           user_id: row.user_id as string,
-          email: row.user_email as string,
-          full_name: row.user_full_name as string | null
-        } : undefined
-      }));
+          action: row.action as string,
+          resource_type: row.resource_type as string,
+          resource_id: resourceId ?? undefined,
+          details,
+          ip_address: (row.ip_address as string | null | undefined) ?? undefined,
+          user_agent: (row.user_agent as string | null | undefined) ?? undefined,
+          timestamp,
+          user: row.user_email
+            ? {
+                user_id: row.user_id as string,
+                email: row.user_email as string,
+                full_name: fullName ?? '',
+              }
+            : undefined,
+        };
+      });
 
       return {
         data,
@@ -919,23 +930,50 @@ export class AdminDatabaseUtils {
     
     try {
       const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
-      
-      return result.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        key: row.key as string,
-        value: this.parseConfigValue(row.value as string, row.value_type as string),
-        value_type: row.value_type as string,
-        category: row.category as string,
-        description: row.description as string | null,
-        updated_by: row.updated_by as string,
-        updated_at: row.updated_at as Date,
-        created_at: row.created_at as Date,
-        updated_by_user: row.updated_by_email ? {
-          user_id: row.updated_by as string,
-          email: row.updated_by_email as string,
-          full_name: row.updated_by_name as string | null
-        } : undefined
-      }));
+
+      return result.map((row: Record<string, unknown>) => {
+        const rawValueType = String(row.value_type ?? 'string');
+        const valueType: SystemConfig['value_type'] = ['string', 'number', 'boolean', 'json'].includes(rawValueType)
+          ? (rawValueType as SystemConfig['value_type'])
+          : 'string';
+
+        const rawCategory = String(row.category ?? 'general');
+        const allowedCategories: SystemConfig['category'][] = [
+          'security',
+          'email',
+          'general',
+          'authentication',
+        ];
+        const category: SystemConfig['category'] = allowedCategories.includes(
+          rawCategory as SystemConfig['category']
+        )
+          ? (rawCategory as SystemConfig['category'])
+          : 'general';
+
+        const updatedAtRaw = row.updated_at as Date | string;
+        const createdAtRaw = row.created_at as Date | string;
+        const description = row.description as string | null | undefined;
+        const updatedByName = row.updated_by_name as string | null | undefined;
+
+        return {
+          id: row.id as string,
+          key: row.key as string,
+          value: this.parseConfigValue(row.value as string, valueType),
+          value_type: valueType,
+          category,
+          description: description ?? undefined,
+          updated_by: row.updated_by as string,
+          updated_at: updatedAtRaw instanceof Date ? updatedAtRaw : new Date(updatedAtRaw),
+          created_at: createdAtRaw instanceof Date ? createdAtRaw : new Date(createdAtRaw),
+          updated_by_user: row.updated_by_email
+            ? {
+                user_id: row.updated_by as string,
+                email: row.updated_by_email as string,
+                full_name: updatedByName ?? '',
+              }
+            : undefined,
+        } satisfies SystemConfig;
+      });
     } catch (error) {
       throw new AdminDatabaseError(
         'Failed to fetch system configuration',

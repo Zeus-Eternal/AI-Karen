@@ -37,7 +37,7 @@ export function patchKarenBackendForExtensions() {
         return result;
       }
       
-      return null; // Let KarenBackend handle other errors normally
+      return { message: 'No extension fallback applied' };
     };
 
     logger.info('KarenBackend extension error handling patched');

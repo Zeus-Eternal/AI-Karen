@@ -172,11 +172,19 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
-    
+
+    const componentStack =
+      typeof errorInfo === 'object' &&
+      errorInfo !== null &&
+      'componentStack' in errorInfo &&
+      typeof (errorInfo as { componentStack?: unknown }).componentStack === 'string'
+        ? (errorInfo as { componentStack: string }).componentStack
+        : undefined;
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -201,18 +209,26 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     if (requestContext) {
       safeError('Request context:', requestContext, { useStructuredLogging: true });
     }
-    
+
+    const enhancedError = error as Error & {
+      status?: number;
+      isNetworkError?: boolean;
+      isCorsError?: boolean;
+      isTimeoutError?: boolean;
+      responseTime?: number;
+    };
+
     const context: Partial<ErrorAnalysisRequest> = {
-      status_code: error.status,
+      status_code: enhancedError.status,
       error_type: error.name || 'ApiError',
       request_path: requestContext?.endpoint,
       provider_name: requestContext?.provider,
       user_context: {
         method: requestContext?.method,
-        is_network_error: error.isNetworkError,
-        is_cors_error: error.isCorsError,
-        is_timeout_error: error.isTimeoutError,
-        response_time: error.responseTime,
+        is_network_error: enhancedError.isNetworkError,
+        is_cors_error: enhancedError.isCorsError,
+        is_timeout_error: enhancedError.isTimeoutError,
+        response_time: enhancedError.responseTime,
         timestamp: new Date().toISOString(),
       },
     };
