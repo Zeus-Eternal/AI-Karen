@@ -161,6 +161,7 @@ export function EndpointStatusIndicator({
       }) ?? (() => {});
 
     return () => {
+      cancelAnimationFrame(frame);
       try {
         unsubscribeMetrics();
       } catch {

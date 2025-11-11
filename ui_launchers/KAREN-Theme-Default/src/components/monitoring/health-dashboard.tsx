@@ -37,7 +37,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     try {
       return healthMonitor?.getMetrics?.() ?? null;
     } catch {
-      return null;
+      metrics = null;
     }
   });
   const [alerts, setAlerts] = useState<HealthAlert[]>(() => {

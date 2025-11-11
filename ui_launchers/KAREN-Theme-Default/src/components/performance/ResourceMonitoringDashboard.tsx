@@ -108,7 +108,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       setTimeWindowAnchor(Date.now());
     };
 
-    updateData();
+    const frame = requestAnimationFrame(updateData);
     const interval = setInterval(updateData, refreshInterval);
 
     const unsubscribe = resourceMonitor.onAlert((alert) => {
@@ -116,6 +116,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     });
 
     return () => {
+      cancelAnimationFrame(frame);
       clearInterval(interval);
       unsubscribe();
     };

@@ -29,30 +29,43 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
   // Auto-retry logic for non-critical errors
   useEffect(() => {
     if (
-      fallbackMode === 'full' && 
-      recoveryAttempts < 2 && 
+      fallbackMode === 'full' &&
+      recoveryAttempts < 2 &&
       !isRecovering &&
       errorReport?.severity !== 'critical'
     ) {
-      setAutoRetryCountdown(5);
-      const interval = setInterval(() => {
-        setAutoRetryCountdown(prev => {
-          if (prev === null || prev <= 1) {
-            clearInterval(interval);
-            onRecover();
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
+      let interval: ReturnType<typeof setInterval> | undefined;
+      const frame = requestAnimationFrame(() => {
+        setAutoRetryCountdown(5);
+        interval = setInterval(() => {
+          setAutoRetryCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              if (interval) {
+                clearInterval(interval);
+              }
+              onRecover();
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      });
+
+      return () => {
+        cancelAnimationFrame(frame);
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
     }
+    return undefined;
   }, [fallbackMode, recoveryAttempts, isRecovering, errorReport?.severity, onRecover]);
   const handleSendReport = async () => {
     try {
       await onReport();
       setReportSent(true);
     } catch (error) {
+      console.error('Failed to send error report', error);
     }
   };
   const getSeverityColor = (severity?: string) => {
