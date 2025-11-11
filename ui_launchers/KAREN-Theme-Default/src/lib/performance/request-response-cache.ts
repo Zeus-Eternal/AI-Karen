@@ -201,11 +201,15 @@ export class RequestResponseCache {
       this.accessOrder.splice(index, 1);
     }
     // Remove from tag index
+    const emptyTags: string[] = [];
     this.tagIndex.forEach((keys, tag) => {
       keys.delete(key);
       if (keys.size === 0) {
-        this.tagIndex.delete(tag);
+        emptyTags.push(tag);
       }
+    });
+    emptyTags.forEach(tag => {
+      this.tagIndex.delete(tag);
     });
     // Update metrics
     this.metrics.totalEntries = this.cache.size;
@@ -217,16 +221,16 @@ export class RequestResponseCache {
    */
   clearByTags(tags: string[]): number {
     let cleared = 0;
-    for (const tag of tags) {
+    tags.forEach(tag => {
       const keys = this.tagIndex.get(tag);
       if (keys) {
-        keys.forEach(key => {
-          if (this.delete(key)) {
+        keys.forEach(cacheKey => {
+          if (this.delete(cacheKey)) {
             cleared++;
           }
         });
       }
-    }
+    });
     return cleared;
   }
   /**
@@ -525,8 +529,11 @@ export class RequestResponseCache {
         }
       }
       this.metrics.totalEntries = this.cache.size;
-      this.metrics.memoryUsage = Array.from(this.cache.values())
-        .reduce((sum, entry) => sum + entry.size, 0);
+      let restoredMemoryUsage = 0;
+      this.cache.forEach(cacheEntry => {
+        restoredMemoryUsage += cacheEntry.size;
+      });
+      this.metrics.memoryUsage = restoredMemoryUsage;
     } catch (error) {
       void error;
       this.clearPersistence();
