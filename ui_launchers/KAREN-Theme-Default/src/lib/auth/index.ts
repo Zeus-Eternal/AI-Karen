@@ -14,6 +14,7 @@
  * - 9.1: Graceful degradation when authentication fails
  * - 9.2: Fallback behavior for extension unavailability
  */
+import { logger } from '@/lib/logger';
 import { extensionAuthRecoveryManager } from './extension-auth-recovery';
 import { extensionAuthDegradationManager, ExtensionFeatureLevel, getExtensionFallbackData, isExtensionFeatureAvailable } from './extension-auth-degradation';
 import { ExtensionAuthErrorHandler, extensionAuthErrorHandler, ExtensionAuthErrorFactory, ExtensionAuthError } from './extension-auth-errors';
@@ -108,8 +109,14 @@ export async function handleExtensionAuthenticationError(
     }
     // If recovery failed, throw the original error
     throw authError;
-  } catch (handlingError) {
-    // If error handling itself fails, log and rethrow original error
+  } catch (handlingError: unknown) {
+    logger.error('Failed to handle extension authentication error', {
+      handlingError,
+      originalError: error instanceof Error ? error.message : String(error),
+      endpoint,
+      operation,
+    });
+    // If error handling itself fails, rethrow original error
     throw error;
   }
 }

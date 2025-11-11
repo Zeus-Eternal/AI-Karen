@@ -189,7 +189,7 @@ export async function login(
   totpCode?: string
 ): Promise<void> {
   try {
-    const credentials: Record<string, any> = { email, password };
+    const credentials: Record<string, string> = { email, password };
     if (totpCode) {
       credentials.totp_code = totpCode;
     }
@@ -241,7 +241,7 @@ export async function logout(): Promise<void> {
       method: "POST",
       credentials: "include",
     });
-  } catch (error) {
+  } catch (_error: unknown) {
     // Logout should not throw errors, just log them
   }
 }

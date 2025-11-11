@@ -9,6 +9,20 @@ import {
   getCurrentUser,
   clearSession
 } from './auth/session';
+
+interface DebugWindow extends Window {
+  debugAuth?: () => void;
+  setTestSession?: () => void;
+  clearAuthState?: () => void;
+}
+
+const getDebugWindow = (): DebugWindow | undefined => {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return window as DebugWindow;
+};
 export function debugAuthState(): void {
   // Check current session (in-memory)
   const session = getSession();
@@ -49,8 +63,9 @@ export function clearAuthState(): void {
   clearSession();
 }
 // Make functions available globally for debugging
-if (typeof window !== 'undefined') {
-  (window as any).debugAuth = debugAuthState;
-  (window as any).setTestSession = setTestSession;
-  (window as any).clearAuthState = clearAuthState;
+const debugWindow = getDebugWindow();
+if (debugWindow) {
+  debugWindow.debugAuth = debugAuthState;
+  debugWindow.setTestSession = setTestSession;
+  debugWindow.clearAuthState = clearAuthState;
 }

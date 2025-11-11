@@ -494,8 +494,11 @@ export class ExtensionAuthManager {
     const backoffMs = this.RETRY_BACKOFF_MS * Math.pow(2, this.authState.failureCount - 1);
     this.authState.nextRetryAt = new Date(Date.now() + backoffMs);
     
-    logger.warn(`Extension auth refresh failed (attempt ${this.authState.failureCount}), next retry at:`, 
-                this.authState.nextRetryAt);
+    logger.warn(
+      `Extension auth refresh failed (attempt ${this.authState.failureCount}), next retry at:`,
+      this.authState.nextRetryAt,
+      error
+    );
 
     // Clear tokens after max failures
     if (this.authState.failureCount >= this.MAX_RETRY_ATTEMPTS) {

@@ -2,7 +2,16 @@
  * Authentication Interceptor
  * Handles 401 errors and automatic token refresh
  */
-import { clearSession, isAuthenticated, validateSession } from './auth/session';
+import { clearSession } from './auth/session';
+
+type RequestInitWithUrl = RequestInit & { url?: string };
+
+interface ResponseWithOriginalRequest extends Response {
+  originalRequest?: {
+    url: string;
+    init: RequestInit;
+  };
+}
 export interface RequestInterceptor {
   onRequest?: (config: RequestInit) => Promise<RequestInit>;
   onResponse?: (response: Response) => Promise<Response>;
@@ -13,7 +22,8 @@ class AuthInterceptor implements RequestInterceptor {
   private refreshPromise: Promise<void> | null = null;
   async onRequest(config: RequestInit): Promise<RequestInit> {
     // Don't add auth headers to login/logout endpoints
-    const url = (config as any).url || '';
+    const requestConfig = config as RequestInitWithUrl;
+    const url = typeof requestConfig.url === 'string' ? requestConfig.url : '';
     if (url.includes('/auth/login') || url.includes('/auth/logout')) {
       return config;
     }
@@ -64,20 +74,23 @@ export async function authenticatedFetch(
   try {
     // Apply request interceptor
     const config = await authInterceptor.onRequest(init || {});
-    // Store original request for potential retry
-    const originalRequest = {
-      url: input.toString(),
-      ...config
-    };
     // Make the request
     const response = await fetch(input, config);
     // Store original request on response for retry capability
-    (response as any).originalRequest = originalRequest;
+    const responseWithOriginalRequest = response as ResponseWithOriginalRequest;
+    responseWithOriginalRequest.originalRequest = {
+      url: input.toString(),
+      init: config,
+    };
     // Apply response interceptor
     return await authInterceptor.onResponse(response);
-  } catch (error) {
+  } catch (error: unknown) {
     // Apply error interceptor
-    return await authInterceptor.onError(error as Error);
+    if (error instanceof Error) {
+      return await authInterceptor.onError(error);
+    }
+
+    return await authInterceptor.onError(new Error(String(error)));
   }
 }
 /**

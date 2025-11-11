@@ -367,7 +367,7 @@ export class ExtensionAuthErrorHandler {
    * Record error for pattern analysis
    */
   private recordError(error: Error, context: ErrorContext): void {
-    const errorKey = `${context.endpoint}:${(error as any).status || 'unknown'}`;
+    const errorKey = `${context.endpoint}:${this.getErrorStatus(error)}`;
     const currentCount = this.errorHistory.get(errorKey) || 0;
     this.errorHistory.set(errorKey, currentCount + 1);
 
@@ -378,6 +378,15 @@ export class ExtensionAuthErrorHandler {
         this.errorHistory.delete(firstKey);
       }
     }
+  }
+
+  private getErrorStatus(error: Error): string {
+    const potentialStatus = (error as { status?: unknown }).status;
+    if (typeof potentialStatus === 'number' || typeof potentialStatus === 'string') {
+      return String(potentialStatus);
+    }
+
+    return 'unknown';
   }
 
   /**

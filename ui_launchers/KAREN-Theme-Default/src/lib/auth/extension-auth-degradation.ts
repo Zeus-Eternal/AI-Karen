@@ -12,7 +12,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import {  ExtensionAuthError, ExtensionAuthRecoveryStrategy, ExtensionAuthErrorCategory, ExtensionAuthErrorSeverity } from './extension-auth-errors';
+import { ExtensionAuthError, ExtensionAuthRecoveryStrategy, ExtensionAuthErrorCategory } from './extension-auth-errors';
 
 /**
  * Extension feature availability levels
