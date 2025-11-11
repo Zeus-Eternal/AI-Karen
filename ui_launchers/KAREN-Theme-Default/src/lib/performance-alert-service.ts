@@ -10,7 +10,7 @@
  */
 
 import type { PerformanceAlert } from './performance-monitor';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '../hooks/use-toast';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -148,9 +148,9 @@ class PerformanceAlertService {
     }
     this.recentAlerts.set(key, now);
     // opportunistic cleanup
-    for (const [k, ts] of this.recentAlerts) {
+    this.recentAlerts.forEach((ts, k) => {
       if (now - ts > this.config.dedupeWindowMs * 4) this.recentAlerts.delete(k);
-    }
+    });
     return false;
   }
 

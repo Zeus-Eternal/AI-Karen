@@ -241,12 +241,12 @@ export class CacheManager {
   cleanup(): number {
     const now = Date.now();
     let removed = 0;
-    for (const [key, entry] of this.cache.entries()) {
+    this.cache.forEach((entry, key) => {
       if (now > entry.expiresAt) {
         this.delete(key);
         removed++;
       }
-    }
+    });
     return removed;
   }
 
@@ -258,7 +258,7 @@ export class CacheManager {
     let oldest = Infinity;
     let newest = 0;
 
-    for (const entry of this.cache.values()) {
+    this.cache.forEach((entry) => {
       if (now > entry.expiresAt) expired++;
       try {
         totalSize += utf8Length(JSON.stringify(entry.data));
@@ -267,7 +267,7 @@ export class CacheManager {
       }
       if (entry.timestamp < oldest) oldest = entry.timestamp;
       if (entry.timestamp > newest) newest = entry.timestamp;
-    }
+    });
 
     return {
       totalEntries: this.cache.size,
