@@ -1,6 +1,6 @@
 
 "use client";
-import { createContext, useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
@@ -76,8 +76,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   });
 
   // Connection manager and timeout configuration
-  const connectionManager = getConnectionManager();
-  const timeoutManager = getTimeoutManager();
+  const connectionManager = useMemo(() => getConnectionManager(), []);
+  const timeoutManager = useMemo(() => getTimeoutManager(), []);
 
   // Session refresh timer
   const sessionRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);

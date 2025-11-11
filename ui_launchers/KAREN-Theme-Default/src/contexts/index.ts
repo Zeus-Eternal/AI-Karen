@@ -13,7 +13,9 @@ export type { LoginCredentials, AuthError, AuthState, AuthProviderProps, AuthCon
 export { authStateManager } from './AuthStateManager';
 export type { AuthSnapshot, Listener } from './AuthStateManager';
 
-export { ErrorProvider, withErrorProvider, useError, default as Errorprovider } from './ErrorProvider';
+export { ErrorProvider, default as Errorprovider } from './ErrorProvider';
+export { withErrorProvider } from './withErrorProvider';
+export { useError } from '../hooks/use-error-context';
 export type { ErrorProviderProps, ErrorContextType } from './ErrorProvider';
 
 export { HookProvider } from './HookContext';
