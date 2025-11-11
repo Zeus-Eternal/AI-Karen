@@ -2,6 +2,7 @@
  * Graceful degradation initialization
  */
 import { featureFlagManager } from '@/lib/graceful-degradation';
+import { setupGlobalErrorHandling } from '@/lib/graceful-degradation/use-graceful-backend';
 
 export interface GracefulDegradationConfig {
   enableCaching?: boolean;
@@ -16,7 +17,6 @@ export interface GracefulDegradationConfig {
 
 export function initGracefulDegradation(config: GracefulDegradationConfig = {}) {
   const {
-    enableCaching: _enableCaching = true,
     enableGlobalErrorHandling = true,
     developmentMode = false,
     logLevel = 'warn',
@@ -33,15 +33,7 @@ export function initGracefulDegradation(config: GracefulDegradationConfig = {}) 
 
   // Setup global error handling if enabled
   if (enableGlobalErrorHandling) {
-    void import('@/lib/graceful-degradation/use-graceful-backend')
-      .then(({ setupGlobalErrorHandling }) => {
-        setupGlobalErrorHandling();
-      })
-      .catch((error) => {
-        if (developmentMode) {
-          console.error('Failed to initialize graceful degradation handlers', error);
-        }
-      });
+    setupGlobalErrorHandling();
   }
 
   // Log initialization

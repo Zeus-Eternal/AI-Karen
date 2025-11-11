@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -147,34 +147,6 @@ export type LogEntryT = {
   message: string;
 };
 
-const MOCK_LOG_REFERENCE_TIME = typeof Date !== "undefined" ? Date.now() : 0;
-const MOCK_LOGS: LogEntryT[] = [
-  {
-    id: "1",
-    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 300000),
-    level: "info",
-    message: "Plugin initialized successfully",
-  },
-  {
-    id: "2",
-    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 600000),
-    level: "debug",
-    message: "Loading configuration from manifest",
-  },
-  {
-    id: "3",
-    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 900000),
-    level: "warn",
-    message: "API rate limit approaching (80% of quota used)",
-  },
-  {
-    id: "4",
-    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 1200000),
-    level: "error",
-    message: "Authentication failed: Token expired",
-  },
-];
-
 const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
   const levelColors = {
     debug: "text-gray-500",
@@ -199,36 +171,6 @@ const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
     </div>
   );
 };
-
-const INITIAL_MOCK_LOGS: LogEntryT[] = (() => {
-  const now = Date.now();
-  return [
-    {
-      id: "1",
-      timestamp: new Date(now - 300000),
-      level: "info",
-      message: "Plugin initialized successfully",
-    },
-    {
-      id: "2",
-      timestamp: new Date(now - 600000),
-      level: "debug",
-      message: "Loading configuration from manifest",
-    },
-    {
-      id: "3",
-      timestamp: new Date(now - 900000),
-      level: "warn",
-      message: "API rate limit approaching (80% of quota used)",
-    },
-    {
-      id: "4",
-      timestamp: new Date(now - 1200000),
-      level: "error",
-      message: "Authentication failed: Token expired",
-    },
-  ];
-})();
 
 // --- Main Component ----------------------------------------------------------
 

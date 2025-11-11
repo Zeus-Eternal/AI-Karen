@@ -139,7 +139,11 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-open",
               JSON.stringify(newValue)
             );
-          } catch {}
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar open state", error);
+            }
+          }
         }
       },
       [sidebarOpen, persistSidebarState, hasWindow]
@@ -156,7 +160,11 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-collapsed",
               JSON.stringify(newValue)
             );
-          } catch {}
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar collapsed state", error);
+            }
+          }
         }
       },
       [sidebarCollapsed, persistSidebarState, hasWindow]

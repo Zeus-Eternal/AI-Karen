@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Video } from "lucide-react";
@@ -11,13 +9,13 @@ interface VideoProvider {
   status: "ready" | "unavailable";
 }
 
-const staticProviders: VideoProvider[] = [
+const DEFAULT_VIDEO_PROVIDERS: VideoProvider[] = [
   { id: "d-id", name: "D-ID", status: "ready" },
   { id: "synthesia", name: "Synthesia", status: "unavailable" },
 ];
 
 export default function VideoProviderList() {
-  const [providers] = useState<VideoProvider[]>(staticProviders);
+  const providers = DEFAULT_VIDEO_PROVIDERS;
 
   return (
     <div className="space-y-4">

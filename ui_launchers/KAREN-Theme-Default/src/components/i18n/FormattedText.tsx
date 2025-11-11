@@ -103,41 +103,50 @@ export interface TimeAgoProps {
 }
 
 export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
-  // Compute on render; avoids timers and keeps SSR friendly
-  const nowRef = React.useRef<number>();
-  if (nowRef.current === undefined) {
-    nowRef.current = Date.now();
-  }
-  const now = nowRef.current;
+  // Capture the reference time once per render cycle to keep the component pure
+  const now = React.useMemo(() => Date.now(), [date]);
   const inputMs =
     date instanceof Date ? date.getTime() : typeof date === "number" ? date : new Date(date).getTime();
 
-  const diffInSeconds = Math.floor((now - inputMs) / 1000);
+const DEFAULT_RELATIVE_TIME: RelativeTimeParts = { value: 0, unit: "second" };
 
-  let value: number;
-  let unit: Intl.RelativeTimeFormatUnit;
+const computeRelativeTimeParts = (referenceMs: number, inputMs: number): RelativeTimeParts => {
+  const diffInSeconds = Math.floor((referenceMs - inputMs) / 1000);
 
   if (Math.abs(diffInSeconds) < 60) {
-    value = -diffInSeconds;
-    unit = "second";
-  } else if (Math.abs(diffInSeconds) < 3600) {
-    value = -Math.floor(diffInSeconds / 60);
-    unit = "minute";
-  } else if (Math.abs(diffInSeconds) < 86400) {
-    value = -Math.floor(diffInSeconds / 3600);
-    unit = "hour";
-  } else if (Math.abs(diffInSeconds) < 2592000) {
-    value = -Math.floor(diffInSeconds / 86400);
-    unit = "day";
-  } else if (Math.abs(diffInSeconds) < 31536000) {
-    value = -Math.floor(diffInSeconds / 2592000);
-    unit = "month";
-  } else {
-    value = -Math.floor(diffInSeconds / 31536000);
-    unit = "year";
+    return { value: -diffInSeconds, unit: "second" };
   }
+  if (Math.abs(diffInSeconds) < 3600) {
+    return { value: -Math.floor(diffInSeconds / 60), unit: "minute" };
+  }
+  if (Math.abs(diffInSeconds) < 86400) {
+    return { value: -Math.floor(diffInSeconds / 3600), unit: "hour" };
+  }
+  if (Math.abs(diffInSeconds) < 2592000) {
+    return { value: -Math.floor(diffInSeconds / 86400), unit: "day" };
+  }
+  if (Math.abs(diffInSeconds) < 31536000) {
+    return { value: -Math.floor(diffInSeconds / 2592000), unit: "month" };
+  }
+  return { value: -Math.floor(diffInSeconds / 31536000), unit: "year" };
+};
 
-  return <FormattedRelativeTime value={value} unit={unit} className={className} />;
+export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
+  const [relativeTime, setRelativeTime] = React.useState<RelativeTimeParts>(DEFAULT_RELATIVE_TIME);
+
+  React.useEffect(() => {
+    const inputMs =
+      date instanceof Date ? date.getTime() : typeof date === "number" ? date : new Date(date).getTime();
+
+    if (Number.isNaN(inputMs)) {
+      setRelativeTime(DEFAULT_RELATIVE_TIME);
+      return;
+    }
+
+    setRelativeTime(computeRelativeTimeParts(Date.now(), inputMs));
+  }, [date]);
+
+  return <FormattedRelativeTime value={relativeTime.value} unit={relativeTime.unit} className={className} />;
 });
 
 /* =====================

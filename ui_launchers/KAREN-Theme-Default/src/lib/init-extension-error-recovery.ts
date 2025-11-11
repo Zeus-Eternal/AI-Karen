@@ -9,6 +9,8 @@
 
 import { logger } from './logger';
 import type { KarenBackendPatchState } from './karen-backend-direct-patch';
+import type { ExtensionErrorIntegration } from './extension-error-integration';
+import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 
 // --- Early/ordering-sensitive runtime guards (execute on import) ---
 import './early-extension-fix';
@@ -28,8 +30,8 @@ import './karen-backend-direct-patch';
 declare global {
   interface Window {
     __KAREN_BACKEND_PATCH__?: KarenBackendPatchState;
-    extensionErrorIntegration?: any;
-    handleKarenBackendError?: any;
+    extensionErrorIntegration?: ExtensionErrorIntegration;
+    handleKarenBackendError?: HandleKarenBackendErrorFn;
   }
 }
 
@@ -160,7 +162,7 @@ if (isBrowser()) {
         // Ignore env detection issues in non-Node bundlers
       }
     } else {
-      logger.error('Extension error recovery auto-initialization failed:', (result as any).error);
+      logger.error('Extension error recovery auto-initialization failed:', result.error);
     }
   }, 100);
 }

@@ -365,7 +365,7 @@ export class HealthMonitor {
       listeners.forEach(listener => {
         try {
           listener(event);
-        } catch (_error: unknown) {
+        } catch {
           // Handle error in listener execution
         }
       });

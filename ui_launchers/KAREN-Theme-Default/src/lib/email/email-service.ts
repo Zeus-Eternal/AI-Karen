@@ -5,7 +5,15 @@
  * different email providers (SMTP, SendGrid, SES, etc.).
  */
 import nodemailer, { Transporter } from 'nodemailer';
-import {  EmailMessage, EmailServiceConfig, SendEmailResponse, EmailTemplate, EmailTemplateVariables, EmailNotification, EmailNotificationType, BulkEmailOperation, EmailServiceHealth } from './types';
+import {
+  EmailMessage,
+  EmailServiceConfig,
+  SendEmailResponse,
+  EmailTemplate,
+  EmailTemplateVariables,
+  EmailNotificationType,
+  EmailServiceHealth,
+} from './types';
 import { TemplateEngine, EmailTemplateManager } from './template-engine';
 import { getEmailServiceConfig, testEmailService, getSystemName } from './config';
 /**
@@ -87,16 +95,18 @@ class SMTPProvider implements EmailProvider {
 class SendGridProvider implements EmailProvider {
   constructor(private config: EmailServiceConfig) {}
   async send(message: EmailMessage): Promise<SendEmailResponse> {
+    const fallbackId = `sg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const messageId = message.id || fallbackId;
     if (this.config.test_mode) {
       return {
         success: true,
-        message_id: `sg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        message_id: messageId,
       };
     }
     // In a real implementation, this would use @sendgrid/mail
     return {
       success: true,
-      message_id: `sg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      message_id: messageId,
     };
   }
   async testConnection(): Promise<boolean> {

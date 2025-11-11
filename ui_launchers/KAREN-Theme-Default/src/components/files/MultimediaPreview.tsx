@@ -142,6 +142,7 @@ const ImagePreview: React.FC<{
   const [rotation, setRotation] = useState(0);
 
   const confidenceScores = analysis?.confidence_scores;
+
   const confidenceChartOptions = useMemo<AgChartOptions>(() => {
     if (!confidenceScores) return { data: [], series: [] };
     const data = Object.entries(confidenceScores).map(([key, value]) => ({

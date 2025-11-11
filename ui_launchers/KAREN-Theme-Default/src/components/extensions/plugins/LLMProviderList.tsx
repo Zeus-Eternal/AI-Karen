@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,13 +11,13 @@ interface ProviderInfo {
   model: string;
 }
 
-const staticProviders: ProviderInfo[] = [
+const DEFAULT_PROVIDERS: ProviderInfo[] = [
   { id: "openai", name: "OpenAI", status: "healthy", model: "gpt-3.5-turbo" },
   { id: "anthropic", name: "Anthropic", status: "unknown", model: "claude-3" },
 ];
 
 export default function LLMProviderList() {
-  const [providers] = useState<ProviderInfo[]>(staticProviders);
+  const providers = DEFAULT_PROVIDERS;
 
   return (
     <div className="space-y-4">
