@@ -1,12 +1,19 @@
 import * as React from "react"
-import type { FieldPath, FieldValues } from "react-hook-form"
+import type {
+  Control,
+  ControllerRenderProps,
+  FieldPath,
+  FieldPathValue,
+  FieldValues,
+  RegisterOptions,
+} from "react-hook-form"
 
 // Base component props
 export interface BaseComponentProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode
 }
 
-export interface BaseCardProps extends BaseComponentProps {}
+export type BaseCardProps = BaseComponentProps
 
 // Card compound component types
 export interface CardRootProps extends BaseCardProps {
@@ -21,7 +28,7 @@ export interface CardActionsProps extends BaseCardProps {
 export type CardProps = CardRootProps
 
 // Modal compound component types
-export interface BaseModalProps extends BaseComponentProps {}
+export type BaseModalProps = BaseComponentProps
 
 export interface ModalRootProps {
   open?: boolean
@@ -50,10 +57,12 @@ export interface FormFieldProps<
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
 > {
   name: TName
-  control?: any
-  render: ({ field }: { field: unknown }) => React.ReactElement
-  defaultValue?: any
-  rules?: unknown
+  control?: Control<TFieldValues>
+  render: (context: {
+    field: ControllerRenderProps<TFieldValues, TName>
+  }) => React.ReactElement
+  defaultValue?: FieldPathValue<TFieldValues, TName>
+  rules?: RegisterOptions<TFieldValues, TName>
 }
 
 export interface FormLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
@@ -81,25 +90,28 @@ export interface CompoundComponentProps {
 // Polymorphic component types
 export type PolymorphicRef<T extends React.ElementType> = React.ComponentPropsWithRef<T>["ref"]
 
-export type PolymorphicComponentProp<T extends React.ElementType, Props = {}> = {
+export type PolymorphicComponentProp<
+  T extends React.ElementType,
+  Props extends Record<string, unknown> = Record<string, unknown>
+> = {
   as?: T
 } & Props &
   Omit<React.ComponentPropsWithoutRef<T>, keyof Props | "as">
 
 export type PolymorphicComponentPropWithRef<
   T extends React.ElementType,
-  Props = {}
+  Props extends Record<string, unknown> = Record<string, unknown>
 > = PolymorphicComponentProp<T, Props> & { ref?: PolymorphicRef<T> }
 
 // Enhanced polymorphic types with better inference
 export type PolymorphicPropsWithoutRef<
   T extends React.ElementType,
-  Props = {}
+  Props extends Record<string, unknown> = Record<string, unknown>
 > = Props & Omit<React.ComponentPropsWithoutRef<T>, keyof Props>
 
 export type PolymorphicPropsWithRef<
   T extends React.ElementType,
-  Props = {}
+  Props extends Record<string, unknown> = Record<string, unknown>
 > = PolymorphicPropsWithoutRef<T, Props> & {
   ref?: PolymorphicRef<T>
 }
@@ -107,22 +119,25 @@ export type PolymorphicPropsWithRef<
 // Utility type for creating polymorphic components
 export type CreatePolymorphicComponent<
   DefaultElement extends React.ElementType,
-  Props = {}
+  Props extends Record<string, unknown> = Record<string, unknown>
 > = <T extends React.ElementType = DefaultElement>(
   props: { as?: T } & PolymorphicPropsWithRef<T, Props>
 ) => React.ReactElement | null
 
 export type PolymorphicComponentWithDisplayName<
   DefaultElement extends React.ElementType,
-  Props = {}
+  Props extends Record<string, unknown> = Record<string, unknown>
 > = CreatePolymorphicComponent<DefaultElement, Props> & {
   displayName?: string
 }
 
 // Polymorphic component factory type
 export interface PolymorphicComponentFactory {
-  <T extends React.ElementType = "div">(
-    props: PolymorphicComponentPropWithRef<T, any>
+  <
+    T extends React.ElementType = "div",
+    Props extends Record<string, unknown> = Record<string, unknown>
+  >(
+    props: PolymorphicComponentPropWithRef<T, Props>
   ): React.ReactElement | null
 }
 
@@ -153,9 +168,7 @@ export interface AccessibilityProps {
 }
 
 // Combined props for enhanced components
-export interface EnhancedComponentProps
-  extends BaseComponentProps,
-    AccessibilityProps {}
+export type EnhancedComponentProps = BaseComponentProps & AccessibilityProps
 
 // Utility types for compound components
 export type CompoundComponent<T> = T & {
@@ -211,6 +224,4 @@ export interface StylingProps {
 }
 
 // Combined enhanced props
-export interface FullyEnhancedProps
-  extends EnhancedComponentProps,
-    ComponentActions {}
+export type FullyEnhancedProps = EnhancedComponentProps & ComponentActions
