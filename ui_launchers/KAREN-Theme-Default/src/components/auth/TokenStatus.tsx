@@ -34,11 +34,7 @@ export const TokenStatus: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // Silent exit if user isn’t logged in
-  if (!isAuthenticated()) {
-    return null;
-  }
+  const isAuthed = isAuthenticated();
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -63,8 +59,14 @@ export const TokenStatus: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!isAuthed) {
+      setSessionInfo(null);
+      setMessage(null);
+      return;
+    }
+
     void fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, isAuthed]);
 
   const now = Date.now();
   const expiresIn = useMemo(() => {
@@ -125,7 +127,7 @@ export const TokenStatus: React.FC = () => {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("CREATE_FAILED");
-      const data = await res.json();
+      await res.json();
       // SECURITY: do not display the raw token here; backend should show once in a secure modal/download
       setMessage({
         type: "success",
@@ -158,6 +160,10 @@ export const TokenStatus: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  if (!isAuthed) {
+    return null;
+  }
 
   return (
     <Card className="w-full max-w-md">
