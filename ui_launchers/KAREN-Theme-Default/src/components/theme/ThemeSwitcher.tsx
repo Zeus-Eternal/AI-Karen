@@ -7,7 +7,7 @@
 
 import * as React from 'react';
 import { Monitor, Moon, Sun, Settings } from 'lucide-react';
-import { useTheme } from './ThemeProvider';
+import { useTheme } from '@/providers/theme-hooks';
 import { EnhancedButton } from '../ui/enhanced/button';
 import { EnhancedSelect, EnhancedSelectContent, EnhancedSelectItem, EnhancedSelectTrigger, EnhancedSelectValue } from '../ui/enhanced/select';
 import { EnhancedCard, EnhancedCardContent, EnhancedCardHeader, EnhancedCardTitle } from '../ui/enhanced/card';
@@ -36,20 +36,19 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
       { value: 'spacious', label: 'Spacious' },
     ] as const;
 
-    const getCurrentThemeIcon = () => {
-      if (isSystemTheme) return Monitor;
-      return resolvedTheme === 'dark' ? Moon : Sun;
-    };
-
-    const CurrentThemeIcon = getCurrentThemeIcon();
-
     if (variant === 'dropdown') {
       return (
         <div ref={ref} className={cn('flex items-center gap-[var(--space-sm)]', className)} {...props}>
           <EnhancedSelect value={theme} onValueChange={(value) => setTheme(value as unknown)}>
             <EnhancedSelectTrigger size={size} className="w-[140px]">
               <div className="flex items-center gap-2">
-                <CurrentThemeIcon className="h-4 w-4 " />
+                {isSystemTheme ? (
+                  <Monitor className="h-4 w-4 " />
+                ) : resolvedTheme === 'dark' ? (
+                  <Moon className="h-4 w-4 " />
+                ) : (
+                  <Sun className="h-4 w-4 " />
+                )}
                 <EnhancedSelectValue />
               </div>
             </EnhancedSelectTrigger>

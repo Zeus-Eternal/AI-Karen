@@ -2,12 +2,12 @@
  * System Status Component - Shows the current system status and reasoning capabilities
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-import { CheckCircle, AlertTriangle, XCircle, Brain, Wifi, WifiOff, Cpu, Database, RefreshCw } from 'lucide-react';
+import { Brain, Wifi, WifiOff, Cpu, Database, RefreshCw } from 'lucide-react';
 import { useReasoning } from '@/hooks/useReasoning';
 
 export function SystemStatus() {
@@ -20,19 +20,6 @@ export function SystemStatus() {
       setTestResult(response.response.content);
     } catch (error) {
       setTestResult("Test failed: " + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-500 " />;
-      case 'degraded':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500 " />;
-      case 'unavailable':
-        return <XCircle className="h-4 w-4 text-red-500 " />;
-      default:
-        return <AlertTriangle className="h-4 w-4 text-gray-500 " />;
     }
   };
 

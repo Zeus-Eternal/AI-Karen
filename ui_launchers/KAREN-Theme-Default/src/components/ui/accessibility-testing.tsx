@@ -177,6 +177,7 @@ export const AccessibilityTester: React.FC<AccessibilityTesterProps> = ({
       onTestComplete?.(testSuite);
       announce(`Accessibility tests completed. ${passedTests} of ${allResults.length} tests passed.`, 'polite');
     } catch (error) {
+      console.error('Accessibility tests failed to run.', error);
       announce('Accessibility tests failed to run', 'assertive');
     } finally {
       setIsRunning(false);
