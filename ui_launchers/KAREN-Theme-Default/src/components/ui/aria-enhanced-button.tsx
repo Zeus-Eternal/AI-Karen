@@ -104,7 +104,8 @@ export const AriaEnhancedButton = React.forwardRef<HTMLButtonElement, AriaEnhanc
     );
 
     // Filter out properties that conflict with HTML button attributes
-    const { 'aria-relevant': _ariaRelevant, ...finalAriaProps } = mergedAriaProps;
+    const finalAriaProps = { ...mergedAriaProps };
+    delete finalAriaProps['aria-relevant'];
 
     // Determine button content based on state
     const buttonContent = React.useMemo(() => {
