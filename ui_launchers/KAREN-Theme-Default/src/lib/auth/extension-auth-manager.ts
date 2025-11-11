@@ -44,6 +44,11 @@ export interface TokenRefreshResponse {
   token_type?: string;
 }
 
+interface SessionValidationResponse {
+  valid: boolean;
+  token?: string;
+}
+
 // Secure token storage implementation with encryption support
 class SecureTokenStorage implements TokenStorage {
   private readonly ACCESS_TOKEN_KEY = 'karen_extension_access_token';
@@ -530,7 +535,7 @@ export class ExtensionAuthManager {
       // Try to validate existing session
       const timeout = this.timeoutManager.getTimeout(OperationType.SESSION_VALIDATION);
       
-      const result = await this.connectionManager.makeRequest(
+      const result = await this.connectionManager.makeRequest<SessionValidationResponse>(
         '/api/auth/validate-session',
         {
           method: 'GET',

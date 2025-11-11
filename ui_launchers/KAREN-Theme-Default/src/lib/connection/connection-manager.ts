@@ -200,8 +200,7 @@ export class ConnectionManager {
     // All retries exhausted
     const duration = Date.now() - startTime;
     logger.error(
-      `Request failed for ${url} after ${retryAttempts + 1} attempts:`,
-      lastError?.message || 'Unknown error',
+      `Request failed for ${url} after ${retryAttempts + 1} attempts: ${lastError?.message || 'Unknown error'}`,
       { duration }
     );
 
