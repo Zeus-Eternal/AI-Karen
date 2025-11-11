@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import {
   ROLE_HIERARCHY,
   ROLE_PERMISSIONS,

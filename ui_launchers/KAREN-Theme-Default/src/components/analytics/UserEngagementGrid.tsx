@@ -38,7 +38,7 @@ import {
   Download,
 } from "lucide-react";
 import { useHooks } from "@/hooks/use-hooks";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 

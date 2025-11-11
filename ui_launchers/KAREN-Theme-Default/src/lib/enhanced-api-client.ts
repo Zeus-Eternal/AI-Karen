@@ -82,6 +82,12 @@ export interface RequestLog {
   status?: number;
   error?: string;
 }
+
+interface ParsedErrorResponse {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
 // Enhanced API Client class
 export class EnhancedApiClient {
   private baseURL: string;

@@ -22,6 +22,12 @@ export interface ConfigValidationResult {
   info: ValidationError[];
 }
 
+export interface HealthServiceDetail {
+  status?: "ok" | "error" | "degraded";
+  responseTime?: number;
+  error?: string;
+}
+
 export interface HealthCheckResult {
   endpoint: string;
   status: "healthy" | "degraded" | "unhealthy";
@@ -34,6 +40,16 @@ export interface HealthCheckResult {
     error?: string;
   };
 }
+
+type HealthApiResponse = {
+  status?: string;
+  timestamp?: string;
+  services?: Record<string, HealthServiceDetail>;
+  version?: string;
+  uptime?: number;
+  error?: string;
+  [key: string]: unknown;
+};
 
 export interface ConnectivityTestResult {
   endpoint: string;
