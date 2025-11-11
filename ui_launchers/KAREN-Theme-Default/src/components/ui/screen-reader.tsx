@@ -7,6 +7,7 @@ import React from "react";
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAriaAnnouncements, AriaLiveRegion } from './aria-live-region';
+import { useScreenReaderAnnouncements } from './use-screen-reader-announcements';
 
 /**
  * ScreenReaderOnly - Content visible only to screen readers
@@ -361,42 +362,6 @@ export const InteractionDescription: React.FC<InteractionDescriptionProps> = ({
       )}
     </div>
   );
-};
-
-/**
- * Hook for managing screen reader announcements
- */
-export const useScreenReaderAnnouncements = () => {
-  const { announce } = useAriaAnnouncements();
-
-  const announceNavigation = React.useCallback((destination: string) => {
-    announce(`Navigated to ${destination}`, 'polite');
-  }, [announce]);
-
-  const announceAction = React.useCallback((action: string) => {
-    announce(`${action} completed`, 'polite');
-  }, [announce]);
-
-  const announceError = React.useCallback((error: string) => {
-    announce(`Error: ${error}`, 'assertive');
-  }, [announce]);
-
-  const announceSuccess = React.useCallback((message: string) => {
-    announce(`Success: ${message}`, 'polite');
-  }, [announce]);
-
-  const announceLoading = React.useCallback((message: string = 'Loading') => {
-    announce(message, 'polite');
-  }, [announce]);
-
-  return {
-    announce,
-    announceNavigation,
-    announceAction,
-    announceError,
-    announceSuccess,
-    announceLoading,
-  };
 };
 
 /**

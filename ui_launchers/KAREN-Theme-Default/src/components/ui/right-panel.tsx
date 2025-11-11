@@ -406,16 +406,19 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
     if (!isOpen) return null;
 
     // Filter out props that conflict with Framer Motion
-    const { 
-      onDrag, 
-      onDragEnd, 
-      onDragStart, 
-      draggable,
-      onAnimationStart,
-      onAnimationEnd,
-      onAnimationIteration,
-      ...filteredProps 
-    } = props;
+    const filteredProps = React.useMemo(() => {
+      const sanitizedProps: typeof props = { ...props };
+
+      delete (sanitizedProps as Record<string, unknown>).onDrag;
+      delete (sanitizedProps as Record<string, unknown>).onDragEnd;
+      delete (sanitizedProps as Record<string, unknown>).onDragStart;
+      delete (sanitizedProps as Record<string, unknown>).draggable;
+      delete (sanitizedProps as Record<string, unknown>).onAnimationStart;
+      delete (sanitizedProps as Record<string, unknown>).onAnimationEnd;
+      delete (sanitizedProps as Record<string, unknown>).onAnimationIteration;
+
+      return sanitizedProps;
+    }, [props]);
 
     return (
       <>
@@ -575,39 +578,3 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
 (RightPanel as unknown).Header = RightPanelHeader;
 (RightPanel as unknown).Navigation = RightPanelNavigation;
 (RightPanel as unknown).Content = RightPanelContent;
-
-// ============================================================================
-// HOOKS
-// ============================================================================
-
-/**
- * Hook for managing right panel state
- */
-export function useRightPanel(initialView?: string) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [activeView, setActiveView] = React.useState(initialView);
-
-  const openPanel = React.useCallback((viewId?: string) => {
-    setIsOpen(true);
-    if (viewId) {
-      setActiveView(viewId);
-    }
-  }, []);
-
-  const closePanel = React.useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
-  const switchView = React.useCallback((viewId: string) => {
-    setActiveView(viewId);
-  }, []);
-
-  return {
-    isOpen,
-    activeView,
-    openPanel,
-    closePanel,
-    switchView,
-    setActiveView,
-  };
-}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { RefreshCw, AlertCircle, Clock, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -213,11 +213,12 @@ function RetryWrapper<T>({
   errorFallback,
 }: RetryWrapperProps<T>) {
   const retryState = useRetry(operation, config);
+  const { execute } = retryState;
 
   React.useEffect(() => {
     // Auto-execute on mount
-    retryState.execute();
-  }, []);
+    execute();
+  }, [execute]);
 
   if (retryState.isLoading && !retryState.isRetrying && fallback) {
     return <>{fallback}</>;
