@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 
 import { 
@@ -93,7 +92,7 @@ const MODEL_ARCHITECTURES = [
   { value: 'gemma', label: 'Gemma', description: 'Google Gemma architecture' }
 ];
 
-export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: ModelUploadInterfaceProps) {
+export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded, onJobCreated }: ModelUploadInterfaceProps) {
   const [activeTab, setActiveTab] = useState<'upload' | 'convert' | 'quantize' | 'lora'>('upload');
   const [uploadJobs, setUploadJobs] = useState<UploadJob[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
