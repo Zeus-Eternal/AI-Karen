@@ -63,6 +63,15 @@ export interface PerformanceAlert {
 export type MetricsListener = (metrics: RequestMetrics) => void;
 export type AlertListener = (alert: PerformanceAlert) => void;
 
+const isRequestMetrics = (metrics: PerformanceAlert['metrics']): metrics is RequestMetrics =>
+  metrics !== null &&
+  typeof metrics === 'object' &&
+  'endpoint' in metrics &&
+  typeof (metrics as RequestMetrics).endpoint === 'string';
+
+const getAlertEndpoint = (metrics: PerformanceAlert['metrics']): string =>
+  isRequestMetrics(metrics) ? metrics.endpoint : 'unknown';
+
 const isBrowser =
   typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -192,7 +201,6 @@ class PerformanceMonitor {
 
   private triggerAlert(alert: PerformanceAlert): void {
     if (isBrowser) {
-      // Lazy import service; if missing, fallback to console
       import('./performance-alert-service')
         .then(({ performanceAlertService }) => {
           performanceAlertService.handleAlert(alert);
@@ -203,7 +211,7 @@ class PerformanceMonitor {
           console[level](`Karen Performance: ${alert.message}`, {
             type: alert.type,
             severity: alert.severity,
-            endpoint: (alert.metrics as any)?.endpoint ?? 'any',
+            endpoint: getAlertEndpoint(alert.metrics),
           });
         });
     } else {
@@ -211,7 +219,7 @@ class PerformanceMonitor {
       console[level](`Karen Performance: ${alert.message}`, {
         type: alert.type,
         severity: alert.severity,
-        endpoint: (alert.metrics as any)?.endpoint ?? 'any',
+        endpoint: getAlertEndpoint(alert.metrics),
       });
     }
 
@@ -402,13 +410,13 @@ class PerformanceMonitor {
         ? input
         : input instanceof URL
         ? input.toString()
-        : (input as Request).url ?? 'any';
+        : (input as Request).url ?? 'unknown';
 
     const method =
       (init?.method || (input as Request)?.method || 'GET').toUpperCase();
 
     try {
-      const res = await fetch(input as any, init);
+      const res = await fetch(input, init);
       status = res.status;
 
       // Try content-length header

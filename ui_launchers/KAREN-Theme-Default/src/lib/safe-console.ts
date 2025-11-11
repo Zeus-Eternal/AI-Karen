@@ -89,7 +89,7 @@ class SafeConsole {
       } else {
         this.originalConsole.error(message, error);
       }
-    } catch (consoleError) {
+    } catch {
       // Fallback if even safe logging fails
       try {
         this.originalConsole.warn("Console error occurred:", message);

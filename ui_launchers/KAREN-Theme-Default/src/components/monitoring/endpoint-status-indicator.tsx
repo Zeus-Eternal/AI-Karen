@@ -108,16 +108,11 @@ export function EndpointStatusIndicator({
 
   useEffect(() => {
     // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
-
-    if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      return;
-    }
-  }
+    const monitor = getHealthMonitor?.();
+    const logger = getDiagnosticLogger?.();
 
     if (!monitor || !logger) {
+      // Soft-fail with a minimal placeholder to avoid UI crash
       return;
     }
 
@@ -129,14 +124,16 @@ export function EndpointStatusIndicator({
       }) ?? (() => {});
 
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
-        if (newLog?.level === "error" && newLog?.category === "network") {
-          setRecentErrors((prev) => prev + 1);
-          setTimeout(() => {
-            setRecentErrors((prev) => Math.max(0, prev - 1));
-          }, 5 * 60 * 1000);
+      logger.onLog?.(
+        (newLog: { level?: string; category?: string } | null | undefined) => {
+          if (newLog?.level === "error" && newLog?.category === "network") {
+            setRecentErrors((prev) => prev + 1);
+            setTimeout(() => {
+              setRecentErrors((prev) => Math.max(0, prev - 1));
+            }, 5 * 60 * 1000);
+          }
         }
-      }) ?? (() => {});
+      ) ?? (() => {});
 
     return () => {
       try {
@@ -146,7 +143,7 @@ export function EndpointStatusIndicator({
         // noop
       }
     };
-  }, [diagnosticLogger, healthMonitor]);
+  }, []);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";
