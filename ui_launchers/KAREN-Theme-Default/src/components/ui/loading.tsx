@@ -29,7 +29,7 @@ export interface LoadingProps {
 /**
  * Primary loading component
  */
-const Loading: React.FC<LoadingProps> = ({
+export const Loading: React.FC<LoadingProps> = ({
   size = 'md',
   variant = 'spinner',
   message,
@@ -129,7 +129,7 @@ const Loading: React.FC<LoadingProps> = ({
 /**
  * Page-level loading component for Next.js pages
  */
-const PageLoading: React.FC<{ message?: string }> = ({ 
+export const PageLoading: React.FC<{ message?: string }> = ({
   message = "Loading..." 
 }) => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -179,7 +179,7 @@ const PageLoading: React.FC<{ message?: string }> = ({
 /**
  * Component loading wrapper for Suspense boundaries
  */
-const ComponentLoading: React.FC<{ 
+export const ComponentLoading: React.FC<{
   message?: string;
   variant?: 'card' | 'inline' | 'overlay';
 }> = ({ 
@@ -227,7 +227,7 @@ const ComponentLoading: React.FC<{
 /**
  * Chat-specific loading component
  */
-const ChatLoading: React.FC = () => (
+export const ChatLoading: React.FC = () => (
   <div className="flex gap-3 mb-6">
     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm ">
       <Bot className="h-4 w-4 " />
@@ -271,7 +271,7 @@ function withLoading<P extends object>(
 /**
  * Suspense wrapper with consistent loading UI
  */
-const SuspenseWrapper: React.FC<{
+export const SuspenseWrapper: React.FC<{
   children: React.ReactNode;
   fallback?: React.ReactNode;
   message?: string;
@@ -333,7 +333,7 @@ function useLoadingState(initialState = false) {
   };
 }
 
-// Export all components
+// Export utility helpers
 export {
   withLoading,
   useLoadingState

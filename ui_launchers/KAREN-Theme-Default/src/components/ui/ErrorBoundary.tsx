@@ -7,9 +7,19 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { agUIErrorHandler, FallbackStrategy, type FallbackResponse } from '../../lib/ag-ui-error-handler';
+
+export interface FallbackComponentProps {
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  fallbackResponse: FallbackResponse | null;
+  onRetry: () => void;
+  onReset: () => void;
+  retryCount: number;
+  maxRetries: number;
+}
 export interface Props {
   children: ReactNode;
-  fallbackComponent?: React.ComponentType<any>;
+  fallbackComponent?: React.ComponentType<FallbackComponentProps>;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   componentName?: string;
   enableRetry?: boolean;
@@ -120,7 +130,7 @@ export class ErrorBoundary extends Component<Props, State> {
     fallbackResponse: FallbackResponse | null,
     enableRetry: boolean
   ) {
-    const { error, retryCount } = this.state;
+    const { retryCount } = this.state;
     const componentName = this.props.componentName || 'Component';
     if (!fallbackResponse) {
       return (

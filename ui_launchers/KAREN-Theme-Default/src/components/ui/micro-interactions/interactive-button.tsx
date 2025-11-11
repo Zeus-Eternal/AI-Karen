@@ -7,7 +7,7 @@ import { LoadingSpinner } from "./loading-spinner";
 import { InteractiveButtonProps } from "./types";
 import { animationVariants, reducedMotionVariants } from "./animation-variants";
 import { triggerHapticFeedback } from "./haptic-feedback";
-import { useMicroInteractions } from "./micro-interaction-provider";
+import { useMicroInteractions } from "./micro-interaction-context";
 import { cn } from "@/lib/utils";
 
 // Create MotionButton outside of component to avoid recreation during render
@@ -51,13 +51,13 @@ export const InteractiveButton = React.forwardRef<
     // Filter out props that conflict with Framer Motion - remove unused variables
     const filteredProps = React.useMemo(() => {
       const {
-        onDrag,
-        onDragEnd,
-        onDragStart,
-        draggable,
-        onAnimationStart,
-        onAnimationEnd,
-        onAnimationIteration,
+        onDrag: _onDrag,
+        onDragEnd: _onDragEnd,
+        onDragStart: _onDragStart,
+        draggable: _draggable,
+        onAnimationStart: _onAnimationStart,
+        onAnimationEnd: _onAnimationEnd,
+        onAnimationIteration: _onAnimationIteration,
         ...rest
       } = props;
       return rest;

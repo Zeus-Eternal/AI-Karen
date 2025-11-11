@@ -13,7 +13,7 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Bot, Sparkles, MessageSquare } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface LoadingSpinnerProps {
@@ -21,7 +21,7 @@ export interface LoadingSpinnerProps {
   className?: string;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'md', 
   className 
 }) => {
@@ -47,7 +47,7 @@ export interface SkeletonProps {
   animate?: boolean;
 }
 
-const Skeleton: React.FC<SkeletonProps> = ({ 
+export const LoadingSkeleton: React.FC<SkeletonProps> = ({
   className, 
   animate = true 
 }) => {
@@ -62,7 +62,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
   );
 };
 
-const MessageSkeleton: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => {
+const MessageSkeletonBase: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -70,28 +70,31 @@ const MessageSkeleton: React.FC<{ isUser?: boolean }> = ({ isUser = false }) => 
       className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar Skeleton */}
-      <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
+      <LoadingSkeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
       
       {/* Message Content Skeleton */}
       <div className={`flex-1 max-w-[75%] ${isUser ? 'text-right' : 'text-left'}`}>
         <div className="space-y-2">
-          <Skeleton className="h-4 w-3/4 " />
-          <Skeleton className="h-4 w-1/2 " />
-          <Skeleton className="h-4 w-2/3 " />
+          <LoadingSkeleton className="h-4 w-3/4 " />
+          <LoadingSkeleton className="h-4 w-1/2 " />
+          <LoadingSkeleton className="h-4 w-2/3 " />
         </div>
       </div>
     </motion.div>
   );
 };
 
-const ChatLoadingSkeleton: React.FC = () => {
+export const MessageSkeleton = React.memo(MessageSkeletonBase);
+MessageSkeleton.displayName = 'MessageSkeleton';
+
+export const ChatLoadingSkeleton: React.FC = () => {
   return (
     <div className="space-y-6 p-4 sm:p-4 md:p-6">
       <MessageSkeleton />
       <MessageSkeleton isUser />
       <MessageSkeleton />
       <div className="flex gap-3">
-        <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
+        <LoadingSkeleton className="flex-shrink-0 w-8 h-8 rounded-full " />
         <div className="flex-1">
           <div className="inline-block p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 sm:p-4 md:p-6">
             <div className="flex items-center gap-2">
@@ -124,7 +127,7 @@ export interface PulseLoaderProps {
   className?: string;
 }
 
-const PulseLoader: React.FC<PulseLoaderProps> = ({ 
+export const PulseLoader: React.FC<PulseLoaderProps> = ({
   size = 'md', 
   color = 'blue',
   className 
@@ -170,7 +173,7 @@ export interface ShimmerProps {
   children?: React.ReactNode;
 }
 
-const Shimmer: React.FC<ShimmerProps> = ({ className, children }) => {
+export const Shimmer: React.FC<ShimmerProps> = ({ className, children }) => {
   return (
     <div className={cn("relative overflow-hidden", className)}>
       {children}
@@ -195,7 +198,7 @@ export interface LoadingCardProps {
   className?: string;
 }
 
-const LoadingCard: React.FC<LoadingCardProps> = ({
+export const LoadingCard: React.FC<LoadingCardProps> = ({
   title = "Loading...",
   description = "Please wait while we process your request",
   icon,
@@ -240,7 +243,7 @@ export interface ProgressBarProps {
   color?: 'blue' | 'green' | 'purple';
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({
+export const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   className,
   showPercentage = true,
@@ -282,7 +285,7 @@ export interface FloatingDotsProps {
   color?: 'blue' | 'green' | 'purple' | 'gray';
 }
 
-const FloatingDots: React.FC<FloatingDotsProps> = ({ 
+export const FloatingDots: React.FC<FloatingDotsProps> = ({
   className,
   color = 'blue'
 }) => {
@@ -324,7 +327,7 @@ export interface LoadingOverlayProps {
   className?: string;
 }
 
-const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
+export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   isVisible,
   message = "Loading...",
   className
@@ -358,6 +361,4 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   );
 };
 
-// Export all components
-export {
-};
+export { LoadingSkeleton as Skeleton };

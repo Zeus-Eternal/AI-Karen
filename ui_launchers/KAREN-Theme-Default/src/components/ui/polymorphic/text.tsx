@@ -52,6 +52,15 @@ type TextComponent = PolymorphicComponentWithDisplayName<
   TextBaseProps
 >;
 
+type PolymorphicForwardRef<DefaultElement extends React.ElementType, Props> = <
+  T extends React.ElementType = DefaultElement
+>(
+  props: PolymorphicComponentPropWithRef<T, Props>,
+  ref: PolymorphicRef<T>
+) => React.ReactElement | null;
+
+type TextForwardRef = PolymorphicForwardRef<"span", TextBaseProps>;
+
 const variantClassMap: Record<TextVariant, string> = {
   default: "text-foreground",
   muted: "text-muted-foreground",
@@ -119,19 +128,14 @@ function TextInner<T extends React.ElementType = "span">(
         underline ? "underline" : undefined,
         className
       )}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     >
       {children}
     </ComponentToRender>
   );
 }
 
-const Text = React.forwardRef(
-  TextInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    TextProps<any>
-  >
-) as TextComponent;
+const Text = React.forwardRef(TextInner as TextForwardRef) as TextComponent;
 
 Text.displayName = "Text";
 
@@ -159,7 +163,7 @@ function HeadingInner<T extends HeadingLevel = "h1">(
 ): React.ReactElement | null {
   const element = as ?? ("h1" as T);
   const resolvedSize = size ?? headingDefaultSize[element as HeadingLevel];
-  const BaseText = Text as unknown as React.ComponentType<any>;
+  const BaseText: TextComponent = Text;
 
   return (
     <BaseText
@@ -167,16 +171,15 @@ function HeadingInner<T extends HeadingLevel = "h1">(
       as={element}
       size={resolvedSize}
       weight={weight}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     />
   );
 }
 
+type HeadingForwardRef = PolymorphicForwardRef<HeadingLevel, TextBaseProps>;
+
 const Heading = React.forwardRef(
-  HeadingInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    HeadingProps<any>
-  >
+  HeadingInner as HeadingForwardRef
 ) as HeadingComponent;
 
 Heading.displayName = "Heading";
@@ -192,22 +195,21 @@ function ParagraphInner<T extends React.ElementType = "p">(
   { as, size = "base", ...rest }: ParagraphProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseText = Text as unknown as React.ComponentType<any>;
+  const BaseText: TextComponent = Text;
   return (
     <BaseText
       ref={ref as React.Ref<unknown>}
       as={(as ?? "p") as T}
       size={size}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     />
   );
 }
 
+type ParagraphForwardRef = PolymorphicForwardRef<"p", TextBaseProps>;
+
 const Paragraph = React.forwardRef(
-  ParagraphInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    ParagraphProps<any>
-  >
+  ParagraphInner as ParagraphForwardRef
 ) as ParagraphComponent;
 
 Paragraph.displayName = "Paragraph";
@@ -223,23 +225,22 @@ function LabelInner<T extends React.ElementType = "label">(
   { as, size = "sm", weight = "medium", ...rest }: LabelProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseText = Text as unknown as React.ComponentType<any>;
+  const BaseText: TextComponent = Text;
   return (
     <BaseText
       ref={ref as React.Ref<unknown>}
       as={(as ?? "label") as T}
       size={size}
       weight={weight}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     />
   );
 }
 
+type LabelForwardRef = PolymorphicForwardRef<"label", TextBaseProps>;
+
 const Label = React.forwardRef(
-  LabelInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    LabelProps<any>
-  >
+  LabelInner as LabelForwardRef
 ) as LabelComponent;
 
 Label.displayName = "Label";
@@ -255,23 +256,22 @@ function CaptionInner<T extends React.ElementType = "span">(
   { as, size = "xs", variant = "muted", ...rest }: CaptionProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseText = Text as unknown as React.ComponentType<any>;
+  const BaseText: TextComponent = Text;
   return (
     <BaseText
       ref={ref as React.Ref<unknown>}
       as={(as ?? "span") as T}
       size={size}
       variant={variant}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     />
   );
 }
 
+type CaptionForwardRef = PolymorphicForwardRef<"span", TextBaseProps>;
+
 const Caption = React.forwardRef(
-  CaptionInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    CaptionProps<any>
-  >
+  CaptionInner as CaptionForwardRef
 ) as CaptionComponent;
 
 Caption.displayName = "Caption";
@@ -287,7 +287,7 @@ function CodeInner<T extends React.ElementType = "code">(
   { as, className, ...rest }: CodeProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseText = Text as unknown as React.ComponentType<any>;
+  const BaseText: TextComponent = Text;
   return (
     <BaseText
       ref={ref as React.Ref<unknown>}
@@ -296,16 +296,15 @@ function CodeInner<T extends React.ElementType = "code">(
         "relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold",
         className
       )}
-      {...(rest as TextProps<any>)}
+      {...(rest as TextProps<T>)}
     />
   );
 }
 
+type CodeForwardRef = PolymorphicForwardRef<"code", TextBaseProps>;
+
 const Code = React.forwardRef(
-  CodeInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    CodeProps<any>
-  >
+  CodeInner as CodeForwardRef
 ) as CodeComponent;
 
 Code.displayName = "Code";

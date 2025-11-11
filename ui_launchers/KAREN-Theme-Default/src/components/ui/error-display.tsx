@@ -169,7 +169,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       }
     };
   }
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
     if (this.props.onError && this.state.error) {
       this.props.onError(this.state.error);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MessageSquarePlus } from 'lucide-react';
@@ -16,29 +16,39 @@ declare global {
   }
 }
 
+const getSuggestedFactsFromStorage = (): string[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const storedFacts = window.localStorage.getItem(KAREN_SUGGESTED_FACTS_LS_KEY);
+    if (!storedFacts) {
+      return [];
+    }
+
+    const parsedFacts = JSON.parse(storedFacts);
+    return Array.isArray(parsedFacts) ? parsedFacts : [];
+  } catch (error) {
+    console.warn('Failed to read suggested facts from localStorage.', error);
+    return [];
+  }
+};
+
 export default function NotificationsSection() {
-  const [suggestedFacts, setSuggestedFacts] = useState<string[]>([]);
+  const [suggestedFacts, setSuggestedFacts] = useState<string[]>(() => getSuggestedFactsFromStorage());
   const alertStyling = {
     variant: 'default' as const,
     className: 'bg-primary/5 border-primary/20',
   };
-  const loadSuggestedFacts = () => {
-    try {
-      const storedFacts = localStorage.getItem(KAREN_SUGGESTED_FACTS_LS_KEY);
-      if (storedFacts) {
-        setSuggestedFacts(JSON.parse(storedFacts));
-      } else {
-        setSuggestedFacts([]);
-      }
-    } catch (error) {
-      setSuggestedFacts([]);
-    }
-  };
+  const loadSuggestedFacts = useCallback(() => {
+    setSuggestedFacts(getSuggestedFactsFromStorage());
+  }, []);
+
   useEffect(() => {
-    loadSuggestedFacts(); 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === KAREN_SUGGESTED_FACTS_LS_KEY) {
-        loadSuggestedFacts(); 
+        loadSuggestedFacts();
       }
     };
     const handleFactsUpdated = (_event: CustomEvent<unknown>) => {
@@ -50,7 +60,7 @@ export default function NotificationsSection() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('karen-suggested-facts-updated', handleFactsUpdated);
     };
-  }, []);
+  }, [loadSuggestedFacts]);
   return (
     <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm space-y-3 sm:p-4 md:p-6">
       <div className="flex items-center justify-between">

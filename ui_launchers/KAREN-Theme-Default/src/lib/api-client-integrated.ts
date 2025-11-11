@@ -83,7 +83,7 @@ export class IntegratedApiClient {
   /**
    * Make an authenticated request with simple 401 handling
    */
-  private async makeAuthenticatedRequest<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
+  private async makeAuthenticatedRequest<T = unknown>(request: ApiRequest): Promise<ApiResponse<T>> {
     const { endpoint, ...rest } = request;
 
     // If endpoint is protected and user is not authenticated, short-circuit
@@ -167,7 +167,7 @@ export class IntegratedApiClient {
 
   // ------------- HTTP Convenience Methods -------------
 
-  async get<T = any>(
+  async get<T = unknown>(
     endpoint: string,
     options?: Omit<ApiRequest, 'endpoint' | 'method'>
   ): Promise<ApiResponse<T>> {
@@ -178,7 +178,7 @@ export class IntegratedApiClient {
     });
   }
 
-  async post<T = any>(
+  async post<T = unknown>(
     endpoint: string,
     body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
@@ -191,7 +191,7 @@ export class IntegratedApiClient {
     });
   }
 
-  async put<T = any>(
+  async put<T = unknown>(
     endpoint: string,
     body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
@@ -204,7 +204,7 @@ export class IntegratedApiClient {
     });
   }
 
-  async delete<T = any>(
+  async delete<T = unknown>(
     endpoint: string,
     options?: Omit<ApiRequest, 'endpoint' | 'method'>
   ): Promise<ApiResponse<T>> {
@@ -215,7 +215,7 @@ export class IntegratedApiClient {
     });
   }
 
-  async patch<T = any>(
+  async patch<T = unknown>(
     endpoint: string,
     body?: unknown,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
@@ -231,7 +231,7 @@ export class IntegratedApiClient {
   /**
    * Upload file
    */
-  async uploadFile<T = any>(
+  async uploadFile<T = unknown>(
     endpoint: string,
     file: File,
     fieldName: string = 'file',
@@ -259,7 +259,7 @@ export class IntegratedApiClient {
   /**
    * Make a public request (no authentication enforcement)
    */
-  async requestPublic<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
+  async requestPublic<T = unknown>(request: ApiRequest): Promise<ApiResponse<T>> {
     const { endpoint, ...config } = request;
     const prepared = this.prepareConfig(config);
     return this.apiClient.request<T>(endpoint, prepared);
@@ -268,7 +268,7 @@ export class IntegratedApiClient {
   /**
    * Health check
    */
-  async healthCheck(): Promise<ApiResponse<any>> {
+  async healthCheck(): Promise<ApiResponse<unknown>> {
     return this.apiClient.get('/api/health');
   }
 

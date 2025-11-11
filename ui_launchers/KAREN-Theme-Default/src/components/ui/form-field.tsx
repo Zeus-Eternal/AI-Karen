@@ -5,7 +5,6 @@
 
 import React, { forwardRef, useId } from 'react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import type { FormFieldType } from '@/types/auth-form';

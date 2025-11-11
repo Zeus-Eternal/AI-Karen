@@ -35,7 +35,7 @@ export interface AriaEnhancedInputProps extends React.ComponentProps<"input"> {
   /** Error state */
   error?: boolean;
 }
-const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputProps>(
+export const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputProps>(
   ({ 
     className, 
     type,
@@ -73,7 +73,7 @@ const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhancedInputPr
       ariaProps
     );
     // Filter out properties that conflict with HTML input attributes
-    const { 'aria-relevant': _, ...finalAriaProps } = mergedAriaProps;
+    const { 'aria-relevant': _ariaRelevant, ...finalAriaProps } = mergedAriaProps;
     return (
       <input
         type={type}
@@ -292,4 +292,3 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
   }
 );
 PasswordInput.displayName = "PasswordInput";
-export { AriaEnhancedInput };

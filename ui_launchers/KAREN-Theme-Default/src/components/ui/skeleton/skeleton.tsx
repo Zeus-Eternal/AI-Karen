@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import { SkeletonProps } from './types';
-import { useMicroInteractions } from '../micro-interactions/micro-interaction-provider';
+import { useMicroInteractions } from '../micro-interactions/micro-interaction-context';
 import { cn } from '@/lib/utils';
 
 const shimmerVariants = {

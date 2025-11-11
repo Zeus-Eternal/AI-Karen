@@ -29,7 +29,7 @@ export function triggerHapticFeedback(pattern: HapticPattern = 'light'): void {
     } else {
       navigator.vibrate(config.pattern);
     }
-  } catch (error) {
+  } catch {
     // Silently fail if vibration is not supported or blocked
   }
 }

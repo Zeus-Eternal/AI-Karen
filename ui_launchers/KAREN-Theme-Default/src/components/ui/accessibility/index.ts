@@ -18,7 +18,7 @@ export {
   type ToggleButtonProps,
   type MenuButtonProps,
 } from '../aria-enhanced-button';
-export { buttonVariants as ariaEnhancedButtonVariants } from '../aria-enhanced-button';
+export { buttonVariants as ariaEnhancedButtonVariants } from '../aria-enhanced-button-variants';
 export * from '../aria-enhanced-form';
 export * from '../aria-enhanced-input';
 
