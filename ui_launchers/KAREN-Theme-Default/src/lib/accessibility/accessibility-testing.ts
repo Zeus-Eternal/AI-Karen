@@ -1,6 +1,5 @@
 import axe, {
   type AxeResults,
-  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,

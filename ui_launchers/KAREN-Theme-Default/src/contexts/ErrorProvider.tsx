@@ -180,11 +180,13 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
-    
+
+    const boundaryInfo = errorInfo as { componentStack?: string } | undefined;
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -194,9 +196,9 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 
     // Add to global errors
     addGlobalError(error, context);
-    
+
     // Use boundary error hook for analysis
-    boundaryError.handleError(error, errorInfo);
+    boundaryError.handleError(error, boundaryInfo);
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors

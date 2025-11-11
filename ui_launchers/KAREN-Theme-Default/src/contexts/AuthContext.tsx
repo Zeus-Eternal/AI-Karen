@@ -75,6 +75,44 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
+interface ApiUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id?: string;
+  permissions?: string[];
+}
+
+interface AuthApiResponseRaw {
+  valid?: unknown;
+  user?: unknown;
+  user_data?: unknown;
+}
+
+function isApiUserData(value: unknown): value is ApiUserData {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.user_id === "string" &&
+    typeof record.email === "string"
+  );
+}
+
+function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+  if (response.user && isApiUserData(response.user)) {
+    return response.user;
+  }
+
+  if (response.user_data && isApiUserData(response.user_data)) {
+    return response.user_data;
+  }
+
+  return null;
+}
+
 // Hook moved to separate file for React Fast Refresh compatibility
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
@@ -107,6 +145,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     if (roles.includes("admin")) return "admin";
     return "user";
   }, []);
+
+  const createUserFromApiData = useCallback(
+    (apiUser: ApiUserData): User => ({
+      userId: apiUser.user_id,
+      email: apiUser.email,
+      roles: apiUser.roles ?? [],
+      tenantId: apiUser.tenant_id ?? "default",
+      role: determineUserRole(apiUser.roles ?? []),
+      permissions: apiUser.permissions,
+    }),
+    [determineUserRole]
+  );
 
   // Convert technical errors to user-friendly messages
   const getUserFriendlyErrorMessage = useCallback((error: ConnectionError): string => {
@@ -338,7 +388,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
-    determineUserRole,
+    createUserFromApiData,
   ]);
 
   // Session refresh timer management
@@ -424,14 +474,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Create user object
-      const user: User = {
-        userId: userData.user_id,
-        email: userData.email,
-        roles: userData.roles || [],
-        tenantId: userData.tenant_id,
-        role: determineUserRole(userData.roles || []),
-        permissions: userData.permissions,
-      };
+      const user = createUserFromApiData(userData);
 
       // Update authentication state
       setUser(user);
@@ -775,7 +818,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [
     connectionManager,
     createAuthError,
-    determineUserRole,
+    createUserFromApiData,
     isAuthenticated,
     startSessionRefreshTimer,
     stopSessionRefreshTimer,

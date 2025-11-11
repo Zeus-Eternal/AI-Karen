@@ -11,6 +11,11 @@ type ExtendedRunOptions = RunOptions & {
   exclude?: string[];
 };
 
+type ExtendedRunOptions = RunOptions & {
+  include?: string[];
+  exclude?: string[];
+};
+
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
   rules?: RuleObject;

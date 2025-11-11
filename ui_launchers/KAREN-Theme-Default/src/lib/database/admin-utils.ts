@@ -546,44 +546,44 @@ export class AdminDatabaseUtils {
     };
   }
 
-    private mapUserRow(row: UserRecord): User {
-      let preferences: User['preferences'] | undefined;
-      if (row.preferences) {
-        try {
-          preferences = typeof row.preferences === 'string'
-            ? JSON.parse(row.preferences)
-            : (row.preferences as User['preferences']);
-        } catch {
-          preferences = undefined;
-        }
+  private mapUserRow(row: UserRecord): User {
+    let preferences: User['preferences'] | undefined;
+    if (row.preferences) {
+      try {
+        preferences = typeof row.preferences === 'string'
+          ? JSON.parse(row.preferences)
+          : (row.preferences as User['preferences']);
+      } catch {
+        preferences = undefined;
       }
-
-      const roles: string[] = Array.isArray(row.roles)
-        ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
-        : row.role
-          ? [row.role]
-          : [];
-
-      return {
-        user_id: row.user_id,
-        email: row.email,
-        full_name: row.full_name ?? undefined,
-        role: row.role,
-        roles,
-        tenant_id: row.tenant_id ?? 'default',
-        preferences,
-        is_verified: Boolean(row.is_verified),
-        is_active: Boolean(row.is_active),
-        created_at: new Date(row.created_at),
-        updated_at: new Date(row.updated_at),
-        last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
-        failed_login_attempts: row.failed_login_attempts ?? 0,
-        locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
-        two_factor_enabled: Boolean(row.two_factor_enabled),
-        two_factor_secret: row.two_factor_secret ?? null,
-        created_by: row.created_by ?? undefined,
-      };
     }
+
+    const roles: string[] = Array.isArray(row.roles)
+      ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
+      : row.role
+        ? [row.role]
+        : [];
+
+    return {
+      user_id: row.user_id,
+      email: row.email,
+      full_name: row.full_name ?? undefined,
+      role: row.role,
+      roles,
+      tenant_id: row.tenant_id ?? 'default',
+      preferences,
+      is_verified: Boolean(row.is_verified),
+      is_active: Boolean(row.is_active),
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
+      last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
+      failed_login_attempts: row.failed_login_attempts ?? 0,
+      locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
+      two_factor_enabled: Boolean(row.two_factor_enabled),
+      two_factor_secret: row.two_factor_secret ?? null,
+      created_by: row.created_by ?? undefined,
+    };
+  }
 
   /**
    * Find user by email with role information

@@ -341,11 +341,13 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
             <CardContent>
               <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
-                  {testResult.logs.map((log, index) => (
-                    <div
-                      key={log.id || index}
-                      className={`p-2 rounded text-sm ${getLogLevelColor(log.level)}`}
-                    >
+                  {testResult.logs.map((log, index) => {
+                    const hasLogData = log.data !== undefined && log.data !== null;
+                    return (
+                      <div
+                        key={log.id || index}
+                        className={`p-2 rounded text-sm ${getLogLevelColor(log.level)}`}
+                      >
                       <div className="flex items-center justify-between mb-1">
                         <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                           {log.level.toUpperCase()}
@@ -358,7 +360,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                       {log.nodeId && (
                         <p className="text-xs opacity-75 mt-1 sm:text-sm md:text-base">Node: {log.nodeId}</p>
                       )}
-                      {log.data && (
+                      {hasLogData && (
                         <details className="mt-2">
                           <summary className="text-xs cursor-pointer sm:text-sm md:text-base">View Data</summary>
                           <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
@@ -366,8 +368,9 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                           </pre>
                         </details>
                       )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </CardContent>
