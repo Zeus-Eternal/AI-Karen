@@ -83,7 +83,6 @@ export interface PerformanceAnalyticsDashboardProps {
   showAdvancedFeatures?: boolean;
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 type AlertBoxProps = React.ComponentPropsWithoutRef<"div"> & {
   variant?: "default" | "destructive";

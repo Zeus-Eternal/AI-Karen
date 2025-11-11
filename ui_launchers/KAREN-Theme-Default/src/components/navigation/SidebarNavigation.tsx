@@ -214,7 +214,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     ref
   ) => {
     const { sidebarCollapsed, closeSidebar, isMobile } = useAppShell();
-    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+    const [manualExpandedItems, setManualExpandedItems] = useState<Set<string>>(new Set());
     const pathname = usePathname();
     const router = useRouter();
     const localNavRef = useRef<HTMLDivElement | null>(null);
@@ -238,20 +238,21 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       []
     );
 
-    // Auto-expand active sections
-    useEffect(() => {
-      const activeItem = findActiveItem(items, pathname || '/');
-      if (activeItem?.parent) {
-        setExpandedItems((prev) => new Set([...prev, activeItem.parent!]));
-      }
-    }, [pathname, items]);
-
     // Auto-focus navigation when requested
     useEffect(() => {
       if (autoFocus && navRef.current) {
         navRef.current.focus();
       }
-    }, [autoFocus]);
+    }, [autoFocus, navRef]);
+
+    const expandedItems = React.useMemo(() => {
+      const derived = new Set(manualExpandedItems);
+      const activeItem = findActiveItem(items, pathname || '/');
+      if (activeItem?.parent) {
+        derived.add(activeItem.parent);
+      }
+      return derived;
+    }, [items, manualExpandedItems, pathname]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {
@@ -272,10 +273,13 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
     // Toggle expand/collapse
     const toggleExpanded = useCallback((itemId: string) => {
-      setExpandedItems((prev) => {
+      setManualExpandedItems((prev) => {
         const next = new Set(prev);
-        if (next.has(itemId)) next.delete(itemId);
-        else next.add(itemId);
+        if (next.has(itemId)) {
+          next.delete(itemId);
+        } else {
+          next.add(itemId);
+        }
         return next;
       });
     }, []);
@@ -375,7 +379,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardNavigation, flattenedItems, expandedItems, toggleExpanded, handleItemClick]);
+    }, [enableKeyboardNavigation, flattenedItems, expandedItems, toggleExpanded, handleItemClick, navRef]);
 
     return (
       <nav

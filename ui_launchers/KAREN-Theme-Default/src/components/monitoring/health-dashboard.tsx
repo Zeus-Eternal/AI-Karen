@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,40 +22,51 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
-  const [alerts, setAlerts] = useState<HealthAlert[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const healthMonitor = useMemo(() => getHealthMonitor(), []);
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    try {
+      return healthMonitor.getMetrics();
+    } catch {
+      return null;
+    }
+  });
+  const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
+    try {
+      return healthMonitor.getAlerts(20);
+    } catch {
+      return [];
+    }
+  });
+  const [isMonitoring, setIsMonitoring] = useState(() => {
+    try {
+      return healthMonitor.getStatus().isMonitoring;
+    } catch {
+      return false;
+    }
+  });
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    const healthMonitor = getHealthMonitor();
-
-    // Get initial state
-    setMetrics(healthMonitor.getMetrics());
-    setAlerts(healthMonitor.getAlerts(20));
-    setIsMonitoring(healthMonitor.getStatus().isMonitoring);
-
-    // Set up listeners
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
+      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
     const unsubscribeAlerts = healthMonitor.onAlert((newAlert) => {
       setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
     });
 
-    // Start monitoring if not already started
     if (!healthMonitor.getStatus().isMonitoring) {
       healthMonitor.start();
-      setIsMonitoring(true);
     }
 
     return () => {
       unsubscribeMetrics();
       unsubscribeAlerts();
     };
-  }, []);
+  }, [healthMonitor]);
 
   const handleToggleMonitoring = () => {
     const healthMonitor = getHealthMonitor();
@@ -82,15 +93,6 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const healthMonitor = getHealthMonitor();
     healthMonitor.clearAlerts();
     setAlerts([]);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'text-green-600';
-      case 'degraded': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-gray-600';
-    }
   };
 
   const getStatusIcon = (status: string) => {

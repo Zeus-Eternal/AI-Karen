@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart3, TrendingUp } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 export interface UsageData { model: string; requests: number; tokens: number; percentage: number; }
 export interface ModelUsageAnalyticsProps { className?: string; }

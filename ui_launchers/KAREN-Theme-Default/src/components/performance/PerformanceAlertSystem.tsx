@@ -179,46 +179,6 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
     }
   }, [alertRules]);
 
-  // Load alerts & subscribe
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        setAlerts(performanceMonitor.getAlerts(50));
-      } catch {
-        // If service not yet ready, keep calm.
-      }
-    };
-
-    loadData();
-    const interval = window.setInterval(loadData, 5000);
-
-    const unsubscribe =
-      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
-
-        // Threshold-aware rule matching
-        const match = rulesRef.current.find(
-          (rule) =>
-            rule.enabled &&
-            rule.metric === alert.metric &&
-            rule.type === alert.type &&
-            alert.value >= rule.threshold
-        );
-
-        if (match) {
-          void handleAlertNotification(alert, match);
-        }
-        onAlert?.(alert);
-      }) ?? (() => {});
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [onAlert]);
-
-  // --- Notifications & Escalation ------------------------------------------
-
   const handleAlertNotification = useCallback(
     async (alert: PerformanceAlert, rule: AlertRule) => {
       // Push notifications
@@ -256,6 +216,44 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
     },
     []
   );
+
+  // Load alerts & subscribe
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        setAlerts(performanceMonitor.getAlerts(50));
+      } catch {
+        // If service not yet ready, keep calm.
+      }
+    };
+
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
+
+    const unsubscribe =
+      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
+        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+
+        // Threshold-aware rule matching
+        const match = rulesRef.current.find(
+          (rule) =>
+            rule.enabled &&
+            rule.metric === alert.metric &&
+            rule.type === alert.type &&
+            alert.value >= rule.threshold
+        );
+
+        if (match) {
+          void handleAlertNotification(alert, match);
+        }
+        onAlert?.(alert);
+      }) ?? (() => {});
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [handleAlertNotification, onAlert]);
 
   const requestNotificationPermission = useCallback(async () => {
     try {

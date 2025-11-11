@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Activity, Clock, Zap, X } from "lucide-react";
+import { Activity, Zap, X } from "lucide-react";
 
 export interface PerformanceMetrics {
   // Core Web Vitals / key timings (milliseconds unless noted)

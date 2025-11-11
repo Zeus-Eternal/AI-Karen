@@ -341,7 +341,7 @@ export default function IntelligentModelSelector({
   availableModels,
   className = '',
 }: IntelligentModelSelectorProps) {
-  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [manualSelectedModelId, setManualSelectedModelId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [autoSelect, setAutoSelect] = useState(true);
   const [qualityWeight, setQualityWeight] = useState([70]);
@@ -375,13 +375,18 @@ export default function IntelligentModelSelector({
 
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
-      setSelectedModelId(topRecommendation.model.id);
       onModelSelect(topRecommendation.model.id);
     }
   }, [autoSelect, topRecommendation, onModelSelect]);
 
+  const selectedModelId = manualSelectedModelId ?? (
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : ''
+  );
+
   const handleManualSelect = useCallback((modelId: string) => {
-    setSelectedModelId(modelId);
+    setManualSelectedModelId(modelId);
     onModelSelect(modelId);
   }, [onModelSelect]);
 
@@ -424,7 +429,16 @@ export default function IntelligentModelSelector({
           </div>
           <div className="flex items-center gap-2">
             <Label htmlFor="auto-select" className="text-sm">Auto-select</Label>
-            <Switch id="auto-select" checked={autoSelect} onCheckedChange={setAutoSelect} />
+            <Switch
+              id="auto-select"
+              checked={autoSelect}
+              onCheckedChange={(checked) => {
+                setAutoSelect(checked);
+                if (checked) {
+                  setManualSelectedModelId(null);
+                }
+              }}
+            />
           </div>
         </div>
       </CardHeader>

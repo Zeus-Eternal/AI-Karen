@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/monitoring/endpoint-status-indicator.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +37,12 @@ import {
 import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
 import { getDiagnosticLogger } from "@/lib/diagnostics";
 
+type DiagnosticLog = {
+  level?: string;
+  category?: string;
+  timestamp?: string;
+};
+
 export interface EndpointStatusIndicatorProps {
   className?: string;
   showDetails?: boolean;
@@ -48,53 +54,51 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
+  const healthMonitor = useMemo(() => getHealthMonitor?.() ?? null, []);
+  const diagnosticLogger = useMemo(() => getDiagnosticLogger?.() ?? null, []);
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    try {
+      return healthMonitor?.getMetrics?.() ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(
+    () => !!healthMonitor?.getStatus?.().isMonitoring
+  );
   const [lastUpdate, setLastUpdate] = useState<string>("");
-  const [recentErrors, setRecentErrors] = useState<number>(0);
+  const [recentErrors, setRecentErrors] = useState<number>(() => {
+    if (!diagnosticLogger) {
+      return 0;
+    }
+
+    try {
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const logs = diagnosticLogger.getLogs?.(100, "network") ?? [];
+      return logs.filter((log: DiagnosticLog) => {
+        const timestamp = log.timestamp ? new Date(log.timestamp).getTime() : 0;
+        return log.level === "error" && timestamp > fiveMinutesAgo;
+      }).length;
+    } catch {
+      return 0;
+    }
+  });
 
   useEffect(() => {
-    // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
-
     if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      setMetrics(null);
-      setIsMonitoring(false);
       return;
     }
 
-    // Initial snapshot
-    try {
-      const initial = healthMonitor.getMetrics();
-      setMetrics(initial);
-      setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
-
-      // Count recent errors (last 5 minutes)
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      const errorLogs =
-        diagnosticLogger
-          .getLogs?.(100, "network")
-          ?.filter(
-            (log: unknown) =>
-              log?.level === "error" &&
-              new Date(log?.timestamp).getTime() > fiveMinutesAgo
-          ) ?? [];
-      setRecentErrors(errorLogs.length);
-    } catch {
-      // ignore snapshot failures; live updates will still wire in
-    }
-
-    // Live subscriptions
     const unsubscribeMetrics =
       healthMonitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
+        setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
       }) ?? (() => {});
 
     const unsubscribeLogs =
-      diagnosticLogger.onLog?.((newLog: unknown) => {
+      diagnosticLogger.onLog?.((newLog: DiagnosticLog) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
           // Auto-decay the error counter after 5 minutes
@@ -112,7 +116,7 @@ export function EndpointStatusIndicator({
         // noop
       }
     };
-  }, []);
+  }, [diagnosticLogger, healthMonitor]);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";

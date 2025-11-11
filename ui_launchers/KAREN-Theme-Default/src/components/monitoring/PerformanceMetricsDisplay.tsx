@@ -47,6 +47,22 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
 
   const performanceStatus = getPerformanceStatus(metrics.averageResponseTime);
   const errorStatus = getErrorRateStatus(metrics.errorRate);
+  const trendSummary = React.useMemo(() => {
+    const responseTrend =
+      metrics.averageResponseTime < 2000
+        ? 'responsive'
+        : metrics.averageResponseTime < 4000
+          ? 'moderately responsive'
+          : 'under heavy load';
+    const errorTrend =
+      metrics.errorRate < 2
+        ? 'stable error rate'
+        : `elevated error rate (${metrics.errorRate.toFixed(1)}%)`;
+    const throughputTrend =
+      metrics.throughput >= 1 ? 'high throughput' : 'light traffic';
+
+    return `${responseTrend}, ${errorTrend}, ${throughputTrend}.`;
+  }, [metrics.averageResponseTime, metrics.errorRate, metrics.throughput]);
 
   return (
     <Card className={className}>
@@ -191,6 +207,12 @@ export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps>
             </div>
           </div>
         </div>
+
+        {showTrends && (
+          <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground sm:p-4 md:text-base">
+            {trendSummary}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

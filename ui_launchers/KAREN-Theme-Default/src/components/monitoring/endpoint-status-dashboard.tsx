@@ -11,16 +11,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { webUIConfig } from "@/lib/config";
 
 // Health / Diagnostics providers
-import {
-  getHealthMonitor,
-  type HealthMetrics,
-  type Alert as HealthAlert,
-} from "@/lib/health-monitor";
+import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
 import {
   getDiagnosticLogger,
   type DiagnosticInfo,

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,18 @@ import { Switch } from "@/components/ui/switch";
  * credentials locally and interact with Karen to read or compose emails.
  */
 export default function GmailPluginPage() {
-  const [username, setUsername] = useState<string>("");
-  const [appPassword, setAppPassword] = useState<string>("");
-
-  useEffect(() => {
-    setUsername(localStorage.getItem("gmail_username") || "");
-    setAppPassword(localStorage.getItem("gmail_app_password") || "");
-  }, []);
+  const [username, setUsername] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem("gmail_username") ?? "";
+  });
+  const [appPassword, setAppPassword] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem("gmail_app_password") ?? "";
+  });
 
   const saveCreds = () => {
     localStorage.setItem("gmail_username", username);

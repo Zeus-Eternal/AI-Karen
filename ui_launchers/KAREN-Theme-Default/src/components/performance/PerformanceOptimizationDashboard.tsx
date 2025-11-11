@@ -205,6 +205,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
     } catch (error) {
+      console.error("Failed to apply optimizations", error);
     } finally {
       setIsOptimizing(false);
     }
