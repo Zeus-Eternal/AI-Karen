@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 
 import { getKarenBackend } from "@/lib/karen-backend";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { handleApiError } from "@/lib/error-handler";
 
 import ProviderManagement from "./ProviderManagement";

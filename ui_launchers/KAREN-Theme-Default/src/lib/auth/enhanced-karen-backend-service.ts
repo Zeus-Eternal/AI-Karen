@@ -32,7 +32,7 @@ const getErrorMessage = (error: unknown): string => {
 
   try {
     return JSON.stringify(error);
-  } catch (_error) {
+  } catch {
     return 'Unknown error occurred';
   }
 };

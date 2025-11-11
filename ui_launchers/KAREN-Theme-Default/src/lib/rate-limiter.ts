@@ -13,6 +13,10 @@
 
 export type Millis = number;
 
+interface RetryAfterError extends Error {
+  __retryAfterMs?: number | null;
+}
+
 export interface RateLimitConfig {
   /** Max requests allowed within the window */
   maxRequests: number;
@@ -55,7 +59,7 @@ export interface ExecuteOptions {
   label?: string;
 }
 
-export interface QueuedRequest<T = any> {
+export interface QueuedRequest<T = unknown> {
   resolve: (value: T) => void;
   reject: (error: Error) => void;
   request: () => Promise<T>;
@@ -164,7 +168,7 @@ export class RateLimiter {
       if (options?.signal) signals.push(options.signal);
       const composite = this.mergeSignals(signals, controller);
 
-      let timer: any;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       if (timeout && timeout > 0) {
         timer = setTimeout(() => controller.abort(), timeout);
       }
@@ -173,8 +177,8 @@ export class RateLimiter {
         const res = await fetch(input, { ...init, signal: composite });
         if (this.isRetriableStatus(res.status)) {
           const retryAfter = this.parseRetryAfter(res.headers.get('Retry-After'));
-          const err = new Error(`HTTP ${res.status}`);
-          (err as any).__retryAfterMs = retryAfter ?? null;
+          const err = new Error(`HTTP ${res.status}`) as RetryAfterError;
+          err.__retryAfterMs = retryAfter ?? null;
           throw err;
         }
         return res;
@@ -282,12 +286,12 @@ export class RateLimiter {
       q.resolve(out);
     } catch (err: unknown) {
       // Handle retriable errors (429 or explicit flag)
-      const retriable = this.isRetriableError(err as Error);
-      if (retriable) {
-        q.attempt += 1;
-        const errorObj = err as { __retryAfterMs?: number } | null;
-        const retryDelay = this.nextBackoffMs(q.attempt, errorObj?.__retryAfterMs);
-        await this.delay(retryDelay);
+        const retriable = this.isRetriableError(err as Error);
+        if (retriable) {
+          q.attempt += 1;
+          const errorObj = err as { __retryAfterMs?: number | null } | null;
+          const retryDelay = this.nextBackoffMs(q.attempt, errorObj?.__retryAfterMs);
+          await this.delay(retryDelay);
 
         // Put back at front with the same options
         this.queue.unshift(q);
@@ -425,4 +429,3 @@ export const apiRateLimiter = new RateLimiter({
 
 // 3) Wrap fetch with automatic retry on 429/5xx (+ Retry-After)
 // const res = await apiRateLimiter.wrapFetch('/api/data', { method: 'GET' }, { timeoutMs: 7000 });
-

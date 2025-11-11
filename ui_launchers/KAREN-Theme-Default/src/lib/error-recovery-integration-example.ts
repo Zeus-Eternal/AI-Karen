@@ -17,12 +17,25 @@ import "./extension-403-fix"; // keep the hotfix loaded early
 type FetchArgs = Parameters<typeof fetch>;
 
 // ---------- Types ----------
+export type RecoveryAction =
+  | { retry: true; delay: number }
+  | { fallback_data: unknown }
+  | { requires_login: true }
+  | { retry: false };
+
+export type HandleKarenBackendErrorFn = (
+  status: number,
+  url: string,
+  operation?: string,
+  context?: Record<string, unknown>
+) => Promise<RecoveryAction>;
+
 export interface RecoveryResult {
   success: boolean;
   strategy: string;
   message: string;
-  fallback_data?: any;
-  retry_after?: number;            // seconds
+  fallback_data?: unknown;
+  retry_after?: number; // seconds
   requires_user_action: boolean;
   escalated: boolean;
 }
@@ -33,7 +46,7 @@ export interface ErrorRecoveryRequest {
   endpoint: string;
   operation: string;
   message: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   service_name?: string;
 }
 
@@ -41,6 +54,17 @@ export interface ErrorRecoveryRequest {
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
+
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    effectiveType?: string;
+  };
+};
+
+type RecoveryWindow = Window & {
+  __RECOVERY_FETCH_WRAP__?: boolean;
+  handleKarenBackendError?: HandleKarenBackendErrorFn;
+};
 
 // ---------- Enhanced Error Handler ----------
 export class EnhancedErrorHandler {
@@ -61,13 +85,8 @@ export class EnhancedErrorHandler {
     status: number,
     url: string,
     operation: string = "api_call",
-    context: Record<string, any> = {}
-  ): Promise<
-    | { retry: true; delay: number }
-    | { fallback_data: any }
-    | { requires_login: true }
-    | { retry: false }
-  > {
+    context: Record<string, unknown> = {}
+  ): Promise<RecoveryAction> {
     try {
       logger.info(`Attempting error recovery for HTTP ${status} at ${url}`);
 
@@ -144,13 +163,8 @@ export class EnhancedErrorHandler {
     status: number,
     url: string,
     operation: string,
-    _context: Record<string, any> = {}
-  ): Promise<
-    | { fallback_data: any }
-    | { retry: true; delay: number }
-    | { requires_login: true }
-    | { retry: false }
-  > {
+    _context: Record<string, unknown> = {}
+  ): Promise<RecoveryAction> {
     const extensionErrorResult = handleExtensionError(status, url, operation);
     logger.info(`Extension API error handled: ${extensionErrorResult.message}`);
 
@@ -172,7 +186,7 @@ export class EnhancedErrorHandler {
   async handleAuthError(
     endpoint: string,
     operation: string = "authentication",
-    context: Record<string, any> = {}
+    context: Record<string, unknown> = {}
   ): Promise<{ retry: true; delay: number } | { requires_login: true }> {
     try {
       logger.info(`Attempting auth error recovery for ${endpoint}`);
@@ -222,8 +236,8 @@ export class EnhancedErrorHandler {
     endpoint: string,
     errorMessage: string,
     operation: string = "network_request",
-    context: Record<string, any> = {}
-  ): Promise<{ retry: true; delay: number } | { fallback_data: any } | { retry: false }> {
+    context: Record<string, unknown> = {}
+  ): Promise<RecoveryAction> {
     try {
       logger.info(`Attempting network error recovery for ${endpoint}`);
 
@@ -239,7 +253,7 @@ export class EnhancedErrorHandler {
               ...context,
               timestamp: new Date().toISOString(),
               connection_type: isBrowser()
-                ? (navigator as any).connection?.effectiveType || "any"
+                ? (navigator as NavigatorWithConnection).connection?.effectiveType ?? "unknown"
                 : "server",
             },
           },
@@ -272,7 +286,7 @@ export class EnhancedErrorHandler {
   /**
    * Get error recovery system status
    */
-  async getRecoveryStatus(): Promise<{ available: boolean; message?: string } & Record<string, any>> {
+  async getRecoveryStatus(): Promise<{ available: boolean; message?: string } & Record<string, unknown>> {
     try {
       const response = await fetch(`${this.recoveryEndpoint}/status`);
       if (!response.ok) {
@@ -400,7 +414,8 @@ export function integrateWithExistingErrorHandling(): void {
 
   // Idempotent guard
   const __key = "__RECOVERY_FETCH_WRAP__";
-  if ((window as any)[__key]) return;
+  const win = window as RecoveryWindow & Record<string, unknown>;
+  if (win[__key]) return;
 
   const originalFetch = window.fetch.bind(window);
 
@@ -425,18 +440,19 @@ export function integrateWithExistingErrorHandling(): void {
     }
   };
 
-  (window as any)[__key] = true;
+  win[__key] = true;
   logger.info("Integrated enhanced fetch with recovery pipeline");
 }
 
 export function integrateWithKarenBackend(): void {
   if (!isBrowser()) return;
 
-  (window as any).handleKarenBackendError = async (
+  const win = window as RecoveryWindow & Record<string, unknown>;
+  win.handleKarenBackendError = async (
     status: number,
     url: string,
     operation: string = "api_call",
-    context: Record<string, any> = {}
+    context: Record<string, unknown> = {}
   ) => {
     return await enhancedErrorHandler.handleHttpError(status, url, operation, context);
   };

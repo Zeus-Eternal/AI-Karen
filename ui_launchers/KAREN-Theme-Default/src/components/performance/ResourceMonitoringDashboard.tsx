@@ -92,12 +92,13 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const [timeWindowAnchor, setTimeWindowAnchor] = useState<number>(0);
+  const timeWindowAnchorRef = useRef<number>(0);
 
   useEffect(() => {
     const updateData = () => {
       setCurrentMetrics(resourceMonitor.getCurrentMetrics());
-      setHistoricalMetrics(resourceMonitor.getHistoricalMetrics(100));
+      const nextHistoricalMetrics = resourceMonitor.getHistoricalMetrics(100);
+      setHistoricalMetrics(nextHistoricalMetrics);
       setAlerts(resourceMonitor.getAlerts());
       setRecommendations(resourceMonitor.getScalingRecommendations());
 
@@ -107,7 +108,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       setTimeWindowAnchor(Date.now());
     };
 
-    updateData();
+    const frame = requestAnimationFrame(updateData);
     const interval = setInterval(updateData, refreshInterval);
 
     const unsubscribe = resourceMonitor.onAlert((alert) => {
@@ -115,6 +116,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     });
 
     return () => {
+      cancelAnimationFrame(frame);
       clearInterval(interval);
       unsubscribe();
     };
@@ -139,7 +141,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [historicalMetrics, selectedTimeframe, timeWindowAnchor]);
+  }, [historicalMetrics, selectedTimeframe]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);

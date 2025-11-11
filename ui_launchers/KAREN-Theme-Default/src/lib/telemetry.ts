@@ -6,7 +6,7 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 
 export interface TelemetryEvent {
   event: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   correlationId?: string;
   timestamp: string;
   sessionId: string;
@@ -33,7 +33,7 @@ export interface Span {
   name: string;
   startTime: number;
   end: () => number;
-  addTag: (key: string, value: any) => void;
+  addTag: (key: string, value: unknown) => void;
 }
 
 export type Timer = ReturnType<typeof setInterval>;
@@ -85,7 +85,7 @@ class TelemetryService {
 
   // ---------------- Public API ----------------
 
-  public track(event: string, payload: Record<string, any> = {}, correlationId?: string): void {
+  public track(event: string, payload: Record<string, unknown> = {}, correlationId?: string): void {
     if (!this.config.enabled || !isBrowser) return;
     if (!this.shouldSample()) return;
 
@@ -98,10 +98,10 @@ class TelemetryService {
       event,
       payload: {
         ...payload,
-        ...(perfNow !== undefined
+          ...(perfNow !== undefined
           ? {
               performanceNow: perfNow,
-              timeOrigin: (performance as any)?.timeOrigin,
+              timeOrigin: performance?.timeOrigin,
             }
           : {}),
       },
@@ -109,8 +109,8 @@ class TelemetryService {
       timestamp: new Date().toISOString(),
       sessionId: this.sessionId,
       userId: this.getUserId(),
-      userAgent: isBrowser ? navigator.userAgent : 'any',
-      url: isBrowser ? window.location.href : 'any',
+      userAgent: isBrowser ? navigator.userAgent : 'unknown',
+      url: isBrowser ? window.location.href : 'unknown',
     };
 
     // Enforce queue cap (drop oldest)
@@ -144,7 +144,7 @@ class TelemetryService {
         this.track('span_end', { spanId, spanName: name, startTime, endTime, duration });
         return duration;
       },
-      addTag: (key: string, value: any) => {
+      addTag: (key: string, value: unknown) => {
         this.track('span_tag', { spanId, spanName: name, tagKey: key, tagValue: value });
       },
     };
@@ -328,7 +328,7 @@ class TelemetryService {
         { type: 'application/json' }
       );
       return navigator.sendBeacon(this.config.endpoint!, blob);
-    } catch (e) {
+    } catch {
       return false;
     }
   }
@@ -374,7 +374,7 @@ export const getTelemetryService = (config?: Partial<TelemetryConfig>): Telemetr
   return telemetryInstance;
 };
 
-export const track = (event: string, payload?: Record<string, any>, correlationId?: string): void => {
+export const track = (event: string, payload?: Record<string, unknown>, correlationId?: string): void => {
   getTelemetryService().track(event, payload, correlationId);
 };
 

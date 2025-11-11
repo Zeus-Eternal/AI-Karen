@@ -17,7 +17,6 @@ export function ConnectionDiagnostic() {
   const runDiagnostics = async () => {
     setIsRunning(true);
     const configManager = getConfigManager();
-    const config = configManager.getConfiguration();
     
     const endpoints = [
       { name: 'Backend Direct', url: 'http://localhost:8000/api/health' },
@@ -69,7 +68,11 @@ export function ConnectionDiagnostic() {
   };
 
   useEffect(() => {
-    runDiagnostics();
+    const frame = requestAnimationFrame(() => {
+      void runDiagnostics();
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return (

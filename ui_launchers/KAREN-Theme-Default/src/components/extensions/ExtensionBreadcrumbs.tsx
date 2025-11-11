@@ -13,7 +13,7 @@ import type { BreadcrumbItem } from "@/extensions";
 
 export type Crumb = BreadcrumbItem;
 
-function _ExtensionBreadcrumbs() {
+function ExtensionBreadcrumbsComponent() {
   const { state, dispatch } = useExtensionContext();
   const { breadcrumbs } = state;
 
@@ -71,5 +71,5 @@ function _ExtensionBreadcrumbs() {
   );
 }
 
-const ExtensionBreadcrumbs = memo(_ExtensionBreadcrumbs);
+const ExtensionBreadcrumbs = memo(ExtensionBreadcrumbsComponent);
 export default ExtensionBreadcrumbs;
