@@ -4,7 +4,7 @@ Your mission: audit the current Kari UI (Tauri Control Room + any admin or dev p
 ### CONTEXT
 • Source tree roots:
   - desktop_ui/         (Tauri React SPA)
-  - admin_ui/           (legacy Streamlit pages, may be deprecated)
+  - admin_ui/           (legacy admin pages, may be deprecated)
   - plugins/*/ui.py     (optional plugin widgets)
 • Docs:
   - docs/mesh_arch.md   (Hydra-Ops event model)

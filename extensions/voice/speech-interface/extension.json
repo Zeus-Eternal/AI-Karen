@@ -45,13 +45,6 @@
         "icon": "🎤",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Voice Analytics",
-        "module": "ui.voice_analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   

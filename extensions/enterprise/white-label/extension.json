@@ -45,13 +45,6 @@
         "icon": "🎨",
         "permissions": ["enterprise", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Brand Analytics",
-        "module": "ui.brand_analytics",
-        "permissions": ["enterprise"]
-      }
     ]
   },
   

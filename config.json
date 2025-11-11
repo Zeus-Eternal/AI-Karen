@@ -87,7 +87,6 @@
     "enable_memory_integration": true,
     "ui_sources": [
       "web",
-      "streamlit",
       "desktop"
     ]
   },

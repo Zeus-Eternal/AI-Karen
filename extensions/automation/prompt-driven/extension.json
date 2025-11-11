@@ -45,13 +45,6 @@
         "icon": "⚡",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Workflow Analytics",
-        "module": "ui.workflow_analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   

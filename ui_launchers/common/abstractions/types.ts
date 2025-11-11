@@ -1,5 +1,5 @@
 // Shared type definitions for all UI launchers
-// These types are framework-agnostic and can be used across React, Streamlit, and Tauri
+// These types are framework-agnostic and can be used across React and Tauri
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 export type MemoryDepth = "short" | "medium" | "long";

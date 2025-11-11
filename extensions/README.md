@@ -150,13 +150,6 @@ extensions/productivity/task-manager/
         "icon": "📋",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Task Analytics",
-        "module": "ui.analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   
@@ -544,22 +537,6 @@ Extensions can provide pages for the Control Room interface:
       "path": "/analytics",
       "icon": "📊",
       "permissions": ["user", "admin"]
-    }
-  ]
-}
-```
-
-### Streamlit Integration
-
-Extensions can provide Streamlit pages for advanced interfaces:
-
-```json
-"ui": {
-  "streamlit_pages": [
-    {
-      "name": "Data Visualization",
-      "module": "ui.visualization",
-      "permissions": ["admin"]
     }
   ]
 }

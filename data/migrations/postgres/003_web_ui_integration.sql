@@ -51,7 +51,7 @@ COMMENT ON COLUMN conversations.summary IS 'Conversation summary';
 COMMENT ON COLUMN conversations.tags IS 'Conversation tags for organization';
 COMMENT ON COLUMN conversations.last_ai_response_id IS 'Track last AI response for continuity';
 
-COMMENT ON COLUMN memory_entries.ui_source IS 'Source UI (web, streamlit, desktop)';
+COMMENT ON COLUMN memory_entries.ui_source IS 'Source UI (web, desktop)';
 COMMENT ON COLUMN memory_entries.conversation_id IS 'Link to conversation';
 COMMENT ON COLUMN memory_entries.memory_type IS 'Type of memory (fact, preference, context)';
 COMMENT ON COLUMN memory_entries.tags IS 'Memory tags for categorization';

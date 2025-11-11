@@ -140,7 +140,6 @@ export interface IThemeManager {
   // CSS generation
   generateCSS(theme: Theme): string;
   generateTailwindConfig(theme: Theme): Record<string, unknown>;
-  generateStreamlitCSS(theme: Theme): string;
   
   // Event handling
   onThemeChanged(callback: (theme: Theme) => void): void;
@@ -174,7 +173,7 @@ export interface IAnalyticsService {
 
 // Framework adapter interface
 export interface IFrameworkAdapter {
-  framework: 'react' | 'streamlit' | 'tauri';
+  framework: 'react' | 'tauri';
   
   // Component creation
   createChatComponent(containerId: string, options?: unknown): IChatComponent;

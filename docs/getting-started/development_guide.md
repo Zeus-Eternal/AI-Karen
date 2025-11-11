@@ -160,19 +160,6 @@ npm run dev
 # Available at http://localhost:9002
 ```
 
-#### Streamlit UI
-```bash
-cd ui_launchers/streamlit_ui
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start development server with auto-reload
-streamlit run app.py --server.runOnSave true
-
-# Available at http://localhost:8501
-```
-
 #### Desktop UI (Tauri)
 ```bash
 cd ui_launchers/desktop_ui
@@ -545,15 +532,6 @@ DEBUG=* npm run dev
 
 # TypeScript checking
 npm run type-check
-```
-
-**Streamlit Debugging:**
-```bash
-# Enable debug mode
-streamlit run app.py --logger.level debug
-
-# Show component tree
-streamlit run app.py --server.enableStaticServing false
 ```
 
 ### Database Debugging

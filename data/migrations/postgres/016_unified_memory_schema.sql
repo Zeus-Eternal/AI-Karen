@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS memories (
     -- Additional fields for backward compatibility and enhanced functionality
     session_id VARCHAR(255),
     conversation_id UUID,
-    ui_source VARCHAR(50) DEFAULT 'api' CHECK (ui_source IN ('web', 'streamlit', 'desktop', 'api', 'ag_ui', 'copilot')),
+    ui_source VARCHAR(50) DEFAULT 'api' CHECK (ui_source IN ('web', 'desktop', 'api', 'ag_ui', 'copilot')),
     memory_type VARCHAR(50) DEFAULT 'general' CHECK (memory_type IN ('general', 'fact', 'preference', 'context', 'conversation', 'insight', 'episodic', 'semantic', 'procedural')),
     ai_generated BOOLEAN DEFAULT FALSE,
     user_confirmed BOOLEAN DEFAULT TRUE,

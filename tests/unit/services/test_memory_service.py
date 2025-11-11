@@ -211,7 +211,7 @@ class TestWebUIMemoryService:
         mock_base_manager.query_memories = AsyncMock(return_value=[base_memory])
         memory_service._get_web_ui_memory_data = AsyncMock(return_value={
             "memory-123": {
-                "ui_source": "streamlit",  # Different UI source
+                "ui_source": "desktop",  # Different UI source
                 "memory_type": "general",
                 "importance_score": 3,  # Below range
                 "ai_generated": True,
@@ -463,7 +463,7 @@ class TestWebUIMemoryService:
         # Test failing UI source filter
         query2 = WebUIMemoryQuery(
             text="test",
-            ui_source=UISource.STREAMLIT
+            ui_source=UISource.DESKTOP
         )
         assert memory_service._passes_web_ui_filters(web_data, query2) is False
         
@@ -1263,7 +1263,7 @@ class TestWebUIMemoryServiceIntegration:
         # User-created preference (confirmed)
         mem2 = Mock()
         mem2.memory_type = "preference"
-        mem2.ui_source = "streamlit"
+        mem2.ui_source = "desktop"
         mem2.importance_score = 9
         mem2.ai_generated = False
         mem2.user_confirmed = True
@@ -1312,7 +1312,7 @@ class TestWebUIMemoryServiceIntegration:
         
         # UI source distribution
         assert analytics["memories_by_ui_source"]["web"] == 1
-        assert analytics["memories_by_ui_source"]["streamlit"] == 1
+        assert analytics["memories_by_ui_source"]["desktop"] == 1
         assert analytics["memories_by_ui_source"]["api"] == 1
         
         # Importance distribution

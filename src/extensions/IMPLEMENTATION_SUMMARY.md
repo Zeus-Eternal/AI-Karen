@@ -269,7 +269,7 @@ def create_api_router(self) -> Optional[APIRouter]:
 The FastAPI integration provides a solid foundation for:
 - **Task 6**: Background task system implementation
 - **Task 7**: Control Room UI integration  
-- **Task 8**: Streamlit UI integration
+- **Task 8**: Legacy UI integration
 - **Task 9**: Extension security and sandboxing
 - **Task 10**: Development tools and CLI
 
@@ -501,7 +501,7 @@ This section covers the implementation of the comprehensive background task syst
 
 The background task system provides a solid foundation for:
 - **Task 7**: Control Room UI integration with task monitoring
-- **Task 8**: Streamlit UI integration with task management
+- **Task 8**: Legacy UI integration with task management
 - **Task 9**: Extension security with task sandboxing
 - **Task 10**: Development tools with task debugging
 

@@ -45,13 +45,6 @@
         "icon": "🤖",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Model Analytics",
-        "module": "ui.model_analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   

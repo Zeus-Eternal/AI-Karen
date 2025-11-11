@@ -210,17 +210,13 @@ class TestBaseExtension:
         # Add UI config to manifest
         ui_config = Mock()
         ui_config.control_room_pages = ["page1", "page2"]
-        ui_config.streamlit_pages = ["streamlit1"]
         
         sample_manifest.ui = ui_config
         
         extension = TestExtension(sample_manifest, extension_context)
         components = extension.create_ui_components()
         
-        assert "control_room_pages" in components
-        assert "streamlit_pages" in components
-        assert components["control_room_pages"] == ["page1", "page2"]
-        assert components["streamlit_pages"] == ["streamlit1"]
+        assert components == {"control_room_pages": ["page1", "page2"]}
     
     # Test Getters
     def test_get_api_router(self, test_extension):

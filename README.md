@@ -45,7 +45,7 @@ Tuning env:
 * **Performance Optimization** - Dual startup modes with lazy loading, 99%+ faster startup, and 50%+ memory reduction
 * **Plugin Ecosystem** - 24+ plugins with hot-reload capability and marketplace integration
 * **Extension System** - Modular extensions for analytics, automation, and workflow building
-* **Multiple UI Interfaces** - Web (Next.js) is the default interface, with Desktop (Tauri) and Streamlit options
+* **Multiple UI Interfaces** - Web (Next.js) is the default interface alongside the Desktop (Tauri) client
 * **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support, CUDA acceleration, helper models
 * **Production Monitoring** - Prometheus metrics, OSIRIS logging, health checks, and comprehensive observability
 * **Authentication & Security** - Enhanced JWT-based auth with username/email login, advanced validation, rate limiting, password policies, and comprehensive security logging
@@ -54,7 +54,7 @@ Tuning env:
 **Technology Stack:**
 * **Backend**: FastAPI, Python 3.10+, Pydantic, SQLAlchemy, Alembic
 * **Databases**: PostgreSQL 15, Redis 7, Elasticsearch 8.9, Milvus 2.3, DuckDB
-* **Frontend**: Next.js 15.2.3, React 18, Tauri 2.5, Streamlit
+* **Frontend**: Next.js 15.2.3, React 18, Tauri 2.5
 * **AI/ML**: HuggingFace Transformers, llama-cpp-python, scikit-learn 1.5, spaCy 3.7
 * **Infrastructure**: Docker, Prometheus, nginx (optional), Kubernetes support
 
@@ -421,11 +421,11 @@ See [Enhanced Authentication Migration Guide](ENHANCED_AUTH_MIGRATION_README.md)
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Frontend Layer                           │
-├─────────────────┬─────────────────┬─────────────────────────────┤
-│   Web UI        │  Desktop UI     │     Streamlit UI            │
-│  (Next.js)      │   (Tauri)       │   (Modern Interface)        │
-│  Port: 9002     │  Native App     │   Port: 8501                │
-└─────────────────┴─────────────────┴─────────────────────────────┘
+├─────────────────┬─────────────────┤
+│   Web UI        │  Desktop UI     │
+│  (Next.js)      │   (Tauri)       │
+│  Port: 9002     │  Native App     │
+└─────────────────┴─────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────────┐
 │                     FastAPI Backend                             │
@@ -966,7 +966,6 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 ### Component Documentation
 - [Web UI Documentation](ui_launchers/web_ui/README.md) - Next.js web interface
 - [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application
-- [Streamlit UI Documentation](ui_launchers/streamlit_ui/README.md) - Modern Streamlit interface
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
 - [Extension Documentation](extensions/README.md) - Extension system overview

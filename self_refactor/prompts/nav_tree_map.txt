@@ -3,7 +3,7 @@ Kari UI Navigation Tree — Source of Truth
 
 Purpose:
 --------
-Defines the canonical sidebar/topbar/modal navigation layout for all Kari UIs (Tauri, Streamlit, Mobile, etc).  
+Defines the canonical sidebar/topbar/modal navigation layout for all Kari UIs (Tauri, Web, Mobile, etc).
 ALL new features/pages MUST be registered here and grouped by user role and context.
 
 Format:

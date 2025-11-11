@@ -14,7 +14,7 @@ Every “agent”—human, AI, or meta-agent—in this repo is bound by one Law:
 ## 1. **Agent Core Principle**
 
 * **All core runtime logic, plugins, clients, integrations, and engines live under `src/ai_karen_engine/` as independent, importable modules.**
-* **UI launchers live under `/ui_launchers/{streamlit_ui,desktop_ui,admin_ui}/`—never mixed with backend or core.**
+* **UI launchers live under `/ui_launchers/{web_ui,desktop_ui,admin_ui}/`—never mixed with backend or core.**
 * **No relative imports. No sys.path hacks. All imports are absolute: `ai_karen_engine.<module>...`**
 
 ---
@@ -86,7 +86,7 @@ from ai_karen_engine.echocore.fine_tuner import FineTuner
 * All core runtime logic lives under `src/ai_karen_engine/`.
 * Every major subsystem (plugins, clients, integrations, core, event\_bus, self\_refactor, echocore, etc.) is its own subfolder—pip and repo ready.
 * Repo-level configs, docs, Docker, scripts, tests, and bootstraps stay top-level.
-* UI launcher folders (`ui_launchers/streamlit_ui`, `ui_launchers/desktop_ui`, `ui_launchers/admin_ui`) remain top-level only.
+* UI launcher folders (`ui_launchers/web_ui`, `ui_launchers/desktop_ui`, `ui_launchers/admin_ui`) remain top-level only.
 
 #### Example Tree
 
@@ -108,7 +108,7 @@ AI-Karen/
 ui_launchers/
     ├── admin_ui/
     ├── desktop_ui/
-    └── streamlit_ui/
+    └── web_ui/
 ```
 
 ### Import Rules
