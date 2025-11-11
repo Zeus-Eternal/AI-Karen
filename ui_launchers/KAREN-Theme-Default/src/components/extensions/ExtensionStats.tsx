@@ -12,12 +12,14 @@ export default function ExtensionStats() {
       try {
         const plugins = await getPluginService().getAvailablePlugins();
         setPluginCount(plugins.length);
-      } catch {
+      } catch (error) {
+        console.error("Failed to fetch available plugins", error);
       }
       try {
         const exts = await getExtensionService().getInstalledExtensions();
         setExtensionCount(exts.length);
-      } catch {
+      } catch (error) {
+        console.error("Failed to fetch installed extensions", error);
       }
     }
     load();
