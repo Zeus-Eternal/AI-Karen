@@ -5,12 +5,7 @@ import { Slot } from '@radix-ui/react-slot';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-  SidebarProvider,
-  useSidebar,
-  type SidebarContextValue,
-  type SidebarProviderProps,
-} from './sidebar-context';
+import { useSidebar } from './sidebar-context';
 
 export type SidebarProps = React.ComponentPropsWithoutRef<'aside'> & {
   variant?: 'sidebar' | 'floating';
@@ -230,8 +225,6 @@ const SidebarSeparator = React.forwardRef<
 SidebarSeparator.displayName = 'SidebarSeparator';
 
 export {
-  SidebarProvider,
-  useSidebar,
   Sidebar,
   SidebarTrigger,
   SidebarRail,
@@ -248,4 +241,5 @@ export {
   SidebarMenuAction,
   SidebarSeparator,
 };
+export { SidebarProvider } from './sidebar-context';
 export type { SidebarContextValue, SidebarProviderProps } from './sidebar-context';
