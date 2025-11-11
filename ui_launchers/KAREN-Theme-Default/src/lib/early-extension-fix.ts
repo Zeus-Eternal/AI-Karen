@@ -13,38 +13,34 @@
 (function earlyExtensionFix() {
   if (typeof window === 'undefined') return;
 
-  type ExtensionAwareWindow = Window & { __karenEarlyPatched__?: boolean };
-  const FLAG = '__karenEarlyPatched__';
-  const extensionWindow = window as ExtensionAwareWindow;
-
-  if (extensionWindow[FLAG]) return;
-  extensionWindow[FLAG] = true;
+  // Idempotency guard
+  const FLAG = '__karenEarlyPatched__' as const;
+  type EarlyExtensionWindow = typeof window & Record<typeof FLAG, boolean>;
+  const earlyWindow = window as EarlyExtensionWindow;
+  if (earlyWindow[FLAG]) return;
+  earlyWindow[FLAG] = true;
 
   // ---------------------------
   // 1) Patch console.error
   // ---------------------------
   const originalConsoleError = console.error.bind(console);
 
-  type ExtensionErrorDetails = {
-    url?: string;
-    endpoint?: string;
-  };
-
-  function hasExtensionDetails(candidate: unknown): candidate is ExtensionErrorDetails {
-    if (!candidate || typeof candidate !== 'object') {
-      return false;
-    }
-
-    const { url, endpoint } = candidate as ExtensionErrorDetails;
-    return (
-      (typeof url === 'string' && url.includes('/api/extensions')) ||
-      (typeof endpoint === 'string' && endpoint.includes('/api/extensions'))
-    );
-  }
-
   function isSuppressedExtensionError(args: unknown[]): boolean {
     const first = args[0];
-    const hasExtObj = args.some(hasExtensionDetails);
+    const hasExtObj =
+      args.some(arg => {
+        if (arg && typeof arg === 'object') {
+          const candidate = arg as { url?: unknown; endpoint?: unknown };
+          const url = typeof candidate.url === 'string' ? candidate.url : undefined;
+          const endpoint =
+            typeof candidate.endpoint === 'string' ? candidate.endpoint : undefined;
+          return (
+            (url && url.includes('/api/extensions')) ||
+            (endpoint && endpoint.includes('/api/extensions'))
+          );
+        }
+        return false;
+      }) || false;
 
     if (typeof first === 'string') {
       if (
@@ -84,14 +80,12 @@
       // Some runtimes export Request on window; guard in case
       if (typeof Request !== 'undefined' && input instanceof Request) return input.url;
       // Fallback best-effort
-      if (input && typeof input === 'object' && 'url' in input) {
-        const candidate = (input as { url?: unknown }).url;
-        if (typeof candidate === 'string') {
-          return candidate;
-        }
+      const candidate = input as { url?: unknown };
+      const fromUrlProperty = candidate?.url;
+      if (typeof fromUrlProperty === 'string') {
+        return fromUrlProperty;
       }
-      const s = String(input);
-      return s;
+      return String(input);
     } catch {
       return String(input);
     }
@@ -155,7 +149,8 @@
     const url = toUrlString(input);
 
     try {
-      const response = await originalFetch(input, init);
+      const fetchInput: RequestInfo = input instanceof URL ? input.toString() : input;
+      const response = await originalFetch(fetchInput, init);
 
       // Only intervene for extension API and targeted status
       if (

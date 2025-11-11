@@ -6,6 +6,7 @@
  */
 import { useAppStore } from "@/store/app-store";
 import { queryClient } from "@/lib/query-client";
+
 // Enhanced API Response types
 export interface ApiResponse<T = unknown> {
   data: T;
@@ -31,6 +32,13 @@ export interface ApiErrorInterface extends Error {
   details?: unknown;
   timestamp?: string;
   requestId?: string;
+}
+
+interface ApiErrorPayload {
+  message?: string;
+  code?: string;
+  details?: unknown;
+  [key: string]: unknown;
 }
 // Enhanced Request configuration
 export interface EnhancedRequestConfig extends RequestInit {
@@ -58,6 +66,12 @@ export type ErrorInterceptor = (
   error: ApiError,
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
+
+interface ErrorResponseData extends Record<string, unknown> {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
 // Request/Response logging
 export interface RequestLog {
   id: string;
@@ -91,6 +105,39 @@ export class EnhancedApiClient {
     this.baseURL = baseURL || this.getBaseURL();
     this.setupDefaultInterceptors();
     this.setupPerformanceMonitoring();
+  }
+
+  private isApiResponse<T>(value: unknown): value is ApiResponse<T> {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const candidate = value as Partial<ApiResponse<T>>;
+    return "data" in candidate && typeof candidate.status === "string";
+  }
+
+  private isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const candidate = value as ApiErrorPayload;
+    const hasValidMessage =
+      !("message" in candidate) || typeof candidate.message === "string";
+    const hasValidCode =
+      !("code" in candidate) || typeof candidate.code === "string";
+
+    return hasValidMessage && hasValidCode;
+  }
+
+  private createSuccessResponse<T>(data: T): ApiResponse<T> {
+    return {
+      data,
+      status: "success",
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
   // Get base URL from environment or current location
   private getBaseURL(): string {
@@ -512,10 +559,14 @@ export class EnhancedApiClient {
         xhr.addEventListener("load", () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              const response = JSON.parse(xhr.responseText) as ApiResponse<T>;
-              resolve(response);
+              const parsed = JSON.parse(xhr.responseText) as unknown;
+              if (this.isApiResponse<T>(parsed)) {
+                resolve(parsed);
+              } else {
+                resolve(this.createSuccessResponse(parsed as T));
+              }
             } catch {
-              resolve({ data: xhr.responseText as T, status: "success" });
+              resolve(this.createSuccessResponse(xhr.responseText as T));
             }
           } else {
             reject(
@@ -574,41 +625,62 @@ export class EnhancedApiClient {
   private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
-      const json = await response.json();
-      // Handle different response formats
-      if (json.data !== undefined) {
-        return json as ApiResponse<T>;
-      } else {
-        return {
-          data: json as T,
-          status: "success",
-          meta: {
-            timestamp: new Date().toISOString(),
-          },
-        };
+      const json = (await response.json()) as unknown;
+      if (this.isApiResponse<T>(json)) {
+        return json;
       }
+
+      return this.createSuccessResponse(json as T);
     } else {
       const text = await response.text();
-      return {
-        data: text as T,
-        status: "success",
-        meta: {
-          timestamp: new Date().toISOString(),
-        },
-      };
+      return this.createSuccessResponse(text as T);
     }
+
+    const text = await response.text();
+    return {
+      data: text as unknown as T,
+      status: "success",
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
+
+  private isApiResponseData<T>(value: unknown): value is ApiResponse<T> {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return record.hasOwnProperty("data") && record.hasOwnProperty("status");
+  }
+
   // Parse error response
-  private async parseErrorResponse(response: Response): Promise<ParsedErrorResponse> {
+  private async parseErrorResponse(
+    response: Response
+  ): Promise<ApiErrorPayload> {
     try {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
-        const json = await response.json();
-        return json as ParsedErrorResponse;
+        const json = (await response.json()) as unknown;
+        if (this.isApiErrorPayload(json)) {
+          return json;
+        }
+
+        if (typeof json === "string") {
+          return { message: json };
+        }
+
+        return {
+          message: response.statusText || "Unknown error",
+          details: json,
+        };
       } else {
         const text = await response.text();
         return { message: text || response.statusText };
       }
+
+      const text = await response.text();
+      return { message: text || response.statusText };
     } catch {
       return { message: response.statusText || "Unknown error" };
     }

@@ -34,7 +34,7 @@ export interface HealthCheckResult {
   responseTime: number;
   timestamp: string;
   details: {
-    services?: Record<string, HealthServiceDetail>;
+    services?: Record<string, HealthServiceStatus>;
     version?: string;
     uptime?: number;
     error?: string;
@@ -59,6 +59,17 @@ export interface ConnectivityTestResult {
   error?: string;
   corsEnabled?: boolean;
   timestamp: string;
+}
+
+type HealthServiceStatus = {
+  status?: string;
+} & Record<string, unknown>;
+
+interface HealthEndpointData {
+  status?: string;
+  services?: Record<string, HealthServiceStatus>;
+  version?: string;
+  uptime?: number;
 }
 
 function safeNowISO(): string {
@@ -96,6 +107,54 @@ export class EndpointValidationService {
   private connectivityCache: Map<string, ConnectivityTestResult> = new Map();
   private readonly HEALTH_CACHE_TTL = 30_000; // 30s
   private readonly CONNECTIVITY_CACHE_TTL = 60_000; // 60s
+
+  private parseHealthEndpointData(rawData: unknown): HealthEndpointData {
+    if (!rawData || typeof rawData !== "object") {
+      return {};
+    }
+
+    const payload = rawData as Record<string, unknown>;
+    const status = payload.status;
+    const version = payload.version;
+    const uptime = payload.uptime;
+
+    return {
+      status: typeof status === "string" ? status : undefined,
+      services: this.parseHealthServices(payload["services"]),
+      version: typeof version === "string" ? version : undefined,
+      uptime: typeof uptime === "number" ? uptime : undefined,
+    };
+  }
+
+  private parseHealthServices(
+    services: unknown
+  ): Record<string, HealthServiceStatus> | undefined {
+    if (!services || typeof services !== "object") {
+      return undefined;
+    }
+
+    const normalized: Record<string, HealthServiceStatus> = {};
+    for (const [key, value] of Object.entries(
+      services as Record<string, unknown>
+    )) {
+      normalized[key] = this.parseHealthServiceStatus(value);
+    }
+    return normalized;
+  }
+
+  private parseHealthServiceStatus(value: unknown): HealthServiceStatus {
+    if (!value || typeof value !== "object") {
+      return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const status = record.status;
+
+    return {
+      ...record,
+      status: typeof status === "string" ? status : undefined,
+    } as HealthServiceStatus;
+  }
 
   /**
    * Validate the current endpoint configuration
@@ -432,9 +491,10 @@ export class EndpointValidationService {
       const responseTime = Math.max(0, perfNow() - startTime);
 
       if (response.ok) {
-        let healthData: HealthApiResponse = {};
+        let healthData: HealthEndpointData = {};
         try {
-          healthData = await response.json();
+          const rawData = await response.json();
+          healthData = this.parseHealthEndpointData(rawData);
         } catch {
           healthData = { status: "ok" };
         }
@@ -497,7 +557,7 @@ export class EndpointValidationService {
    * Determine health status based on response data and performance
    */
   private determineHealthStatus(
-    healthData: HealthApiResponse,
+    healthData: HealthEndpointData,
     responseTime: number
   ): "healthy" | "degraded" | "unhealthy" {
     // Latency heuristic
