@@ -33,11 +33,11 @@ export interface BackgroundTaskMonitorProps {
 
 export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTaskMonitorProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [manualSelectedExtension, setManualSelectedExtension] = useState<string | null>(null);
+  const [manualExtensionId, setManualExtensionId] = useState<string | null>(null);
 
-  const selectedExtension = manualSelectedExtension ?? extensionId ?? null;
+  const selectedExtension = extensionId ?? manualExtensionId;
 
-  const taskData = useExtensionTaskMonitoring(extensionId);
+  const taskData = useExtensionTaskMonitoring(selectedExtension ?? undefined);
   const { history, loading } = useExtensionTasks(selectedExtension ?? undefined);
 
   const taskStats = useMemo(() => {
@@ -67,8 +67,8 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Background Task Monitor</h2>
           <p className="text-gray-600 mt-1">
-            {extensionId 
-              ? `Monitoring tasks for ${extensionId}`
+            {selectedExtension
+              ? `Monitoring tasks for ${selectedExtension}`
               : 'Monitor background tasks across all extensions'
             }
           </p>
@@ -158,7 +158,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
           <ExtensionTaskList
             extensions={taskData.statuses}
             selectedExtension={selectedExtension}
-            onSelectExtension={(id) => setManualSelectedExtension(id)}
+            onSelectExtension={(id) => setManualExtensionId(id)}
           />
         </TabsContent>
 

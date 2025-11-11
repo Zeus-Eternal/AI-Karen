@@ -68,13 +68,13 @@ interface ResourceAlert {
   threshold: number;
 }
 
-const SAMPLE_ALERTS: ResourceAlert[] = [
+const SAMPLE_ALERTS: ReadonlyArray<ResourceAlert> = [
   {
     id: "1",
     type: "memory",
     severity: "warning",
     message: "Memory usage approaching limit",
-    timestamp: new Date(Date.now() - 300000).toISOString(),
+    timestamp: "2024-01-01T00:00:00.000Z",
     extensionId: "analytics-dashboard",
     extensionName: "Analytics Dashboard",
     value: 450,
@@ -85,7 +85,7 @@ const SAMPLE_ALERTS: ResourceAlert[] = [
     type: "cpu",
     severity: "critical",
     message: "CPU usage critically high",
-    timestamp: new Date(Date.now() - 600000).toISOString(),
+    timestamp: "2024-01-01T00:05:00.000Z",
     extensionId: "automation-engine",
     extensionName: "Automation Engine",
     value: 85,
@@ -105,7 +105,9 @@ export function ExtensionPerformanceMonitor({
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h");
   const [selectedMetric, setSelectedMetric] = useState<ResourceMetricKey>("cpu");
-  const [alerts] = useState<ResourceAlert[]>(() => SAMPLE_ALERTS);
+  const [alerts, setAlerts] = useState<ResourceAlert[]>(() =>
+    SAMPLE_ALERTS.map((alert) => ({ ...alert }))
+  );
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const { statuses, loading } = useExtensionStatuses();
@@ -194,6 +196,8 @@ export function ExtensionPerformanceMonitor({
       },
     ];
   }, [performanceData, filteredStatuses, taskData]);
+
+  // Sample alerts
 
   // Auto-refresh
   useEffect(() => {

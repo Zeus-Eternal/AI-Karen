@@ -559,7 +559,7 @@ export class ExtensionAuthErrorHandler {
         logger.error(`[EXT_AUTH_CRITICAL] ${error.title}:`, logData);
         break;
       case ExtensionAuthErrorSeverity.HIGH:
-        logger.error(`[EXT_AUTH_HIGH] ${error.title}:`, logData);
+        logger.warn(`[EXT_AUTH_HIGH] ${error.title}:`, logData);
         break;
       case ExtensionAuthErrorSeverity.MEDIUM:
         logger.warn(`[EXT_AUTH_MEDIUM] ${error.title}:`, logData);

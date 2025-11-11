@@ -20,7 +20,7 @@ interface WorkflowInfo {
   steps: WorkflowStep[];
 }
 
-const INITIAL_WORKFLOWS: WorkflowInfo[] = [
+const DEFAULT_WORKFLOWS: WorkflowInfo[] = [
   {
     id: "wf1",
     name: "Release Pipeline",
@@ -34,7 +34,7 @@ const INITIAL_WORKFLOWS: WorkflowInfo[] = [
 ];
 
 export default function WorkflowList() {
-  const [workflows, setWorkflows] = useState<WorkflowInfo[]>(INITIAL_WORKFLOWS);
+  const [workflows, setWorkflows] = useState<WorkflowInfo[]>(DEFAULT_WORKFLOWS);
   const { toast } = useToast();
 
   const executeWorkflow = (id: string) => {

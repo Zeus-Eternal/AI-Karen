@@ -16,13 +16,13 @@ interface AgentInfo {
   action: string;
 }
 
-const INITIAL_AGENTS: AgentInfo[] = [
+const DEFAULT_AGENTS: AgentInfo[] = [
   { id: "build-agent", name: "Build Agent", status: "running", trigger: "on commit", action: "build" },
   { id: "review-agent", name: "Review Agent", status: "stopped", trigger: "manual", action: "review" },
 ];
 
 export default function AgentList() {
-  const [agents, setAgents] = useState<AgentInfo[]>(INITIAL_AGENTS);
+  const [agents, setAgents] = useState<AgentInfo[]>(DEFAULT_AGENTS);
   const { toast } = useToast();
 
   const toggleAgent = (id: string, enabled: boolean) => {
