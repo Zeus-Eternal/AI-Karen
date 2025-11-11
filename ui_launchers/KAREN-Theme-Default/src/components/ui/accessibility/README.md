@@ -210,11 +210,11 @@ const MyComponent = () => {
 Screen reader announcements:
 
 ```typescript
-import { 
-  AriaLiveRegion, 
-  useAriaAnnouncements,
-  ScreenReaderAnnouncer 
+import {
+  AriaLiveRegion,
+  ScreenReaderAnnouncer
 } from '@/components/ui/aria-live-region';
+import { useAriaAnnouncements } from '@/components/ui/aria-live-announcements';
 
 const MyComponent = () => {
   const { announce } = useAriaAnnouncements();

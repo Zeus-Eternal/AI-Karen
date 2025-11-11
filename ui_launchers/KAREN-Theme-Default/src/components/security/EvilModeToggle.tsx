@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useReducer } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRBAC } from "@/providers/rbac-hooks";
 import { auditLogger } from "@/services/audit-logger";
@@ -339,17 +339,18 @@ function EvilModeStatus({ session, config }: EvilModeStatusProps) {
     () => (session ? new Date(session.startTime) : null),
     [session],
   );
-  const [now, setNow] = useState(() => new Date());
+  const [tick, forceTick] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
     if (!session) {
       return;
     }
 
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000 * 15);
+    const id = setInterval(() => forceTick(), 1000 * 15);
     return () => clearInterval(id);
-  }, [session]);
+  }, [forceTick, session]);
+
+  const now = useMemo(() => new Date(), [session, tick]);
 
   if (!session || !startTime) {
     return null;

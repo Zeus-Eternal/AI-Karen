@@ -8,15 +8,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
-import { 
-  Settings, Lock, Eye, EyeOff, Activity, CheckCircle, 
-  AlertTriangle, XCircle, Plus, Trash2, RefreshCw, 
-  Save, Cloud, Server, Cpu, TestTube
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Save,
+  TestTube
 } from 'lucide-react';
 
 // Enhanced Type Definitions
@@ -412,12 +420,13 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   const [providerHealth, setProviderHealth] = useState<Record<string, ProviderHealth>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   type ProviderConfigResponse = Omit<ProviderConfig, 'createdAt' | 'updatedAt'> & {
     createdAt: string | Date;
     updatedAt: string | Date;
   };
 
-  const normalizeProvider = (provider: ProviderConfigResponse): ProviderConfig => ({
+  const normalizeProvider = useCallback((provider: ProviderConfigResponse): ProviderConfig => ({
     ...provider,
     createdAt: provider.createdAt instanceof Date
       ? provider.createdAt
@@ -425,7 +434,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     updatedAt: provider.updatedAt instanceof Date
       ? provider.updatedAt
       : new Date(provider.updatedAt),
-  });
+  }), []);
 
   // Enhanced data loading with retry logic
   const loadProviders = useCallback(async (retryCount = 0) => {
@@ -473,7 +482,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [normalizeProvider, toast, validateProviderConfig]);
 
   const loadProviderHealth = useCallback(async () => {
     try {
@@ -491,7 +500,130 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
   }, []);
 
   // Enhanced validation with business rules
-  const validateForm = (type: ProviderType, data: ProviderFormData): ValidationError[] => {
+  const validateField = useCallback((field: ProviderConfigField, value: unknown): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    if (field.required && (value === undefined || value === '' || value === null)) {
+      errors.push({
+        field: field.name,
+        message: `${field.label} is required`,
+        severity: 'error'
+      });
+      return errors;
+    }
+
+    if (value === undefined || value === '' || value === null) {
+      return errors;
+    }
+
+    switch (field.type) {
+      case 'number': {
+        const numValue = Number(value);
+        if (Number.isNaN(numValue)) {
+          errors.push({
+            field: field.name,
+            message: `${field.label} must be a valid number`,
+            severity: 'error'
+          });
+        } else if (field.validation) {
+          if (field.validation.min !== undefined && numValue < field.validation.min) {
+            errors.push({
+              field: field.name,
+              message: `${field.label} must be at least ${field.validation.min}`,
+              severity: 'error'
+            });
+          }
+          if (field.validation.max !== undefined && numValue > field.validation.max) {
+            errors.push({
+              field: field.name,
+              message: `${field.label} must be at most ${field.validation.max}`,
+              severity: 'error'
+            });
+          }
+        }
+        break;
+      }
+
+      case 'url': {
+        try {
+          new URL(String(value));
+        } catch {
+          errors.push({
+            field: field.name,
+            message: `${field.label} must be a valid URL`,
+            severity: 'error'
+          });
+        }
+        break;
+      }
+
+      case 'string': {
+        if (field.validation) {
+          const stringValue = String(value);
+          if (field.validation.minLength && stringValue.length < field.validation.minLength) {
+            errors.push({
+              field: field.name,
+              message: `${field.label} must be at least ${field.validation.minLength} characters`,
+              severity: 'error'
+            });
+          }
+          if (field.validation.maxLength && stringValue.length > field.validation.maxLength) {
+            errors.push({
+              field: field.name,
+              message: `${field.label} must be at most ${field.validation.maxLength} characters`,
+              severity: 'error'
+            });
+          }
+          if (field.validation.pattern && !new RegExp(field.validation.pattern).test(stringValue)) {
+            errors.push({
+              field: field.name,
+              message: `${field.label} format is invalid`,
+              severity: 'error'
+            });
+          }
+        }
+        break;
+      }
+    }
+
+    return errors;
+  }, []);
+
+  const validateCompliance = useCallback((
+    type: ProviderType,
+    _data: ProviderFormData,
+    requirements: ComplianceInfo,
+  ): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    if (requirements.gdpr && type.category === 'cloud') {
+      errors.push({
+        field: 'compliance',
+        message: 'Cloud providers may not be GDPR compliant. Consider using local or enterprise providers.',
+        severity: 'warning'
+      });
+    }
+
+    if (requirements.hipaa && type.category !== 'enterprise') {
+      errors.push({
+        field: 'compliance',
+        message: 'HIPAA compliance requires enterprise-grade providers.',
+        severity: 'error'
+      });
+    }
+
+    return errors;
+  }, []);
+
+  const shouldShowField = useCallback((field: ProviderConfigField, currentFormData: ProviderFormData): boolean => {
+    if (field.advanced && !enableAdvancedFeatures) return false;
+    if (!field.dependsOn) return true;
+    if (field.condition) return field.condition(currentFormData);
+
+    return currentFormData[field.dependsOn] === true;
+  }, [enableAdvancedFeatures]);
+
+  const validateForm = useCallback((type: ProviderType, data: ProviderFormData): ValidationError[] => {
     const errors: ValidationError[] = [];
 
     // Field-level validation
@@ -499,7 +631,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       if (!shouldShowField(field, data)) return;
 
       const value = data[field.name];
-      const fieldErrors = validateField(field, value, data);
+      const fieldErrors = validateField(field, value);
       errors.push(...fieldErrors);
     });
 
@@ -538,120 +670,9 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     }
 
     return errors;
-  };
+  }, [complianceRequirements, shouldShowField, validateCompliance, validateField]);
 
-  const validateField = (field: ProviderConfigField, value: unknown, formData: ProviderFormData): ValidationError[] => {
-    const errors: ValidationError[] = [];
-
-    if (field.required && (value === undefined || value === '' || value === null)) {
-      errors.push({
-        field: field.name,
-        message: `${field.label} is required`,
-        severity: 'error'
-      });
-      return errors;
-    }
-
-    if (value === undefined || value === '' || value === null) {
-      return errors;
-    }
-
-    switch (field.type) {
-      case 'number':
-        const numValue = Number(value);
-        if (isNaN(numValue)) {
-          errors.push({
-            field: field.name,
-            message: `${field.label} must be a valid number`,
-            severity: 'error'
-          });
-        } else if (field.validation) {
-          if (field.validation.min !== undefined && numValue < field.validation.min) {
-            errors.push({
-              field: field.name,
-              message: `${field.label} must be at least ${field.validation.min}`,
-              severity: 'error'
-            });
-          }
-          if (field.validation.max !== undefined && numValue > field.validation.max) {
-            errors.push({
-              field: field.name,
-              message: `${field.label} must be at most ${field.validation.max}`,
-              severity: 'error'
-            });
-          }
-        }
-        break;
-
-      case 'url':
-        try {
-          new URL(value);
-        } catch {
-          errors.push({
-            field: field.name,
-            message: `${field.label} must be a valid URL`,
-            severity: 'error'
-          });
-        }
-        break;
-
-      case 'string':
-        if (field.validation) {
-          if (field.validation.minLength && value.length < field.validation.minLength) {
-            errors.push({
-              field: field.name,
-              message: `${field.label} must be at least ${field.validation.minLength} characters`,
-              severity: 'error'
-            });
-          }
-          if (field.validation.maxLength && value.length > field.validation.maxLength) {
-            errors.push({
-              field: field.name,
-              message: `${field.label} must be at most ${field.validation.maxLength} characters`,
-              severity: 'error'
-            });
-          }
-          if (field.validation.pattern && !new RegExp(field.validation.pattern).test(value)) {
-            errors.push({
-              field: field.name,
-              message: `${field.label} format is invalid`,
-              severity: 'error'
-            });
-          }
-        }
-        break;
-    }
-
-    return errors;
-  };
-
-  const validateCompliance = (
-    type: ProviderType,
-    data: ProviderFormData,
-    requirements: ComplianceInfo,
-  ): ValidationError[] => {
-    const errors: ValidationError[] = [];
-
-    if (requirements.gdpr && type.category === 'cloud') {
-      errors.push({
-        field: 'compliance',
-        message: 'Cloud providers may not be GDPR compliant. Consider using local or enterprise providers.',
-        severity: 'warning'
-      });
-    }
-
-    if (requirements.hipaa && type.category !== 'enterprise') {
-      errors.push({
-        field: 'compliance',
-        message: 'HIPAA compliance requires enterprise-grade providers.',
-        severity: 'error'
-      });
-    }
-
-    return errors;
-  };
-
-  const validateProviderConfig = (provider: ProviderConfig): ValidationError[] => {
+  const validateProviderConfig = useCallback((provider: ProviderConfig): ValidationError[] => {
     const type = PROVIDER_TYPES.find(t => t.id === provider.type);
     if (!type) return [];
 
@@ -661,15 +682,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       name: provider.name,
       enabled: provider.enabled
     });
-  };
-
-  const shouldShowField = (field: ProviderConfigField, formData: ProviderFormData): boolean => {
-    if (field.advanced && !enableAdvancedFeatures) return false;
-    if (!field.dependsOn) return true;
-    if (field.condition) return field.condition(formData);
-    
-    return formData[field.dependsOn] === true;
-  };
+  }, [validateForm]);
 
   // Enhanced connection testing with detailed diagnostics
   const handleTestConnection = async () => {
@@ -718,7 +731,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       );
 
       const result = response.data ?? {};
-      const success = result.success ?? response.status !== 'error';
+      const success = result.success ?? (typeof response.status === 'number' ? response.status < 400 : true);
       const message = result.message || (success ? 'Connection successful' : 'Connection failed');
 
       setTestResult({
@@ -742,15 +755,16 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           variant: 'destructive'
         });
       }
-    } catch (error: Error) {
-      const message = error.name === 'TimeoutError' 
+    } catch (error) {
+      const message = error instanceof Error && error.name === 'TimeoutError'
         ? 'Connection test timed out after 30 seconds'
         : 'Network error occurred during testing';
+      const details = error instanceof Error ? error.message : String(error);
 
       setTestResult({
         success: false,
         message,
-        details: { error: error.message }
+        details: { error: details }
       });
 
       toast({
@@ -848,16 +862,13 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       });
 
       // Reset form
-      setSelectedProvider(null);
-      setSelectedType(null);
-      setFormData({});
-      setValidationErrors([]);
-      setTestResult(null);
+      resetSelection();
 
-    } catch (error: Error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save provider configuration';
       toast({
         title: 'Save Failed',
-        description: error.message || 'Failed to save provider configuration',
+        description: message,
         variant: 'destructive'
       });
     } finally {
@@ -871,16 +882,113 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       ...prev,
       [fieldName]: value
     }));
-    
+
     // Clear validation error for this field
     setValidationErrors(prev => prev.filter(error => error.field !== fieldName));
+  }, [resetSelection]);
+
+  const handleRefresh = useCallback(() => {
+    void loadProviders();
+    void loadProviderHealth();
+  }, [loadProviderHealth, loadProviders]);
+
+  const resetSelection = useCallback(() => {
+    setSelectedProvider(null);
+    setSelectedType(null);
+    setFormData({});
+    setValidationErrors([]);
+    setShowSensitive({});
+    setTestResult(null);
   }, []);
+
+  const handleSelectProvider = useCallback((provider: ProviderConfig) => {
+    const type = PROVIDER_TYPES.find(t => t.id === provider.type) || null;
+    setSelectedProvider(provider);
+    setSelectedType(type);
+
+    const mergedData: ProviderFormData = {
+      name: provider.name,
+      enabled: provider.enabled,
+      ...provider.configuration,
+      ...provider.credentials,
+    };
+
+    type?.configSchema.fields.forEach(field => {
+      if (mergedData[field.name] === undefined && field.default !== undefined) {
+        mergedData[field.name] = field.default;
+      }
+    });
+
+    setFormData(mergedData);
+    setValidationErrors([]);
+    setShowSensitive({});
+    setTestResult(null);
+  }, []);
+
+  const handleSelectType = useCallback((type: ProviderType) => {
+    setSelectedProvider(null);
+    setSelectedType(type);
+
+    const defaults = type.configSchema.fields.reduce<ProviderFormData>((acc, field) => {
+      if (field.default !== undefined) {
+        acc[field.name] = field.default;
+      }
+      return acc;
+    }, {});
+
+    setFormData({
+      name: `${type.name} Provider`,
+      enabled: true,
+      ...defaults
+    });
+    setValidationErrors([]);
+    setShowSensitive({});
+    setTestResult(null);
+  }, []);
+
+  const handleDeleteProvider = useCallback(async (providerId: string) => {
+    setDeletingId(providerId);
+    try {
+      await enhancedApiClient.delete(`/api/providers/${providerId}`);
+      setProviders(prev => prev.filter(provider => provider.id !== providerId));
+      if (selectedProvider?.id === providerId) {
+        resetSelection();
+      }
+      onProviderDeleted?.(providerId);
+      toast({
+        title: 'Provider Removed',
+        description: 'The provider has been deleted successfully.',
+        variant: 'default'
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete provider';
+      toast({
+        title: 'Delete Failed',
+        description: message,
+        variant: 'destructive'
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  }, [onProviderDeleted, resetSelection, selectedProvider, toast]);
+
+  const toPercent = (value?: number) => {
+    if (value === undefined || value === null) {
+      return 0;
+    }
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) {
+      return 0;
+    }
+    return numeric <= 1 ? Math.round(numeric * 100) : Math.round(numeric);
+  };
 
   // Enhanced field rendering with conditional logic
   const renderField = (field: ProviderConfigField) => {
     if (!shouldShowField(field, formData)) return null;
 
-    const value = formData[field.name] ?? field.default;
+    const rawValue = formData[field.name];
+    const value = rawValue ?? field.default ?? (field.type === 'number' ? '' : '');
     const error = validationErrors.find(e => e.field === field.name);
     const isVisible = showSensitive[field.name] || !field.sensitive;
 
@@ -909,7 +1017,10 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         </div>
 
         {field.type === 'select' ? (
-          <Select value={value} onValueChange={(val) => handleFieldChange(field.name, val)}>
+          <Select
+            value={typeof value === 'string' ? value : ''}
+            onValueChange={(val) => handleFieldChange(field.name, val)}
+          >
             <SelectTrigger className={error ? 'border-red-500' : ''}>
               <SelectValue placeholder={`Select ${field.label}`} />
             </SelectTrigger>
@@ -935,7 +1046,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         ) : field.type === 'textarea' ? (
           <Textarea
             id={field.name}
-            value={value}
+            value={typeof value === 'string' ? value : ''}
             onChange={(e) => handleFieldChange(field.name, e.target.value)}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
@@ -944,11 +1055,15 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         ) : (
           <Input
             id={field.name}
-            type={field.sensitive && !isVisible ? 'password' : 
+            type={field.sensitive && !isVisible ? 'password' :
                   field.type === 'number' ? 'number' : 'text'}
-            value={value}
-            onChange={(e) => handleFieldChange(field.name, 
-              field.type === 'number' ? Number(e.target.value) : e.target.value)}
+            value={value as string | number | readonly string[]}
+            onChange={(e) => {
+              const nextValue = field.type === 'number'
+                ? (e.target.value === '' ? '' : Number(e.target.value))
+                : e.target.value;
+              handleFieldChange(field.name, nextValue);
+            }}
             placeholder={field.description}
             className={error ? 'border-red-500' : ''}
           />
@@ -984,11 +1099,12 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     allowedCategories.includes(type.category)
   );
 
-  // ... rest of the component implementation remains similar but with enhanced error handling
-  // and the improved business logic integrated throughout
+  const containerClassName = ['space-y-6', className].filter(Boolean).join(' ');
+  const criticalErrors = validationErrors.filter(error => error.severity === 'error');
+  const warningErrors = validationErrors.filter(error => error.severity === 'warning');
 
   return (
-    <ErrorBoundary 
+    <ErrorBoundary
       fallback={({ error }) => (
         <div className="p-4 text-center">
           <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-red-500" />
@@ -998,9 +1114,260 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
         </div>
       )}
     >
-      <div className={`space-y-6 ${className}`}>
-        {/* Enhanced provider interface implementation */}
-        {/* ... */}
+      <div className={containerClassName}>
+        <div className="grid gap-6 lg:grid-cols-[1fr,2fr]">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" /> Configured Providers
+                </CardTitle>
+                <CardDescription>Manage provider connections and monitor health.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  aria-label="Refresh providers"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button type="button" onClick={resetSelection} variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" /> New Provider
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loading ? (
+                <p className="text-sm text-gray-600">Loading providers...</p>
+              ) : providers.length === 0 ? (
+                <p className="text-sm text-gray-600">No providers configured yet. Select a provider type to get started.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {providers.map(provider => {
+                    const type = PROVIDER_TYPES.find(t => t.id === provider.type);
+                    const health = providerHealth[provider.id];
+                    const isSelected = selectedProvider?.id === provider.id;
+                    const statusIcon = health?.status === 'healthy'
+                      ? <CheckCircle className="h-4 w-4 text-green-500" />
+                      : health?.status === 'unhealthy'
+                        ? <XCircle className="h-4 w-4 text-red-500" />
+                        : <Activity className="h-4 w-4 text-yellow-500" />;
+
+                    return (
+                      <li key={provider.id} className="rounded-lg border p-3">
+                        <button
+                          type="button"
+                          className={`w-full rounded-md p-3 text-left transition ${isSelected
+                            ? 'border border-primary bg-primary/5'
+                            : 'border border-transparent hover:bg-muted/50'}`}
+                          onClick={() => handleSelectProvider(provider)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="font-medium">{provider.name}</p>
+                              <p className="text-xs text-gray-500">{type?.name ?? provider.type}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {statusIcon}
+                              <Badge variant="outline">{provider.enabled ? 'Enabled' : 'Disabled'}</Badge>
+                            </div>
+                          </div>
+                          {health ? (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Uptime</span>
+                                <span>{toPercent(health.uptime)}%</span>
+                              </div>
+                              <Progress value={Math.max(0, Math.min(100, toPercent(health.uptime)))} />
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Response</span>
+                                <span>{health.responseTime}ms</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-3 text-xs text-gray-500">No health data available.</p>
+                          )}
+                        </button>
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteProvider(provider.id)}
+                            disabled={deletingId === provider.id}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {deletingId === provider.id ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>
+                {selectedType ? `${selectedType.name} Configuration` : 'Select a Provider Type'}
+              </CardTitle>
+              <CardDescription>
+                {selectedType
+                  ? 'Configure credentials, endpoints, and advanced settings for this provider.'
+                  : 'Choose a provider type to begin configuring a new integration.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {selectedType ? (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="provider-name">Provider Name</Label>
+                      <Input
+                        id="provider-name"
+                        value={typeof formData.name === 'string' ? formData.name : ''}
+                        placeholder="Friendly name for this provider"
+                        onChange={(event) => handleFieldChange('name', event.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <Label htmlFor="provider-enabled">Provider Status</Label>
+                        <p className="text-xs text-gray-600">Enable to allow routing to this provider.</p>
+                      </div>
+                      <Switch
+                        id="provider-enabled"
+                        checked={formData.enabled !== false}
+                        onCheckedChange={(checked) => handleFieldChange('enabled', checked)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {selectedType.configSchema.fields.map(renderField)}
+                  </div>
+
+                  {criticalErrors.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTitle>Configuration Issues</AlertTitle>
+                      <AlertDescription>
+                        Resolve all critical errors before testing or saving this provider.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {warningErrors.length > 0 && criticalErrors.length === 0 && (
+                    <Alert>
+                      <AlertTitle>Warnings Detected</AlertTitle>
+                      <AlertDescription>
+                        Review the highlighted warnings to ensure the configuration meets your compliance needs.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {testResult && (
+                    <Alert variant={testResult.success ? 'default' : 'destructive'}>
+                      <AlertTitle>{testResult.success ? 'Connection Successful' : 'Connection Failed'}</AlertTitle>
+                      <AlertDescription>{testResult.message}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestConnection}
+                      disabled={testing || saving}
+                    >
+                      <TestTube className="mr-2 h-4 w-4" />
+                      {testing ? 'Testing...' : 'Test Connection'}
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      {selectedProvider && (
+                        <Button type="button" variant="ghost" onClick={resetSelection}>
+                          Cancel
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving || testing}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {saving ? 'Saving...' : selectedProvider ? 'Update Provider' : 'Save Provider'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {filteredProviderTypes.map(type => (
+                    <button
+                      key={type.id}
+                      type="button"
+                      className="rounded-lg border p-4 text-left transition hover:border-primary"
+                      onClick={() => handleSelectType(type)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl" aria-hidden>{type.icon}</span>
+                        <Badge variant="outline" className="capitalize">{type.category}</Badge>
+                      </div>
+                      <p className="mt-3 font-medium">{type.name}</p>
+                      <p className="mt-1 text-xs text-gray-600">{type.description}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {providers.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Health Overview</CardTitle>
+              <CardDescription>Quick glance at provider reliability across your integrations.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {providers.map(provider => {
+                const health = providerHealth[provider.id];
+                const type = PROVIDER_TYPES.find(t => t.id === provider.type);
+                return (
+                  <div key={provider.id} className="rounded-lg border p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{provider.name}</p>
+                      <Badge variant="outline" className="text-xs">{type?.category ?? provider.type}</Badge>
+                    </div>
+                    {health ? (
+                      <div className="mt-3 space-y-2 text-xs text-gray-600">
+                        <div className="flex justify-between">
+                          <span>Status</span>
+                          <span className="capitalize">{health.status}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Success Rate</span>
+                          <span>{toPercent(health.metrics.successRate)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Latency</span>
+                          <span>{health.responseTime}ms</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-gray-500">No recent health checks.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ErrorBoundary>
   );
