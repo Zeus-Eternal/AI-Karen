@@ -10,8 +10,8 @@ import { CloudSun, AlertTriangle, Info, Save, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from '@/lib/types';
-import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
+import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from "@/lib/types";
+import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '../ui/separator';
 /**
@@ -76,7 +76,7 @@ export default function WeatherPluginPage() {
   };
   const savePreferences = () => {
     try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+      const storedSettingsStr = window.localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       let currentFullSettings: KarenSettings = { ...DEFAULT_KAREN_SETTINGS };
       if (storedSettingsStr) {
         currentFullSettings = { ...currentFullSettings, ...JSON.parse(storedSettingsStr) };
@@ -90,7 +90,7 @@ export default function WeatherPluginPage() {
           : null,
         defaultWeatherLocation: settings.defaultWeatherLocation,
       };
-      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedSettings));
+      window.localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedSettings));
       toast({
         title: "Weather Preferences Saved",
         description: "Your weather service settings have been updated.",
