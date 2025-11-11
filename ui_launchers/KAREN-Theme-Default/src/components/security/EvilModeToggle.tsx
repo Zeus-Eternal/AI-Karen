@@ -339,7 +339,7 @@ function EvilModeStatus({ session, config }: EvilModeStatusProps) {
     () => (session ? new Date(session.startTime) : null),
     [session],
   );
-  const [tick, forceTick] = useReducer((count: number) => count + 1, 0);
+  const [, forceTick] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
     if (!session) {
