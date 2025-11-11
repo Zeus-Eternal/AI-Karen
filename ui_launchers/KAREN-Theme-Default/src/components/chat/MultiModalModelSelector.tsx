@@ -153,7 +153,8 @@ export default function MultiModalModelSelector({
           type: selectedType,
         });
         setKarenRecommendation(best ?? null);
-      } catch (e) {
+      } catch (error) {
+        console.error("Failed to compute Karen's recommendation", error);
         setKarenRecommendation(null);
         setRecError("Could not compute recommendation.");
       } finally {
