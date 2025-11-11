@@ -121,6 +121,11 @@ export interface TimeAgoProps {
   className?: string;
 }
 
+type RelativeTimeParts = {
+  value: number;
+  unit: Intl.RelativeTimeFormatUnit;
+};
+
 const DEFAULT_RELATIVE_TIME: RelativeTimeParts = { value: 0, unit: "second" };
 
 const computeRelativeTimeParts = (referenceMs: number, inputMs: number): RelativeTimeParts => {

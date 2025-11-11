@@ -844,4 +844,3 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-export { useAuth } from '@/hooks/use-auth';
