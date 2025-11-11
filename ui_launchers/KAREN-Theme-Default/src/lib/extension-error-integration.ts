@@ -232,7 +232,11 @@ export interface ExtensionErrorIntegration {
 declare global {
   interface Window {
     extensionErrorIntegration?: ExtensionErrorIntegration;
-    handleExtensionError?: typeof handleExtensionError;
+    handleExtensionError?: (
+      status: number,
+      url: string,
+      operation?: string
+    ) => ExtensionErrorResponse | null;
   }
 }
 
