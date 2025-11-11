@@ -1,19 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useIntersectionObserver } from './use-intersection-observer';
 import {
-  useIntersectionObserver,
-  type IntersectionObserverOptions,
-} from './use-intersection-observer';
-
-// Component wrapper for intersection observer
-export interface IntersectionObserverWrapperProps {
-  children: (isIntersecting: boolean, entry: IntersectionObserverEntry | null) => React.ReactNode;
-  options?: IntersectionObserverOptions;
-  as?: React.ElementType;
-  className?: string;
-}
+  type IntersectionObserverWrapperProps,
+  type LazyContentProps,
+  type VirtualizedListProps,
+} from './intersection-observer.types';
 
 export const IntersectionObserverWrapper: React.FC<IntersectionObserverWrapperProps> = ({
   children,
@@ -29,20 +23,6 @@ export const IntersectionObserverWrapper: React.FC<IntersectionObserverWrapperPr
     </Component>
   );
 };
-
-export type {
-  IntersectionObserverOptions,
-  UseIntersectionObserverReturn,
-} from './use-intersection-observer';
-
-// Lazy content component that renders children only when in view
-export interface LazyContentProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  options?: IntersectionObserverOptions;
-  className?: string;
-  as?: React.ElementType;
-}
 
 export const LazyContent: React.FC<LazyContentProps> = ({
   children,
@@ -61,16 +41,6 @@ export const LazyContent: React.FC<LazyContentProps> = ({
 };
 
 // Hook helpers are exported from use-intersection-observer.ts
-
-// Virtualized list component using intersection observer
-export interface VirtualizedListProps<T> {
-  items: T[];
-  renderItem: (item: T, index: number, isVisible: boolean) => React.ReactNode;
-  itemHeight?: number;
-  containerHeight?: number;
-  overscan?: number;
-  className?: string;
-}
 
 export function VirtualizedList<T>({
   items,
