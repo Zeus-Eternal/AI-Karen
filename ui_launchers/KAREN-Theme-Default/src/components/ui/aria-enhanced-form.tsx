@@ -21,7 +21,15 @@ import {
   mergeAriaProps,
   type AriaProps,
 } from "@/utils/aria";
-import { AriaLiveRegion, AriaStatus } from "./aria-live-region";
+import { AriaStatus } from "./aria-live-region";
+
+const mergeSafeAriaProps = (
+  ...props: Array<Partial<AriaProps> | undefined>
+) => {
+  const merged = mergeAriaProps(...props);
+  const { 'aria-relevant': _ariaRelevant, ...safeProps } = merged;
+  return safeProps;
+};
 
 // Re-export the base Form provider
 const AriaEnhancedForm = FormProvider;
@@ -120,15 +128,11 @@ const AriaEnhancedFormItem = React.forwardRef<
 
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div 
-        ref={ref} 
-        className={cn("space-y-2", className)} 
+      <div
+        ref={ref}
+        className={cn("space-y-2", className)}
         role="group"
-        {...(() => {
-          const merged = mergeAriaProps(ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(ariaProps)}
         {...props}
       />
     </FormItemContext.Provider>
@@ -216,11 +220,7 @@ const AriaEnhancedFormControl = React.forwardRef<
     <Slot
       ref={ref}
       id={formItemId}
-      {...(() => {
-        const merged = mergeAriaProps(formAriaProps, ariaProps);
-        const { 'aria-relevant': _, ...safeProps } = merged;
-        return safeProps;
-      })()}
+      {...mergeSafeAriaProps(formAriaProps, ariaProps)}
       {...props}
     />
   );
@@ -280,8 +280,8 @@ const AriaEnhancedFormMessage = React.forwardRef<
         {body}
       </p>
       {error && shouldAnnounce && (
-        <AriaStatus 
-          message={String(body)} 
+        <AriaStatus
+          message={String(body)}
           error={true}
         />
       )}
@@ -409,13 +409,6 @@ const AriaFormSection = React.forwardRef<HTMLElement, AriaFormSectionProps>(
 );
 AriaFormSection.displayName = "AriaFormSection";
 
-const AriaFormField = AriaEnhancedFormField;
-const AriaFormItem = AriaEnhancedFormItem;
-const AriaFormLabel = AriaEnhancedFormLabel;
-const AriaFormControl = AriaEnhancedFormControl;
-const AriaFormDescription = AriaEnhancedFormDescription;
-const AriaFormMessage = AriaEnhancedFormMessage;
-
 export {
   AriaEnhancedForm as Form,
   useAriaFormField,
@@ -425,12 +418,6 @@ export {
   AriaEnhancedFormControl,
   AriaEnhancedFormDescription,
   AriaEnhancedFormMessage,
-  AriaFormField,
-  AriaFormItem,
-  AriaFormLabel,
-  AriaFormControl,
-  AriaFormDescription,
-  AriaFormMessage,
   AriaFormHelp,
   AriaFormFieldset,
   AriaFormSection,

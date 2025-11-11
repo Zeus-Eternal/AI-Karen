@@ -9,12 +9,18 @@ import {
   createNavigationAria,
   createAriaLabel,
   mergeAriaProps,
-  generateAriaId,
   type AriaProps,
 } from "@/utils/aria";
 import { ARIA_ROLES } from "@/utils/aria";
 import { Button } from "@/components/ui/button";
-import { CheckSquare, Pin, ExternalLink, Download, Search, MessageSquare, Sparkles, Loader2, X, ChevronRight } from 'lucide-react';
+
+const mergeSafeAriaProps = (
+  ...props: Array<Partial<AriaProps> | undefined>
+) => {
+  const merged = mergeAriaProps(...props);
+  const { 'aria-relevant': _ariaRelevant, ...safeProps } = merged;
+  return safeProps;
+};
 
 /**
  * Navigation Container - Main navigation wrapper
@@ -58,11 +64,7 @@ export const AriaNavigation = React.forwardRef<HTMLElement, AriaNavigationProps>
         ref={ref}
         className={cn("", className)}
         role={ARIA_ROLES.NAVIGATION}
-        {...(() => {
-          const merged = mergeAriaProps(labelProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(labelProps, ariaProps)}
         {...props}
       >
         {children}
@@ -101,11 +103,7 @@ export const AriaNavList = React.forwardRef<HTMLUListElement, AriaNavListProps>(
         )}
         role={ARIA_ROLES.LIST}
         aria-orientation={orientation}
-        {...(() => {
-          const merged = mergeAriaProps(ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(ariaProps)}
         {...props}
       >
         {children}
@@ -150,11 +148,7 @@ export const AriaNavItem = React.forwardRef<HTMLLIElement, AriaNavItemProps>(
           className
         )}
         role={ARIA_ROLES.LISTITEM}
-        {...(() => {
-          const merged = mergeAriaProps(navigationProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(navigationProps, ariaProps)}
         {...props}
       >
         {children}
@@ -214,11 +208,7 @@ export const AriaNavLink = React.forwardRef<HTMLAnchorElement, AriaNavLinkProps>
         )}
         onClick={handleClick}
         tabIndex={disabled ? -1 : undefined}
-        {...(() => {
-          const merged = mergeAriaProps(navigationProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(navigationProps, ariaProps)}
         {...props}
       >
         {children}
@@ -254,11 +244,7 @@ export const AriaBreadcrumb = React.forwardRef<HTMLElement, AriaBreadcrumbProps>
         ref={ref}
         className={cn("flex items-center space-x-1 text-sm", className)}
         aria-label="Breadcrumb navigation"
-        {...(() => {
-          const merged = mergeAriaProps(ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(ariaProps)}
         {...props}
       >
         <ol className="flex items-center space-x-1" role={ARIA_ROLES.LIST}>
@@ -318,11 +304,7 @@ export const AriaBreadcrumbItem = React.forwardRef<HTMLSpanElement, AriaBreadcru
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded",
             className
           )}
-          {...(() => {
-            const merged = mergeAriaProps(navigationProps, ariaProps);
-            const { 'aria-relevant': _, ...safeProps } = merged;
-            return safeProps;
-          })()}
+            {...mergeSafeAriaProps(navigationProps, ariaProps)}
         >
           {children}
         </a>
@@ -336,11 +318,7 @@ export const AriaBreadcrumbItem = React.forwardRef<HTMLSpanElement, AriaBreadcru
           current ? "text-foreground font-medium" : "text-muted-foreground",
           className
         )}
-        {...(() => {
-          const merged = mergeAriaProps(navigationProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(navigationProps, ariaProps)}
         {...props}
       >
         {children}
@@ -382,11 +360,8 @@ export const AriaTabList = React.forwardRef<HTMLDivElement, AriaTabListProps>(
         )}
         role={ARIA_ROLES.TABLIST}
         aria-orientation={orientation}
-        {...(() => {
-          const merged = mergeAriaProps(ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        data-activation-mode={activationMode}
+        {...mergeSafeAriaProps(ariaProps)}
         {...props}
       >
         {children}
@@ -437,11 +412,7 @@ export const AriaTab = React.forwardRef<HTMLButtonElement, AriaTabProps>(
         )}
         role={ARIA_ROLES.TAB}
         tabIndex={selected ? 0 : -1}
-        {...(() => {
-          const merged = mergeAriaProps(tabProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(tabProps, ariaProps)}
         {...props}
       >
         {children}
@@ -485,11 +456,7 @@ export const AriaTabPanel = React.forwardRef<HTMLDivElement, AriaTabPanelProps>(
         )}
         role={ARIA_ROLES.TABPANEL}
         tabIndex={0}
-        {...(() => {
-          const merged = mergeAriaProps(panelProps, ariaProps);
-          const { 'aria-relevant': _, ...safeProps } = merged;
-          return safeProps;
-        })()}
+        {...mergeSafeAriaProps(panelProps, ariaProps)}
         {...props}
       >
         {children}

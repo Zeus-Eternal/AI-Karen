@@ -3,7 +3,7 @@
  * Provides screen reader announcements for dynamic content changes
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createAriaLive, generateAriaId } from '@/utils/aria';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +35,10 @@ export const AriaLiveRegion = React.forwardRef<HTMLDivElement, AriaLiveRegionPro
     id,
     ...props 
   }, ref) => {
-    const generatedId = useRef(id || generateAriaId('live-region'));
+    const generatedId = useMemo(
+      () => id ?? generateAriaId('live-region'),
+      [id]
+    );
     const ariaPropsRaw = createAriaLive(politeness, atomic, relevant);
     
     // Filter out properties that conflict with HTML div attributes
@@ -49,7 +52,7 @@ export const AriaLiveRegion = React.forwardRef<HTMLDivElement, AriaLiveRegionPro
     return (
       <div
         ref={ref}
-        id={generatedId.current}
+        id={generatedId}
         className={cn(
           // Visually hidden but accessible to screen readers
           'sr-only',
@@ -228,17 +231,25 @@ export const AriaProgress: React.FC<AriaProgressProps> = ({
   announceChanges = true,
   className,
 }) => {
-  const [lastAnnouncedValue, setLastAnnouncedValue] = useState(value);
+  const lastAnnouncedValueRef = useRef(value);
   const { announce } = useAriaAnnouncements();
 
-  const percentage = Math.round(((value - min) / (max - min)) * 100);
+  const range = max - min;
+  const safeRange = range === 0 ? 1 : range;
+  const percentage = Math.round(((value - min) / safeRange) * 100);
 
   useEffect(() => {
-    if (announceChanges && Math.abs(value - lastAnnouncedValue) >= 10) {
-      announce(`${label ? `${label}: ` : ''}${percentage}% complete`);
-      setLastAnnouncedValue(value);
+    if (!announceChanges) {
+      return;
     }
-  }, [value, lastAnnouncedValue, percentage, label, announce, announceChanges]);
+
+    const lastValue = lastAnnouncedValueRef.current;
+
+    if (Math.abs(value - lastValue) >= 10) {
+      announce(`${label ? `${label}: ` : ''}${percentage}% complete`);
+      lastAnnouncedValueRef.current = value;
+    }
+  }, [value, percentage, label, announce, announceChanges]);
 
   return (
     <div
