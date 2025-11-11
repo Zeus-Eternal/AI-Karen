@@ -12,7 +12,7 @@
  * - 6.5: Environment-specific configuration adaptation
  */
 
-import { logger } from "@/lib/logger";
+import { logger } from "../logger";
 
 interface DevelopmentWindow extends Window {
   __webpack_dev_server__?: unknown;

@@ -44,6 +44,11 @@ export interface TokenRefreshResponse {
   token_type?: string;
 }
 
+interface SessionValidationResponse {
+  valid?: boolean;
+  token?: string;
+}
+
 // Secure token storage implementation with encryption support
 class SecureTokenStorage implements TokenStorage {
   private readonly ACCESS_TOKEN_KEY = 'karen_extension_access_token';
@@ -508,6 +513,20 @@ export class ExtensionAuthManager {
     }
   }
 
+  private isSessionValidationResponse(data: unknown): data is SessionValidationResponse {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    const record = data as Record<string, unknown>;
+    const { valid, token } = record;
+
+    const isValidFlag = typeof valid === 'boolean' || typeof valid === 'undefined';
+    const isTokenValid = typeof token === 'string' || typeof token === 'undefined';
+
+    return isValidFlag && isTokenValid;
+  }
+
   /**
    * Get token from main authentication context
    */
@@ -530,7 +549,7 @@ export class ExtensionAuthManager {
       // Try to validate existing session
       const timeout = this.timeoutManager.getTimeout(OperationType.SESSION_VALIDATION);
       
-      const result = await this.connectionManager.makeRequest(
+      const result = await this.connectionManager.makeRequest<SessionValidationResponse>(
         '/api/auth/validate-session',
         {
           method: 'GET',
@@ -546,8 +565,10 @@ export class ExtensionAuthManager {
         }
       );
 
-      if (result.data.valid && result.data.token) {
-        return result.data.token;
+      const { data } = result;
+
+      if (this.isSessionValidationResponse(data) && data.valid && data.token) {
+        return data.token;
       }
 
       return null;

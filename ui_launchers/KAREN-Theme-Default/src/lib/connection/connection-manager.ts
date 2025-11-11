@@ -201,8 +201,10 @@ export class ConnectionManager {
     const duration = Date.now() - startTime;
     logger.error(
       `Request failed for ${url} after ${retryAttempts + 1} attempts:`,
-      lastError?.message || 'Unknown error',
-      { duration }
+      {
+        error: lastError?.message ?? 'Unknown error',
+        duration,
+      }
     );
 
     throw lastError || new ConnectionError(
