@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from '@/components/ui/switch';
 
 // Import all required Lucide React icons
 import { 
@@ -45,18 +44,37 @@ export interface ModelRecommendationsProps {
   provider: LLMProvider;
 }
 
+interface ModelRecommendationCategory {
+  excellent?: string[];
+  good?: string[];
+  acceptable?: string[];
+}
+
+interface ModelRecommendationsResponse {
+  validation?: {
+    status: string;
+    local_models_count: number;
+    available_for_download: number;
+    suggested_downloads?: string[];
+  };
+  recommendations?: ModelRecommendationCategory;
+  error?: string;
+}
+
 function ModelRecommendations({ provider }: ModelRecommendationsProps) {
-  const [recommendations, setRecommendations] = useState<any>(null);
+  const [recommendations, setRecommendations] = useState<ModelRecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
-  const backend = getKarenBackend();
+  const backend = React.useMemo(() => getKarenBackend(), []);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (!provider.is_llm_provider) return;
     setLoading(true);
     try {
-      const response = await backend.makeRequestPublic(`/api/providers/${provider.name}/model-recommendations`);
+      const response = await backend.makeRequestPublic<ModelRecommendationsResponse>(
+        `/api/providers/${provider.name}/model-recommendations`
+      );
       setRecommendations(response);
     } catch (error) {
       const info = handleApiError(error as unknown, 'fetchRecommendations');
@@ -68,13 +86,13 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [backend, provider.is_llm_provider, provider.name, toast]);
 
   useEffect(() => {
     if (expanded && !recommendations && !loading) {
-      fetchRecommendations();
+      void fetchRecommendations();
     }
-  }, [expanded]);
+  }, [expanded, fetchRecommendations, loading, recommendations]);
 
   if (!provider.is_llm_provider) {
     return null;
@@ -277,7 +295,7 @@ export default function ProviderManagement({
   const [showTesting, setShowTesting] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState<string | null>(null);
   const { toast } = useToast();
-  const backend = getKarenBackend();
+  const backend = React.useMemo(() => getKarenBackend(), []);
 
   // Provider notifications
   const {
@@ -371,7 +389,6 @@ export default function ProviderManagement({
         });
       } else {
         // Update provider health status
-        const previousStatus = providers.find(p => p.name === providerName)?.health_status;
         const updatedProviders = providers.map(p =>
           p.name === providerName
             ? { ...p, health_status: 'unhealthy' as const, error_message: response.message, last_health_check: Date.now() }
@@ -393,7 +410,6 @@ export default function ProviderManagement({
         }
       }));
 
-      const previousStatus = providers.find(p => p.name === providerName)?.health_status;
       const updatedProviders = providers.map(p =>
         p.name === providerName
           ? { ...p, health_status: 'unhealthy' as const, error_message: errorMessage, last_health_check: Date.now() }
@@ -475,8 +491,10 @@ export default function ProviderManagement({
 
   const discoverProviderModels = async (providerName: string, forceRefresh: boolean = false) => {
     try {
-      const response = await backend.makeRequestPublic<any[]>(`/api/providers/${providerName}/models?force_refresh=${forceRefresh}`);
-      const models = response || [];
+      const response = await backend.makeRequestPublic<unknown[]>(
+        `/api/providers/${providerName}/models?force_refresh=${forceRefresh}`
+      );
+      const models = Array.isArray(response) ? response : [];
 
       // Update provider cached model count
       const updatedProviders = providers.map(p =>
@@ -491,9 +509,10 @@ export default function ProviderManagement({
         description: `Found ${models.length} models for ${providerName}.`,
       });
     } catch (error) {
+      const info = handleApiError(error as unknown, 'discoverProviderModels');
       toast({
-        title: "Discovery Failed",
-        description: `Could not discover models for ${providerName}.`,
+        title: info.title || "Discovery Failed",
+        description: info.message || `Could not discover models for ${providerName}.`,
         variant: "destructive",
       });
     }
@@ -513,14 +532,22 @@ export default function ProviderManagement({
       // Default/fallback path for providers without a specific ping yet
       await checkProviderHealth(providerName);
     } catch (error) {
-      toast({ title: 'Test Failed', description: `Could not connect to ${providerName}.`, variant: 'destructive' });
+      const info = handleApiError(error as unknown, 'testProvider');
+      toast({
+        title: info.title || 'Test Failed',
+        description: info.message || `Could not connect to ${providerName}.`,
+        variant: 'destructive'
+      });
       setProviders(providers.map(p => p.name === providerName ? { ...p, health_status: 'unhealthy', last_health_check: Date.now() } : p));
     }
   };
 
   const checkProviderHealth = async (providerName: string) => {
     try {
-      const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/health`);
+      const res = await backend.makeRequestPublic<{
+        status?: string;
+        message?: string;
+      }>(`/api/providers/${providerName}/health`);
       if (res) {
         const isHealthy = res.status === 'healthy';
         const updatedProviders = providers.map(p => p.name === providerName ? {
@@ -538,34 +565,6 @@ export default function ProviderManagement({
       }
     } catch (error) {
       console.error(`Health check failed for ${providerName}:`, error);
-    }
-  };
-
-  const toggleProviderEnabled = async (providerName: string, enable: boolean) => {
-    try {
-      const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/${enable ? 'enable' : 'disable'}`, {
-        method: 'POST'
-      });
-
-      if (res?.success) {
-        // Update local state; on disable, mark as unknown & disabled in message
-        const updatedProviders = providers.map(p => p.name === providerName ? {
-          ...p,
-          health_status: enable ? p.health_status : 'unknown' as const,
-          error_message: enable ? undefined : 'Provider disabled'
-        } : p);
-        setProviders(updatedProviders);
-        toast({
-          title: enable ? "Provider Enabled" : "Provider Disabled",
-          description: `${providerName} has been ${enable ? 'enabled' : 'disabled'}.`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Operation Failed",
-        description: `Could not ${enable ? 'enable' : 'disable'} ${providerName}.`,
-        variant: "destructive",
-      });
     }
   };
 
@@ -879,7 +878,7 @@ export default function ProviderManagement({
                     <div className="mt-4">
                       <ProviderConfigurationGuide
                         providerName={provider.name}
-                        onStepComplete={(stepId) => {
+                        onStepComplete={(_stepId) => {
                           // Handle step completion if needed
                         }}
                         onConfigurationComplete={() => {

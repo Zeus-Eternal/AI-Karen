@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -123,31 +123,22 @@ export default function TransformerModelConfig({
 }: TransformerModelConfigProps) {
   const [recommendations, setRecommendations] = useState<HardwareRecommendations | null>(null);
   const [multiGpuConfig, setMultiGpuConfig] = useState<MultiGpuConfig | null>(null);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("precision");
   const { toast } = useToast();
-  const backend = getKarenBackend();
+  const backend = React.useMemo(() => getKarenBackend(), []);
 
-  useEffect(() => {
-    loadRecommendations();
-    loadMultiGpuConfig();
-  }, [modelId]);
-
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await backend.makeRequestPublic<HardwareRecommendations>(
         `/api/models/system/${modelId}/hardware-recommendations`
       );
       setRecommendations(response);
     } catch (error) {
       console.error('Failed to load hardware recommendations:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [backend, modelId]);
 
-  const loadMultiGpuConfig = async () => {
+  const loadMultiGpuConfig = useCallback(async () => {
     try {
       const response = await backend.makeRequestPublic<MultiGpuConfig>(
         `/api/models/system/${modelId}/multi-gpu-config`
@@ -156,7 +147,12 @@ export default function TransformerModelConfig({
     } catch (error) {
       console.error('Failed to load multi-GPU config:', error);
     }
-  };
+  }, [backend, modelId]);
+
+  useEffect(() => {
+    void loadRecommendations();
+    void loadMultiGpuConfig();
+  }, [loadMultiGpuConfig, loadRecommendations]);
 
   const updateConfigValue = (key: string, value: unknown) => {
     const newConfig = { ...configuration, [key]: value };

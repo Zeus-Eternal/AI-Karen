@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
@@ -176,9 +175,10 @@ export function ProviderNotificationSystem({
         description: "Notification preferences have been updated.",
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
       toast({
         title: "Save Failed",
-        description: "Could not save notification settings.",
+        description: message || "Could not save notification settings.",
         variant: "destructive",
       });
     }

@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { createContext, ReactNode } from 'react';
+import type { ComponentType, FC, ReactNode } from 'react';
 import {
   isAuthenticated,
   getCurrentUser,
@@ -17,36 +17,8 @@ import {
   login as sessionLogin,
   logout as sessionLogout,
   getSession,
-  type SessionData
 } from '@/lib/auth/session';
-
-export interface SessionUser {
-  userId: string;
-  email: string;
-  roles: string[];
-  tenantId: string;
-}
-
-export interface SessionContextType {
-  // Session state
-  isAuthenticated: boolean;
-  user: SessionUser | null;
-  isLoading: boolean;
-  isInitialized: boolean;
-  
-  // Session actions
-  login: (email: string, password: string, totpCode?: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshSession: () => void;
-  
-  // Session utilities
-  hasRole: (role: string) => boolean;
-  
-  // Session data
-  sessionData: SessionData | null;
-}
-
-export const SessionContext = createContext<SessionContextType | undefined>(undefined);
+import { SessionContext, type SessionContextType, type SessionUser } from './session-context';
 
 export interface SessionProviderProps {
   children: ReactNode;
@@ -55,7 +27,7 @@ export interface SessionProviderProps {
   autoRehydrate?: boolean;
 }
 
-export const SessionProvider: React.FC<SessionProviderProps> = ({
+export const SessionProvider: FC<SessionProviderProps> = ({
   children,
 }) => {
   // Simplified session provider - just provides basic state
@@ -113,7 +85,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
  */
 /* eslint-disable-next-line react-refresh/only-export-components -- HOC export is retained for legacy usage. */
 export function withSessionProvider<P extends object>(
-  Component: React.ComponentType<P>,
+  Component: ComponentType<P>,
   providerProps?: Omit<SessionProviderProps, 'children'>
 ) {
   return function WrappedComponent(props: P) {
@@ -124,5 +96,8 @@ export function withSessionProvider<P extends object>(
     );
   };
 }
+
+export { SessionContext };
+export type { SessionContextType, SessionUser };
 
 export default SessionProvider;

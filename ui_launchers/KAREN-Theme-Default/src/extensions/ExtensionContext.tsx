@@ -3,8 +3,10 @@
  */
 "use client";
 
-import React, { createContext, useReducer } from 'react';
+import { useReducer } from 'react';
 import type { ExtensionAction, ExtensionState, ExtensionCategory, NavigationState } from './types';
+
+import { ExtensionContext } from './extension-context';
 
 const initialNavigationState: NavigationState = {
   currentCategory: 'Plugins',
@@ -243,9 +245,6 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
   }
 }
 
-/* eslint-disable-next-line react-refresh/only-export-components -- Context is exported for consumer hooks. */
-export const ExtensionContext = createContext<{ state: ExtensionState; dispatch: React.Dispatch<ExtensionAction> } | undefined>(undefined);
-
 export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; children: React.ReactNode }> = ({
   initialCategory = 'Plugins',
   children,
@@ -262,6 +261,9 @@ export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; 
   return <ExtensionContext.Provider value={{ state, dispatch }}>{children}</ExtensionContext.Provider>;
 };
 
-// Hook moved to separate file for React Fast Refresh compatibility
+export { ExtensionContext };
+
+// Hook moved to extension-context.ts for React Fast Refresh compatibility
 
 export { type ExtensionState, type ExtensionAction, type ExtensionCategory, type BreadcrumbItem } from './types';
+

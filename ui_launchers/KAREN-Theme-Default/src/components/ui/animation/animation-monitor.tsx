@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Zap, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, TrendingUp, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAnimationPerformance } from '@/utils/animation-performance';
 
@@ -32,15 +32,24 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
   showDetails = true,
   autoStart = false,
 }) => {
-  const { 
-    metrics, 
-    isMonitoring, 
-    startMonitoring, 
-    stopMonitoring, 
-    getCurrentMetrics 
+  const {
+    metrics,
+    isMonitoring,
+    startMonitoring,
+    stopMonitoring,
   } = useAnimationPerformance();
 
-  const [historicalMetrics, setHistoricalMetrics] = useState<AnimationMetrics[]>([]);
+  const metricsHistoryRef = useRef<AnimationMetrics[]>([]);
+
+  const historicalMetrics = useMemo(() => {
+    if (!metrics) {
+      return metricsHistoryRef.current;
+    }
+
+    const updatedHistory = [...metricsHistoryRef.current.slice(-19), metrics];
+    metricsHistoryRef.current = updatedHistory;
+    return updatedHistory;
+  }, [metrics]);
 
   useEffect(() => {
     if (autoStart) {
@@ -54,20 +63,16 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
     };
   }, [autoStart, startMonitoring, stopMonitoring, isMonitoring]);
 
-  useEffect(() => {
-    if (metrics) {
-      setHistoricalMetrics(prev => [...prev.slice(-19), metrics]); // Keep last 20 metrics
-    }
-  }, [metrics]);
+  type PerformanceRating = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
-  const getPerformanceRating = (fps: number): 'excellent' | 'good' | 'fair' | 'poor' => {
+  const getPerformanceRating = (fps: number): PerformanceRating => {
     if (fps >= ANIMATION_PERFORMANCE_THRESHOLDS.EXCELLENT_FPS) return 'excellent';
     if (fps >= ANIMATION_PERFORMANCE_THRESHOLDS.GOOD_FPS) return 'good';
     if (fps >= ANIMATION_PERFORMANCE_THRESHOLDS.POOR_FPS) return 'fair';
     return 'poor';
   };
 
-  const getRatingColor = (rating: string) => {
+  const getRatingColor = (rating: PerformanceRating) => {
     switch (rating) {
       case 'excellent': return 'text-green-600 bg-green-50 border-green-200';
       case 'good': return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -77,18 +82,15 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
     }
   };
 
-  const getRatingIcon = (rating: string) => {
-    switch (rating) {
-      case 'excellent': return CheckCircle;
-      case 'good': return CheckCircle;
-      case 'fair': return AlertTriangle;
-      case 'poor': return AlertTriangle;
-      default: return Activity;
-    }
+  const ratingIconMap: Record<Exclude<PerformanceRating, 'unknown'>, LucideIcon> = {
+    excellent: CheckCircle,
+    good: CheckCircle,
+    fair: AlertTriangle,
+    poor: AlertTriangle,
   };
 
-  const currentRating = metrics ? getPerformanceRating(metrics.fps) : 'unknown';
-  const RatingIcon = getRatingIcon(currentRating);
+  const currentRating: PerformanceRating = metrics ? getPerformanceRating(metrics.fps) : 'unknown';
+  const RatingIcon = currentRating === 'unknown' ? Activity : ratingIconMap[currentRating];
 
   return (
     <div className={`space-y-4 ${className}`}>

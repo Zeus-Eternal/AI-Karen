@@ -19,14 +19,26 @@ export {
 export { default as useIntersectionObserver, useMultipleIntersectionObserver } from './use-intersection-observer';
 
 // Re-export types
-export type { 
-  LazyComponentProps 
-} from './lazy-component';
+export type {
+  LazyComponentProps,
+  LazyLoadOptions,
+  SimpleComponent,
+} from './lazy-component.types';
 
-export type { 
-  LazyImageProps 
-} from './lazy-image';
+export type {
+  LazyImageProps
+} from './lazy-image.types';
 
-export type { 
-  RouteLazyLoaderProps 
-} from './route-lazy-loader';
+export type {
+  RouteLazyLoaderProps,
+  FallbackComponent,
+  RouteErrorFallback,
+} from './route-lazy-loader.types';
+
+export type {
+  IntersectionObserverWrapperProps,
+  LazyContentProps,
+  VirtualizedListProps,
+  IntersectionObserverOptions,
+  UseIntersectionObserverReturn,
+} from './intersection-observer.types';

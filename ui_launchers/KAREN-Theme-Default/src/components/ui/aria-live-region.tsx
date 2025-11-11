@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createAriaLive, generateAriaId } from '@/utils/aria';
 import { cn } from '@/lib/utils';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export interface AriaLiveRegionProps {
   /** The live region politeness level */
   politeness?: 'off' | 'polite' | 'assertive';
@@ -73,6 +74,7 @@ AriaLiveRegion.displayName = 'AriaLiveRegion';
 /**
  * Hook for managing live announcements
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export interface UseAriaAnnouncementsOptions {
   /** Default politeness level for announcements */
   defaultPoliteness?: 'polite' | 'assertive';
@@ -144,6 +146,7 @@ export const useAriaAnnouncements = (options: UseAriaAnnouncementsOptions = {}) 
 /**
  * AriaAnnouncer - A component that provides announcement functionality
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export interface AriaAnnouncerProps {
   children: (announce: (message: string, politeness?: 'polite' | 'assertive') => void) => React.ReactNode;
 }
@@ -167,6 +170,7 @@ export const AriaAnnouncer: React.FC<AriaAnnouncerProps> = ({ children }) => {
 /**
  * Status announcement component for loading states
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export interface AriaStatusProps {
   /** The status message to announce */
   message: string;

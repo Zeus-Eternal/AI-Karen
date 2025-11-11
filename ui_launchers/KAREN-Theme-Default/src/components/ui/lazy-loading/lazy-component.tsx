@@ -5,18 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-type SimpleComponent = React.ComponentType<Record<string, unknown>>;
-export interface LazyComponentProps {
-  fallback?: SimpleComponent;
-  errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
-  children: React.ReactNode;
-}
-
-export interface LazyLoadOptions {
-  fallback?: SimpleComponent;
-  errorFallback?: React.ComponentType<{ error: Error; retry: () => void }>;
-  delay?: number;
-}
+import type { LazyComponentProps, SimpleComponent } from "./lazy-component.types";
 
 const DefaultLoadingFallback: React.FC = () => (
   <motion.div

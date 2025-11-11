@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -14,99 +14,121 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const DEFAULT_VOICE_SENTINEL = "_DEFAULT_VOICE_";
 
+const normalizeSettingsFromStorage = (): KarenSettings => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_KAREN_SETTINGS;
+  }
+
+  try {
+    const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+    if (!storedSettingsStr) {
+      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
+      return DEFAULT_KAREN_SETTINGS;
+    }
+
+    const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
+    const normalized: KarenSettings = {
+      ...DEFAULT_KAREN_SETTINGS,
+      ...parsedSettings,
+      notifications: {
+        ...DEFAULT_KAREN_SETTINGS.notifications,
+        ...(parsedSettings.notifications || {}),
+      },
+      personalFacts: Array.isArray(parsedSettings.personalFacts)
+        ? parsedSettings.personalFacts
+        : DEFAULT_KAREN_SETTINGS.personalFacts,
+      ttsVoiceURI:
+        parsedSettings.ttsVoiceURI === undefined
+          ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI
+          : parsedSettings.ttsVoiceURI,
+      customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
+        ? parsedSettings.customPersonaInstructions
+        : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
+    };
+
+    const normalizedString = JSON.stringify(normalized);
+    if (storedSettingsStr !== normalizedString) {
+      localStorage.setItem(KAREN_SETTINGS_LS_KEY, normalizedString);
+    }
+
+    return normalized;
+  } catch (error) {
+    console.error('Failed to read voice settings from storage:', error);
+    try {
+      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
+    } catch (lsError) {
+      console.error('Failed to reset voice settings in storage:', lsError);
+    }
+    return DEFAULT_KAREN_SETTINGS;
+  }
+};
+
+const getInitialVoices = (): SpeechSynthesisVoice[] => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return [];
+  }
+  return window.speechSynthesis.getVoices();
+};
+
 /**
  * @file VoiceSettings.tsx
  * @description Component for selecting a preferred Text-To-Speech (TTS) voice.
  * Fetches available system voices and allows users to save their preference to local storage.
  */
 export default function VoiceSettings() {
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(
-    DEFAULT_KAREN_SETTINGS.ttsVoiceURI
-  );
-  const [isLoadingVoices, setIsLoadingVoices] = useState(true);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(() => getInitialVoices());
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(() => {
+    const settings = normalizeSettingsFromStorage();
+    return settings.ttsVoiceURI;
+  });
+  const [isLoadingVoices, setIsLoadingVoices] = useState(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return false;
+    }
+    return window.speechSynthesis.getVoices().length === 0;
+  });
   const { toast } = useToast();
 
-  const populateVoiceList = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      setIsLoadingVoices(false);
+      return;
+    }
+
+    let cancelled = false;
+    let initialTimeout: number | undefined;
+    let fallbackTimeout: number | undefined;
+
+    const updateVoices = () => {
+      if (cancelled) {
+        return;
+      }
       const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        setAvailableVoices(voices);
-        setIsLoadingVoices(false);
-      } else {
-        // Voices might load asynchronously. If no voices found, try again after a short delay.
-        // This timeout is a common workaround for browsers where getVoices() is initially empty.
-        setTimeout(() => {
-            const currentVoices = window.speechSynthesis.getVoices();
-            if(currentVoices.length === 0) {
-                 // Still no voices after delay
-                 setIsLoadingVoices(false);
-            } else {
-                setAvailableVoices(currentVoices);
-                setIsLoadingVoices(false);
-            }
-        }, 500); // Adjust delay as needed, 500ms is a reasonable starting point
-      }
-    } else {
-      setIsLoadingVoices(false); // Speech synthesis not supported
-    }
-  }, []); // Empty dependency array: populateVoiceList reference is stable
+      setAvailableVoices(voices);
+      setIsLoadingVoices(voices.length === 0);
+    };
 
-  useEffect(() => {
-    populateVoiceList(); // Initial call
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      // Listen for changes in available voices
-      window.speechSynthesis.addEventListener('voiceschanged', populateVoiceList);
-      return () => {
-        window.speechSynthesis.removeEventListener('voiceschanged', populateVoiceList);
-      };
-    }
-  }, [populateVoiceList]); // populateVoiceList is stable due to its own empty dep array
+    const handleVoicesChanged = () => {
+      updateVoices();
+    };
 
-  useEffect(() => {
-    try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let fullSettings: KarenSettings;
-      if (storedSettingsStr) {
-        const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-         fullSettings = { // Ensure all fields are present by merging with defaults
-            ...DEFAULT_KAREN_SETTINGS,
-            ...parsedSettings,
-            notifications: { // Deep merge for nested objects
-                ...DEFAULT_KAREN_SETTINGS.notifications,
-                ...(parsedSettings.notifications || {}),
-            },
-            personalFacts: Array.isArray(parsedSettings.personalFacts)
-              ? parsedSettings.personalFacts
-              : DEFAULT_KAREN_SETTINGS.personalFacts,
-            // Ensure new fields are handled even if not in old stored settings
-            ttsVoiceURI: parsedSettings.ttsVoiceURI === undefined // Check explicitly for undefined
-              ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI
-              : parsedSettings.ttsVoiceURI,
-            customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
-              ? parsedSettings.customPersonaInstructions
-              : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-        };
-        // If the stored string doesn't exactly match the fully formed settings, update localStorage
-        // This helps in migrating old settings or correcting partially formed ones.
-        if (storedSettingsStr !== JSON.stringify(fullSettings)) {
-            localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));
-        }
-      } else {
-        // If no settings are found in localStorage, initialize with defaults
-        fullSettings = DEFAULT_KAREN_SETTINGS;
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      }
-      setSelectedVoiceURI(fullSettings.ttsVoiceURI);
-    } catch (error) {
-      setSelectedVoiceURI(DEFAULT_KAREN_SETTINGS.ttsVoiceURI);
-      // Attempt to ensure localStorage is initialized with defaults if an error occurred
-      try {
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      } catch (lsError) {
-        console.error('Failed to initialize localStorage with default settings:', lsError);
-      }
+    initialTimeout = window.setTimeout(updateVoices, 0);
+    if (window.speechSynthesis.getVoices().length === 0) {
+      fallbackTimeout = window.setTimeout(updateVoices, 500);
     }
+
+    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+    return () => {
+      cancelled = true;
+      window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      if (initialTimeout !== undefined) {
+        window.clearTimeout(initialTimeout);
+      }
+      if (fallbackTimeout !== undefined) {
+        window.clearTimeout(fallbackTimeout);
+      }
+    };
   }, []);
 
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
@@ -147,6 +169,7 @@ export default function VoiceSettings() {
         description: "Your preferred voice has been updated.",
       });
     } catch (error) {
+      console.error('Error saving voice settings:', error);
       toast({
         title: "Error Saving Voice Settings",
         description: "Could not save voice preferences. localStorage might be disabled or full.",
@@ -169,6 +192,7 @@ export default function VoiceSettings() {
         description: "Voice preference has been reset to default.",
       });
     } catch (error) {
+       console.error('Error resetting voice settings:', error);
        toast({
           title: "Error Resetting Voice Settings",
           description: "Could not reset voice preferences.",

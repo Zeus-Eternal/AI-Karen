@@ -1,5 +1,5 @@
 export * from './types';
-export { ExtensionProvider as ExtensionContextProvider } from './ExtensionContext';
+export { ExtensionProvider as ExtensionContextProvider, ExtensionContext } from './ExtensionContext';
 export { useExtensionContext } from '../hooks/use-extension-context';
 
 // Re-export utilities and constants for convenience
