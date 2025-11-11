@@ -18,7 +18,6 @@ import {
   generateBreadcrumbsFromRoute,
   type BreadcrumbItem,
   type BreadcrumbNavigationProps,
-  type RouteConfig,
 } from "./breadcrumb-utils";
 
 export const BreadcrumbNavigation = React.forwardRef<
@@ -46,7 +45,7 @@ export const BreadcrumbNavigation = React.forwardRef<
     // Generate breadcrumb items from current route
     const generatedItems = React.useMemo(() => {
       if (items && items.length) return items;
-      return generateBreadcrumbsFromRoute(pathname || '/', routeConfig, showHome);
+      return generateBreadcrumbsFromRoute(pathname || "/", routeConfig, showHome);
     }, [pathname, routeConfig, showHome, items]);
 
     // Truncate items if needed
@@ -142,7 +141,12 @@ export const BreadcrumbNavigation = React.forwardRef<
   }
 );
 
-BreadcrumbNavigationComponent.displayName = "BreadcrumbNavigation";
+BreadcrumbNavigation.displayName = "BreadcrumbNavigation";
+
+export interface BreadcrumbItemProps {
+  item: BreadcrumbItem;
+  onClick: () => void;
+}
 
 const BreadcrumbNode: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
   const Icon = item.icon;

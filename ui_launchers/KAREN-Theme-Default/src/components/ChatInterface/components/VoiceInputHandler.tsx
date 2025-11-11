@@ -41,6 +41,13 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
+type SpeechRecognitionEventHandler<T extends Event> = (this: SpeechRecognition, ev: T) => void;
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -48,10 +55,10 @@ interface SpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onstart: SpeechRecognitionEventHandler<Event> | null;
+  onend: SpeechRecognitionEventHandler<Event> | null;
+  onerror: SpeechRecognitionEventHandler<SpeechRecognitionErrorEvent> | null;
+  onresult: SpeechRecognitionEventHandler<SpeechRecognitionEvent> | null;
 }
 
 
@@ -66,7 +73,17 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   className = "",
   showConfidenceBadge = true,
 }) => {
-  const [isSupported, setIsSupported] = useState(false);
+  const speechRecognitionCtor = React.useMemo(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const win = window as Window & {
+      SpeechRecognition?: typeof window.SpeechRecognition;
+      webkitSpeechRecognition?: typeof window.SpeechRecognition;
+    };
+    return win.SpeechRecognition || win.webkitSpeechRecognition;
+  }, []);
+  const isSupported = Boolean(speechRecognitionCtor);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [confidence, setConfidence] = useState(0);
@@ -74,10 +91,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    const win = window as unknown;
-    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
-    setIsSupported(Boolean(SpeechRecognition));
-
+    const SpeechRecognition = speechRecognitionCtor;
     if (!SpeechRecognition) {
       return;
     }
@@ -143,7 +157,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
     return () => {
       recognition.abort();
     };
-  }, [isRecording, onStop, onError, onTranscript, toast]);
+  }, [speechRecognitionCtor, isRecording, onStop, onError, onTranscript, toast]);
 
   const handleStart = useCallback(() => {
     if (!isSupported) {

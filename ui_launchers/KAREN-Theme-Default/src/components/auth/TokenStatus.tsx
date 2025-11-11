@@ -34,8 +34,7 @@ export const TokenStatus: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const isLoggedIn = isAuthenticated();
+  const isAuthed = isAuthenticated();
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -60,11 +59,14 @@ export const TokenStatus: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isAuthed) {
+      setSessionInfo(null);
+      setMessage(null);
       return;
     }
+
     void fetchStatus();
-  }, [fetchStatus, isLoggedIn]);
+  }, [fetchStatus, isAuthed]);
 
   const now = Date.now();
   const expiresIn = useMemo(() => {
@@ -159,7 +161,7 @@ export const TokenStatus: React.FC = () => {
     }
   };
 
-  if (!isLoggedIn) {
+  if (!isAuthed) {
     return null;
   }
 
