@@ -156,7 +156,6 @@ const normalizeMemorySearchOptions = (raw: unknown): MemorySearchOptions => {
 
 export const MemorySearch: React.FC<MemorySearchProps> = ({
   userId,
-  tenantId,
   initialQuery = "",
   onMemorySelect,
   onSearchComplete,

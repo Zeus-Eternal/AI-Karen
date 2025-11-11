@@ -11,16 +11,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { webUIConfig } from "@/lib/config";
 
 // Health / Diagnostics providers
-import {
-  getHealthMonitor,
-  type HealthMetrics,
-  type Alert as HealthAlert,
-} from "@/lib/health-monitor";
+import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
 import {
   getDiagnosticLogger,
   type DiagnosticInfo,
@@ -55,11 +50,53 @@ export interface EndpointStatusDashboardProps {
 }
 
 export function EndpointStatusDashboard({ className }: EndpointStatusDashboardProps) {
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
-  const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticInfo[]>([]);
+  type HealthMonitor = ReturnType<typeof getHealthMonitor>;
+  type DiagnosticLogger = ReturnType<typeof getDiagnosticLogger>;
+
+  const healthMonitorRef = React.useRef<HealthMonitor | null>(null);
+  if (!healthMonitorRef.current) {
+    try {
+      healthMonitorRef.current = getHealthMonitor();
+    } catch {
+      healthMonitorRef.current = null;
+    }
+  }
+
+  const diagnosticLoggerRef = React.useRef<DiagnosticLogger | null>(null);
+  if (!diagnosticLoggerRef.current) {
+    try {
+      diagnosticLoggerRef.current = getDiagnosticLogger();
+    } catch {
+      diagnosticLoggerRef.current = null;
+    }
+  }
+
+  const healthMonitor = healthMonitorRef.current;
+  const diagnosticLogger = diagnosticLoggerRef.current;
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    try {
+      return healthMonitor?.getMetrics() ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticInfo[]>(() => {
+    try {
+      return diagnosticLogger?.getLogs(50) ?? [];
+    } catch {
+      return [];
+    }
+  });
   const [networkReport, setNetworkReport] = useState<ComprehensiveNetworkReport | null>(null);
 
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [isMonitoring, setIsMonitoring] = useState(() => {
+    try {
+      return !!healthMonitor?.getStatus().isMonitoring;
+    } catch {
+      return false;
+    }
+  });
   const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>("");
 
@@ -71,33 +108,19 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
 
   // ----------------------------- Effects: subscribe to health + logs -----------------------------
   useEffect(() => {
-    const healthMonitor = getHealthMonitor();
-    const diagnosticLogger = getDiagnosticLogger();
-
-    // Bootstrap current state
-    try {
-      setMetrics(healthMonitor.getMetrics());
-      setDiagnosticLogs(diagnosticLogger.getLogs(50));
-      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
-    } catch {
-      // providers may throw if uninitialized; UI will still render
+    if (!healthMonitor || !diagnosticLogger) {
+      return;
     }
 
-    // Subscriptions
     const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
+      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
     const unsubscribeLogs = diagnosticLogger.onLog((newLog) => {
       setDiagnosticLogs((prev) => [newLog, ...prev.slice(0, 49)]);
     });
-
-    // Ensure monitoring is active
-    if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
-      setIsMonitoring(true);
-    }
 
     return () => {
       try {
@@ -107,7 +130,20 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
         // noop
       }
     };
-  }, []);
+  }, [healthMonitor, diagnosticLogger]);
+
+  useEffect(() => {
+    if (!healthMonitor) {
+      return;
+    }
+
+    if (!healthMonitor.getStatus().isMonitoring) {
+      healthMonitor.start();
+      void Promise.resolve().then(() => {
+        setIsMonitoring(healthMonitor.getStatus().isMonitoring);
+      });
+    }
+  }, [healthMonitor]);
 
   // ----------------------------- Handlers -----------------------------
   const handleToggleMonitoring = () => {

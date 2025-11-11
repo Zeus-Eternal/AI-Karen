@@ -67,7 +67,6 @@ export interface DynamicPluginConfigFormProps {
   onValidate?: (config: PluginConfig) => ValidationError[];
   onPreview?: (config: PluginConfig) => void;
   readOnly?: boolean;
-  showAdvanced?: boolean;
 }
 export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = ({
   plugin,
@@ -158,8 +157,13 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   }, [plugin.manifest.configSchema]);
   // Filter fields based on search query
   const filteredGroups = React.useMemo(() => {
-    if (!searchQuery) return fieldGroups;
-    return fieldGroups.map(group => ({
+    const visibleGroups = showAdvanced
+      ? fieldGroups
+      : fieldGroups.filter(group => group.required || group.id === 'general');
+
+    if (!searchQuery) return visibleGroups;
+
+    return visibleGroups.map(group => ({
       ...group,
       fields: group.fields.filter(field =>
         field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -167,7 +171,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         (field.description && field.description.toLowerCase().includes(searchQuery.toLowerCase()))
       ),
     })).filter(group => group.fields.length > 0);
-  }, [fieldGroups, searchQuery]);
+  }, [fieldGroups, searchQuery, showAdvanced]);
   // Validate a single field
   const validateField = (field: PluginConfigField, value: unknown): ValidationError | null => {
     if (field.required && (value === undefined || value === null || value === '')) {
@@ -256,7 +260,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       await onSave(config);
       setValidationErrors([]);
       setIsDirty(false);
-    } catch (_error) {
+    } catch {
       setValidationErrors([{
         field: '_global',
         message: 'Failed to save configuration. Please try again.',

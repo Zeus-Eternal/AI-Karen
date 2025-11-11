@@ -1,17 +1,16 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Send, Inbox, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 /**
@@ -20,22 +19,20 @@ import { Switch } from "@/components/ui/switch";
  * credentials locally and interact with Karen to read or compose emails.
  */
 export default function GmailPluginPage() {
-  const [username, setUsername] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-    return localStorage.getItem("gmail_username") ?? "";
-  });
-  const [appPassword, setAppPassword] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-    return localStorage.getItem("gmail_app_password") ?? "";
-  });
+  const [username, setUsername] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("gmail_username") || "" : ""
+  );
+  const [appPassword, setAppPassword] = useState<string>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("gmail_app_password") || "" : ""
+  );
 
   const saveCreds = () => {
-    localStorage.setItem("gmail_username", username);
-    localStorage.setItem("gmail_app_password", appPassword);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("gmail_username", username);
+    window.localStorage.setItem("gmail_app_password", appPassword);
   };
 
 
@@ -179,7 +176,12 @@ export default function GmailPluginPage() {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="gmail-signature">Default Email Signature</Label>
-            <Textarea id="gmail-signature" placeholder="e.g., Best regards, [Your Name]" rows={3} disabled />
+            <Textarea
+              id="gmail-signature"
+              placeholder="e.g., Best regards, [Your Name]"
+              rows={3}
+              disabled
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="gmail-notifications">Notification Preferences for Gmail</Label>

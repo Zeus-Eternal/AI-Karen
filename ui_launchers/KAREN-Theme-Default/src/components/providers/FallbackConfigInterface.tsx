@@ -20,14 +20,15 @@ import {
   AlertTriangle,
   Settings,
   Clock,
-} from 'lucide-react';
+  Loader2,
+} from "lucide-react";
 import type {
   FallbackAnalytics,
   FallbackChain,
   FallbackConfig,
   FallbackEvent,
   FallbackProvider,
-} from '@/types/providers';
+} from "@/types/providers";
 
 /**
  * Fallback Configuration Interface
@@ -565,7 +566,7 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   }
 
   return (
-    <div className={className ? `space-y-6 ${className}` : 'space-y-6'}>
+    <div className={className ? `space-y-6 ${className}` : "space-y-6"}>
       {/* Header */}
       <Card>
         <CardHeader>
