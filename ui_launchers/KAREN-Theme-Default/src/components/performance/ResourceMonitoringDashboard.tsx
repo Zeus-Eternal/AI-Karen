@@ -139,7 +139,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [currentMetrics, historicalMetrics, selectedTimeframe]);
+  }, [historicalMetrics, selectedTimeframe]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);
