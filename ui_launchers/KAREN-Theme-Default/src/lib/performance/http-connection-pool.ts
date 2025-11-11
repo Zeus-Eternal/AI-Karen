@@ -173,13 +173,13 @@ export class HttpConnectionPool {
     }
 
     // Abort all active connections
-    for (const hostConnections of this.connections.values()) {
-      for (const connection of hostConnections) {
+    this.connections.forEach(hostConnections => {
+      hostConnections.forEach(connection => {
         if (connection.isActive) {
           connection.controller.abort();
         }
-      }
-    }
+      });
+    });
 
     // Reject all queued requests
     for (const queuedRequest of this.requestQueue) {
