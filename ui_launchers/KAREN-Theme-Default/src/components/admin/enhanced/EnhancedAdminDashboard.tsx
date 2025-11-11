@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/hooks/useRole";
 import { useAdminErrorHandler } from "@/hooks/useAdminErrorHandler";
@@ -46,6 +46,7 @@ export function EnhancedAdminDashboard({
   const { hasRole } = useRole();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const { announce } = useAriaLiveRegion();
+  const hasAdminAccess = hasRole("admin");
 
   const { error, isRetrying, handleAsyncOperation, retry, clearError, canRetry } =
     useAdminErrorHandler({
@@ -76,22 +77,12 @@ export function EnhancedAdminDashboard({
     },
   });
 
-  // Access control
-  if (!hasRole("admin")) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" role="main">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600">
-            You need admin privileges to access this dashboard.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // Load dashboard data with error handling
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
+    if (!hasAdminAccess) {
+      return;
+    }
+
     const result = await handleAsyncOperation(
       async () => {
         setDashboardData((prev) => ({ ...prev, loading: true }));
@@ -134,13 +125,26 @@ export function EnhancedAdminDashboard({
     } else {
       setDashboardData((prev) => ({ ...prev, loading: false }));
     }
-  };
+  }, [announce, handleAsyncOperation, hasAdminAccess]);
 
   // Load data on mount
   useEffect(() => {
     loadDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadDashboardData]);
+
+  // Access control
+  if (!hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" role="main">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600">
+            You need admin privileges to access this dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleViewChange = (view: DashboardView) => {
     setCurrentView(view);

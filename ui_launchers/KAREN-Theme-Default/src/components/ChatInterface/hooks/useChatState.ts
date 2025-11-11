@@ -22,7 +22,7 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");
-  const [sessionStartTime] = useState(Date.now());
+  const [sessionStartTime] = useState(() => Date.now());
   
   // Refs for media recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);

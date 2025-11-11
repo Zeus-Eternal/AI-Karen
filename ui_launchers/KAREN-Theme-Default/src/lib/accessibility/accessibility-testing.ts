@@ -120,17 +120,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private options: RunOptions;
 
   constructor(
-    container?: Document | Element,
+    container: Document | Element = document,
     options: RunOptions = {}
   ) {
-    if (container) {
-      this.container = container;
-    } else {
-      if (typeof document === "undefined") {
-        throw new Error("AccessibilityTestSuite requires a DOM container");
-      }
-      this.container = document;
-    }
+    this.container = this.resolveContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -138,6 +131,26 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       },
       ...options,
     };
+  }
+
+  private resolveContainer(container: ElementContext): Document | Element {
+    if (typeof container === "string") {
+      return document.querySelector(container) ?? document;
+    }
+
+    if (container instanceof Element || container instanceof Document) {
+      return container;
+    }
+
+    if (Array.isArray(container)) {
+      return container[0] ?? document;
+    }
+
+    if (container instanceof NodeList) {
+      return container[0] ?? document;
+    }
+
+    return document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -159,7 +172,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -175,7 +188,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: {
           type: "tag",
@@ -205,7 +218,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = this.container.querySelectorAll(
+    const focusableElements = this.container.querySelectorAll<HTMLElement>(
       focusableSelectors.join(", ")
     );
     const unreachableElements: string[] = [];
@@ -229,7 +242,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const focusTraps = this.container.querySelectorAll(
+    const focusTraps = this.container.querySelectorAll<HTMLElement>(
       '[data-focus-trap="true"]'
     );
     focusTraps.forEach((trap) => {
@@ -247,7 +260,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const skipLinks = this.container.querySelectorAll(
+    const skipLinks = this.container.querySelectorAll<HTMLAnchorElement>(
       '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
@@ -358,10 +371,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     ];
 
     const focusTrapCandidates = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         '[data-focus-trap], [aria-modal="true"], [role="dialog"]'
       )
-    ) as HTMLElement[];
+    );
 
     const focusTraps = focusTrapCandidates.map((element) => {
       const innerFocusable = element.querySelectorAll(
@@ -377,10 +390,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     });
 
     const restoreTargets = Array.from(
-      this.container.querySelectorAll(
+      this.container.querySelectorAll<HTMLElement>(
         "[data-focus-restore], [data-focus-restoration]"
       )
-    ) as HTMLElement[];
+    );
 
     const focusRestoration = restoreTargets.map((element) => ({
       element: this.getElementSelector(element),
@@ -390,8 +403,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }));
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors.join(", "))
-    ) as HTMLElement[];
+      this.container.querySelectorAll<HTMLElement>(
+        focusableSelectors.join(", ")
+      )
+    );
 
     const focusIndicators = focusableElements.slice(0, 25).map((element) => {
       if (typeof window === "undefined") {
@@ -525,12 +540,12 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const brokenReferences = new Set<string>();
 
     const allElements = Array.from(
-      this.container.querySelectorAll("*")
-    ) as HTMLElement[];
+      this.container.querySelectorAll<HTMLElement>("*")
+    );
     const scopeDocument =
       this.container instanceof Document
         ? this.container
-        : this.container.ownerDocument || document;
+        : this.container.ownerDocument ?? document;
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();

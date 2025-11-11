@@ -440,7 +440,7 @@ export function integrateWithExistingErrorHandling(): void {
     }
   };
 
-  win[__key] = true;
+  flagStore[__key] = true;
   logger.info("Integrated enhanced fetch with recovery pipeline");
 }
 
