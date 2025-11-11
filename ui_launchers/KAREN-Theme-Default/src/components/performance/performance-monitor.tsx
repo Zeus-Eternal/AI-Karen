@@ -3,77 +3,14 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Activity, Clock, Zap, X } from "lucide-react";
+import { Activity, Zap, X } from "lucide-react";
 
-export interface PerformanceMetrics {
-  // Core Web Vitals / key timings (milliseconds unless noted)
-  lcp?: number; // Largest Contentful Paint (ms)
-  fid?: number; // First Input Delay (ms)
-  cls?: number; // Cumulative Layout Shift (unitless)
-  // Other metrics
-  fcp?: number; // First Contentful Paint (ms)
-  ttfb?: number; // Time to First Byte (ms)
-  // Bundle metrics (best-effort)
-  bundleSize?: number; // bytes (approx)
-  loadTime?: number; // ms (full load)
-  // Memory usage (bytes)
-  usedJSHeapSize?: number;
-  totalJSHeapSize?: number;
-  jsHeapSizeLimit?: number;
-}
-
-export interface PerformanceMonitorProps {
-  /** Whether to show the performance overlay in development */
-  showOverlay?: boolean;
-  /** Whether to log metrics to console */
-  logMetrics?: boolean;
-  /** Callback when metrics are collected */
-  onMetricsCollected?: (metrics: PerformanceMetrics) => void;
-  /** Whether to send metrics to analytics */
-  sendToAnalytics?: boolean;
-  /** Analytics endpoint URL */
-  analyticsEndpoint?: string;
-}
-
-/** Utility: now in ms with high resolution */
-const nowMs = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-
-/** Try to read modern NavigationTiming first, fallback to legacy */
-function readNavigationTimings(): { ttfb?: number; loadTime?: number } {
-  if (typeof performance === "undefined") return {};
-  const nav = performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined;
-  if (nav) {
-    // All values are relative to startTime (typically 0)
-    return {
-      ttfb: nav.responseStart, // ms
-      loadTime: nav.loadEventEnd - nav.startTime, // ms
-    };
-  }
-  // Legacy fallback
-  const t = (performance as unknown).timing;
-  if (t) {
-    return {
-      ttfb: t.responseStart - t.navigationStart,
-      loadTime: t.loadEventEnd - t.navigationStart,
-    };
-  }
-  return {};
-}
-
-/** Best-effort bundle size estimation: sum transferSize of JS resources */
-function estimateBundleSize(): number | undefined {
-  if (typeof performance === "undefined" || !performance.getEntriesByType) return undefined;
-  try {
-    const resources = performance.getEntriesByType("resource") as (PerformanceResourceTiming & { transferSize?: number })[];
-    const jsBytes = resources
-      .filter((r) => r.initiatorType === "script")
-      .map((r) => (typeof r.transferSize === "number" && r.transferSize > 0 ? r.transferSize : 0))
-      .reduce((a, b) => a + b, 0);
-    return jsBytes || undefined;
-  } catch {
-    return undefined;
-  }
-}
+import {
+  type PerformanceMetrics,
+  type PerformanceMonitorProps,
+  estimateBundleSize,
+  readNavigationTimings,
+} from "./performance-monitor.shared";
 
 export function PerformanceMonitor({
   showOverlay = process.env.NODE_ENV === "development",
@@ -418,42 +355,6 @@ export function PerformanceMonitor({
       )}
     </>
   );
-}
-
-// Hook for using performance metrics in components (lightweight sampling)
-export function usePerformanceMetrics() {
-  const [metrics, setMetrics] = useState<PerformanceMetrics>({});
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const collect = () => {
-      const out: PerformanceMetrics = {};
-      const nav = readNavigationTimings();
-      out.ttfb = nav.ttfb;
-      out.loadTime = nav.loadTime;
-
-      // Memory usage
-      try {
-        if ("memory" in performance) {
-          const memory = (performance as unknown).memory;
-          out.usedJSHeapSize = memory?.usedJSHeapSize;
-          out.totalJSHeapSize = memory?.totalJSHeapSize;
-          out.jsHeapSizeLimit = memory?.jsHeapSizeLimit;
-        }
-      } catch {
-        // ignore
-      }
-
-      setMetrics(out);
-    };
-
-    collect();
-    const timer = window.setTimeout(collect, 2000);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  return metrics;
 }
 
 export default PerformanceMonitor;

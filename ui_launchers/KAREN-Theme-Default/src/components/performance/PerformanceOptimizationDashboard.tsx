@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -205,6 +204,8 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       setMetrics(performanceOptimizer.getMetrics());
       setRecommendations(performanceOptimizer.generateRecommendations());
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to apply performance optimizations", error);
     } finally {
       setIsOptimizing(false);
     }

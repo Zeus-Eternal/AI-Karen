@@ -126,7 +126,16 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = Date.now() - timeRanges[selectedTimeframe];
+    const mostRecentTimestamp = historicalMetrics.reduce(
+      (latest, metric) => Math.max(latest, metric.timestamp),
+      0
+    );
+    if (mostRecentTimestamp === 0) {
+      return [];
+    }
+
+    const cutoff = mostRecentTimestamp - timeRanges[selectedTimeframe];
+
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { ArrowLeft, Store, Shield, Info, FileText } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -240,7 +239,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onSave={handleSaveConfiguration}
               onValidate={validateConfiguration}
               onPreview={() => undefined}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
               showAdvanced
             />
             {!readOnly && (
@@ -248,6 +247,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
                 variant="outline"
                 onClick={() => setShowMarketplace(true)}
                 className="self-start"
+                disabled={saving}
               >
                 Browse marketplace
               </Button>
@@ -260,7 +260,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onUpdateSecurity={handleSaveSecurity}
               onGrantPermission={onGrantPermission}
               onRevokePermission={onRevokePermission}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
             />
           </TabsContent>
 

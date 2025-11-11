@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Facebook, MessageSquare, AlertTriangle, Settings, Info, BarChart3, Send, Zap } from "lucide-react";
+import { Facebook, MessageSquare, AlertTriangle, Info, BarChart3, Send, Zap } from "lucide-react";
 
 import { Switch } from "@/components/ui/switch";
 

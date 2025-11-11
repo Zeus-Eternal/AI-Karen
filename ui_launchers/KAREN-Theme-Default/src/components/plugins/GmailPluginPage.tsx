@@ -2,17 +2,15 @@
 "use client";
 
 import * as React from 'react';
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Send, Inbox, Settings, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
+import { Mail, Send, Inbox, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { alertClassName } from "./utils/alertVariants";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 /**
@@ -21,13 +19,18 @@ import { Switch } from "@/components/ui/switch";
  * credentials locally and interact with Karen to read or compose emails.
  */
 export default function GmailPluginPage() {
-  const [username, setUsername] = useState<string>("");
-  const [appPassword, setAppPassword] = useState<string>("");
-
-  useEffect(() => {
-    setUsername(localStorage.getItem("gmail_username") || "");
-    setAppPassword(localStorage.getItem("gmail_app_password") || "");
-  }, []);
+  const [username, setUsername] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem("gmail_username") ?? "";
+  });
+  const [appPassword, setAppPassword] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem("gmail_app_password") ?? "";
+  });
 
   const saveCreds = () => {
     localStorage.setItem("gmail_username", username);
