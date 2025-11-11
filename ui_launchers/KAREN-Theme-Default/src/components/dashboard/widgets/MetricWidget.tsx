@@ -29,12 +29,13 @@ const formatValue = (value: number, format?: string, unit?: string): string => {
         currency: 'USD',
       }).format(value);
       break;
-    case 'bytes':
+    case 'bytes': {
       const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
       if (value === 0) return '0 B';
       const i = Math.floor(Math.log(value) / Math.log(1024));
       formattedValue = `${(value / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
       break;
+    }
     default:
       formattedValue = new Intl.NumberFormat('en-US').format(value);
   }
