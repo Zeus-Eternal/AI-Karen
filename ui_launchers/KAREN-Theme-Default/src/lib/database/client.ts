@@ -68,7 +68,7 @@ export interface QueryResult {
 
     async query(sql: string, params?: unknown[]): Promise<QueryResult> {
       try {
-        const result: PgQueryResult<unknown> = await this.pool.query(sql, params);
+        const result: PgQueryResult<Record<string, unknown>> = await this.pool.query(sql, params);
         return {
           rows: result.rows,
           rowCount: result.rowCount || 0,
@@ -93,7 +93,7 @@ export interface QueryResult {
         // Create a transaction client wrapper
         const transactionClient: DatabaseClient = {
           query: async (sql: string, params?: unknown[]) => {
-            const result: PgQueryResult<unknown> = await poolClient.query(sql, params);
+            const result: PgQueryResult<Record<string, unknown>> = await poolClient.query(sql, params);
             return {
               rows: result.rows,
               rowCount: result.rowCount || 0,

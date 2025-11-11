@@ -94,26 +94,35 @@ function stableStringify(obj: unknown): string {
 }
 
 function headersToObject(headers: HeaderLike): Record<string, string> {
-  if (!headers) return {};
+  const normalized: Record<string, string> = {};
+
+  if (!headers) {
+    return normalized;
+  }
+
   if (Array.isArray(headers)) {
-    const out: Record<string, string> = {};
-    for (const [k, v] of headers) out[String(k).toLowerCase()] = String(v);
-    return out;
+    for (const [k, v] of headers) {
+      normalized[String(k).toLowerCase()] = String(v);
+    }
+    return normalized;
   }
+
   if (headers instanceof Headers) {
-    const out: Record<string, string> = {};
-    headers.forEach((v, k) => (out[k.toLowerCase()] = v));
-    return out;
+    headers.forEach((value, key) => {
+      normalized[key.toLowerCase()] = value;
+    });
+    return normalized;
   }
-  // Record<string, string>
+
   const headerRecord = headers as Record<string, string | number | boolean | undefined>;
-  for (const k of Object.keys(headerRecord)) {
-    const value = headerRecord[k];
+  for (const key of Object.keys(headerRecord)) {
+    const value = headerRecord[key];
     if (value !== undefined) {
-      out[k.toLowerCase()] = String(value);
+      normalized[key.toLowerCase()] = String(value);
     }
   }
-  return out;
+
+  return normalized;
 }
 
 function methodAllowsDefaultCaching(method?: string) {
