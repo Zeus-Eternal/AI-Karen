@@ -341,7 +341,7 @@ export default function IntelligentModelSelector({
   availableModels,
   className = '',
 }: IntelligentModelSelectorProps) {
-  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [manualSelectedModelId, setManualSelectedModelId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [autoSelect, setAutoSelect] = useState(true);
   const [qualityWeight, setQualityWeight] = useState([70]);
@@ -391,8 +391,14 @@ export default function IntelligentModelSelector({
     }
   }, [autoSelect, topRecommendation, onModelSelect]);
 
+  const selectedModelId = manualSelectedModelId ?? (
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : ''
+  );
+
   const handleManualSelect = useCallback((modelId: string) => {
-    setSelectedModelId(modelId);
+    setManualSelectedModelId(modelId);
     onModelSelect(modelId);
   }, [onModelSelect]);
 

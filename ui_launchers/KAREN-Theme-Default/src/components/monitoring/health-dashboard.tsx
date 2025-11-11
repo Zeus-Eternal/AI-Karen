@@ -72,7 +72,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       unsubscribeMetrics();
       unsubscribeAlerts();
     };
-  }, []);
+  }, [healthMonitor]);
 
   const handleToggleMonitoring = () => {
     const healthMonitor = getHealthMonitor();

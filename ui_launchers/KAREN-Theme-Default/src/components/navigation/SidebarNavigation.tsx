@@ -215,7 +215,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     ref
   ) => {
     const { sidebarCollapsed, closeSidebar, isMobile } = useAppShell();
-    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+    const [manualExpandedItems, setManualExpandedItems] = useState<Set<string>>(new Set());
     const pathname = usePathname();
     const router = useRouter();
     const localNavRef = useRef<HTMLDivElement | null>(null);
@@ -280,10 +280,13 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
     // Toggle expand/collapse
     const toggleExpanded = useCallback((itemId: string) => {
-      setExpandedItems((prev) => {
+      setManualExpandedItems((prev) => {
         const next = new Set(prev);
-        if (next.has(itemId)) next.delete(itemId);
-        else next.add(itemId);
+        if (next.has(itemId)) {
+          next.delete(itemId);
+        } else {
+          next.add(itemId);
+        }
         return next;
       });
     }, []);

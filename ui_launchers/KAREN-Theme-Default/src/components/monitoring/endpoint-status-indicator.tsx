@@ -145,7 +145,7 @@ export function EndpointStatusIndicator({
         // noop
       }
     };
-  }, []);
+  }, [diagnosticLogger, healthMonitor]);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";

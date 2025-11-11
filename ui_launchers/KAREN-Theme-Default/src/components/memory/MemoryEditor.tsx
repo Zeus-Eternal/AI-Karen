@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { CopilotTextarea } from "@copilotkit/react-textarea";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import { cn } from "@/lib/utils";
