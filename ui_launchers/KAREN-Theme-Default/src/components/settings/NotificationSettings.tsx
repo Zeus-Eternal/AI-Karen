@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,50 +16,75 @@ import { useToast } from '@/hooks/use-toast';
  * Allows users to enable/disable notifications and select alert types.
  * Settings are saved to local storage.
  */
+const mergeWithDefaults = (settings?: Partial<KarenSettings>): KarenSettings => ({
+  ...DEFAULT_KAREN_SETTINGS,
+  ...settings,
+  notifications: {
+    ...DEFAULT_KAREN_SETTINGS.notifications,
+    ...(settings?.notifications || {}),
+  },
+  personalFacts:
+    settings && Array.isArray(settings.personalFacts)
+      ? settings.personalFacts
+      : DEFAULT_KAREN_SETTINGS.personalFacts,
+  ttsVoiceURI:
+    settings?.ttsVoiceURI === undefined
+      ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI
+      : settings.ttsVoiceURI,
+  customPersonaInstructions:
+    settings && typeof settings.customPersonaInstructions === 'string'
+      ? settings.customPersonaInstructions
+      : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
+  memoryDepth: settings?.memoryDepth || DEFAULT_KAREN_SETTINGS.memoryDepth,
+  personalityTone:
+    settings?.personalityTone || DEFAULT_KAREN_SETTINGS.personalityTone,
+  personalityVerbosity:
+    settings?.personalityVerbosity || DEFAULT_KAREN_SETTINGS.personalityVerbosity,
+});
+
 export default function NotificationSettings() {
-  const [notifications, setNotifications] = useState<NotificationPreferences>(
-    DEFAULT_KAREN_SETTINGS.notifications
-  );
-  const { toast } = useToast();
-  useEffect(() => {
+  const readAndNormalizeSettings = (): KarenSettings => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_KAREN_SETTINGS;
+    }
+
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let fullSettings: KarenSettings;
-      if (storedSettingsStr) {
-        const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-        fullSettings = {
-            ...DEFAULT_KAREN_SETTINGS,
-            ...parsedSettings,
-            notifications: {
-                ...DEFAULT_KAREN_SETTINGS.notifications,
-                ...(parsedSettings.notifications || {}),
-            },
-            personalFacts: Array.isArray(parsedSettings.personalFacts)
-              ? parsedSettings.personalFacts
-              : DEFAULT_KAREN_SETTINGS.personalFacts,
-            ttsVoiceURI: parsedSettings.ttsVoiceURI === undefined
-              ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI
-              : parsedSettings.ttsVoiceURI,
-            customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
-              ? parsedSettings.customPersonaInstructions
-              : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-        };
-        if (JSON.stringify(fullSettings) !== storedSettingsStr) {
-            localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));
-        }
-      } else {
-        fullSettings = DEFAULT_KAREN_SETTINGS;
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
+      if (!storedSettingsStr) {
+        localStorage.setItem(
+          KAREN_SETTINGS_LS_KEY,
+          JSON.stringify(DEFAULT_KAREN_SETTINGS)
+        );
+        return DEFAULT_KAREN_SETTINGS;
       }
-      setNotifications(fullSettings.notifications);
+
+      const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
+      const mergedSettings = mergeWithDefaults(parsedSettings);
+      const normalizedSettings = JSON.stringify(mergedSettings);
+
+      if (normalizedSettings !== storedSettingsStr) {
+        localStorage.setItem(KAREN_SETTINGS_LS_KEY, normalizedSettings);
+      }
+
+      return mergedSettings;
     } catch (error) {
-      setNotifications(DEFAULT_KAREN_SETTINGS.notifications);
+      console.error('Failed to read notification settings from localStorage.', error);
       try {
-        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      } catch (lsError) {
+        localStorage.setItem(
+          KAREN_SETTINGS_LS_KEY,
+          JSON.stringify(DEFAULT_KAREN_SETTINGS)
+        );
+      } catch (storageError) {
+        console.error('Failed to reset notification settings in localStorage.', storageError);
       }
+      return DEFAULT_KAREN_SETTINGS;
     }
-  }, []);
+  };
+
+  const [notifications, setNotifications] = useState<NotificationPreferences>(() =>
+    readAndNormalizeSettings().notifications
+  );
+  const { toast } = useToast();
   const handleEnabledChange = (enabled: boolean) => {
     setNotifications(prev => ({ ...prev, enabled }));
   };
@@ -67,26 +92,7 @@ export default function NotificationSettings() {
     setNotifications(prev => ({ ...prev, [alertType]: checked }));
   };
   const getFullCurrentSettingsFromStorage = (): KarenSettings => {
-    let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
-    try {
-      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      if (storedSettingsStr) {
-        const parsed = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-        currentFullSettings = {
-          ...DEFAULT_KAREN_SETTINGS,
-          ...parsed,
-          notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
-          personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsed.ttsVoiceURI === undefined ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI : parsed.ttsVoiceURI,
-          customPersonaInstructions: typeof parsed.customPersonaInstructions === 'string' ? parsed.customPersonaInstructions : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-          memoryDepth: parsed.memoryDepth || DEFAULT_KAREN_SETTINGS.memoryDepth,
-          personalityTone: parsed.personalityTone || DEFAULT_KAREN_SETTINGS.personalityTone,
-          personalityVerbosity: parsed.personalityVerbosity || DEFAULT_KAREN_SETTINGS.personalityVerbosity,
-        };
-      }
-    } catch (e) {
-    }
-    return currentFullSettings;
+    return readAndNormalizeSettings();
   };
   const saveSettings = () => {
     try {
@@ -105,11 +111,12 @@ export default function NotificationSettings() {
         description: "Your notification preferences have been updated.",
       });
     } catch (error) {
-       toast({
-          title: "Error Saving Notification Settings",
-          description: "Could not save notification preferences. localStorage might be disabled or full.",
-          variant: "destructive",
-       });
+      console.error('Failed to save notification settings.', error);
+      toast({
+        title: "Error Saving Notification Settings",
+        description: "Could not save notification preferences. localStorage might be disabled or full.",
+        variant: "destructive",
+      });
     }
   };
   const resetToDefaults = () => {
@@ -126,6 +133,7 @@ export default function NotificationSettings() {
           description: "Notification preferences have been reset to defaults.",
         });
     } catch (error) {
+        console.error('Failed to reset notification settings.', error);
         toast({
             title: "Error Resetting Notification Settings",
             description: "Could not reset notification preferences.",

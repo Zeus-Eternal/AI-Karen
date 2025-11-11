@@ -40,7 +40,7 @@ export default function ProfileManager({
   setProfiles,
   activeProfile,
   setActiveProfile,
-  providers,
+  providers: _providers,
   onClose,
 }: ProfileManagerProps) {
   const [creating, setCreating] = useState(false);
