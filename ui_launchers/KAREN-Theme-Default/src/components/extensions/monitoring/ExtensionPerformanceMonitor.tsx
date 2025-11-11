@@ -80,7 +80,34 @@ export function ExtensionPerformanceMonitor({
   const [activeTab, setActiveTab] = useState("overview");
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h");
   const [selectedMetric, setSelectedMetric] = useState<ResourceMetricKey>("cpu");
-  const [alerts, setAlerts] = useState<ResourceAlert[]>([]);
+  const sampleAlerts: ResourceAlert[] = useMemo(
+    () => [
+      {
+        id: "1",
+        type: "memory",
+        severity: "warning",
+        message: "Memory usage approaching limit",
+        timestamp: "2024-01-01T11:55:00.000Z",
+        extensionId: "analytics-dashboard",
+        extensionName: "Analytics Dashboard",
+        value: 450,
+        threshold: 500,
+      },
+      {
+        id: "2",
+        type: "cpu",
+        severity: "critical",
+        message: "CPU usage critically high",
+        timestamp: "2024-01-01T11:50:00.000Z",
+        extensionId: "automation-engine",
+        extensionName: "Automation Engine",
+        value: 85,
+        threshold: 80,
+      },
+    ],
+    []
+  );
+  const [alerts] = useState<ResourceAlert[]>(sampleAlerts);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const { statuses, loading } = useExtensionStatuses();
@@ -169,35 +196,6 @@ export function ExtensionPerformanceMonitor({
       },
     ];
   }, [performanceData, filteredStatuses, taskData]);
-
-  // Sample alerts
-  useEffect(() => {
-    const sampleAlerts: ResourceAlert[] = [
-      {
-        id: "1",
-        type: "memory",
-        severity: "warning",
-        message: "Memory usage approaching limit",
-        timestamp: new Date(Date.now() - 300000).toISOString(),
-        extensionId: "analytics-dashboard",
-        extensionName: "Analytics Dashboard",
-        value: 450,
-        threshold: 500,
-      },
-      {
-        id: "2",
-        type: "cpu",
-        severity: "critical",
-        message: "CPU usage critically high",
-        timestamp: new Date(Date.now() - 600000).toISOString(),
-        extensionId: "automation-engine",
-        extensionName: "Automation Engine",
-        value: 85,
-        threshold: 80,
-      },
-    ];
-    setAlerts(sampleAlerts);
-  }, []);
 
   // Auto-refresh
   useEffect(() => {

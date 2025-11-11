@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
@@ -12,22 +12,25 @@ interface VoiceProvider {
 }
 
 export default function VoiceProviderList() {
-  const [providers, setProviders] = useState<VoiceProvider[]>([]);
-
-  useEffect(() => {
-    // Placeholder providers. Real implementation would detect installed voices or fetch from backend
-    setProviders([
+  const providers = useMemo<VoiceProvider[]>(
+    () => [
       { id: "system", name: "System Voices", previewText: "Hello from your system" },
-    ]);
-  }, []);
+    ],
+    []
+  );
+  const [previewing, setPreviewing] = useState<string | null>(null);
 
   const handlePreview = (text?: string) => {
     if (!text) return;
 
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utterance);
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      return;
     }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    setPreviewing(text);
+    utterance.onend = () => setPreviewing(null);
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -46,8 +49,9 @@ export default function VoiceProviderList() {
                 variant="outline"
                 onClick={() => handlePreview(p.previewText)}
                 className="flex items-center gap-1"
+                disabled={previewing === p.previewText}
               >
-                Preview
+                {previewing === p.previewText ? "Playing" : "Preview"}
               </Button>
             </CardContent>
           )}

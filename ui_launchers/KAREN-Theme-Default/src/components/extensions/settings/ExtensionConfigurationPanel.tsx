@@ -86,7 +86,7 @@ function valueToString(value: SettingValue): string {
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value);
-    } catch (error) {
+    } catch {
       return '';
     }
   }
@@ -362,13 +362,15 @@ export function ExtensionConfigurationPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSensitive, setShowSensitive] = useState<Set<string>>(new Set());
-  // Load extension configuration
-  useEffect(() => {
-    loadConfiguration();
-  }, [extensionId]);
   const loadConfiguration = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!extensionId) {
+      setSettings([]);
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
     try {
       // Simulate loading configuration from API
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -521,6 +523,11 @@ export function ExtensionConfigurationPanel({
       setLoading(false);
     }
   }, [extensionId]);
+
+  // Load extension configuration
+  useEffect(() => {
+    void loadConfiguration();
+  }, [loadConfiguration]);
   const handleSettingChange = useCallback((key: string, value: SettingValue) => {
     setSettings(prev => prev.map(setting =>
       setting.key === key ? { ...setting, value } : setting
@@ -536,6 +543,11 @@ export function ExtensionConfigurationPanel({
         permission.key === key ? { ...permission, granted } : permission
       ));
     } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Failed to update permission");
+      }
     }
   }, [onPermissionChange]);
   const handleSave = useCallback(async () => {
