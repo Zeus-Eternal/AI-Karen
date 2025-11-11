@@ -399,8 +399,8 @@ export default function IntelligentModelSelector({
   }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
-    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
-      const recommendedId = topRecommendation.model.id;
+    if (autoSelect && autoSelectedModelId) {
+      const recommendedId = autoSelectedModelId;
       if (autoSelectionRef.current !== recommendedId) {
         autoSelectionRef.current = recommendedId;
         onModelSelect(recommendedId);
