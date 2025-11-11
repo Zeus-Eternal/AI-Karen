@@ -9,6 +9,9 @@ import type { ExtensionErrorIntegration } from './extension-error-integration';
  * - Resilient fetch test (handles non-JSON/headers missing)
  * - Minimal dev logging
  */
+
+import type { ExtensionErrorIntegration } from './extension-error-integration';
+
 export type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
 
 export interface VerifyChecks {

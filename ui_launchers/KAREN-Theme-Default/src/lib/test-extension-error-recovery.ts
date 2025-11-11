@@ -7,7 +7,8 @@
 import { logger } from './logger';
 import {
   handleExtensionError,
-  type ExtensionErrorIntegration
+  type ExtensionErrorIntegration,
+  type ExtensionErrorResponse,
 } from './extension-error-integration';
 import { getExtensionFallbackData } from './auth/extension-auth-degradation';
 

@@ -24,11 +24,9 @@ export function patchKarenBackendForExtensions() {
   // Add extension error handling to window for KarenBackend to use
   if (typeof window !== 'undefined') {
     win.handleExtensionError = (status: number, url: string, operation?: string) => {
-      const shouldFallback = shouldUseExtensionFallback(status, url);
+      const result = handleExtensionError(status, url, operation);
 
-      if (shouldFallback) {
-        const result = handleExtensionError(status, url, operation);
-
+      if (shouldUseExtensionFallback(status, url)) {
         // Show user-friendly message for certain errors
         if (status === 403 && url.includes('/api/extensions')) {
           const message = getExtensionErrorMessage(status, url);
@@ -39,9 +37,9 @@ export function patchKarenBackendForExtensions() {
         return result;
       }
 
-      return {
-        message: getExtensionErrorMessage(status, url)
-      };
+      // For non-extension fallback scenarios, return the base handler result so callers
+      // can decide how to proceed without TypeScript type mismatches.
+      return result;
     };
 
     logger.info('KarenBackend extension error handling patched');

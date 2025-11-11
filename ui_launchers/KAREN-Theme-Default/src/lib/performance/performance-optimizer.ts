@@ -110,6 +110,7 @@ function headersToObject(headers: HeaderLike): Record<string, string> {
     return normalized;
   }
   // Record<string, string>
+  const out: Record<string, string> = {};
   const headerRecord = headers as Record<string, string | number | boolean | undefined>;
   const normalized: Record<string, string> = {};
   for (const k of Object.keys(headerRecord)) {
