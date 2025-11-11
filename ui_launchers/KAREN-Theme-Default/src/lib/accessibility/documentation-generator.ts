@@ -10,6 +10,15 @@ import { join, extname, basename } from 'path';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import * as t from '@babel/types';
+
+interface ComponentAnalysis {
+  ariaAttributes: Set<string>;
+  eventHandlers: Set<string>;
+  htmlElements: Set<string>;
+  imports: Set<string>;
+  hooks: Set<string>;
+  props: Set<string>;
+}
 // Types for documentation generation
 export interface ComponentAccessibilityInfo {
   name: string;
@@ -122,8 +131,10 @@ export class AccessibilityDocumentationGenerator {
           this.componentRegistry.set(componentInfo.name, componentInfo);
         }
       } catch (error) {
-    // Handle error silently
-  }
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Failed to analyze accessibility component at ${filePath}`, error);
+        }
+      }
     }
   }
   /**
@@ -146,7 +157,9 @@ export class AccessibilityDocumentationGenerator {
           }
         }
       } catch (error) {
-        // Directory might not exist, skip silently
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Skipping inaccessible directory during accessibility scan: ${dir}`, error);
+        }
       }
     };
     await scanDirectory(this.config.sourceDir);
@@ -172,8 +185,8 @@ export class AccessibilityDocumentationGenerator {
       const ast = parse(content, {
         sourceType: 'module',
         plugins: ['typescript', 'jsx']
-      });
-      const analysis = this.analyzeAST(ast, content);
+      }) as t.File;
+      const analysis = this.analyzeAST(ast);
       return {
         name: componentName,
         filePath,
@@ -188,6 +201,9 @@ export class AccessibilityDocumentationGenerator {
         testingInstructions: this.generateTestingInstructions(componentName, analysis)
       };
     } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Failed to process accessibility metadata for ${filePath}`, error);
+      }
       return null;
     }
   }
@@ -231,8 +247,8 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Analyze AST for accessibility patterns
    */
-  private analyzeAST(ast: unknown, content: string): any {
-    const analysis = {
+  private analyzeAST(ast: t.File): ComponentAnalysis {
+    const analysis: ComponentAnalysis = {
       ariaAttributes: new Set<string>(),
       eventHandlers: new Set<string>(),
       htmlElements: new Set<string>(),
@@ -275,7 +291,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify accessibility features
    */
-  private identifyAccessibilityFeatures(analysis: unknown): AccessibilityFeature[] {
+  private identifyAccessibilityFeatures(analysis: ComponentAnalysis): AccessibilityFeature[] {
     const features: AccessibilityFeature[] = [];
     // Check for semantic HTML
     const semanticElements = ['button', 'nav', 'main', 'header', 'footer', 'section', 'article'];
@@ -313,7 +329,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Extract ARIA attributes with documentation
    */
-  private extractAriaAttributes(analysis: unknown): AriaAttribute[] {
+  private extractAriaAttributes(analysis: ComponentAnalysis): AriaAttribute[] {
     const ariaAttributes: AriaAttribute[] = [];
     const ariaDocumentation: Record<string, { purpose: string; usage: string; required: boolean }> = {
       'aria-label': {
@@ -364,7 +380,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify keyboard support patterns
    */
-  private identifyKeyboardSupport(analysis: unknown): KeyboardSupport[] {
+  private identifyKeyboardSupport(analysis: ComponentAnalysis): KeyboardSupport[] {
     const keyboardSupport: KeyboardSupport[] = [];
     // Standard keyboard patterns based on component type
     if (analysis.htmlElements.has('button')) {
@@ -412,7 +428,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify screen reader support features
    */
-  private identifyScreenReaderSupport(analysis: unknown): ScreenReaderFeature[] {
+  private identifyScreenReaderSupport(analysis: ComponentAnalysis): ScreenReaderFeature[] {
     const features: ScreenReaderFeature[] = [];
     if (analysis.ariaAttributes.has('aria-label')) {
       features.push({
@@ -443,7 +459,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate usage examples
    */
-  private generateExamples(componentName: string, analysis: unknown): AccessibilityExample[] {
+  private generateExamples(componentName: string, analysis: ComponentAnalysis): AccessibilityExample[] {
     const examples: AccessibilityExample[] = [];
     // Good example
     examples.push({
@@ -466,25 +482,31 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate good example code
    */
-  private generateGoodExample(componentName: string, analysis: unknown): string {
+  private generateGoodExample(componentName: string, analysis: ComponentAnalysis): string {
     const hasAriaLabel = analysis.ariaAttributes.has('aria-label');
-    const hasKeyboard = analysis.eventHandlers.has('onKeyDown');
+    const hasKeyboardHandler = analysis.eventHandlers.has('onKeyDown');
     const hasButton = analysis.htmlElements.has('button');
+    const labelAttribute = hasAriaLabel
+      ? '  aria-label="Descriptive button label"'
+      : '  aria-labelledby="component-label"';
+    const keyboardSupportLine = hasKeyboardHandler
+      ? '  onKeyDown={handleKeyDown}'
+      : '  onKeyDown={handleKeyDown} // Added to ensure keyboard support';
     if (hasButton) {
       return `<${componentName}
-  aria-label="Descriptive button label"
+${labelAttribute}
   onClick={handleClick}
-  onKeyDown={handleKeyDown}
+${keyboardSupportLine}
   disabled={isDisabled}
 >
 </${componentName}>`;
     }
     return `<${componentName}
-  aria-label="Descriptive label"
+${labelAttribute}
   role="button"
   tabIndex={0}
   onClick={handleClick}
-  onKeyDown={handleKeyDown}
+${keyboardSupportLine}
 >
 </${componentName}>`;
   }
@@ -501,7 +523,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate accessibility guidelines
    */
-  private generateGuidelines(componentName: string, analysis: unknown): string[] {
+  private generateGuidelines(componentName: string, analysis: ComponentAnalysis): string[] {
     const guidelines: string[] = [];
     guidelines.push('Always provide meaningful labels for interactive elements');
     guidelines.push('Ensure keyboard accessibility for all interactive features');
@@ -519,7 +541,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Identify common accessibility issues
    */
-  private identifyCommonIssues(componentName: string, analysis: unknown): AccessibilityIssue[] {
+  private identifyCommonIssues(componentName: string, analysis: ComponentAnalysis): AccessibilityIssue[] {
     const issues: AccessibilityIssue[] = [];
     // Generic issues
     issues.push({
@@ -547,7 +569,7 @@ export class AccessibilityDocumentationGenerator {
   /**
    * Generate testing instructions
    */
-  private generateTestingInstructions(componentName: string, analysis: unknown): TestingInstruction[] {
+  private generateTestingInstructions(componentName: string, analysis: ComponentAnalysis): TestingInstruction[] {
     const instructions: TestingInstruction[] = [];
     // Keyboard testing
     instructions.push({

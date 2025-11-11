@@ -257,9 +257,14 @@ export class AriaManager {
 // React hooks for accessibility
 export function useAriaLiveRegion(options: AriaLiveRegionOptions = {}) {
   const [regionId, setRegionId] = React.useState<string | null>(null);
+  const optionsRef = React.useRef(options);
 
   React.useEffect(() => {
-    const id = AriaManager.createLiveRegion(options);
+    optionsRef.current = options;
+  }, [options]);
+
+  React.useEffect(() => {
+    const id = AriaManager.createLiveRegion(optionsRef.current);
     setRegionId(id);
 
     return () => {
@@ -281,15 +286,16 @@ export function useAriaDescription(description: string, elementRef: React.RefObj
 
   React.useEffect(() => {
     if (elementRef.current && description) {
+      const element = elementRef.current;
       const id = AriaManager.createDescription({
         description,
-        element: elementRef.current
+        element
       });
 
       setDescriptionId(id);
 
       return () => {
-        AriaManager.removeDescription(id, elementRef.current || undefined);
+        AriaManager.removeDescription(id, element || undefined);
       };
     }
   }, [description, elementRef]);

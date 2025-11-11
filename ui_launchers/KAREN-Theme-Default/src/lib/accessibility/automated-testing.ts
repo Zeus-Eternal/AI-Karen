@@ -3,6 +3,8 @@ import * as axe from 'axe-core';
 import { AxeResults, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
 
+type AxeWindow = Window & { axe: typeof axe };
+
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
   rules?: RuleObject;
@@ -238,7 +240,7 @@ export class AutomatedAccessibilityTester {
       });
 
       // Run axe analysis in the page context
-      const runOptions = {
+      const runOptions: RunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
@@ -247,17 +249,21 @@ export class AutomatedAccessibilityTester {
         ...(config.include && { include: config.include }),
         ...(config.exclude && { exclude: config.exclude })
       };
-      
-      const axeResults = await page.evaluate(async (options) => {
-        return await (window as any).axe.run(document, options);
+
+      const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options) => {
+        const axeInstance = (window as AxeWindow).axe;
+        if (!axeInstance) {
+          throw new Error('axe-core is not available in the page context');
+        }
+        return axeInstance.run(document, options);
       }, runOptions);
-      
+
       // Calculate metrics
       const violationsByImpact = {
-        critical: axeResults.violations.filter((v: any) => v.impact === 'critical').length,
-        serious: axeResults.violations.filter((v: any) => v.impact === 'serious').length,
-        moderate: axeResults.violations.filter((v: any) => v.impact === 'moderate').length,
-        minor: axeResults.violations.filter((v: any) => v.impact === 'minor').length
+        critical: axeResults.violations.filter((violation) => violation.impact === 'critical').length,
+        serious: axeResults.violations.filter((violation) => violation.impact === 'serious').length,
+        moderate: axeResults.violations.filter((violation) => violation.impact === 'moderate').length,
+        minor: axeResults.violations.filter((violation) => violation.impact === 'minor').length
       };
       
       const complianceScore = this.calculateComplianceScore(axeResults);
@@ -547,8 +553,8 @@ export class AutomatedAccessibilityTester {
    */
   private generateJUnitReport(results: AccessibilityTestResult[]): string {
     const totalTests = results.length;
-    const failures = results.filter(r => !r.passed).length;
-    const time = results.reduce((sum, r) => sum + 1, 0); // Simplified time calculation
+    const failures = results.filter(result => !result.passed).length;
+    const time = results.reduce((sum, _result) => sum + 1, 0); // Simplified time calculation
     return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="Accessibility Tests" tests="${totalTests}" failures="${failures}" time="${time}">
 ${results.map(result => `

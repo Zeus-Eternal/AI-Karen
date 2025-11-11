@@ -11,6 +11,12 @@ type VendorSelectableStyle = CSSStyleDeclaration & {
   msUserSelect?: string;
 };
 
+const warnInDevelopment = (message: string, error: unknown) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(message, error);
+  }
+};
+
 const applyUserSelect = (style: CSSStyleDeclaration, value: 'auto' | 'none') => {
   const vendorStyle = style as VendorSelectableStyle;
   vendorStyle.userSelect = value;
@@ -39,6 +45,10 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
     selectionRange: null,
     isSelecting: false,
   });
+
+  const logSelectionError = useCallback((message: string, error: unknown) => {
+    warnInDevelopment(message, error);
+  }, []);
 
   // Get current text selection
   const getCurrentSelection = useCallback((): TextSelectionState => {
@@ -82,10 +92,11 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
         }
         return success;
       }
-    } catch (_error) {
+    } catch (error) {
+      logSelectionError('Failed to copy text to clipboard', error);
       return false;
     }
-  }, [onTextCopied]);
+  }, [onTextCopied, logSelectionError]);
   // Copy current selection
   const copySelection = useCallback(async (): Promise<boolean> => {
     const currentSelection = getCurrentSelection();
@@ -218,7 +229,8 @@ export function highlightSelection(className: string = 'highlighted-selection') 
     const span = document.createElement('span');
     span.className = className;
     range.surroundContents(span);
-  } catch (_error) {
+  } catch (error) {
+    warnInDevelopment('Failed to apply highlight to the current selection', error);
     // If surroundContents fails (e.g., range spans multiple elements),
     // we could implement a more complex highlighting solution
   }
