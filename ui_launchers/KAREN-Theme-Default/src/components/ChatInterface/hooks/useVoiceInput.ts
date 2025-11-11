@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 interface UseVoiceInputOptions {
   enabled: boolean;
@@ -15,14 +15,12 @@ export const useVoiceInput = ({
   startRecording,
   stopRecording,
 }: UseVoiceInputOptions) => {
-  const [isSupported, setIsSupported] = useState(false);
-
-  useEffect(() => {
+  const isSupported = useMemo(() => {
     if (!enabled) {
-      setIsSupported(false);
-      return;
+      return false;
     }
-    setIsSupported(typeof navigator !== "undefined" && !!navigator.mediaDevices);
+
+    return typeof navigator !== "undefined" && Boolean(navigator.mediaDevices);
   }, [enabled]);
 
   const handleVoiceStart = useCallback(async () => {

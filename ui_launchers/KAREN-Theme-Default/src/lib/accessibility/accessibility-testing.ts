@@ -121,7 +121,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private options: RunOptions;
 
   constructor(
-    container: ElementContext = document,
+    container: Document | Element = document,
     options: RunOptions = {}
   ) {
     this.container = this.resolveContainer(container);
@@ -173,7 +173,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -189,7 +189,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: {
           type: "tag",
