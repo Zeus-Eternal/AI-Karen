@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -24,13 +24,20 @@ type LogLevelOption = FormValues["logLevel"];
 const LOG_LEVELS: LogLevelOption[] = ["info", "debug", "error"];
 
 export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormValues) => void }) {
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { refreshInterval: 5, enableLogs: false, logLevel: "info", endpoint: "http://localhost" },
   });
 
   const { toast } = useToast();
-  const refresh = watch("refreshInterval");
+  const refresh = useWatch({ control, name: "refreshInterval" }) ?? 5;
+  const logLevel = useWatch({ control, name: "logLevel" }) ?? "info";
 
   const submit = handleSubmit((vals) => {
     vals.endpoint = sanitizeInput(vals.endpoint);
@@ -50,7 +57,12 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
         <CardContent className="space-y-4 text-sm md:text-base lg:text-lg">
           <div className="space-y-1">
             <label className="text-sm font-medium md:text-base lg:text-lg">Refresh Interval ({refresh}m)</label>
-            <Slider min={1} max={60} value={[refresh]} onValueChange={(v) => setValue("refreshInterval", v[0])} />
+            <Slider
+              min={1}
+              max={60}
+              value={[refresh]}
+              onValueChange={(v) => setValue("refreshInterval", v[0])}
+            />
             {errors.refreshInterval && <p className="text-xs text-destructive sm:text-sm md:text-base">Invalid interval</p>}
           </div>
           <div className="flex items-center justify-between">
@@ -60,7 +72,7 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
           <div className="space-y-1">
             <label className="text-sm font-medium md:text-base lg:text-lg">Log Level</label>
             <Select
-              value={watch("logLevel")}
+              value={logLevel}
               onValueChange={(val) => {
                 if (isLogLevel(val)) {
                   setValue("logLevel", val);
