@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -20,7 +20,6 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Globe,
   HardDrive,
   Network,
   Package,
@@ -195,11 +194,32 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState("overview");
 
   // Mock logs (replace with real source/wire to store later)
-  const [mockLogs] = useState<LogEntryT[]>([
-    { id: "1", timestamp: new Date(Date.now() - 300000), level: "info", message: "Plugin initialized successfully" },
-    { id: "2", timestamp: new Date(Date.now() - 600000), level: "debug", message: "Loading configuration from manifest" },
-    { id: "3", timestamp: new Date(Date.now() - 900000), level: "warn", message: "API rate limit approaching (80% of quota used)" },
-    { id: "4", timestamp: new Date(Date.now() - 1200000), level: "error", message: "Authentication failed: Token expired" },
+  const logBaseTimeRef = useRef(Date.now());
+  const [mockLogs] = useState<LogEntryT[]>(() => [
+    {
+      id: "1",
+      timestamp: new Date(logBaseTimeRef.current - 300000),
+      level: "info",
+      message: "Plugin initialized successfully",
+    },
+    {
+      id: "2",
+      timestamp: new Date(logBaseTimeRef.current - 600000),
+      level: "debug",
+      message: "Loading configuration from manifest",
+    },
+    {
+      id: "3",
+      timestamp: new Date(logBaseTimeRef.current - 900000),
+      level: "warn",
+      message: "API rate limit approaching (80% of quota used)",
+    },
+    {
+      id: "4",
+      timestamp: new Date(logBaseTimeRef.current - 1200000),
+      level: "error",
+      message: "Authentication failed: Token expired",
+    },
   ]);
 
   // Store selectors (assumes selector factory pattern per your store)
