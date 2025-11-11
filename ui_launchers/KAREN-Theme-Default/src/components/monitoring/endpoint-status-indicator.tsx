@@ -48,30 +48,48 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
-  const [lastUpdate, setLastUpdate] = useState<string>("");
-  const [recentErrors, setRecentErrors] = useState<number>(0);
+  type HealthMonitor = ReturnType<typeof getHealthMonitor>;
+  type DiagnosticLogger = ReturnType<typeof getDiagnosticLogger>;
 
-  useEffect(() => {
-    // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
-
-    if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      setMetrics(null);
-      setIsMonitoring(false);
-      return;
-    }
-
-    // Initial snapshot
+  const healthMonitorRef = React.useRef<HealthMonitor | null>(null);
+  if (!healthMonitorRef.current) {
     try {
-      const initial = healthMonitor.getMetrics();
-      setMetrics(initial);
-      setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
+      healthMonitorRef.current = getHealthMonitor?.() ?? null;
+    } catch {
+      healthMonitorRef.current = null;
+    }
+  }
 
-      // Count recent errors (last 5 minutes)
+  const diagnosticLoggerRef = React.useRef<DiagnosticLogger | null>(null);
+  if (!diagnosticLoggerRef.current) {
+    try {
+      diagnosticLoggerRef.current = getDiagnosticLogger?.() ?? null;
+    } catch {
+      diagnosticLoggerRef.current = null;
+    }
+  }
+
+  const healthMonitor = healthMonitorRef.current;
+  const diagnosticLogger = diagnosticLoggerRef.current;
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    try {
+      return healthMonitor?.getMetrics?.() ?? null;
+    } catch {
+      return null;
+    }
+  });
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(() => {
+    try {
+      return !!healthMonitor?.getStatus?.().isMonitoring;
+    } catch {
+      return false;
+    }
+  });
+  const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [recentErrors, setRecentErrors] = useState<number>(() => {
+    try {
+      if (!diagnosticLogger) return 0;
       const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
       const errorLogs =
         diagnosticLogger
@@ -81,16 +99,22 @@ export function EndpointStatusIndicator({
               log?.level === "error" &&
               new Date(log?.timestamp).getTime() > fiveMinutesAgo
           ) ?? [];
-      setRecentErrors(errorLogs.length);
+      return errorLogs.length;
     } catch {
-      // ignore snapshot failures; live updates will still wire in
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    if (!healthMonitor || !diagnosticLogger) {
+      return;
     }
 
-    // Live subscriptions
     const unsubscribeMetrics =
       healthMonitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
+        setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
       }) ?? (() => {});
 
     const unsubscribeLogs =
@@ -112,7 +136,20 @@ export function EndpointStatusIndicator({
         // noop
       }
     };
-  }, []);
+  }, [healthMonitor, diagnosticLogger]);
+
+  useEffect(() => {
+    if (!healthMonitor) {
+      return;
+    }
+
+    if (!healthMonitor.getStatus?.().isMonitoring) {
+      healthMonitor.start?.();
+      void Promise.resolve().then(() => {
+        setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
+      });
+    }
+  }, [healthMonitor]);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";

@@ -146,7 +146,7 @@ const ExtensionMonitoringDashboardInner: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(30_000); // 30s
+  const refreshInterval = 30_000; // 30s
 
   const fetchDashboardData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);

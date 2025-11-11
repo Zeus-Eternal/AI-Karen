@@ -92,6 +92,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
+  const [timeReference, setTimeReference] = useState(() => Date.now());
 
   useEffect(() => {
     const updateData = () => {
@@ -118,6 +119,10 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     };
   }, [refreshInterval, showCapacityPlanning]);
 
+  useEffect(() => {
+    void Promise.resolve().then(() => setTimeReference(Date.now()));
+  }, [historicalMetrics, selectedTimeframe]);
+
   const filteredHistoricalData = useMemo(() => {
     const timeRanges = {
       "1h": 60 * 60 * 1000,
@@ -126,7 +131,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = Date.now() - timeRanges[selectedTimeframe];
+    const cutoff = timeReference - timeRanges[selectedTimeframe];
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({
@@ -137,7 +142,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [historicalMetrics, selectedTimeframe]);
+  }, [historicalMetrics, selectedTimeframe, timeReference]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);

@@ -242,7 +242,9 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     useEffect(() => {
       const activeItem = findActiveItem(items, pathname || '/');
       if (activeItem?.parent) {
-        setExpandedItems((prev) => new Set([...prev, activeItem.parent!]));
+        void Promise.resolve().then(() => {
+          setExpandedItems((prev) => new Set([...prev, activeItem.parent!]));
+        });
       }
     }, [pathname, items]);
 
@@ -251,7 +253,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       if (autoFocus && navRef.current) {
         navRef.current.focus();
       }
-    }, [autoFocus]);
+    }, [autoFocus, navRef]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {

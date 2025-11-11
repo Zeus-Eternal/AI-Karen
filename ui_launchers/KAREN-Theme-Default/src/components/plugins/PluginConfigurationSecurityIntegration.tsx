@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { ArrowLeft, Store, Shield, Info, FileText } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +84,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
   const [configurationDirty, setConfigurationDirty] = useState(false);
   const [securityDirty, setSecurityDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const validationRules = useMemo(
@@ -108,7 +106,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
   };
 
   const handleSaveConfiguration = async (config: PluginConfig) => {
-    setSaving(true);
     setStatusMessage(null);
     try {
       await onSaveConfiguration(config);
@@ -119,12 +116,10 @@ const PluginConfigurationSecurityIntegration: React.FC<
       console.error(error);
       setStatusMessage("Failed to save configuration.");
     } finally {
-      setSaving(false);
     }
   };
 
   const handleSaveSecurity = async (policy: SecurityPolicy) => {
-    setSaving(true);
     setStatusMessage(null);
     try {
       await onUpdateSecurity(policy);
@@ -135,7 +130,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
       console.error(error);
       setStatusMessage("Failed to update security policy.");
     } finally {
-      setSaving(false);
     }
   };
 
