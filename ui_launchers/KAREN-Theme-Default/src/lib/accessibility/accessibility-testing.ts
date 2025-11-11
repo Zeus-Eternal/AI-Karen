@@ -134,6 +134,22 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     };
   }
 
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === "string") {
+      return error;
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
@@ -143,8 +159,10 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       });
 
       return this.processAxeResults(results, performance.now() - startTime);
-    } catch (error) {
-      throw new Error(`Basic accessibility test failed: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(
+        `Basic accessibility test failed: ${this.getErrorMessage(error)}`
+      );
     }
   }
 
@@ -160,9 +178,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       });
 
       return this.processAxeResults(results, performance.now() - startTime);
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(
-        `Comprehensive accessibility test failed: ${error.message}`
+        `Comprehensive accessibility test failed: ${this.getErrorMessage(error)}`
       );
     }
   }

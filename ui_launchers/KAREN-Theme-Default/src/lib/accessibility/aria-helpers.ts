@@ -270,7 +270,7 @@ export function useAriaLiveRegion(options: AriaLiveRegionOptions = {}) {
     return () => {
       AriaManager.removeLiveRegion(id);
     };
-  }, []);
+  }, [options]);
 
   const announce = React.useCallback((message: string, priority?: 'polite' | 'assertive') => {
     if (regionId) {
@@ -285,19 +285,21 @@ export function useAriaDescription(description: string, elementRef: React.RefObj
   const [descriptionId, setDescriptionId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (elementRef.current && description) {
-      const element = elementRef.current;
-      const id = AriaManager.createDescription({
-        description,
-        element
-      });
-
-      setDescriptionId(id);
-
-      return () => {
-        AriaManager.removeDescription(id, element || undefined);
-      };
+    const element = elementRef.current;
+    if (!element || !description) {
+      return;
     }
+
+    const id = AriaManager.createDescription({
+      description,
+      element
+    });
+
+    setDescriptionId(id);
+
+    return () => {
+      AriaManager.removeDescription(id, element);
+    };
   }, [description, elementRef]);
 
   return descriptionId;
