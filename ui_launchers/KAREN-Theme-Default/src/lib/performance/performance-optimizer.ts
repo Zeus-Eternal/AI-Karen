@@ -103,6 +103,7 @@ function headersToObject(headers: HeaderLike): Record<string, string> {
     }
     return normalized;
   }
+
   if (headers instanceof Headers) {
     const normalized: Record<string, string> = {};
     headers.forEach((v, k) => {

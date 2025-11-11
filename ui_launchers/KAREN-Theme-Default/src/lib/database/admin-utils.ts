@@ -321,6 +321,72 @@ interface BlockedIpRecord {
   expires_at?: Date | null;
 }
 
+interface AuditLogRecord {
+  id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  details?: unknown;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  timestamp: string | Date;
+  user_email?: string | null;
+  user_full_name?: string | null;
+}
+
+interface SystemConfigRow {
+  id: string;
+  key: string;
+  value: string;
+  value_type: unknown;
+  category: unknown;
+  description?: string | null;
+  updated_by: string;
+  updated_at: string | Date;
+  created_at: string | Date;
+  updated_by_email?: string | null;
+  updated_by_name?: string | null;
+}
+
+const SYSTEM_CONFIG_VALUE_TYPES: ReadonlyArray<SystemConfig["value_type"]> = [
+  "string",
+  "number",
+  "boolean",
+  "json",
+];
+
+const SYSTEM_CONFIG_CATEGORIES: ReadonlyArray<SystemConfig["category"]> = [
+  "security",
+  "email",
+  "general",
+  "authentication",
+];
+
+function normalizeSystemConfigValueType(
+  value: unknown
+): SystemConfig["value_type"] {
+  if (typeof value === "string") {
+    const lower = value.toLowerCase() as SystemConfig["value_type"];
+    if (SYSTEM_CONFIG_VALUE_TYPES.includes(lower)) {
+      return lower;
+    }
+  }
+
+  return "string";
+}
+
+function normalizeSystemConfigCategory(value: unknown): SystemConfig["category"] {
+  if (typeof value === "string") {
+    const lower = value.toLowerCase() as SystemConfig["category"];
+    if (SYSTEM_CONFIG_CATEGORIES.includes(lower)) {
+      return lower;
+    }
+  }
+
+  return "general";
+}
+
 export interface BlockedIpEntry {
   id: string;
   ipAddress: string;
@@ -1514,7 +1580,10 @@ export class AdminDatabaseUtils {
   /**
    * Parse configuration value based on type
    */
-  private parseConfigValue(value: string, type: string): string | number | boolean {
+  private parseConfigValue(
+    value: string,
+    type: SystemConfig["value_type"] | "object"
+  ): string | number | boolean {
     if (value === null || value === undefined) {
       return value;
     }
