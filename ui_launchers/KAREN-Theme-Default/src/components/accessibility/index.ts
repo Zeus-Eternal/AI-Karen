@@ -5,7 +5,8 @@
  */
 
 // Components
-export { AccessibilityEnhancementsProvider, useAccessibilityEnhancements } from './AccessibilityProvider';
+export { AccessibilityEnhancementsProvider } from './AccessibilityProvider';
+export { useAccessibilityEnhancements } from './AccessibilityEnhancementsContext';
 export { default as SkipLinks } from './SkipLinks';
 export { default as LiveRegion, useLiveRegion } from './LiveRegion';
 export { AccessibilitySettings } from './AccessibilitySettings';

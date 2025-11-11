@@ -5,8 +5,18 @@
  */
 
 import { logger } from './logger';
-import { handleExtensionError, type ExtensionErrorResponse } from './extension-error-integration';
+import {
+  handleExtensionError,
+  type ExtensionErrorIntegration,
+  type ExtensionErrorResponse,
+} from './extension-error-integration';
 import { getExtensionFallbackData } from './auth/extension-auth-degradation';
+
+declare global {
+  interface Window {
+    extensionErrorIntegration?: ExtensionErrorIntegration;
+  }
+}
 
 /**
  * Test extension error recovery functionality

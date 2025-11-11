@@ -96,7 +96,6 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
   const [auditResults, setAuditResults] = useState<AccessibilityAuditResult[]>([]);
   const [metrics, setMetrics] = useState<AccessibilityMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPage, setSelectedPage] = useState<string>('');
   const [auditInProgress, setAuditInProgress] = useState(false);
   // Load audit data
   useEffect(() => {
@@ -150,6 +149,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
       ];
       setAuditResults(mockResults);
     } catch (error) {
+      console.error('Failed to load accessibility audit data', error);
     } finally {
       setIsLoading(false);
     }
@@ -161,17 +161,52 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
       await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate audit time
       await loadAuditData();
     } catch (error) {
+      console.error('Failed to run full accessibility audit', error);
     } finally {
       setAuditInProgress(false);
     }
   };
+  const recommendations = useMemo<AuditRecommendation[]>(() => {
+    if (!metrics) {
+      return [];
+    }
+
+    const recommendationList: AuditRecommendation[] = [];
+
+    if (metrics.complianceScore.wcag2aa < 90) {
+      recommendationList.push({
+        priority: 'high',
+        category: 'WCAG 2.1 AA Compliance',
+        description: 'Focus on improving WCAG 2.1 AA compliance score',
+        actions: [
+          'Review and fix color contrast issues',
+          'Ensure all form elements have proper labels',
+          'Implement proper heading hierarchy'
+        ]
+      });
+    }
+
+    if (metrics.topViolations.some((violation) => violation.impact === 'critical')) {
+      recommendationList.push({
+        priority: 'critical',
+        category: 'Critical Issues',
+        description: 'Address critical accessibility violations immediately',
+        actions: metrics.topViolations
+          .filter((violation) => violation.impact === 'critical')
+          .map((violation) => `Fix: ${violation.description}`)
+      });
+    }
+
+    return recommendationList;
+  }, [metrics]);
+
   const exportAuditReport = () => {
     if (!metrics) return;
     const report = {
       generatedAt: new Date().toISOString(),
       metrics,
       auditResults,
-      recommendations: generateRecommendations()
+      recommendations
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -183,46 +218,21 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-    const generateRecommendations = (): AuditRecommendation[] => {
-      if (!metrics) return [];
-      const recommendations: AuditRecommendation[] = [];
-    if (metrics.complianceScore.wcag2aa < 90) {
-      recommendations.push({
-        priority: 'high',
-        category: 'WCAG 2.1 AA Compliance',
-        description: 'Focus on improving WCAG 2.1 AA compliance score',
-        actions: [
-          'Review and fix color contrast issues',
-          'Ensure all form elements have proper labels',
-          'Implement proper heading hierarchy'
-        ]
-      });
+
+  const getImpactColor = (impact: AccessibilityViolation['impact']) => {
+    switch (impact) {
+      case 'critical':
+      case 'serious':
+        return 'destructive';
+      case 'moderate':
+        return 'secondary';
+      case 'minor':
+      default:
+        return 'outline';
     }
-    if (metrics.topViolations.some(v => v.impact === 'critical')) {
-      recommendations.push({
-        priority: 'critical',
-        category: 'Critical Issues',
-        description: 'Address critical accessibility violations immediately',
-        actions: metrics.topViolations
-          .filter(v => v.impact === 'critical')
-          .map(v => `Fix: ${v.description}`)
-      });
-    }
-    return recommendations;
   };
-    const getImpactColor = (impact: AccessibilityViolation["impact"]) => {
-      switch (impact) {
-        case 'critical':
-        case 'serious':
-          return 'destructive';
-        case 'moderate':
-          return 'secondary';
-        case 'minor':
-        default:
-          return 'outline';
-      }
-    };
-    const getComplianceColor = (score: number) => {
+
+  const getComplianceColor = (score: number) => {
     if (score >= 95) return 'text-green-600';
     if (score >= 85) return 'text-yellow-600';
     return 'text-red-600';
@@ -272,6 +282,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
           </Button>
           <Button onClick={exportAuditReport} variant="outline" >
             <Download className="h-4 w-4 mr-2 " />
+            Export Report
           </Button>
         </div>
       </div>
@@ -443,7 +454,7 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
             <CardContent>
               <ScrollArea className="h-96">
                 <div className="space-y-4">
-                  {metrics.topViolations.map((violation, index) => (
+                  {metrics.topViolations.map((violation) => (
                     <div key={violation.ruleId} className="flex items-start gap-4 p-4 border rounded-lg sm:p-4 md:p-6">
                       <div className="flex-shrink-0">
                         <Badge variant={getImpactColor(violation.impact)}>
@@ -491,8 +502,8 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
         </TabsContent>
         <TabsContent value="recommendations" className="space-y-4">
           <div className="space-y-4">
-            {generateRecommendations().map((rec, index) => (
-              <Alert key={index}>
+            {recommendations.map((rec) => (
+              <Alert key={`${rec.category}-${rec.priority}`}>
                 <AlertTriangle className="h-4 w-4 " />
                 <AlertTitle className="flex items-center gap-2">
                   {rec.category}
@@ -503,8 +514,8 @@ export function AccessibilityAuditDashboard({ className }: AccessibilityAuditDas
                 <AlertDescription>
                   <p className="mb-2">{rec.description}</p>
                   <ul className="list-disc list-inside space-y-1 text-sm md:text-base lg:text-lg">
-                    {rec.actions.map((action, actionIndex) => (
-                      <li key={actionIndex}>{action}</li>
+                    {rec.actions.map((action) => (
+                      <li key={action}>{action}</li>
                     ))}
                   </ul>
                 </AlertDescription>
