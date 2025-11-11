@@ -160,8 +160,24 @@ export const AccessibilityTestConfigs = {
 export class AutomatedAccessibilityTester {
   private baselineResults: Map<string, AccessibilityTestResult> = new Map();
   private testHistory: AccessibilityTestResult[] = [];
-  
+
   constructor(private defaultConfig: AccessibilityTestConfig = AccessibilityTestConfigs.wcag2aa) {}
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
 
   /**
    * Run accessibility test on a DOM element or document
@@ -221,8 +237,8 @@ export class AutomatedAccessibilityTester {
       // Store in history
       this.testHistory.push(result);
       return result;
-    } catch (error) {
-      throw new Error(`Accessibility test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: unknown) {
+      throw new Error(`Accessibility test failed: ${this.getErrorMessage(error)}`);
     }
   }
 
@@ -250,7 +266,7 @@ export class AutomatedAccessibilityTester {
         ...(config.exclude && { exclude: config.exclude })
       };
 
-      const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options) => {
+      const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options: RunOptions) => {
         const axeInstance = (window as AxeWindow).axe;
         if (!axeInstance) {
           throw new Error('axe-core is not available in the page context');
@@ -288,8 +304,8 @@ export class AutomatedAccessibilityTester {
       // Store in history
       this.testHistory.push(result);
       return result;
-    } catch (error) {
-      throw new Error(`Page accessibility test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: unknown) {
+      throw new Error(`Page accessibility test failed: ${this.getErrorMessage(error)}`);
     }
   }
   
@@ -312,10 +328,10 @@ export class AutomatedAccessibilityTester {
           this.baselineResults.set(result.url, result);
         });
       }
-    } catch (error) {
-      throw new Error(`Failed to load baseline: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } catch (error: unknown) {
+        throw new Error(`Failed to load baseline: ${this.getErrorMessage(error)}`);
+      }
     }
-  }
 
   /**
    * Save baseline results to storage
@@ -333,8 +349,8 @@ export class AutomatedAccessibilityTester {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      throw new Error(`Could not save baseline: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (error: unknown) {
+      throw new Error(`Could not save baseline: ${this.getErrorMessage(error)}`);
     }
   }
 
