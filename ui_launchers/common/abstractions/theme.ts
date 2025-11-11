@@ -1,5 +1,5 @@
 // Theme system for shared UI components
-// Provides consistent theming across React, Streamlit, and Tauri
+// Provides consistent theming across React and Tauri
 
 import { Theme, ThemeColors, ThemeSpacing, ThemeTypography } from './types';
 import { IThemeManager } from './interfaces';
@@ -285,103 +285,6 @@ export class ThemeManager implements IThemeManager {
         }
       }
     };
-  }
-
-  generateStreamlitCSS(theme: Theme): string {
-    return `
-      <style>
-      .stApp {
-        background-color: ${theme.colors.background};
-        color: ${theme.colors.text};
-      }
-      
-      .stChatMessage {
-        background-color: ${theme.colors.surface};
-        border: 1px solid ${theme.colors.border};
-        border-radius: ${theme.borderRadius};
-        padding: ${theme.spacing.md};
-        margin: ${theme.spacing.sm} 0;
-      }
-      
-      .stChatMessage[data-testid="user-message"] {
-        background-color: ${theme.colors.primary};
-        color: white;
-      }
-      
-      .stTextInput > div > div > input {
-        background-color: ${theme.colors.surface};
-        color: ${theme.colors.text};
-        border: 1px solid ${theme.colors.border};
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stButton > button {
-        background-color: ${theme.colors.primary};
-        color: white;
-        border: none;
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stSelectbox > div > div {
-        background-color: ${theme.colors.surface};
-        border: 1px solid ${theme.colors.border};
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stSlider > div > div > div {
-        background-color: ${theme.colors.primary};
-      }
-      
-      .stCheckbox > label {
-        color: ${theme.colors.text};
-      }
-      
-      .stRadio > label {
-        color: ${theme.colors.text};
-      }
-      
-      .stTextArea > div > div > textarea {
-        background-color: ${theme.colors.surface};
-        color: ${theme.colors.text};
-        border: 1px solid ${theme.colors.border};
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stExpander {
-        background-color: ${theme.colors.surface};
-        border: 1px solid ${theme.colors.border};
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stAlert {
-        border-radius: ${theme.borderRadius};
-      }
-      
-      .stAlert[data-baseweb="notification-positive"] {
-        background-color: color-mix(in srgb, ${theme.colors.success} 10%, transparent);
-        border-color: ${theme.colors.success};
-        color: ${theme.colors.success};
-      }
-      
-      .stAlert[data-baseweb="notification-error"] {
-        background-color: color-mix(in srgb, ${theme.colors.error} 10%, transparent);
-        border-color: ${theme.colors.error};
-        color: ${theme.colors.error};
-      }
-      
-      .stAlert[data-baseweb="notification-warning"] {
-        background-color: color-mix(in srgb, ${theme.colors.warning} 10%, transparent);
-        border-color: ${theme.colors.warning};
-        color: ${theme.colors.warning};
-      }
-      
-      .stAlert[data-baseweb="notification-info"] {
-        background-color: color-mix(in srgb, ${theme.colors.info} 10%, transparent);
-        border-color: ${theme.colors.info};
-        color: ${theme.colors.info};
-      }
-      </style>
-    `;
   }
 
   onThemeChanged(callback: (theme: Theme) => void): void {

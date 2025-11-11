@@ -10,8 +10,8 @@ AI-Karen is a production-ready, modular AI platform designed for enterprise depl
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                              Client Layer                                       │
 ├─────────────────┬─────────────────┬─────────────────┬─────────────────────────┤
-│   Web UI        │  Desktop UI     │  Streamlit UI   │   Mobile/API Clients    │
-│  (Next.js 15)   │   (Tauri 2.5)   │  (Streamlit)    │   (REST/WebSocket)      │
+│   Web UI        │  Desktop UI     │   Mobile/API Clients    │
+│  (Next.js 15)   │   (Tauri 2.5)   │   (REST/WebSocket)      │
 │  Port: 8020     │  Native App     │  Port: 8501     │   Various Platforms     │
 └─────────────────┴─────────────────┴─────────────────┴─────────────────────────┘
                                       │

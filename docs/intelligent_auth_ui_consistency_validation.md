@@ -132,7 +132,7 @@ The intelligent authentication system has been implemented with strict adherence
 ### 8. UI Component Compatibility ✅
 
 **Tested Compatibility:**
-- ✅ Streamlit UI: Standard JSON responses work unchanged
+- ✅ Legacy UI: Standard JSON responses work unchanged
 - ✅ Web UI: React components receive expected data structures
 - ✅ Desktop UI: Tauri integration maintains compatibility
 - ✅ API clients: All existing integrations continue working

@@ -45,13 +45,6 @@
         "icon": "👁️",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Image Analytics",
-        "module": "ui.image_analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   

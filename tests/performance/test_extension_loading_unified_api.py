@@ -56,8 +56,7 @@ def create_test_extension_manifest(name: str, endpoints: list = None, permission
             "enforcement_action": "default"
         },
         "ui": {
-            "control_room_pages": [],
-            "streamlit_pages": []
+            "control_room_pages": []
         },
         "api": {
             "endpoints": endpoints or []

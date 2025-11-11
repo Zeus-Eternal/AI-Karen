@@ -23,7 +23,7 @@ Fix **4 critical blocking issues** in `src/ai_karen_engine/core/` that prevent p
 | **Blocking Issues** | 4 | **0** | ✅ |
 | **Critical Issues** | 3 | **0** | ✅ |
 | **Code Compilation** | ❌ Failed | ✅ Pass | ✅ |
-| **Streamlit Dependencies** | ❌ Present | ✅ Removed | ✅ |
+| **Legacy UI Dependencies** | ❌ Present | ✅ Removed | ✅ |
 | **Deprecated Code** | ❌ Present | ✅ Cleaned | ✅ |
 
 ---
@@ -135,10 +135,10 @@ async def startup():
 
 ## 🧹 Additional Improvements (From Previous PR)
 
-### **Streamlit UI Removal**
+### **Legacy UI Removal**
 - ✅ Removed entire `src/ui_logic/` directory (173 files)
-- ✅ Removed all Streamlit references from core code
-- ✅ Updated extension system (removed `streamlit_pages`)
+- ✅ Removed outdated UI framework references from core code
+- ✅ Updated extension system configuration fields
 - ✅ Cleaned up API routes and configuration
 
 ### **Deprecated Code Cleanup**
@@ -393,7 +393,7 @@ pytest tests/e2e/smoke_tests.py --env staging
 - ❌ Critical syntax errors
 - ❌ Import errors
 - ❌ Race conditions
-- ❌ Streamlit dependencies
+- ❌ Legacy UI dependencies
 - ❌ Deprecated code
 - **Score: 35/100**
 
@@ -402,7 +402,7 @@ pytest tests/e2e/smoke_tests.py --env staging
 - ✅ No syntax errors
 - ✅ No import errors
 - ✅ Race conditions eliminated
-- ✅ Clean architecture (Streamlit removed)
+- ✅ Clean architecture (legacy UI removed)
 - ✅ Deprecated code removed
 - ✅ Comprehensive documentation
 - ⚠️ Requires explicit initialization (breaking change)
@@ -416,7 +416,7 @@ pytest tests/e2e/smoke_tests.py --env staging
 | Import System | ✅ Pass | No import errors |
 | Type System | ✅ Pass | Type hints corrected |
 | Initialization | ⚠️ Breaking | Requires migration |
-| Architecture | ✅ Clean | Streamlit removed |
+| Architecture | ✅ Clean | Legacy UI references removed |
 | Documentation | ✅ Complete | 5 documents added |
 | Tests | 🔄 Pending | Need validation |
 
@@ -460,7 +460,7 @@ This PR fixes **4 critical blocking issues** that prevented production deploymen
 ✅ Removed auto-initialization race conditions
 
 ### **Modernization:**
-✅ Removed entire Streamlit UI (173 files)
+✅ Removed entire legacy UI implementation (173 files)
 ✅ Cleaned deprecated auth backups (72 files)
 ✅ Removed example files
 ✅ Improved code organization

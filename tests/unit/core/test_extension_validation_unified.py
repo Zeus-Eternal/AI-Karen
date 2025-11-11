@@ -54,8 +54,7 @@ def create_test_manifest(overrides: Dict[str, Any] = None) -> Dict[str, Any]:
             "enforcement_action": "default"
         },
         "ui": {
-            "control_room_pages": [],
-            "streamlit_pages": []
+            "control_room_pages": []
         },
         "api": {
             "endpoints": []

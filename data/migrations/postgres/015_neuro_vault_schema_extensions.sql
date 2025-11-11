@@ -130,7 +130,7 @@ CHECK (memory_type IN ('general', 'fact', 'preference', 'context', 'conversation
 
 ALTER TABLE memory_items 
 ADD CONSTRAINT IF NOT EXISTS chk_ui_source 
-CHECK (ui_source IN ('web', 'streamlit', 'desktop', 'api', 'ag_ui'));
+CHECK (ui_source IN ('web', 'desktop', 'api', 'ag_ui'));
 
 -- ============================================================================
 -- 5. Create helper functions for NeuroVault operations

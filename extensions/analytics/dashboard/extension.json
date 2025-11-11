@@ -45,13 +45,6 @@
         "icon": "📊",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Reports",
-        "module": "ui.reports",
-        "permissions": ["admin"]
-      }
     ]
   },
   

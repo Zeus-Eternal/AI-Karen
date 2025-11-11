@@ -1,17 +1,23 @@
-try:
-    import streamlit as st
-except ModuleNotFoundError:  # pragma: no cover - fallback for non-UI environments
-    class _DummyStreamlit:
-        """Minimal stub for Streamlit when the package is unavailable."""
+"""Role-based access helpers for UI launchers without framework dependencies."""
 
-        def __init__(self) -> None:
-            self.session_state = {}
+from __future__ import annotations
 
-        def error(self, *args, **kwargs) -> None:  # noqa: D401
-            """Placeholder for ``st.error`` used in tests."""
+from typing import Any, Callable, Dict
 
-    st = _DummyStreamlit()
-from typing import Callable, Any
+
+class _UIContext:
+    """Minimal context object that mimics the subset of UI helpers used in tests."""
+
+    def __init__(self) -> None:
+        self.session_state: Dict[str, Any] = {}
+
+    def error(self, *_: Any, **__: Any) -> None:
+        """Placeholder error handler for non-interactive environments."""
+        return None
+
+
+st = _UIContext()
+
 
 def has_role(role: str) -> bool:
     """Return True if the current user has ``role``."""
@@ -32,3 +38,5 @@ def require_role(role: str) -> Callable[[Callable[..., Any]], Callable[..., Any]
 
     return decorator
 
+
+__all__ = ["has_role", "require_role", "st"]

@@ -1,4 +1,4 @@
-// Framework adapters for React, Streamlit, and Tauri
+// Framework adapters for React and Tauri
 // These adapters implement the framework-agnostic interfaces for each specific framework
 
 import { 
@@ -20,7 +20,7 @@ import { ThemeManager } from './theme';
 
 // Base adapter class with common functionality
 export abstract class BaseFrameworkAdapter implements IFrameworkAdapter {
-  abstract framework: 'react' | 'streamlit' | 'tauri';
+  abstract framework: 'react' | 'tauri';
   
   protected config: ComponentConfig;
   protected themeManager: IThemeManager;
@@ -101,46 +101,6 @@ export class ReactAdapter extends BaseFrameworkAdapter {
   destroyComponent(component: unknown): void {
     // This would integrate with ReactDOM.unmountComponentAtNode in a real implementation
     console.log('Destroying React component', component);
-  }
-}
-
-// Streamlit adapter implementation
-export class StreamlitAdapter extends BaseFrameworkAdapter {
-  framework: 'streamlit' = 'streamlit';
-
-  createChatComponent(containerId: string, options?: unknown): IChatComponent {
-    return new StreamlitChatComponent(containerId, this.config, this.themeManager, options);
-  }
-
-  createSettingsComponent(containerId: string, options?: unknown): ISettingsComponent {
-    return new StreamlitSettingsComponent(containerId, this.config, this.themeManager, options);
-  }
-
-  createPluginComponent(containerId: string, options?: unknown): IPluginComponent {
-    return new StreamlitPluginComponent(containerId, this.config, this.themeManager, options);
-  }
-
-  createMemoryComponent(containerId: string, options?: unknown): IMemoryComponent {
-    return new StreamlitMemoryComponent(containerId, this.config, this.themeManager, options);
-  }
-
-  createAnalyticsComponent(containerId: string, options?: unknown): IAnalyticsComponent {
-    return new StreamlitAnalyticsComponent(containerId, this.config, this.themeManager, options);
-  }
-
-  createElement(type: string, props: Record<string, unknown>, children?: unknown[]): any {
-    // Streamlit doesn't use createElement pattern, return a descriptor
-    return { type: 'streamlit', element: type, props, children };
-  }
-
-  renderComponent(component: unknown, container: string | Element): void {
-    // Streamlit components are rendered through st.* calls
-    console.log('Rendering Streamlit component', component, 'to', container);
-  }
-
-  destroyComponent(component: unknown): void {
-    // Streamlit handles component lifecycle automatically
-    console.log('Streamlit component cleanup', component);
   }
 }
 
@@ -600,133 +560,6 @@ class ReactAnalyticsComponent implements IAnalyticsComponent {
   async exportAnalytics(format: 'csv' | 'json'): Promise<string> { return ''; }
 }
 
-// Streamlit component implementations (simplified placeholders)
-class StreamlitChatComponent implements IChatComponent {
-  id: string;
-  isVisible: boolean = true;
-  isLoading: boolean = false;
-  theme: Theme;
-  state: unknown = { messages: [], isLoading: false, isRecording: false, input: '', settings: {} };
-
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
-    this.id = containerId;
-    this.theme = themeManager.currentTheme;
-  }
-
-  async render(): Promise<void> { console.log('Rendering Streamlit chat component'); }
-  destroy(): void { console.log('Destroying Streamlit chat component'); }
-  updateTheme(theme: Theme): void { this.theme = theme; }
-  async sendMessage(content: string, isVoice?: boolean): Promise<void> { console.log('Sending message:', content); }
-  addMessage(message: unknown): void { this.state.messages.push(message); }
-  clearMessages(): void { this.state.messages = []; }
-  exportMessages(format: 'text' | 'json'): string { return ''; }
-  async startRecording(): Promise<void> { this.state.isRecording = true; }
-  stopRecording(): void { this.state.isRecording = false; }
-  async toggleRecording(): Promise<void> { }
-  onMessageSent(callback: (message: unknown) => void): void { }
-  onMessageReceived(callback: (message: unknown) => void): void { }
-  onRecordingStateChanged(callback: (isRecording: boolean) => void): void { }
-  updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
-  getState(): any { return this.state; }
-}
-
-class StreamlitSettingsComponent implements ISettingsComponent {
-  id: string;
-  isVisible: boolean = true;
-  isLoading: boolean = false;
-  theme: Theme;
-  state: unknown = { settings: {}, isDirty: false, isLoading: false, errors: {} };
-
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
-    this.id = containerId;
-    this.theme = themeManager.currentTheme;
-  }
-
-  async render(): Promise<void> { console.log('Rendering Streamlit settings component'); }
-  destroy(): void { console.log('Destroying Streamlit settings component'); }
-  updateTheme(theme: Theme): void { this.theme = theme; }
-  async loadSettings(): Promise<unknown> { return {}; }
-  async saveSettings(settings: unknown): Promise<void> { }
-  async resetSettings(): Promise<void> { }
-  validateSettings(settings: Partial<any>): Record<string, string> { return {}; }
-  updateSetting(key: string, value: unknown): void { }
-  getSetting(key: string): any { return null; }
-  onSettingChanged(callback: (key: string, value: unknown) => void): void { }
-  onSettingsSaved(callback: (settings: unknown) => void): void { }
-  updateState(newState: Partial<any>): void { this.state = { ...this.state, ...newState }; }
-  getState(): any { return this.state; }
-}
-
-class StreamlitPluginComponent implements IPluginComponent {
-  id: string;
-  isVisible: boolean = true;
-  isLoading: boolean = false;
-  theme: Theme;
-
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
-    this.id = containerId;
-    this.theme = themeManager.currentTheme;
-  }
-
-  async render(): Promise<void> { console.log('Rendering Streamlit plugin component'); }
-  destroy(): void { console.log('Destroying Streamlit plugin component'); }
-  updateTheme(theme: Theme): void { this.theme = theme; }
-  async listPlugins(): Promise<any[]> { return []; }
-  async getPluginInfo(pluginName: string): Promise<unknown> { return null; }
-  async enablePlugin(pluginName: string): Promise<void> { }
-  async disablePlugin(pluginName: string): Promise<void> { }
-  async executePlugin(request: unknown): Promise<unknown> { return { success: true }; }
-  validatePluginParameters(pluginName: string, parameters: Record<string, unknown>): boolean { return true; }
-  onPluginExecuted(callback: (result: unknown) => void): void { }
-  onPluginStateChanged(callback: (pluginName: string, enabled: boolean) => void): void { }
-}
-
-class StreamlitMemoryComponent implements IMemoryComponent {
-  id: string;
-  isVisible: boolean = true;
-  isLoading: boolean = false;
-  theme: Theme;
-
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
-    this.id = containerId;
-    this.theme = themeManager.currentTheme;
-  }
-
-  async render(): Promise<void> { console.log('Rendering Streamlit memory component'); }
-  destroy(): void { console.log('Destroying Streamlit memory component'); }
-  updateTheme(theme: Theme): void { this.theme = theme; }
-  async storeMemory(content: string, metadata: Record<string, unknown>, tags: string[]): Promise<string> { return 'memory-id'; }
-  async queryMemories(query: unknown): Promise<any[]> { return []; }
-  async getMemoryStats(userId: string): Promise<Record<string, unknown>> { return {}; }
-  async deleteMemory(memoryId: string): Promise<void> { }
-  renderMemoryGraph(): void { }
-  renderMemoryTimeline(): void { }
-  onMemoryStored(callback: (memory: unknown) => void): void { }
-  onMemoryQueried(callback: (results: unknown[]) => void): void { }
-}
-
-class StreamlitAnalyticsComponent implements IAnalyticsComponent {
-  id: string;
-  isVisible: boolean = true;
-  isLoading: boolean = false;
-  theme: Theme;
-
-  constructor(containerId: string, config: ComponentConfig, themeManager: IThemeManager, options?: unknown) {
-    this.id = containerId;
-    this.theme = themeManager.currentTheme;
-  }
-
-  async render(): Promise<void> { console.log('Rendering Streamlit analytics component'); }
-  destroy(): void { console.log('Destroying Streamlit analytics component'); }
-  updateTheme(theme: Theme): void { this.theme = theme; }
-  async getMetrics(timeRange?: [Date, Date]): Promise<unknown> { return {}; }
-  async trackEvent(event: Event): Promise<void> { }
-  renderUsageChart(): void { }
-  renderEngagementMetrics(): void { }
-  renderPluginUsage(): void { }
-  async exportAnalytics(format: 'csv' | 'json'): Promise<string> { return ''; }
-}
-
 // Tauri component implementations (simplified placeholders)
 class TauriChatComponent implements IChatComponent {
   id: string;
@@ -856,15 +689,13 @@ class TauriAnalyticsComponent implements IAnalyticsComponent {
 
 // Factory function to create the appropriate adapter
 export function createFrameworkAdapter(
-  framework: 'react' | 'streamlit' | 'tauri',
+  framework: 'react' | 'tauri',
   config: ComponentConfig
 ): IFrameworkAdapter {
   switch (framework) {
     case 'react':
       return new ReactAdapter(config);
-    case 'streamlit':
-      return new StreamlitAdapter(config);
-    case 'tauri':
+        case 'tauri':
       return new TauriAdapter(config);
     default:
       throw new Error(`Unsupported framework: ${framework}`);

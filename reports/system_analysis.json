@@ -12,8 +12,6 @@
     "huggingface_hub": "latest",
     "openai": "latest",
     "requests": "latest",
-    "streamlit": "latest",
-    "streamlit-autorefresh": "latest",
     "llama-cpp-python": "latest",
     "scikit-learn": "1.5.*",
     "spacy": "3.7.*",
@@ -134,7 +132,6 @@
     "backend",
     "common",
     "desktop_ui",
-    "streamlit_ui",
     "web_ui"
   ],
   "database_services": [

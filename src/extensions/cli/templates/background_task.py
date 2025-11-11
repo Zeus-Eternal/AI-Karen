@@ -57,7 +57,6 @@ class BackgroundTaskTemplate(BaseTemplate):
             },
             "ui": {
                 "control_room_pages": [],
-                # "streamlit_pages": [] # Streamlit no longer supported
             },
             "api": {
                 "endpoints": [],

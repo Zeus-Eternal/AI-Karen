@@ -70,7 +70,6 @@ class FullTemplate(BaseTemplate):
                         "permissions": ["admin"]
                     }
                 ],
-                # "streamlit_pages": [] # Streamlit no longer supported
             },
             "api": {
                 "endpoints": [

@@ -45,13 +45,6 @@
         "icon": "⚡",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Workflow Dashboard",
-        "module": "ui.dashboard",
-        "permissions": ["user", "admin"]
-      }
     ]
   },
   

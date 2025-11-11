@@ -45,13 +45,6 @@
         "icon": "🏠",
         "permissions": ["user", "admin"]
       }
-    ],
-    "streamlit_pages": [
-      {
-        "name": "Device Analytics",
-        "module": "ui.device_analytics",
-        "permissions": ["admin"]
-      }
     ]
   },
   

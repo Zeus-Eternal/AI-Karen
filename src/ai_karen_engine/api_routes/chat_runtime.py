@@ -1,6 +1,6 @@
 """
 Chat Runtime API Routes
-Unified chat endpoint for all platforms (Web UI, Streamlit, Desktop)
+Unified chat endpoint for all platforms (Web UI, Desktop)
 """
 
 import asyncio
@@ -9,7 +9,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -237,39 +237,213 @@ def _extract_generation_preferences(
 # Orchestrator dependency
 @lru_cache
 def get_chat_orchestrator() -> ChatOrchestrator:
-    """Return a minimal ChatOrchestrator instance that doesn't hang."""
-    logger.info("Creating minimal ChatOrchestrator for fast startup")
-    
-    # Create a mock orchestrator that responds immediately without heavy initialization
-    class MockChatOrchestrator:
+    """Return a lightweight chat orchestrator that keeps the API responsive."""
+    logger.info("Creating LiteChatOrchestrator for degraded mode support")
+
+    import re
+
+    class LiteChatOrchestrator:
+        """Minimal orchestrator that provides meaningful degraded-mode replies."""
+
+        def __init__(self) -> None:
+            self._restricted_ops = [
+                "long_term_memory_write",
+                "long_term_memory_read",
+                "vector_memory_query",
+            ]
+
         async def process_message(self, request):
-            # Import here to avoid circular dependencies
-            from ai_karen_engine.chat.chat_orchestrator import ChatResponse
-            
-            # Provide a helpful response based on the message content
-            message = getattr(request, 'message', '').lower()
-            
-            if any(word in message for word in ['hello', 'hi', 'hey']):
-                response_text = "Hello! I'm currently in minimal mode while the full AI services initialize. How can I help you?"
-            elif any(word in message for word in ['help', 'what can you do']):
-                response_text = "I'm running in minimal mode right now. The full AI capabilities are initializing in the background. You can ask me questions and I'll do my best to help!"
-            elif any(word in message for word in ['code', 'programming', 'debug']):
-                response_text = "I'd love to help with coding! I'm currently in minimal mode while the full AI services start up. The advanced code analysis features will be available shortly."
-            else:
-                response_text = "I'm currently running in minimal mode while the AI services initialize. I can provide basic assistance, and full capabilities will be available soon!"
-            
+            """Return either a full response or a streaming generator."""
+
+            from ai_karen_engine.chat.chat_orchestrator import (  # Import locally to avoid cycles
+                ChatResponse,
+                ChatStreamChunk,
+            )
+
+            start_time = time.perf_counter()
+            correlation_id = getattr(request, "session_id", str(uuid.uuid4()))
+            message = getattr(request, "message", "")
+
+            response_text, reasoning, extra_metadata = self._generate_response(message)
+
+            base_metadata: Dict[str, Any] = {
+                "fallback_mode": True,
+                "mode": "minimal",
+                "status": "degraded",
+                "message": "AI services are initializing",
+                "notice": (
+                    "Responding with Kari's local lite assistant while full services load. "
+                    "Some advanced features like deep memory search remain temporarily disabled."
+                ),
+                "restricted_operations": list(self._restricted_ops),
+                "capabilities": {
+                    "reasoning": "basic",
+                    "qa": "lightweight",
+                    "tools": "unavailable",
+                },
+                "reasoning_summary": reasoning,
+            }
+            if extra_metadata:
+                base_metadata.update(extra_metadata)
+
+            processing_time = time.perf_counter() - start_time
+            base_metadata.setdefault("local_model", "lite-rule-engine")
+            base_metadata["processing_time"] = processing_time
+            base_metadata["response_length"] = len(response_text)
+
+            if getattr(request, "stream", False):
+                async def _stream_response() -> AsyncGenerator[ChatStreamChunk, None]:
+                    yield ChatStreamChunk(
+                        type="metadata",
+                        content="",
+                        correlation_id=correlation_id,
+                        metadata=base_metadata,
+                    )
+                    for token in self._tokenize_response(response_text):
+                        yield ChatStreamChunk(
+                            type="content",
+                            content=token,
+                            correlation_id=correlation_id,
+                            metadata={},
+                        )
+                    yield ChatStreamChunk(
+                        type="complete",
+                        content="",
+                        correlation_id=correlation_id,
+                        metadata=base_metadata,
+                    )
+
+                return _stream_response()
+
             return ChatResponse(
                 response=response_text,
-                correlation_id=getattr(request, 'session_id', 'minimal-mode'),
-                processing_time=0.001,
-                metadata={
-                    "fallback_mode": True,
-                    "mode": "minimal",
-                    "message": "AI services are initializing"
-                }
+                correlation_id=correlation_id,
+                processing_time=processing_time,
+                used_fallback=True,
+                metadata=base_metadata,
             )
-    
-    return MockChatOrchestrator()
+
+        async def cancel_processing(
+            self, conversation_id: str, correlation_id: Optional[str] = None
+        ) -> List[str]:
+            """No asynchronous processing is queued in lite mode, so nothing to cancel."""
+
+            return []
+
+        def _generate_response(self, message: str) -> Tuple[str, str, Dict[str, Any]]:
+            normalized = (message or "").strip()
+            lower_message = normalized.lower()
+            reasoning_steps: List[str] = []
+
+            if not normalized:
+                reasoning_steps.append("Received empty input; prompting user for clarification.")
+                response = (
+                    "It looks like nothing was sent. I'm in minimal mode while the full AI spins up, "
+                    "but I'm ready to help with questions or small tasks."
+                )
+                return response, "; ".join(reasoning_steps), {}
+
+            if any(greeting in lower_message for greeting in ["hello", "hi", "hey", "good morning", "good evening"]):
+                reasoning_steps.append("Detected greeting and crafted friendly acknowledgement.")
+                response = (
+                    "Hello! Kari's full AI services are still initializing, so I'm operating in minimal mode. "
+                    "I can answer quick questions and keep you posted until everything is ready."
+                )
+                return response, "; ".join(reasoning_steps), {}
+
+            if "what can you do" in lower_message or "help" in lower_message:
+                reasoning_steps.append("User asked about capabilities; summarising degraded-mode abilities.")
+                response = (
+                    "Right now I'm running Kari's lite assistant while the full orchestrator comes online. "
+                    "I can help with quick Q&A, light reasoning, and progress updates. "
+                    "Features such as long-term memory or advanced tool calls are temporarily paused."
+                )
+                return response, "; ".join(reasoning_steps), {}
+
+            if any(keyword in lower_message for keyword in ["code", "debug", "program"]):
+                reasoning_steps.append("Detected coding intent; providing contextual response.")
+                response = (
+                    "I'd love to help with code. The deep analyzers are still waking up, but share your snippet "
+                    "or question and I'll walk through it with lightweight reasoning."
+                )
+                return response, "; ".join(reasoning_steps), {}
+
+            math_answer = self._handle_basic_math(lower_message)
+            if math_answer is not None:
+                reasoning_steps.append("Solved arithmetic expression in minimal mode.")
+                response = (
+                    f"While in minimal mode I can still reason through quick math. The answer is {math_answer}. "
+                    "I'll have deeper analytical tools once the full stack loads."
+                )
+                return response, "; ".join(reasoning_steps), {}
+
+            canned_answer = self._lookup_faq(lower_message)
+            if canned_answer:
+                reasoning_steps.append("Matched question against lite knowledge base.")
+                return canned_answer, "; ".join(reasoning_steps), {}
+
+            reasoning_steps.append("No template matched; generating supportive default message.")
+            response = (
+                "I'm currently running Kari's minimal chat mode. I don't have access to long-term memory or external tools yet, "
+                "but I can still help reason through questions and keep you updated. Let me know what you need!"
+            )
+            return response, "; ".join(reasoning_steps), {}
+
+        def _handle_basic_math(self, lower_message: str) -> Optional[str]:
+            pattern = re.compile(r"(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)")
+            match = pattern.search(lower_message)
+            if not match:
+                return None
+
+            left, operator_symbol, right = match.groups()
+            try:
+                left_val = float(left)
+                right_val = float(right)
+            except ValueError:
+                return None
+
+            if operator_symbol == "/" and right_val == 0:
+                return "undefined (division by zero)"
+
+            operations = {
+                "+": left_val + right_val,
+                "-": left_val - right_val,
+                "*": left_val * right_val,
+                "/": left_val / right_val,
+            }
+
+            result = operations.get(operator_symbol)
+            if result is None:
+                return None
+
+            if isinstance(result, float) and result.is_integer():
+                return str(int(result))
+            return f"{result:.4f}".rstrip("0").rstrip(".")
+
+        def _lookup_faq(self, lower_message: str) -> Optional[str]:
+            faq_responses = {
+                "who are you": (
+                    "I'm Kari's lite assistant. While the full AI services initialize, I'm here to provide quick guidance and "
+                    "basic answers."
+                ),
+                "status": (
+                    "Core services are warming up. Minimal mode is active, so tool usage and deep memory are temporarily disabled."
+                ),
+                "where is my data": (
+                    "Your data remains secure. Minimal mode avoids long-term memory writes until the full stack is verified."
+                ),
+            }
+
+            for key, value in faq_responses.items():
+                if key in lower_message:
+                    return value
+            return None
+
+        def _tokenize_response(self, response: str) -> Iterable[str]:
+            for token in response.split():
+                yield f"{token} "
+
+    return LiteChatOrchestrator()
 
 
 # Chat Runtime Routes

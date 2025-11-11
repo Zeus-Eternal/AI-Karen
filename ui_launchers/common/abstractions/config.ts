@@ -61,11 +61,6 @@ export const REACT_CONFIG: Partial<ComponentConfig> = {
   // React-specific overrides
 };
 
-export const STREAMLIT_CONFIG: Partial<ComponentConfig> = {
-  enableVoice: false, // Streamlit has limited voice support
-  defaultTheme: 'light' // Streamlit themes are more limited
-};
-
 export const TAURI_CONFIG: Partial<ComponentConfig> = {
   // Tauri-specific overrides
   enableAnalytics: true // Desktop app can have more detailed analytics
@@ -73,7 +68,7 @@ export const TAURI_CONFIG: Partial<ComponentConfig> = {
 
 // Configuration factory
 export function createConfig(
-  framework: 'react' | 'streamlit' | 'tauri',
+  framework: 'react' | 'tauri',
   environment: 'development' | 'production' | 'test' = 'production',
   overrides: Partial<ComponentConfig> = {}
 ): ComponentConfig {
@@ -96,9 +91,6 @@ export function createConfig(
   switch (framework) {
     case 'react':
       config = { ...config, ...REACT_CONFIG };
-      break;
-    case 'streamlit':
-      config = { ...config, ...STREAMLIT_CONFIG };
       break;
     case 'tauri':
       config = { ...config, ...TAURI_CONFIG };

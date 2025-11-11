@@ -3,7 +3,7 @@ Kari CORTEX Dispatch Core
 - Central intent/command dispatcher for Kari AI
 - Local-first, plugin/routing/intent aware
 - Handles: prediction, memory, action, plugins, error capture
-- 100% backend: no UI, no Streamlit, no mercy
+- 100% backend: no UI, no distractions, no mercy
 
 ARCHITECTURAL COMPLIANCE:
 - RBAC validation before plugin execution (Phase 2)

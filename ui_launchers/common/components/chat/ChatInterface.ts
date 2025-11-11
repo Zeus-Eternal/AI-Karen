@@ -1,5 +1,5 @@
 // Shared Chat Interface Component
-// Framework-agnostic chat interface that can be adapted for React, Streamlit, and Tauri
+// Framework-agnostic chat interface that can be adapted for React and Tauri
 
 import { 
   IChatComponent, 
@@ -99,7 +99,7 @@ export class SharedChatInterface implements IChatComponent {
   async render(): Promise<void> {
     // This method would be implemented differently for each framework
     // React: JSX rendering
-    // Streamlit: st.* calls
+    // Legacy web launchers can render the resulting payload as needed
     // Tauri: DOM manipulation
     console.log('Rendering shared chat interface');
   }

@@ -28,7 +28,7 @@ Acceptance Criteria:
 
 Dev Notes:
 ----------
-- All onboarding logic must be reusable in both Tauri/React and Streamlit UIs.
+- All onboarding logic must be reusable in both Tauri/React and web UIs.
 - For major onboarding changes, update this doc and attach sample UX flows.
 - See also: `nav_tree_map.txt` for page/modal integration.
 

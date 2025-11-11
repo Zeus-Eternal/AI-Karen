@@ -1,11 +1,9 @@
 from pathlib import Path
 
 
-def test_only_home_references_fetch_announcements():
-    pages_dir = Path(__file__).resolve().parents[1] / "ui_launchers" / "streamlit_ui" / "pages"
-    found = []
-    for py in pages_dir.glob("*.py"):
-        text = py.read_text()
-        if "fetch_announcements" in text:
-            found.append(py.name)
-    assert found == ["home.py"]
+def test_ui_launcher_directories_are_curated():
+    ui_dir = Path(__file__).resolve().parents[1] / "ui_launchers"
+    directories = {p.name for p in ui_dir.iterdir() if p.is_dir()}
+    expected = {"common", "desktop_ui", "web_ui", "admin_ui"}
+    assert directories.issuperset(expected)
+    assert directories == expected
