@@ -27,7 +27,8 @@ const mergeSafeAriaProps = (
   ...props: Array<Partial<AriaProps> | undefined>
 ) => {
   const merged = mergeAriaProps(...props);
-  const { 'aria-relevant': _ariaRelevant, ...safeProps } = merged;
+  const safeProps = { ...merged };
+  delete safeProps['aria-relevant'];
   return safeProps;
 };
 
@@ -315,6 +316,7 @@ AriaFormHelp.displayName = "AriaFormHelp";
 /**
  * FormFieldset - Grouping related form fields
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export interface AriaFormFieldsetProps extends React.FieldsetHTMLAttributes<HTMLFieldSetElement> {
   /** Legend for the fieldset */
   legend?: string;
@@ -363,6 +365,7 @@ AriaFormFieldset.displayName = "AriaFormFieldset";
 /**
  * FormSection - Semantic section for forms
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export interface AriaFormSectionProps extends React.HTMLAttributes<HTMLElement> {
   /** Heading for the section */
   heading?: string;
