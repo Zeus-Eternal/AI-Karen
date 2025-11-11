@@ -17,18 +17,7 @@ const shimmerVariants = {
   }
 };
 
-const pulseVariants = {
-  animate: {
-    opacity: [0.5, 1, 0.5],
-  },
-  transition: {
-    duration: 1.5,
-    repeat: Infinity,
-    ease: 'easeInOut',
-  }
-};
-
-export function Skeleton({ 
+export function Skeleton({
   className,
   width,
   height,

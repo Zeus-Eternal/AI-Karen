@@ -5,48 +5,12 @@ import { Slot } from '@radix-ui/react-slot';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-export type SidebarContextValue = {
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-  toggle: () => void;
-};
-
-const SidebarContext = React.createContext<SidebarContextValue | undefined>(undefined);
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
-  return context;
-}
-
-export interface SidebarProviderProps {
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}
-
-function SidebarProvider({ defaultOpen = true, children }: SidebarProviderProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
-
-  const open = React.useCallback(() => setIsOpen(true), []);
-  const close = React.useCallback(() => setIsOpen(false), []);
-  const toggle = React.useCallback(() => setIsOpen(prev => !prev), []);
-
-  const value = React.useMemo(
-    () => ({
-      isOpen,
-      open,
-      close,
-      toggle,
-    }),
-    [isOpen, open, close, toggle],
-  );
-
-  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
-}
+import {
+  SidebarProvider,
+  useSidebar,
+  type SidebarContextValue,
+  type SidebarProviderProps,
+} from './sidebar-context';
 
 export type SidebarProps = React.ComponentPropsWithoutRef<'aside'> & {
   variant?: 'sidebar' | 'floating';
@@ -284,3 +248,4 @@ export {
   SidebarMenuAction,
   SidebarSeparator,
 };
+export type { SidebarContextValue, SidebarProviderProps } from './sidebar-context';

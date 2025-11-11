@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useScreenReaderAnnouncements } from './screen-reader';
+import { useScreenReaderAnnouncements } from './use-screen-reader-announcements';
 export interface AccessibilityTestResult {
   /** Test name */
   name: string;
