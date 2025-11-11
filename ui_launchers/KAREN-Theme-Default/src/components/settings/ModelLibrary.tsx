@@ -362,7 +362,7 @@ export default function ModelLibrary() {
           try {
             await executeModelAction(modelId, action, modelName);
             setConfirmationDialog(prev => ({ ...prev, open: false }));
-          } catch (_error) {
+          } catch {
             // Error is already handled in executeModelAction
           } finally {
             setConfirmationDialog(prev => ({ ...prev, loading: false }));
@@ -595,10 +595,11 @@ export default function ModelLibrary() {
         case 'provider':
           comparison = a.provider.localeCompare(b.provider);
           break;
-        case 'status':
+        case 'status': {
           const statusOrder = { 'local': 0, 'downloading': 1, 'available': 2, 'error': 3 };
           comparison = statusOrder[a.status] - statusOrder[b.status];
           break;
+        }
         default:
           comparison = 0;
       }
