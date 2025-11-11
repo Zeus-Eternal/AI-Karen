@@ -12,9 +12,9 @@
  * - 6.2: Hot reload support without authentication issues
  */
 
-import { logger } from '@/lib/logger';
-import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/connection/connection-manager';
-import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
+import { logger } from '../logger';
+import { getConnectionManager, ConnectionError, ErrorCategory } from '../connection/connection-manager';
+import { getTimeoutManager, OperationType } from '../connection/timeout-manager';
 import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './development-auth';
 import { getHotReloadAuthManager } from './hot-reload-auth';
 

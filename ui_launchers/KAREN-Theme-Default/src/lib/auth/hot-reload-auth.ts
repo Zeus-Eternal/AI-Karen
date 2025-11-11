@@ -9,7 +9,7 @@
  * - 6.4: Detailed logging for debugging extension issues
  */
 
-import { logger } from "@/lib/logger";
+import { logger } from "../logger";
 import {
   getDevelopmentAuthManager,
   isDevelopmentFeaturesEnabled,

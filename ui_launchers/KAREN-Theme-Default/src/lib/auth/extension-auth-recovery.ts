@@ -1,5 +1,5 @@
-import { logger } from '@/lib/logger';
-import { errorHandler, type ErrorInfo } from '@/lib/error-handler';
+import { logger } from '../logger';
+import { errorHandler, type ErrorInfo } from '../error-handler';
 import { getExtensionAuthManager } from './extension-auth-manager';
 import {
   extensionAuthErrorHandler,
