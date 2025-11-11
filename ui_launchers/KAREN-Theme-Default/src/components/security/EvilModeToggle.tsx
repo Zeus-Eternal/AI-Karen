@@ -350,7 +350,7 @@ function EvilModeStatus({ session, config }: EvilModeStatusProps) {
     return () => clearInterval(id);
   }, [forceTick, session]);
 
-  const now = useMemo(() => new Date(), [session, tick]);
+  const now = new Date();
 
   if (!session || !startTime) {
     return null;

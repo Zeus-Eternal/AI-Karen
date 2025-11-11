@@ -269,7 +269,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardShortcuts, hasWindow, isMobile, sidebarOpen, toggleSidebar, closeSidebar]);
+    }, [enableKeyboardShortcuts, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
 
     const contextValue: AppShellContextType = {
       sidebarOpen,

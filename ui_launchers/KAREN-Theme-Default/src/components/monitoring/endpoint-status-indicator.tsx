@@ -97,53 +97,66 @@ export function EndpointStatusIndicator({
   compact = false,
 }: EndpointStatusIndicatorProps) {
   const initialSnapshot = useMemo(resolveInitialSnapshot, []);
-  const snapshotRef = useRef<MonitorSnapshot>(initialSnapshot);
+  const monitorRef = useRef<MonitorSnapshot["monitor"]>(initialSnapshot.monitor);
+  const loggerRef = useRef<MonitorSnapshot["logger"]>(initialSnapshot.logger);
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(
+    () => initialSnapshot.metrics
+  );
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(
+    () => initialSnapshot.isMonitoring
+  );
+  const [lastUpdate, setLastUpdate] = useState<string>(
+    () => initialSnapshot.lastUpdate
+  );
+  const [recentErrors, setRecentErrors] = useState<number>(
+    () => initialSnapshot.recentErrors
+  );
 
   useEffect(() => {
-    const snapshot = snapshotRef.current;
-    const monitor = snapshot.monitor ?? getHealthMonitor?.() ?? null;
-    const logger = snapshot.logger ?? getDiagnosticLogger?.() ?? null;
+    if (!monitorRef.current || !loggerRef.current) {
+      monitorRef.current = getHealthMonitor?.() ?? null;
+      loggerRef.current = getDiagnosticLogger?.() ?? null;
+    }
 
-    snapshotRef.current = {
-      ...snapshot,
-      monitor,
-      logger,
-    };
+    const monitor = monitorRef.current;
+    const logger = loggerRef.current;
 
     if (!monitor || !logger) {
-      return;
+      return undefined;
     }
 
     try {
-      const currentMetrics = monitor.getMetrics?.() ?? null;
-      const monitoringStatus = monitor.getStatus?.().isMonitoring ?? false;
-      if (currentMetrics) {
-        setMetrics(currentMetrics);
-      }
-      setIsMonitoring(!!monitoringStatus);
+      setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
     } catch {
-      // Swallow errors when the monitor is not ready yet
+      // noop
     }
+
+    const errorTimers: number[] = [];
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch {
+          // noop
+        }
       }) ?? (() => {});
 
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
+      logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
-          setTimeout(() => {
+          const timeoutId = window.setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
+            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
+          errorTimers.push(timeoutId);
         }
       }) ?? (() => {});
 
@@ -154,6 +167,10 @@ export function EndpointStatusIndicator({
       } catch {
         // noop
       }
+
+      errorTimers.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
     };
   }, []);
 

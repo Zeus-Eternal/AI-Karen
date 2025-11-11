@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/performance/ResourceMonitoringDashboard.tsx
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ErrorBoundary,
   type ErrorFallbackProps,
@@ -92,8 +92,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const initialTimeWindowAnchor = useMemo(() => Date.now(), []);
-  const timeWindowAnchorRef = useRef<number>(initialTimeWindowAnchor);
+  const timeWindowAnchorRef = useRef<number>(0);
 
   useEffect(() => {
     const updateData = () => {
@@ -105,7 +104,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       if (showCapacityPlanning) {
         setCapacityPlans(resourceMonitor.generateCapacityPlan("3months"));
       }
-      timeWindowAnchorRef.current = Date.now();
+      setTimeWindowAnchor(Date.now());
     };
 
     updateData();
@@ -129,7 +128,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = timeWindowAnchorRef.current - timeRanges[selectedTimeframe];
+    const cutoff = timeWindowAnchor - timeRanges[selectedTimeframe];
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({
@@ -140,7 +139,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [currentMetrics, historicalMetrics, selectedTimeframe]);
+  }, [historicalMetrics, selectedTimeframe]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);
@@ -242,7 +241,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
               value={selectedTimeframe}
               onValueChange={(value) => {
                 if (isTimeframe(value)) {
-                  timeWindowAnchorRef.current = Date.now();
+                  setTimeWindowAnchor(Date.now());
                   setSelectedTimeframe(value);
                 }
               }}
