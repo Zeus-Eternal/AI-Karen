@@ -5,12 +5,11 @@
  */
 
 import { logger } from './logger';
-import { handleExtensionError, type ExtensionErrorResponse } from './extension-error-integration';
+import {
+  handleExtensionError,
+  type ExtensionErrorIntegration
+} from './extension-error-integration';
 import { getExtensionFallbackData } from './auth/extension-auth-degradation';
-
-type ExtensionErrorIntegration = {
-  handleExtensionError: (status: number, url: string) => ExtensionErrorResponse;
-};
 
 declare global {
   interface Window {
