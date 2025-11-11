@@ -50,17 +50,17 @@ export const InteractiveButton = React.forwardRef<
 
     // Filter out props that conflict with Framer Motion - remove unused variables
     const filteredProps = React.useMemo(() => {
-      const {
-        onDrag: _onDrag,
-        onDragEnd: _onDragEnd,
-        onDragStart: _onDragStart,
-        draggable: _draggable,
-        onAnimationStart: _onAnimationStart,
-        onAnimationEnd: _onAnimationEnd,
-        onAnimationIteration: _onAnimationIteration,
-        ...rest
-      } = props;
-      return rest;
+      const sanitizedProps = { ...props } as Record<string, unknown>;
+
+      delete sanitizedProps.onDrag;
+      delete sanitizedProps.onDragEnd;
+      delete sanitizedProps.onDragStart;
+      delete sanitizedProps.draggable;
+      delete sanitizedProps.onAnimationStart;
+      delete sanitizedProps.onAnimationEnd;
+      delete sanitizedProps.onAnimationIteration;
+
+      return sanitizedProps;
     }, [props]);
 
     return (

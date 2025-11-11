@@ -29,3 +29,4 @@ export {
   type SidebarContextValue,
   type SidebarProviderProps,
 } from './sidebar-context';
+export { withLoading, useLoadingState } from './loading-helpers';

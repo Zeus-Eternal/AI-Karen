@@ -293,11 +293,4 @@ const CarouselNext = React.forwardRef<
 });
 CarouselNext.displayName = "CarouselNext";
 
-export {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-  useCarousel,
-};
+export { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext };

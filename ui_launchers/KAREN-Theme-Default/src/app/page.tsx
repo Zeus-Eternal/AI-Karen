@@ -18,8 +18,8 @@ import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
 import { Bell, Brain, LayoutGrid, MessageSquare, Settings as SettingsIconLucide, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+import { SidebarProvider } from "@/components/ui/sidebar-context";
 import {
-  SidebarProvider,
   Sidebar,
   SidebarTrigger,
   SidebarHeader,
