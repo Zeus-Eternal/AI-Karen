@@ -14,6 +14,14 @@ import type { ErrorInfo, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
+interface ExtendedApiError extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
+
 export interface ErrorContextType {
   // Current error analysis
   currentAnalysis: ErrorAnalysisResponse | null;
@@ -22,7 +30,7 @@ export interface ErrorContextType {
   
   // Error handling functions
   analyzeError: (error: Error | string, context?: Partial<ErrorAnalysisRequest>) => Promise<void>;
-  handleApiError: (error: Error, requestContext?: {
+  handleApiError: (error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
@@ -210,7 +218,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
-  const handleApiError = useCallback((error: Error, requestContext?: {
+  const handleApiError = useCallback((error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;

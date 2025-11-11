@@ -1,6 +1,6 @@
 // ui_launchers/KAREN-Theme-Default/src/lib/accessibility/automated-testing.ts
 import * as axe from 'axe-core';
-import { AxeResults, RunOptions, RuleObject } from 'axe-core';
+import { AxeResults, ElementContext, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
 
 type AxeWindow = Window & { axe: typeof axe };
@@ -14,6 +14,11 @@ type ExtendedRunOptions = RunOptions & {
 type ExtendedRunOptions = RunOptions & {
   include?: string[];
   exclude?: string[];
+};
+
+type ExtendedRunOptions = RunOptions & {
+  include?: ElementContext;
+  exclude?: ElementContext;
 };
 
 // Configuration for different testing scenarios

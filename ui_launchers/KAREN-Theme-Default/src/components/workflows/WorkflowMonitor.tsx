@@ -514,8 +514,8 @@ function ExecutionDetailsPanel({
                   return (
                     <div
                       key={log.id || index}
-                    className={`p-3 rounded border text-sm ${logColor}`}
-                  >
+                      className={`p-3 rounded border text-sm ${logColor}`}
+                    >
                     <div className="flex items-center justify-between mb-1">
                       <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
                         {log.level.toUpperCase()}

@@ -10,6 +10,16 @@ import { AriaLiveRegion } from './aria-live-region';
 import { useAriaAnnouncements } from './aria-live-announcements';
 import { useScreenReaderAnnouncements } from './use-screen-reader-announcements';
 
+type ScreenReaderOnlyElement = HTMLSpanElement | HTMLDivElement;
+
+function assignForwardedRef<T>(ref: React.ForwardedRef<T>, value: T | null): void {
+  if (typeof ref === 'function') {
+    ref(value);
+  } else if (ref) {
+    ref.current = value;
+  }
+}
+
 /**
  * ScreenReaderOnly - Content visible only to screen readers
  */
@@ -26,6 +36,20 @@ export const ScreenReaderOnly = React.forwardRef<
 >(
   ({ children, asDiv = false, className, ...props }, ref) => {
     const sharedClassName = cn('sr-only', className);
+    const setElementRef = React.useCallback(
+      (node: ScreenReaderOnlyElement | null) => {
+        assignForwardedRef(ref, node);
+      },
+      [ref]
+    );
+
+    if (asDiv) {
+      return (
+        <div ref={setElementRef} className={sharedClassName} {...props}>
+          {children}
+        </div>
+      );
+    }
 
     if (asDiv) {
       return (

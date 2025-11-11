@@ -690,12 +690,17 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     return [...new Set(recommendations)];
   }
 
-  private getElementSelector(element: HTMLElement): string {
-    if (element.id) return `#${element.id}`;
-    if (element.className)
+  private getElementSelector(element: Element): string {
+    if (element.id) {
+      return `#${element.id}`;
+    }
+
+    if (element instanceof HTMLElement && element.className) {
       return `${element.tagName.toLowerCase()}.${
         element.className.split(" ")[0]
       }`;
+    }
+
     return element.tagName.toLowerCase();
   }
 

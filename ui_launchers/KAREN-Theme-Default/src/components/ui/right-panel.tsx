@@ -355,7 +355,7 @@ export const RightPanelContent = React.forwardRef<HTMLDivElement, RightPanelCont
 /**
  * Main Right Panel Component
  */
-export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
+const RightPanelBase = React.forwardRef<HTMLElement, RightPanelProps>(
   function RightPanel(
     {
       activeView,
@@ -572,9 +572,19 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
 // COMPOUND COMPONENT EXPORTS
 // ============================================================================
 
-/**
- * Compound component pattern export
- */
-(RightPanel as unknown).Header = RightPanelHeader;
-(RightPanel as unknown).Navigation = RightPanelNavigation;
-(RightPanel as unknown).Content = RightPanelContent;
+type RightPanelCompoundComponent = React.ForwardRefExoticComponent<
+  RightPanelProps & React.RefAttributes<HTMLElement>
+> & {
+  Header: typeof RightPanelHeader;
+  Navigation: typeof RightPanelNavigation;
+  Content: typeof RightPanelContent;
+};
+
+export const RightPanel: RightPanelCompoundComponent = Object.assign(
+  RightPanelBase,
+  {
+    Header: RightPanelHeader,
+    Navigation: RightPanelNavigation,
+    Content: RightPanelContent,
+  }
+);

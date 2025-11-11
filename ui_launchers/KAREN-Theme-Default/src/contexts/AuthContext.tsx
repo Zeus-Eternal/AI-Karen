@@ -18,6 +18,25 @@ export interface User {
   permissions?: string[];
 }
 
+interface UserApiResponse {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
+}
+
+interface LoginResponse {
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;

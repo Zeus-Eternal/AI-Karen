@@ -51,8 +51,9 @@ const Sidebar = React.forwardRef<SidebarElement, SidebarProps>(
 );
 Sidebar.displayName = 'Sidebar';
 
-export type SidebarTriggerProps = React.ComponentPropsWithoutRef<'button'> & {
+export type SidebarTriggerProps = Omit<React.ComponentPropsWithoutRef<'button'>, 'onClick'> & {
   asChild?: boolean;
+  onClick?: React.MouseEventHandler<HTMLElement>;
 };
 
 const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
