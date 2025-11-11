@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -107,6 +106,18 @@ export interface PerformanceMetrics {
   last_updated: number;
 }
 
+export interface ConfigurationValidationResult {
+  valid: boolean;
+  error?: string;
+  warnings?: string[];
+}
+
+interface ModelHealthResponse {
+  status?: string;
+  last_health_check?: number;
+  error_message?: string;
+}
+
 export interface SystemModelConfigProps {
   selectedModel: SystemModelInfo | null;
   onClose: () => void;
@@ -147,9 +158,53 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
+  const [validationResult, setValidationResult] = useState<ConfigurationValidationResult | null>(null);
   const { toast } = useToast();
-  const backend = getKarenBackend();
+  const backend = React.useMemo(() => getKarenBackend(), []);
+
+  const loadRecommendations = useCallback(async () => {
+    if (!selectedModel) return;
+    try {
+      const response = await backend.makeRequestPublic<HardwareRecommendations>(
+        `/api/models/system/${selectedModel.id}/hardware-recommendations`
+      );
+      setRecommendations(response);
+    } catch (error) {
+      console.error('Failed to load recommendations:', error);
+    }
+  }, [backend, selectedModel]);
+
+  const loadMetrics = useCallback(async () => {
+    if (!selectedModel) return;
+    try {
+      const response = await backend.makeRequestPublic<PerformanceMetrics>(
+        `/api/models/system/${selectedModel.id}/performance-metrics`
+      );
+      setMetrics(response);
+    } catch (error) {
+      console.error('Failed to load metrics:', error);
+    }
+  }, [backend, selectedModel]);
+
+  const validateConfiguration = useCallback(async (config: Record<string, unknown>) => {
+    if (!selectedModel) return undefined;
+    try {
+      const response = await backend.makeRequestPublic<ConfigurationValidationResult>(
+        `/api/models/system/validate-configuration?model_id=${selectedModel.id}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ configuration: config })
+        }
+      );
+      setValidationResult(response);
+      return response;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Validation failed';
+      const result: ConfigurationValidationResult = { valid: false, error: message };
+      setValidationResult(result);
+      return result;
+    }
+  }, [backend, selectedModel]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -188,51 +243,10 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         });
       }
       
-      loadRecommendations();
-      loadMetrics();
+      void loadRecommendations();
+      void loadMetrics();
     }
-  }, [selectedModel]);
-
-  const loadRecommendations = async () => {
-    if (!selectedModel) return;
-    try {
-      const response = await backend.makeRequestPublic<HardwareRecommendations>(
-        `/api/models/system/${selectedModel.id}/hardware-recommendations`
-      );
-      setRecommendations(response);
-    } catch (error) {
-      console.error('Failed to load recommendations:', error);
-    }
-  };
-
-  const loadMetrics = async () => {
-    if (!selectedModel) return;
-    try {
-      const response = await backend.makeRequestPublic<PerformanceMetrics>(
-        `/api/models/system/${selectedModel.id}/performance-metrics`
-      );
-      setMetrics(response);
-    } catch (error) {
-      console.error('Failed to load metrics:', error);
-    }
-  };
-
-  const validateConfiguration = async (config: Record<string, unknown>) => {
-    if (!selectedModel) return;
-    try {
-      const response = await backend.makeRequestPublic(
-        `/api/models/system/validate-configuration?model_id=${selectedModel.id}`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ configuration: config })
-        }
-      );
-      setValidationResult(response);
-      return response;
-    } catch (error) {
-      return { valid: false, error: 'Validation failed' };
-    }
-  };
+  }, [loadMetrics, loadRecommendations, selectedModel]);
 
   const saveConfiguration = async () => {
     if (!selectedModel) return;
@@ -240,15 +254,15 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     try {
       // Validate first
       const validation = await validateConfiguration(configuration);
-      if (!(validation as unknown).valid) {
+      if (validation && !validation.valid) {
         toast({
           variant: 'destructive',
           title: "Configuration Invalid",
-          description: (validation as unknown).error || "Please check your settings",
+          description: validation.error || "Please check your settings",
         });
         return;
       }
-      
+
       await backend.makeRequestPublic(
         `/api/models/system/${selectedModel.id}/configuration`,
         {
@@ -268,10 +282,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       );
       setModel(updatedModel);
     } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
       toast({
         variant: 'destructive',
         title: "Save Failed",
-        description: "Could not save model configuration",
+        description: message || "Could not save model configuration",
       });
     } finally {
       setSaving(false);
@@ -297,10 +312,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         description: "Model configuration reset to defaults",
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
       toast({
         variant: 'destructive',
         title: "Reset Failed",
-        description: "Could not reset model configuration",
+        description: message || "Could not reset model configuration",
       });
     } finally {
       setLoading(false);
@@ -311,7 +327,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     if (!selectedModel) return;
     setLoading(true);
     try {
-      const response = await backend.makeRequestPublic(
+      const response = await backend.makeRequestPublic<ModelHealthResponse>(
         `/api/models/system/${selectedModel.id}/health-check`,
         { method: 'POST' }
       );
@@ -319,20 +335,21 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       if (model) {
         setModel({
           ...model,
-          status: (response as unknown).status,
-          last_health_check: (response as unknown).last_health_check,
-          error_message: (response as unknown).error_message
+          status: response.status,
+          last_health_check: response.last_health_check,
+          error_message: response.error_message
         });
       }
       toast({
         title: "Health Check Complete",
-        description: `Model status: ${(response as unknown).status}`,
+        description: `Model status: ${response.status ?? 'unknown'}`,
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
       toast({
         variant: 'destructive',
         title: "Health Check Failed",
-        description: "Could not check model health",
+        description: message || "Could not check model health",
       });
     } finally {
       setLoading(false);
@@ -343,7 +360,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     const newConfig = { ...configuration, [key]: value };
     setConfiguration(newConfig);
     // Validate in real-time
-    validateConfiguration(newConfig);
+    void validateConfiguration(newConfig);
   };
 
   const formatFileSize = (bytes?: number) => {
