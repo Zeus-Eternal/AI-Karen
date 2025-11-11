@@ -360,11 +360,11 @@ export class AdminCacheManager {
               PermissionCache.set(userId, permissionsData.data);
             }
           }
-        } catch (_error: unknown) {
+        } catch {
           // Handle error silently
         }
       }
-    } catch (_error: unknown) {
+    } catch {
       // Handle error silently
     }
   }

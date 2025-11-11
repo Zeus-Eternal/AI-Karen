@@ -87,7 +87,7 @@ export async function validateSession(): Promise<boolean> {
     // Invalid session or error response
     clearSession();
     return false;
-  } catch (error: unknown) {
+  } catch {
     // Any error means invalid session
     clearSession();
     return false;
@@ -241,7 +241,7 @@ export async function logout(): Promise<void> {
       method: "POST",
       credentials: "include",
     });
-  } catch (_error: unknown) {
+  } catch {
     // Logout should not throw errors, just log them
   }
 }

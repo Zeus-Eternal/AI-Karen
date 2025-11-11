@@ -1,19 +1,12 @@
 
 "use client";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
 import { getConnectionManager, ConnectionError, ErrorCategory } from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
+import { AuthContext } from "./auth-context-instance";
 
 
 export interface User {
@@ -64,11 +57,6 @@ export interface AuthContextType {
 export interface AuthProviderProps {
   children: ReactNode;
 }
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Export the context for testing purposes
-export { AuthContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
@@ -856,10 +844,4 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export { useAuth } from '@/hooks/use-auth';

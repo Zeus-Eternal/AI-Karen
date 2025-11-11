@@ -11,10 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 export interface TranslationDebugProps {
   /** Only show in development mode */
   devOnly?: boolean;
-  /** Show missing translations */
-  showMissing?: boolean;
-  /** Show all available translations */
-  showAll?: boolean;
   /** Specific namespace to debug */
   namespace?: string;
   className?: string;
@@ -26,8 +22,6 @@ export interface TranslationDebugProps {
  */
 export function TranslationDebug({
   devOnly = true,
-  showMissing = true,
-  showAll = false,
   namespace,
   className,
 }: TranslationDebugProps) {

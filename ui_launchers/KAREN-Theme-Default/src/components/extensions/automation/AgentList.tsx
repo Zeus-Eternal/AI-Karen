@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,14 @@ interface AgentInfo {
   action: string;
 }
 
-export default function AgentList() {
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const { toast } = useToast();
+const DEFAULT_AGENTS: AgentInfo[] = [
+  { id: "build-agent", name: "Build Agent", status: "running", trigger: "on commit", action: "build" },
+  { id: "review-agent", name: "Review Agent", status: "stopped", trigger: "manual", action: "review" },
+];
 
-  useEffect(() => {
-    // Placeholder data - normally fetched from backend extension API
-    setAgents([
-      { id: "build-agent", name: "Build Agent", status: "running", trigger: "on commit", action: "build" },
-      { id: "review-agent", name: "Review Agent", status: "stopped", trigger: "manual", action: "review" },
-    ]);
-  }, []);
+export default function AgentList() {
+  const [agents, setAgents] = useState<AgentInfo[]>(DEFAULT_AGENTS);
+  const { toast } = useToast();
 
   const toggleAgent = (id: string, enabled: boolean) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, status: enabled ? "running" : "stopped" } : a));

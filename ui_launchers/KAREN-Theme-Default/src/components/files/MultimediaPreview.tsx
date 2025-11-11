@@ -141,9 +141,11 @@ const ImagePreview: React.FC<{
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
 
+  const confidenceScores = analysis?.confidence_scores;
+
   const confidenceChartOptions = useMemo<AgChartOptions>(() => {
-    if (!analysis?.confidence_scores) return { data: [], series: [] };
-    const data = Object.entries(analysis.confidence_scores).map(([key, value]) => ({
+    if (!confidenceScores) return { data: [], series: [] };
+    const data = Object.entries(confidenceScores).map(([key, value]) => ({
       category: key.replace(/_/g, " ").toUpperCase(),
       confidence: Math.round((value ?? 0) * 100),
     }));
@@ -174,7 +176,7 @@ const ImagePreview: React.FC<{
       height: 300,
     };
     return opts;
-  }, [analysis?.confidence_scores]);
+  }, [confidenceScores]);
 
   return (
     <div className="space-y-4">
