@@ -22,5 +22,5 @@ export function withFocusIndicator<P extends object, RefType = unknown>(
   const componentName = Component.displayName || Component.name || 'Component';
   WrappedComponent.displayName = `withFocusIndicator(${componentName})`;
 
-  return WrappedComponent;
+  return WrappedComponent as React.ComponentType<any>;
 }

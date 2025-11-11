@@ -18,7 +18,10 @@ if (typeof window === "undefined") {
     const pg = require("pg") as { Pool: PoolConstructor };
     PoolClass = pg.Pool;
   } catch (error) {
-    console.warn("pg module is not available; database operations are disabled.", error);
+    console.warn(
+      "pg module is not available; database operations are disabled.",
+      error,
+    );
   }
 }
 
@@ -104,6 +107,7 @@ export class PostgreSQLClient implements DatabaseClient {
           throw new Error("Nested transactions are not supported");
         },
       };
+
       const result = await callback(transactionClient);
       await poolClient.query("COMMIT");
       return result;
@@ -145,6 +149,7 @@ export function getDatabaseClient(): DatabaseClient {
   if (typeof window !== "undefined") {
     throw new Error("Database client can only be accessed on the server side");
   }
+
   if (!dbClient) {
     // Get database URL from environment
     const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -160,6 +165,9 @@ export function getDatabaseClient(): DatabaseClient {
       throw new Error(`Database connection failed: ${message}`);
     }
   }
+  return dbClient;
+}
+
   return dbClient;
 }
 

@@ -118,6 +118,7 @@ export interface AriaReport {
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private container: Document | Element;
   private options: RunOptions;
+  private root: Document | Element;
 
   constructor(
     container: Document | Element = document,
@@ -227,16 +228,14 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const skipLinkIssues: string[] = [];
 
     focusableElements.forEach((element) => {
-      const htmlElement = element as HTMLElement;
-
-      if (htmlElement.tabIndex < 0 && !htmlElement.hasAttribute("disabled")) {
-        unreachableElements.push(this.getElementSelector(htmlElement));
+      if (element.tabIndex < 0 && !element.hasAttribute("disabled")) {
+        unreachableElements.push(this.getElementSelector(element));
       }
 
-      if (htmlElement.tabIndex > 0) {
+      if (element.tabIndex > 0) {
         focusOrderIssues.push(
           `Element has positive tabindex: ${this.getElementSelector(
-            htmlElement
+            element
           )}`
         );
       }
@@ -246,15 +245,17 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[data-focus-trap="true"]'
     );
     focusTraps.forEach((trap) => {
-      const trapElement = trap as HTMLElement;
-      const focusableInTrap = trapElement.querySelectorAll(
+      if (!(trap instanceof HTMLElement)) {
+        return;
+      }
+      const focusableInTrap = trap.querySelectorAll(
         focusableSelectors.join(", ")
       );
 
       if (focusableInTrap.length === 0) {
         trapIssues.push(
           `Focus trap has no focusable elements: ${this.getElementSelector(
-            trapElement
+            trap
           )}`
         );
       }
@@ -264,9 +265,12 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return;
+      }
       const href = link.getAttribute("href");
       if (href && href.startsWith("#")) {
-        const target = this.container.querySelector(href);
+        const target = this.root.querySelector(href);
         if (!target) {
           skipLinkIssues.push(`Skip link target not found: ${href}`);
         }
@@ -308,14 +312,15 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       };
     }
 
-    const elements = Array.from(
-      this.container.querySelectorAll<HTMLElement>("*")
-    );
+    const elements = Array.from(this.root.querySelectorAll("*"));
     const failedElements: ColorContrastReport["failedElements"] = [];
     let totalRatio = 0;
     let sampled = 0;
 
     elements.slice(0, 200).forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
       const styles = window.getComputedStyle(element);
       const foreground = styles.color || "#000000";
       const background = styles.backgroundColor || "#ffffff";

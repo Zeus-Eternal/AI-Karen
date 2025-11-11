@@ -13,7 +13,7 @@ export interface User {
   userId: string;
   email: string;
   roles: string[];
-  tenantId: string;
+  tenantId?: string;
   role?: "super_admin" | "admin" | "user";
   permissions?: string[];
 }
@@ -729,29 +729,30 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           startSessionRefreshTimer();
         }
 
-        connectivityLogger.logAuthentication(
-          "info",
-          "Session validation succeeded",
-          {
-            email: user.email,
-            success: true,
-          },
-          "session_validation",
-          undefined,
-          {
-            startTime: validationStartTime,
-            duration:
-              result.duration ??
-              ((typeof performance !== "undefined"
-                ? performance.now()
-                : Date.now()) - validationStartTime),
-            retryCount: result.retryCount,
-            metadata: {
-              statusCode: result.status,
+          connectivityLogger.logAuthentication(
+            "info",
+            "Session validation succeeded",
+            {
+              email: user.email,
+              success: true,
             },
-          }
-        );
-        return true;
+            "session_validation",
+            undefined,
+            {
+              startTime: validationStartTime,
+              duration:
+                result.duration ??
+                ((typeof performance !== "undefined"
+                  ? performance.now()
+                  : Date.now()) - validationStartTime),
+              retryCount: result.retryCount,
+              metadata: {
+                statusCode: result.status,
+              },
+            }
+          );
+          return true;
+        }
       }
 
       // Invalid session
