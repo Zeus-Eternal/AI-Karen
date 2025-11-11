@@ -92,19 +92,24 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const timeWindowAnchorRef = useRef<number>(Date.now());
+  const timeWindowAnchorRef = useRef<number>(0);
 
   useEffect(() => {
     const updateData = () => {
       setCurrentMetrics(resourceMonitor.getCurrentMetrics());
-      setHistoricalMetrics(resourceMonitor.getHistoricalMetrics(100));
+      const nextHistoricalMetrics = resourceMonitor.getHistoricalMetrics(100);
+      setHistoricalMetrics(nextHistoricalMetrics);
       setAlerts(resourceMonitor.getAlerts());
       setRecommendations(resourceMonitor.getScalingRecommendations());
 
       if (showCapacityPlanning) {
         setCapacityPlans(resourceMonitor.generateCapacityPlan("3months"));
       }
-      timeWindowAnchorRef.current = Date.now();
+      const latestTimestamp =
+        nextHistoricalMetrics.length > 0
+          ? nextHistoricalMetrics[nextHistoricalMetrics.length - 1].timestamp
+          : Date.now();
+      timeWindowAnchorRef.current = latestTimestamp;
     };
 
     updateData();
@@ -120,16 +125,6 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     };
   }, [refreshInterval, showCapacityPlanning]);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setNow(Date.now());
-    }, 60_000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
   const filteredHistoricalData = useMemo(() => {
     const timeRanges = {
       "1h": 60 * 60 * 1000,
@@ -138,7 +133,12 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = timeWindowAnchorRef.current - timeRanges[selectedTimeframe];
+    const anchorTimestamp =
+      timeWindowAnchorRef.current ||
+      (historicalMetrics.length > 0
+        ? historicalMetrics[historicalMetrics.length - 1].timestamp
+        : 0);
+    const cutoff = anchorTimestamp - timeRanges[selectedTimeframe];
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({
@@ -251,7 +251,11 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
               value={selectedTimeframe}
               onValueChange={(value) => {
                 if (isTimeframe(value)) {
-                  timeWindowAnchorRef.current = Date.now();
+                  const latestTimestamp =
+                    historicalMetrics.length > 0
+                      ? historicalMetrics[historicalMetrics.length - 1].timestamp
+                      : timeWindowAnchorRef.current || Date.now();
+                  timeWindowAnchorRef.current = latestTimestamp;
                   setSelectedTimeframe(value);
                 }
               }}

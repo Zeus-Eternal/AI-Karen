@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Video } from "lucide-react";
@@ -11,16 +11,16 @@ interface VideoProvider {
   status: "ready" | "unavailable";
 }
 
-export default function VideoProviderList() {
-  const [providers, setProviders] = useState<VideoProvider[]>([]);
+const DEFAULT_PROVIDERS: readonly VideoProvider[] = [
+  { id: "d-id", name: "D-ID", status: "ready" },
+  { id: "synthesia", name: "Synthesia", status: "unavailable" },
+];
 
-  useEffect(() => {
-    // Placeholder data. Real implementation would check backend for available visual providers
-    setProviders([
-      { id: "d-id", name: "D-ID", status: "ready" },
-      { id: "synthesia", name: "Synthesia", status: "unavailable" },
-    ]);
-  }, []);
+export default function VideoProviderList() {
+  const providers = useMemo(
+    () => DEFAULT_PROVIDERS.map((provider) => ({ ...provider })),
+    []
+  );
 
   return (
     <div className="space-y-4">

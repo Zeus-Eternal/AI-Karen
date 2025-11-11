@@ -277,6 +277,7 @@ export function ExtensionMarketplace({
       // Simulate installation delay
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
+      console.error(`Failed to install extension ${extension.id}`, error);
     } finally {
       setInstallingExtensions(prev => {
         const newSet = new Set(prev);

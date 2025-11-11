@@ -96,36 +96,51 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const snapshotRef = useRef<MonitorSnapshot | null>(null);
-  if (snapshotRef.current === null) {
-    snapshotRef.current = resolveInitialSnapshot();
-  }
+  const [initialSnapshot] = useState<MonitorSnapshot>(resolveInitialSnapshot);
+  const monitorRef = useRef(initialSnapshot.monitor);
+  const loggerRef = useRef(initialSnapshot.logger);
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(snapshotRef.current.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(snapshotRef.current.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(snapshotRef.current.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(snapshotRef.current.recentErrors);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
+  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
+  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
 
   useEffect(() => {
-    // Guard against missing providers
-    const healthMonitor = getHealthMonitor?.();
-    const diagnosticLogger = getDiagnosticLogger?.();
+    const monitor = getHealthMonitor?.() ?? null;
+    const logger = getDiagnosticLogger?.() ?? null;
 
-    if (!healthMonitor || !diagnosticLogger) {
-      // Soft-fail with a minimal placeholder to avoid UI crash
-      return;
-    }
-  }
+    monitorRef.current = monitor;
+    loggerRef.current = logger;
 
     if (!monitor || !logger) {
-      return;
+      return undefined;
+    }
+
+    try {
+      const snapshotMetrics = monitor.getMetrics?.() ?? null;
+      if (snapshotMetrics) {
+        setMetrics(snapshotMetrics);
+      }
+    } catch (error) {
+      console.warn("Failed to read initial health metrics", error);
+    }
+
+    try {
+      const status = monitor.getStatus?.();
+      setIsMonitoring(!!status?.isMonitoring);
+    } catch (error) {
+      console.warn("Failed to read initial monitoring status", error);
     }
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch (error) {
+          console.warn("Failed to refresh monitoring status", error);
+        }
       }) ?? (() => {});
 
     const unsubscribeLogs =
@@ -142,11 +157,11 @@ export function EndpointStatusIndicator({
       try {
         unsubscribeMetrics();
         unsubscribeLogs();
-      } catch {
-        // noop
+      } catch (error) {
+        console.warn("Failed to clean up health monitor listeners", error);
       }
     };
-  }, [diagnosticLogger, healthMonitor]);
+  }, []);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";
