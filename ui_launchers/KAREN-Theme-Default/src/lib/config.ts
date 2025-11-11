@@ -252,14 +252,14 @@ export function validateConfig(config: WebUIConfig): { isValid: boolean; warning
     }
   }
   // Validate fallback URLs
-  for (const [index, url] of config.fallbackBackendUrls.entries()) {
+  config.fallbackBackendUrls.forEach((url, index) => {
     try {
       new URL(url);
     } catch {
       warnings.push(`Invalid fallback backend URL[${index}]: ${url}`);
       isValid = false;
     }
-  }
+  });
   // Validate environment and network mode consistency
   if (config.environment === 'docker' && config.networkMode === 'localhost') {
     warnings.push('Docker environment with localhost network mode may cause connectivity issues');

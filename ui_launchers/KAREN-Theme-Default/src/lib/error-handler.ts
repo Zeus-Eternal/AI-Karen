@@ -9,7 +9,7 @@
  * - Loading state management
  * - Retry logic coordination
  */
-import { toast } from "@/hooks/use-toast";
+import { toast } from "../hooks/use-toast";
 export interface ErrorInfo {
   category: string;
   severity: string;

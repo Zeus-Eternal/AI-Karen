@@ -5,7 +5,7 @@
  * to optimize performance and user experience.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '../logger';
 
 // Operation types for timeout configuration
 export enum OperationType {
