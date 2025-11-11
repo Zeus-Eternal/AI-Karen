@@ -10,7 +10,7 @@ export interface DiagnosticInfo {
   level: 'debug' | 'info' | 'warn' | 'error';
   category: 'network' | 'cors' | 'auth' | 'api' | 'health' | 'config';
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   endpoint?: string;
   duration?: number;
   error?: Error | string;
@@ -77,13 +77,13 @@ function safeNowISO(): string {
 }
 
 function pickLogLevelFromConfig(): LogLevel {
-  const lvl = (webUIConfig as any)?.logLevel;
+  const lvl = webUIConfig.logLevel;
   if (lvl === 'debug' || lvl === 'info' || lvl === 'warn' || lvl === 'error') return lvl;
   return 'info';
 }
 
-function sanitizeForConsole(obj: Record<string, any>): Record<string, any> {
-  const copy: Record<string, any> = {};
+function sanitizeForConsole(obj: Record<string, unknown>): Record<string, unknown> {
+  const copy: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined) continue;
     if (v instanceof Error) {
@@ -108,15 +108,20 @@ export class DiagnosticLogger {
    * Log system information on startup
    */
   private logSystemInfo(): void {
+    const userAgent = typeof navigator !== 'undefined' && navigator?.userAgent
+      ? navigator.userAgent
+      : 'server';
+    const url = typeof window !== 'undefined' && window.location?.href
+      ? window.location.href
+      : 'server';
+    const online = typeof navigator !== 'undefined' && 'onLine' in navigator
+      ? Boolean(navigator.onLine)
+      : true;
+
     const runtime = {
-      userAgent:
-        typeof navigator !== 'undefined' && navigator?.userAgent
-          ? navigator.userAgent
-          : 'server',
-      url: typeof window !== 'undefined' && (window as any)?.location?.href
-        ? (window as any).location.href
-        : 'server',
-      online: typeof navigator !== 'undefined' && 'onLine' in navigator ? !!navigator.onLine : true,
+      userAgent,
+      url,
+      online,
       timestamp: safeNowISO(),
     };
 
@@ -145,7 +150,7 @@ export class DiagnosticLogger {
     level: LogLevel,
     category: LogCategory,
     message: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
     endpoint?: string,
     duration?: number,
     error?: Error | string,

@@ -128,17 +128,25 @@ function generateFallbackUrls(primaryUrl: string, environment: string, networkMo
   try {
     const url = new URL(primaryUrl);
     const port = url.port || '8000';
+    const addFallback = (candidate: string) => {
+      if (candidate && candidate !== primaryUrl && !fallbacks.includes(candidate)) {
+        fallbacks.push(candidate);
+      }
+    };
     // Add localhost variations if not already localhost
     if (url.hostname !== 'localhost') {
-      fallbacks.push(`http://localhost:${port}`);
+      addFallback(`http://localhost:${port}`);
     }
     // Add 127.0.0.1 variation
     if (url.hostname !== '127.0.0.1') {
-      fallbacks.push(`http://127.0.0.1:${port}`);
+      addFallback(`http://127.0.0.1:${port}`);
     }
     // Add container networking fallback for Docker environments
-    if (environment === 'docker' && !url.hostname.includes('backend')) {
-      fallbacks.push(`http://backend:${port}`);
+    if ((environment === 'docker' || networkMode === 'container') && !url.hostname.includes('backend')) {
+      addFallback(`http://backend:${port}`);
+    }
+    if (networkMode === 'external' && url.hostname) {
+      addFallback(`${url.protocol}//${url.hostname}:${port}`);
     }
     return fallbacks;
   } catch {
@@ -153,7 +161,7 @@ export function getWebUIConfig(): WebUIConfig {
   // Parse basic configuration first
   // Use relative URLs to go through Next.js API routes instead of direct backend calls
   // IMPORTANT: Keep this empty to ensure all requests go through Next.js API routes
-  const backendUrl = '';
+  const backendUrl = parseUrlEnv(process.env.KAREN_BACKEND_URL, '');
   const environment = parseEnumEnv(
     process.env.KAREN_ENVIRONMENT,
     ['local', 'docker', 'production'] as const,

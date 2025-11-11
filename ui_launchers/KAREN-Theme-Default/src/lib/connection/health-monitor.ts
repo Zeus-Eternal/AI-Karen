@@ -98,6 +98,7 @@ export class HealthMonitor {
 
       this.activeEndpoint = primaryUrl;
     } catch (error) {
+      console.warn('Failed to initialize health monitor endpoints, falling back to defaults.', error);
       // Fallback to default endpoints if necessary
       const defaultEndpoints = this.config.endpoints.length > 0
         ? this.config.endpoints
@@ -364,7 +365,7 @@ export class HealthMonitor {
       listeners.forEach(listener => {
         try {
           listener(event);
-        } catch (error) {
+        } catch (_error: unknown) {
           // Handle error in listener execution
         }
       });

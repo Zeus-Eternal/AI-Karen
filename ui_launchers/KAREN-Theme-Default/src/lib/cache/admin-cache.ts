@@ -360,13 +360,13 @@ export class AdminCacheManager {
               PermissionCache.set(userId, permissionsData.data);
             }
           }
-        } catch (error) {
-    // Handle error silently
-  }
+        } catch (_error: unknown) {
+          // Handle error silently
+        }
       }
-    } catch (error) {
-    // Handle error silently
-  }
+    } catch (_error: unknown) {
+      // Handle error silently
+    }
   }
   /**
    * Get cache memory usage estimation
@@ -389,7 +389,7 @@ export class AdminCacheManager {
   /**
    * Configure cache settings
    */
-  static configureCaches(config: Partial<typeof CACHE_CONFIG>): void {
+  static configureCaches(_config: Partial<typeof CACHE_CONFIG>): void {
     // This would allow runtime configuration of cache settings
     // Implementation would require recreating cache instances
   }
