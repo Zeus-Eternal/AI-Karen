@@ -4,6 +4,7 @@ export { InteractiveCard } from './interactive-card';
 export { LoadingSpinner } from './loading-spinner';
 export { ProgressAnimation } from './progress-animation';
 export { MicroInteractionProvider } from './micro-interaction-provider';
+export { useMicroInteractions } from './micro-interaction-context';
 export type {
   MicroInteractionType,
   MicroInteractionConfig,

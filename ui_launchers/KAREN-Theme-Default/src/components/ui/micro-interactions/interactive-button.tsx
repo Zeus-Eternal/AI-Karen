@@ -7,7 +7,7 @@ import { LoadingSpinner } from "./loading-spinner";
 import { InteractiveButtonProps } from "./types";
 import { animationVariants, reducedMotionVariants } from "./animation-variants";
 import { triggerHapticFeedback } from "./haptic-feedback";
-import { useMicroInteractions } from "./micro-interaction-provider";
+import { useMicroInteractions } from "./micro-interaction-context";
 import { cn } from "@/lib/utils";
 
 // Create MotionButton outside of component to avoid recreation during render

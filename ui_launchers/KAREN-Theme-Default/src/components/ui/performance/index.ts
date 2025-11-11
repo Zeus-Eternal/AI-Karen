@@ -2,14 +2,15 @@
 export { PerformanceDashboard } from './performance-dashboard';
 export type { PerformanceDashboardProps } from './performance-dashboard';
 
+export { PerformanceProvider } from './performance-provider';
+export type { PerformanceProviderProps } from './performance-provider';
 export {
-  PerformanceProvider,
   usePerformanceContext,
   withPerformanceMeasurement,
   useComponentPerformance,
   useInteractionPerformance,
-} from './performance-provider';
-export type { PerformanceProviderProps, PerformanceContextValue } from './performance-provider';
+} from './performance-context';
+export type { PerformanceContextValue, PerformanceMetric } from './performance-context';
 
 // Re-export performance utilities
 export {

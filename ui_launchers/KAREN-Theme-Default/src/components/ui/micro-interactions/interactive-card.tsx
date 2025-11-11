@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import type { CardHoverAnimation, CardHoverEffect, InteractiveCardProps } from './types';
 import { animationVariants, reducedMotionVariants } from './animation-variants';
 import { triggerHapticFeedback } from './haptic-feedback';
-import { useMicroInteractions } from './micro-interaction-provider';
+import { useMicroInteractions } from './micro-interaction-context';
 import { cn } from '@/lib/utils';
 
 const isCardHoverAnimation = (

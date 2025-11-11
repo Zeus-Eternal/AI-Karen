@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import { LoadingSpinnerProps } from './types';
-import { useMicroInteractions } from './micro-interaction-provider';
+import { useMicroInteractions } from './micro-interaction-context';
 import { cn } from '@/lib/utils';
 
 const sizeClasses = {

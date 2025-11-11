@@ -1,29 +1,9 @@
 "use client";
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { MicroInteractionConfig } from './types';
-
-export interface MicroInteractionContextType extends MicroInteractionConfig {
-  updateConfig: (config: Partial<MicroInteractionConfig>) => void;
-}
-
-const MicroInteractionContext = createContext<MicroInteractionContextType | undefined>(undefined);
-
-export function useMicroInteractions() {
-  const context = useContext(MicroInteractionContext);
-  if (context === undefined) {
-    throw new Error('useMicroInteractions must be used within a MicroInteractionProvider');
-  }
-  return context;
-}
+import { MicroInteractionContext, type MicroInteractionContextType } from './micro-interaction-context';
 
 export interface MicroInteractionProviderProps {
   children: React.ReactNode;
@@ -71,7 +51,7 @@ export function MicroInteractionProvider({
     setConfig(prev => ({ ...prev, ...newConfig }));
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<MicroInteractionContextType>(
     () => ({
       ...config,
       updateConfig,

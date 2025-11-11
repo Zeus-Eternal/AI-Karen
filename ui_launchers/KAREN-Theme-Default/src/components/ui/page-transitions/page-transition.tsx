@@ -4,7 +4,7 @@ import * as React from 'react';
 import { motion } from 'framer-motion';
 import { PageTransitionProps } from './types';
 import { transitionVariants, reducedMotionVariants } from './transition-variants';
-import { useMicroInteractions } from '../micro-interactions/micro-interaction-provider';
+import { useMicroInteractions } from '../micro-interactions/micro-interaction-context';
 import { cn } from '@/lib/utils';
 
 export function PageTransition({
