@@ -12,17 +12,16 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 import {
-  type BreadcrumbItem,
-  type BreadcrumbItemProps,
-  type BreadcrumbNavigationProps,
-  defaultRouteConfig,
   breadcrumbNavigationVariants,
+  defaultRouteConfig,
   generateBreadcrumbsFromRoute,
-} from "./BreadcrumbNavigation.config";
+  type BreadcrumbItem,
+  type BreadcrumbNavigationProps,
+  type RouteConfig,
+} from "./breadcrumb-utils";
 
-const BreadcrumbNavigationComponent = React.forwardRef<
+export const BreadcrumbNavigation = React.forwardRef<
   HTMLElement,
   BreadcrumbNavigationProps
 >(
@@ -201,5 +200,4 @@ const BreadcrumbNode: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
   );
 };
 
-export const BreadcrumbNavigation = BreadcrumbNavigationComponent;
-export default BreadcrumbNavigationComponent;
+export default BreadcrumbNavigation;

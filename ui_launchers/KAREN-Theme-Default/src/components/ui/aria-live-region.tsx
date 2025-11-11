@@ -3,9 +3,10 @@
  * Provides screen reader announcements for dynamic content changes
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { createAriaLive, generateAriaId } from '@/utils/aria';
 import { cn } from '@/lib/utils';
+import { useAriaAnnouncements } from './aria-live-announcements';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export interface AriaLiveRegionProps {
@@ -70,78 +71,6 @@ export const AriaLiveRegion = React.forwardRef<HTMLDivElement, AriaLiveRegionPro
 );
 
 AriaLiveRegion.displayName = 'AriaLiveRegion';
-
-/**
- * Hook for managing live announcements
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export interface UseAriaAnnouncementsOptions {
-  /** Default politeness level for announcements */
-  defaultPoliteness?: 'polite' | 'assertive';
-  /** Delay before clearing announcements (in ms) */
-  clearDelay?: number;
-}
-
-export const useAriaAnnouncements = (options: UseAriaAnnouncementsOptions = {}) => {
-  const { defaultPoliteness = 'polite', clearDelay = 1000 } = options;
-  const [politeMessage, setPoliteMessage] = useState('');
-  const [assertiveMessage, setAssertiveMessage] = useState('');
-  const politeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const assertiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const announce = (
-    message: string, 
-    politeness: 'polite' | 'assertive' = defaultPoliteness
-  ) => {
-    if (politeness === 'assertive') {
-      // Clear any existing timeout
-      if (assertiveTimeoutRef.current) {
-        clearTimeout(assertiveTimeoutRef.current);
-      }
-      
-      setAssertiveMessage(message);
-      
-      // Clear the message after delay
-      assertiveTimeoutRef.current = setTimeout(() => {
-        setAssertiveMessage('');
-      }, clearDelay);
-    } else {
-      // Clear any existing timeout
-      if (politeTimeoutRef.current) {
-        clearTimeout(politeTimeoutRef.current);
-      }
-      
-      setPoliteMessage(message);
-      
-      // Clear the message after delay
-      politeTimeoutRef.current = setTimeout(() => {
-        setPoliteMessage('');
-      }, clearDelay);
-    }
-  };
-
-  const clearAnnouncements = () => {
-    setPoliteMessage('');
-    setAssertiveMessage('');
-    if (politeTimeoutRef.current) clearTimeout(politeTimeoutRef.current);
-    if (assertiveTimeoutRef.current) clearTimeout(assertiveTimeoutRef.current);
-  };
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (politeTimeoutRef.current) clearTimeout(politeTimeoutRef.current);
-      if (assertiveTimeoutRef.current) clearTimeout(assertiveTimeoutRef.current);
-    };
-  }, []);
-
-  return {
-    announce,
-    clearAnnouncements,
-    politeMessage,
-    assertiveMessage,
-  };
-};
 
 /**
  * AriaAnnouncer - A component that provides announcement functionality

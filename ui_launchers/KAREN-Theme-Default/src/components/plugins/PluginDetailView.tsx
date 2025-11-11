@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -20,7 +20,6 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Globe,
   HardDrive,
   Network,
   Package,
@@ -148,9 +147,8 @@ export type LogEntryT = {
   message: string;
 };
 
-const MOCK_LOG_REFERENCE_TIME = Date.now();
-
-const MOCK_PLUGIN_LOGS: LogEntryT[] = [
+const MOCK_LOG_REFERENCE_TIME = typeof Date !== "undefined" ? Date.now() : 0;
+const MOCK_LOGS: LogEntryT[] = [
   {
     id: "1",
     timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 300000),
@@ -202,6 +200,36 @@ const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
   );
 };
 
+const INITIAL_MOCK_LOGS: LogEntryT[] = (() => {
+  const now = Date.now();
+  return [
+    {
+      id: "1",
+      timestamp: new Date(now - 300000),
+      level: "info",
+      message: "Plugin initialized successfully",
+    },
+    {
+      id: "2",
+      timestamp: new Date(now - 600000),
+      level: "debug",
+      message: "Loading configuration from manifest",
+    },
+    {
+      id: "3",
+      timestamp: new Date(now - 900000),
+      level: "warn",
+      message: "API rate limit approaching (80% of quota used)",
+    },
+    {
+      id: "4",
+      timestamp: new Date(now - 1200000),
+      level: "error",
+      message: "Authentication failed: Token expired",
+    },
+  ];
+})();
+
 // --- Main Component ----------------------------------------------------------
 
 export interface PluginDetailViewProps {
@@ -224,7 +252,35 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState("overview");
 
   // Mock logs (replace with real source/wire to store later)
-  const [mockLogs] = useState<LogEntryT[]>(MOCK_PLUGIN_LOGS);
+  const [mockLogs] = useState<LogEntryT[]>(() => {
+    const now = Date.now();
+    return [
+      {
+        id: "1",
+        timestamp: new Date(now - 300000),
+        level: "info",
+        message: "Plugin initialized successfully",
+      },
+      {
+        id: "2",
+        timestamp: new Date(now - 600000),
+        level: "debug",
+        message: "Loading configuration from manifest",
+      },
+      {
+        id: "3",
+        timestamp: new Date(now - 900000),
+        level: "warn",
+        message: "API rate limit approaching (80% of quota used)",
+      },
+      {
+        id: "4",
+        timestamp: new Date(now - 1200000),
+        level: "error",
+        message: "Authentication failed: Token expired",
+      },
+    ];
+  });
 
   // Store selectors (assumes selector factory pattern per your store)
   const enableLoading = usePluginStore(selectPluginLoading(`enable-${plugin.id}`));

@@ -8,6 +8,7 @@ export * from '../../../utils/aria';
 
 // ARIA Live Region components
 export * from '../aria-live-region';
+export * from '../aria-live-announcements';
 
 // Enhanced components with ARIA support
 export {

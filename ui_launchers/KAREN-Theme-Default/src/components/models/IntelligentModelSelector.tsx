@@ -14,7 +14,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -341,7 +341,7 @@ export default function IntelligentModelSelector({
   availableModels,
   className = '',
 }: IntelligentModelSelectorProps) {
-  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [manualSelectedModelId, setManualSelectedModelId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [autoSelect, setAutoSelect] = useState(true);
   const [qualityWeight, setQualityWeight] = useState([70]);
@@ -373,17 +373,45 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
+  const autoSelectionRef = useRef<string | null>(null);
+  const effectiveSelectedModelId = useMemo(() => {
+    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
+      return topRecommendation.model.id;
+    }
+    return selectedModelId;
+  }, [autoSelect, selectedModelId, topRecommendation]);
+
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
-      setSelectedModelId(topRecommendation.model.id);
-      onModelSelect(topRecommendation.model.id);
+      const recommendedId = topRecommendation.model.id;
+      if (autoSelectionRef.current !== recommendedId) {
+        autoSelectionRef.current = recommendedId;
+        onModelSelect(recommendedId);
+      }
     }
   }, [autoSelect, topRecommendation, onModelSelect]);
 
+  const selectedModelId = manualSelectedModelId ?? (
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : ''
+  );
+
   const handleManualSelect = useCallback((modelId: string) => {
-    setSelectedModelId(modelId);
+    setManualSelectedModelId(modelId);
     onModelSelect(modelId);
   }, [onModelSelect]);
+
+  const handleAutoSelectChange = useCallback((checked: boolean) => {
+    setAutoSelect(checked);
+    if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
+      setSelectedModelId(topRecommendation.model.id);
+      onModelSelect(topRecommendation.model.id);
+    }
+    if (checked) {
+      autoSelectionRef.current = null;
+    }
+  }, [selectedModelId, topRecommendation, onModelSelect]);
 
   if (!contextAnalysis) {
     return (
@@ -424,7 +452,7 @@ export default function IntelligentModelSelector({
           </div>
           <div className="flex items-center gap-2">
             <Label htmlFor="auto-select" className="text-sm">Auto-select</Label>
-            <Switch id="auto-select" checked={autoSelect} onCheckedChange={setAutoSelect} />
+            <Switch id="auto-select" checked={autoSelect} onCheckedChange={handleAutoSelectChange} />
           </div>
         </div>
       </CardHeader>
@@ -433,7 +461,7 @@ export default function IntelligentModelSelector({
         {/* Top Recommendation */}
         {topRecommendation && (
           <div className={`p-4 rounded-lg border-2 ${
-            selectedModelId === topRecommendation.model.id
+            effectiveSelectedModelId === topRecommendation.model.id
               ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20'
               : 'border-gray-200'
           }`}>
@@ -458,9 +486,9 @@ export default function IntelligentModelSelector({
               <Button
                 size="sm"
                 onClick={() => handleManualSelect(topRecommendation.model.id)}
-                disabled={selectedModelId === topRecommendation.model.id}
+                disabled={effectiveSelectedModelId === topRecommendation.model.id}
               >
-                {selectedModelId === topRecommendation.model.id ? 'Selected' : 'Select'}
+                {effectiveSelectedModelId === topRecommendation.model.id ? 'Selected' : 'Select'}
               </Button>
             </div>
 
@@ -560,7 +588,7 @@ export default function IntelligentModelSelector({
         {recommendations.length > 1 && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">Alternative Models</Label>
-            <Select value={selectedModelId} onValueChange={handleManualSelect}>
+            <Select value={effectiveSelectedModelId} onValueChange={handleManualSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>

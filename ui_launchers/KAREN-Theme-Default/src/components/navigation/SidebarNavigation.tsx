@@ -16,6 +16,7 @@ import React, {
   useRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     ref
   ) => {
     const { sidebarCollapsed, closeSidebar, isMobile } = useAppShell();
-    const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
+    const [manualExpandedItems, setManualExpandedItems] = useState<Set<string>>(new Set());
     const pathname = usePathname();
     const router = useRouter();
     const localNavRef = useRef<HTMLDivElement | null>(null);
@@ -72,25 +73,27 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       []
     );
 
-    const activeItemMeta = React.useMemo(
-      () => findActiveItem(items, pathname || "/"),
-      [items, pathname]
-    );
+    const activeParentId = React.useMemo(() => {
+      const activeItem = findActiveItem(items, pathname || "/");
+      return activeItem?.parent ?? null;
+    }, [items, pathname]);
 
-    const visibleExpandedItems = React.useMemo(() => {
-      const parentId = activeItemMeta?.parent;
-      if (!parentId || expandedItems.has(parentId)) {
+    const effectiveExpandedItems = React.useMemo(() => {
+      if (!activeParentId) {
         return expandedItems;
       }
-      return new Set([...expandedItems, parentId]);
-    }, [activeItemMeta?.parent, expandedItems]);
+      if (expandedItems.has(activeParentId)) {
+        return expandedItems;
+      }
+      return new Set([...expandedItems, activeParentId]);
+    }, [expandedItems, activeParentId]);
 
     // Auto-focus navigation when requested
     useEffect(() => {
       if (autoFocus && localNavRef.current) {
         localNavRef.current.focus();
       }
-    }, [autoFocus, localNavRef]);
+    }, [autoFocus, navRef]);
 
     // Flatten items for keyboard navigation
     const flattenedItems = React.useMemo(() => {
@@ -99,7 +102,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       const flatten = (nodes: NavigationItem[], level = 0, parent?: string) => {
         nodes.forEach((node) => {
           flattened.push({ item: node, level, parent });
-          if (node.children && visibleExpandedItems.has(node.id)) {
+          if (node.children && effectiveExpandedItems.has(node.id)) {
             flatten(node.children, level + 1, node.id);
           }
         });
@@ -107,14 +110,17 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
 
       flatten(items);
       return flattened;
-    }, [items, visibleExpandedItems]);
+    }, [items, effectiveExpandedItems]);
 
     // Toggle expand/collapse
     const toggleExpanded = useCallback((itemId: string) => {
-      setExpandedItems((prev) => {
+      setManualExpandedItems((prev) => {
         const next = new Set(prev);
-        if (next.has(itemId)) next.delete(itemId);
-        else next.add(itemId);
+        if (next.has(itemId)) {
+          next.delete(itemId);
+        } else {
+          next.add(itemId);
+        }
         return next;
       });
     }, []);
@@ -173,7 +179,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
           case "ArrowRight": {
             event.preventDefault();
             const curr = flattenedItems[currentIndex];
-            if (curr?.item.children && !visibleExpandedItems.has(curr.item.id)) {
+            if (curr?.item.children && !effectiveExpandedItems.has(curr.item.id)) {
               toggleExpanded(curr.item.id);
             }
             break;
@@ -181,7 +187,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
           case "ArrowLeft": {
             event.preventDefault();
             const curr = flattenedItems[currentIndex];
-            if (curr?.item.children && visibleExpandedItems.has(curr.item.id)) {
+            if (curr?.item.children && effectiveExpandedItems.has(curr.item.id)) {
               toggleExpanded(curr.item.id);
             }
             break;
@@ -217,10 +223,9 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     }, [
       enableKeyboardNavigation,
       flattenedItems,
-      visibleExpandedItems,
+      effectiveExpandedItems,
       toggleExpanded,
       handleItemClick,
-      localNavRef,
     ]);
 
     return (
@@ -249,7 +254,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
               <NavigationItemComponent
                 key={item.id}
                 item={item}
-                isExpanded={visibleExpandedItems.has(item.id)}
+                isExpanded={effectiveExpandedItems.has(item.id)}
                 isActive={isItemActive(item, pathname || '/')}
                 isCollapsed={sidebarCollapsed}
                 onToggle={() => toggleExpanded(item.id)}
