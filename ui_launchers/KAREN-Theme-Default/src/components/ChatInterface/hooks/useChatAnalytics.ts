@@ -1,93 +1,123 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChatMessage, ChatAnalytics } from "../types";
+
+const INITIAL_ANALYTICS: ChatAnalytics = {
+  totalMessages: 0,
+  userMessages: 0,
+  assistantMessages: 0,
+  averageResponseTime: 0,
+  averageConfidence: 0,
+  totalTokens: 0,
+  totalCost: 0,
+  sessionDuration: 0,
+  topTopics: [],
+  codeLanguages: [],
+  errorRate: 0,
+};
+
+const calculateAnalytics = (
+  messages: ChatMessage[],
+  sessionStartTime: number
+): ChatAnalytics => {
+  if (messages.length === 0) {
+    return {
+      ...INITIAL_ANALYTICS,
+      sessionDuration: Math.round((Date.now() - sessionStartTime) / 1000),
+    };
+  }
+
+  const intents = messages
+    .map((message) => message.metadata?.intent)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+  const languages = messages
+    .map((message) => message.language)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  const latencySamples = messages.filter((message) => message.metadata?.latencyMs);
+  const confidenceSamples = messages.filter((message) => message.metadata?.confidence);
+
+  const totalLatency = latencySamples.reduce(
+    (accumulator, message) => accumulator + (message.metadata?.latencyMs ?? 0),
+    0
+  );
+  const totalConfidence = confidenceSamples.reduce(
+    (accumulator, message) => accumulator + (message.metadata?.confidence ?? 0),
+    0
+  );
+
+  return {
+    totalMessages: messages.length,
+    userMessages: messages.filter((message) => message.role === "user").length,
+    assistantMessages: messages.filter((message) => message.role === "assistant").length,
+    averageResponseTime:
+      Math.round(totalLatency / latencySamples.length) || 0,
+    averageConfidence:
+      Math.round(((totalConfidence / confidenceSamples.length) || 0) * 100),
+    totalTokens: messages.reduce(
+      (accumulator, message) => accumulator + (message.metadata?.tokens ?? 0),
+      0
+    ),
+    totalCost: messages.reduce(
+      (accumulator, message) => accumulator + (message.metadata?.cost ?? 0),
+      0
+    ),
+    sessionDuration: Math.round((Date.now() - sessionStartTime) / 1000),
+    topTopics: [...new Set(intents)].slice(0, 5),
+    codeLanguages: [...new Set(languages)],
+    errorRate:
+      Math.round(
+        ((messages.filter((message) => message.status === "error").length || 0) /
+          messages.length) *
+          100
+      ) || 0,
+  };
+};
 
 export const useChatAnalytics = (
   messages: ChatMessage[],
   sessionStartTime: number,
   onAnalyticsUpdate?: (analytics: ChatAnalytics) => void
 ) => {
-  const [analytics, setAnalytics] = useState<ChatAnalytics>({
-    totalMessages: 0,
-    userMessages: 0,
-    assistantMessages: 0,
-    averageResponseTime: 0,
-    averageConfidence: 0,
-    totalTokens: 0,
-    totalCost: 0,
-    sessionDuration: 0,
-    topTopics: [],
-    codeLanguages: [],
-    errorRate: 0,
-  });
+  const [manualAnalytics, setManualAnalytics] = useState<ChatAnalytics | null>(null);
+  const [lastResetMessageCount, setLastResetMessageCount] = useState<number | null>(null);
 
-  // Update analytics when messages change
+  const computedAnalytics = useMemo(
+    () => calculateAnalytics(messages, sessionStartTime),
+    [messages, sessionStartTime]
+  );
+
+  const analytics = useMemo(() => {
+    if (manualAnalytics && lastResetMessageCount !== null) {
+      if (messages.length === lastResetMessageCount) {
+        return manualAnalytics;
+      }
+      return computedAnalytics;
+    }
+
+    return manualAnalytics ?? computedAnalytics;
+  }, [
+    computedAnalytics,
+    lastResetMessageCount,
+    manualAnalytics,
+    messages.length,
+  ]);
+
   useEffect(() => {
-    const intents = messages
-      .map((m) => m.metadata?.intent)
-      .filter((v): v is string => typeof v === 'string' && v.length > 0);
-    const langs = messages
-      .map((m) => m.language)
-      .filter((v): v is string => typeof v === 'string' && v.length > 0);
-
-    const newAnalytics: ChatAnalytics = {
-      totalMessages: messages.length,
-      userMessages: messages.filter((m) => m.role === "user").length,
-      assistantMessages: messages.filter((m) => m.role === "assistant").length,
-      averageResponseTime:
-        Math.round(
-          messages.reduce((acc, m) => acc + (m.metadata?.latencyMs || 0), 0) /
-            messages.filter((m) => m.metadata?.latencyMs).length
-        ) || 0,
-      averageConfidence:
-        Math.round(
-          (messages.reduce((acc, m) => acc + (m.metadata?.confidence || 0), 0) /
-            messages.filter((m) => m.metadata?.confidence).length) *
-            100
-        ) || 0,
-      totalTokens: messages.reduce(
-        (acc, m) => acc + (m.metadata?.tokens || 0),
-        0
-      ),
-      totalCost: messages.reduce((acc, m) => acc + (m.metadata?.cost || 0), 0),
-      sessionDuration: Math.round((Date.now() - sessionStartTime) / 1000),
-      topTopics: [...new Set(intents)].slice(0, 5),
-      codeLanguages: [...new Set(langs)],
-      errorRate:
-        Math.round(
-          (messages.filter((m) => m.status === "error").length /
-            messages.length) *
-            100
-        ) || 0,
-    };
-
-    setAnalytics(newAnalytics);
     if (onAnalyticsUpdate) {
-      onAnalyticsUpdate(newAnalytics);
+      onAnalyticsUpdate(analytics);
     }
-  }, [messages, sessionStartTime, onAnalyticsUpdate]);
+  }, [analytics, onAnalyticsUpdate]);
 
-  // Reset analytics
   const resetAnalytics = useCallback(() => {
-    const resetAnalytics: ChatAnalytics = {
-      totalMessages: 0,
-      userMessages: 0,
-      assistantMessages: 0,
-      averageResponseTime: 0,
-      averageConfidence: 0,
-      totalTokens: 0,
-      totalCost: 0,
-      sessionDuration: 0,
-      topTopics: [],
-      codeLanguages: [],
-      errorRate: 0,
-    };
-    setAnalytics(resetAnalytics);
+    setManualAnalytics(INITIAL_ANALYTICS);
+    setLastResetMessageCount(messages.length);
+
     if (onAnalyticsUpdate) {
-      onAnalyticsUpdate(resetAnalytics);
+      onAnalyticsUpdate(INITIAL_ANALYTICS);
     }
-  }, [onAnalyticsUpdate]);
+  }, [messages.length, onAnalyticsUpdate]);
 
   return {
     analytics,

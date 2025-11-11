@@ -55,18 +55,15 @@ interface ApiConversationPayload {
 }
 
 interface CreateConversationResponse {
-  conversation: {
-    id: string;
-    session_id?: string;
-  };
+  conversation: ApiConversationPayload;
 }
 
 interface ConversationSummaryResponse {
-  summary: string;
+  summary?: string;
 }
 
-interface ConversationListResponse {
-  conversations: ApiConversationPayload[];
+interface ConversationsListResponse {
+  conversations?: ApiConversationPayload[];
 }
 
 const mapApiMessageToChatMessage = (msg: ApiConversationMessage): ChatMessage => {
@@ -136,9 +133,11 @@ export class ChatService {
           priority: 'normal'
         });
 
+        const { conversation } = response.data;
+
         return {
-          conversationId: response.data.conversation.id,
-          sessionId: response.data.conversation.session_id || sessionId
+          conversationId: conversation.id,
+          sessionId: conversation.session_id || sessionId
         };
       },
       {
@@ -170,10 +169,8 @@ export class ChatService {
       if (this.cache.has(sessionId)) {
         return this.cache.get(sessionId)!;
       }
-      const response = await this.apiClient.get<ApiConversationPayload>(
-        `/api/conversations/by-session/${sessionId}`
-      );
-      const data: ApiConversationPayload = response.data;
+      const response = await this.apiClient.get<ApiConversationPayload>(`/api/conversations/by-session/${sessionId}`);
+      const data = response.data;
       const session: ConversationSession = {
         conversationId: data.id,
         sessionId: data.session_id,
@@ -200,10 +197,8 @@ export class ChatService {
   }
   async generateConversationSummary(sessionId: string): Promise<string | null> {
     try {
-      const response = await this.apiClient.post<ConversationSummaryResponse>(
-        `/api/conversations/${sessionId}/summary`
-      );
-      return response.data.summary;
+      const response = await this.apiClient.post<ConversationSummaryResponse>(`/api/conversations/${sessionId}/summary`);
+      return response.data.summary ?? null;
     } catch (error) {
       console.warn('Failed to generate conversation summary', sessionId, error);
       return null;
@@ -211,9 +206,7 @@ export class ChatService {
   }
   async getUserConversations(_userId: string): Promise<ConversationSession[]> {
     try {
-      const response = await this.apiClient.get<ConversationListResponse>(
-        '/api/conversations'
-      );
+      const response = await this.apiClient.get<ConversationsListResponse>('/api/conversations');
       const conversations = response.data.conversations || [];
       return conversations.map((conv) => ({
         conversationId: conv.id,
