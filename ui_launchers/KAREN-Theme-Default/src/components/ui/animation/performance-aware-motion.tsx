@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { motion, MotionProps, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import {
   usePerformanceAwareAnimation,
