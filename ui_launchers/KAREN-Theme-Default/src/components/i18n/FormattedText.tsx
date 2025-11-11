@@ -103,8 +103,23 @@ export interface TimeAgoProps {
 }
 
 export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
-  // Compute on render; avoids timers and keeps SSR friendly
-  const now = Date.now();
+  const [now, setNow] = React.useState(() => Date.now());
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const tick = () => {
+      setNow(Date.now());
+    };
+
+    const intervalId = window.setInterval(tick, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
   const inputMs =
     date instanceof Date ? date.getTime() : typeof date === "number" ? date : new Date(date).getTime();
 

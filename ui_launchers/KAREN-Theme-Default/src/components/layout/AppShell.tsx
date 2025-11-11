@@ -127,7 +127,6 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
     const [isMobile, setIsMobile] = useState(false);
     const [isTablet, setIsTablet] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     // Persist helpers
     const setSidebarOpen = useCallback(
@@ -140,7 +139,9 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-open",
               JSON.stringify(newValue)
             );
-          } catch {}
+          } catch {
+            // Ignore persistence failures (e.g. private browsing)
+          }
         }
       },
       [sidebarOpen, persistSidebarState, hasWindow]
@@ -157,7 +158,9 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-collapsed",
               JSON.stringify(newValue)
             );
-          } catch {}
+          } catch {
+            // Ignore persistence failures (e.g. private browsing)
+          }
         }
       },
       [sidebarCollapsed, persistSidebarState, hasWindow]
@@ -220,7 +223,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
     // Keyboard navigation
     useEffect(() => {
-      if (!enableKeyboardShortcuts || !mounted || !hasWindow) return;
+      if (!enableKeyboardShortcuts || !hasWindow) return;
 
       const handleKeyDown = (event: KeyboardEvent) => {
         const target = event.target as HTMLElement | null;
@@ -262,11 +265,14 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardShortcuts, mounted, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
-
-    useEffect(() => {
-      setMounted(true);
-    }, []);
+    }, [
+      enableKeyboardShortcuts,
+      hasWindow,
+      isMobile,
+      sidebarOpen,
+      toggleSidebar,
+      closeSidebar,
+    ]);
 
     const contextValue: AppShellContextType = {
       sidebarOpen,
