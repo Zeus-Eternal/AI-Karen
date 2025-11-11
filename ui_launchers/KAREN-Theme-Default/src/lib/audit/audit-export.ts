@@ -263,7 +263,7 @@ export class AuditLogExporter {
         fields_included: string[];
         date_format: string;
         timezone: string;
-        filter_applied: AuditLogFilter | {};
+        filter_applied: AuditLogFilter | Record<string, never>;
       };
     } = {
       logs: transformedLogs,
@@ -272,12 +272,14 @@ export class AuditLogExporter {
     };
 
     if (options.metadata) {
+      const filterApplied: AuditLogFilter | Record<string, never> =
+        options.filter ?? {};
       exportData.metadata = {
         export_format: 'json',
         fields_included: fields,
         date_format: dateFormat,
         timezone: options.timezone || 'UTC',
-        filter_applied: options.filter || {}
+        filter_applied: filterApplied
       };
     }
 
