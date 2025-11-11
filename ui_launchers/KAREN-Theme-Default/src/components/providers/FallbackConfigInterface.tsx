@@ -1,5 +1,5 @@
 // ui_launchers/KAREN-Theme-Default/src/components/providers/FallbackConfigInterface.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,14 @@ export interface TestResult {
   details: string;
 }
 
+const createEmptyChain = (): FallbackChain => ({
+  id: '',
+  name: '',
+  priority: 1,
+  providers: [],
+  conditions: [],
+});
+
 const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ className }) => {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<FallbackConfig[]>([]);
@@ -58,15 +66,8 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingChain, setEditingChain] = useState<FallbackChain | null>(null);
 
-  // Load data on mount
-  useEffect(() => {
-    loadConfigs();
-    loadAnalytics();
-    loadRecentEvents();
-  }, []);
-
   // Data fetching functions
-  const loadConfigs = async () => {
+  const loadConfigs = useCallback(async () => {
     setLoading(true);
     try {
       const response = await enhancedApiClient.get<
@@ -77,7 +78,13 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       const payload = response.data;
       const configList = Array.isArray(payload) ? payload : payload?.configs ?? [];
       setConfigs(configList);
-      setSelectedConfig(prev => prev ?? (configList[0] ?? null));
+      setSelectedConfig(prev => {
+        if (!prev) {
+          return configList[0] ?? null;
+        }
+        const matchingConfig = configList.find(config => config.id === prev.id);
+        return matchingConfig ?? (configList[0] ?? null);
+      });
     } catch (error) {
       console.error('Failed to load fallback configurations:', error);
       toast({
@@ -91,9 +98,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       const response = await enhancedApiClient.get<
         FallbackAnalytics | { analytics?: FallbackAnalytics }
@@ -113,9 +120,9 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       console.error('Failed to load fallback analytics:', error);
       setAnalytics(null);
     }
-  };
+  }, []);
 
-  const loadRecentEvents = async () => {
+  const loadRecentEvents = useCallback(async () => {
     try {
       const response = await enhancedApiClient.get<
         FallbackEvent[] | { events?: FallbackEvent[] }
@@ -133,7 +140,14 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       console.error('Failed to load fallback events:', error);
       setRecentEvents([]);
     }
-  };
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadConfigs();
+    loadAnalytics();
+    loadRecentEvents();
+  }, [loadConfigs, loadAnalytics, loadRecentEvents]);
 
   // Save and delete config
   const saveConfig = async (config: FallbackConfig) => {
@@ -171,7 +185,11 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   };
 
   const deleteConfig = async (configId: string) => {
-    if (!confirm('Are you sure you want to delete this fallback configuration?')) return;
+    const shouldDelete = typeof window === 'undefined'
+      ? true
+      : window.confirm('Are you sure you want to delete this fallback configuration?');
+
+    if (!shouldDelete) return;
     try {
       await enhancedApiClient.delete(`/api/fallback/configs/${configId}`);
       setConfigs(prev => {
@@ -284,13 +302,17 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
   };
 
   // Configuration dialog component
-  const ChainConfigDialog: React.FC<{ 
-    chain?: FallbackChain; 
-    onSave: (chain: FallbackChain) => void 
+  const ChainConfigDialog: React.FC<{
+    chain?: FallbackChain;
+    onSave: (chain: FallbackChain) => void
   }> = ({ chain, onSave }) => {
     const [formData, setFormData] = useState<FallbackChain>(
-      chain || { id: '', name: '', priority: 1, providers: [], conditions: [] },
+      chain || createEmptyChain(),
     );
+
+    useEffect(() => {
+      setFormData(chain || createEmptyChain());
+    }, [chain]);
 
     const addProvider = () => {
       setFormData(prev => ({
@@ -518,37 +540,79 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5 " />
                 Fallback & Failover Management
               </CardTitle>
+              <CardDescription>
+                Configure provider failover chains, monitor reliability, and validate automated recovery paths.
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+              <Dialog
+                open={showConfigDialog}
+                onOpenChange={(open) => {
+                  setShowConfigDialog(open);
+                  if (!open) {
+                    setEditingChain(null);
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
-                  <Button aria-label="Add new fallback chain">
+                  <Button
+                    aria-label="Add new fallback chain"
+                    onClick={(event) => {
+                      if (!selectedConfig) {
+                        event.preventDefault();
+                        toast({
+                          title: 'Select a configuration first',
+                          description: 'Choose a fallback configuration before adding a new chain.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      setEditingChain(null);
+                    }}
+                  >
                     <Plus className="w-4 h-4 mr-2 " />
+                    New Chain
                   </Button>
                 </DialogTrigger>
-                <ChainConfigDialog onSave={(chain) => {
-                  if (selectedConfig) {
+                <ChainConfigDialog
+                  chain={editingChain ?? undefined}
+                  onSave={(chain) => {
+                    if (!selectedConfig) {
+                      toast({
+                        title: 'No configuration selected',
+                        description: 'Please select a fallback configuration before saving a chain.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+
+                    const updatedChain = editingChain
+                      ? { ...chain, id: editingChain.id }
+                      : { ...chain, id: chain.id || `chain-${Date.now()}` };
+
                     const updatedConfig = {
                       ...selectedConfig,
                       chains: editingChain
-                        ? selectedConfig.chains.map(c => c.id === editingChain.id ? chain : c)
-                        : [...selectedConfig.chains, { ...chain, id: `chain-${Date.now()}` }]
+                        ? selectedConfig.chains.map(c => (c.id === editingChain.id ? updatedChain : c))
+                        : [...selectedConfig.chains, updatedChain],
                     };
+
                     saveConfig(updatedConfig);
-                  }
-                  setEditingChain(null);
-                }} />
+                    setEditingChain(null);
+                  }}
+                />
               </Dialog>
             </div>
           </div>
         </CardHeader>
       </Card>
+
       {/* Analytics Overview */}
       {analytics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -598,6 +662,175 @@ const FallbackConfigInterface: React.FC<FallbackConfigInterfaceProps> = ({ class
           </Card>
         </div>
       )}
+
+      {/* Config list */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fallback Configurations</CardTitle>
+          <CardDescription>Review configuration status and toggle availability for each fallback chain group.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {configs.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              No fallback configurations are available yet. Configure provider failover policies in the backend to manage them here.
+            </div>
+          ) : (
+            configs.map(config => {
+              const isSelected = selectedConfig?.id === config.id;
+              return (
+                <div
+                  key={config.id}
+                  className={`rounded-lg border p-4 transition-colors ${isSelected ? 'border-primary shadow-sm' : 'border-border'}`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold">{config.name}</h3>
+                      <p className="text-xs text-muted-foreground sm:text-sm">
+                        {config.enabled ? 'Enabled' : 'Disabled'} • {config.chains.length} chains • {config.healthChecks.length} health checks • {config.failoverRules.length} rules
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={config.enabled ? 'default' : 'outline'}>
+                        {config.enabled ? 'Active' : 'Disabled'}
+                      </Badge>
+                      <Button size="sm" variant="outline" onClick={() => setSelectedConfig(config)}>
+                        View Details
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => toggleConfig(config.id, !config.enabled)}>
+                        {config.enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => deleteConfig(config.id)}>
+                        <Trash2 className="mr-1 h-3 w-3" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Selected config details */}
+      {selectedConfig && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{selectedConfig.name} Chains</CardTitle>
+            <CardDescription>Inspect provider ordering, run targeted failover tests, and adjust chain definitions.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedConfig.chains.length === 0 ? (
+              <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                This configuration has no fallback chains yet. Use "New Chain" to add providers and priorities.
+              </div>
+            ) : (
+              selectedConfig.chains.map(chain => {
+                const result = testResults.find(r => r.chainId === chain.id);
+                return (
+                  <div key={chain.id} className="space-y-3 rounded-lg border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-semibold">{chain.name}</h3>
+                        <p className="text-xs text-muted-foreground sm:text-sm">
+                          Priority {chain.priority} • {chain.providers.length} providers • Status: {getHealthStatus(chain)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingChain(chain);
+                            setShowConfigDialog(true);
+                          }}
+                        >
+                          Edit Chain
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => testFallback(chain.id)}
+                          disabled={testing.has(chain.id)}
+                        >
+                          {testing.has(chain.id) ? 'Testing...' : 'Run Test'}
+                        </Button>
+                      </div>
+                    </div>
+                    {result && (
+                      <div
+                        className={`rounded-md border p-3 text-xs sm:text-sm ${result.success ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Last test result</span>
+                          <span>{result.success ? 'Success' : 'Failure'}</span>
+                        </div>
+                        <div className="mt-1 text-muted-foreground">
+                          {result.details}
+                        </div>
+                        <div className="mt-1 text-muted-foreground">
+                          Failover: {result.failoverTime}ms • Recovery: {result.recoveryTime}ms
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {chain.providers.map((provider, index) => (
+                        <div key={`${provider.providerId}-${index}`} className="rounded-md border p-3 text-xs sm:text-sm">
+                          <div className="font-medium">{provider.providerId}</div>
+                          {provider.modelId && (
+                            <div className="text-muted-foreground">Model: {provider.modelId}</div>
+                          )}
+                          <div className="text-muted-foreground">Weight: {provider.weight}</div>
+                          <div className="text-muted-foreground">Max retries: {provider.maxRetries}</div>
+                          <div className="text-muted-foreground">Timeout: {provider.timeout}ms</div>
+                          <div className="text-muted-foreground">Health threshold: {provider.healthThreshold}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent events */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Failover Activity</CardTitle>
+          <CardDescription>Latest alerts and recovery events from the fallback service.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {recentEvents.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              No recent failover events detected.
+            </div>
+          ) : (
+            recentEvents.map(event => (
+              <div
+                key={event.id}
+                className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-start gap-2">
+                  {getEventIcon(event.type)}
+                  <div>
+                    <div className="text-sm font-medium capitalize">{event.type.replace('_', ' ')}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(event.timestamp).toLocaleString()}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{event.reason}</div>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground sm:text-right">
+                  <div>Provider: {event.providerId}</div>
+                  <div>Duration: {event.duration}ms</div>
+                  <div>Status: {event.resolved ? 'Resolved' : 'Ongoing'}</div>
+                  <div className="mt-1">Impact: {event.impact}</div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
