@@ -323,24 +323,25 @@ export class WebhookHandler {
    * Process incoming webhook request
    */
   async processIncomingWebhook(
-    _provider: string,
-    _eventType: string,
-    _data: unknown,
-    _headers: Record<string, string>
+    provider: string,
+    eventType: string,
+    data: unknown,
+    headers: Record<string, string>
   ): Promise<void> {
     // Validate webhook signature (provider-specific)
     if (!this.validateWebhookSignature(provider, data, headers)) {
       throw new Error('Invalid webhook signature');
     }
+    const payload = this.toRecord(data);
     // Create webhook object
     const webhook: EmailWebhook = {
       id: `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       provider,
       event_type: eventType,
-      message_id: this.extractMessageId(provider, data),
-      email: this.extractEmail(provider, data),
+      message_id: this.extractMessageId(provider, payload),
+      email: this.extractEmail(provider, payload),
       timestamp: new Date(),
-      data,
+      data: payload,
       processed: false,
       created_at: new Date(),
     };
@@ -351,10 +352,13 @@ export class WebhookHandler {
    * Validate webhook signature
    */
   private validateWebhookSignature(
-    _provider: string,
-    _data: unknown,
-    _headers: Record<string, string>
+    provider: string,
+    data: unknown,
+    headers: Record<string, string>
   ): boolean {
+    void provider;
+    void data;
+    void headers;
     // In a real implementation, this would validate the webhook signature
     // using the provider's specific method
     return true;
@@ -363,35 +367,72 @@ export class WebhookHandler {
    * Extract message ID from webhook data
    */
   private extractMessageId(provider: string, data: unknown): string {
+    const record = this.toRecord(data);
+
     switch (provider) {
-      case 'sendgrid':
-        return data.sg_message_id || data.message_id || '';
-      case 'ses':
-        return data.mail?.messageId || '';
-      case 'mailgun':
-        return data['message-id'] || '';
-      case 'postmark':
-        return data.MessageID || '';
-      default:
-        return data.message_id || '';
+      case 'sendgrid': {
+        const sgMessageId = this.getString(record, 'sg_message_id');
+        if (sgMessageId) {
+          return sgMessageId;
+        }
+        return this.getString(record, 'message_id') || '';
+      }
+      case 'ses': {
+        const mail = this.toRecord(record['mail']);
+        return this.getString(mail, 'messageId') || '';
+      }
+      case 'mailgun': {
+        return this.getString(record, 'message-id') || '';
+      }
+      case 'postmark': {
+        return this.getString(record, 'MessageID') || '';
+      }
+      default: {
+        return this.getString(record, 'message_id') || '';
+      }
     }
   }
   /**
    * Extract email address from webhook data
    */
   private extractEmail(provider: string, data: unknown): string {
+    const record = this.toRecord(data);
+
     switch (provider) {
-      case 'sendgrid':
-        return data.email || '';
-      case 'ses':
-        return data.mail?.destination?.[0] || '';
-      case 'mailgun':
-        return data.recipient || '';
-      case 'postmark':
-        return data.Email || '';
-      default:
-        return data.email || '';
+      case 'sendgrid': {
+        return this.getString(record, 'email') || '';
+      }
+      case 'ses': {
+        const mail = this.toRecord(record['mail']);
+        const destination = mail['destination'];
+        if (Array.isArray(destination)) {
+          const first = destination[0];
+          return typeof first === 'string' ? first : '';
+        }
+        return '';
+      }
+      case 'mailgun': {
+        return this.getString(record, 'recipient') || '';
+      }
+      case 'postmark': {
+        return this.getString(record, 'Email') || '';
+      }
+      default: {
+        return this.getString(record, 'email') || '';
+      }
     }
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> {
+    if (value && typeof value === 'object') {
+      return value as Record<string, unknown>;
+    }
+    return {};
+  }
+
+  private getString(record: Record<string, unknown>, key: string): string | undefined {
+    const value = record[key];
+    return typeof value === 'string' ? value : undefined;
   }
 }
 /**
