@@ -34,31 +34,39 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     if (!healthMonitor) {
       return null;
     }
+
     try {
-      return healthMonitor?.getMetrics?.() ?? null;
+      return healthMonitor.getMetrics?.() ?? null;
     } catch {
-      metrics = null;
+      return null;
     }
   });
+
   const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
     if (!healthMonitor) {
       return [];
     }
+
     try {
-      setMetrics(monitor.getMetrics());
+      return healthMonitor.getAlerts?.(20) ?? [];
     } catch {
-      setMetrics(null);
+      return [];
     }
   });
-  const [isMonitoring, setIsMonitoring] = useState(() => {
+
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(() => {
     if (!healthMonitor) {
       return false;
     }
+
     try {
-      setAlerts(monitor.getAlerts(20));
+      return healthMonitor.getStatus?.().isMonitoring ?? false;
     } catch {
-      setAlerts([]);
+      return false;
     }
+  });
+
+  const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
     if (!healthMonitor) {

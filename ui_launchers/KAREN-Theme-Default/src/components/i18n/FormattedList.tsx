@@ -113,6 +113,7 @@ export function FormattedCompactList({
       });
       return formatter.format(visibleItems);
     } catch (error) {
+      console.error("Error formatting visible list items:", error);
       return visibleItems.join(", ");
     }
   }, [visibleItems, locale]);
@@ -129,6 +130,7 @@ export function FormattedCompactList({
       const numberFormatter = new Intl.NumberFormat(locale);
       return ` +${numberFormatter.format(remainingCount)} more`;
     } catch (error) {
+      console.error("Error formatting remaining item count:", error);
       return ` +${remainingCount} more`;
     }
   }, [remainingCount, locale, renderRemaining]);

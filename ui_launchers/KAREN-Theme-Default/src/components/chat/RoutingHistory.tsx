@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,7 +31,7 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
   const [events, setEvents] = useState<RoutingEvent[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await backend.makeRequestPublic<{ status: string; output: unknown }>("/api/copilot/start", {
@@ -40,16 +40,17 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
       });
       const out = (res as unknown)?.output || {};
       setEvents(out.events || []);
-    } catch (e) {
+    } catch (error) {
+      console.error("Failed to load routing history", error);
       toast({ variant: "destructive", title: "Failed to load routing history" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [backend, limit, toast]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">

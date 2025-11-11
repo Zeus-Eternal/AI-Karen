@@ -1,5 +1,6 @@
 // CopilotKit Integration Components
-export { CopilotKitProvider, useCopilotKit } from './CopilotKitProvider';
+export { CopilotKitProvider } from './CopilotKitProvider';
+export { useCopilotKit } from './CopilotContext';
 export { CopilotTextarea } from './CopilotTextarea';
 
 // Copilot-specific chat interface
@@ -7,4 +8,4 @@ export { ChatInterface as CopilotChat } from '@/components/ChatInterface';
 export { ChatInterface } from '@/components/ChatInterface';
 
 // Types
-export type { CopilotKitConfig, CopilotContextType } from './CopilotKitProvider';
+export type { CopilotKitConfig, CopilotContextType, CopilotSuggestion } from './CopilotContext';

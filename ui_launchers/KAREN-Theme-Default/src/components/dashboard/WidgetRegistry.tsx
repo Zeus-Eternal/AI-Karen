@@ -10,13 +10,14 @@ import {
   FileText,
   type LucideIcon,
 } from "lucide-react";
-import type { WidgetRegistry as WidgetRegistryType, WidgetConfig, WidgetProps } from "@/types/dashboard";
+import type { WidgetRegistry as WidgetRegistryType, WidgetConfig } from "@/types/dashboard";
 
 // Actual widget components
 import MetricWidget from "./widgets/MetricWidget";
 import StatusWidget from "./widgets/StatusWidget";
 import ChartWidget from "./widgets/ChartWidget";
 import LogWidget from "./widgets/LogWidget";
+import TableWidget from "./widgets/TableWidget";
 
 /* -----------------------------------------------------------------------------
  * Icon resolution (typed, safe fallback)
@@ -43,26 +44,6 @@ const genId = (prefix: string) => {
   } catch {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
-};
-
-/* -----------------------------------------------------------------------------
- * Placeholder TableWidget (explicit, accessible)
- * ---------------------------------------------------------------------------*/
-const TableWidget: React.FC<WidgetProps> = ({ config }) => {
-  const Icon = resolveIcon("AlertCircle");
-  return (
-    <div
-      className="flex h-full items-center justify-center text-muted-foreground"
-      role="region"
-      aria-label="Table widget placeholder"
-    >
-      <div className="text-center">
-        <Icon className="mx-auto mb-2 h-8 w-8" aria-hidden />
-        <p className="text-sm md:text-base lg:text-lg">Table Widget</p>
-        <p className="text-xs sm:text-sm md:text-base">{config.title}</p>
-      </div>
-    </div>
-  );
 };
 
 /* -----------------------------------------------------------------------------

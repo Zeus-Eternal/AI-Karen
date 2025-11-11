@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Bot, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Bot, Wifi, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface TypingIndicatorProps {
@@ -10,6 +10,14 @@ interface TypingIndicatorProps {
   showConnectionStatus?: boolean;
 }
 
+const TypingDots: React.FC = () => (
+  <div className="flex space-x-1">
+    <div className="w-2 h-2 bg-current rounded-full animate-bounce " />
+    <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.1s] " />
+    <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s] " />
+  </div>
+);
+
 export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   isTyping,
   isConnected,
@@ -17,14 +25,6 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   estimatedTime,
   showConnectionStatus = true,
 }) => {
-  const TypingDots = () => (
-    <div className="flex space-x-1">
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce " />
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.1s] " />
-      <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s] " />
-    </div>
-  );
-
   const getTypingMessage = () => {
     if (typingUsers.length === 0) {
       return 'AI is thinking...';
