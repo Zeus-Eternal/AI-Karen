@@ -369,16 +369,16 @@ export class HttpConnectionPool {
     let activeConnections = 0;
     let idleConnections = 0;
 
-    for (const hostConnections of this.connections.values()) {
-      for (const connection of hostConnections) {
+    this.connections.forEach(hostConnections => {
+      hostConnections.forEach(connection => {
         totalConnections++;
         if (connection.isActive) {
           activeConnections++;
         } else {
           idleConnections++;
         }
-      }
-    }
+      });
+    });
 
     this.metrics.totalConnections = totalConnections;
     this.metrics.activeConnections = activeConnections;
@@ -412,7 +412,7 @@ export class HttpConnectionPool {
       return;
     }
 
-    for (const [host, hostConnections] of this.connections.entries()) {
+    this.connections.forEach((hostConnections, host) => {
       const validConnections = hostConnections.filter(connection => {
         if (connection.isActive) {
           return true; // Keep active connections
@@ -433,7 +433,7 @@ export class HttpConnectionPool {
       if (validConnections.length === 0) {
         this.connections.delete(host);
       }
-    }
+    });
   }
 }
 
