@@ -373,6 +373,12 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
+  const selectedModelId = manualSelectedModelId ?? (
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : ''
+  );
+
   const autoSelectionRef = useRef<string | null>(null);
 
   const autoSelectedModelId =

@@ -35,7 +35,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       return null;
     }
     try {
-      return healthMonitor.getMetrics();
+      return healthMonitor?.getMetrics?.() ?? null;
     } catch {
       return null;
     }
