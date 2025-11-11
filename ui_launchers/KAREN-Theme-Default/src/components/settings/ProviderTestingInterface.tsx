@@ -159,7 +159,7 @@ export function ProviderTestingInterface({
           Provider Testing & Validation
         </CardTitle>
         <CardDescription>
-          Test connectivity, authentication, and capabilities for {providerName}
+          Test connectivity, authentication, and capabilities for {providerName} ({providerType})
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
