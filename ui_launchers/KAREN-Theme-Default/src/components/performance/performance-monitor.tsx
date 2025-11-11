@@ -3,7 +3,9 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Activity, Clock, Zap, X } from "lucide-react";
+import { Activity, Zap, X } from "lucide-react";
+
+import { estimateBundleSize, readNavigationTimings } from "./performance-utils";
 
 export interface PerformanceMetrics {
   // Core Web Vitals / key timings (milliseconds unless noted)
@@ -33,46 +35,6 @@ export interface PerformanceMonitorProps {
   sendToAnalytics?: boolean;
   /** Analytics endpoint URL */
   analyticsEndpoint?: string;
-}
-
-/** Utility: now in ms with high resolution */
-const nowMs = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-
-/** Try to read modern NavigationTiming first, fallback to legacy */
-function readNavigationTimings(): { ttfb?: number; loadTime?: number } {
-  if (typeof performance === "undefined") return {};
-  const nav = performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined;
-  if (nav) {
-    // All values are relative to startTime (typically 0)
-    return {
-      ttfb: nav.responseStart, // ms
-      loadTime: nav.loadEventEnd - nav.startTime, // ms
-    };
-  }
-  // Legacy fallback
-  const t = (performance as unknown).timing;
-  if (t) {
-    return {
-      ttfb: t.responseStart - t.navigationStart,
-      loadTime: t.loadEventEnd - t.navigationStart,
-    };
-  }
-  return {};
-}
-
-/** Best-effort bundle size estimation: sum transferSize of JS resources */
-function estimateBundleSize(): number | undefined {
-  if (typeof performance === "undefined" || !performance.getEntriesByType) return undefined;
-  try {
-    const resources = performance.getEntriesByType("resource") as (PerformanceResourceTiming & { transferSize?: number })[];
-    const jsBytes = resources
-      .filter((r) => r.initiatorType === "script")
-      .map((r) => (typeof r.transferSize === "number" && r.transferSize > 0 ? r.transferSize : 0))
-      .reduce((a, b) => a + b, 0);
-    return jsBytes || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function PerformanceMonitor({
@@ -421,39 +383,4 @@ export function PerformanceMonitor({
 }
 
 // Hook for using performance metrics in components (lightweight sampling)
-export function usePerformanceMetrics() {
-  const [metrics, setMetrics] = useState<PerformanceMetrics>({});
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const collect = () => {
-      const out: PerformanceMetrics = {};
-      const nav = readNavigationTimings();
-      out.ttfb = nav.ttfb;
-      out.loadTime = nav.loadTime;
-
-      // Memory usage
-      try {
-        if ("memory" in performance) {
-          const memory = (performance as unknown).memory;
-          out.usedJSHeapSize = memory?.usedJSHeapSize;
-          out.totalJSHeapSize = memory?.totalJSHeapSize;
-          out.jsHeapSizeLimit = memory?.jsHeapSizeLimit;
-        }
-      } catch {
-        // ignore
-      }
-
-      setMetrics(out);
-    };
-
-    collect();
-    const timer = window.setTimeout(collect, 2000);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  return metrics;
-}
-
 export default PerformanceMonitor;
