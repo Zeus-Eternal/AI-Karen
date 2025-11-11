@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 
 // fixed: proper named import from error-handler
 import {
@@ -77,7 +76,6 @@ export default function ModelDownloadProgress({
   compact = false,
 }: ModelDownloadProgressProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const { toast } = useToast(); // reserved for future toasts if needed
 
   // use centralized formatters
   const formatBytes = formatFileSize;
