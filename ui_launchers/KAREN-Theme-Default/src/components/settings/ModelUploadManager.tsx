@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -127,37 +126,9 @@ export default function ModelUploadManager({
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  }, []);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    handleFiles(files);
-  }, []);
-
-  const handleFiles = (files: File[]) => {
-    const newUploadFiles: UploadFile[] = files.map(file => ({
-      file,
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
-      status: 'pending',
-      progress: 0
-    }));
-    
-    setUploadFiles(prev => [...prev, ...newUploadFiles]);
-    
-    // Start uploading files
-    newUploadFiles.forEach(uploadFile => {
-      uploadModelFile(uploadFile);
-    });
-  };
-
-  const uploadModelFile = async (uploadFile: UploadFile) => {
+  const uploadModelFile = useCallback(async (uploadFile: UploadFile) => {
     try {
-      setUploadFiles(prev => prev.map(f => 
+      setUploadFiles(prev => prev.map(f =>
         f.id === uploadFile.id ? { ...f, status: 'uploading' } : f
       ));
 
@@ -167,11 +138,11 @@ export default function ModelUploadManager({
 
       // Create XMLHttpRequest for progress tracking
       const xhr = new XMLHttpRequest();
-      
+
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = (e.loaded / e.total) * 100;
-          setUploadFiles(prev => prev.map(f => 
+          setUploadFiles(prev => prev.map(f =>
             f.id === uploadFile.id ? { ...f, progress } : f
           ));
         }
@@ -180,7 +151,7 @@ export default function ModelUploadManager({
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
           const response = JSON.parse(xhr.responseText);
-          setUploadFiles(prev => prev.map(f => 
+          setUploadFiles(prev => prev.map(f =>
             f.id === uploadFile.id ? { ...f, status: 'uploaded', progress: 100 } : f
           ));
           toast({
@@ -200,10 +171,10 @@ export default function ModelUploadManager({
       xhr.open('POST', `${backend.getBaseUrl()}/api/models/local/upload`);
       xhr.send(formData);
     } catch (error) {
-      setUploadFiles(prev => prev.map(f => 
-        f.id === uploadFile.id ? { 
-          ...f, 
-          status: 'error', 
+      setUploadFiles(prev => prev.map(f =>
+        f.id === uploadFile.id ? {
+          ...f,
+          status: 'error',
           error: error instanceof Error ? error.message : 'Upload failed'
         } : f
       ));
@@ -213,7 +184,35 @@ export default function ModelUploadManager({
         description: `Failed to upload ${uploadFile.file.name}`,
       });
     }
-  };
+  }, [backend, onModelUploaded, toast]);
+
+  const handleFiles = useCallback((files: File[]) => {
+    const newUploadFiles: UploadFile[] = files.map(file => ({
+      file,
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
+      status: 'pending',
+      progress: 0
+    }));
+
+    setUploadFiles(prev => [...prev, ...newUploadFiles]);
+
+    // Start uploading files
+    newUploadFiles.forEach(uploadFile => {
+      uploadModelFile(uploadFile);
+    });
+  }, [uploadModelFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  }, [handleFiles]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    handleFiles(files);
+  }, [handleFiles]);
 
   const removeUploadFile = (id: string) => {
     setUploadFiles(prev => prev.filter(f => f.id !== id));

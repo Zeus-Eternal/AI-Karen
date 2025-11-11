@@ -103,6 +103,7 @@ export default function ModelProviderIntegration({
               );
             if (response) newSuggestions[provider.name] = response;
           } catch (error) {
+            console.error(`Failed to load model suggestions for provider ${provider.name}`, error);
             // Soft-fail per provider; surface a toast once at the end
           }
         })

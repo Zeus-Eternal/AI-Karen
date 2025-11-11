@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -59,19 +59,13 @@ export default function AdvancedModelManagement() {
   const [activeTab, setActiveTab] = useState('upload');
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const { toast } = useToast();
   const backend = getKarenBackend();
 
-  useEffect(() => {
-    loadSystemInfo();
-  }, []);
-
-  const loadSystemInfo = async () => {
+  const loadSystemInfo = useCallback(async () => {
     try {
-      setLoading(true);
       const [storageResponse, healthResponse] = await Promise.all([
         backend.makeRequestPublic<StorageInfo>('/api/models/storage-info'),
         backend.makeRequestPublic<SystemHealth>('/api/models/system-health')
@@ -85,10 +79,12 @@ export default function AdvancedModelManagement() {
         title: info.title,
         description: info.message,
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [backend, toast]);
+
+  useEffect(() => {
+    void loadSystemInfo();
+  }, [loadSystemInfo]);
 
   const refreshSystemInfo = async () => {
     try {
@@ -98,7 +94,7 @@ export default function AdvancedModelManagement() {
         title: 'System Info Refreshed',
         description: 'Storage and system health information has been updated.',
       });
-    } catch (error) {
+    } catch {
       // No additional action needed for error
     } finally {
       setRefreshing(false);
@@ -107,7 +103,7 @@ export default function AdvancedModelManagement() {
 
   const runStorageCleanup = async () => {
     try {
-      const response = await backend.makeRequestPublic('/api/models/cleanup', {
+      await backend.makeRequestPublic('/api/models/cleanup', {
         method: 'POST'
       });
       toast({
@@ -128,7 +124,7 @@ export default function AdvancedModelManagement() {
     }
   };
 
-  const handleJobCreated = (jobId: string) => {
+  const handleJobCreated = (_jobId: string) => {
     setActiveTab('jobs');
     toast({
       title: 'Job Created',

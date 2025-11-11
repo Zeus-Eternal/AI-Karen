@@ -22,8 +22,6 @@ import {
   Loader2,
   Search,
   Filter,
-  CheckCircle,
-  AlertCircle,
   AlertTriangle,
   Pause,
   X,
@@ -151,6 +149,7 @@ export default function EnhancedModelBrowser() {
       );
       setModels(response || []);
     } catch (error) {
+      console.error('Failed to search trainable models.', error);
       toast({
         variant: "destructive",
         title: "Search Failed",

@@ -14,7 +14,7 @@
 import * as React from "react";
 import { featureFlagManager as _ffm } from "./feature-flags";
 import { extensionCache as sharedExtensionCache } from "./cache-manager";
-// @ts-ignore -- JSX compilation disabled for isolated module check; runtime handled by build pipeline
+// @ts-ignore -- JSX module is handled by the UI bundler configuration
 import { ProgressiveEnhancement as ProgressiveEnhancementComponent } from "./fallback-ui";
 
 /* ----------------------------------------
@@ -30,8 +30,15 @@ export {
 /* ----------------------------------------
  * Re-exports: Fallback UI components
  * -------------------------------------- */
-// @ts-ignore -- JSX compilation disabled for isolated module check; runtime handled by build pipeline
-export { ServiceUnavailable, ExtensionUnavailable, LoadingWithFallback, DegradedModeBanner, ProgressiveEnhancement } from "./fallback-ui";
+// @ts-ignore -- JSX module is handled by the UI bundler configuration
+export {
+  ServiceUnavailable,
+  ExtensionUnavailable,
+  LoadingWithFallback,
+  DegradedModeBanner,
+  // also export the base component; HOC provided below
+  ProgressiveEnhancement,
+} from "./fallback-ui";
 
 /* ----------------------------------------
  * Re-exports: Cache Management

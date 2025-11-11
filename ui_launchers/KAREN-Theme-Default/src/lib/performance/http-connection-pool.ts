@@ -173,8 +173,8 @@ export class HttpConnectionPool {
     }
 
     // Abort all active connections
-    this.connections.forEach((hostConnections) => {
-      hostConnections.forEach((connection) => {
+    this.connections.forEach(hostConnections => {
+      hostConnections.forEach(connection => {
         if (connection.isActive) {
           connection.controller.abort();
         }

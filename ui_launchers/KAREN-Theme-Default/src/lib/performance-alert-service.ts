@@ -149,9 +149,7 @@ class PerformanceAlertService {
     this.recentAlerts.set(key, now);
     // opportunistic cleanup
     this.recentAlerts.forEach((ts, k) => {
-      if (now - ts > this.config.dedupeWindowMs * 4) {
-        this.recentAlerts.delete(k);
-      }
+      if (now - ts > this.config.dedupeWindowMs * 4) this.recentAlerts.delete(k);
     });
     return false;
   }

@@ -164,9 +164,13 @@ export class FeatureFlagManager {
   private rebuildDependentsIndex() {
     this.dependentsIndex.clear();
     this.flags.forEach((flag) => {
-      (flag.dependencies || []).forEach((dep) => {
-        if (!this.dependentsIndex.has(dep)) this.dependentsIndex.set(dep, new Set());
-        this.dependentsIndex.get(dep)!.add(flag.name);
+      (flag.dependencies ?? []).forEach((dep) => {
+        let dependents = this.dependentsIndex.get(dep);
+        if (!dependents) {
+          dependents = new Set();
+          this.dependentsIndex.set(dep, dependents);
+        }
+        dependents.add(flag.name);
       });
     });
   }
@@ -188,7 +192,9 @@ export class FeatureFlagManager {
       perm.add(node);
     };
 
-    Array.from(this.flags.keys()).forEach(visit);
+    this.flags.forEach((_, key) => {
+      visit(key);
+    });
   }
 
   /** State getters */
