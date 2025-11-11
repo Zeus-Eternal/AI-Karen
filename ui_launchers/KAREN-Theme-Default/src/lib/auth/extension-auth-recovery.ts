@@ -254,6 +254,13 @@ export class ExtensionAuthRecoveryManager {
     const degradationState = extensionAuthDegradationManager.applyDegradation(error);
     const fallbackData = extensionAuthDegradationManager.getFallbackData(context.operation);
 
+    logger.warn('Falling back to read-only mode due to extension auth error', {
+      operation: context.operation,
+      level: degradationState.level,
+      reason: degradationState.reason,
+      error: error.message,
+    });
+
     return {
       success: true,
       strategy: ExtensionAuthRecoveryStrategy.FALLBACK_TO_READONLY,
@@ -272,6 +279,13 @@ export class ExtensionAuthRecoveryManager {
   ): Promise<RecoveryAttemptResult> {
     const degradationState = extensionAuthDegradationManager.applyDegradation(error);
     const cachedData = extensionAuthDegradationManager.getCachedData(context.operation);
+
+    logger.warn('Using cached data due to extension auth degradation', {
+      operation: context.operation,
+      level: degradationState.level,
+      reason: degradationState.reason,
+      error: error.message,
+    });
 
     if (cachedData) {
       return {
@@ -303,6 +317,11 @@ export class ExtensionAuthRecoveryManager {
     // Clear any existing auth state
     const authManager = getExtensionAuthManager();
     authManager.clearAuth();
+
+    logger.warn('Redirecting to login due to extension auth error', {
+      operation: context.operation,
+      error: error.message,
+    });
 
     // In a real application, this would trigger a redirect to login
     // For now, we'll just indicate that user action is required
@@ -366,6 +385,11 @@ export class ExtensionAuthRecoveryManager {
     error: ExtensionAuthError,
     context: RecoveryContext
   ): Promise<RecoveryAttemptResult> {
+    logger.error('Showing extension auth error message to user', {
+      operation: context.operation,
+      message: error.message,
+    });
+
     return {
       success: false,
       strategy: ExtensionAuthRecoveryStrategy.SHOW_ERROR_MESSAGE,
@@ -381,6 +405,11 @@ export class ExtensionAuthRecoveryManager {
     error: ExtensionAuthError,
     context: RecoveryContext
   ): Promise<RecoveryAttemptResult> {
+    logger.error('No recovery strategy available for extension auth error', {
+      operation: context.operation,
+      message: error.message,
+    });
+
     return {
       success: false,
       strategy: ExtensionAuthRecoveryStrategy.NO_RECOVERY,

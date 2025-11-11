@@ -30,6 +30,7 @@ export interface ValidationConfig {
   email: ValidationRule[];
   password: ValidationRule[];
   totp_code?: ValidationRule[];
+  [field: string]: ValidationRule[] | undefined;
 }
 
 /**
@@ -287,7 +288,7 @@ export class FormValidator {
   /**
    * Add custom validation rule to a field
    */
-  addValidationRule(field: FormFieldType, rule: ValidationRule): void {
+  addValidationRule(field: FormFieldType | string, rule: ValidationRule): void {
     if (!this.config[field]) {
       this.config[field] = [];
     }
@@ -297,7 +298,7 @@ export class FormValidator {
   /**
    * Remove validation rule from a field by message
    */
-  removeValidationRule(field: FormFieldType, message: string): void {
+  removeValidationRule(field: FormFieldType | string, message: string): void {
     if (this.config[field]) {
       this.config[field] = this.config[field]!.filter(_rule => _rule.message !== message);
     }

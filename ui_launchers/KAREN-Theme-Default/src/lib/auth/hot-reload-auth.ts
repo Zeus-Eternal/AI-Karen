@@ -245,7 +245,7 @@ export class HotReloadAuthManager {
       return;
 
     try {
-      const _devAuthManager = getDevelopmentAuthManager();
+      getDevelopmentAuthManager();
 
       // Collect current authentication state
       const authState: HotReloadAuthState = {

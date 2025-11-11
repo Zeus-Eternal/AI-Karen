@@ -17,6 +17,26 @@ import { logger } from '@/lib/logger';
 import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
 
+const isErrorWithStatus = (error: unknown): error is { status: number } => {
+  return typeof (error as { status?: unknown }).status === 'number';
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch (_error) {
+    return 'Unknown error occurred';
+  }
+};
+
 // Request configuration interface
 export interface RequestConfig {
   timeout?: number;
@@ -27,7 +47,7 @@ export interface RequestConfig {
 }
 
 // Response interface
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
@@ -93,7 +113,7 @@ export class EnhancedKarenBackendService {
   /**
    * Make an authenticated request to extension endpoints
    */
-  async makeAuthenticatedRequest<T = any>(
+  async makeAuthenticatedRequest<T = unknown>(
     endpoint: string,
     options: RequestInit = {},
     config: RequestConfig = {}
@@ -121,7 +141,7 @@ export class EnhancedKarenBackendService {
           try {
             const authHeaders = await this.authManager.getAuthHeaders();
             headers = { ...headers, ...authHeaders };
-          } catch (authError) {
+          } catch (authError: unknown) {
             if (requireAuth) {
               throw new ExtensionApiError(
                 'Failed to get authentication headers',
@@ -164,7 +184,7 @@ export class EnhancedKarenBackendService {
         });
 
         return result.data as T;
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = this.handleRequestError(error, endpoint, attempt);
 
         // Handle authentication errors specifically
@@ -178,7 +198,7 @@ export class EnhancedKarenBackendService {
               // Force token refresh and retry
               await this.authManager.forceRefresh();
               continue;
-            } catch (refreshError) {
+            } catch (refreshError: unknown) {
               logger.error('Token refresh failed:', refreshError);
               // Continue to retry logic below
             }
@@ -256,7 +276,7 @@ export class EnhancedKarenBackendService {
    * Handle request errors and convert to ExtensionApiError
    */
   private handleRequestError(
-    error: Error,
+    error: unknown,
     _endpoint: string,
     _attempt: number
   ): ExtensionApiError {
@@ -268,7 +288,6 @@ export class EnhancedKarenBackendService {
       return error;
     }
 
-    // Handle fetch errors
     if (error instanceof TypeError) {
       return new ExtensionApiError(
         'Network error: Unable to connect to extension service',
@@ -279,8 +298,7 @@ export class EnhancedKarenBackendService {
       );
     }
 
-    // Handle timeout errors
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       return new ExtensionApiError(
         'Request timeout',
         408,
@@ -290,12 +308,12 @@ export class EnhancedKarenBackendService {
       );
     }
 
-    // Handle HTTP errors
-    if ((error as any).status) {
-      const status = (error as any).status;
+    if (isErrorWithStatus(error)) {
+      const status = error.status;
       const isRetryable = ExtensionApiError.isRetryableStatus(status);
+      const message = error instanceof Error ? error.message : `HTTP ${status}`;
       return new ExtensionApiError(
-        error.message || `HTTP ${status}`,
+        message,
         status,
         ErrorCategory.HTTP_ERROR,
         isRetryable,
@@ -303,9 +321,8 @@ export class EnhancedKarenBackendService {
       );
     }
 
-    // Generic error
     return new ExtensionApiError(
-      error.message || 'Unknown error occurred',
+      getErrorMessage(error),
       0,
       ErrorCategory.UNKNOWN_ERROR,
       true,
@@ -326,7 +343,7 @@ export class EnhancedKarenBackendService {
   async getExtensions(): Promise<unknown[]> {
     try {
       return await this.makeAuthenticatedRequest('/api/extensions/');
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Failed to get extensions:', error);
       throw error;
     }
@@ -339,7 +356,7 @@ export class EnhancedKarenBackendService {
     try {
       const params = extensionName ? `?extension_name=${encodeURIComponent(extensionName)}` : '';
       return await this.makeAuthenticatedRequest(`/api/extensions/background-tasks/${params}`);
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Failed to get background tasks:', error);
       throw error;
     }
@@ -357,7 +374,7 @@ export class EnhancedKarenBackendService {
           body: JSON.stringify(taskData),
         }
       );
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Failed to register background task:', error);
       throw error;
     }
@@ -374,7 +391,7 @@ export class EnhancedKarenBackendService {
           method: 'POST',
         }
       );
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Failed to load extension ${extensionName}:`, error);
       throw error;
     }
@@ -391,7 +408,7 @@ export class EnhancedKarenBackendService {
           method: 'POST',
         }
       );
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(`Failed to unload extension ${extensionName}:`, error);
       throw error;
     }
@@ -406,7 +423,7 @@ export class EnhancedKarenBackendService {
         requireAuth: false, // Health checks might not require auth
         retryAttempts: 1, // Fewer retries for health checks
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logger.warn('Extension health check failed:', error);
       return {
         status: 'unhealthy',

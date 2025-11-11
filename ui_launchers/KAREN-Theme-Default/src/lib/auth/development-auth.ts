@@ -14,6 +14,24 @@
 
 import { logger } from "@/lib/logger";
 
+interface DevelopmentWindow extends Window {
+  __webpack_dev_server__?: unknown;
+  __vite_plugin_react_preamble_installed__?: unknown;
+  module?: {
+    hot?: {
+      accept: (callback: () => void) => void;
+    };
+  };
+}
+
+const getDevelopmentWindow = (): DevelopmentWindow | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return window as DevelopmentWindow;
+};
+
 const getEnvVar = (key: string): string | undefined => {
   if (typeof process !== "undefined" && process.env && key in process.env) {
     return process.env[key];
@@ -126,6 +144,8 @@ export class DevelopmentAuthManager {
   private isDevelopmentEnvironment(): boolean {
     if (typeof window === "undefined") return false;
 
+    const devWindow = getDevelopmentWindow();
+
     const indicators = [
       process.env.NODE_ENV === "development",
       window.location.hostname === "localhost",
@@ -138,8 +158,8 @@ export class DevelopmentAuthManager {
       document.querySelector('script[src*="webpack"]') !== null,
       document.querySelector('script[src*="vite"]') !== null,
       // Check for hot reload indicators
-      (window as any).__webpack_dev_server__ !== undefined,
-      (window as any).__vite_plugin_react_preamble_installed__ !== undefined,
+      devWindow?.__webpack_dev_server__ !== undefined,
+      devWindow?.__vite_plugin_react_preamble_installed__ !== undefined,
     ];
 
     return indicators.some(Boolean);
@@ -231,15 +251,17 @@ export class DevelopmentAuthManager {
       return;
     }
 
+    const devWindow = getDevelopmentWindow();
+
     // Listen for hot reload events
-    if ((window as any).module?.hot) {
-      (window as any).module.hot.accept(() => {
+    if (devWindow?.module?.hot) {
+      devWindow.module.hot.accept(() => {
         this.handleHotReload("webpack-hmr");
       });
     }
 
     // Listen for Vite HMR events
-    if ((window as any).__vite_plugin_react_preamble_installed__) {
+    if (devWindow?.__vite_plugin_react_preamble_installed__) {
       window.addEventListener("vite:beforeUpdate", () => {
         this.handleHotReload("vite-hmr");
       });
@@ -272,7 +294,7 @@ export class DevelopmentAuthManager {
     this.hotReloadListeners.forEach((listener) => {
       try {
         listener();
-      } catch (error) {
+      } catch (error: unknown) {
         logger.warn("Hot reload listener error:", error);
       }
     });
@@ -300,7 +322,7 @@ export class DevelopmentAuthManager {
       if (this.config.debugLogging) {
         logger.debug("Authentication state preserved for hot reload");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logger.warn("Failed to preserve auth state for hot reload:", error);
     }
   }
@@ -332,7 +354,7 @@ export class DevelopmentAuthManager {
           tokenCount: this.developmentTokens.size,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logger.warn("Failed to restore auth state after hot reload:", error);
     }
   }
@@ -412,7 +434,7 @@ export class DevelopmentAuthManager {
         this.developmentTokens.set(userId, token);
         return token;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       if (this.config.debugLogging) {
         logger.warn("Failed to create development token:", error);
       }
@@ -462,7 +484,7 @@ export class DevelopmentAuthManager {
       }
 
       return token;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Failed to create development token:", error);
       return null;
     }
@@ -480,7 +502,7 @@ export class DevelopmentAuthManager {
       const exp = payload.exp * 1000; // Convert to milliseconds
 
       return Date.now() < exp;
-    } catch (error) {
+    } catch (_error: unknown) {
       return false;
     }
   }
@@ -493,15 +515,15 @@ export class DevelopmentAuthManager {
       return { isHotReload: false, reloadSource: "", timestamp: 0 };
     }
 
+    const devWindow = getDevelopmentWindow();
+
     const indicators = [
       {
-        check: (window as any).__webpack_dev_server__ !== undefined,
+        check: devWindow?.__webpack_dev_server__ !== undefined,
         source: "webpack-dev-server",
       },
       {
-        check:
-          (window as any).__vite_plugin_react_preamble_installed__ !==
-          undefined,
+        check: devWindow?.__vite_plugin_react_preamble_installed__ !== undefined,
         source: "vite-hmr",
       },
       {
@@ -616,7 +638,7 @@ export class DevelopmentAuthManager {
 
     try {
       sessionStorage.removeItem("dev_auth_hot_reload_state");
-    } catch (error) {
+    } catch (_error: unknown) {
       // Ignore storage errors
     }
 
