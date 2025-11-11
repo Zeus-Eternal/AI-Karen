@@ -27,8 +27,12 @@ export default function GmailPluginPage() {
   );
 
   const saveCreds = () => {
-    localStorage.setItem("gmail_username", username);
-    localStorage.setItem("gmail_app_password", appPassword);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem("gmail_username", username);
+    window.localStorage.setItem("gmail_app_password", appPassword);
   };
 
 
