@@ -92,7 +92,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const timeWindowAnchorRef = useRef<number>(Date.now());
+  const timeWindowAnchorRef = useRef<number>(0);
 
   useEffect(() => {
     const updateData = () => {
@@ -130,6 +130,12 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
     };
   }, []);
 
+  useEffect(() => {
+    if (timeWindowAnchorRef.current === 0) {
+      timeWindowAnchorRef.current = Date.now();
+    }
+  }, []);
+
   const filteredHistoricalData = useMemo(() => {
     const timeRanges = {
       "1h": 60 * 60 * 1000,
@@ -138,7 +144,8 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = timeWindowAnchorRef.current - timeRanges[selectedTimeframe];
+    const anchor = timeWindowAnchorRef.current || 0;
+    const cutoff = anchor - timeRanges[selectedTimeframe];
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({

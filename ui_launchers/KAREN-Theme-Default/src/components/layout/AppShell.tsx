@@ -127,7 +127,6 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
     const [isMobile, setIsMobile] = useState(false);
     const [isTablet, setIsTablet] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     // Persist helpers
     const setSidebarOpen = useCallback(
@@ -220,7 +219,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
     // Keyboard navigation
     useEffect(() => {
-      if (!enableKeyboardShortcuts || !mounted || !hasWindow) return;
+      if (!enableKeyboardShortcuts || !hasWindow) return;
 
       const handleKeyDown = (event: KeyboardEvent) => {
         const target = event.target as HTMLElement | null;
@@ -262,11 +261,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [enableKeyboardShortcuts, mounted, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
-
-    useEffect(() => {
-      setMounted(true);
-    }, []);
+    }, [enableKeyboardShortcuts, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
 
     const contextValue: AppShellContextType = {
       sidebarOpen,
