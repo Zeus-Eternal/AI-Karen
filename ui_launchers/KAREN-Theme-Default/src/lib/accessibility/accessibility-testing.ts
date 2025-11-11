@@ -119,12 +119,14 @@ export interface AriaReport {
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private container: ElementContext;
   private options: RunOptions;
+  private readonly root: Document | Element;
 
   constructor(
     container: ElementContext = document,
     options: RunOptions = {}
   ) {
     this.container = container;
+    this.root = this.resolveContainer(container);
     this.options = {
       runOnly: {
         type: "tag",
@@ -132,6 +134,70 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       },
       ...options,
     };
+  }
+
+  private resolveContainer(container: ElementContext): Document | Element {
+    if (typeof document === "undefined") {
+      throw new Error("Accessibility tests require a DOM environment");
+    }
+
+    const resolved = this.resolveContextValue(container);
+    return resolved ?? document;
+  }
+
+  private resolveContextValue(context: ElementContext | undefined): Document | Element | null {
+    if (!context) {
+      return null;
+    }
+
+    if (context instanceof Element || context instanceof Document) {
+      return context;
+    }
+
+    if (typeof context === "string") {
+      return document.querySelector(context);
+    }
+
+    if (Array.isArray(context)) {
+      for (const item of context) {
+        const resolved = this.resolveContextValue(item);
+        if (resolved) {
+          return resolved;
+        }
+      }
+      return null;
+    }
+
+    if ("length" in context && typeof (context as { length: number }).length === "number") {
+      const list = context as { length: number; [index: number]: Element };
+      if (list.length > 0) {
+        const first = list[0];
+        if (first instanceof Element) {
+          return first;
+        }
+      }
+    }
+
+    if (typeof context === "object" && context !== null) {
+      const candidate = (context as { include?: ElementContext }).include;
+      if (candidate) {
+        return this.resolveContextValue(candidate);
+      }
+    }
+
+    return null;
+  }
+
+  private getRoot(): Document | Element {
+    return this.root;
+  }
+
+  private getOwnerDocument(): Document {
+    const root = this.getRoot();
+    if (root instanceof Document) {
+      return root;
+    }
+    return root.ownerDocument ?? document;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -199,7 +265,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       '[role="tab"]',
     ];
 
-    const focusableElements = this.container.querySelectorAll(
+    const focusableElements = this.getRoot().querySelectorAll(
       focusableSelectors.join(", ")
     );
     const unreachableElements: string[] = [];
@@ -223,7 +289,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const focusTraps = this.container.querySelectorAll(
+    const focusTraps = this.getRoot().querySelectorAll(
       '[data-focus-trap="true"]'
     );
     focusTraps.forEach((trap) => {
@@ -241,13 +307,13 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
       }
     });
 
-    const skipLinks = this.container.querySelectorAll(
+    const skipLinks = this.getRoot().querySelectorAll(
       '.skip-links a, [href^="#"]'
     );
     skipLinks.forEach((link) => {
       const href = link.getAttribute("href");
       if (href && href.startsWith("#")) {
-        const target = this.container.querySelector(href);
+        const target = this.getRoot().querySelector(href);
         if (!target) {
           skipLinkIssues.push(`Skip link target not found: ${href}`);
         }
@@ -290,7 +356,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }
 
     const elements = Array.from(
-      this.container.querySelectorAll<HTMLElement>("*")
+      this.getRoot().querySelectorAll<HTMLElement>("*")
     );
     const failedElements: ColorContrastReport["failedElements"] = [];
     let totalRatio = 0;
@@ -352,7 +418,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     ];
 
     const focusTrapCandidates = Array.from(
-      this.container.querySelectorAll(
+      this.getRoot().querySelectorAll(
         '[data-focus-trap], [aria-modal="true"], [role="dialog"]'
       )
     ) as HTMLElement[];
@@ -371,7 +437,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     });
 
     const restoreTargets = Array.from(
-      this.container.querySelectorAll(
+      this.getRoot().querySelectorAll(
         "[data-focus-restore], [data-focus-restoration]"
       )
     ) as HTMLElement[];
@@ -384,7 +450,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }));
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors.join(", "))
+      this.getRoot().querySelectorAll(focusableSelectors.join(", "))
     ) as HTMLElement[];
 
     const focusIndicators = focusableElements.slice(0, 25).map((element) => {
@@ -519,12 +585,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const brokenReferences = new Set<string>();
 
     const allElements = Array.from(
-      this.container.querySelectorAll("*")
+      this.getRoot().querySelectorAll("*")
     ) as HTMLElement[];
-    const scopeDocument =
-      this.container instanceof Document
-        ? this.container
-        : this.container.ownerDocument || document;
+    const scopeDocument = this.getOwnerDocument();
 
     allElements.forEach((element) => {
       const attrNames = element.getAttributeNames();
@@ -593,7 +656,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const violations: AccessibilityViolation[] = results.violations.map(
       (violation: Result) => ({
         id: violation.id,
-        impact: violation.impact,
+        impact: (violation.impact ?? "serious") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,

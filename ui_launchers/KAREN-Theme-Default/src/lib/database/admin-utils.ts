@@ -466,7 +466,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<UserRecord>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -847,25 +847,40 @@ export class AdminDatabaseUtils {
       `;
 
       const dataParams = [...queryParams, limit, offset];
-      const dataResult = await this.executeQuery<Record<string, unknown>>('getAuditLogsData', dataQuery, dataParams);
+      const dataResult = await this.executeQuery<Record<string, unknown>>(
+        'getAuditLogsData',
+        dataQuery,
+        dataParams
+      );
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        user_id: row.user_id as string,
-        action: row.action as string,
-        resource_type: row.resource_type as string,
-        resource_id: row.resource_id as string | null,
-        details: row.details as Record<string, unknown> | null,
-        ip_address: row.ip_address as string | null,
-        user_agent: row.user_agent as string | null,
-        timestamp: row.timestamp as Date,
-        user: row.user_email ? {
+      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => {
+        const resourceId = typeof row.resource_id === 'string' ? row.resource_id : undefined;
+        const ipAddress = typeof row.ip_address === 'string' ? row.ip_address : undefined;
+        const userAgent = typeof row.user_agent === 'string' ? row.user_agent : undefined;
+        const timestampValue = row.timestamp instanceof Date
+          ? row.timestamp
+          : new Date(row.timestamp as string | number);
+
+        return {
+          id: row.id as string,
           user_id: row.user_id as string,
-          email: row.user_email as string,
-          full_name: row.user_full_name as string | null
-        } : undefined
-      }));
+          action: row.action as string,
+          resource_type: row.resource_type as string,
+          resource_id: resourceId,
+          details: (row.details as Record<string, unknown> | null) ?? {},
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          timestamp: timestampValue,
+          user: row.user_email
+            ? {
+                user_id: row.user_id as string,
+                email: row.user_email as string,
+                full_name: (row.user_full_name as string | null) ?? undefined,
+              }
+            : undefined,
+        };
+      });
 
       return {
         data,
@@ -920,22 +935,46 @@ export class AdminDatabaseUtils {
     try {
       const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
       
-      return result.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        key: row.key as string,
-        value: this.parseConfigValue(row.value as string, row.value_type as string),
-        value_type: row.value_type as string,
-        category: row.category as string,
-        description: row.description as string | null,
-        updated_by: row.updated_by as string,
-        updated_at: row.updated_at as Date,
-        created_at: row.created_at as Date,
-        updated_by_user: row.updated_by_email ? {
-          user_id: row.updated_by as string,
-          email: row.updated_by_email as string,
-          full_name: row.updated_by_name as string | null
-        } : undefined
-      }));
+      return result.map((row: Record<string, unknown>) => {
+        const rawValueType = row.value_type as string;
+        const valueType: SystemConfig['value_type'] =
+          rawValueType === 'number' ||
+          rawValueType === 'boolean' ||
+          rawValueType === 'json'
+            ? rawValueType
+            : 'string';
+
+        const rawCategory = row.category as string;
+        const category: SystemConfig['category'] =
+          rawCategory === 'security' ||
+          rawCategory === 'email' ||
+          rawCategory === 'authentication'
+            ? rawCategory
+            : 'general';
+
+        return {
+          id: row.id as string,
+          key: row.key as string,
+          value: this.parseConfigValue(row.value as string, valueType),
+          value_type: valueType,
+          category,
+          description: (row.description as string | null) ?? undefined,
+          updated_by: row.updated_by as string,
+          updated_at: row.updated_at instanceof Date
+            ? row.updated_at
+            : new Date(row.updated_at as string | number),
+          created_at: row.created_at instanceof Date
+            ? row.created_at
+            : new Date(row.created_at as string | number),
+          updated_by_user: row.updated_by_email
+            ? {
+                user_id: row.updated_by as string,
+                email: row.updated_by_email as string,
+                full_name: (row.updated_by_name as string | null) ?? undefined,
+              }
+            : undefined,
+        };
+      });
     } catch (error) {
       throw new AdminDatabaseError(
         'Failed to fetch system configuration',

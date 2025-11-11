@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { useToast } from "@/hooks/use-toast";
+import type { ToasterToast } from "@/hooks/use-toast";
 import {
   ToastProvider,
   Toast,
@@ -93,8 +94,9 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
             stackJustifyClasses[position],
           )}
         >
-          {toasts.map(({ id, title, description, action, ...props }) => {
-            const { className, variant, ...rest } = props as unknown;
+          {toasts.map((toast: ToasterToast) => {
+            const { id, title, description, action, ...toastProps } = toast;
+            const { className, variant, ...rest } = toastProps as ToastProps;
 
             return (
               <Toast

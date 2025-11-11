@@ -6,7 +6,12 @@
  */
 
 import { logger } from './logger';
-import { handleExtensionError, shouldUseExtensionFallback, getExtensionErrorMessage } from './extension-error-integration';
+import {
+  handleExtensionError,
+  shouldUseExtensionFallback,
+  getExtensionErrorMessage,
+  type ExtensionErrorResponse,
+} from './extension-error-integration';
 import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 
 /**
@@ -15,7 +20,14 @@ import type { HandleKarenBackendErrorFn } from './error-recovery-integration-exa
  */
 export function patchKarenBackendForExtensions() {
   // Check if window.handleKarenBackendError exists (from error-recovery-integration)
-  const win = window as Window & { handleKarenBackendError?: HandleKarenBackendErrorFn };
+  const win = window as Window & {
+    handleKarenBackendError?: HandleKarenBackendErrorFn;
+    handleExtensionError?: (
+      status: number,
+      url: string,
+      operation?: string
+    ) => ExtensionErrorResponse | null;
+  };
   if (typeof window !== 'undefined' && win.handleKarenBackendError) {
     logger.info('KarenBackend extension error handling already integrated');
     return;

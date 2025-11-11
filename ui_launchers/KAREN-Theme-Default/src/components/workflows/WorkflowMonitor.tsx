@@ -529,14 +529,20 @@ function ExecutionDetailsPanel({
                         Node: {log.nodeId}
                       </p>
                     )}
-                    {log.data && (
-                      <details className="mt-2">
-                        <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
-                        </summary>
-                        <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
-                          {JSON.stringify(log.data, null, 2)}
-                        </pre>
-                      </details>
+                    {log.data !== undefined && log.data !== null && (
+                      (() => {
+                        const serializedData = JSON.stringify(log.data, null, 2);
+                        return (
+                          <details className="mt-2">
+                            <summary className="text-xs cursor-pointer opacity-75 sm:text-sm md:text-base">
+                              View details
+                            </summary>
+                            <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
+                              {serializedData}
+                            </pre>
+                          </details>
+                        );
+                      })()
                     )}
                     </div>
                 );

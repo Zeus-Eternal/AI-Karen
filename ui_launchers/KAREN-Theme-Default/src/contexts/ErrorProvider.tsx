@@ -10,7 +10,7 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { FC, ReactNode } from 'react';
+import type { FC, ReactNode, ErrorInfo } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -27,7 +27,7 @@ export interface ErrorContextType {
     method?: string;
     provider?: string;
   }) => void;
-  handleBoundaryError: (error: Error, errorInfo?: unknown) => void;
+  handleBoundaryError: (error: Error, errorInfo?: ErrorInfo) => void;
   
   // Error management
   clearError: () => void;
@@ -59,6 +59,14 @@ export interface ErrorProviderProps {
   onErrorAnalyzed?: (analysis: ErrorAnalysisResponse) => void;
   onAnalysisError?: (error: Error) => void;
   maxGlobalErrors?: number;
+}
+
+interface ApiErrorDetails extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
 }
 
 export const ErrorProvider: FC<ErrorProviderProps> = ({
@@ -167,12 +175,12 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [intelligentError, boundaryError, apiError]);
 
   // Handle boundary errors
-  const handleBoundaryError = useCallback((error: Error, errorInfo?: unknown) => {
+  const handleBoundaryError = useCallback((error: Error, errorInfo?: ErrorInfo) => {
     safeError('Error boundary caught error:', error, { useStructuredLogging: true });
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
-    
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
@@ -202,17 +210,19 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       safeError('Request context:', requestContext, { useStructuredLogging: true });
     }
     
+    const apiErrorDetails = error as ApiErrorDetails;
+
     const context: Partial<ErrorAnalysisRequest> = {
-      status_code: error.status,
+      status_code: apiErrorDetails.status,
       error_type: error.name || 'ApiError',
       request_path: requestContext?.endpoint,
       provider_name: requestContext?.provider,
       user_context: {
         method: requestContext?.method,
-        is_network_error: error.isNetworkError,
-        is_cors_error: error.isCorsError,
-        is_timeout_error: error.isTimeoutError,
-        response_time: error.responseTime,
+        is_network_error: apiErrorDetails.isNetworkError,
+        is_cors_error: apiErrorDetails.isCorsError,
+        is_timeout_error: apiErrorDetails.isTimeoutError,
+        response_time: apiErrorDetails.responseTime,
         timestamp: new Date().toISOString(),
       },
     };

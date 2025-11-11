@@ -4,10 +4,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
-import { getConnectionManager, ConnectionError, ErrorCategory } from "@/lib/connection/connection-manager";
+import {
+  getConnectionManager,
+  ConnectionError,
+  ErrorCategory,
+  type ConnectionResponse,
+} from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 import { AuthContext } from "./auth-context-instance";
 
+
+interface ApiUserResponse {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: ApiUserResponse;
+  user_data?: ApiUserResponse;
+}
+
+interface LoginResponse {
+  user?: ApiUserResponse;
+  user_data?: ApiUserResponse;
+}
 
 export interface User {
   userId: string;
@@ -90,6 +114,28 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     if (roles.includes("admin")) return "admin";
     return "user";
   }, []);
+
+  const buildUserFromResponse = useCallback(
+    (payload: ApiUserResponse): User => ({
+      userId: payload.user_id,
+      email: payload.email,
+      roles: payload.roles ?? [],
+      tenantId: payload.tenant_id,
+      role: determineUserRole(payload.roles ?? []),
+      permissions: payload.permissions,
+    }),
+    [determineUserRole]
+  );
+
+  const resolveUserData = useCallback(
+    (data: SessionValidationResponse | LoginResponse | undefined): ApiUserResponse | undefined => {
+      if (!data) {
+        return undefined;
+      }
+      return data.user ?? data.user_data;
+    },
+    []
+  );
 
   // Convert technical errors to user-friendly messages
   const getUserFriendlyErrorMessage = useCallback((error: ConnectionError): string => {
@@ -263,7 +309,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result: ConnectionResponse<SessionValidationResponse> = await connectionManager.makeRequest(
         validateUrl,
         {
           method: "GET",
@@ -280,16 +326,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+      const userData = resolveUserData(result.data);
+
+      if (result.data.valid && userData) {
+        const user = buildUserFromResponse(userData);
 
         setUser(user);
         setIsAuthenticated(true);
@@ -319,7 +359,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
-    determineUserRole,
+    buildUserFromResponse,
+    resolveUserData,
   ]);
 
   // Session refresh timer management
@@ -374,7 +415,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result = await connectionManager.makeRequest(
+      const result: ConnectionResponse<LoginResponse> = await connectionManager.makeRequest(
         loginUrl,
         {
           method: "POST",
@@ -393,7 +434,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = result.data.user || result.data.user_data;
+      const userData = resolveUserData(result.data);
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -404,14 +445,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Create user object
-      const user: User = {
-        userId: userData.user_id,
-        email: userData.email,
-        roles: userData.roles || [],
-        tenantId: userData.tenant_id,
-        role: determineUserRole(userData.roles || []),
-        permissions: userData.permissions,
-      };
+      const user = buildUserFromResponse(userData);
 
       // Update authentication state
       setUser(user);
@@ -494,7 +528,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           retryCount,
           metadata: {
             statusCode:
-              error instanceof ConnectionError ? error.statusCode : undefined,
+              err instanceof ConnectionError ? err.statusCode : undefined,
           },
         }
       );
@@ -623,7 +657,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest(
+      const result: ConnectionResponse<SessionValidationResponse> = await connectionManager.makeRequest(
         validateUrl,
         {
           method: "GET",
@@ -640,16 +674,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (result.data.valid && (result.data.user || result.data.user_data)) {
-        const userData = result.data.user || result.data.user_data;
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+      const userData = resolveUserData(result.data);
+
+      if (result.data.valid && userData) {
+        const user = buildUserFromResponse(userData);
 
         setUser(user);
         setIsAuthenticated(true);
@@ -753,11 +781,12 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [
     connectionManager,
     createAuthError,
-    determineUserRole,
+    buildUserFromResponse,
     isAuthenticated,
     startSessionRefreshTimer,
     stopSessionRefreshTimer,
     timeoutManager,
+    resolveUserData,
   ]);
 
   // Clear authentication error

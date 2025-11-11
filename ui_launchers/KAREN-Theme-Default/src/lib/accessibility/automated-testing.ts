@@ -193,16 +193,10 @@ export class AutomatedAccessibilityTester {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
         },
-        rules: config.rules || {}
+        rules: config.rules || {},
+        ...(config.include ? { include: config.include } : {}),
+        ...(config.exclude ? { exclude: config.exclude } : {})
       };
-      
-      if (config.include) {
-        (runOptions as unknown).include = config.include;
-      }
-      
-      if (config.exclude) {
-        (runOptions as unknown).exclude = config.exclude;
-      }
       
       // Run axe-core analysis
       const axeResults = await axe.run(element, runOptions);
@@ -267,7 +261,7 @@ export class AutomatedAccessibilityTester {
       };
 
       const axeResults = await page.evaluate<AxeResults, RunOptions>(async (options: RunOptions) => {
-        const axeInstance = (window as AxeWindow).axe;
+        const axeInstance = (window as unknown as AxeWindow).axe;
         if (!axeInstance) {
           throw new Error('axe-core is not available in the page context');
         }

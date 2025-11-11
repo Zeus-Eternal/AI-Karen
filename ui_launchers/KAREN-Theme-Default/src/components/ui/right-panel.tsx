@@ -27,7 +27,10 @@ export interface RightPanelView {
 /**
  * Right panel props interface
  */
-export interface RightPanelProps extends React.HTMLAttributes<HTMLElement> {
+type MotionAsideProps = React.ComponentPropsWithoutRef<typeof motion.aside>;
+
+export interface RightPanelProps
+  extends Omit<MotionAsideProps, "onDrag" | "onDragStart" | "onDragEnd" | "draggable" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"> {
   /** Current active view ID */
   activeView?: string;
   /** Available views */
@@ -355,7 +358,7 @@ export const RightPanelContent = React.forwardRef<HTMLDivElement, RightPanelCont
 /**
  * Main Right Panel Component
  */
-export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
+const RightPanelBase = React.forwardRef<HTMLElement, RightPanelProps>(
   function RightPanel(
     {
       activeView,
@@ -404,16 +407,16 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
     const widthClass = PANEL_WIDTH_CLASSES[width];
 
     // Filter out props that conflict with Framer Motion
-    const filteredProps = React.useMemo(() => {
-      const sanitizedProps: typeof props = { ...props };
+    const filteredProps = React.useMemo<Partial<MotionAsideProps>>(() => {
+      const sanitizedProps: Partial<MotionAsideProps> = { ...props };
 
-      delete (sanitizedProps as Record<string, unknown>).onDrag;
-      delete (sanitizedProps as Record<string, unknown>).onDragEnd;
-      delete (sanitizedProps as Record<string, unknown>).onDragStart;
-      delete (sanitizedProps as Record<string, unknown>).draggable;
-      delete (sanitizedProps as Record<string, unknown>).onAnimationStart;
-      delete (sanitizedProps as Record<string, unknown>).onAnimationEnd;
-      delete (sanitizedProps as Record<string, unknown>).onAnimationIteration;
+      delete sanitizedProps.onDrag;
+      delete sanitizedProps.onDragEnd;
+      delete sanitizedProps.onDragStart;
+      delete sanitizedProps.draggable;
+      delete sanitizedProps.onAnimationStart;
+      delete sanitizedProps.onAnimationEnd;
+      delete sanitizedProps.onAnimationIteration;
 
       return sanitizedProps;
     }, [props]);
@@ -575,6 +578,16 @@ export const RightPanel = React.forwardRef<HTMLElement, RightPanelProps>(
 /**
  * Compound component pattern export
  */
-(RightPanel as unknown).Header = RightPanelHeader;
-(RightPanel as unknown).Navigation = RightPanelNavigation;
-(RightPanel as unknown).Content = RightPanelContent;
+type RightPanelComponent = React.ForwardRefExoticComponent<
+  RightPanelProps & React.RefAttributes<HTMLElement>
+> & {
+  Header: typeof RightPanelHeader;
+  Navigation: typeof RightPanelNavigation;
+  Content: typeof RightPanelContent;
+};
+
+export const RightPanel = RightPanelBase as RightPanelComponent;
+
+RightPanel.Header = RightPanelHeader;
+RightPanel.Navigation = RightPanelNavigation;
+RightPanel.Content = RightPanelContent;

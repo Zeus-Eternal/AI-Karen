@@ -4,35 +4,48 @@
  */
 
 import React from "react";
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { AriaLiveRegion } from './aria-live-region';
-import { useAriaAnnouncements } from './aria-live-announcements';
-import { useScreenReaderAnnouncements } from './use-screen-reader-announcements';
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { AriaLiveRegion } from "./aria-live-region";
+import { useAriaAnnouncements } from "./aria-live-announcements";
+import { useScreenReaderAnnouncements } from "./use-screen-reader-announcements";
 
 /**
  * ScreenReaderOnly - Content visible only to screen readers
  */
-export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface ScreenReaderOnlyProps extends React.HTMLAttributes<HTMLElement> {
   /** Content to show only to screen readers */
   children: React.ReactNode;
   /** Whether to use a div instead of span */
   asDiv?: boolean;
 }
 
-export const ScreenReaderOnly = React.forwardRef<HTMLElement, ScreenReaderOnlyProps>(
+type ScreenReaderElement = HTMLSpanElement | HTMLDivElement;
+
+export const ScreenReaderOnly = React.forwardRef<ScreenReaderElement, ScreenReaderOnlyProps>(
   ({ children, asDiv = false, className, ...props }, ref) => {
-    const Component = asDiv ? 'div' : 'span';
-    const sharedClassName = cn('sr-only', className);
+    const sharedClassName = cn("sr-only", className);
+
+    if (asDiv) {
+      return (
+        <div
+          ref={ref as React.ForwardedRef<HTMLDivElement>}
+          className={sharedClassName}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
 
     return (
-      <Component
-        ref={ref}
+      <span
+        ref={ref as React.ForwardedRef<HTMLSpanElement>}
         className={sharedClassName}
         {...props}
       >
         {children}
-      </Component>
+      </span>
     );
   }
 );

@@ -46,7 +46,7 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 
 interface ExtensionFixWindow extends Window {
   __EXT_FIX_PATCHED__?: { type: 'immediate' | 'standard' };
-  extensionErrorIntegration?: unknown;
+  extensionErrorIntegration?: ExtensionErrorIntegration;
   handleKarenBackendError?: unknown;
 }
 
@@ -219,3 +219,4 @@ if (isBrowser && process.env.NODE_ENV === 'development') {
     }
   }, 300);
 }
+import type { ExtensionErrorIntegration } from './extension-error-integration';

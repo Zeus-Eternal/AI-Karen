@@ -11,7 +11,10 @@ export function withFocusIndicator<P extends object, RefType = unknown>(
 ) {
   const WrappedComponent = React.forwardRef<RefType, P>((props, ref) => (
     <FocusIndicator {...indicatorProps}>
-      <Component {...props} ref={ref} />
+      {React.createElement(
+        Component as React.ComponentType<P & { ref?: React.Ref<RefType> }>,
+        { ...props, ref }
+      )}
     </FocusIndicator>
   ));
 

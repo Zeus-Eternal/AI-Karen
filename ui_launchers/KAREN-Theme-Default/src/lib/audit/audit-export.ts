@@ -357,7 +357,11 @@ export class AuditLogExporter {
       case 'user_agent':
         return log.user_agent || '';
       default:
-        return String((log as unknown)[field] || '');
+        {
+          const record = log as Record<string, unknown>;
+          const value = record[field];
+          return value === undefined || value === null ? '' : String(value);
+        }
     }
   }
 
