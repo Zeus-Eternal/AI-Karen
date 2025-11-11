@@ -6,10 +6,25 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+
+from ai_karen_engine.pydantic_stub import (
+    BaseModel as _BaseModelStub,
+    ConfigDict as _ConfigDictStub,
+    Field as _FieldStub,
+)
+
+BaseModel = _BaseModelStub
+ConfigDict = _ConfigDictStub
+Field = _FieldStub
+
 try:
-    from pydantic import BaseModel, ConfigDict, Field
+    from pydantic import BaseModel as PydanticBaseModel, ConfigDict as PydanticConfigDict, Field as PydanticField
 except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+    pass
+else:
+    BaseModel = PydanticBaseModel
+    ConfigDict = PydanticConfigDict
+    Field = PydanticField
 
 from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
 from ai_karen_engine.core.logging import get_logger

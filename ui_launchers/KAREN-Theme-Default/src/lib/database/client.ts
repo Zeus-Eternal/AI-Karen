@@ -69,44 +69,45 @@ export class PostgreSQLClient implements DatabaseClient {
     });
   }
 
-    async query(sql: string, params?: unknown[]): Promise<QueryResult> {
-      try {
-        const result = await this.pool.query(sql, params);
-        return {
-          rows: result.rows,
-          rowCount: result.rowCount || 0,
-          fields: result.fields,
-        };
+  async query(sql: string, params?: unknown[]): Promise<QueryResult> {
+    try {
+      const result = await this.pool.query(sql, params);
+      return {
+        rows: result.rows,
+        rowCount: result.rowCount || 0,
+        fields: result.fields,
+      };
     } catch (error) {
-      // Add context to the error before re-throwing
       throw new Error(
         `Database query failed: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
       );
     }
+  }
 
-    async transaction<T>(
-      callback: (client: DatabaseClient) => Promise<T>
-    ): Promise<T> {
-      const poolClient: PoolClient = await this.pool.connect();
-      try {
-        await poolClient.query("BEGIN");
-        // Create a transaction client wrapper
-        const transactionClient: DatabaseClient = {
-          query: async (sql: string, params?: unknown[]) => {
-            const result = await poolClient.query(sql, params);
-            return {
-              rows: result.rows,
-              rowCount: result.rowCount || 0,
-              fields: result.fields,
-            };
-          },
+  async transaction<T>(
+    callback: (client: DatabaseClient) => Promise<T>,
+  ): Promise<T> {
+    const poolClient: PoolClient = await this.pool.connect();
+    try {
+      await poolClient.query("BEGIN");
+      const transactionClient: DatabaseClient = {
+        query: async (sql: string, params?: unknown[]) => {
+          const result = await poolClient.query(sql, params);
+          return {
+            rows: result.rows,
+            rowCount: result.rowCount || 0,
+            fields: result.fields,
+          };
+        },
         transaction: async () => {
           throw new Error("Nested transactions are not supported");
         },
+        close: async () => {
+          // No-op to satisfy interface
+        },
       };
-
       const result = await callback(transactionClient);
       await poolClient.query("COMMIT");
       return result;
@@ -150,7 +151,6 @@ export function getDatabaseClient(): DatabaseClient {
   }
 
   if (!dbClient) {
-    // Get database URL from environment
     const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (!databaseUrl) {
       throw new Error(
@@ -164,9 +164,6 @@ export function getDatabaseClient(): DatabaseClient {
       throw new Error(`Database connection failed: ${message}`);
     }
   }
-  return dbClient;
-}
-
   return dbClient;
 }
 

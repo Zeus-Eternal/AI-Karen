@@ -9,19 +9,10 @@
  * - Lightweight logs (no big payloads)
  */
 
-import type { PerformanceAlert, RequestMetrics } from './performance-monitor';
+import type { PerformanceAlert } from './performance-monitor';
 import { toast } from '../hooks/use-toast';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
-
-const isRequestMetrics = (metrics: PerformanceAlert['metrics']): metrics is RequestMetrics =>
-  metrics !== null &&
-  typeof metrics === 'object' &&
-  'endpoint' in metrics &&
-  typeof (metrics as RequestMetrics).endpoint === 'string';
-
-const getRequestMetrics = (metrics: PerformanceAlert['metrics']): RequestMetrics | null =>
-  isRequestMetrics(metrics) ? metrics : null;
 
 export interface PerformanceAlertConfig {
   showSlowRequestAlerts: boolean;
@@ -163,10 +154,19 @@ class PerformanceAlertService {
     return false;
   }
 
+  private getAlertMetadata(alert: PerformanceAlert): {
+    endpoint?: string;
+    duration?: number;
+  } {
+    const metrics = alert.metrics as Record<string, unknown> | undefined;
+    return {
+      endpoint: typeof metrics?.endpoint === 'string' ? metrics.endpoint : undefined,
+      duration: typeof metrics?.duration === 'number' ? metrics.duration : undefined,
+    };
+  }
+
   private isSuppressedByEndpoint(alert: PerformanceAlert): boolean {
-    const requestMetrics = getRequestMetrics(alert.metrics);
-    if (!requestMetrics) return false;
-    const endpoint = requestMetrics.endpoint;
+    const endpoint = this.getAlertMetadata(alert).endpoint;
     if (!endpoint || !this.config.suppressEndpoints?.length) return false;
     return this.config.suppressEndpoints.some(pattern => {
       // simple substring match or wildcard "*"
@@ -184,9 +184,7 @@ class PerformanceAlertService {
   private logAlert(alert: PerformanceAlert): void {
     const level = alert.severity === 'high' ? 'warn' : 'info';
     const emoji = this.getAlertEmoji(alert.type);
-    const requestMetrics = getRequestMetrics(alert.metrics);
-    const endpoint = requestMetrics?.endpoint ?? 'unknown';
-    const duration = requestMetrics?.duration ?? 'unknown';
+    const { endpoint, duration } = this.getAlertMetadata(alert);
 
     // Keep logs clean; no large objects
     console[level](`${emoji} Karen Performance: ${alert.message}`, {

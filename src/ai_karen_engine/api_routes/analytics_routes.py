@@ -4,14 +4,23 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Query
-try:
-    from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ai_karen_engine.core.dependencies import AnalyticsService_Dep
+from ai_karen_engine.pydantic_stub import BaseModel as _BaseModelStub, Field as _FieldStub
+
+from ai_karen_engine.core.dependencies import get_analytics_service
 from ai_karen_engine.services.analytics_service import AnalyticsService
+
+BaseModel = _BaseModelStub
+Field = _FieldStub
+
+try:
+    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
+except ImportError:
+    pass
+else:
+    BaseModel = PydanticBaseModel
+    Field = PydanticField
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +56,7 @@ class FeatureUsage(BaseModel):
 @router.get("/usage", response_model=UsageAnalytics)
 async def get_usage_analytics(
     range: str = Query(default="24h", description="Time range (e.g., 24h, 7d, 30d)"),
-    analytics_service: AnalyticsService = AnalyticsService_Dep,
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
 ) -> UsageAnalytics:
     """
     Get usage analytics for the specified time range.
@@ -98,7 +107,7 @@ async def get_usage_analytics(
 @router.get("/features", response_model=List[FeatureUsage])
 async def get_feature_usage(
     range: str = Query(default="24h", description="Time range (e.g., 24h, 7d, 30d)"),
-    analytics_service: AnalyticsService = AnalyticsService_Dep,
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
 ) -> List[FeatureUsage]:
     """
     Get feature usage statistics for the specified time range.
@@ -131,7 +140,7 @@ async def get_feature_usage(
 
 @router.get("/summary")
 async def get_analytics_summary(
-    analytics_service: AnalyticsService = AnalyticsService_Dep,
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
 ) -> Dict[str, Any]:
     """
     Get a summary of key analytics metrics.

@@ -45,7 +45,8 @@ export const logger = {
       console.warn('[RATE-LIMITED ERROR]', message, '(suppressed repetitive logs)');
       return;
     }
-    if (meta !== undefined) {
+    const isMetaObject = meta && typeof meta === 'object' && Object.keys(meta).length === 0;
+    if (meta !== undefined && !isMetaObject) {
       // eslint-disable-next-line no-console
       console.error('[ERROR]', message, meta);
     } else {

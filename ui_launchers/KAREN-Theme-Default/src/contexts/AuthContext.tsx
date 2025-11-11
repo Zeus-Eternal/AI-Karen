@@ -796,7 +796,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           );
           return true;
         }
-      }
 
       // Invalid session
       connectivityLogger.logAuthentication(
@@ -867,7 +866,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     startSessionRefreshTimer,
     stopSessionRefreshTimer,
     timeoutManager,
-    resolveUserData,
   ]);
 
   // Clear authentication error
@@ -953,4 +951,3 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 };
-

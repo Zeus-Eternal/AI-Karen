@@ -12,10 +12,32 @@ import logging
 import time
 from typing import Dict, List, Optional, Any
 
-from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+from ai_karen_engine.fastapi_stub import (
+    APIRouter as _StubAPIRouter,
+    HTTPException as _StubHTTPException,
+)
+from ai_karen_engine.pydantic_stub import BaseModel as _StubBaseModel, Field as _StubField
 
-APIRouter, HTTPException = import_fastapi("APIRouter", "HTTPException")
-BaseModel, Field = import_pydantic("BaseModel", "Field")
+APIRouter = _StubAPIRouter
+HTTPException = _StubHTTPException
+BaseModel = _StubBaseModel
+Field = _StubField
+
+try:
+    from fastapi import APIRouter as FastAPIAPIRouter, HTTPException as FastAPIHTTPException
+except ImportError:
+    pass
+else:
+    APIRouter = FastAPIAPIRouter
+    HTTPException = FastAPIHTTPException
+
+try:
+    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
+except ImportError:
+    pass
+else:
+    BaseModel = PydanticBaseModel
+    Field = PydanticField
 
 logger = logging.getLogger("kari.ai_routes")
 
@@ -39,8 +61,8 @@ class PromptAnalysisResponse(BaseModel):
 class ContentSuggestionRequest(BaseModel):
     """Request for content suggestions."""
     user_input: str
-    conversation_history: Optional[List[Dict[str, str]]] = []
-    selected_models: Optional[Dict[str, str]] = {}
+    conversation_history: List[Dict[str, str]] = Field(default_factory=list)
+    selected_models: Dict[str, str] = Field(default_factory=dict)
 
 class ContentSuggestionResponse(BaseModel):
     """Response for content suggestions."""

@@ -36,6 +36,7 @@ export class ModelSelectionService {
   private lastFetchTime: number = 0;
   private readonly CACHE_DURATION = 30000; // 30 seconds
   private changeListeners: Array<(event: Event) => void> = [];
+  private preferencesEnabled = true;
 
   static getInstance(): ModelSelectionService {
     if (!ModelSelectionService.instance) {
@@ -103,6 +104,13 @@ export class ModelSelectionService {
   async saveUserPreferences(
     preferences: Partial<ModelSelectionPreferences>
   ): Promise<void> {
+    if (!this.preferencesEnabled) {
+      safeLog(
+        "ModelSelectionService: Skipping preference save because preferences endpoint is disabled"
+      );
+      return;
+    }
+
     try {
       const backend = getKarenBackend();
       await backend.makeRequestPublic("/api/user/preferences/models", {
@@ -117,6 +125,7 @@ export class ModelSelectionService {
         "ModelSelectionService: Failed to save user preferences:",
         error
       );
+      this.preferencesEnabled = false;
     }
   }
 

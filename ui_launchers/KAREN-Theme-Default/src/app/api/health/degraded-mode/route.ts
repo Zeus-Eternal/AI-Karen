@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     let lastErr: unknown = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
+    const unauthorizedStatus = new Set([401, 403]);
     for (const base of bases) {
       const healthUrl = withBackendPath('/health', base);
       const providersUrl = withBackendPath('/api/providers', base);
@@ -60,30 +61,44 @@ export async function GET(request: NextRequest) {
     }
       // Process health response
       let healthData: unknown = { status: 'unknown' };
-      if (healthResponse && healthResponse.status === 'fulfilled' && healthResponse.value.ok) {
-        const contentType = healthResponse.value.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          try {
-            healthData = await healthResponse.value.json();
-          } catch {
-            healthData = { status: 'ok' };
+      if (healthResponse && healthResponse.status === 'fulfilled') {
+        const response = healthResponse.value;
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            try {
+              healthData = await response.json();
+            } catch {
+              healthData = { status: 'ok' };
+            }
+          } else {
+            try {
+              const text = await response.text();
+              healthData = { status: text === 'ok' ? 'ok' : 'degraded' };
+            } catch {
+              healthData = { status: 'ok' };
+            }
           }
-        } else {
-          try {
-            const text = await healthResponse.value.text();
-            healthData = { status: text === 'ok' ? 'ok' : 'degraded' };
-          } catch {
-            healthData = { status: 'ok' };
-          }
+        } else if (unauthorizedStatus.has(response.status)) {
+          healthData = {
+            status: 'healthy',
+            ai_status: 'healthy',
+            reason: 'Health check requires authentication',
+            infrastructure_issues: ['health endpoint authentication']
+          };
         }
       }
       // Process providers response
       let providersData: unknown = null;
-      if (providersResponse && providersResponse.status === 'fulfilled' && providersResponse.value.ok) {
-        try {
-          providersData = await providersResponse.value.json();
-        } catch {
-          providersData = null;
+      if (providersResponse && providersResponse.status === 'fulfilled') {
+        if (providersResponse.value.ok) {
+          try {
+            providersData = await providersResponse.value.json();
+          } catch {
+            providersData = null;
+          }
+        } else if (unauthorizedStatus.has(providersResponse.value.status)) {
+          providersData = { providers: [], total_providers: 0, auth_required: true };
         }
       }
       const statusValue = (healthData.status || healthData.state || '').toString().toLowerCase();

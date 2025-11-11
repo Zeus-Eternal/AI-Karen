@@ -10,10 +10,19 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
+
+from ai_karen_engine.pydantic_stub import BaseModel as _BaseModelStub, Field as _FieldStub
+
+BaseModel = _BaseModelStub
+Field = _FieldStub
+
 try:
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
 except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+    pass
+else:
+    BaseModel = PydanticBaseModel
+    Field = PydanticField
 
 from ai_karen_engine.services.production_cache_service import get_cache_service
 from ai_karen_engine.services.model_library_cache_service import get_model_cache_service

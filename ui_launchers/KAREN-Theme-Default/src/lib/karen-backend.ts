@@ -709,15 +709,26 @@ class KarenBackendService {
           throw lastFetchError || new Error("Network error");
         }
         if (!response.ok) {
-          // Use warn instead of error for health checks to reduce noise when backend is unavailable
+          // Reduce noise for expected health and extension auth failures
           const isHealthCheck =
             endpoint.includes("/health") ||
             endpoint.includes("/api/plugins") ||
             endpoint.includes("/analytics/system");
+
+          const isExtensionAuthError =
+            this.isExtensionEndpoint(endpoint) &&
+            [401, 403].includes(response.status);
+
           if (isHealthCheck) {
             logger.warn("KarenBackendService 4xx/5xx", {
               status: response.status,
               url: response.url,
+            });
+          } else if (isExtensionAuthError) {
+            logger.warn("KarenBackendService extension auth failure", {
+              status: response.status,
+              url: response.url,
+              endpoint,
             });
           } else {
             // Rate-limit repetitive retryable errors (like 504) to avoid console spam
