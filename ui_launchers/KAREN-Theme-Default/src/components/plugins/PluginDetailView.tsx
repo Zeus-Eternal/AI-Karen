@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -147,9 +147,61 @@ export type LogEntryT = {
   message: string;
 };
 
-const mockLogSeed: LogEntryT[] = (() => {
-  const now = Date.now();
+const MOCK_LOG_REFERENCE_TIME = typeof Date !== "undefined" ? Date.now() : 0;
+const MOCK_LOGS: LogEntryT[] = [
+  {
+    id: "1",
+    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 300000),
+    level: "info",
+    message: "Plugin initialized successfully",
+  },
+  {
+    id: "2",
+    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 600000),
+    level: "debug",
+    message: "Loading configuration from manifest",
+  },
+  {
+    id: "3",
+    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 900000),
+    level: "warn",
+    message: "API rate limit approaching (80% of quota used)",
+  },
+  {
+    id: "4",
+    timestamp: new Date(MOCK_LOG_REFERENCE_TIME - 1200000),
+    level: "error",
+    message: "Authentication failed: Token expired",
+  },
+];
 
+const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
+  const levelColors = {
+    debug: "text-gray-500",
+    info: "text-blue-600",
+    warn: "text-yellow-600",
+    error: "text-red-600",
+  } as const;
+
+  return (
+    <div className="flex gap-3 p-3 border-b last:border-b-0 sm:p-4 md:p-6">
+      <div className="text-xs text-muted-foreground w-24 flex-shrink-0">
+        {entry.timestamp.toLocaleTimeString()}
+      </div>
+      <div
+        className={`text-xs font-medium w-14 flex-shrink-0 uppercase ${
+          levelColors[entry.level] || "text-gray-500"
+        }`}
+      >
+        {entry.level}
+      </div>
+      <div className="flex-1 text-sm md:text-base lg:text-lg">{entry.message}</div>
+    </div>
+  );
+};
+
+const INITIAL_MOCK_LOGS: LogEntryT[] = (() => {
+  const now = Date.now();
   return [
     {
       id: "1",
@@ -178,31 +230,6 @@ const mockLogSeed: LogEntryT[] = (() => {
   ];
 })();
 
-const LogEntry: React.FC<{ entry: LogEntryT }> = ({ entry }) => {
-  const levelColors = {
-    debug: "text-gray-500",
-    info: "text-blue-600",
-    warn: "text-yellow-600",
-    error: "text-red-600",
-  } as const;
-
-  return (
-    <div className="flex gap-3 p-3 border-b last:border-b-0 sm:p-4 md:p-6">
-      <div className="text-xs text-muted-foreground w-24 flex-shrink-0">
-        {entry.timestamp.toLocaleTimeString()}
-      </div>
-      <div
-        className={`text-xs font-medium w-14 flex-shrink-0 uppercase ${
-          levelColors[entry.level] || "text-gray-500"
-        }`}
-      >
-        {entry.level}
-      </div>
-      <div className="flex-1 text-sm md:text-base lg:text-lg">{entry.message}</div>
-    </div>
-  );
-};
-
 // --- Main Component ----------------------------------------------------------
 
 export interface PluginDetailViewProps {
@@ -225,7 +252,35 @@ export const PluginDetailView: React.FC<PluginDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState("overview");
 
   // Mock logs (replace with real source/wire to store later)
-  const [mockLogs] = useState<LogEntryT[]>(() => [...mockLogSeed]);
+  const [mockLogs] = useState<LogEntryT[]>(() => {
+    const now = Date.now();
+    return [
+      {
+        id: "1",
+        timestamp: new Date(now - 300000),
+        level: "info",
+        message: "Plugin initialized successfully",
+      },
+      {
+        id: "2",
+        timestamp: new Date(now - 600000),
+        level: "debug",
+        message: "Loading configuration from manifest",
+      },
+      {
+        id: "3",
+        timestamp: new Date(now - 900000),
+        level: "warn",
+        message: "API rate limit approaching (80% of quota used)",
+      },
+      {
+        id: "4",
+        timestamp: new Date(now - 1200000),
+        level: "error",
+        message: "Authentication failed: Token expired",
+      },
+    ];
+  });
 
   // Store selectors (assumes selector factory pattern per your store)
   const enableLoading = usePluginStore(selectPluginLoading(`enable-${plugin.id}`));

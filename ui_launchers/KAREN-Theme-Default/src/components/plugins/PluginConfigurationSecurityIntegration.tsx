@@ -114,7 +114,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to save configuration.");
-    } finally {
     }
   };
 
@@ -128,7 +127,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to update security policy.");
-    } finally {
     }
   };
 
@@ -233,7 +231,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onSave={handleSaveConfiguration}
               onValidate={validateConfiguration}
               onPreview={() => undefined}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
               showAdvanced
             />
             {!readOnly && (
@@ -241,6 +239,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
                 variant="outline"
                 onClick={() => setShowMarketplace(true)}
                 className="self-start"
+                disabled={saving}
               >
                 Browse marketplace
               </Button>
@@ -253,7 +252,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
               onUpdateSecurity={handleSaveSecurity}
               onGrantPermission={onGrantPermission}
               onRevokePermission={onRevokePermission}
-              readOnly={readOnly}
+              readOnly={readOnly || saving}
             />
           </TabsContent>
 

@@ -156,7 +156,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [memoryService, userId, tenantId]);
+  }, [memoryService, userId]);
 
   const loadBackups = useCallback(async () => {
     try {
@@ -343,7 +343,10 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
           timestamp: new Date(),
         };
 
-        // TODO: Replace with backend call: await memoryService.batchOperation(batchOp)
+        if (typeof memoryService.batchOperation === "function") {
+          await memoryService.batchOperation(batchOp);
+        }
+
         const result: MemoryBatchResult = {
           operationId: `batch-${Date.now()}`,
           success: true,
@@ -438,6 +441,13 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         if (result) {
           // Reload backups to get the updated list
           await loadBackups();
+          if (description) {
+            setBackups((prev) =>
+              prev.map((backup) =>
+                backup.id === result.id ? { ...backup, description } : backup
+              )
+            );
+          }
         } else {
           setError("Failed to create backup - backend returned null");
         }

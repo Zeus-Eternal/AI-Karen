@@ -103,7 +103,7 @@ type MemoryFiltersState = Record<string, unknown> & {
 /* ============================
  * Utils
  * ========================== */
-async function safeJsonPost<T = any>(url: string, payload: unknown): Promise<T> {
+async function safeJsonPost<T = unknown>(url: string, payload: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

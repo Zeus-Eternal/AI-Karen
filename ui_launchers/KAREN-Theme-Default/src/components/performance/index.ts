@@ -45,10 +45,11 @@ export type {
 
 // Performance Monitor
 export { PerformanceMonitor, default as PerformanceMonitorDefault } from "./performance-monitor";
+export { usePerformanceMetrics } from "./performance-monitor.shared";
 export type {
   PerformanceMetrics as MonitorPerformanceMetrics,
   PerformanceMonitorProps,
-} from "./performance-monitor";
+} from "./performance-monitor.shared";
 
 // ============================================================================
 // Service Exports

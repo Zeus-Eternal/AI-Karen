@@ -30,6 +30,8 @@ export function useLoadingState(initialState = false) {
   const [isLoading, setIsLoading] = React.useState(initialState);
   const [error, setError] = React.useState<Error | null>(null);
 
+  type WithLoadingHandler = <T>(asyncFn: () => Promise<T>) => Promise<T | null>;
+
   const startLoading = React.useCallback(() => {
     setIsLoading(true);
     setError(null);
@@ -44,8 +46,8 @@ export function useLoadingState(initialState = false) {
     setIsLoading(false);
   }, []);
 
-  const withLoadingHandler = React.useCallback(
-    async <T,>(asyncFn: () => Promise<T>): Promise<T | null> => {
+  const withLoadingHandler = React.useCallback<WithLoadingHandler>(
+    async (asyncFn) => {
       try {
         startLoading();
         const result = await asyncFn();

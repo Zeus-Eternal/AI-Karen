@@ -124,6 +124,44 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
     rulesRef.current = alertRules;
   }, [alertRules]);
 
+  // --- Notifications & Escalation ------------------------------------------
+
+  const handleAlertNotification = useCallback(
+    async (alert: PerformanceAlert, rule: AlertRule) => {
+      // Push notifications
+      if (rule.notifications.push && "Notification" in window) {
+        try {
+          if (Notification.permission === "granted") {
+            new Notification(`Performance ${alert.type.toUpperCase()}`, {
+              body: `${getMetricDisplayName(alert.metric)}: ${alert.value} — ${alert.message}`,
+              icon: "/favicon.ico",
+            });
+          }
+        } catch {
+          // Notifications may be blocked; ignore
+        }
+      }
+
+      // Email & Slack hooks would call your integrations here.
+      // e.g., fetch("/api/notify/email", { method: "POST", body: JSON.stringify({...}) })
+      // e.g., fetch("/api/notify/slack", { method: "POST", body: JSON.stringify({...}) })
+
+      // Escalation timer
+      if (rule.escalation.enabled && rule.escalation.recipients.length > 0) {
+        window.setTimeout(() => {
+          // Replace with your escalation webhook
+          // navigator.sendBeacon("/api/escalate", JSON.stringify({ alert, rule }));
+          // For now, log (observable in dev tools)
+          // eslint-disable-next-line no-console
+          console.log(
+            `[ESCALATE] -> ${rule.escalation.recipients.join(", ")} | ${rule.name} | ${getMetricDisplayName(alert.metric)}=${alert.value}`
+          );
+        }, rule.escalation.delay * 60 * 1000);
+      }
+    },
+    []
+  );
+
   // Load initial rules (from localStorage if present), and seed defaults
   useEffect(() => {
     try {
@@ -179,6 +217,44 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
     }
   }, [alertRules]);
 
+  const handleAlertNotification = useCallback(
+    async (alert: PerformanceAlert, rule: AlertRule) => {
+      // Push notifications
+      if (rule.notifications.push && "Notification" in window) {
+        try {
+          if (Notification.permission === "granted") {
+            new Notification(`Performance ${alert.type.toUpperCase()}`, {
+              body: `${getMetricDisplayName(alert.metric)}: ${alert.value} — ${alert.message}`,
+              icon: "/favicon.ico",
+            });
+          }
+        } catch {
+          // Notifications may be blocked; ignore
+        }
+      }
+
+      // Email & Slack hooks would call your integrations here.
+      // e.g., fetch("/api/notify/email", { method: "POST", body: JSON.stringify({...}) })
+      // e.g., fetch("/api/notify/slack", { method: "POST", body: JSON.stringify({...}) })
+
+      // Escalation timer
+      if (rule.escalation.enabled && rule.escalation.recipients.length > 0) {
+        window.setTimeout(() => {
+          // Replace with your escalation webhook
+          // navigator.sendBeacon("/api/escalate", JSON.stringify({ alert, rule }));
+          // For now, log (observable in dev tools)
+          // eslint-disable-next-line no-console
+          console.log(
+            `[ESCALATE] -> ${rule.escalation.recipients.join(
+              ", "
+            )} | ${rule.name} | ${getMetricDisplayName(alert.metric)}=${alert.value}`
+          );
+        }, rule.escalation.delay * 60 * 1000);
+    }
+  },
+  []
+  );
+
   // Load alerts & subscribe
   useEffect(() => {
     const loadData = () => {
@@ -215,47 +291,158 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
       clearInterval(interval);
       unsubscribe();
     };
-  }, [onAlert]);
+  }, [handleAlertNotification, onAlert]);
 
-  // --- Notifications & Escalation ------------------------------------------
+  // Load alerts & subscribe
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        setAlerts(performanceMonitor.getAlerts(50));
+      } catch {
+        // If service not yet ready, keep calm.
+      }
+    };
 
-  const handleAlertNotification = useCallback(
-    async (alert: PerformanceAlert, rule: AlertRule) => {
-      // Push notifications
-      if (rule.notifications.push && "Notification" in window) {
-        try {
-          if (Notification.permission === "granted") {
-            new Notification(`Performance ${alert.type.toUpperCase()}`, {
-              body: `${getMetricDisplayName(alert.metric)}: ${alert.value} — ${alert.message}`,
-              icon: "/favicon.ico",
-            });
-          }
-        } catch {
-          // Notifications may be blocked; ignore
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
+
+    const unsubscribe =
+      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
+        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+
+        // Threshold-aware rule matching
+        const match = rulesRef.current.find(
+          (rule) =>
+            rule.enabled &&
+            rule.metric === alert.metric &&
+            rule.type === alert.type &&
+            alert.value >= rule.threshold
+        );
+
+        if (match) {
+          void handleAlertNotification(alert, match);
         }
-      }
+        onAlert?.(alert);
+      }) ?? (() => {});
 
-      // Email & Slack hooks would call your integrations here.
-      // e.g., fetch("/api/notify/email", { method: "POST", body: JSON.stringify({...}) })
-      // e.g., fetch("/api/notify/slack", { method: "POST", body: JSON.stringify({...}) })
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [handleAlertNotification, onAlert]);
 
-      // Escalation timer
-      if (rule.escalation.enabled && rule.escalation.recipients.length > 0) {
-        window.setTimeout(() => {
-          // Replace with your escalation webhook
-          // navigator.sendBeacon("/api/escalate", JSON.stringify({ alert, rule }));
-          // For now, log (observable in dev tools)
-          // eslint-disable-next-line no-console
-          console.log(
-            `[ESCALATE] -> ${rule.escalation.recipients.join(
-              ", "
-            )} | ${rule.name} | ${getMetricDisplayName(alert.metric)}=${alert.value}`
-          );
-        }, rule.escalation.delay * 60 * 1000);
+  // Load alerts & subscribe
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        setAlerts(performanceMonitor.getAlerts(50));
+      } catch {
+        // If service not yet ready, keep calm.
       }
-    },
-    []
-  );
+    };
+
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
+
+    const unsubscribe =
+      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
+        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+
+        // Threshold-aware rule matching
+        const match = rulesRef.current.find(
+          (rule) =>
+            rule.enabled &&
+            rule.metric === alert.metric &&
+            rule.type === alert.type &&
+            alert.value >= rule.threshold
+        );
+
+        if (match) {
+          void handleAlertNotification(alert, match);
+        }
+        onAlert?.(alert);
+      }) ?? (() => {});
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [onAlert, handleAlertNotification]);
+
+  // Load alerts & subscribe
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        setAlerts(performanceMonitor.getAlerts(50));
+      } catch {
+        // If service not yet ready, keep calm.
+      }
+    };
+
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
+
+    const unsubscribe =
+      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
+        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+
+        // Threshold-aware rule matching
+        const match = rulesRef.current.find(
+          (rule) =>
+            rule.enabled &&
+            rule.metric === alert.metric &&
+            rule.type === alert.type &&
+            alert.value >= rule.threshold
+        );
+
+        if (match) {
+          void handleAlertNotification(alert, match);
+        }
+        onAlert?.(alert);
+      }) ?? (() => {});
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [handleAlertNotification, onAlert]);
+
+  // Load alerts & subscribe
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        setAlerts(performanceMonitor.getAlerts(50));
+      } catch {
+        // If service not yet ready, keep calm.
+      }
+    };
+
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
+
+    const unsubscribe =
+      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
+        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
+
+        const match = rulesRef.current.find(
+          (rule) =>
+            rule.enabled &&
+            rule.metric === alert.metric &&
+            rule.type === alert.type &&
+            alert.value >= rule.threshold
+        );
+
+        if (match) {
+          void handleAlertNotification(alert, match);
+        }
+        onAlert?.(alert);
+      }) ?? (() => {});
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [handleAlertNotification, onAlert]);
 
   const requestNotificationPermission = useCallback(async () => {
     try {
