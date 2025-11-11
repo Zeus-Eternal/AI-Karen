@@ -168,30 +168,6 @@ export const FocusRing: React.FC<FocusRingProps> = ({
   );
 };
 
-/**
- * WithFocusIndicator - HOC to add focus indicators to any component
- */
-export function withFocusIndicator<P extends object>(
-  Component: React.ComponentType<P>,
-  indicatorProps?: Partial<FocusIndicatorProps>
-) {
-  const WrappedComponent = React.forwardRef<any, P>((props, ref) => {
-    // Create props object that may or may not include ref
-    const componentProps = { ...props } as any;
-    if (ref) {
-      (componentProps as any).ref = ref;
-    }
-    
-    return (
-      <FocusIndicator {...indicatorProps}>
-        <Component {...(componentProps as any)} />
-      </FocusIndicator>
-    );
-  });
-  WrappedComponent.displayName = `withFocusIndicator(${Component.displayName || Component.name})`;
-
-  return WrappedComponent;
-}
 
 /**
  * FocusableArea - Creates a focusable area with proper indicators
@@ -255,38 +231,5 @@ export const FocusableArea = React.forwardRef<HTMLDivElement, FocusableAreaProps
 );
 
 FocusableArea.displayName = 'FocusableArea';
-
-/**
- * Hook for managing focus indicators
- */
-export const useFocusIndicator = (options: {
-  keyboardOnly?: boolean;
-  variant?: FocusIndicatorProps['variant'];
-  color?: FocusIndicatorProps['color'];
-} = {}) => {
-  const { keyboardOnly = true, variant = 'default', color = 'primary' } = options;
-  const { isFocusVisible } = useFocusVisible();
-  const [isFocused, setIsFocused] = React.useState(false);
-
-  const shouldShowIndicator = keyboardOnly ? isFocused && isFocusVisible : isFocused;
-
-  const focusProps = {
-    onFocus: () => setIsFocused(true),
-    onBlur: () => setIsFocused(false),
-  };
-
-  const indicatorProps = {
-    visible: shouldShowIndicator,
-    variant,
-    color,
-  };
-
-  return {
-    isFocused,
-    shouldShowIndicator,
-    focusProps,
-    indicatorProps,
-  };
-};
 
 export default FocusIndicator;
