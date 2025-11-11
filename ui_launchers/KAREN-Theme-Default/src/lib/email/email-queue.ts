@@ -4,7 +4,7 @@
  * Reliable email delivery system with retry mechanisms, rate limiting,
  * and priority processing for admin notifications.
  */
-import { EmailMessage, EmailQueueConfig, BulkEmailOperation, EmailDeliveryStatus, EmailQueueResponse } from './types';
+import { EmailMessage, EmailQueueConfig, BulkEmailOperation, EmailQueueResponse } from './types';
 import { DEFAULT_QUEUE_CONFIG } from './config';
 import { emailService } from './email-service';
 
