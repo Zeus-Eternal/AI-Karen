@@ -42,7 +42,21 @@ export interface DownloadStatusHookReturn {
  * @file use-download-status.ts
  * @description Hook for managing download status integration with real-time progress updates.
  * Connects frontend to download progress API endpoints and implements polling for updates.
- */
+*/
+
+interface DownloadTaskApiResponse {
+  task_id: string;
+  model_id: string;
+  filename?: string;
+  status: DownloadTask['status'];
+  progress?: number;
+  downloaded_size?: number;
+  total_size?: number;
+  estimated_time_remaining?: number;
+  error_message?: string;
+  start_time?: number;
+}
+
 export function useDownloadStatus(): DownloadStatusHookReturn {
   const [downloadTasks, setDownloadTasks] = useState<DownloadTask[]>([]);
   const [isPolling, setIsPolling] = useState(false);
@@ -57,28 +71,28 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   const erroredDownloads = downloadTasks.filter(task => task.status === 'error');
 
   // Convert API response to DownloadTask
-  const calculateSpeed = useCallback((apiResponse: Record<string, unknown>): number => {
+  const calculateSpeed = useCallback((apiResponse: DownloadTaskApiResponse): number => {
     if (!apiResponse.start_time || !apiResponse.downloaded_size) return 0;
-    
-    const elapsedTime = (Date.now() / 1000) - (apiResponse.start_time as number);
+
+    const elapsedTime = (Date.now() / 1000) - apiResponse.start_time;
     if (elapsedTime <= 0) return 0;
-    
-    return (apiResponse.downloaded_size as number) / elapsedTime;
+
+    return apiResponse.downloaded_size / elapsedTime;
   }, []);
 
-  const convertApiResponseToTask = useCallback((apiResponse: Record<string, unknown>): DownloadTask => {
+  const convertApiResponseToTask = useCallback((apiResponse: DownloadTaskApiResponse): DownloadTask => {
     return {
-      id: apiResponse.task_id as string,
-      modelId: apiResponse.model_id as string,
-      modelName: (apiResponse.filename as string) || (apiResponse.model_id as string), // Use filename or fallback to model_id
-      status: apiResponse.status as DownloadTask['status'],
-      progress: (apiResponse.progress as number) || 0,
-      downloadedBytes: (apiResponse.downloaded_size as number) || 0,
-      totalBytes: (apiResponse.total_size as number) || 0,
+      id: apiResponse.task_id,
+      modelId: apiResponse.model_id,
+      modelName: apiResponse.filename || apiResponse.model_id, // Use filename or fallback to model_id
+      status: apiResponse.status,
+      progress: apiResponse.progress ?? 0,
+      downloadedBytes: apiResponse.downloaded_size ?? 0,
+      totalBytes: apiResponse.total_size ?? 0,
       speed: calculateSpeed(apiResponse),
-      estimatedTimeRemaining: (apiResponse.estimated_time_remaining as number) || 0,
-      error: apiResponse.error_message as string,
-      startTime: (apiResponse.start_time as number) || Date.now() / 1000,
+      estimatedTimeRemaining: apiResponse.estimated_time_remaining ?? 0,
+      error: apiResponse.error_message,
+      startTime: apiResponse.start_time ?? Date.now() / 1000,
       lastUpdateTime: Date.now() / 1000
     };
   }, [calculateSpeed]);
@@ -86,7 +100,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   // Get download status for a specific task
   const getDownloadStatus = useCallback(async (taskId: string): Promise<DownloadTask | null> => {
     try {
-      const response = await backend.makeRequestPublic(`/api/models/download/${taskId}`);
+      const response = await backend.makeRequestPublic<DownloadTaskApiResponse>(`/api/models/download/${taskId}`);
       if (response) {
         return convertApiResponseToTask(response);
       }
@@ -185,7 +199,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       }
 
       // Start a new download for the same model
-      const response = await backend.makeRequestPublic('/api/models/download', {
+      const response = await backend.makeRequestPublic<DownloadTaskApiResponse>('/api/models/download', {
         method: 'POST',
         body: JSON.stringify({ model_id: task.modelId })
       });

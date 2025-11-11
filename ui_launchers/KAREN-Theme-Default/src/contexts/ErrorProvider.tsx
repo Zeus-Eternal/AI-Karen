@@ -172,11 +172,13 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
-    
+
+    const boundaryInfo = errorInfo as { componentStack?: string } | undefined;
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -186,9 +188,9 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 
     // Add to global errors
     addGlobalError(error, context);
-    
+
     // Use boundary error hook for analysis
-    boundaryError.handleError(error, errorInfo);
+    boundaryError.handleError(error, boundaryInfo);
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
@@ -202,17 +204,25 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       safeError('Request context:', requestContext, { useStructuredLogging: true });
     }
     
+    const extendedError = error as Partial<{
+      status: number;
+      isNetworkError: boolean;
+      isCorsError: boolean;
+      isTimeoutError: boolean;
+      responseTime: number;
+    }>;
+
     const context: Partial<ErrorAnalysisRequest> = {
-      status_code: error.status,
+      status_code: extendedError.status,
       error_type: error.name || 'ApiError',
       request_path: requestContext?.endpoint,
       provider_name: requestContext?.provider,
       user_context: {
         method: requestContext?.method,
-        is_network_error: error.isNetworkError,
-        is_cors_error: error.isCorsError,
-        is_timeout_error: error.isTimeoutError,
-        response_time: error.responseTime,
+        is_network_error: extendedError.isNetworkError,
+        is_cors_error: extendedError.isCorsError,
+        is_timeout_error: extendedError.isTimeoutError,
+        response_time: extendedError.responseTime,
         timestamp: new Date().toISOString(),
       },
     };

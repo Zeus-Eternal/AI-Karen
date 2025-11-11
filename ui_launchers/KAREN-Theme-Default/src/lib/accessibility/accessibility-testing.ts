@@ -1,6 +1,5 @@
 import axe, {
   type AxeResults,
-  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,
@@ -117,14 +116,21 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: ElementContext;
+  private container: Document | Element;
   private options: RunOptions;
 
   constructor(
-    container: ElementContext = document,
+    container?: Document | Element,
     options: RunOptions = {}
   ) {
-    this.container = container;
+    if (container) {
+      this.container = container;
+    } else {
+      if (typeof document === "undefined") {
+        throw new Error("AccessibilityTestSuite requires a DOM container");
+      }
+      this.container = document;
+    }
     this.options = {
       runOnly: {
         type: "tag",
@@ -593,7 +599,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const violations: AccessibilityViolation[] = results.violations.map(
       (violation: Result) => ({
         id: violation.id,
-        impact: violation.impact,
+        impact: (violation.impact ?? "minor") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,

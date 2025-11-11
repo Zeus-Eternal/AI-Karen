@@ -107,13 +107,14 @@ function headersToObject(headers: HeaderLike): Record<string, string> {
   }
   // Record<string, string>
   const headerRecord = headers as Record<string, string | number | boolean | undefined>;
+  const normalized: Record<string, string> = {};
   for (const k of Object.keys(headerRecord)) {
     const value = headerRecord[k];
     if (value !== undefined) {
-      out[k.toLowerCase()] = String(value);
+      normalized[k.toLowerCase()] = String(value);
     }
   }
-  return out;
+  return normalized;
 }
 
 function methodAllowsDefaultCaching(method?: string) {

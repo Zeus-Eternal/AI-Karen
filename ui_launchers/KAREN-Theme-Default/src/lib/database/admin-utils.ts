@@ -393,44 +393,44 @@ export class AdminDatabaseUtils {
     };
   }
 
-    private mapUserRow(row: UserRecord): User {
-      let preferences: User['preferences'] | undefined;
-      if (row.preferences) {
-        try {
-          preferences = typeof row.preferences === 'string'
-            ? JSON.parse(row.preferences)
-            : (row.preferences as User['preferences']);
-        } catch {
-          preferences = undefined;
-        }
+  private mapUserRow(row: UserRecord): User {
+    let preferences: User['preferences'] | undefined;
+    if (row.preferences) {
+      try {
+        preferences = typeof row.preferences === 'string'
+          ? JSON.parse(row.preferences)
+          : (row.preferences as User['preferences']);
+      } catch {
+        preferences = undefined;
       }
-
-      const roles: string[] = Array.isArray(row.roles)
-        ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
-        : row.role
-          ? [row.role]
-          : [];
-
-      return {
-        user_id: row.user_id,
-        email: row.email,
-        full_name: row.full_name ?? undefined,
-        role: row.role,
-        roles,
-        tenant_id: row.tenant_id ?? 'default',
-        preferences,
-        is_verified: Boolean(row.is_verified),
-        is_active: Boolean(row.is_active),
-        created_at: new Date(row.created_at),
-        updated_at: new Date(row.updated_at),
-        last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
-        failed_login_attempts: row.failed_login_attempts ?? 0,
-        locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
-        two_factor_enabled: Boolean(row.two_factor_enabled),
-        two_factor_secret: row.two_factor_secret ?? null,
-        created_by: row.created_by ?? undefined,
-      };
     }
+
+    const roles: string[] = Array.isArray(row.roles)
+      ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
+      : row.role
+        ? [row.role]
+        : [];
+
+    return {
+      user_id: row.user_id,
+      email: row.email,
+      full_name: row.full_name ?? undefined,
+      role: row.role,
+      roles,
+      tenant_id: row.tenant_id ?? 'default',
+      preferences,
+      is_verified: Boolean(row.is_verified),
+      is_active: Boolean(row.is_active),
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
+      last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
+      failed_login_attempts: row.failed_login_attempts ?? 0,
+      locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
+      two_factor_enabled: Boolean(row.two_factor_enabled),
+      two_factor_secret: row.two_factor_secret ?? null,
+      created_by: row.created_by ?? undefined,
+    };
+  }
 
   /**
    * Find user by email with role information
@@ -466,7 +466,7 @@ export class AdminDatabaseUtils {
     `;
 
     try {
-      const rows = await this.executeQuery<Record<string, unknown>>('findUserByEmail', query, [normalizedEmail]);
+      const rows = await this.executeQuery<UserRecord>('findUserByEmail', query, [normalizedEmail]);
       if (!rows.length) {
         return null;
       }
@@ -847,24 +847,38 @@ export class AdminDatabaseUtils {
       `;
 
       const dataParams = [...queryParams, limit, offset];
-      const dataResult = await this.executeQuery<Record<string, unknown>>('getAuditLogsData', dataQuery, dataParams);
+      const dataResult = await this.executeQuery<{
+        id: string;
+        user_id: string;
+        action: string;
+        resource_type: string;
+        resource_id: string | null;
+        details: Record<string, unknown> | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        timestamp: Date | string;
+        user_email: string | null;
+        user_full_name: string | null;
+      }>('getAuditLogsData', dataQuery, dataParams);
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        user_id: row.user_id as string,
-        action: row.action as string,
-        resource_type: row.resource_type as string,
-        resource_id: row.resource_id as string | null,
-        details: row.details as Record<string, unknown> | null,
-        ip_address: row.ip_address as string | null,
-        user_agent: row.user_agent as string | null,
-        timestamp: row.timestamp as Date,
-        user: row.user_email ? {
-          user_id: row.user_id as string,
-          email: row.user_email as string,
-          full_name: row.user_full_name as string | null
-        } : undefined
+      const data: AuditLog[] = dataResult.map((row) => ({
+        id: row.id,
+        user_id: row.user_id,
+        action: row.action,
+        resource_type: row.resource_type,
+        resource_id: row.resource_id ?? undefined,
+        details: row.details ?? {},
+        ip_address: row.ip_address ?? undefined,
+        user_agent: row.user_agent ?? undefined,
+        timestamp: row.timestamp instanceof Date ? row.timestamp : new Date(row.timestamp),
+        user: row.user_email
+          ? {
+              user_id: row.user_id,
+              email: row.user_email,
+              full_name: row.user_full_name ?? undefined,
+            }
+          : undefined,
       }));
 
       return {
@@ -918,23 +932,39 @@ export class AdminDatabaseUtils {
     query += ` ORDER BY sc.category, sc.key`;
     
     try {
-      const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
-      
-      return result.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        key: row.key as string,
-        value: this.parseConfigValue(row.value as string, row.value_type as string),
-        value_type: row.value_type as string,
-        category: row.category as string,
-        description: row.description as string | null,
-        updated_by: row.updated_by as string,
-        updated_at: row.updated_at as Date,
-        created_at: row.created_at as Date,
-        updated_by_user: row.updated_by_email ? {
-          user_id: row.updated_by as string,
-          email: row.updated_by_email as string,
-          full_name: row.updated_by_name as string | null
-        } : undefined
+      const result = await this.executeQuery<{
+        id: string;
+        key: string;
+        value: string;
+        value_type: string;
+        category: string;
+        description: string | null;
+        updated_by: string;
+        updated_at: Date | string;
+        created_at: Date | string;
+        updated_by_email: string | null;
+        updated_by_name: string | null;
+      }>('getSystemConfig', query, queryParams);
+
+      return result.map((row) => ({
+        id: row.id,
+        key: row.key,
+        value: this.parseConfigValue(row.value, row.value_type),
+        value_type: ['string', 'number', 'boolean', 'json'].includes(row.value_type)
+          ? (row.value_type as SystemConfig['value_type'])
+          : 'string',
+        category: row.category as SystemConfig['category'],
+        description: row.description,
+        updated_by: row.updated_by,
+        updated_at: new Date(row.updated_at),
+        created_at: new Date(row.created_at),
+        updated_by_user: row.updated_by_email
+          ? {
+              user_id: row.updated_by,
+              email: row.updated_by_email,
+              full_name: row.updated_by_name ?? undefined,
+            }
+          : undefined,
       }));
     } catch (error) {
       throw new AdminDatabaseError(
