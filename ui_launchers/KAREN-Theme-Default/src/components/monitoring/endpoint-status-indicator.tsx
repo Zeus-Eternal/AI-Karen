@@ -168,8 +168,8 @@ export function EndpointStatusIndicator({
       }
       try {
         unsubscribeLogs();
-      } catch {
-        // noop
+      } catch (error) {
+        console.warn("Failed to clean up health monitor listeners", error);
       }
 
       errorTimers.forEach((timeoutId) => {

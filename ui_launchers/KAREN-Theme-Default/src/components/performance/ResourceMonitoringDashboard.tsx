@@ -97,7 +97,8 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   useEffect(() => {
     const updateData = () => {
       setCurrentMetrics(resourceMonitor.getCurrentMetrics());
-      setHistoricalMetrics(resourceMonitor.getHistoricalMetrics(100));
+      const nextHistoricalMetrics = resourceMonitor.getHistoricalMetrics(100);
+      setHistoricalMetrics(nextHistoricalMetrics);
       setAlerts(resourceMonitor.getAlerts());
       setRecommendations(resourceMonitor.getScalingRecommendations());
 
