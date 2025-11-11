@@ -7,6 +7,29 @@ export interface SafeConsoleOptions {
   useStructuredLogging?: boolean;
 }
 
+type ErrorLike = {
+  name?: string;
+  message?: string;
+  stack?: string;
+};
+
+function isErrorLike(error: unknown): error is Error | ErrorLike {
+  if (error instanceof Error) {
+    return true;
+  }
+
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as Record<string, unknown>;
+  return (
+    "name" in candidate ||
+    "message" in candidate ||
+    "stack" in candidate
+  );
+}
+
 class SafeConsole {
   private static instance: SafeConsole;
   private originalConsole: Console;
@@ -41,10 +64,10 @@ class SafeConsole {
       if (useStructuredLogging && error) {
         // Use structured logging to avoid interceptor issues
         // Type guard for error object
-        const errorObj = error as Error | { name?: string; message?: string; stack?: string } | null;
-        
-        const errorName = errorObj?.name || "Unknown";
-        const errorMessage = errorObj?.message || "No message";
+        const errorObj = isErrorLike(error) ? error : undefined;
+
+        const errorName = errorObj?.name ?? "Unknown";
+        const errorMessage = errorObj?.message ?? "No message";
         const errorStack = errorObj?.stack;
         
         const errorData = {
