@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, Loader2 } from "lucide-react";
@@ -41,6 +41,8 @@ interface SpeechRecognitionAlternative {
   confidence: number;
 }
 
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -48,10 +50,19 @@ interface SpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionWindow extends Window {
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  SpeechRecognition?: SpeechRecognitionConstructor;
 }
 
 
@@ -66,7 +77,17 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   className = "",
   showConfidenceBadge = true,
 }) => {
-  const [isSupported, setIsSupported] = useState(false);
+  const speechRecognitionCtor = useMemo<SpeechRecognitionConstructor | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const { SpeechRecognition, webkitSpeechRecognition } =
+      window as SpeechRecognitionWindow;
+
+    return SpeechRecognition ?? webkitSpeechRecognition ?? null;
+  }, []);
+  const isSupported = Boolean(speechRecognitionCtor);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [confidence, setConfidence] = useState(0);
@@ -74,15 +95,12 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    const win = window as unknown;
-    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
-    setIsSupported(Boolean(SpeechRecognition));
-
-    if (!SpeechRecognition) {
+    if (!speechRecognitionCtor || !isSupported) {
+      recognitionRef.current = null;
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new speechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
@@ -100,7 +118,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       }
     };
 
-    recognition.onerror = (event: Event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       setIsProcessing(false);
       const errorMessage = `Speech recognition error: ${event.error}`;
       onError?.(errorMessage);
@@ -143,7 +161,15 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
     return () => {
       recognition.abort();
     };
-  }, [isRecording, onStop, onError, onTranscript, toast]);
+  }, [
+    speechRecognitionCtor,
+    isSupported,
+    isRecording,
+    onStop,
+    onError,
+    onTranscript,
+    toast,
+  ]);
 
   const handleStart = useCallback(() => {
     if (!isSupported) {
@@ -159,7 +185,8 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       try {
         recognitionRef.current.start();
         onStart();
-      } catch (error) {
+      } catch (startError) {
+        console.error("Failed to start voice input", startError);
         onError?.("Failed to start voice input");
       }
     }
