@@ -96,7 +96,7 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const initialSnapshot = useMemo(resolveInitialSnapshot, []);
+  const initialSnapshot = useMemo(() => resolveInitialSnapshot(), []);
   const monitorRef = useRef<MonitorSnapshot["monitor"]>(initialSnapshot.monitor);
   const loggerRef = useRef<MonitorSnapshot["logger"]>(initialSnapshot.logger);
 
@@ -161,7 +161,6 @@ export function EndpointStatusIndicator({
       }) ?? (() => {});
 
     return () => {
-      cancelAnimationFrame(frame);
       try {
         unsubscribeMetrics();
       } catch {
