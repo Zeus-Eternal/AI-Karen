@@ -380,6 +380,14 @@ export default function IntelligentModelSelector({
   );
 
   const autoSelectionRef = useRef<string | null>(null);
+
+  const autoSelectedModelId =
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : '';
+
+  const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
+
   const effectiveSelectedModelId = useMemo(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
       return topRecommendation.model.id;

@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/monitoring/endpoint-status-indicator.tsx
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -96,66 +96,81 @@ export function EndpointStatusIndicator({
   showDetails = true,
   compact = false,
 }: EndpointStatusIndicatorProps) {
-  const [initialSnapshot] = useState(resolveInitialSnapshot);
-  const monitorRef = useRef(initialSnapshot.monitor);
-  const loggerRef = useRef(initialSnapshot.logger);
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
+  const initialSnapshot = useMemo(resolveInitialSnapshot, []);
+  const monitorRef = useRef<MonitorSnapshot["monitor"]>(initialSnapshot.monitor);
+  const loggerRef = useRef<MonitorSnapshot["logger"]>(initialSnapshot.logger);
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(
+    () => initialSnapshot.metrics
+  );
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(
+    () => initialSnapshot.isMonitoring
+  );
+  const [lastUpdate, setLastUpdate] = useState<string>(
+    () => initialSnapshot.lastUpdate
+  );
+  const [recentErrors, setRecentErrors] = useState<number>(
+    () => initialSnapshot.recentErrors
+  );
 
   useEffect(() => {
-    const monitor = getHealthMonitor?.() ?? monitorRef.current;
-    const logger = getDiagnosticLogger?.() ?? loggerRef.current;
+    if (!monitorRef.current || !loggerRef.current) {
+      monitorRef.current = getHealthMonitor?.() ?? null;
+      loggerRef.current = getDiagnosticLogger?.() ?? null;
+    }
 
-    monitorRef.current = monitor;
-    loggerRef.current = logger;
+    const monitor = monitorRef.current;
+    const logger = loggerRef.current;
 
     if (!monitor || !logger) {
       return undefined;
     }
 
-    const activeTimeouts = new Set<number>();
+    try {
+      setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+    } catch {
+      // noop
+    }
 
-    const syncLatestMetrics = () => {
-      try {
-        const latestMetrics = monitor.getMetrics?.() ?? null;
-        setMetrics(latestMetrics);
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
-        if (latestMetrics) {
-          setLastUpdate(new Date().toLocaleTimeString());
-        }
-      } catch {
-        setIsMonitoring(false);
-      }
-    };
-
-    syncLatestMetrics();
+    const errorTimers: number[] = [];
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch {
+          // noop
+        }
       }) ?? (() => {});
 
-    type DiagnosticLog = { level?: string; category?: string };
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: DiagnosticLog) => {
+      logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
           const timeoutId = window.setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
-            activeTimeouts.delete(timeoutId);
+            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
-          activeTimeouts.add(timeoutId);
+          errorTimers.push(timeoutId);
         }
       }) ?? (() => {});
 
     return () => {
-      unsubscribeMetrics();
-      unsubscribeLogs();
-      activeTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      try {
+        unsubscribeMetrics();
+        unsubscribeLogs();
+      } catch {
+        // noop
+      }
+
+      errorTimers.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
     };
   }, []);
 

@@ -80,7 +80,6 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
   onDelete,
   isOpen,
   userId,
-  tenantId,
 }) => {
   const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
@@ -398,7 +397,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
         setLoading(false);
       }
     },
-    [selectedMemories, userId]
+    [selectedMemories, userId, memoryService]
   );
 
   /* --------------------------------------------- */

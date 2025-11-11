@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, Grid3X3, BarChart3, Sparkles, Brain, Bot, Zap, Database } from 'lucide-react';
 import { ChatBubble } from './ChatBubble';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { chatUiService } from '@/services/chat/chat-ui-service';
 import { format } from 'date-fns';
