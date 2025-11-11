@@ -37,6 +37,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
     isMonitoring,
     startMonitoring,
     stopMonitoring,
+    history,
   } = useAnimationPerformance();
 
   const historicalMetricsRef = useRef<AnimationMetrics[]>([]);
@@ -177,7 +178,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
       )}
 
       {/* Performance Chart */}
-      {showDetails && historicalMetrics.length > 1 && (
+      {showDetails && history.length > 1 && (
         <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
           <h4 className="text-sm font-semibold mb-3 flex items-center space-x-2 md:text-base lg:text-lg">
             <TrendingUp className="h-4 w-4 " />
@@ -199,9 +200,9 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                points={historicalMetrics
+                points={history
                   .map((metric, index) => {
-                    const x = (index / (historicalMetrics.length - 1)) * 400;
+                    const x = (index / (history.length - 1)) * 400;
                     const y = 96 - ((metric.fps / 60) * 96); // Normalize to 60fps max
                     return `${x},${Math.max(0, Math.min(96, y))}`;
                   })
@@ -270,7 +271,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
       )}
 
       {/* Performance Summary */}
-      {showDetails && historicalMetrics.length > 5 && (
+      {showDetails && history.length > 5 && (
         <div className="p-4 bg-card rounded-lg border sm:p-4 md:p-6">
           <h4 className="text-sm font-semibold mb-3 md:text-base lg:text-lg">Performance Summary</h4>
           
@@ -278,19 +279,19 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
             <div>
               <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Average FPS</div>
               <div className="font-medium">
-                {(historicalMetrics.reduce((sum, m) => sum + m.fps, 0) / historicalMetrics.length).toFixed(1)}
+                {(history.reduce((sum, m) => sum + m.fps, 0) / history.length).toFixed(1)}
               </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Best FPS</div>
               <div className="font-medium">
-                {Math.max(...historicalMetrics.map(m => m.fps)).toFixed(1)}
+                {Math.max(...history.map(m => m.fps)).toFixed(1)}
               </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1 sm:text-sm md:text-base">Worst FPS</div>
               <div className="font-medium">
-                {Math.min(...historicalMetrics.map(m => m.fps)).toFixed(1)}
+                {Math.min(...history.map(m => m.fps)).toFixed(1)}
               </div>
             </div>
           </div>

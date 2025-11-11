@@ -97,6 +97,20 @@ export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
     return <span className={className}>{formattedValue}</span>;
   });
 
+const useCurrentTimestamp = (intervalMs = 60_000) => {
+  return React.useSyncExternalStore(
+    React.useCallback((onStoreChange) => {
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+      const id = window.setInterval(onStoreChange, intervalMs);
+      return () => window.clearInterval(id);
+    }, [intervalMs]),
+    () => Date.now(),
+    () => Date.now()
+  );
+};
+
 export interface TimeAgoProps {
   date: Date | string | number;
   className?: string;

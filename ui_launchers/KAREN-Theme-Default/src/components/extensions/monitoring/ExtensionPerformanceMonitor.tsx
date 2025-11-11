@@ -197,8 +197,6 @@ export function ExtensionPerformanceMonitor({
     ];
   }, [performanceData, filteredStatuses, taskData]);
 
-  // Sample alerts
-
   // Auto-refresh
   useEffect(() => {
     if (!autoRefresh) return;

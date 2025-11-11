@@ -297,15 +297,21 @@ export const animationCSS = {
 export function useAnimationPerformance() {
   const [metrics, setMetrics] = React.useState<AnimationMetrics | null>(null);
   const [isMonitoring, setIsMonitoring] = React.useState(false);
+  const [history, setHistory] = React.useState<AnimationMetrics[]>([]);
   const monitorRef = React.useRef<AnimationPerformanceMonitor | null>(null);
 
+  const handleMetricsUpdate = React.useCallback((nextMetrics: AnimationMetrics) => {
+    setMetrics(nextMetrics);
+    setHistory((prev) => [...prev.slice(-19), nextMetrics]);
+  }, []);
+
   React.useEffect(() => {
-    monitorRef.current = new AnimationPerformanceMonitor(setMetrics);
-    
+    monitorRef.current = new AnimationPerformanceMonitor(handleMetricsUpdate);
+
     return () => {
       monitorRef.current?.stopMonitoring();
     };
-  }, []);
+  }, [handleMetricsUpdate]);
 
   const startMonitoring = React.useCallback(() => {
     monitorRef.current?.startMonitoring();
@@ -323,6 +329,7 @@ export function useAnimationPerformance() {
 
   return {
     metrics,
+    history,
     isMonitoring,
     startMonitoring,
     stopMonitoring,

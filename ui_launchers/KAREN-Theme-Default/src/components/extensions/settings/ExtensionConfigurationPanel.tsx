@@ -366,6 +366,12 @@ export function ExtensionConfigurationPanel({
   const loadConfiguration = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!extensionId) {
+      setSettings([]);
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
     try {
       // Simulate loading configuration from API
       await new Promise(resolve => setTimeout(resolve, 1000));

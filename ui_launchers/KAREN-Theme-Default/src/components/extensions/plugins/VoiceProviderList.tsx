@@ -19,10 +19,14 @@ export default function VoiceProviderList() {
   const handlePreview = (text?: string) => {
     if (!text) return;
 
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utterance);
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      return;
     }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    setPreviewing(text);
+    utterance.onend = () => setPreviewing(null);
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -41,8 +45,9 @@ export default function VoiceProviderList() {
                 variant="outline"
                 onClick={() => handlePreview(p.previewText)}
                 className="flex items-center gap-1"
+                disabled={previewing === p.previewText}
               >
-                Preview
+                {previewing === p.previewText ? "Playing" : "Preview"}
               </Button>
             </CardContent>
           )}
