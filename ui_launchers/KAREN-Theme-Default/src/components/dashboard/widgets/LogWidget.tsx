@@ -169,7 +169,10 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
 
   const listRef = useRef<List>(null);
 
-  const entries = widgetData?.data?.entries ?? [];
+  const entries = useMemo(
+    () => widgetData?.data?.entries ?? [],
+    [widgetData?.data?.entries]
+  );
 
   const filteredEntries = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -194,10 +197,12 @@ export const LogWidget: React.FC<LogWidgetProps> = (props) => {
     });
   }, []);
 
+  const widgetId = widgetData?.id;
+
   const handleClearLogs = useCallback(() => {
     // delegate to parent if provided
-    if (widgetData?.id && onClearLogs) onClearLogs(widgetData.id);
-  }, [onClearLogs, widgetData?.id]);
+    if (widgetId && onClearLogs) onClearLogs(widgetId);
+  }, [onClearLogs, widgetId]);
 
   const handleExportLogs = useCallback(() => {
     const text = filteredEntries

@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/dashboard/widgets/ChartWidget.tsx
 "use client";
 
-import React, { useMemo, useCallback, useRef } from "react";
+import React, { useMemo, useCallback } from "react";
 import { AgCharts } from "ag-charts-react";
 import type { AgChartOptions } from "ag-charts-community";
 import { WidgetBase } from "../WidgetBase";
@@ -53,13 +53,9 @@ const getChartTypeIcon = (type: string) => {
 export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
   const { data: widgetData } = props;
 
-  // Keep a ref to the latest options in case you want to wire programmatic actions later
-  const optionsRef = useRef<AgChartOptions | null>(null);
-
   const chartOptions = useMemo<AgChartOptions>(() => {
     if (!widgetData?.data) {
       const opts: AgChartOptions = { data: [], series: [] };
-      optionsRef.current = opts;
       return opts;
     }
 
@@ -162,8 +158,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
         },
       },
     };
-
-    optionsRef.current = opts;
     return opts;
   }, [widgetData?.data]);
 

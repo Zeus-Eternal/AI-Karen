@@ -17,9 +17,7 @@ import { WidgetBase } from "../WidgetBase";
 import { Badge } from "@/components/ui/badge";
 import type { WidgetProps, StatusData } from "@/types/dashboard";
 
-interface StatusWidgetProps extends WidgetProps {
-  // Use the generic WidgetData from WidgetProps
-}
+type StatusWidgetProps = WidgetProps;
 
 const getStatusConfig = (status: StatusData["status"]) => {
   switch (status) {
@@ -118,6 +116,10 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
   const status = widgetData.data as StatusData;
   const statusConfig = getStatusConfig(status.status);
   const StatusIcon = statusConfig.icon;
+  const statusHistory = React.useMemo(() => {
+    const basePattern = ["healthy", "healthy", "warning", "healthy", "critical"] as const;
+    return Array.from({ length: 10 }, (_, index) => basePattern[index % basePattern.length]);
+  }, []);
 
   return (
     <WidgetBase {...props}>
@@ -200,14 +202,14 @@ export const StatusWidget: React.FC<StatusWidgetProps> = (props) => {
             <span>Status History</span>
             <div className="flex gap-1">
               {/* Mock status history - in real implementation, this would come from data */}
-              {Array.from({ length: 10 }, (_, i) => (
+              {statusHistory.map((state, i) => (
                 <div
                   key={i}
                   className={cn(
                     "w-2 h-2 rounded-full",
-                    Math.random() > 0.8
+                    state === "critical"
                       ? "bg-red-300"
-                      : Math.random() > 0.9
+                      : state === "warning"
                       ? "bg-yellow-300"
                       : "bg-green-300"
                   )}
