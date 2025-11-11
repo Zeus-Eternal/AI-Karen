@@ -201,12 +201,12 @@ export class RequestResponseCache {
       this.accessOrder.splice(index, 1);
     }
     // Remove from tag index
-    for (const [tag, keys] of this.tagIndex.entries()) {
+    this.tagIndex.forEach((keys, tag) => {
       keys.delete(key);
       if (keys.size === 0) {
         this.tagIndex.delete(tag);
       }
-    }
+    });
     // Update metrics
     this.metrics.totalEntries = this.cache.size;
     this.metrics.memoryUsage -= entry.size;
@@ -220,11 +220,11 @@ export class RequestResponseCache {
     for (const tag of tags) {
       const keys = this.tagIndex.get(tag);
       if (keys) {
-        for (const key of keys) {
+        keys.forEach(key => {
           if (this.delete(key)) {
             cleared++;
           }
-        }
+        });
       }
     }
     return cleared;
@@ -447,13 +447,13 @@ export class RequestResponseCache {
   private updateCompressionRatio(): void {
     let totalOriginalSize = 0;
     let totalCompressedSize = 0;
-    for (const entry of this.cache.values()) {
+    this.cache.forEach(entry => {
       if (entry.compressed) {
         totalCompressedSize += entry.size;
         // Estimate original size (rough approximation)
         totalOriginalSize += entry.size * 2;
       }
-    }
+    });
     if (totalOriginalSize > 0) {
       this.metrics.compressionRatio = totalCompressedSize / totalOriginalSize;
     }
@@ -472,11 +472,11 @@ export class RequestResponseCache {
   private cleanupExpiredEntries(): void {
     const now = Date.now();
     const expiredKeys: string[] = [];
-    for (const [key, entry] of this.cache.entries()) {
+    this.cache.forEach((entry, key) => {
       if (now - entry.timestamp > entry.ttl) {
         expiredKeys.push(key);
       }
-    }
+    });
     for (const key of expiredKeys) {
       this.delete(key);
     }
