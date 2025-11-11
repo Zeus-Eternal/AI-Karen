@@ -356,8 +356,13 @@ export class AuditLogExporter {
         return log.ip_address || '';
       case 'user_agent':
         return log.user_agent || '';
-      default:
-        return String((log as unknown)[field] || '');
+      default: {
+        const fallbackValue = (log as Record<string, unknown>)[field];
+        if (fallbackValue === undefined || fallbackValue === null) {
+          return '';
+        }
+        return String(fallbackValue);
+      }
     }
   }
 

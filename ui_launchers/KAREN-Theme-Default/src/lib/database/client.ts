@@ -6,13 +6,7 @@
  * with different database drivers (pg, mysql, etc.)
  */
 
-import type {
-  Pool as PgPool,
-  PoolClient,
-  PoolConfig,
-  QueryResult as PgQueryResult,
-  QueryResultRow,
-} from "pg";
+import type { Pool as PgPool, PoolClient, PoolConfig } from "pg";
 
 type PoolConstructor = typeof import("pg").Pool;
 type ConnectionConfig = PoolConfig & { connectionString?: string };
@@ -72,17 +66,14 @@ export class PostgreSQLClient implements DatabaseClient {
     });
   }
 
-  async query(sql: string, params?: unknown[]): Promise<QueryResult> {
-    try {
-      const result: PgQueryResult<QueryResultRow> = await this.pool.query(
-        sql,
-        params,
-      );
-      return {
-        rows: result.rows as unknown[],
-        rowCount: result.rowCount || 0,
-        fields: result.fields,
-      };
+    async query(sql: string, params?: unknown[]): Promise<QueryResult> {
+      try {
+        const result = await this.pool.query(sql, params);
+        return {
+          rows: result.rows,
+          rowCount: result.rowCount || 0,
+          fields: result.fields,
+        };
     } catch (error) {
       // Add context to the error before re-throwing
       throw new Error(
@@ -93,22 +84,21 @@ export class PostgreSQLClient implements DatabaseClient {
     }
   }
 
-  async transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T> {
-    const poolClient: PoolClient = await this.pool.connect();
-    try {
-      await poolClient.query("BEGIN");
-      // Create a transaction client wrapper
-      const transactionClient: DatabaseClient = {
-        query: async (sql: string, params?: unknown[]) => {
-          const result: PgQueryResult<QueryResultRow> = await poolClient.query(
-            sql,
-            params,
-          );
-          return {
-            rows: result.rows as unknown[],
-            rowCount: result.rowCount || 0,
-            fields: result.fields,
-          };
+    async transaction<T>(
+      callback: (client: DatabaseClient) => Promise<T>
+    ): Promise<T> {
+      const poolClient: PoolClient = await this.pool.connect();
+      try {
+        await poolClient.query("BEGIN");
+        // Create a transaction client wrapper
+        const transactionClient: DatabaseClient = {
+          query: async (sql: string, params?: unknown[]) => {
+            const result = await poolClient.query(sql, params);
+            return {
+              rows: result.rows,
+              rowCount: result.rowCount || 0,
+              fields: result.fields,
+            };
         },
         transaction: async () => {
           throw new Error("Nested transactions are not supported");
