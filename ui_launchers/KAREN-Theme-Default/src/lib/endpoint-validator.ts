@@ -22,18 +22,34 @@ export interface ConfigValidationResult {
   info: ValidationError[];
 }
 
+export interface HealthServiceDetail {
+  status?: "ok" | "error" | "degraded";
+  responseTime?: number;
+  error?: string;
+}
+
 export interface HealthCheckResult {
   endpoint: string;
   status: "healthy" | "degraded" | "unhealthy";
   responseTime: number;
   timestamp: string;
   details: {
-    services?: Record<string, any>;
+    services?: Record<string, HealthServiceDetail>;
     version?: string;
     uptime?: number;
     error?: string;
   };
 }
+
+type HealthApiResponse = {
+  status?: string;
+  timestamp?: string;
+  services?: Record<string, HealthServiceDetail>;
+  version?: string;
+  uptime?: number;
+  error?: string;
+  [key: string]: unknown;
+};
 
 export interface ConnectivityTestResult {
   endpoint: string;
@@ -43,10 +59,6 @@ export interface ConnectivityTestResult {
   error?: string;
   corsEnabled?: boolean;
   timestamp: string;
-}
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
 function safeNowISO(): string {
@@ -420,7 +432,7 @@ export class EndpointValidationService {
       const responseTime = Math.max(0, perfNow() - startTime);
 
       if (response.ok) {
-        let healthData: any = {};
+        let healthData: HealthApiResponse = {};
         try {
           healthData = await response.json();
         } catch {
@@ -485,7 +497,7 @@ export class EndpointValidationService {
    * Determine health status based on response data and performance
    */
   private determineHealthStatus(
-    healthData: any,
+    healthData: HealthApiResponse,
     responseTime: number
   ): "healthy" | "degraded" | "unhealthy" {
     // Latency heuristic
@@ -493,7 +505,7 @@ export class EndpointValidationService {
 
     // Service map heuristic
     if (healthData?.services) {
-      const services = Object.values(healthData.services) as any[];
+      const services = Object.values(healthData.services);
       const unhealthy = services.filter(
         (s) => s?.status === "error" || s?.status === "unhealthy"
       );

@@ -40,10 +40,6 @@ export interface EndpointTestConfig {
 
 /* ---------------------- Internal Utilities ---------------------- */
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof document !== 'undefined';
-}
-
 function nowMs(): number {
   try {
     return performance.now();

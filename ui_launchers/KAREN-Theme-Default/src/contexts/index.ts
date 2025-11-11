@@ -7,7 +7,9 @@
 export { AppProviders } from './AppProviders';
 export type { AppProvidersProps } from './AppProviders';
 
-export { AuthProvider, useAuth } from './AuthContext';
+export { AuthProvider } from './AuthContext';
+export { AuthContext } from './auth-context-instance';
+export { useAuth } from '../hooks/use-auth';
 export type { LoginCredentials, AuthError, AuthState, AuthProviderProps, AuthContextType, User } from './AuthContext';
 
 export { authStateManager } from './AuthStateManager';

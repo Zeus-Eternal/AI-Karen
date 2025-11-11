@@ -5,7 +5,15 @@
  * different email providers (SMTP, SendGrid, SES, etc.).
  */
 import nodemailer, { Transporter } from 'nodemailer';
-import {  EmailMessage, EmailServiceConfig, SendEmailResponse, EmailTemplate, EmailTemplateVariables, EmailNotification, EmailNotificationType, BulkEmailOperation, EmailServiceHealth } from './types';
+import {
+  EmailMessage,
+  EmailServiceConfig,
+  SendEmailResponse,
+  EmailTemplate,
+  EmailTemplateVariables,
+  EmailNotificationType,
+  EmailServiceHealth,
+} from './types';
 import { TemplateEngine, EmailTemplateManager } from './template-engine';
 import { getEmailServiceConfig, testEmailService, getSystemName } from './config';
 /**
@@ -86,7 +94,7 @@ class SMTPProvider implements EmailProvider {
  */
 class SendGridProvider implements EmailProvider {
   constructor(private config: EmailServiceConfig) {}
-  async send(message: EmailMessage): Promise<SendEmailResponse> {
+  async send(_message: EmailMessage): Promise<SendEmailResponse> {
     if (this.config.test_mode) {
       return {
         success: true,
