@@ -60,8 +60,6 @@ export function EndpointStatusIndicator({
 
     if (!healthMonitor || !diagnosticLogger) {
       // Soft-fail with a minimal placeholder to avoid UI crash
-      setMetrics(null);
-      setIsMonitoring(false);
       return;
     }
 
