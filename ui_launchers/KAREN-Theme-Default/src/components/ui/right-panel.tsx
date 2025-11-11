@@ -575,10 +575,7 @@ const RightPanelBase = React.forwardRef<HTMLElement, RightPanelProps>(
 // COMPOUND COMPONENT EXPORTS
 // ============================================================================
 
-/**
- * Compound component pattern export
- */
-type RightPanelComponent = React.ForwardRefExoticComponent<
+type RightPanelCompoundComponent = React.ForwardRefExoticComponent<
   RightPanelProps & React.RefAttributes<HTMLElement>
 > & {
   Header: typeof RightPanelHeader;
@@ -586,8 +583,11 @@ type RightPanelComponent = React.ForwardRefExoticComponent<
   Content: typeof RightPanelContent;
 };
 
-export const RightPanel = RightPanelBase as RightPanelComponent;
-
-RightPanel.Header = RightPanelHeader;
-RightPanel.Navigation = RightPanelNavigation;
-RightPanel.Content = RightPanelContent;
+export const RightPanel: RightPanelCompoundComponent = Object.assign(
+  RightPanelBase,
+  {
+    Header: RightPanelHeader,
+    Navigation: RightPanelNavigation,
+    Content: RightPanelContent,
+  }
+);

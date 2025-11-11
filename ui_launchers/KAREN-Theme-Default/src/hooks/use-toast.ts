@@ -2,19 +2,22 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
+import type { ToastProps } from "@/components/ui/toast"
+
+import type { ToastProps as UiToastProps } from "@/components/ui/toast"
 
 type ToastActionElement = React.ReactElement
 
-interface ToastProps {
+type ToastStateProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   [key: string]: unknown
-}
+} & Partial<Pick<UiToastProps, "className" | "variant">>
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
-export type ToasterToast = ToastProps & {
+export type ToasterToast = ToastStateProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode

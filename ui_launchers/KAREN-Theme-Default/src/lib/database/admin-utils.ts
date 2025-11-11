@@ -22,6 +22,37 @@ import { createHash, scryptSync, timingSafeEqual } from 'crypto';
 
 import { DatabaseClient, getDatabaseClient } from './client';
 
+const SYSTEM_CONFIG_VALUE_TYPES: ReadonlySet<SystemConfig['value_type']> = new Set([
+  'string',
+  'number',
+  'boolean',
+  'json'
+]);
+
+const SYSTEM_CONFIG_CATEGORIES: ReadonlySet<SystemConfig['category']> = new Set([
+  'security',
+  'email',
+  'general',
+  'authentication'
+]);
+
+function toSystemConfigValueType(value: string): SystemConfig['value_type'] {
+  if (SYSTEM_CONFIG_VALUE_TYPES.has(value as SystemConfig['value_type'])) {
+    return value as SystemConfig['value_type'];
+  }
+  if (value === 'object') {
+    return 'json';
+  }
+  return 'string';
+}
+
+function toSystemConfigCategory(value: string): SystemConfig['category'] {
+  if (SYSTEM_CONFIG_CATEGORIES.has(value as SystemConfig['category'])) {
+    return value as SystemConfig['category'];
+  }
+  return 'general';
+}
+
 function bufferFromValue(value: string | Buffer): Buffer {
   if (Buffer.isBuffer(value)) {
     return Buffer.from(value);
@@ -189,6 +220,34 @@ interface SecurityAlertRecord {
   resolution_note?: string | null;
 }
 
+interface AuditLogRow {
+  id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  details?: Record<string, unknown> | string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  timestamp: Date;
+  user_email?: string | null;
+  user_full_name?: string | null;
+}
+
+interface SystemConfigRow {
+  id: string;
+  key: string;
+  value?: unknown;
+  value_type: string;
+  category: string;
+  description?: string | null;
+  updated_by: string;
+  updated_at: Date;
+  created_at: Date;
+  updated_by_email?: string | null;
+  updated_by_name?: string | null;
+}
+
 interface UserRecord {
   user_id: string;
   email: string;
@@ -207,6 +266,34 @@ interface UserRecord {
   two_factor_enabled?: boolean | number | null;
   two_factor_secret?: string | null;
   created_by?: string | null;
+}
+
+interface AuditLogRow {
+  id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: string | Date;
+  user_email?: string | null;
+  user_full_name?: string | null;
+}
+
+interface SystemConfigRow {
+  id: string;
+  key: string;
+  value: string | number | boolean;
+  value_type: string;
+  category: string;
+  description?: string | null;
+  updated_by: string;
+  updated_at: string | Date;
+  created_at: string | Date;
+  updated_by_email?: string | null;
+  updated_by_name?: string | null;
 }
 
 type ConfigValue = string | number | boolean | Record<string, unknown> | unknown[];
@@ -232,6 +319,72 @@ interface BlockedIpRecord {
   blocked_at: Date;
   blocked_by?: string | null;
   expires_at?: Date | null;
+}
+
+interface AuditLogRecord {
+  id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  details?: unknown;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  timestamp: string | Date;
+  user_email?: string | null;
+  user_full_name?: string | null;
+}
+
+interface SystemConfigRow {
+  id: string;
+  key: string;
+  value: string;
+  value_type: unknown;
+  category: unknown;
+  description?: string | null;
+  updated_by: string;
+  updated_at: string | Date;
+  created_at: string | Date;
+  updated_by_email?: string | null;
+  updated_by_name?: string | null;
+}
+
+const SYSTEM_CONFIG_VALUE_TYPES: ReadonlyArray<SystemConfig["value_type"]> = [
+  "string",
+  "number",
+  "boolean",
+  "json",
+];
+
+const SYSTEM_CONFIG_CATEGORIES: ReadonlyArray<SystemConfig["category"]> = [
+  "security",
+  "email",
+  "general",
+  "authentication",
+];
+
+function normalizeSystemConfigValueType(
+  value: unknown
+): SystemConfig["value_type"] {
+  if (typeof value === "string") {
+    const lower = value.toLowerCase() as SystemConfig["value_type"];
+    if (SYSTEM_CONFIG_VALUE_TYPES.includes(lower)) {
+      return lower;
+    }
+  }
+
+  return "string";
+}
+
+function normalizeSystemConfigCategory(value: unknown): SystemConfig["category"] {
+  if (typeof value === "string") {
+    const lower = value.toLowerCase() as SystemConfig["category"];
+    if (SYSTEM_CONFIG_CATEGORIES.includes(lower)) {
+      return lower;
+    }
+  }
+
+  return "general";
 }
 
 export interface BlockedIpEntry {
@@ -393,44 +546,44 @@ export class AdminDatabaseUtils {
     };
   }
 
-    private mapUserRow(row: UserRecord): User {
-      let preferences: User['preferences'] | undefined;
-      if (row.preferences) {
-        try {
-          preferences = typeof row.preferences === 'string'
-            ? JSON.parse(row.preferences)
-            : (row.preferences as User['preferences']);
-        } catch {
-          preferences = undefined;
-        }
+  private mapUserRow(row: UserRecord): User {
+    let preferences: User['preferences'] | undefined;
+    if (row.preferences) {
+      try {
+        preferences = typeof row.preferences === 'string'
+          ? JSON.parse(row.preferences)
+          : (row.preferences as User['preferences']);
+      } catch {
+        preferences = undefined;
       }
-
-      const roles: string[] = Array.isArray(row.roles)
-        ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
-        : row.role
-          ? [row.role]
-          : [];
-
-      return {
-        user_id: row.user_id,
-        email: row.email,
-        full_name: row.full_name ?? undefined,
-        role: row.role,
-        roles,
-        tenant_id: row.tenant_id ?? 'default',
-        preferences,
-        is_verified: Boolean(row.is_verified),
-        is_active: Boolean(row.is_active),
-        created_at: new Date(row.created_at),
-        updated_at: new Date(row.updated_at),
-        last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
-        failed_login_attempts: row.failed_login_attempts ?? 0,
-        locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
-        two_factor_enabled: Boolean(row.two_factor_enabled),
-        two_factor_secret: row.two_factor_secret ?? null,
-        created_by: row.created_by ?? undefined,
-      };
     }
+
+    const roles: string[] = Array.isArray(row.roles)
+      ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
+      : row.role
+        ? [row.role]
+        : [];
+
+    return {
+      user_id: row.user_id,
+      email: row.email,
+      full_name: row.full_name ?? undefined,
+      role: row.role,
+      roles,
+      tenant_id: row.tenant_id ?? 'default',
+      preferences,
+      is_verified: Boolean(row.is_verified),
+      is_active: Boolean(row.is_active),
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
+      last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
+      failed_login_attempts: row.failed_login_attempts ?? 0,
+      locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
+      two_factor_enabled: Boolean(row.two_factor_enabled),
+      two_factor_secret: row.two_factor_secret ?? null,
+      created_by: row.created_by ?? undefined,
+    };
+  }
 
   /**
    * Find user by email with role information
@@ -847,38 +1000,42 @@ export class AdminDatabaseUtils {
       `;
 
       const dataParams = [...queryParams, limit, offset];
-      const dataResult = await this.executeQuery<Record<string, unknown>>(
-        'getAuditLogsData',
-        dataQuery,
-        dataParams
-      );
+      const dataResult = await this.executeQuery<AuditLogRow>('getAuditLogsData', dataQuery, dataParams);
 
       // Transform results to include user information
-      const data: AuditLog[] = dataResult.map((row: Record<string, unknown>) => {
-        const resourceId = typeof row.resource_id === 'string' ? row.resource_id : undefined;
-        const ipAddress = typeof row.ip_address === 'string' ? row.ip_address : undefined;
-        const userAgent = typeof row.user_agent === 'string' ? row.user_agent : undefined;
-        const timestampValue = row.timestamp instanceof Date
-          ? row.timestamp
-          : new Date(row.timestamp as string | number);
+      const data: AuditLog[] = dataResult.map((row: AuditLogRow) => {
+        const rawDetails = row.details as Record<string, unknown> | string | null | undefined;
+        let details: Record<string, unknown> = {};
+        if (typeof rawDetails === 'string') {
+          try {
+            const parsed = JSON.parse(rawDetails);
+            if (parsed && typeof parsed === 'object') {
+              details = parsed as Record<string, unknown>;
+            }
+          } catch {
+            details = { raw: rawDetails };
+          }
+        } else if (rawDetails && typeof rawDetails === 'object') {
+          details = rawDetails;
+        }
 
         return {
-          id: row.id as string,
-          user_id: row.user_id as string,
-          action: row.action as string,
-          resource_type: row.resource_type as string,
-          resource_id: resourceId,
-          details: (row.details as Record<string, unknown> | null) ?? {},
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          timestamp: timestampValue,
+          id: row.id,
+          user_id: row.user_id,
+          action: row.action,
+          resource_type: row.resource_type,
+          resource_id: typeof row.resource_id === 'string' ? row.resource_id : undefined,
+          details,
+          ip_address: typeof row.ip_address === 'string' ? row.ip_address : undefined,
+          user_agent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
+          timestamp: row.timestamp,
           user: row.user_email
             ? {
-                user_id: row.user_id as string,
-                email: row.user_email as string,
-                full_name: (row.user_full_name as string | null) ?? undefined,
-              }
-            : undefined,
+              user_id: row.user_id,
+              email: row.user_email,
+              full_name: typeof row.user_full_name === 'string' ? row.user_full_name : undefined
+            }
+            : undefined
         };
       });
 
@@ -933,46 +1090,29 @@ export class AdminDatabaseUtils {
     query += ` ORDER BY sc.category, sc.key`;
     
     try {
-      const result = await this.executeQuery<Record<string, unknown>>('getSystemConfig', query, queryParams);
-      
-      return result.map((row: Record<string, unknown>) => {
-        const rawValueType = row.value_type as string;
-        const valueType: SystemConfig['value_type'] =
-          rawValueType === 'number' ||
-          rawValueType === 'boolean' ||
-          rawValueType === 'json'
-            ? rawValueType
-            : 'string';
+      const result = await this.executeQuery<SystemConfigRow>('getSystemConfig', query, queryParams);
 
-        const rawCategory = row.category as string;
-        const category: SystemConfig['category'] =
-          rawCategory === 'security' ||
-          rawCategory === 'email' ||
-          rawCategory === 'authentication'
-            ? rawCategory
-            : 'general';
+      return result.map((row: SystemConfigRow) => {
+        const valueType = toSystemConfigValueType(row.value_type);
+        const categoryValue = toSystemConfigCategory(row.category);
 
         return {
-          id: row.id as string,
-          key: row.key as string,
-          value: this.parseConfigValue(row.value as string, valueType),
+          id: row.id,
+          key: row.key,
+          value: this.parseConfigValue(String(row.value ?? ''), valueType),
           value_type: valueType,
-          category,
-          description: (row.description as string | null) ?? undefined,
-          updated_by: row.updated_by as string,
-          updated_at: row.updated_at instanceof Date
-            ? row.updated_at
-            : new Date(row.updated_at as string | number),
-          created_at: row.created_at instanceof Date
-            ? row.created_at
-            : new Date(row.created_at as string | number),
+          category: categoryValue,
+          description: row.description ?? undefined,
+          updated_by: row.updated_by,
+          updated_at: row.updated_at,
+          created_at: row.created_at,
           updated_by_user: row.updated_by_email
             ? {
-                user_id: row.updated_by as string,
-                email: row.updated_by_email as string,
-                full_name: (row.updated_by_name as string | null) ?? undefined,
-              }
-            : undefined,
+              user_id: row.updated_by,
+              email: row.updated_by_email,
+              full_name: row.updated_by_name ?? undefined
+            }
+            : undefined
         };
       });
     } catch (error) {
@@ -1440,7 +1580,10 @@ export class AdminDatabaseUtils {
   /**
    * Parse configuration value based on type
    */
-  private parseConfigValue(value: string, type: string): string | number | boolean {
+  private parseConfigValue(
+    value: string,
+    type: SystemConfig["value_type"] | "object"
+  ): string | number | boolean {
     if (value === null || value === undefined) {
       return value;
     }

@@ -10,9 +10,17 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { FC, ReactNode, ErrorInfo } from 'react';
+import type { ErrorInfo, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
+
+interface ExtendedApiError extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
 
 export interface ErrorContextType {
   // Current error analysis
@@ -22,7 +30,7 @@ export interface ErrorContextType {
   
   // Error handling functions
   analyzeError: (error: Error | string, context?: Partial<ErrorAnalysisRequest>) => Promise<void>;
-  handleApiError: (error: Error, requestContext?: {
+  handleApiError: (error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
@@ -53,6 +61,14 @@ export { ErrorContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
+interface ApiErrorLike extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
+
 export interface ErrorProviderProps {
   children: ReactNode;
   options?: UseIntelligentErrorOptions;
@@ -61,13 +77,13 @@ export interface ErrorProviderProps {
   maxGlobalErrors?: number;
 }
 
-interface ApiErrorDetails extends Error {
+type ApiErrorLike = Error & {
   status?: number;
   isNetworkError?: boolean;
   isCorsError?: boolean;
   isTimeoutError?: boolean;
   responseTime?: number;
-}
+};
 
 export const ErrorProvider: FC<ErrorProviderProps> = ({
   children,
@@ -181,10 +197,12 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
 
+    const boundaryInfo = errorInfo as { componentStack?: string } | undefined;
+
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: errorInfo?.componentStack,
+        component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -194,13 +212,13 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 
     // Add to global errors
     addGlobalError(error, context);
-    
+
     // Use boundary error hook for analysis
-    boundaryError.handleError(error, errorInfo);
+    boundaryError.handleError(error, boundaryInfo);
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
-  const handleApiError = useCallback((error: Error, requestContext?: {
+  const handleApiError = useCallback((error: ExtendedApiError, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
@@ -210,7 +228,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       safeError('Request context:', requestContext, { useStructuredLogging: true });
     }
     
-    const apiErrorDetails = error as ApiErrorDetails;
+    const apiErrorDetails = error as ApiErrorLike;
 
     const context: Partial<ErrorAnalysisRequest> = {
       status_code: apiErrorDetails.status,

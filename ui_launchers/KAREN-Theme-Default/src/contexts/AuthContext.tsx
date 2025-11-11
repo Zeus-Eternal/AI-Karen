@@ -37,15 +37,51 @@ export interface User {
   userId: string;
   email: string;
   roles: string[];
-  tenantId: string;
+  tenantId?: string;
   role?: "super_admin" | "admin" | "user";
   permissions?: string[];
+}
+
+interface UserApiResponse {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  permissions?: string[];
+}
+
+interface SessionValidationResponse {
+  valid: boolean;
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
+}
+
+interface LoginResponse {
+  user?: UserApiResponse | null;
+  user_data?: UserApiResponse | null;
 }
 
 export interface LoginCredentials {
   email: string;
   password: string;
   totp_code?: string;
+}
+
+interface AuthResponseUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  role?: "super_admin" | "admin" | "user";
+  permissions?: string[];
+}
+
+interface AuthApiResponse {
+  valid?: boolean;
+  success?: boolean;
+  user?: AuthResponseUserData;
+  user_data?: AuthResponseUserData;
+  [key: string]: unknown;
 }
 
 export interface AuthError {
@@ -82,6 +118,44 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
+interface ApiUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id?: string;
+  permissions?: string[];
+}
+
+interface AuthApiResponseRaw {
+  valid?: unknown;
+  user?: unknown;
+  user_data?: unknown;
+}
+
+function isApiUserData(value: unknown): value is ApiUserData {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.user_id === "string" &&
+    typeof record.email === "string"
+  );
+}
+
+function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+  if (response.user && isApiUserData(response.user)) {
+    return response.user;
+  }
+
+  if (response.user_data && isApiUserData(response.user_data)) {
+    return response.user_data;
+  }
+
+  return null;
+}
+
 // Hook moved to separate file for React Fast Refresh compatibility
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
@@ -115,26 +189,16 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return "user";
   }, []);
 
-  const buildUserFromResponse = useCallback(
-    (payload: ApiUserResponse): User => ({
-      userId: payload.user_id,
-      email: payload.email,
-      roles: payload.roles ?? [],
-      tenantId: payload.tenant_id,
-      role: determineUserRole(payload.roles ?? []),
-      permissions: payload.permissions,
+  const createUserFromApiData = useCallback(
+    (apiUser: ApiUserData): User => ({
+      userId: apiUser.user_id,
+      email: apiUser.email,
+      roles: apiUser.roles ?? [],
+      tenantId: apiUser.tenant_id ?? "default",
+      role: determineUserRole(apiUser.roles ?? []),
+      permissions: apiUser.permissions,
     }),
     [determineUserRole]
-  );
-
-  const resolveUserData = useCallback(
-    (data: SessionValidationResponse | LoginResponse | undefined): ApiUserResponse | undefined => {
-      if (!data) {
-        return undefined;
-      }
-      return data.user ?? data.user_data;
-    },
-    []
   );
 
   // Convert technical errors to user-friendly messages
@@ -309,7 +373,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result: ConnectionResponse<SessionValidationResponse> = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -326,10 +390,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      const userData = resolveUserData(result.data);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
 
-      if (result.data.valid && userData) {
-        const user = buildUserFromResponse(userData);
+      if (data?.valid && userData) {
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id || "default",
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
 
         setUser(user);
         setIsAuthenticated(true);
@@ -359,8 +431,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
-    buildUserFromResponse,
-    resolveUserData,
+    createUserFromApiData,
   ]);
 
   // Session refresh timer management
@@ -415,7 +486,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result: ConnectionResponse<LoginResponse> = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         loginUrl,
         {
           method: "POST",
@@ -434,7 +505,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = resolveUserData(result.data);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -445,7 +517,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Create user object
-      const user = buildUserFromResponse(userData);
+      const user = createUserFromApiData(userData);
 
       // Update authentication state
       setUser(user);
@@ -657,7 +729,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result: ConnectionResponse<SessionValidationResponse> = await connectionManager.makeRequest(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -674,10 +746,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      const userData = resolveUserData(result.data);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
 
-      if (result.data.valid && userData) {
-        const user = buildUserFromResponse(userData);
+      if (data?.valid && userData) {
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id || "default",
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
 
         setUser(user);
         setIsAuthenticated(true);
@@ -692,29 +772,30 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           startSessionRefreshTimer();
         }
 
-        connectivityLogger.logAuthentication(
-          "info",
-          "Session validation succeeded",
-          {
-            email: user.email,
-            success: true,
-          },
-          "session_validation",
-          undefined,
-          {
-            startTime: validationStartTime,
-            duration:
-              result.duration ??
-              ((typeof performance !== "undefined"
-                ? performance.now()
-                : Date.now()) - validationStartTime),
-            retryCount: result.retryCount,
-            metadata: {
-              statusCode: result.status,
+          connectivityLogger.logAuthentication(
+            "info",
+            "Session validation succeeded",
+            {
+              email: user.email,
+              success: true,
             },
-          }
-        );
-        return true;
+            "session_validation",
+            undefined,
+            {
+              startTime: validationStartTime,
+              duration:
+                result.duration ??
+                ((typeof performance !== "undefined"
+                  ? performance.now()
+                  : Date.now()) - validationStartTime),
+              retryCount: result.retryCount,
+              metadata: {
+                statusCode: result.status,
+              },
+            }
+          );
+          return true;
+        }
       }
 
       // Invalid session
@@ -781,7 +862,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [
     connectionManager,
     createAuthError,
-    buildUserFromResponse,
+    createUserFromApiData,
     isAuthenticated,
     startSessionRefreshTimer,
     stopSessionRefreshTimer,
