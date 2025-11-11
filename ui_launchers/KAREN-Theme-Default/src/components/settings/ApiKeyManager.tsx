@@ -1,17 +1,16 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ErrorBoundary } from '@/components/error-handling/ErrorBoundary';
 import type { ErrorFallbackProps } from '@/components/error-handling/ErrorBoundary';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { CheckCircle2, ExternalLink, RotateCcw, AlertCircle, Info, Save, Copy } from 'lucide-react';
+import { CheckCircle2, ExternalLink, RotateCcw, AlertCircle, Info, Save } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from '@/components/ui/separator';
 const LOCAL_STORAGE_KEY = 'googleApiKey';
 
 const ApiKeyManagerFallback: React.FC<ErrorFallbackProps> = ({ error, resetError, retryCount }) => (
@@ -46,19 +45,26 @@ const ApiKeyManagerFallback: React.FC<ErrorFallbackProps> = ({ error, resetError
  * and provides guidance on server-side configuration.
  */
 export default function ApiKeyManager() {
-  const [apiKey, setApiKey] = useState('');
-  const [savedKey, setSavedKey] = useState<string | null>(null);
-  const { toast } = useToast();
-  useEffect(() => {
+  const initialKeys = React.useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { apiKey: '', savedKey: null as string | null };
+    }
+
     try {
       const storedKey = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (storedKey) {
-        setApiKey(storedKey);
-        setSavedKey(storedKey);
+        return { apiKey: storedKey, savedKey: storedKey };
       }
+      return { apiKey: '', savedKey: null as string | null };
     } catch (error) {
+      console.error('Failed to read stored API key from localStorage.', error);
+      return { apiKey: '', savedKey: null as string | null };
     }
   }, []);
+
+  const [apiKey, setApiKey] = useState(initialKeys.apiKey);
+  const [savedKey, setSavedKey] = useState<string | null>(initialKeys.savedKey);
+  const { toast } = useToast();
   const handleSaveKey = () => {
     const keyToSave = (typeof apiKey === 'string' && apiKey) ? apiKey.trim() : "";
     if (keyToSave) {
@@ -70,6 +76,7 @@ export default function ApiKeyManager() {
           description: "Your Google AI API key has been saved to your browser's local storage.",
         });
       } catch (error) {
+        console.error('Failed to save API key to localStorage.', error);
         toast({
           title: "Error Saving API Key",
           description: "Could not save API key to browser storage. localStorage might be disabled or full.",
@@ -96,6 +103,7 @@ export default function ApiKeyManager() {
         });
       }
     } catch (error) {
+      console.error('Failed to reload API key from localStorage.', error);
       toast({
         title: "Error Reloading API Key",
         description: "Could not reload API key from browser storage.",

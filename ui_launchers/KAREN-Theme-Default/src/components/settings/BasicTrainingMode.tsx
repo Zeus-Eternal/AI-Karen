@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -96,62 +96,63 @@ const BasicTrainingMode: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('training');
 
-  useEffect(() => {
-    loadPresets();
-    loadBackups();
+  const loadResult = useCallback(async (jobId: string) => {
+    try {
+      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/result/${jobId}`);
+      setResult(response as TrainingResult);
+    } catch (error) {
+      console.error('Failed to load training result.', error);
+    }
   }, []);
+
+  const loadProgress = useCallback(async (jobId: string) => {
+    try {
+      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/progress/${jobId}`);
+      const progressData = response as TrainingProgress;
+      setProgress(progressData);
+      if (progressData.status === 'Training completed!' || progressData.status === 'Training encountered an issue') {
+        void loadResult(jobId);
+      }
+    } catch (error) {
+      console.error('Failed to load training progress.', error);
+    }
+  }, [loadResult]);
+
+  const loadPresets = useCallback(async () => {
+    try {
+      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/presets');
+      setPresets(response as BasicTrainingPreset[]);
+    } catch (error) {
+      console.error('Failed to load training presets.', error);
+      setError('Failed to load training presets');
+    }
+  }, []);
+
+  const loadBackups = useCallback(async () => {
+    try {
+      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/backups');
+      setBackups(response as SystemBackup[]);
+    } catch (error) {
+      console.error('Failed to load training backups.', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPresets();
+    void loadBackups();
+  }, [loadPresets, loadBackups]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (currentJob && progress?.status === 'Training in progress') {
       interval = setInterval(() => {
-        loadProgress(currentJob);
+        void loadProgress(currentJob);
       }, 2000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [currentJob, progress?.status]);
-
-  const loadPresets = async () => {
-    try {
-      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/presets');
-      setPresets(response as BasicTrainingPreset[]);
-    } catch (err) {
-      setError('Failed to load training presets');
-    }
-  };
-
-  const loadProgress = async (jobId: string) => {
-    try {
-      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/progress/${jobId}`);
-      const progressData = response as unknown;
-      setProgress(progressData);
-      if (progressData.status === 'Training completed!' || progressData.status === 'Training encountered an issue') {
-        loadResult(jobId);
-      }
-    } catch (error) {
-    // Handle error silently
-  }
-  };
-
-  const loadResult = async (jobId: string) => {
-    try {
-      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/result/${jobId}`);
-      setResult(response as unknown);
-    } catch (error) {
-    // Handle error silently
-  }
-  };
-
-  const loadBackups = async () => {
-    try {
-      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/backups');
-      setBackups(response as unknown[]);
-    } catch (error) {
-    // Handle error silently
-  }
-  };
+  }, [currentJob, loadProgress, progress?.status]);
 
   const startTraining = async () => {
     if (!modelId || !datasetId || !selectedPreset) {
@@ -172,12 +173,14 @@ const BasicTrainingMode: React.FC = () => {
         })
       });
 
-      const jobData = response as unknown;
+      const jobData = response as { job_id: string };
       setCurrentJob(jobData.job_id);
       setProgress(null);
       setResult(null);
       // Start monitoring progress
-      setTimeout(() => loadProgress(jobData.job_id), 1000);
+      setTimeout(() => {
+        void loadProgress(jobData.job_id);
+      }, 1000);
     } catch (err: Error) {
       setError(err.message || 'Failed to start training');
     } finally {
@@ -208,7 +211,7 @@ const BasicTrainingMode: React.FC = () => {
         body: JSON.stringify({ description })
       });
 
-      loadBackups();
+      void loadBackups();
     } catch (err: Error) {
       setError(err.message || 'Failed to create backup');
     }
@@ -258,7 +261,7 @@ const BasicTrainingMode: React.FC = () => {
         method: 'DELETE'
       });
 
-      loadBackups();
+      void loadBackups();
     } catch (err: Error) {
       setError(err.message || 'Failed to delete backup');
     }
