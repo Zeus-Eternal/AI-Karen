@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useFeature } from "@/hooks/use-feature";
 import { useTelemetry } from "@/hooks/use-telemetry";
 import {

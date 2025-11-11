@@ -139,8 +139,10 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-open",
               JSON.stringify(newValue)
             );
-          } catch {
-            // Ignore persistence failures (e.g. private browsing)
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar open state", error);
+            }
           }
         }
       },
@@ -158,8 +160,10 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               "appshell-sidebar-collapsed",
               JSON.stringify(newValue)
             );
-          } catch {
-            // Ignore persistence failures (e.g. private browsing)
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar collapsed state", error);
+            }
           }
         }
       },
@@ -265,14 +269,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [
-      enableKeyboardShortcuts,
-      hasWindow,
-      isMobile,
-      sidebarOpen,
-      toggleSidebar,
-      closeSidebar,
-    ]);
+    }, [enableKeyboardShortcuts, isMobile, sidebarOpen, toggleSidebar, closeSidebar, hasWindow]);
 
     const contextValue: AppShellContextType = {
       sidebarOpen,

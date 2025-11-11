@@ -103,23 +103,8 @@ export interface TimeAgoProps {
 }
 
 export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
-  const [now, setNow] = React.useState(() => Date.now());
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const tick = () => {
-      setNow(Date.now());
-    };
-
-    const intervalId = window.setInterval(tick, 60_000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
+  // Capture the reference time once per render cycle to keep the component pure
+  const now = React.useMemo(() => Date.now(), [date]);
   const inputMs =
     date instanceof Date ? date.getTime() : typeof date === "number" ? date : new Date(date).getTime();
 

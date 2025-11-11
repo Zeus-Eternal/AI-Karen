@@ -373,13 +373,30 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
-  const autoSelectionRef = useRef<string | null>(null);
-  const recommendedModelId =
+  const selectedModelId = manualSelectedModelId ?? (
     autoSelect && topRecommendation && topRecommendation.score > 60
       ? topRecommendation.model.id
-      : null;
+      : ''
+  );
 
-  const selectedModelId = manualSelectedModelId ?? recommendedModelId ?? "";
+  const autoSelectionRef = useRef<string | null>(null);
+
+  const autoSelectedModelId =
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : '';
+
+  const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
+
+  const effectiveSelectedModelId = useMemo(() => {
+    if (manualSelectedModelId) {
+      return manualSelectedModelId;
+    }
+    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
+      return topRecommendation.model.id;
+    }
+    return '';
+  }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
     if (autoSelect && topRecommendation && topRecommendation.score > 60) {
@@ -398,14 +415,15 @@ export default function IntelligentModelSelector({
 
   const handleAutoSelectChange = useCallback((checked: boolean) => {
     setAutoSelect(checked);
-    if (!checked && !manualSelectedModelId && recommendedModelId) {
-      setManualSelectedModelId(recommendedModelId);
-      onModelSelect(recommendedModelId);
+    if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
+      setManualSelectedModelId(topRecommendation.model.id);
+      onModelSelect(topRecommendation.model.id);
     }
     if (checked) {
+      setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [manualSelectedModelId, recommendedModelId, onModelSelect]);
+  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
 
   if (!contextAnalysis) {
     return (

@@ -502,7 +502,7 @@ export class DevelopmentAuthManager {
       const exp = payload.exp * 1000; // Convert to milliseconds
 
       return Date.now() < exp;
-    } catch (_error: unknown) {
+    } catch {
       return false;
     }
   }
@@ -638,7 +638,7 @@ export class DevelopmentAuthManager {
 
     try {
       sessionStorage.removeItem("dev_auth_hot_reload_state");
-    } catch (_error: unknown) {
+    } catch {
       // Ignore storage errors
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { HealthDashboard } from '../monitoring/health-dashboard';
 import UsageAnalyticsCharts from '../analytics/UsageAnalyticsCharts';
 import AuditLogTable from '../analytics/AuditLogTable';
