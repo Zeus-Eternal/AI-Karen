@@ -6,13 +6,7 @@
  * with different database drivers (pg, mysql, etc.)
  */
 
-import type {
-  Pool as PgPool,
-  PoolClient,
-  PoolConfig,
-  QueryResult as PgQueryResult,
-  QueryResultRow,
-} from "pg";
+import type { Pool as PgPool, PoolClient, PoolConfig } from "pg";
 
 type PoolConstructor = typeof import("pg").Pool;
 type ConnectionConfig = PoolConfig & { connectionString?: string };
@@ -47,7 +41,7 @@ export interface QueryResult {
 
 // PostgreSQL client implementation
 export class PostgreSQLClient implements DatabaseClient {
-  private pool: PgPool;
+  private readonly pool: PgPool;
 
   constructor(connectionConfig: string | ConnectionConfig) {
     if (typeof window !== "undefined") {
@@ -56,12 +50,10 @@ export class PostgreSQLClient implements DatabaseClient {
     if (!PoolClass) {
       throw new Error("pg library is not available");
     }
-
     const config: ConnectionConfig =
       typeof connectionConfig === "string"
         ? { connectionString: connectionConfig }
         : connectionConfig;
-
     // Set reasonable defaults for connection pooling
     const poolConfig: ConnectionConfig = {
       ...config,
@@ -69,7 +61,6 @@ export class PostgreSQLClient implements DatabaseClient {
       idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,
       connectionTimeoutMillis: config.connectionTimeoutMillis ?? 2000,
     };
-
     this.pool = new PoolClass(poolConfig);
 
     // Handle pool errors
@@ -78,17 +69,14 @@ export class PostgreSQLClient implements DatabaseClient {
     });
   }
 
-  async query(sql: string, params?: unknown[]): Promise<QueryResult> {
-    try {
-      const result: PgQueryResult<QueryResultRow> = await this.pool.query(
-        sql,
-        params,
-      );
-      return {
-        rows: result.rows,
-        rowCount: result.rowCount || 0,
-        fields: result.fields,
-      };
+    async query(sql: string, params?: unknown[]): Promise<QueryResult> {
+      try {
+        const result = await this.pool.query(sql, params);
+        return {
+          rows: result.rows,
+          rowCount: result.rowCount || 0,
+          fields: result.fields,
+        };
     } catch (error) {
       // Add context to the error before re-throwing
       throw new Error(
@@ -99,24 +87,21 @@ export class PostgreSQLClient implements DatabaseClient {
     }
   }
 
-  async transaction<T>(
-    callback: (client: DatabaseClient) => Promise<T>,
-  ): Promise<T> {
-    const poolClient: PoolClient = await this.pool.connect();
-    try {
-      await poolClient.query("BEGIN");
-      // Create a transaction client wrapper
-      const transactionClient: DatabaseClient = {
-        query: async (sql: string, params?: unknown[]) => {
-          const result: PgQueryResult<QueryResultRow> = await poolClient.query(
-            sql,
-            params,
-          );
-          return {
-            rows: result.rows,
-            rowCount: result.rowCount || 0,
-            fields: result.fields,
-          };
+    async transaction<T>(
+      callback: (client: DatabaseClient) => Promise<T>
+    ): Promise<T> {
+      const poolClient: PoolClient = await this.pool.connect();
+      try {
+        await poolClient.query("BEGIN");
+        // Create a transaction client wrapper
+        const transactionClient: DatabaseClient = {
+          query: async (sql: string, params?: unknown[]) => {
+            const result = await poolClient.query(sql, params);
+            return {
+              rows: result.rows,
+              rowCount: result.rowCount || 0,
+              fields: result.fields,
+            };
         },
         transaction: async () => {
           throw new Error("Nested transactions are not supported");
@@ -148,7 +133,6 @@ export class DatabaseClientFactory {
     if (typeof window !== "undefined") {
       throw new Error("Database client can only be created on the server side");
     }
-
     switch (type) {
       case "postgresql":
         return new PostgreSQLClient(config);
@@ -174,7 +158,6 @@ export function getDatabaseClient(): DatabaseClient {
         "DATABASE_URL or POSTGRES_URL environment variable is required",
       );
     }
-
     try {
       dbClient = DatabaseClientFactory.create("postgresql", databaseUrl);
     } catch (error) {
@@ -182,6 +165,8 @@ export function getDatabaseClient(): DatabaseClient {
       throw new Error(`Database connection failed: ${message}`);
     }
   }
+  return dbClient;
+}
 
   return dbClient;
 }

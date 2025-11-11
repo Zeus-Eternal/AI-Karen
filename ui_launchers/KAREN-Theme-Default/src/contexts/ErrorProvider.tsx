@@ -10,7 +10,7 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { FC, ReactNode } from 'react';
+import type { ErrorInfo, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -27,7 +27,7 @@ export interface ErrorContextType {
     method?: string;
     provider?: string;
   }) => void;
-  handleBoundaryError: (error: Error, errorInfo?: unknown) => void;
+  handleBoundaryError: (error: Error, errorInfo?: ErrorInfo) => void;
   
   // Error management
   clearError: () => void;
@@ -53,6 +53,14 @@ export { ErrorContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
+interface ApiErrorLike extends Error {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+}
+
 export interface ErrorProviderProps {
   children: ReactNode;
   options?: UseIntelligentErrorOptions;
@@ -60,6 +68,14 @@ export interface ErrorProviderProps {
   onAnalysisError?: (error: Error) => void;
   maxGlobalErrors?: number;
 }
+
+type ApiErrorLike = Error & {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+};
 
 export const ErrorProvider: FC<ErrorProviderProps> = ({
   children,
@@ -167,24 +183,18 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [intelligentError, boundaryError, apiError]);
 
   // Handle boundary errors
-  const handleBoundaryError = useCallback((error: Error, errorInfo?: unknown) => {
+  const handleBoundaryError = useCallback((error: Error, errorInfo?: ErrorInfo) => {
     safeError('Error boundary caught error:', error, { useStructuredLogging: true });
     if (errorInfo) {
       safeError('Error info:', errorInfo, { useStructuredLogging: true });
     }
 
-    const componentStack =
-      typeof errorInfo === 'object' &&
-      errorInfo !== null &&
-      'componentStack' in errorInfo &&
-      typeof (errorInfo as { componentStack?: unknown }).componentStack === 'string'
-        ? (errorInfo as { componentStack: string }).componentStack
-        : undefined;
+    const boundaryInfo = errorInfo as { componentStack?: string } | undefined;
 
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
       user_context: {
-        component_stack: componentStack,
+        component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
@@ -194,9 +204,9 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 
     // Add to global errors
     addGlobalError(error, context);
-    
+
     // Use boundary error hook for analysis
-    boundaryError.handleError(error, errorInfo);
+    boundaryError.handleError(error, boundaryInfo);
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
@@ -209,26 +219,20 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     if (requestContext) {
       safeError('Request context:', requestContext, { useStructuredLogging: true });
     }
-
-    const enhancedError = error as Error & {
-      status?: number;
-      isNetworkError?: boolean;
-      isCorsError?: boolean;
-      isTimeoutError?: boolean;
-      responseTime?: number;
-    };
+    
+    const apiErrorDetails = error as ApiErrorLike;
 
     const context: Partial<ErrorAnalysisRequest> = {
-      status_code: enhancedError.status,
+      status_code: apiErrorDetails.status,
       error_type: error.name || 'ApiError',
       request_path: requestContext?.endpoint,
       provider_name: requestContext?.provider,
       user_context: {
         method: requestContext?.method,
-        is_network_error: enhancedError.isNetworkError,
-        is_cors_error: enhancedError.isCorsError,
-        is_timeout_error: enhancedError.isTimeoutError,
-        response_time: enhancedError.responseTime,
+        is_network_error: apiErrorDetails.isNetworkError,
+        is_cors_error: apiErrorDetails.isCorsError,
+        is_timeout_error: apiErrorDetails.isTimeoutError,
+        response_time: apiErrorDetails.responseTime,
         timestamp: new Date().toISOString(),
       },
     };

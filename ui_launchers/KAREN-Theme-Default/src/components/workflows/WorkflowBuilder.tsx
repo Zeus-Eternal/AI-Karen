@@ -170,7 +170,9 @@ export function WorkflowBuilder({
         type: resolvedType,
         position: node.position,
         data: nodeData,
-        style: style as Record<string, unknown> | undefined,
+        style: node.style
+          ? (node.style as unknown as Record<string, unknown>)
+          : undefined,
       };
     });
 
@@ -191,7 +193,9 @@ export function WorkflowBuilder({
         targetHandle: edge.targetHandle ?? undefined,
         type: normalizedType,
         animated: edge.animated,
-        style: style as Record<string, unknown> | undefined,
+        style: edge.style
+          ? (edge.style as unknown as Record<string, unknown>)
+          : undefined,
         data: edge.data,
       };
     });
@@ -212,7 +216,59 @@ export function WorkflowBuilder({
         status: 'draft',
       },
     };
-  }, [nodes, edges, workflow]);
+  }, [edges, nodes, workflow]);
+
+  const validateWorkflow = React.useCallback(async () => {
+    setIsValidating(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      const result = await WorkflowValidator.validate(workflowDef);
+      setValidationResult(result);
+    } catch (error) {
+      console.error('Workflow validation failed', error);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [convertToWorkflowDefinition]);
+
+  const testWorkflow = React.useCallback(async () => {
+    if (!onTest) return;
+    setIsTesting(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      await onTest(workflowDef);
+    } catch (error) {
+      console.error('Workflow test failed', error);
+    } finally {
+      setIsTesting(false);
+    }
+  }, [convertToWorkflowDefinition, onTest]);
+
+  const validateWorkflow = React.useCallback(async () => {
+    setIsValidating(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      const result = await WorkflowValidator.validate(workflowDef);
+      setValidationResult(result);
+    } catch (error) {
+      console.error('Workflow validation failed', error);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [convertToWorkflowDefinition]);
+
+  const testWorkflow = React.useCallback(async () => {
+    if (!onTest) return;
+    setIsTesting(true);
+    try {
+      const workflowDef = convertToWorkflowDefinition();
+      await onTest(workflowDef);
+    } catch (error) {
+      console.error('Workflow test failed', error);
+    } finally {
+      setIsTesting(false);
+    }
+  }, [convertToWorkflowDefinition, onTest]);
 
   const validateWorkflow = React.useCallback(async () => {
     setIsValidating(true);

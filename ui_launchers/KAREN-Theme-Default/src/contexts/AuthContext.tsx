@@ -24,6 +24,23 @@ export interface LoginCredentials {
   totp_code?: string;
 }
 
+interface AuthResponseUserData {
+  user_id: string;
+  email: string;
+  roles?: string[];
+  tenant_id: string;
+  role?: "super_admin" | "admin" | "user";
+  permissions?: string[];
+}
+
+interface AuthApiResponse {
+  valid?: boolean;
+  success?: boolean;
+  user?: AuthResponseUserData;
+  user_data?: AuthResponseUserData;
+  [key: string]: unknown;
+}
+
 export interface AuthError {
   message: string;
   category: ErrorCategory;
@@ -58,58 +75,43 @@ export interface AuthProviderProps {
   children: ReactNode;
 }
 
-interface SessionUserPayload {
+interface ApiUserData {
   user_id: string;
   email: string;
   roles?: string[];
   tenant_id?: string;
   permissions?: string[];
-  [key: string]: unknown;
 }
 
-interface SessionValidationResponse {
-  valid: boolean;
-  user?: SessionUserPayload | null;
-  user_data?: SessionUserPayload | null;
+interface AuthApiResponseRaw {
+  valid?: unknown;
+  user?: unknown;
+  user_data?: unknown;
 }
 
-interface LoginResponse {
-  user?: SessionUserPayload | null;
-  user_data?: SessionUserPayload | null;
-  [key: string]: unknown;
-}
-
-const isSessionUserPayload = (value: unknown): value is SessionUserPayload => {
-  if (typeof value !== "object" || value === null) {
+function isApiUserData(value: unknown): value is ApiUserData {
+  if (!value || typeof value !== "object") {
     return false;
   }
 
-  const candidate = value as Record<string, unknown>;
-  return typeof candidate.user_id === "string" && typeof candidate.email === "string";
-};
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.user_id === "string" &&
+    typeof record.email === "string"
+  );
+}
 
-const isSessionValidationResponse = (
-  data: unknown,
-): data is SessionValidationResponse => {
-  if (typeof data !== "object" || data === null) {
-    return false;
+function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+  if (response.user && isApiUserData(response.user)) {
+    return response.user;
   }
 
-  const candidate = data as Record<string, unknown>;
-  return typeof candidate.valid === "boolean";
-};
+  if (response.user_data && isApiUserData(response.user_data)) {
+    return response.user_data;
+  }
 
-const extractUserPayload = (
-  data: { user?: SessionUserPayload | null; user_data?: SessionUserPayload | null },
-): SessionUserPayload | null => {
-  if (data.user && isSessionUserPayload(data.user)) {
-    return data.user;
-  }
-  if (data.user_data && isSessionUserPayload(data.user_data)) {
-    return data.user_data;
-  }
   return null;
-};
+}
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
@@ -143,6 +145,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     if (roles.includes("admin")) return "admin";
     return "user";
   }, []);
+
+  const createUserFromApiData = useCallback(
+    (apiUser: ApiUserData): User => ({
+      userId: apiUser.user_id,
+      email: apiUser.email,
+      roles: apiUser.roles ?? [],
+      tenantId: apiUser.tenant_id ?? "default",
+      role: determineUserRole(apiUser.roles ?? []),
+      permissions: apiUser.permissions,
+    }),
+    [determineUserRole]
+  );
 
   // Convert technical errors to user-friendly messages
   const getUserFriendlyErrorMessage = useCallback((error: ConnectionError): string => {
@@ -316,7 +330,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest<SessionValidationResponse>(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -333,30 +347,29 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (isSessionValidationResponse(result.data)) {
-        const userData = extractUserPayload(result.data);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
 
-        if (result.data.valid && userData) {
-          const user: User = {
-            userId: userData.user_id,
-            email: userData.email,
-            roles: userData.roles || [],
-            tenantId: userData.tenant_id,
-            role: determineUserRole(userData.roles || []),
-            permissions: userData.permissions,
-          };
+      if (data?.valid && userData) {
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id || "default",
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
 
-          setUser(user);
-          setIsAuthenticated(true);
-          setAuthState((prev) => ({
-            ...prev,
-            error: null,
-            lastActivity: new Date(),
-            isRefreshing: false,
-          }));
+        setUser(user);
+        setIsAuthenticated(true);
+        setAuthState((prev) => ({
+          ...prev,
+          error: null,
+          lastActivity: new Date(),
+          isRefreshing: false,
+        }));
 
-          return true;
-        }
+        return true;
       }
 
       setUser(null);
@@ -375,7 +388,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     connectionManager,
     timeoutManager,
-    determineUserRole,
+    createUserFromApiData,
   ]);
 
   // Session refresh timer management
@@ -430,7 +443,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         ...(credentials.totp_code && { totp_code: credentials.totp_code }),
       };
 
-      const result = await connectionManager.makeRequest<LoginResponse>(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         loginUrl,
         {
           method: "POST",
@@ -449,7 +462,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       // Handle successful login response
-      const userData = extractUserPayload(result.data);
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -460,14 +474,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Create user object
-      const user: User = {
-        userId: userData.user_id,
-        email: userData.email,
-        roles: userData.roles || [],
-        tenantId: userData.tenant_id,
-        role: determineUserRole(userData.roles || []),
-        permissions: userData.permissions,
-      };
+      const user = createUserFromApiData(userData);
 
       // Update authentication state
       setUser(user);
@@ -679,7 +686,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         OperationType.SESSION_VALIDATION
       );
 
-      const result = await connectionManager.makeRequest<SessionValidationResponse>(
+      const result = await connectionManager.makeRequest<AuthApiResponse>(
         validateUrl,
         {
           method: "GET",
@@ -696,14 +703,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      if (isSessionValidationResponse(result.data)) {
-        const userData = extractUserPayload(result.data);
-        if (result.data.valid && userData) {
-          const user: User = {
-            userId: userData.user_id,
-            email: userData.email,
-            roles: userData.roles || [],
-            tenantId: userData.tenant_id,
+      const data = result.data;
+      const userData = data?.user ?? data?.user_data;
+
+      if (data?.valid && userData) {
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id || "default",
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };
@@ -811,7 +819,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [
     connectionManager,
     createAuthError,
-    determineUserRole,
+    createUserFromApiData,
     isAuthenticated,
     startSessionRefreshTimer,
     stopSessionRefreshTimer,

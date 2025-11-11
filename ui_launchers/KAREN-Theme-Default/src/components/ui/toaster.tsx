@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useToast } from "@/hooks/use-toast";
+import { useToast, type ToasterToast } from "@/hooks/use-toast";
 import {
   ToastProvider,
   Toast,
@@ -10,7 +10,7 @@ import {
   ToastTitle,
   ToastDescription,
   ToastClose,
-  type ToastProps,
+  type ToastProps as UiToastProps,
 } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
@@ -97,13 +97,10 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
             stackJustifyClasses[position],
           )}
         >
-          {toasts.map(({ id, title, description, action, ...props }) => {
-            const toastProps = props as Record<string, unknown> & {
-              className?: string;
-              variant?: ToastProps["variant"];
-            };
+          {toasts.map((toast) => {
+            const { id, title, description, action, ...props } = toast as ToasterToast;
+            const toastProps = props as UiToastProps;
             const { className, variant, ...rest } = toastProps;
-            const typedVariant = variant as ToastProps["variant"];
 
             return (
               <ToastComponent

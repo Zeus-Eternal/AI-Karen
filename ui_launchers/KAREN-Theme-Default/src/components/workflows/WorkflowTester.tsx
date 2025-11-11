@@ -342,7 +342,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
               <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
                   {testResult.logs.map((log, index) => {
-                    const hasData = log.data !== undefined && log.data !== null;
+                    const hasLogData = log.data !== undefined && log.data !== null;
                     return (
                       <div
                         key={log.id || index}
@@ -360,7 +360,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                       {log.nodeId && (
                         <p className="text-xs opacity-75 mt-1 sm:text-sm md:text-base">Node: {log.nodeId}</p>
                       )}
-                      {hasData && (
+                      {hasLogData && (
                         <details className="mt-2">
                           <summary className="text-xs cursor-pointer sm:text-sm md:text-base">View Data</summary>
                           <pre className="text-xs mt-1 p-2 bg-black/5 rounded overflow-auto sm:text-sm md:text-base">
@@ -368,7 +368,7 @@ export function WorkflowTester({ workflow, onTest, className = '' }: WorkflowTes
                           </pre>
                         </details>
                       )}
-                    </div>
+                      </div>
                     );
                   })}
                 </div>

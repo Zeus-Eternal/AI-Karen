@@ -356,15 +356,13 @@ export class AuditLogExporter {
         return log.ip_address || '';
       case 'user_agent':
         return log.user_agent || '';
-      default:
-        {
-          const record = log as unknown as Record<string, unknown>;
-          const value = record[field];
-          if (value === undefined || value === null) {
-            return '';
-          }
-          return String(value);
+      default: {
+        const fallbackValue = (log as Record<string, unknown>)[field];
+        if (fallbackValue === undefined || fallbackValue === null) {
+          return '';
         }
+        return String(fallbackValue);
+      }
     }
   }
 
