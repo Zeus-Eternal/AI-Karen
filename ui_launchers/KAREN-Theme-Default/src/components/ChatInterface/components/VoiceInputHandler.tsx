@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, Loader2 } from "lucide-react";
@@ -96,7 +96,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new speechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
@@ -114,7 +114,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       }
     };
 
-    recognition.onerror = (event: Event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       setIsProcessing(false);
       const errorMessage = `Speech recognition error: ${event.error}`;
       onError?.(errorMessage);
@@ -173,7 +173,8 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
       try {
         recognitionRef.current.start();
         onStart();
-      } catch (error) {
+      } catch (startError) {
+        console.error("Failed to start voice input", startError);
         onError?.("Failed to start voice input");
       }
     }
