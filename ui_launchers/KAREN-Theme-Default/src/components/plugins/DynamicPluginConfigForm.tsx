@@ -76,7 +76,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   onValidate,
   onPreview,
   readOnly = false,
-  showAdvanced = false,
+  showAdvanced: _showAdvanced = false,
 }) => {
   const [config, setConfig] = useState<PluginConfig>(initialConfig);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);

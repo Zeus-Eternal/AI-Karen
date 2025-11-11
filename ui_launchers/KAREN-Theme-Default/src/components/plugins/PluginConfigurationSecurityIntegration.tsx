@@ -18,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   PluginConfig,
@@ -84,7 +83,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
   const [configurationDirty, setConfigurationDirty] = useState(false);
   const [securityDirty, setSecurityDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const validationRules = useMemo(
@@ -107,7 +105,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
   };
 
   const handleSaveConfiguration = async (config: PluginConfig) => {
-    setSaving(true);
     setStatusMessage(null);
     try {
       await onSaveConfiguration(config);
@@ -117,13 +114,10 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to save configuration.");
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleSaveSecurity = async (policy: SecurityPolicy) => {
-    setSaving(true);
     setStatusMessage(null);
     try {
       await onUpdateSecurity(policy);
@@ -133,8 +127,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to update security policy.");
-    } finally {
-      setSaving(false);
     }
   };
 

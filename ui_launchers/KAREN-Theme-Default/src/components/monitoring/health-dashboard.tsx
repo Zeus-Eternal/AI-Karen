@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,8 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const healthMonitor = useMemo(() => getHealthMonitor(), []);
+  const healthMonitorRef = useRef(getHealthMonitor());
+  const healthMonitor = healthMonitorRef.current;
 
   const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
     try {
@@ -48,18 +49,23 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
+    const monitor = healthMonitorRef.current;
+
+    // Set up listeners
+    const unsubscribeMetrics = monitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
       setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
-    const unsubscribeAlerts = healthMonitor.onAlert((newAlert) => {
+    const unsubscribeAlerts = monitor.onAlert((newAlert) => {
       setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
     });
 
-    if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
+    // Start monitoring if not already started
+    if (!monitor.getStatus().isMonitoring) {
+      monitor.start();
+      setIsMonitoring(true);
     }
 
     return () => {

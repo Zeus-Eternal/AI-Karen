@@ -35,9 +35,6 @@ export interface PerformanceMonitorProps {
   analyticsEndpoint?: string;
 }
 
-/** Utility: now in ms with high resolution */
-const nowMs = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-
 /** Try to read modern NavigationTiming first, fallback to legacy */
 function readNavigationTimings(): { ttfb?: number; loadTime?: number } {
   if (typeof performance === "undefined") return {};

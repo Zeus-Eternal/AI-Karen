@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { alertClassName } from "./utils/alertVariants";
@@ -336,10 +335,9 @@ const PluginListSkeleton: React.FC = () => (
   </div>
 );
 
-export const PluginManager: React.FC = () => {
-  const {
-    plugins,
-    selectedPlugin,
+  export const PluginManager: React.FC = () => {
+    const {
+      selectedPlugin,
     searchQuery,
     filters,
     sortBy,
