@@ -6,6 +6,11 @@ import { Page } from '@playwright/test';
 type AxeWindow = Window & { axe: typeof axe };
 type AxeRunOptions = NonNullable<Parameters<typeof axe.run>[1]>;
 
+type ExtendedRunOptions = RunOptions & {
+  include?: string[];
+  exclude?: string[];
+};
+
 // Configuration for different testing scenarios
 export interface AccessibilityTestConfig {
   rules?: RuleObject;
