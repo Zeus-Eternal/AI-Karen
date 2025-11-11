@@ -163,6 +163,10 @@ export function EndpointStatusIndicator({
     return () => {
       try {
         unsubscribeMetrics();
+      } catch {
+        // noop
+      }
+      try {
         unsubscribeLogs();
       } catch {
         // noop
