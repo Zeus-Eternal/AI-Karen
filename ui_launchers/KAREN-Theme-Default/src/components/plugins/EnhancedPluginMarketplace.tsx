@@ -11,9 +11,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -240,7 +237,7 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
   onInstall,
   onPurchase,
 }) => {
-  const [plugins, setPlugins] = useState<PluginMarketplaceEntry[]>(mockEnhancedPlugins);
+  const [plugins] = useState<PluginMarketplaceEntry[]>(mockEnhancedPlugins);
   const [reviews] = useState<PluginReview[]>(mockReviews);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlugin, setSelectedPlugin] = useState<PluginMarketplaceEntry | null>(null);

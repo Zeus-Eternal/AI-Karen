@@ -92,6 +92,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   useEffect(() => {
     const updateData = () => {
@@ -103,6 +104,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       if (showCapacityPlanning) {
         setCapacityPlans(resourceMonitor.generateCapacityPlan("3months"));
       }
+      setCurrentTime(Date.now());
     };
 
     updateData();
@@ -126,7 +128,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
       "7d": 7 * 24 * 60 * 60 * 1000,
     };
 
-    const cutoff = Date.now() - timeRanges[selectedTimeframe];
+    const cutoff = currentTime - timeRanges[selectedTimeframe];
     return historicalMetrics
       .filter((m) => m.timestamp > cutoff)
       .map((m) => ({
@@ -137,7 +139,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
         network: m.network.latency,
         storage: m.storage.percentage,
       }));
-  }, [historicalMetrics, selectedTimeframe]);
+  }, [currentTime, historicalMetrics, selectedTimeframe]);
 
   const handleResolveAlert = (alertId: string) => {
     resourceMonitor.resolveAlert(alertId);
