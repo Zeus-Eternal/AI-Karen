@@ -20,7 +20,6 @@ import {
   AlertTriangle,
   Settings,
   Clock,
-  Loader2,
 } from "lucide-react";
 import type {
   FallbackAnalytics,

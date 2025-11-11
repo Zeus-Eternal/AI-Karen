@@ -885,7 +885,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
 
     // Clear validation error for this field
     setValidationErrors(prev => prev.filter(error => error.field !== fieldName));
-  }, [resetSelection]);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     void loadProviders();
