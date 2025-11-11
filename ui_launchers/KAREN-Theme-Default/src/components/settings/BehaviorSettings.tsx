@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/settings/BehaviorSettings.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -18,66 +18,78 @@ import { useToast } from '@/hooks/use-toast';
  * Settings are saved to local storage.
  */
 export default function BehaviorSettings() {
-  const [settings, setSettings] = useState<Pick<KarenSettings, 'memoryDepth' | 'personalityTone' | 'personalityVerbosity' | 'activeListenMode'>>({
+  const defaultBehaviorSettings = useMemo(() => ({
     memoryDepth: DEFAULT_KAREN_SETTINGS.memoryDepth,
     personalityTone: DEFAULT_KAREN_SETTINGS.personalityTone,
     personalityVerbosity: DEFAULT_KAREN_SETTINGS.personalityVerbosity,
     activeListenMode: DEFAULT_KAREN_SETTINGS.activeListenMode,
+  }), []);
+
+  const buildFullSettings = (parsedSettings: Partial<KarenSettings> | null): KarenSettings => ({
+    ...DEFAULT_KAREN_SETTINGS,
+    ...(parsedSettings || {}),
+    notifications: {
+      ...DEFAULT_KAREN_SETTINGS.notifications,
+      ...((parsedSettings && parsedSettings.notifications) || {}),
+    },
+    personalFacts: Array.isArray(parsedSettings?.personalFacts)
+      ? parsedSettings!.personalFacts
+      : DEFAULT_KAREN_SETTINGS.personalFacts,
+    ttsVoiceURI:
+      parsedSettings?.ttsVoiceURI === undefined
+        ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI
+        : parsedSettings.ttsVoiceURI,
+    customPersonaInstructions:
+      typeof parsedSettings?.customPersonaInstructions === 'string'
+        ? parsedSettings.customPersonaInstructions
+        : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
+    activeListenMode:
+      typeof parsedSettings?.activeListenMode === 'boolean'
+        ? parsedSettings.activeListenMode
+        : DEFAULT_KAREN_SETTINGS.activeListenMode,
   });
 
-  const { toast } = useToast();
-  useEffect(() => {
+  const readBehaviorSettings = () => {
+    if (typeof window === 'undefined') {
+      return defaultBehaviorSettings;
+    }
+
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-      let fullSettings: KarenSettings;
-      if (storedSettingsStr) {
-        const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-        fullSettings = {
-          ...DEFAULT_KAREN_SETTINGS,
-          ...parsedSettings,
-          notifications: { 
-            ...DEFAULT_KAREN_SETTINGS.notifications,
-            ...(parsedSettings.notifications || {}),
-          },
-          personalFacts: Array.isArray(parsedSettings.personalFacts)
-            ? parsedSettings.personalFacts
-            : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsedSettings.ttsVoiceURI === undefined 
-            ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI 
-            : parsedSettings.ttsVoiceURI,
-          customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
-            ? parsedSettings.customPersonaInstructions
-            : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-          activeListenMode: typeof parsedSettings.activeListenMode === 'boolean'
-            ? parsedSettings.activeListenMode
-            : DEFAULT_KAREN_SETTINGS.activeListenMode,
-        };
-        if (storedSettingsStr !== JSON.stringify(fullSettings)) {
-            localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));
-        }
-      } else {
-        fullSettings = DEFAULT_KAREN_SETTINGS;
+      if (!storedSettingsStr) {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
+        return defaultBehaviorSettings;
       }
-      setSettings({
+
+      const parsedSettings = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
+      const fullSettings = buildFullSettings(parsedSettings);
+
+      if (storedSettingsStr !== JSON.stringify(fullSettings)) {
+        localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));
+      }
+
+      return {
         memoryDepth: fullSettings.memoryDepth,
         personalityTone: fullSettings.personalityTone,
         personalityVerbosity: fullSettings.personalityVerbosity,
         activeListenMode: fullSettings.activeListenMode,
-      });
+      };
     } catch (error) {
-      setSettings({
-        memoryDepth: DEFAULT_KAREN_SETTINGS.memoryDepth,
-        personalityTone: DEFAULT_KAREN_SETTINGS.personalityTone,
-        personalityVerbosity: DEFAULT_KAREN_SETTINGS.personalityVerbosity,
-        activeListenMode: DEFAULT_KAREN_SETTINGS.activeListenMode,
-      });
+      console.error('Failed to read behavior settings from localStorage.', error);
       try {
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
-      } catch (lsError) {
+      } catch (storageError) {
+        console.error('Failed to restore default behavior settings in localStorage.', storageError);
       }
+      return defaultBehaviorSettings;
     }
-  }, []);
+  };
+
+  const [settings, setSettings] = useState<Pick<KarenSettings, 'memoryDepth' | 'personalityTone' | 'personalityVerbosity' | 'activeListenMode'>>(
+    readBehaviorSettings
+  );
+
+  const { toast } = useToast();
   const handleSettingChange = (key: keyof typeof settings, value: string | boolean) => {
     setSettings(prevSettings => ({ ...prevSettings, [key]: value }));
   };
@@ -87,21 +99,10 @@ export default function BehaviorSettings() {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       if (storedSettingsStr) {
         const parsed = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
-        currentFullSettings = {
-          ...DEFAULT_KAREN_SETTINGS,
-          ...parsed,
-          notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
-          personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsed.ttsVoiceURI === undefined ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI : parsed.ttsVoiceURI,
-          customPersonaInstructions: typeof parsed.customPersonaInstructions === 'string' ? parsed.customPersonaInstructions : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-          temperatureUnit: parsed.temperatureUnit || DEFAULT_KAREN_SETTINGS.temperatureUnit,
-          weatherService: parsed.weatherService || DEFAULT_KAREN_SETTINGS.weatherService,
-          weatherApiKey: parsed.weatherApiKey === undefined ? DEFAULT_KAREN_SETTINGS.weatherApiKey : parsed.weatherApiKey,
-          defaultWeatherLocation: parsed.defaultWeatherLocation === undefined ? DEFAULT_KAREN_SETTINGS.defaultWeatherLocation : parsed.defaultWeatherLocation,
-          activeListenMode: typeof parsed.activeListenMode === 'boolean' ? parsed.activeListenMode : DEFAULT_KAREN_SETTINGS.activeListenMode,
-        };
+        currentFullSettings = buildFullSettings(parsed);
       }
-    } catch (e) {
+    } catch (error) {
+      console.error('Failed to parse stored Karen settings.', error);
     }
     return currentFullSettings;
   };
@@ -121,6 +122,7 @@ export default function BehaviorSettings() {
         description: "Karen's behavior settings have been updated.",
       });
     } catch (error) {
+      console.error('Failed to save behavior settings to localStorage.', error);
       toast({
         title: "Error Saving Settings",
         description: "Could not save behavior settings. localStorage might be disabled or full.",
@@ -129,18 +131,18 @@ export default function BehaviorSettings() {
     }
   };
   const resetToDefaults = () => {
-    const defaultBehaviorSettings = {
+    const behaviorDefaults = {
         memoryDepth: DEFAULT_KAREN_SETTINGS.memoryDepth,
         personalityTone: DEFAULT_KAREN_SETTINGS.personalityTone,
         personalityVerbosity: DEFAULT_KAREN_SETTINGS.personalityVerbosity,
         activeListenMode: DEFAULT_KAREN_SETTINGS.activeListenMode,
     };
-    setSettings(defaultBehaviorSettings);
+    setSettings(behaviorDefaults);
     try {
       const currentFullSettings = getFullCurrentSettingsFromStorage();
       const newFullSettings: KarenSettings = {
           ...currentFullSettings,
-          ...defaultBehaviorSettings,
+          ...behaviorDefaults,
       };
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(newFullSettings));
       toast({
@@ -148,6 +150,7 @@ export default function BehaviorSettings() {
         description: "Karen's behavior settings have been reset to defaults.",
       });
     } catch (error) {
+        console.error('Failed to reset behavior settings to defaults.', error);
         toast({
             title: "Error Resetting Settings",
             description: "Could not reset behavior settings.",

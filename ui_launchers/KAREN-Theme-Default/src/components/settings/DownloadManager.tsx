@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import { useDownloadStatus, DownloadTask } from "@/hooks/use-download-status";
+import { useDownloadStatus } from "@/hooks/use-download-status";
 import ModelDownloadProgress from "./ModelDownloadProgress";
 
 export interface DownloadManagerProps {
@@ -109,15 +109,12 @@ export default function DownloadManager({ onDownloadComplete, compact = false }:
   }
 
   // Derived counts with memo for tiny perf win in large lists
-  const counts = useMemo(
-    () => ({
-      active: activeDownloads.length,
-      completed: completedDownloads.length,
-      errored: erroredDownloads.length,
-      total: downloadTasks.length,
-    }),
-    [activeDownloads.length, completedDownloads.length, erroredDownloads.length, downloadTasks.length]
-  );
+  const counts = {
+    active: activeDownloads.length,
+    completed: completedDownloads.length,
+    errored: erroredDownloads.length,
+    total: downloadTasks.length,
+  };
 
   return (
     <div className="space-y-6">
