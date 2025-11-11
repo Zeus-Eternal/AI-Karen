@@ -414,9 +414,8 @@ export function integrateWithExistingErrorHandling(): void {
 
   // Idempotent guard
   const __key = "__RECOVERY_FETCH_WRAP__";
-  const win = window as RecoveryWindow;
-  const flagStore = win as unknown as Record<string, unknown>;
-  if (flagStore[__key]) return;
+  const win = window as unknown as RecoveryWindow & Record<string, unknown>;
+  if (win[__key]) return;
 
   const originalFetch = window.fetch.bind(window);
 
@@ -448,7 +447,7 @@ export function integrateWithExistingErrorHandling(): void {
 export function integrateWithKarenBackend(): void {
   if (!isBrowser()) return;
 
-  const win = window as RecoveryWindow;
+  const win = window as unknown as RecoveryWindow & Record<string, unknown>;
   win.handleKarenBackendError = async (
     status: number,
     url: string,

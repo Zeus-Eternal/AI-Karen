@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,22 +25,25 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, hasRole, hasPermission, user, authState } = useAuth();
   const router = useRouter();
-  const [hasRedirected, setHasRedirected] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const hasRedirectedRef = useRef(false);
+  const isMountedRef = useRef(false);
   // Reset redirect flag when authentication state changes
   useEffect(() => {
-    setHasRedirected(false);
+    hasRedirectedRef.current = false;
   }, [isAuthenticated, user?.userId]);
-  // Initialize after first render to avoid hydration issues
+  // Track mount state to avoid hydration issues
   useEffect(() => {
-    setIsInitialized(true);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
   // Handle authentication and authorization
   useEffect(() => {
     // Don't run on server or before initialization
-    if (!isInitialized || typeof window === 'undefined') return;
+    if (!isMountedRef.current || typeof window === 'undefined') return;
     // Don't redirect multiple times
-    if (hasRedirected) return;
+    if (hasRedirectedRef.current) return;
     // If still loading, wait
     if (authState.isLoading) return;
     // If not authenticated, redirect to login
@@ -49,7 +52,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // Avoid redirect loops - don't redirect if already on login or unauthorized pages
       if (currentPath !== '/login' && currentPath !== '/unauthorized' && !currentPath.startsWith('/login')) {
         sessionStorage.setItem('redirectAfterLogin', currentPath);
-        setHasRedirected(true);
+        hasRedirectedRef.current = true;
         // Use a small delay to prevent race conditions
         setTimeout(() => {
           router.replace('/login');
@@ -59,17 +62,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
     // Check role requirement if specified
     if (requiredRole && !hasRole(requiredRole)) {
-      setHasRedirected(true);
+      hasRedirectedRef.current = true;
       router.replace(redirectTo);
       return;
     }
     // Check permission requirement if specified
     if (requiredPermission && !hasPermission(requiredPermission)) {
-      setHasRedirected(true);
+      hasRedirectedRef.current = true;
       router.replace(redirectTo);
       return;
     }
-  }, [isInitialized, isAuthenticated, authState.isLoading, requiredRole, requiredPermission, hasRedirected, redirectTo, hasRole, hasPermission, user?.role, router]);
+  }, [isAuthenticated, authState.isLoading, requiredRole, requiredPermission, redirectTo, hasRole, hasPermission, user?.role, router]);
   // Don't show loading state if we're on login page to prevent flash
   const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
   // Show loading state while checking authentication

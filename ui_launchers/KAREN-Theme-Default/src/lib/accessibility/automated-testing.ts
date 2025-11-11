@@ -4,6 +4,7 @@ import { AxeResults, RunOptions, RuleObject } from 'axe-core';
 import { Page } from '@playwright/test';
 
 type AxeWindow = Window & { axe: typeof axe };
+type AxeRunOptions = NonNullable<Parameters<typeof axe.run>[1]>;
 
 type ExtendedRunOptions = RunOptions & {
   include?: string[];
@@ -193,7 +194,7 @@ export class AutomatedAccessibilityTester {
   ): Promise<AccessibilityTestResult> {
     try {
       // Configure axe-core
-      const runOptions: ExtendedRunOptions = {
+      const runOptions: AxeRunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
@@ -261,7 +262,7 @@ export class AutomatedAccessibilityTester {
       });
 
       // Run axe analysis in the page context
-      const runOptions: ExtendedRunOptions = {
+      const runOptions: AxeRunOptions = {
         runOnly: {
           type: 'tag',
           values: config.tags || ['wcag2a', 'wcag2aa']
@@ -271,9 +272,8 @@ export class AutomatedAccessibilityTester {
         ...(config.exclude && { exclude: config.exclude })
       };
 
-      const axeResults = await page.evaluate<AxeResults, ExtendedRunOptions>(async (options: ExtendedRunOptions) => {
-        const axeWindow = window as Partial<AxeWindow>;
-        const axeInstance = axeWindow.axe;
+      const axeResults = await page.evaluate<AxeResults, AxeRunOptions>(async (options: AxeRunOptions) => {
+        const axeInstance = (window as unknown as AxeWindow).axe;
         if (!axeInstance) {
           throw new Error('axe-core is not available in the page context');
         }
