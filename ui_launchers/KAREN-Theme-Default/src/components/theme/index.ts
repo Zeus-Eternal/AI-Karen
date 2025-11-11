@@ -5,7 +5,8 @@
  */
 
 // Component Exports
-export { ThemeProvider, useTheme } from './ThemeProvider';
+export { ThemeProvider } from './ThemeProvider';
+export { useTheme } from '@/providers/theme-hooks';
 export { ThemeBridge } from './ThemeBridge';
 export { ThemeSwitcher, ThemeToggle } from './ThemeSwitcher';
 

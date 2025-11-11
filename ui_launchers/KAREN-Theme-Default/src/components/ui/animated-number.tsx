@@ -21,12 +21,19 @@ export function AnimatedNumber({
   const animationRef = useRef<number>();
   const startValueRef = useRef(value);
   const startTimeRef = useRef<number>();
+  const latestDisplayValueRef = useRef(value);
 
   useEffect(() => {
-    if (value === displayValue) return;
+    latestDisplayValueRef.current = displayValue;
+  }, [displayValue]);
+
+  useEffect(() => {
+    if (value === latestDisplayValueRef.current) {
+      return;
+    }
 
     setIsAnimating(true);
-    startValueRef.current = displayValue;
+    startValueRef.current = latestDisplayValueRef.current;
     startTimeRef.current = undefined;
 
     const animate = (timestamp: number) => {
