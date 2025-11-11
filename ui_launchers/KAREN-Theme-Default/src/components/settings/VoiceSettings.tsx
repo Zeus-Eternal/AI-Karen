@@ -91,13 +91,10 @@ export default function VoiceSettings() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
-      setIsLoadingVoices(false);
       return;
     }
 
     let cancelled = false;
-    let initialTimeout: number | undefined;
-    let fallbackTimeout: number | undefined;
 
     const updateVoices = () => {
       if (cancelled) {
@@ -112,10 +109,11 @@ export default function VoiceSettings() {
       updateVoices();
     };
 
-    initialTimeout = window.setTimeout(updateVoices, 0);
-    if (window.speechSynthesis.getVoices().length === 0) {
-      fallbackTimeout = window.setTimeout(updateVoices, 500);
-    }
+    const initialTimeout = window.setTimeout(updateVoices, 0);
+    const fallbackTimeout =
+      window.speechSynthesis.getVoices().length === 0
+        ? window.setTimeout(updateVoices, 500)
+        : undefined;
 
     window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
 

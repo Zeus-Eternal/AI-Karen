@@ -802,6 +802,7 @@ export default function AdvancedModelConfig({
 
     } catch (error) {
       setBenchmarking(null);
+      console.error('Failed to start benchmark:', error);
       toast({
         variant: 'destructive',
         title: "Benchmark Failed",
