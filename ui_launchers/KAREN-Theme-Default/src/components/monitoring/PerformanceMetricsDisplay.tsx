@@ -10,7 +10,6 @@ import { Badge } from '../ui/badge';
 export interface PerformanceMetricsDisplayProps {
   metrics: PerformanceMetrics;
   className?: string;
-  showTrends?: boolean;
 }
 
 export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps> = ({

@@ -67,7 +67,6 @@ export interface DynamicPluginConfigFormProps {
   onValidate?: (config: PluginConfig) => ValidationError[];
   onPreview?: (config: PluginConfig) => void;
   readOnly?: boolean;
-  showAdvanced?: boolean;
 }
 export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = ({
   plugin,

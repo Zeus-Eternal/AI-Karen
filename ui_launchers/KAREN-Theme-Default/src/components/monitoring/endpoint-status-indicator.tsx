@@ -115,6 +115,7 @@ export function EndpointStatusIndicator({
       // Soft-fail with a minimal placeholder to avoid UI crash
       return;
     }
+  }
 
     if (!monitor || !logger) {
       return;
