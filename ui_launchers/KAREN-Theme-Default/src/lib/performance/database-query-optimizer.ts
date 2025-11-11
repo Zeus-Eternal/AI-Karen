@@ -248,12 +248,12 @@ export class DatabaseQueryOptimizer {
     let oldestKey: string | null = null;
     let oldestTimestamp = Date.now();
 
-    for (const [key, entry] of this.queryCache.entries()) {
+    this.queryCache.forEach((entry, key) => {
       if (entry.timestamp < oldestTimestamp) {
         oldestTimestamp = entry.timestamp;
         oldestKey = key;
       }
-    }
+    });
 
     if (oldestKey) {
       this.queryCache.delete(oldestKey);
@@ -311,7 +311,7 @@ export class DatabaseQueryOptimizer {
 
   invalidateUserCache(userId: string): void {
     if (!userId) return;
-    for (const [key, entry] of this.queryCache.entries()) {
+    this.queryCache.forEach((entry, key) => {
       const matchesUser = entry.params.some(param => {
         if (param == null) return false;
         if (typeof param === 'string' || typeof param === 'number') {
@@ -327,7 +327,7 @@ export class DatabaseQueryOptimizer {
       if (matchesUser) {
         this.queryCache.delete(key);
       }
-    }
+    });
   }
 
   updateConfig(config: Partial<QueryOptimizationConfig>): void {
@@ -386,11 +386,11 @@ export class DatabaseQueryOptimizer {
 
   private cleanupExpiredEntries(): void {
     const now = Date.now();
-    for (const [key, entry] of this.queryCache.entries()) {
+    this.queryCache.forEach((entry, key) => {
       if (now - entry.timestamp > entry.ttl) {
         this.queryCache.delete(key);
       }
-    }
+    });
   }
 }
 

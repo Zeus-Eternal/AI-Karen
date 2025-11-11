@@ -1,7 +1,7 @@
 // apps/web/src/lib/feature-flags.ts
 "use client";
 
-import React from "react";
+import * as React from "react";
 
 /** -----------------------------
  * Types & constants
@@ -163,12 +163,16 @@ export class FeatureFlagManager {
   /** Build reverse dependency index for fast propagation */
   private rebuildDependentsIndex() {
     this.dependentsIndex.clear();
-    for (const flag of this.flags.values()) {
-      (flag.dependencies || []).forEach((dep) => {
-        if (!this.dependentsIndex.has(dep)) this.dependentsIndex.set(dep, new Set());
-        this.dependentsIndex.get(dep)!.add(flag.name);
+    this.flags.forEach((flag) => {
+      (flag.dependencies ?? []).forEach((dep) => {
+        let dependents = this.dependentsIndex.get(dep);
+        if (!dependents) {
+          dependents = new Set();
+          this.dependentsIndex.set(dep, dependents);
+        }
+        dependents.add(flag.name);
       });
-    }
+    });
   }
 
   /** Detect cycles with DFS */
@@ -188,7 +192,9 @@ export class FeatureFlagManager {
       perm.add(node);
     };
 
-    Array.from(this.flags.keys()).forEach(visit);
+    this.flags.forEach((_, key) => {
+      visit(key);
+    });
   }
 
   /** State getters */
@@ -319,8 +325,8 @@ export class FeatureFlagManager {
       const dep = stack.pop()!;
       const dependents = this.dependentsIndex.get(dep);
       if (!dependents) continue;
-      for (const d of dependents) {
-        if (visited.has(d)) continue;
+      dependents.forEach((d) => {
+        if (visited.has(d)) return;
         visited.add(d);
         const f = this.flags.get(d);
         if (f && f.enabled) {
@@ -329,7 +335,7 @@ export class FeatureFlagManager {
           this.emit(d, updated);
           stack.push(d);
         }
-      }
+      });
     }
   }
 
@@ -354,23 +360,23 @@ export class FeatureFlagManager {
     const arr = this.listeners.get(flagName);
     if (!arr || arr.length === 0) return;
     const snapshot = stableClone(flag);
-    for (const fn of arr) {
+    arr.forEach((fn) => {
       try {
         fn(snapshot);
       } catch {
         // swallow listener errors to avoid breaking emit
       }
-    }
+    });
   }
 
   private emitGlobal() {
-    for (const fn of this.globalListeners) {
+    this.globalListeners.forEach((fn) => {
       try {
         fn();
       } catch {
         // ignore
       }
-    }
+    });
   }
 
   /** Health -> Flag mappings */
