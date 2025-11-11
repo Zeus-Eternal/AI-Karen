@@ -67,6 +67,11 @@ const iconSizeClasses: Record<ButtonSize, string> = {
   xl: "h-12 w-12",
 };
 
+type ButtonForwardRef = <T extends React.ElementType = "button">(
+  props: ButtonProps<T>,
+  ref: PolymorphicRef<T>
+) => React.ReactElement | null;
+
 function ButtonInner<T extends React.ElementType = "button">(
   {
     as,
@@ -105,7 +110,7 @@ function ButtonInner<T extends React.ElementType = "button">(
       disabled={isButtonElement ? isDisabled : undefined}
       data-variant={variant}
       data-size={size}
-      {...(props as ButtonProps<any>)}
+      {...(props as ButtonProps<T>)}
     >
       {loading && (
         <svg
@@ -137,10 +142,7 @@ function ButtonInner<T extends React.ElementType = "button">(
 }
 
 const Button = React.forwardRef(
-  ButtonInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    ButtonProps<any>
-  >
+  ButtonInner as ButtonForwardRef
 ) as ButtonComponent;
 
 Button.displayName = "Button";
@@ -175,6 +177,11 @@ type LinkButtonComponent = PolymorphicComponentWithDisplayName<
   ButtonBaseProps & { href?: string }
 >;
 
+type LinkButtonForwardRef = <T extends React.ElementType = "a">(
+  props: LinkButtonProps<T>,
+  ref: PolymorphicRef<T>
+) => React.ReactElement | null;
+
 function LinkButtonInner<T extends React.ElementType = "a">(
   {
     as,
@@ -184,13 +191,13 @@ function LinkButtonInner<T extends React.ElementType = "a">(
   }: LinkButtonProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseButton = Button as unknown as React.ComponentType<any>;
+  const BaseButton: ButtonComponent = Button;
   return (
     <BaseButton
       as={as ?? ("a" as T)}
       ref={ref as React.Ref<unknown>}
       variant={variant}
-      {...(props as ButtonProps<any>)}
+      {...(props as ButtonProps<T>)}
     >
       {children}
     </BaseButton>
@@ -198,10 +205,7 @@ function LinkButtonInner<T extends React.ElementType = "a">(
 }
 
 const LinkButton = React.forwardRef(
-  LinkButtonInner as unknown as React.ForwardRefRenderFunction<
-    unknown,
-    LinkButtonProps<any>
-  >
+  LinkButtonInner as LinkButtonForwardRef
 ) as LinkButtonComponent;
 
 LinkButton.displayName = "LinkButton";
