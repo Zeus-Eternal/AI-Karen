@@ -6,6 +6,7 @@
  */
 import { useAppStore } from "@/store/app-store";
 import { queryClient } from "@/lib/query-client";
+
 // Enhanced API Response types
 export interface ApiResponse<T = unknown> {
   data: T;
@@ -65,6 +66,12 @@ export type ErrorInterceptor = (
   error: ApiError,
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
+
+interface ErrorResponseData extends Record<string, unknown> {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
 // Request/Response logging
 export interface RequestLog {
   id: string;
@@ -622,7 +629,25 @@ export class EnhancedApiClient {
       const text = await response.text();
       return this.createSuccessResponse(text as T);
     }
+
+    const text = await response.text();
+    return {
+      data: text as unknown as T,
+      status: "success",
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
+
+  private isApiResponseData<T>(value: unknown): value is ApiResponse<T> {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return record.hasOwnProperty("data") && record.hasOwnProperty("status");
+  }
+
   // Parse error response
   private async parseErrorResponse(
     response: Response
@@ -647,6 +672,9 @@ export class EnhancedApiClient {
         const text = await response.text();
         return { message: text || response.statusText };
       }
+
+      const text = await response.text();
+      return { message: text || response.statusText };
     } catch {
       return { message: response.statusText || "Unknown error" };
     }
