@@ -47,18 +47,14 @@ export interface ConnectivityTestResult {
 
 type HealthServiceStatus = {
   status?: string;
-  responseTime?: number;
-  error?: string;
-  [key: string]: unknown;
-};
+} & Record<string, unknown>;
 
-type HealthResponse = {
+interface HealthEndpointData {
   status?: string;
   services?: Record<string, HealthServiceStatus>;
   version?: string;
   uptime?: number;
-  [key: string]: unknown;
-};
+}
 
 function safeNowISO(): string {
   try {
@@ -95,6 +91,54 @@ export class EndpointValidationService {
   private connectivityCache: Map<string, ConnectivityTestResult> = new Map();
   private readonly HEALTH_CACHE_TTL = 30_000; // 30s
   private readonly CONNECTIVITY_CACHE_TTL = 60_000; // 60s
+
+  private parseHealthEndpointData(rawData: unknown): HealthEndpointData {
+    if (!rawData || typeof rawData !== "object") {
+      return {};
+    }
+
+    const payload = rawData as Record<string, unknown>;
+    const status = payload.status;
+    const version = payload.version;
+    const uptime = payload.uptime;
+
+    return {
+      status: typeof status === "string" ? status : undefined,
+      services: this.parseHealthServices(payload["services"]),
+      version: typeof version === "string" ? version : undefined,
+      uptime: typeof uptime === "number" ? uptime : undefined,
+    };
+  }
+
+  private parseHealthServices(
+    services: unknown
+  ): Record<string, HealthServiceStatus> | undefined {
+    if (!services || typeof services !== "object") {
+      return undefined;
+    }
+
+    const normalized: Record<string, HealthServiceStatus> = {};
+    for (const [key, value] of Object.entries(
+      services as Record<string, unknown>
+    )) {
+      normalized[key] = this.parseHealthServiceStatus(value);
+    }
+    return normalized;
+  }
+
+  private parseHealthServiceStatus(value: unknown): HealthServiceStatus {
+    if (!value || typeof value !== "object") {
+      return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const status = record.status;
+
+    return {
+      ...record,
+      status: typeof status === "string" ? status : undefined,
+    } as HealthServiceStatus;
+  }
 
   /**
    * Validate the current endpoint configuration
@@ -431,14 +475,10 @@ export class EndpointValidationService {
       const responseTime = Math.max(0, perfNow() - startTime);
 
       if (response.ok) {
-        let healthData: HealthResponse = {};
+        let healthData: HealthEndpointData = {};
         try {
-          const json = await response.json();
-          if (json && typeof json === "object") {
-            healthData = json as HealthResponse;
-          } else {
-            healthData = { status: "ok" };
-          }
+          const rawData = await response.json();
+          healthData = this.parseHealthEndpointData(rawData);
         } catch {
           healthData = { status: "ok" };
         }
@@ -501,7 +541,7 @@ export class EndpointValidationService {
    * Determine health status based on response data and performance
    */
   private determineHealthStatus(
-    healthData: HealthResponse,
+    healthData: HealthEndpointData,
     responseTime: number
   ): "healthy" | "degraded" | "unhealthy" {
     // Latency heuristic
@@ -509,12 +549,10 @@ export class EndpointValidationService {
 
     // Service map heuristic
     if (healthData?.services) {
-      const services = Object.values(healthData.services ?? {});
-      const unhealthy = services.filter(service => {
-        const status =
-          typeof service?.status === "string" ? service.status.toLowerCase() : "";
-        return status === "error" || status === "unhealthy";
-      });
+      const services = Object.values(healthData.services);
+      const unhealthy = services.filter(
+        (s) => s?.status === "error" || s?.status === "unhealthy"
+      );
       if (unhealthy.length > 0) {
         return unhealthy.length === services.length ? "unhealthy" : "degraded";
       }

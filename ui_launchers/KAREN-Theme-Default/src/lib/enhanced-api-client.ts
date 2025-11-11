@@ -33,6 +33,13 @@ export interface ApiErrorInterface extends Error {
   timestamp?: string;
   requestId?: string;
 }
+
+interface ApiErrorPayload {
+  message?: string;
+  code?: string;
+  details?: unknown;
+  [key: string]: unknown;
+}
 // Enhanced Request configuration
 export interface EnhancedRequestConfig extends RequestInit {
   timeout?: number;
@@ -93,6 +100,39 @@ export class EnhancedApiClient {
     this.setupDefaultInterceptors();
     this.setupPerformanceMonitoring();
   }
+
+  private isApiResponse<T>(value: unknown): value is ApiResponse<T> {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const candidate = value as Partial<ApiResponse<T>>;
+    return "data" in candidate && typeof candidate.status === "string";
+  }
+
+  private isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const candidate = value as ApiErrorPayload;
+    const hasValidMessage =
+      !("message" in candidate) || typeof candidate.message === "string";
+    const hasValidCode =
+      !("code" in candidate) || typeof candidate.code === "string";
+
+    return hasValidMessage && hasValidCode;
+  }
+
+  private createSuccessResponse<T>(data: T): ApiResponse<T> {
+    return {
+      data,
+      status: "success",
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
   // Get base URL from environment or current location
   private getBaseURL(): string {
     if (typeof window !== "undefined") {
@@ -129,7 +169,7 @@ export class EnhancedApiClient {
         }
         config.headers = headers;
         return config;
-      } catch (_error) {
+      } catch {
         return config;
       }
     });
@@ -147,7 +187,7 @@ export class EnhancedApiClient {
           }
         }
         return config;
-      } catch (_error) {
+      } catch {
         return config;
       }
     });
@@ -157,8 +197,7 @@ export class EnhancedApiClient {
       try {
         // Clear loading states
         if (!config.skipLoading) {
-          const { setGlobalLoading, clearLoading } =
-            useAppStore.getState();
+          const { setGlobalLoading, clearLoading } = useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
             setGlobalLoading(false);
@@ -197,7 +236,7 @@ export class EnhancedApiClient {
           });
         }
         return response;
-      } catch (_error) {
+      } catch {
         return response;
       }
     });
@@ -255,7 +294,7 @@ export class EnhancedApiClient {
           }
         }
         return error;
-      } catch (_interceptorError) {
+      } catch {
         return error;
       }
     });
@@ -335,7 +374,7 @@ export class EnhancedApiClient {
     for (const interceptor of this.requestInterceptors) {
       try {
         finalConfig = await interceptor(finalConfig);
-      } catch (_error) {
+      } catch {
         // Continue with current config if interceptor fails
       }
     }
@@ -360,7 +399,7 @@ export class EnhancedApiClient {
         for (const interceptor of this.responseInterceptors) {
           try {
             finalResponse = await interceptor(finalResponse, config);
-          } catch (_error) {
+          } catch {
             // Continue with current response if interceptor fails
           }
         }
@@ -439,7 +478,7 @@ export class EnhancedApiClient {
       for (const interceptor of this.errorInterceptors) {
         try {
           lastError = await interceptor(lastError, config);
-        } catch (_error) {
+        } catch {
           // Continue with current error if interceptor fails
         }
       }
@@ -515,21 +554,13 @@ export class EnhancedApiClient {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const parsed = JSON.parse(xhr.responseText) as unknown;
-              if (this.isApiResponseData<T>(parsed)) {
+              if (this.isApiResponse<T>(parsed)) {
                 resolve(parsed);
               } else {
-                resolve({
-                  data: parsed as T,
-                  status: "success",
-                  meta: { timestamp: new Date().toISOString() },
-                });
+                resolve(this.createSuccessResponse(parsed as T));
               }
             } catch {
-              resolve({
-                data: xhr.responseText as unknown as T,
-                status: "success",
-                meta: { timestamp: new Date().toISOString() },
-              });
+              resolve(this.createSuccessResponse(xhr.responseText as T));
             }
           } else {
             reject(
@@ -589,16 +620,14 @@ export class EnhancedApiClient {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       const json = (await response.json()) as unknown;
-      if (this.isApiResponseData<T>(json)) {
+      if (this.isApiResponse<T>(json)) {
         return json;
       }
-      return {
-        data: json as T,
-        status: "success",
-        meta: {
-          timestamp: new Date().toISOString(),
-        },
-      };
+
+      return this.createSuccessResponse(json as T);
+    } else {
+      const text = await response.text();
+      return this.createSuccessResponse(text as T);
     }
 
     const text = await response.text();
@@ -620,27 +649,28 @@ export class EnhancedApiClient {
   }
 
   // Parse error response
-  private async parseErrorResponse(response: Response): Promise<ErrorResponseData> {
+  private async parseErrorResponse(
+    response: Response
+  ): Promise<ApiErrorPayload> {
     try {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         const json = (await response.json()) as unknown;
-        if (json && typeof json === "object") {
-          const record = json as Record<string, unknown>;
-          const message =
-            typeof record.message === "string"
-              ? record.message
-              : response.statusText || "Unknown error";
-          const code = typeof record.code === "string" ? record.code : undefined;
-          const details = record.details;
-          return {
-            ...record,
-            message,
-            code,
-            details,
-          };
+        if (this.isApiErrorPayload(json)) {
+          return json;
         }
-        return { message: response.statusText || "Unknown error" };
+
+        if (typeof json === "string") {
+          return { message: json };
+        }
+
+        return {
+          message: response.statusText || "Unknown error",
+          details: json,
+        };
+      } else {
+        const text = await response.text();
+        return { message: text || response.statusText };
       }
 
       const text = await response.text();
