@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -70,6 +69,14 @@ export interface EvilModeAnalyticsProps {
 const destructiveAlertClassName =
   "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive";
 
+const TIMEFRAME_OPTIONS = {
+  "7d": { days: 7, label: "Last 7 days" },
+  "30d": { days: 30, label: "Last 30 days" },
+  "90d": { days: 90, label: "Last 90 days" },
+} as const;
+
+type TimeframeKey = keyof typeof TIMEFRAME_OPTIONS;
+
 export interface EvilModeStats {
   totalSessions: number;
   activeSessions: number;
@@ -102,17 +109,11 @@ export interface EvilModeStats {
 }
 
 export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
-  const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
-
-  const timeframeOptions = {
-    "7d": { days: 7, label: "Last 7 days" },
-    "30d": { days: 30, label: "Last 30 days" },
-    "90d": { days: 90, label: "Last 90 days" },
-  } as const;
+  const [timeframe, setTimeframe] = useState<TimeframeKey>("30d");
 
   const dateRange = useMemo(
     () => ({
-      start: startOfDay(subDays(new Date(), timeframeOptions[timeframe].days)),
+      start: startOfDay(subDays(new Date(), TIMEFRAME_OPTIONS[timeframe].days)),
       end: endOfDay(new Date()),
     }),
     [timeframe],
@@ -150,7 +151,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(timeframeOptions).map(([key, { label }]) => (
+                {Object.entries(TIMEFRAME_OPTIONS).map(([key, { label }]) => (
                   <SelectItem key={key} value={key}>
                     {label}
                   </SelectItem>
@@ -826,7 +827,7 @@ function RiskAssessment({ stats }: RiskAssessmentProps) {
    Mock API — replace with real calls
    ============================ */
 
-async function getEvilModeStats(dateRange: { start: Date; end: Date }): Promise<EvilModeStats> {
+async function getEvilModeStats(_dateRange: { start: Date; end: Date }): Promise<EvilModeStats> {
   return {
     totalSessions: 45,
     activeSessions: 2,
@@ -861,7 +862,7 @@ async function getEvilModeStats(dateRange: { start: Date; end: Date }): Promise<
   };
 }
 
-async function getEvilModeSessions(dateRange: { start: Date; end: Date }): Promise<EvilModeSession[]> {
+async function getEvilModeSessions(_dateRange: { start: Date; end: Date }): Promise<EvilModeSession[]> {
   return [
     {
       userId: "user-1",

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Role, User, Permission } from "@/types/rbac";
@@ -520,32 +520,38 @@ function RoleHierarchyView() {
 // Create Role Dialog
 // --------------------------------------------------------
 
+interface RoleFormState {
+  name: string;
+  description: string;
+  permissions: Permission[];
+  parentRoles: string[];
+}
+
+function createRoleFormState(role?: Role | null): RoleFormState {
+  return {
+    name: role?.name ?? "",
+    description: role?.description ?? "",
+    permissions: role?.permissions ?? [],
+    parentRoles: role?.parentRoles ?? [],
+  };
+}
+
 export interface CreateRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    permissions: [] as Permission[],
-    parentRoles: [] as string[],
-  });
+  const [formData, setFormData] = useState<RoleFormState>(() => createRoleFormState());
 
   const queryClient = useQueryClient();
 
   const createRoleMutation = useMutation({
-    mutationFn: (roleData: typeof formData) =>
+    mutationFn: (roleData: RoleFormState) =>
       enhancedApiClient.post("/api/rbac/roles", roleData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rbac", "roles"] });
-      setFormData({
-        name: "",
-        description: "",
-        permissions: [],
-        parentRoles: [],
-      });
+      setFormData(createRoleFormState());
       onOpenChange(false);
     },
   });
@@ -641,28 +647,10 @@ function EditRoleDialog({
   open,
   onOpenChange,
 }: EditRoleDialogProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    permissions: [] as Permission[],
-    parentRoles: [] as string[],
-  });
-
-  useEffect(() => {
-    if (role) {
-      setFormData({
-        name: role.name,
-        description: role.description,
-        permissions: role.permissions,
-        parentRoles: role.parentRoles || [],
-      });
-    }
-  }, [role]);
-
   const queryClient = useQueryClient();
 
   const updateRoleMutation = useMutation({
-    mutationFn: (roleData: typeof formData) =>
+    mutationFn: (roleData: RoleFormState) =>
       enhancedApiClient.put(`/api/rbac/roles/${role?.id}`, roleData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rbac", "roles"] });
@@ -670,10 +658,9 @@ function EditRoleDialog({
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (values: RoleFormState) => {
     if (role) {
-      updateRoleMutation.mutate(formData);
+      updateRoleMutation.mutate(values);
     }
   };
 
@@ -689,67 +676,91 @@ function EditRoleDialog({
         </DialogHeader>
 
         {role && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-role-name">Role Name</Label>
-              <Input
-                id="edit-role-name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    name: e.target.value,
-                  })
-                }
-                required
-                disabled={role.metadata?.isSystemRole}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-role-description">
-                Description
-              </Label>
-              <Textarea
-                id="edit-role-description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    description: e.target.value,
-                  })
-                }
-                required
-              />
-            </div>
-
-            <PermissionSelector
-              selectedPermissions={formData.permissions}
-              onPermissionsChange={(permissions) =>
-                setFormData({ ...formData, permissions })
-              }
-              disabled={role.metadata?.isSystemRole}
-            />
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateRoleMutation.isPending}
-              >
-                Save changes
-              </Button>
-            </DialogFooter>
-          </form>
+          <EditRoleForm
+            key={role.id}
+            role={role}
+            onSubmit={handleSubmit}
+            onCancel={() => onOpenChange(false)}
+            isSubmitting={updateRoleMutation.isPending}
+          />
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface EditRoleFormProps {
+  role: Role;
+  onSubmit: (values: RoleFormState) => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}
+
+function EditRoleForm({
+  role,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: EditRoleFormProps) {
+  const [formData, setFormData] = useState<RoleFormState>(() =>
+    createRoleFormState(role),
+  );
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-role-name">Role Name</Label>
+        <Input
+          id="edit-role-name"
+          value={formData.name}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              name: e.target.value,
+            })
+          }
+          required
+          disabled={role.metadata?.isSystemRole}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="edit-role-description">Description</Label>
+        <Textarea
+          id="edit-role-description"
+          value={formData.description}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              description: e.target.value,
+            })
+          }
+          required
+        />
+      </div>
+
+      <PermissionSelector
+        selectedPermissions={formData.permissions}
+        onPermissionsChange={(permissions) =>
+          setFormData({ ...formData, permissions })
+        }
+        disabled={role.metadata?.isSystemRole}
+      />
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          Save changes
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 
