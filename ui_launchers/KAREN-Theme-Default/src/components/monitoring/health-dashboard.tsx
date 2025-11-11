@@ -87,8 +87,7 @@ export function HealthDashboard({
     }
   });
 
-  const [lastUpdate, setLastUpdate] = useState<string>('');
-
+  const [lastUpdate, setLastUpdate] = useState<string>(() => {
     try {
       const currentMetrics = healthMonitor.getMetrics?.();
       if (currentMetrics?.lastHealthCheck) {
