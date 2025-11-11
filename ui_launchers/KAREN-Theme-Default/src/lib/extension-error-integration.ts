@@ -224,7 +224,11 @@ export function getExtensionErrorMessage(status: number, url: string): string {
 }
 
 export interface ExtensionErrorIntegration {
-  handleExtensionError: typeof handleExtensionError;
+  handleExtensionError: (
+    status: number,
+    url: string,
+    operation?: string
+  ) => ExtensionErrorResponse | null;
   shouldUseExtensionFallback: typeof shouldUseExtensionFallback;
   getExtensionErrorMessage: (status: number, url: string) => string;
 }

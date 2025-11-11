@@ -355,7 +355,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           userId: userData.user_id,
           email: userData.email,
           roles: userData.roles || [],
-          tenantId: userData.tenant_id,
+          tenantId: userData.tenant_id || "default",
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };
@@ -711,7 +711,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           userId: userData.user_id,
           email: userData.email,
           roles: userData.roles || [],
-          tenantId: userData.tenant_id,
+          tenantId: userData.tenant_id || "default",
           role: determineUserRole(userData.roles || []),
           permissions: userData.permissions,
         };

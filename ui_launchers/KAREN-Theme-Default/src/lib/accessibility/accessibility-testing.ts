@@ -612,7 +612,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     duration: number
   ): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map(
-      (violation: Result) => ({
+      (violation: Result): AccessibilityViolation => ({
         id: violation.id,
         impact: (violation.impact ?? "minor") as AccessibilityViolation["impact"],
         description: violation.description,

@@ -69,6 +69,14 @@ export interface ErrorProviderProps {
   maxGlobalErrors?: number;
 }
 
+type ApiErrorLike = Error & {
+  status?: number;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
+  responseTime?: number;
+};
+
 export const ErrorProvider: FC<ErrorProviderProps> = ({
   children,
   options = {},

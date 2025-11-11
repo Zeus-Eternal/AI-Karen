@@ -66,7 +66,7 @@ const SidebarTrigger = React.forwardRef<HTMLButtonElement, SidebarTriggerProps>(
         type={asChild ? undefined : 'button'}
         aria-expanded={isOpen}
         onClick={event => {
-          onClick?.(event);
+          onClick?.(event as React.MouseEvent<HTMLButtonElement>);
           toggle();
         }}
         className={cn(
