@@ -5,8 +5,8 @@
 
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,26 +22,25 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const healthMonitorRef = useRef(getHealthMonitor());
-  const healthMonitor = healthMonitorRef.current;
+  const healthMonitor = useMemo(() => getHealthMonitor(), []);
 
   const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
     try {
-      return healthMonitor.getMetrics();
+      return healthMonitor?.getMetrics?.() ?? null;
     } catch {
       return null;
     }
   });
   const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
     try {
-      return healthMonitor.getAlerts(20);
+      return healthMonitor?.getAlerts?.(20) ?? [];
     } catch {
       return [];
     }
   });
   const [isMonitoring, setIsMonitoring] = useState(() => {
     try {
-      return healthMonitor.getStatus().isMonitoring;
+      return healthMonitor?.getStatus?.().isMonitoring ?? false;
     } catch {
       return false;
     }
@@ -49,23 +48,29 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    const monitor = healthMonitorRef.current;
+    if (!healthMonitor) {
+      return undefined;
+    }
 
-    // Set up listeners
-    const unsubscribeMetrics = monitor.onMetricsUpdate((newMetrics) => {
-      setMetrics(newMetrics);
-      setLastUpdate(new Date().toLocaleTimeString());
-      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
-    });
+    const unsubscribeMetrics =
+      healthMonitor.onMetricsUpdate?.((newMetrics) => {
+        setMetrics(newMetrics);
+        setLastUpdate(new Date().toLocaleTimeString());
+        setIsMonitoring(healthMonitor.getStatus().isMonitoring);
+      }) ?? (() => {});
 
-    const unsubscribeAlerts = monitor.onAlert((newAlert) => {
-      setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
-    });
+    const unsubscribeAlerts =
+      healthMonitor.onAlert?.((newAlert) => {
+        setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
+      }) ?? (() => {});
 
-    // Start monitoring if not already started
-    if (!monitor.getStatus().isMonitoring) {
-      monitor.start();
-      setIsMonitoring(true);
+    if (!healthMonitor.getStatus().isMonitoring) {
+      try {
+        healthMonitor.start();
+        setIsMonitoring(true);
+      } catch {
+        setIsMonitoring(false);
+      }
     }
 
     return () => {
