@@ -44,7 +44,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { alertClassName } from './utils/alertVariants';
 
 export interface ValidationError {
@@ -77,7 +76,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   onValidate,
   onPreview,
   readOnly = false,
-  showAdvanced = false,
+  showAdvanced: _showAdvanced = false,
 }) => {
   const [config, setConfig] = useState<PluginConfig>(initialConfig);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -108,33 +107,19 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
     const groupMap = new Map<string, PluginConfigField[]>();
     plugin.manifest.configSchema.forEach(field => {
       let groupId = 'general';
-      let groupName = 'General Settings';
-      let groupIcon = Settings;
       // Determine group based on field key prefix or type
       if (field.key.startsWith('auth') || field.key.includes('token') || field.key.includes('key')) {
         groupId = 'authentication';
-        groupName = 'Authentication';
-        groupIcon = Key;
       } else if (field.key.startsWith('db') || field.key.includes('database')) {
         groupId = 'database';
-        groupName = 'Database';
-        groupIcon = Database;
       } else if (field.key.startsWith('network') || field.key.includes('url') || field.key.includes('endpoint')) {
         groupId = 'network';
-        groupName = 'Network & API';
-        groupIcon = Network;
       } else if (field.key.startsWith('ui') || field.key.includes('theme') || field.key.includes('display')) {
         groupId = 'interface';
-        groupName = 'User Interface';
-        groupIcon = Eye;
       } else if (field.key.startsWith('perf') || field.key.includes('cache') || field.key.includes('timeout')) {
         groupId = 'performance';
-        groupName = 'Performance';
-        groupIcon = Zap;
       } else if (field.key.startsWith('security') || field.key.includes('encrypt') || field.key.includes('secure')) {
         groupId = 'security';
-        groupName = 'Security';
-        groupIcon = Lock;
       }
       if (!groupMap.has(groupId)) {
         groupMap.set(groupId, []);
@@ -271,7 +256,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
       await onSave(config);
       setValidationErrors([]);
       setIsDirty(false);
-    } catch (error) {
+    } catch (_error) {
       setValidationErrors([{
         field: '_global',
         message: 'Failed to save configuration. Please try again.',
