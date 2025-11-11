@@ -8,6 +8,8 @@
  * - Minimal dev logging
  */
 
+import type { ExtensionErrorIntegration } from './extension-error-integration';
+
 export type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
 
 export interface VerifyChecks {
@@ -46,7 +48,7 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 
 interface ExtensionFixWindow extends Window {
   __EXT_FIX_PATCHED__?: { type: 'immediate' | 'standard' };
-  extensionErrorIntegration?: unknown;
+  extensionErrorIntegration?: ExtensionErrorIntegration;
   handleKarenBackendError?: unknown;
 }
 

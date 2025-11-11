@@ -106,6 +106,7 @@ function headersToObject(headers: HeaderLike): Record<string, string> {
     return out;
   }
   // Record<string, string>
+  const out: Record<string, string> = {};
   const headerRecord = headers as Record<string, string | number | boolean | undefined>;
   for (const k of Object.keys(headerRecord)) {
     const value = headerRecord[k];
