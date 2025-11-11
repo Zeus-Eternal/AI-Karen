@@ -55,68 +55,24 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
   const [connected, setConnected] = useState(false);
   const { toast } = useToast();
   const backend = getKarenBackend();
-  // Load initial notifications and settings
-  useEffect(() => {
-    loadNotifications();
-    loadSettings();
-  }, [loadNotifications, loadSettings]);
-  // Set up real-time updates
-  useEffect(() => {
-    if (!realTimeUpdates) return;
-    let eventSource: EventSource | null = null;
-    let pollInterval: NodeJS.Timeout | null = null;
-    const setupRealTimeUpdates = async () => {
-      try {
-        // Try to establish SSE connection first
-        eventSource = new EventSource('/api/providers/notifications/stream');
-        eventSource.onopen = () => {
-          setConnected(true);
-        };
-        eventSource.onmessage = (event) => {
-          try {
-            const notification: ProviderNotification = JSON.parse(event.data);
-            addNotification(notification);
-        } catch (_error) {
-            // Handle parsing error silently
-          }
-        };
-        eventSource.onerror = () => {
-          setConnected(false);
-          // Fallback to polling
-          if (!pollInterval) {
-            pollInterval = setInterval(() => {
-              loadNotifications();
-            }, 30000); // Poll every 30 seconds
-          }
-        };
-      } catch (_error) {
-        // Fallback to polling
-        pollInterval = setInterval(() => {
-          loadNotifications();
-        }, 30000);
-      }
-    };
-    setupRealTimeUpdates();
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [realTimeUpdates, loadNotifications]);
+
+  const logNotificationError = useCallback((message: string, error: unknown) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(message, error);
+    }
+  }, []);
   const loadNotifications = useCallback(async () => {
     try {
       const response = await backend.makeRequestPublic<ProviderNotification[]>('/api/providers/notifications');
       setNotifications(response || []);
-    } catch (_error) {
+    } catch (error) {
+      logNotificationError('Failed to load provider notifications', error);
       // Use mock data for development
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const loadSettings = useCallback(async () => {
     try {
       // Try to load from backend first
@@ -125,8 +81,8 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         setSettings(response);
         return;
       }
-    } catch (_error) {
-      // Handle error silently
+    } catch (error) {
+      logNotificationError('Failed to load provider notification settings from backend', error);
     }
     // Fallback to localStorage
     try {
@@ -134,10 +90,10 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       if (savedSettings) {
         setSettings(JSON.parse(savedSettings));
       }
-    } catch (_error) {
-      // Handle error silently
+    } catch (error) {
+      logNotificationError('Failed to load provider notification settings from localStorage', error);
     }
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
     try {
       // Try to save to backend first
@@ -145,17 +101,17 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         method: 'POST',
         body: JSON.stringify(newSettings)
       });
-    } catch (_error) {
-      // Handle error silently
+    } catch (error) {
+      logNotificationError('Failed to save provider notification settings to backend', error);
     }
     // Always save to localStorage as backup
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
-    } catch (_error) {
-      // Handle error silently
+    } catch (error) {
+      logNotificationError('Failed to persist provider notification settings locally', error);
     }
     setSettings(newSettings);
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const addNotification = useCallback((notification: ProviderNotification) => {
     setNotifications(prev => {
       // Check if notification type is enabled
@@ -180,6 +136,58 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       return updated;
     });
   }, [settings, maxNotifications, autoToast, toast]);
+  // Load initial notifications and settings
+  useEffect(() => {
+    loadNotifications();
+    loadSettings();
+  }, [loadNotifications, loadSettings]);
+  // Set up real-time updates
+  useEffect(() => {
+    if (!realTimeUpdates) return;
+    let eventSource: EventSource | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
+    const setupRealTimeUpdates = async () => {
+      try {
+        // Try to establish SSE connection first
+        eventSource = new EventSource('/api/providers/notifications/stream');
+        eventSource.onopen = () => {
+          setConnected(true);
+        };
+        eventSource.onmessage = (event) => {
+          try {
+            const notification: ProviderNotification = JSON.parse(event.data);
+            addNotification(notification);
+          } catch (error) {
+            logNotificationError('Failed to parse provider notification event', error);
+          }
+        };
+        eventSource.onerror = () => {
+          setConnected(false);
+          // Fallback to polling
+          if (!pollInterval) {
+            pollInterval = setInterval(() => {
+              loadNotifications();
+            }, 30000); // Poll every 30 seconds
+          }
+        };
+      } catch (error) {
+        logNotificationError('Failed to establish real-time provider notifications, falling back to polling', error);
+        // Fallback to polling
+        pollInterval = setInterval(() => {
+          loadNotifications();
+        }, 30000);
+      }
+    };
+    setupRealTimeUpdates();
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [realTimeUpdates, loadNotifications, addNotification, logNotificationError]);
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
@@ -187,10 +195,10 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/read`, {
       method: 'POST'
-    }).catch(_error => {
-      // Handle error silently
+    }).catch((error) => {
+      logNotificationError(`Failed to mark provider notification ${notificationId} as read`, error);
     });
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const dismissNotification = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, dismissed: true } : n)
@@ -198,19 +206,19 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     // Update backend
     backend.makeRequestPublic(`/api/providers/notifications/${notificationId}/dismiss`, {
       method: 'POST'
-    }).catch(_error => {
-      // Handle error silently
+    }).catch((error) => {
+      logNotificationError(`Failed to dismiss provider notification ${notificationId}`, error);
     });
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const clearAllNotifications = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, dismissed: true })));
     // Update backend
     backend.makeRequestPublic('/api/providers/notifications/clear-all', {
       method: 'POST'
-    }).catch(_error => {
-      // Handle error silently
+    }).catch((error) => {
+      logNotificationError('Failed to clear provider notifications', error);
     });
-  }, [backend]);
+  }, [backend, logNotificationError]);
   const createNotification = useCallback((
     type: ProviderNotification['type'],
     title: string,

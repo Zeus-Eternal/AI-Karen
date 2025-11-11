@@ -1,4 +1,10 @@
-import axe, { type AxeResults, type RunOptions } from "axe-core";
+import axe, {
+  type AxeResults,
+  type ElementContext,
+  type NodeResult,
+  type Result,
+  type RunOptions,
+} from "axe-core";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -111,11 +117,11 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: Element | Document;
+  private container: ElementContext;
   private options: RunOptions;
 
   constructor(
-    container: Element | Document = document,
+    container: ElementContext = document,
     options: RunOptions = {}
   ) {
     this.container = container;
@@ -131,7 +137,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container as any, {
+      const results = await axe.run(this.container, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -145,7 +151,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container as any, {
+      const results = await axe.run(this.container, {
         ...this.options,
         runOnly: {
           type: "tag",
@@ -567,13 +573,13 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     duration: number
   ): AccessibilityReport {
     const violations: AccessibilityViolation[] = results.violations.map(
-      (violation: any) => ({
+      (violation: Result) => ({
         id: violation.id,
         impact: violation.impact,
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,
-        elements: violation.nodes.map((node: any) => ({
+        elements: violation.nodes.map((node: NodeResult) => ({
           target: node.target.join(" "),
           html: node.html,
           failureSummary: node.failureSummary || "",
