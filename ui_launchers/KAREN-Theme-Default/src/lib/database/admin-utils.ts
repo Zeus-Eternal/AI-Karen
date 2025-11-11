@@ -189,6 +189,28 @@ interface SecurityAlertRecord {
   resolution_note?: string | null;
 }
 
+interface UserRecord {
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  role: User['role'];
+  roles?: unknown;
+  tenant_id?: string | null;
+  preferences?: unknown;
+  is_verified?: boolean | number | null;
+  is_active?: boolean | number | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+  last_login_at?: string | Date | null;
+  failed_login_attempts?: number | null;
+  locked_until?: string | Date | null;
+  two_factor_enabled?: boolean | number | null;
+  two_factor_secret?: string | null;
+  created_by?: string | null;
+}
+
+type ConfigValue = string | number | boolean | Record<string, unknown> | unknown[];
+
 export interface SecurityAlert {
   id: string;
   type: string;
@@ -371,44 +393,44 @@ export class AdminDatabaseUtils {
     };
   }
 
-  private mapUserRow(row: any): User {
-    let preferences: User['preferences'] | undefined;
-    if (row.preferences) {
-      try {
-        preferences = typeof row.preferences === 'string'
-          ? JSON.parse(row.preferences)
-          : row.preferences;
-      } catch {
-        preferences = undefined;
+    private mapUserRow(row: UserRecord): User {
+      let preferences: User['preferences'] | undefined;
+      if (row.preferences) {
+        try {
+          preferences = typeof row.preferences === 'string'
+            ? JSON.parse(row.preferences)
+            : (row.preferences as User['preferences']);
+        } catch {
+          preferences = undefined;
+        }
       }
+
+      const roles: string[] = Array.isArray(row.roles)
+        ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
+        : row.role
+          ? [row.role]
+          : [];
+
+      return {
+        user_id: row.user_id,
+        email: row.email,
+        full_name: row.full_name ?? undefined,
+        role: row.role,
+        roles,
+        tenant_id: row.tenant_id ?? 'default',
+        preferences,
+        is_verified: Boolean(row.is_verified),
+        is_active: Boolean(row.is_active),
+        created_at: new Date(row.created_at),
+        updated_at: new Date(row.updated_at),
+        last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
+        failed_login_attempts: row.failed_login_attempts ?? 0,
+        locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
+        two_factor_enabled: Boolean(row.two_factor_enabled),
+        two_factor_secret: row.two_factor_secret ?? null,
+        created_by: row.created_by ?? undefined,
+      };
     }
-
-    const roles: string[] = Array.isArray(row.roles)
-      ? row.roles.filter((value: unknown): value is string => typeof value === 'string')
-      : row.role
-        ? [row.role]
-        : [];
-
-    return {
-      user_id: row.user_id,
-      email: row.email,
-      full_name: row.full_name ?? undefined,
-      role: row.role,
-      roles,
-      tenant_id: row.tenant_id ?? 'default',
-      preferences,
-      is_verified: Boolean(row.is_verified),
-      is_active: Boolean(row.is_active),
-      created_at: new Date(row.created_at),
-      updated_at: new Date(row.updated_at),
-      last_login_at: row.last_login_at ? new Date(row.last_login_at) : undefined,
-      failed_login_attempts: row.failed_login_attempts ?? 0,
-      locked_until: row.locked_until ? new Date(row.locked_until) : undefined,
-      two_factor_enabled: Boolean(row.two_factor_enabled),
-      two_factor_secret: row.two_factor_secret ?? null,
-      created_by: row.created_by ?? undefined,
-    };
-  }
 
   /**
    * Find user by email with role information
@@ -1052,7 +1074,7 @@ export class AdminDatabaseUtils {
       throw new AdminDatabaseError('Missing user information for security settings update', 'updateSecuritySettings');
     }
 
-    const updates: Array<{ key: string; value: unknown }> = [];
+    const updates: Array<{ key: string; value: ConfigValue }> = [];
 
     if (settings.mfaEnforcement) {
       if (typeof settings.mfaEnforcement.enabled === 'boolean') {
@@ -1119,7 +1141,7 @@ export class AdminDatabaseUtils {
     }
 
     for (const update of updates) {
-      await this.updateSystemConfig(update.key, update.value as any, updatedBy);
+      await this.updateSystemConfig(update.key, update.value, updatedBy);
     }
   }
 
@@ -1369,7 +1391,8 @@ export class AdminDatabaseUtils {
       // Check specific permissions
       const requiredPermission = `${resourceType}.${action}`;
       return roleQuery.permissions.includes(requiredPermission);
-    } catch (_error) {
+    } catch (error) {
+      console.warn('Permission check failed, denying access by default.', error);
       // If we can't determine permissions, deny access
       return false;
     }

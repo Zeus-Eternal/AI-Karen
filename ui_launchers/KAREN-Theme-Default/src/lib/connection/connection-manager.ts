@@ -88,7 +88,7 @@ export enum CircuitBreakerState {
 
 // Type aliases for compatibility
 export type ConnectionOptionsType = ConnectionOptions;
-export type RequestResultType<T = any> = RequestResult<T>;
+export type RequestResultType<T = unknown> = RequestResult<T>;
 export type ConnectionStatusType = ConnectionStatus;
 export type ConnectionErrorType = ConnectionError;
 
@@ -103,7 +103,7 @@ export class ConnectionManager {
   /**
    * Make an HTTP request with retry logic and error handling
    */
-  async makeRequest<T = any>(
+  async makeRequest<T = unknown>(
     url: string,
     options: RequestInit = {},
     config: RequestConfig = {}
@@ -201,7 +201,8 @@ export class ConnectionManager {
     const duration = Date.now() - startTime;
     logger.error(
       `Request failed for ${url} after ${retryAttempts + 1} attempts:`,
-      lastError?.message || 'Unknown error'
+      lastError?.message || 'Unknown error',
+      { duration }
     );
 
     throw lastError || new ConnectionError(
@@ -215,54 +216,63 @@ export class ConnectionManager {
    * Handle request errors and convert to ConnectionError
    */
   private handleRequestError(
-    error: Error,
+    error: unknown,
     url: string,
     attempt: number
   ): ConnectionError {
-    if (error instanceof ConnectionError) {
-      return error;
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error(String(error ?? 'Unknown error'));
+
+    if (normalizedError instanceof ConnectionError) {
+      return normalizedError;
     }
 
+    logger.debug(`Handling request error for ${url} (attempt ${attempt})`, {
+      name: normalizedError.name,
+      message: normalizedError.message,
+    });
+
     // Handle abort/timeout errors
-    if (error.name === 'AbortError') {
+    if (normalizedError.name === 'AbortError') {
       return new ConnectionError(
         'Request timeout',
         ErrorCategory.TIMEOUT_ERROR,
         true,
         408,
-        error
+        normalizedError
       );
     }
 
     // Handle network errors
-    if (error instanceof TypeError) {
+    if (normalizedError instanceof TypeError) {
       return new ConnectionError(
         'Network error: Unable to connect to service',
         ErrorCategory.NETWORK_ERROR,
         true,
         0,
-        error
+        normalizedError
       );
     }
 
     // Handle fetch errors
-    if (error.message && error.message.includes('fetch')) {
+    if (normalizedError.message && normalizedError.message.includes('fetch')) {
       return new ConnectionError(
         'Network error: Fetch failed',
         ErrorCategory.NETWORK_ERROR,
         true,
         0,
-        error
+        normalizedError
       );
     }
 
     // Generic error
     return new ConnectionError(
-      error.message || 'Unknown connection error',
+      normalizedError.message || 'Unknown connection error',
       ErrorCategory.UNKNOWN_ERROR,
       true,
       0,
-      error
+      normalizedError
     );
   }
 

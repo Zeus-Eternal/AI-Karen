@@ -8,9 +8,33 @@
 
 let isInitialized = false;
 
-function isInterceptorSignature(msgOrStack: any): boolean {
+type ConsoleArgs = Parameters<typeof console.error>;
+
+function toStringSafe(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  try {
+    return String(value);
+  } catch {
+    return '';
+  }
+}
+
+function extractStack(value: unknown): string {
+  if (typeof value === 'object' && value !== null && 'stack' in value) {
+    const stack = (value as { stack?: unknown }).stack;
+    return toStringSafe(stack);
+  }
+  return '';
+}
+
+function isInterceptorSignature(msgOrStack: unknown): boolean {
   if (!msgOrStack) return false;
-  const s = typeof msgOrStack === 'string' ? msgOrStack : String((msgOrStack as any) ?? '');
+  const s = typeof msgOrStack === 'string' ? msgOrStack : toStringSafe(msgOrStack);
   return (
     s.includes('console-error.js') ||
     s.includes('use-error-handler.js') ||
@@ -29,17 +53,17 @@ export function initializeConsoleErrorFix(): void {
   // ---------------------------
   // Override console.error
   // ---------------------------
-  console.error = function patchedConsoleError(...args: any[]) {
+  console.error = function patchedConsoleError(...args: ConsoleArgs) {
     try {
       const first = args[0];
-      const msg = typeof first === 'string' ? first : first?.toString?.() ?? '';
+      const msg = toStringSafe(first);
 
       // Known noisy paths or specific component signatures
       if (
         isInterceptorSignature(msg) ||
         (typeof msg === 'string' && msg.includes('ChatInterface') && msg.includes('sendMessage')) ||
         // also check nested error objects for stack signatures
-        args.some((a) => isInterceptorSignature((a as any)?.stack))
+        args.some((arg) => isInterceptorSignature(extractStack(arg)))
       ) {
         // Downshift with a safety marker, but do not rethrow
         originalConsoleError('[SAFE]', ...args);
@@ -57,12 +81,12 @@ export function initializeConsoleErrorFix(): void {
   // ---------------------------
   // Override console.warn
   // ---------------------------
-  console.warn = function patchedConsoleWarn(...args: any[]) {
+  console.warn = function patchedConsoleWarn(...args: ConsoleArgs) {
     try {
       const first = args[0];
-      const msg = typeof first === 'string' ? first : first?.toString?.() ?? '';
+      const msg = toStringSafe(first);
 
-      if (isInterceptorSignature(msg) || args.some((a) => isInterceptorSignature((a as any)?.stack))) {
+      if (isInterceptorSignature(msg) || args.some((arg) => isInterceptorSignature(extractStack(arg)))) {
         originalConsoleWarn('[SAFE]', ...args);
         return;
       }
@@ -80,18 +104,20 @@ export function initializeConsoleErrorFix(): void {
     'error',
     (event: ErrorEvent) => {
       try {
-        const stk = (event?.error as any)?.stack || '';
-        if (isInterceptorSignature(stk)) {
+        const stack = extractStack(event.error);
+        if (isInterceptorSignature(stack)) {
           event.preventDefault();
           event.stopPropagation?.();
-          (event as any).stopImmediatePropagation?.();
+          if ('stopImmediatePropagation' in event) {
+            event.stopImmediatePropagation();
+          }
 
           originalConsoleError('[SAFE] Prevented console interceptor error:', {
             message: event?.error?.message ?? event.message,
             filename: event.filename,
             lineno: event.lineno,
             colno: event.colno,
-            stack: (event?.error as any)?.stack,
+            stack,
           });
         }
       } catch (e) {
@@ -108,9 +134,11 @@ export function initializeConsoleErrorFix(): void {
     'unhandledrejection',
     (event: PromiseRejectionEvent) => {
       try {
-        const reason: any = event.reason;
-        const msg = reason?.message ?? String(reason ?? '');
-        const stk = reason?.stack ?? '';
+        const { reason } = event;
+        const msg = typeof reason === 'object' && reason !== null && 'message' in reason
+          ? toStringSafe((reason as { message?: unknown }).message)
+          : toStringSafe(reason);
+        const stk = extractStack(reason);
 
         if (isInterceptorSignature(stk) || isInterceptorSignature(msg)) {
           event.preventDefault?.();
