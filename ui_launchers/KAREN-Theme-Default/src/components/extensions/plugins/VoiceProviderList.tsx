@@ -1,6 +1,4 @@
 "use client";
-
-import { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
@@ -11,15 +9,12 @@ interface VoiceProvider {
   previewText?: string;
 }
 
-const DEFAULT_PROVIDERS: readonly VoiceProvider[] = [
+const DEFAULT_VOICE_PROVIDERS: VoiceProvider[] = [
   { id: "system", name: "System Voices", previewText: "Hello from your system" },
 ];
 
 export default function VoiceProviderList() {
-  const providers = useMemo(
-    () => DEFAULT_PROVIDERS.map((provider) => ({ ...provider })),
-    []
-  );
+  const providers = DEFAULT_VOICE_PROVIDERS;
 
   const handlePreview = (text?: string) => {
     if (!text) return;

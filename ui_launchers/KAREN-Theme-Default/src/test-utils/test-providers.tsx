@@ -7,7 +7,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { AuthContext, AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
+import { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/auth-context-instance';
 
 // Vitest mocking utilities (vi) are provided globally via tsconfig types.
 

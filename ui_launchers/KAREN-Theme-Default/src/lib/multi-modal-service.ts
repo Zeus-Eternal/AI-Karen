@@ -38,7 +38,7 @@ export interface MultiModalProvider {
     maxDuration?: number;
     dailyLimit?: number;
   };
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   health?: {
     lastChecked?: string;
     healthy?: boolean;
@@ -87,7 +87,7 @@ export interface GenerationResult {
     url?: string;
     urls?: string[];
     data?: string; // base64 for small files
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
   error?: string;
   progress?: number;
@@ -102,12 +102,17 @@ export interface KarenPromptEnhancement {
   improvements: string[];
   confidence: number;
   suggestedProvider?: string;
-  suggestedParameters?: Record<string, any>;
+  suggestedParameters?: Record<string, unknown>;
 }
+
+type GenerationResponse = GenerationResult | { error?: string };
+
+const isGenerationResult = (response: GenerationResponse): response is GenerationResult =>
+  response !== null && typeof response === 'object' && 'status' in response;
 
 // Optional telemetry hooks (no-op friendly)
 export type Telemetry = {
-  track?: (event: string, payload?: Record<string, any>) => void;
+  track?: (event: string, payload?: Record<string, unknown>) => void;
 };
 
 // ---------------------- Service ----------------------
@@ -373,7 +378,7 @@ class MultiModalService {
     this.activeGenerations.set(generationId, result);
 
     // fire-and-forget processing (caller can poll via getGeneration)
-    this.processGeneration(result, finalPrompt, request.parameters || {}, request.timeoutMs).catch(() => {});
+    this.processGeneration(result, finalPrompt, request.parameters, request.timeoutMs).catch(() => {});
 
     return result;
   }
@@ -381,7 +386,7 @@ class MultiModalService {
   private async processGeneration(
     result: GenerationResult,
     prompt: string,
-    parameters: Record<string, any>,
+    parameters?: Record<string, unknown>,
     timeoutMs?: number
   ) {
     const karenBackend = getKarenBackend();
@@ -394,7 +399,9 @@ class MultiModalService {
       result.status = "processing";
       this.activeGenerations.set(result.id, result);
 
-      const response = await karenBackend.makeRequestPublic<GenerationResult>(
+      const safeParameters: Record<string, unknown> = parameters ?? {};
+
+      const response = await karenBackend.makeRequestPublic<GenerationResponse>(
         "/api/multimodal/generate",
         {
           method: "POST",
@@ -402,13 +409,13 @@ class MultiModalService {
             provider: result.provider,
             type: result.type,
             prompt,
-            parameters,
+            parameters: safeParameters,
           }),
           signal: controller?.signal,
         }
       );
 
-      if (response && typeof response === "object" && "status" in response) {
+      if (isGenerationResult(response)) {
         if (response.status === "completed") {
           result.status = "completed";
           result.result = response.result;
@@ -421,7 +428,7 @@ class MultiModalService {
           });
         } else {
           result.status = "failed";
-          result.error = (response as any).error || "Generation failed";
+          result.error = response.error || "Generation failed";
           this.telemetry?.track?.("generation_failed", {
             id: result.id,
             provider: result.provider,
@@ -429,6 +436,15 @@ class MultiModalService {
             error: result.error,
           });
         }
+      } else if (response.error) {
+        result.status = "failed";
+        result.error = response.error;
+        this.telemetry?.track?.("generation_failed", {
+          id: result.id,
+          provider: result.provider,
+          type: result.type,
+          error: result.error,
+        });
       } else {
         result.status = "failed";
         result.error = "Invalid response from server";

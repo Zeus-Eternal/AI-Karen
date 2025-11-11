@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ExtensionTaskHistoryEntry } from '@/extensions/types';
 import type { ExtensionStatus } from '@/lib/extensions/extension-integration';
 import { useExtensionTaskMonitoring, useExtensionTasks, type ExtensionTaskMonitoringSummary } from '@/lib/extensions/hooks';
@@ -33,16 +33,12 @@ export interface BackgroundTaskMonitorProps {
 
 export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTaskMonitorProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedExtension, setSelectedExtension] = useState<string | null>(extensionId || null);
+  const [manualExtensionId, setManualExtensionId] = useState<string | null>(null);
 
-  const taskData = useExtensionTaskMonitoring(extensionId);
-  const { history, loading } = useExtensionTasks(selectedExtension ?? extensionId);
+  const selectedExtension = extensionId ?? manualExtensionId;
 
-  useEffect(() => {
-    if (extensionId) {
-      setSelectedExtension(extensionId);
-    }
-  }, [extensionId]);
+  const taskData = useExtensionTaskMonitoring(selectedExtension ?? undefined);
+  const { history, loading } = useExtensionTasks(selectedExtension ?? undefined);
 
   const taskStats = useMemo(() => {
     const recentExecutions = history.slice(0, 10);
@@ -71,8 +67,8 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Background Task Monitor</h2>
           <p className="text-gray-600 mt-1">
-            {extensionId 
-              ? `Monitoring tasks for ${extensionId}`
+            {selectedExtension
+              ? `Monitoring tasks for ${selectedExtension}`
               : 'Monitor background tasks across all extensions'
             }
           </p>
@@ -162,7 +158,7 @@ export function BackgroundTaskMonitor({ extensionId, className }: BackgroundTask
           <ExtensionTaskList
             extensions={taskData.statuses}
             selectedExtension={selectedExtension}
-            onSelectExtension={(id) => setSelectedExtension(id)}
+            onSelectExtension={(id) => setManualExtensionId(id)}
           />
         </TabsContent>
 

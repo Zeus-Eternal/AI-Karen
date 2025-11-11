@@ -7,6 +7,7 @@
 
 import { logger } from './logger';
 import { handleExtensionError, shouldUseExtensionFallback, getExtensionErrorMessage } from './extension-error-integration';
+import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 
 /**
  * Patch the KarenBackend service to handle extension errors
@@ -14,14 +15,15 @@ import { handleExtensionError, shouldUseExtensionFallback, getExtensionErrorMess
  */
 export function patchKarenBackendForExtensions() {
   // Check if window.handleKarenBackendError exists (from error-recovery-integration)
-  if (typeof window !== 'undefined' && (window as any).handleKarenBackendError) {
+  const win = window as Window & { handleKarenBackendError?: HandleKarenBackendErrorFn };
+  if (typeof window !== 'undefined' && win.handleKarenBackendError) {
     logger.info('KarenBackend extension error handling already integrated');
     return;
   }
 
   // Add extension error handling to window for KarenBackend to use
   if (typeof window !== 'undefined') {
-    (window as any).handleExtensionError = (status: number, url: string, operation?: string) => {
+    win.handleExtensionError = (status: number, url: string, operation?: string) => {
       if (shouldUseExtensionFallback(status, url)) {
         const result = handleExtensionError(status, url, operation);
         
@@ -51,8 +53,8 @@ export const karenBackendIntegrationExample = `
 
 if (!response.ok) {
   // Check if this is an extension error that should be handled specially
-  if (typeof window !== 'undefined' && (window as any).handleExtensionError) {
-    const extensionErrorResult = (window as any).handleExtensionError(
+  if (typeof window !== 'undefined' && window.handleExtensionError) {
+    const extensionErrorResult = window.handleExtensionError(
       response.status, 
       response.url, 
       operation

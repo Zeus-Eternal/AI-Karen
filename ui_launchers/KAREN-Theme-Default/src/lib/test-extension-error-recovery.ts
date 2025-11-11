@@ -5,8 +5,18 @@
  */
 
 import { logger } from './logger';
-import { handleExtensionError } from './extension-error-integration';
+import { handleExtensionError, type ExtensionErrorResponse } from './extension-error-integration';
 import { getExtensionFallbackData } from './auth/extension-auth-degradation';
+
+type ExtensionErrorIntegration = {
+  handleExtensionError: (status: number, url: string) => ExtensionErrorResponse;
+};
+
+declare global {
+  interface Window {
+    extensionErrorIntegration?: ExtensionErrorIntegration;
+  }
+}
 
 /**
  * Test extension error recovery functionality
@@ -28,7 +38,7 @@ export function testExtensionErrorRecovery() {
 
   // Test if the integration is available globally
   if (typeof window !== 'undefined') {
-    const globalHandler = (window as any).extensionErrorIntegration;
+    const globalHandler = window.extensionErrorIntegration;
     if (globalHandler) {
       logger.info('Global extension error integration is available');
       const globalResult = globalHandler.handleExtensionError(403, '/api/extensions');
@@ -42,7 +52,7 @@ export function testExtensionErrorRecovery() {
     result403,
     result504,
     fallbackData,
-    globalAvailable: typeof window !== 'undefined' && !!(window as any).extensionErrorIntegration
+    globalAvailable: typeof window !== 'undefined' && !!window.extensionErrorIntegration
   };
 }
 

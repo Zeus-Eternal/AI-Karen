@@ -15,7 +15,7 @@ import { useCopilotIntegration } from "./hooks/useCopilotIntegration";
 import { useVoiceInput } from "./hooks/useVoiceInput";
 import { useArtifactManagement } from "./hooks/useArtifactManagement";
 import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import type { ChatInterfaceProps, CopilotAction, CopilotArtifact, ChatContext } from "./types";
 import { DEFAULT_CHAT_HEIGHT, DEFAULT_PLACEHOLDER } from "./constants";
 import { safeDebug } from "@/lib/safe-console";

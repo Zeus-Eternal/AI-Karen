@@ -140,7 +140,9 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               JSON.stringify(newValue)
             );
           } catch (error) {
-            console.warn("Failed to persist sidebar open state", error);
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar open state", error);
+            }
           }
         }
       },
@@ -159,12 +161,14 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
               JSON.stringify(newValue)
             );
           } catch (error) {
-            console.warn("Failed to persist sidebar collapsed state", error);
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Failed to persist sidebar collapsed state", error);
+            }
           }
-      }
-    },
-    [sidebarCollapsed, persistSidebarState, hasWindow]
-  );
+        }
+      },
+      [sidebarCollapsed, persistSidebarState, hasWindow]
+    );
 
     // Utilities
     const toggleSidebar = useCallback(() => {

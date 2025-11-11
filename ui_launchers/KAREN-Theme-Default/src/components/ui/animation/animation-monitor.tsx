@@ -40,6 +40,7 @@ export const AnimationMonitor: React.FC<AnimationMonitorProps> = ({
   } = useAnimationPerformance();
 
   const historicalMetricsRef = useRef<AnimationMetrics[]>([]);
+
   const historicalMetrics = useMemo(() => {
     if (!metrics) {
       return historicalMetricsRef.current;
