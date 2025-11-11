@@ -151,9 +151,9 @@ export class ExtensionAuthDegradationManager {
       }
     ];
 
-    for (const feature of defaultFeatures) {
+    defaultFeatures.forEach((feature) => {
       this.featureConfigs.set(feature.name, feature);
-    }
+    });
   }
 
   /**

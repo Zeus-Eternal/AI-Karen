@@ -62,9 +62,12 @@ export { default as RBACGuard } from './RBACGuard';
 export type {
   RBACGuardProps,
 } from './RBACGuard';
+export { usePermissions } from './usePermissions';
+export type { UsePermissionsResult } from './usePermissions';
 
 // Sanitized Markdown
 export { default as SanitizedMarkdown } from './SanitizedMarkdown';
 export type {
   SanitizedMarkdownProps,
 } from './SanitizedMarkdown';
+export { sanitizeText, sanitizeUrl } from './sanitization-utils';

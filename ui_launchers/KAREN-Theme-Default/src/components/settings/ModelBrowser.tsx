@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { getKarenBackend } from "@/lib/karen-backend";
@@ -28,22 +27,35 @@ export interface ModelBrowserProps {
   providers: LLMProvider[];
 }
 
+interface DownloadJob {
+  job_id: string;
+  status: string;
+  progress: number;
+  path: string;
+  error?: string;
+}
+
+type DownloadJobUpdate = Partial<Omit<DownloadJob, "job_id">> & { job_id?: string };
+
+type DownloadJobMap = Record<string, DownloadJob>;
+
+type KarenBackend = ReturnType<typeof getKarenBackend>;
+
 /**
  * Lightweight model browser used when the backend is unavailable.
  * Provides basic listing and client-side filtering of models loaded
  * from the parent component.  This prevents React from attempting to
  * render an undefined component which previously caused a crash.
  */
-export default function ModelBrowser({ models, setModels, providers }: ModelBrowserProps) {
+export default function ModelBrowser({ models, setModels, providers: _providers }: ModelBrowserProps) {
   const [filter, setFilter] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
-  const [jobs, setJobs] = useState<Record<string, { job_id: string; status: string; progress: number; path: string; error?: string }>>({});
-  const backend = getKarenBackend();
+  const [jobs, setJobs] = useState<DownloadJobMap>({});
+  const backend = useMemo(() => getKarenBackend(), []);
   const { toast } = useToast();
 
   // Start polling when there are active jobs
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useJobPolling(jobs, setJobs);
+  useJobPolling(backend, jobs, setJobs);
 
   const filtered = useMemo(() => {
     const lower = filter.toLowerCase();
@@ -69,20 +81,32 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
             onClick={async () => {
               if (!downloadUrl.trim()) return;
               try {
-                const res = await backend.makeRequestPublic<any>(`/api/models/local/download`, {
+                const res = await backend.makeRequestPublic<DownloadJobUpdate>(`/api/models/local/download`, {
                   method: 'POST',
-                  body: JSON.stringify({ url: downloadUrl })
+                  body: JSON.stringify({ url: downloadUrl }),
                 });
 
-                if (res?.job_id) {
+                if (res?.job_id && res.path) {
+                  const jobId = res.job_id;
                   toast({ title: 'Download started', description: res.path });
-                  setJobs(prev => ({ ...prev, [res.job_id]: { job_id: res.job_id, status: res.status || 'running', progress: res.progress || 0, path: res.path } }));
+                  setJobs((prev) => ({
+                    ...prev,
+                    [jobId]: {
+                      job_id: jobId,
+                      status: res.status ?? 'running',
+                      progress: res.progress ?? 0,
+                      path: res.path,
+                      error: res.error,
+                    },
+                  }));
                 }
-              } catch (e: Event) {
-                toast({ title: 'Download failed', description: e?.message || 'Error', variant: 'destructive' });
+              } catch (error) {
+                const message = error instanceof Error ? error.message : 'Error';
+                toast({ title: 'Download failed', description: message, variant: 'destructive' });
               }
             }}
           >
+            Download
           </Button>
         </div>
         {Object.keys(jobs).length > 0 && (
@@ -101,25 +125,67 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {job.status === 'running' && (
-                      <Button variant="outline" size="sm" onClick={async () => {
-                        try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/pause`, { method: 'POST' }); }
-                        catch {}
-                        setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'paused' } }));
-                      }}>Pause</Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/pause`, {
+                              method: 'POST',
+                            });
+                          } catch (error) {
+                            console.error('Failed to pause download job', error);
+                          }
+                          setJobs((prev) => ({
+                            ...prev,
+                            [job.job_id]: { ...prev[job.job_id], status: 'paused' },
+                          }));
+                        }}
+                      >
+                        Pause
+                      </Button>
                     )}
                     {job.status === 'paused' && (
-                      <Button variant="outline" size="sm" onClick={async () => {
-                        try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/resume`, { method: 'POST' }); }
-                        catch {}
-                        setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'running' } }));
-                      }}>Resume</Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/resume`, {
+                              method: 'POST',
+                            });
+                          } catch (error) {
+                            console.error('Failed to resume download job', error);
+                          }
+                          setJobs((prev) => ({
+                            ...prev,
+                            [job.job_id]: { ...prev[job.job_id], status: 'running' },
+                          }));
+                        }}
+                      >
+                        Resume
+                      </Button>
                     )}
                     {job.status !== 'completed' && job.status !== 'cancelled' && (
-                      <Button variant="destructive" size="sm" onClick={async () => {
-                        try { await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/cancel`, { method: 'POST' }); }
-                        catch {}
-                        setJobs(prev => ({ ...prev, [job.job_id]: { ...prev[job.job_id], status: 'cancelled' } }));
-                      }}>Cancel</Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await backend.makeRequestPublic(`/api/models/local/jobs/${job.job_id}/cancel`, {
+                              method: 'POST',
+                            });
+                          } catch (error) {
+                            console.error('Failed to cancel download job', error);
+                          }
+                          setJobs((prev) => ({
+                            ...prev,
+                            [job.job_id]: { ...prev[job.job_id], status: 'cancelled' },
+                          }));
+                        }}
+                      >
+                        Cancel
+                      </Button>
                     )}
                   </div>
                 </li>
@@ -149,14 +215,18 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
                     onClick={async () => {
                       if (!model.local_path) return;
                       try {
-                        await backend.makeRequestPublic(`/api/models/local?path=${encodeURIComponent(model.local_path)}`, { method: 'DELETE' });
+                        await backend.makeRequestPublic(`/api/models/local?path=${encodeURIComponent(model.local_path)}`,
+                          { method: 'DELETE' }
+                        );
                         toast({ title: 'Deleted', description: model.local_path });
-                        setModels(models.filter(m => m.id !== model.id));
-                      } catch (e: Event) {
-                        toast({ title: 'Delete failed', description: e?.message || 'Error', variant: 'destructive' });
+                        setModels(models.filter((m) => m.id !== model.id));
+                      } catch (error) {
+                        const message = error instanceof Error ? error.message : 'Error';
+                        toast({ title: 'Delete failed', description: message, variant: 'destructive' });
                       }
                     }}
                   >
+                    Delete
                   </Button>
                 )}
               </li>
@@ -169,24 +239,48 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
 }
 
 // Background poller for job progress
-function useJobPolling(jobs: Record<string, unknown>, setJobs: (j: Record<string, unknown>) => void) {
-  const backend = getKarenBackend();
+function useJobPolling(
+  backend: KarenBackend,
+  jobs: DownloadJobMap,
+  setJobs: React.Dispatch<React.SetStateAction<DownloadJobMap>>
+) {
   useEffect(() => {
     const ids = Object.keys(jobs);
-    if (ids.length === 0) return;
-    const iv = setInterval(async () => {
-      await Promise.all(ids.map(async (id) => {
-        const job = jobs[id];
-        if (!job) return;
-        if (job.status === 'completed' || job.status === 'cancelled' || job.status === 'error') return;
-        try {
-          const s = await backend.makeRequestPublic<any>(`/api/models/local/jobs/${id}`);
-          if (s) {
-            setJobs((prev: unknown) => ({ ...prev, [id]: { ...prev[id], ...s } }));
+    if (ids.length === 0) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      await Promise.all(
+        ids.map(async (id) => {
+          const job = jobs[id];
+          if (!job) return;
+          if (["completed", "cancelled", "error"].includes(job.status)) return;
+          try {
+            const status = await backend.makeRequestPublic<DownloadJobUpdate>(`/api/models/local/jobs/${id}`);
+            if (status) {
+              setJobs((prev) => {
+                const existingJob = prev[id];
+                if (!existingJob) {
+                  return prev;
+                }
+                return {
+                  ...prev,
+                  [id]: {
+                    ...existingJob,
+                    ...status,
+                    job_id: existingJob.job_id,
+                  },
+                };
+              });
+            }
+          } catch (error) {
+            console.error('Failed to poll download job status', error);
           }
-        } catch {}
-      }));
+        })
+      );
     }, 1500);
-    return () => clearInterval(iv);
-  }, [JSON.stringify(Object.keys(jobs))]);
+
+    return () => clearInterval(interval);
+  }, [backend, jobs, setJobs]);
 }

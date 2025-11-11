@@ -3,9 +3,9 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
-type ToastActionElement = React.ReactElement | null
+type ToastActionElement = React.ReactElement
 
-type ToastProps = {
+interface ToastProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   [key: string]: unknown

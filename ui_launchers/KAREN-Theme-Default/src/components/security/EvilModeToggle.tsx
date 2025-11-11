@@ -335,15 +335,25 @@ export interface EvilModeStatusProps {
 }
 
 function EvilModeStatus({ session, config }: EvilModeStatusProps) {
-  if (!session) return null;
-
-  const startTime = useMemo(() => new Date(session.startTime), [session.startTime]);
+  const startTime = useMemo(
+    () => (session ? new Date(session.startTime) : null),
+    [session],
+  );
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000 * 15); // update every 15s
+    if (!session) {
+      return;
+    }
+
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000 * 15);
     return () => clearInterval(id);
-  }, []);
+  }, [session]);
+
+  if (!session || !startTime) {
+    return null;
+  }
 
   const elapsedMs = now.getTime() - startTime.getTime();
   const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));

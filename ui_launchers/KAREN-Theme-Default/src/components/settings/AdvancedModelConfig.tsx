@@ -11,19 +11,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  Settings, Save, RotateCcw, Loader2, BarChart3, TrendingUp, Tag,
-  Cpu, Zap, Gauge, Clock, MemoryStick, Target, Star, Edit3,
-  CheckCircle2, AlertTriangle, Info, Download, Upload, Copy,
-  Trash2, Plus, Minus, Eye, EyeOff, Brain, Shield, Network,
-  Database, HardDrive, Layers, Cog, Rocket, TestTube, RefreshCw
+  Settings, Save, RotateCcw, Loader2, TrendingUp, Tag,
+  Cpu, Gauge, Clock, MemoryStick, Target, Info, Copy,
+  Brain, Shield, Cog, Rocket, TestTube, RefreshCw
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
@@ -435,6 +430,62 @@ const SAFETY_PARAMETERS: ParameterDefinition[] = [
   },
 ];
 
+const getDefaultParameters = (runtime: string): ModelConfig['parameters'] => {
+  const params: Record<string, unknown> = {};
+
+  const runtimeParams = getRuntimeParameters(runtime);
+  runtimeParams.forEach((param) => {
+    params[param.key] = param.default;
+  });
+
+  GENERATION_PARAMETERS.forEach((param) => {
+    params[param.key] = param.default;
+  });
+
+  SAFETY_PARAMETERS.forEach((param) => {
+    params[param.key] = param.default;
+  });
+
+  return params as ModelConfig['parameters'];
+};
+
+const getDefaultHardwareRequirements = (
+  runtime: string,
+): ModelConfig['hardware'] => {
+  const baseRequirements: ModelConfig['hardware'] = {
+    gpu_required: false,
+    min_vram_gb: 2,
+    recommended_vram_gb: 8,
+    cpu_cores: 4,
+    ram_gb: 8,
+    storage_gb: 10,
+    supported_accelerators: ['CPU'],
+  };
+
+  switch (runtime) {
+    case 'llama.cpp':
+      return { ...baseRequirements, supported_accelerators: ['CPU', 'GPU'] };
+    case 'transformers':
+      return {
+        ...baseRequirements,
+        gpu_required: true,
+        min_vram_gb: 4,
+        recommended_vram_gb: 16,
+        supported_accelerators: ['GPU', 'TPU'],
+      };
+    case 'vllm':
+      return {
+        ...baseRequirements,
+        gpu_required: true,
+        min_vram_gb: 8,
+        recommended_vram_gb: 24,
+        supported_accelerators: ['GPU'],
+      };
+    default:
+      return baseRequirements;
+  }
+};
+
 export default function AdvancedModelConfig({
   modelId,
   modelName,
@@ -448,23 +499,81 @@ export default function AdvancedModelConfig({
   // Enhanced state management
   const [config, setConfig] = useState<ModelConfig | null>(null);
   const [benchmarkResults, setBenchmarkResults] = useState<BenchmarkResult[]>([]);
-  const [modelStats, setModelStats] = useState<ModelStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [benchmarking, setBenchmarking] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'config' | 'benchmark' | 'stats' | 'metadata' | 'security' | 'hardware'>('config');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [importExportOpen, setImportExportOpen] = useState(false);
   const [configHistory, setConfigHistory] = useState<ModelConfig[]>([]);
-  
+
   // Form state
-  const [newTag, setNewTag] = useState('');
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [editingNotes, setEditingNotes] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   const { toast } = useToast();
-  const backend = getKarenBackend();
+  const backend = useMemo(() => getKarenBackend(), []);
+
+  const loadModelConfig = useCallback(async () => {
+    const response = await backend.makeRequestPublic<ModelConfig>(`/api/models/${modelId}/config`);
+    if (response) {
+      setConfig(response);
+      return;
+    }
+
+    const defaultConfig: ModelConfig = {
+      model_id: modelId,
+      model_name: modelName,
+      runtime,
+      version,
+      parameters: getDefaultParameters(runtime),
+      hardware: getDefaultHardwareRequirements(runtime),
+      metadata: {
+        tags: [],
+        description: '',
+        notes: '',
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        last_used: 0,
+        usage_count: 0,
+        performance_rating: 0,
+        license: 'Unknown',
+        authors: [],
+        source: '',
+        benchmark_score: 0,
+        safety_rating: 0,
+        efficiency_score: 0,
+        custom_fields: {}
+      },
+      security: {
+        encrypted: false,
+        signed: false,
+        verified_source: false,
+        access_control: false,
+        audit_logging: true,
+        compliance_level: 'basic'
+      }
+    };
+    setConfig(defaultConfig);
+  }, [backend, modelId, modelName, runtime, version]);
+
+  const loadBenchmarkResults = useCallback(async () => {
+    try {
+      const response = await backend.makeRequestPublic<BenchmarkResult[]>(`/api/models/${modelId}/benchmarks`);
+      setBenchmarkResults(response || []);
+    } catch (error) {
+      console.error('Failed to load benchmark results:', error);
+      setBenchmarkResults([]);
+    }
+  }, [backend, modelId]);
+
+  const loadConfigHistory = useCallback(async () => {
+    try {
+      const response = await backend.makeRequestPublic<ModelConfig[]>(`/api/models/${modelId}/config/history`);
+      setConfigHistory(response || []);
+    } catch (error) {
+      console.error('Failed to load config history:', error);
+      setConfigHistory([]);
+    }
+  }, [backend, modelId]);
 
   // Enhanced data loading with error handling and caching
   useEffect(() => {
@@ -474,7 +583,6 @@ export default function AdvancedModelConfig({
         await Promise.all([
           loadModelConfig(),
           loadBenchmarkResults(),
-          loadModelStats(),
           loadConfigHistory()
         ]);
       } catch (error) {
@@ -482,7 +590,7 @@ export default function AdvancedModelConfig({
         toast({
           variant: 'destructive',
           title: "Load Failed",
-          description: "Could not load model configuration and statistics",
+          description: "Could not load model configuration data",
         });
       } finally {
         setLoading(false);
@@ -490,141 +598,7 @@ export default function AdvancedModelConfig({
     };
 
     loadData();
-  }, [modelId]);
-
-  const loadModelConfig = async () => {
-    try {
-      const response = await backend.makeRequestPublic<ModelConfig>(`/api/models/${modelId}/config`);
-      if (response) {
-        setConfig(response);
-      } else {
-        // Create comprehensive default config
-        const defaultConfig: ModelConfig = {
-          model_id: modelId,
-          model_name: modelName,
-          runtime: runtime,
-          version: version,
-          parameters: getDefaultParameters(runtime),
-          hardware: getDefaultHardwareRequirements(runtime),
-          metadata: {
-            tags: [],
-            description: '',
-            notes: '',
-            created_at: Date.now(),
-            updated_at: Date.now(),
-            last_used: 0,
-            usage_count: 0,
-            performance_rating: 0,
-            license: 'Unknown',
-            authors: [],
-            source: '',
-            benchmark_score: 0,
-            safety_rating: 0,
-            efficiency_score: 0,
-            custom_fields: {}
-          },
-          security: {
-            encrypted: false,
-            signed: false,
-            verified_source: false,
-            access_control: false,
-            audit_logging: true,
-            compliance_level: 'basic'
-          }
-        };
-        setConfig(defaultConfig);
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const loadBenchmarkResults = async () => {
-    try {
-      const response = await backend.makeRequestPublic<BenchmarkResult[]>(`/api/models/${modelId}/benchmarks`);
-      setBenchmarkResults(response || []);
-    } catch (error) {
-      console.error('Failed to load benchmark results:', error);
-      setBenchmarkResults([]);
-    }
-  };
-
-  const loadModelStats = async () => {
-    try {
-      const response = await backend.makeRequestPublic<ModelStats>(`/api/models/${modelId}/stats`);
-      setModelStats(response);
-    } catch (error) {
-      console.error('Failed to load model stats:', error);
-      setModelStats(null);
-    }
-  };
-
-  const loadConfigHistory = async () => {
-    try {
-      const response = await backend.makeRequestPublic<ModelConfig[]>(`/api/models/${modelId}/config/history`);
-      setConfigHistory(response || []);
-    } catch (error) {
-      console.error('Failed to load config history:', error);
-      setConfigHistory([]);
-    }
-  };
-
-    const getDefaultParameters = (runtime: string) => {
-      const params: Record<string, unknown> = {};
-
-      // Runtime parameters
-      const runtimeParams = getRuntimeParameters(runtime);
-      runtimeParams.forEach((param) => {
-        params[param.key] = param.default;
-      });
-
-      // Generation parameters
-      GENERATION_PARAMETERS.forEach((param) => {
-        params[param.key] = param.default;
-      });
-
-      // Safety parameters
-      SAFETY_PARAMETERS.forEach((param) => {
-        params[param.key] = param.default;
-      });
-
-      return params;
-    };
-
-  const getDefaultHardwareRequirements = (runtime: string) => {
-    const baseRequirements = {
-      gpu_required: false,
-      min_vram_gb: 2,
-      recommended_vram_gb: 8,
-      cpu_cores: 4,
-      ram_gb: 8,
-      storage_gb: 10,
-      supported_accelerators: ['CPU']
-    };
-
-    switch (runtime) {
-      case 'llama.cpp':
-        return { ...baseRequirements, supported_accelerators: ['CPU', 'GPU'] };
-      case 'transformers':
-        return { 
-          ...baseRequirements, 
-          gpu_required: true, 
-          min_vram_gb: 4,
-          recommended_vram_gb: 16,
-          supported_accelerators: ['GPU', 'TPU'] 
-        };
-      case 'vllm':
-        return { 
-          ...baseRequirements, 
-          gpu_required: true, 
-          min_vram_gb: 8,
-          recommended_vram_gb: 24,
-          supported_accelerators: ['GPU'] 
-        };
-      default:
-        return baseRequirements;
-    }
-  };
+  }, [loadBenchmarkResults, loadConfigHistory, loadModelConfig, toast]);
 
   // Enhanced parameter updates with validation
     const validateParameter = useCallback(
@@ -706,62 +680,6 @@ export default function AdvancedModelConfig({
       [validateParameter]
     );
 
-  const updateMetadata = <K extends keyof ModelConfig['metadata']>(
-    key: K,
-    value: ModelConfig['metadata'][K],
-  ) => {
-    setConfig((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      const currentValue = prev.metadata[key];
-      if (Object.is(currentValue, value)) {
-        return prev;
-      }
-
-      setHasUnsavedChanges(true);
-
-      return {
-        ...prev,
-        metadata: {
-          ...prev.metadata,
-          [key]: value,
-          updated_at: Date.now(),
-        },
-      };
-    });
-  };
-
-  const updateSecurity = <K extends keyof ModelConfig['security']>(
-    key: K,
-    value: ModelConfig['security'][K],
-  ) => {
-    setConfig((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      if (Object.is(prev.security[key], value)) {
-        return prev;
-      }
-
-      setHasUnsavedChanges(true);
-
-      return {
-        ...prev,
-        security: {
-          ...prev.security,
-          [key]: value,
-        },
-        metadata: {
-          ...prev.metadata,
-          updated_at: Date.now(),
-        },
-      };
-    });
-  };
-
   // Enhanced save with backup and validation
   const saveConfig = async () => {
     if (!config) return;
@@ -779,10 +697,7 @@ export default function AdvancedModelConfig({
 
     try {
       setSaving(true);
-      
-      // Create backup before saving
-      const backup = { ...config };
-      
+
       await backend.makeRequestPublic(`/api/models/${modelId}/config`, {
         method: 'PUT',
         body: JSON.stringify(config)
@@ -1074,7 +989,11 @@ export default function AdvancedModelConfig({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setConfigHistory([...configHistory, config])}
+                onClick={() => {
+                  if (config) {
+                    setConfigHistory((previous) => [config, ...previous]);
+                  }
+                }}
               >
                 <Copy className="h-4 w-4 mr-2" />
                 Backup
@@ -1083,8 +1002,14 @@ export default function AdvancedModelConfig({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setConfig(configHistory[0] || null);
+                  const previousConfig = configHistory[0];
+                  if (!previousConfig) {
+                    return;
+                  }
+
+                  setConfig(previousConfig);
                   setHasUnsavedChanges(true);
+                  onConfigReset?.();
                 }}
                 disabled={configHistory.length === 0}
               >

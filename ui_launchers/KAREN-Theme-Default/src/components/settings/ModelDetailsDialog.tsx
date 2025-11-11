@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Cpu, Zap, DollarSign, Info, CheckCircle, XCircle } from 'lucide-react';
+import { Cpu, Zap, DollarSign, Info, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ModelInfo } from './ModelCard';
 

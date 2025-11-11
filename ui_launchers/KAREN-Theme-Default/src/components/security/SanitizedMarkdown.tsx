@@ -85,7 +85,7 @@ export const SanitizedMarkdown: React.FC<SanitizedMarkdownProps> = ({
         }, [] as string[]),
         ALLOW_DATA_ATTR: false,
         ALLOW_UNKNOWN_PROTOCOLS: false,
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|xxx):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|xxx):|[^a-z]|[-+.a-z]+(?:[^-+.a-z:]|$))/i,
         ADD_TAGS: [],
         ADD_ATTR: [],
         FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'button'],
@@ -137,30 +137,5 @@ export const SanitizedMarkdown: React.FC<SanitizedMarkdownProps> = ({
       data-sanitized="true"
     />
   );
-};
-// Utility function for sanitizing plain text (no markdown)
-export const sanitizeText = (text: string, maxLength: number = 10000): string => {
-  if (!text) return '';
-  const truncated = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-  return DOMPurify.sanitize(truncated, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
-    KEEP_CONTENT: true
-  });
-};
-// Utility function for sanitizing URLs
-export const sanitizeUrl = (url: string): string => {
-  if (!url) return '';
-  try {
-    const parsed = new URL(url);
-    // Only allow safe protocols
-    const allowedProtocols = ['http:', 'https:', 'mailto:', 'tel:'];
-    if (!allowedProtocols.includes(parsed.protocol)) {
-      return '';
-    }
-    return parsed.toString();
-  } catch {
-    return '';
-  }
 };
 export default SanitizedMarkdown;

@@ -45,7 +45,7 @@ export interface TokenRefreshResponse {
 }
 
 interface SessionValidationResponse {
-  valid?: boolean;
+  valid: boolean;
   token?: string;
 }
 

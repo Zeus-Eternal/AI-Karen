@@ -10,11 +10,16 @@
 // ============================================================================
 
 // Permission Gate
-export { PermissionGate, withPermission, usePermissionGate } from './PermissionGate';
+export { PermissionGate } from './PermissionGate';
 export type {
   PermissionGateProps,
   PermissionDeniedFallbackProps,
 } from './PermissionGate';
+export { withPermission, usePermissionGate } from './permission-gate-helpers';
+export type {
+  WithPermissionOptions,
+  UsePermissionGateResult,
+} from './permission-gate-helpers';
 
 // Role Management
 export { RoleManagement } from './RoleManagement';

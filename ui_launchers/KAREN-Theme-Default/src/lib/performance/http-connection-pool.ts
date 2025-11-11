@@ -173,8 +173,8 @@ export class HttpConnectionPool {
     }
 
     // Abort all active connections
-    this.connections.forEach((hostConnections) => {
-      hostConnections.forEach((connection) => {
+    this.connections.forEach(hostConnections => {
+      hostConnections.forEach(connection => {
         if (connection.isActive) {
           connection.controller.abort();
         }
@@ -198,14 +198,11 @@ export class HttpConnectionPool {
     const hostConnections = this.connections.get(host) || [];
 
     // Find an idle connection
-    for (let index = 0; index < hostConnections.length; index += 1) {
-      const connection = hostConnections[index];
-      if (!connection.isActive && !this.isConnectionExpired(connection)) {
-        return connection;
-      }
-    }
+    const idleConnection = hostConnections.find(
+      (connection) => !connection.isActive && !this.isConnectionExpired(connection)
+    );
 
-    return null;
+    return idleConnection ?? null;
   }
 
   /**

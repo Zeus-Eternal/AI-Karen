@@ -168,15 +168,7 @@ export default function LLMSettings() {
   const { isAuthenticated } = useAuth();
 
   // Provider notifications
-  const {
-    notifications,
-    unreadCount,
-    criticalCount,
-    notifyProviderStatusChange,
-    notifyFallback,
-    notifySystemHealth,
-    notifyError,
-  } = useProviderNotifications({
+  const { unreadCount, criticalCount } = useProviderNotifications({
     realTimeUpdates: true,
     autoToast: true,
   });

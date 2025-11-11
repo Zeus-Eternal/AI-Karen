@@ -19,8 +19,6 @@ import {
   RefreshCw,
   Shield,
   Target,
-  TrendingDown,
-  TrendingUp,
   XCircle,
 } from 'lucide-react';
 export interface QualityMetrics {
@@ -66,14 +64,6 @@ export interface QualityMetrics {
     complexity: number;
   };
 }
-export interface QualityTrend {
-  date: string;
-  coverage: number;
-  passRate: number;
-  performance: number;
-  accessibility: number;
-  security: number;
-}
 export interface QualityGate {
   id: string;
   name: string;
@@ -101,7 +91,6 @@ interface QualityGatesApiResponse {
 }
 export function QualityAssuranceDashboard() {
   const [metrics, setMetrics] = useState<QualityMetrics | null>(null);
-  const [trends, setTrends] = useState<QualityTrend[]>([]);
   const [qualityGates, setQualityGates] = useState<QualityGate[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -113,11 +102,8 @@ export function QualityAssuranceDashboard() {
     setError(null);
 
     try {
-      const [metricsResult, trendsResult, gatesResult] = await Promise.allSettled([
+      const [metricsResult, gatesResult] = await Promise.allSettled([
         enhancedApiClient.get<QualityMetrics>('/api/qa/metrics', {
-          headers: { 'Cache-Control': 'no-cache' },
-        }),
-        enhancedApiClient.get<QualityTrend[]>('/api/qa/trends', {
           headers: { 'Cache-Control': 'no-cache' },
         }),
         enhancedApiClient.get<QualityGatesApiResponse>('/api/qa/quality-gates', {
@@ -135,14 +121,6 @@ export function QualityAssuranceDashboard() {
         console.error('Failed to load quality metrics:', metricsResult.reason);
         setMetrics(null);
         errorMessage = 'Failed to load quality metrics.';
-      }
-
-      if (trendsResult.status === 'fulfilled') {
-        const trendPayload = trendsResult.value.data;
-        setTrends(Array.isArray(trendPayload) ? trendPayload : []);
-      } else {
-        console.error('Failed to load quality trends:', trendsResult.reason);
-        setTrends([]);
       }
 
       if (gatesResult.status === 'fulfilled') {
@@ -175,7 +153,6 @@ export function QualityAssuranceDashboard() {
     } catch (err) {
       console.error('Unexpected quality metrics error:', err);
       setMetrics(null);
-      setTrends([]);
       setQualityGates([]);
       setQualityGateSummary(null);
       setError('Unable to refresh quality assurance data.');
@@ -204,14 +181,6 @@ export function QualityAssuranceDashboard() {
       case 'warning': return <AlertTriangle className="h-4 w-4 " />;
       default: return null;
     }
-  };
-  const getTrendIcon = (current: number, previous: number) => {
-    if (current > previous) {
-      return <TrendingUp className="h-4 w-4 text-green-600 " />;
-    } else if (current < previous) {
-      return <TrendingDown className="h-4 w-4 text-red-600 " />;
-    }
-    return null;
   };
   const exportReport = async () => {
     try {
