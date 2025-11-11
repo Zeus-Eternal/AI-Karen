@@ -8,10 +8,17 @@
  */
 
 import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 import type { CSSCustomPropertyStyles } from './css-custom-properties';
+import { assignResponsiveProperties } from './responsive-style-helpers';
+import {
+  type ContainerBreakpoints,
+  type ContainerSize,
+  type ResponsiveContainerProps,
+  type ResponsiveValue,
+} from './responsive-container.types';
+import { responsiveContainerVariants } from './responsive-container.variants';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -20,131 +27,6 @@ import type { CSSCustomPropertyStyles } from './css-custom-properties';
 /**
  * Container query breakpoints
  */
-export interface ContainerBreakpoints {
-  xs?: string;
-  sm?: string;
-  md?: string;
-  lg?: string;
-  xl?: string;
-  '2xl'?: string;
-}
-
-/**
- * Responsive value type
- */
-export interface ResponsiveValue<T> {
-  base?: T;
-  xs?: T;
-  sm?: T;
-  md?: T;
-  lg?: T;
-  xl?: T;
-  '2xl'?: T;
-}
-
-/**
- * Container size variants
- */
-export type ContainerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full' | 'screen';
-
-/**
- * Responsive container props
- */
-export interface ResponsiveContainerProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Container size variant */
-  size?: ContainerSize | ResponsiveValue<ContainerSize>;
-  
-  /** Enable container queries */
-  containerQueries?: boolean;
-  
-  /** Container name for container queries */
-  containerName?: string;
-  
-  /** Custom container breakpoints */
-  breakpoints?: ContainerBreakpoints;
-  
-  /** Padding */
-  padding?: string | ResponsiveValue<string>;
-  
-  /** Margin */
-  margin?: string | ResponsiveValue<string>;
-  
-  /** Center the container */
-  center?: boolean;
-  
-  /** Fluid container (no max-width) */
-  fluid?: boolean;
-  
-  /** Enable responsive behavior */
-  responsive?: boolean;
-  
-  /** Minimum height */
-  minHeight?: string;
-  
-  /** Maximum height */
-  maxHeight?: string;
-  
-  /** Background color */
-  background?: string;
-  
-  /** Border radius */
-  borderRadius?: string;
-  
-  /** Box shadow */
-  shadow?: string;
-  
-  /** Children */
-  children: React.ReactNode;
-}
-
-// ============================================================================
-// COMPONENT VARIANTS
-// ============================================================================
-
-/**
- * Responsive container variants
- */
-const responsiveContainerVariants = cva(
-  'w-full',
-  {
-    variants: {
-      size: {
-        xs: 'max-w-xs',
-        sm: 'max-w-sm',
-        md: 'max-w-md',
-        lg: 'max-w-lg',
-        xl: 'max-w-xl',
-        '2xl': 'max-w-2xl',
-        full: 'max-w-full',
-        screen: 'max-w-screen',
-      },
-      center: {
-        true: 'mx-auto',
-        false: '',
-      },
-      fluid: {
-        true: 'max-w-none',
-        false: '',
-      },
-      containerQueries: {
-        true: 'container-responsive',
-        false: '',
-      },
-      responsive: {
-        true: 'responsive-container',
-        false: '',
-      },
-    },
-    defaultVariants: {
-      size: 'full',
-      center: false,
-      fluid: false,
-      containerQueries: false,
-      responsive: false,
-    },
-  }
-);
-
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -159,21 +41,25 @@ function processResponsiveValue<T>(
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const responsiveValue = value as ResponsiveValue<T>;
     const result: Record<`--${string}`, string> = {};
-    
-    Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
+
+    const entries = Object.entries(responsiveValue) as Array<
+      [keyof ResponsiveValue<T>, T | undefined]
+    >;
+
+    entries.forEach(([breakpoint, val]) => {
       if (val !== undefined) {
         const processedValue = processor ? processor(val) : String(val);
         if (breakpoint === 'base') {
           result['--container-base'] = processedValue;
         } else {
-          result[`--container-${breakpoint}`] = processedValue;
+          result[`--container-${String(breakpoint)}`] = processedValue;
         }
       }
     });
 
     return result;
   }
-  
+
   return processor ? processor(value as T) : String(value);
 }
 
@@ -207,9 +93,7 @@ function generateContainerStyles(props: ContainerStyleProps): CSSCustomPropertyS
     if (typeof paddingValue === 'string') {
       styles.padding = paddingValue;
     } else {
-      Object.entries(paddingValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      assignResponsiveProperties(styles, paddingValue);
     }
   }
   
@@ -219,9 +103,7 @@ function generateContainerStyles(props: ContainerStyleProps): CSSCustomPropertyS
     if (typeof marginValue === 'string') {
       styles.margin = marginValue;
     } else {
-      Object.entries(marginValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      assignResponsiveProperties(styles, marginValue);
     }
   }
   
@@ -257,11 +139,18 @@ function generateContainerStyles(props: ContainerStyleProps): CSSCustomPropertyS
   
   // Custom breakpoints
   if (props.breakpoints) {
-    Object.entries(props.breakpoints).forEach(([breakpoint, value]) => {
-      styles[`--breakpoint-${breakpoint}` as `--${string}`] = value;
+    const breakpointKeys = Object.keys(props.breakpoints) as Array<
+      keyof ContainerBreakpoints
+    >;
+
+    breakpointKeys.forEach(breakpoint => {
+      const value = props.breakpoints?.[breakpoint];
+      if (value) {
+        styles[`--breakpoint-${String(breakpoint)}` as `--${string}`] = value;
+      }
     });
   }
-  
+
   return styles;
 }
 
@@ -272,26 +161,34 @@ function getResponsiveSizeClasses(size: ContainerSize | ResponsiveValue<Containe
   if (!responsive || typeof size === 'string') {
     return '';
   }
-  
+
   const classes: string[] = [];
-  
-  Object.entries(size).forEach(([breakpoint, value]) => {
-    if (value && breakpoint !== 'base') {
-      const sizeClasses = {
-        xs: 'max-w-xs',
-        sm: 'max-w-sm',
-        md: 'max-w-md',
-        lg: 'max-w-lg',
-        xl: 'max-w-xl',
-        '2xl': 'max-w-2xl',
-        full: 'max-w-full',
-        screen: 'max-w-screen',
-      } as const;
-      
-      const sizeClass = sizeClasses[value as keyof typeof sizeClasses];
-      if (sizeClass) {
-        classes.push(`${breakpoint}:${sizeClass}`);
-      }
+
+  const responsiveSize = size as ResponsiveValue<ContainerSize>;
+  const breakpoints = Object.keys(responsiveSize) as Array<
+    keyof ResponsiveValue<ContainerSize>
+  >;
+
+  const sizeClassMap: Record<ContainerSize, string> = {
+    xs: 'max-w-xs',
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    full: 'max-w-full',
+    screen: 'max-w-screen',
+  };
+
+  breakpoints.forEach(breakpoint => {
+    const value = responsiveSize[breakpoint];
+    if (!value || breakpoint === 'base') {
+      return;
+    }
+
+    const sizeClass = sizeClassMap[value];
+    if (sizeClass) {
+      classes.push(`${String(breakpoint)}:${sizeClass}`);
     }
   });
 
@@ -379,12 +276,6 @@ export const ResponsiveContainer = React.forwardRef<HTMLDivElement, ResponsiveCo
 );
 
 ResponsiveContainer.displayName = 'ResponsiveContainer';
-
-// ============================================================================
-// COMPONENT VARIANTS
-// ============================================================================
-
-export type ResponsiveContainerVariants = VariantProps<typeof responsiveContainerVariants>;
 
 // ============================================================================
 // PRESET COMPONENTS

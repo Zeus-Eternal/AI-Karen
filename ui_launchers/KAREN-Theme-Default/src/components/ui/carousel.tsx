@@ -14,11 +14,13 @@ export type CarouselApi = {
 
 export type CarouselPlugin = (api: CarouselApi) => void | (() => void);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export interface CarouselOptions {
   scrollAmount?: number;
   behavior?: ScrollBehavior;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export interface CarouselProps {
   opts?: CarouselOptions;
   plugins?: CarouselPlugin[];
@@ -26,6 +28,7 @@ export interface CarouselProps {
   setApi?: (api: CarouselApi) => void;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export interface CarouselContextProps {
   carouselRef: React.RefObject<HTMLDivElement>;
   api?: CarouselApi;

@@ -13,14 +13,18 @@ export type { LoginCredentials, AuthError, AuthState, AuthProviderProps, AuthCon
 export { authStateManager } from './AuthStateManager';
 export type { AuthSnapshot, Listener } from './AuthStateManager';
 
-export { ErrorProvider, withErrorProvider, useError, default as Errorprovider } from './ErrorProvider';
+export { ErrorProvider, default as Errorprovider } from './ErrorProvider';
+export { withErrorProvider } from './withErrorProvider';
+export { useError } from '../hooks/use-error-context';
 export type { ErrorProviderProps, ErrorContextType } from './ErrorProvider';
 
-export { HookProvider } from './HookContext';
+export { HookProvider, HookContext } from './HookContext';
 export { useHooks } from '../hooks/use-hooks';
-export type { HookContextType, HookRegistration, HookProviderProps, HookResult } from './HookContext';
+export type { HookProviderProps } from './HookContext';
+export type { HookContextType, HookRegistration, HookResult } from './hook-context';
 
-export { SessionProvider, withSessionProvider, default as Sessionprovider } from './SessionProvider';
+export { SessionProvider, SessionContext, withSessionProvider, default as Sessionprovider } from './SessionProvider';
 export { useSession } from '../hooks/use-session';
-export type { SessionUser, SessionProviderProps, SessionContextType } from './SessionProvider';
+export type { SessionProviderProps } from './SessionProvider';
+export type { SessionContextType, SessionUser } from './session-context';
 

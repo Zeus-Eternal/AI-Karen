@@ -255,7 +255,6 @@ export function useAdminErrorHandler(
     errorState,
     logErrors,
     normalizedRetryDelay,
-    normalizedMaxRetries,
     shouldAttemptRetry,
   ]);
 

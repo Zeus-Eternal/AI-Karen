@@ -18,8 +18,8 @@ const mergeSafeAriaProps = (
   ...props: Array<Partial<AriaProps> | undefined>
 ) => {
   const merged = mergeAriaProps(...props);
-  const { 'aria-relevant': ariaRelevant, ...safeProps } = merged;
-  void ariaRelevant;
+  const safeProps = { ...merged };
+  delete safeProps['aria-relevant'];
   return safeProps;
 };
 

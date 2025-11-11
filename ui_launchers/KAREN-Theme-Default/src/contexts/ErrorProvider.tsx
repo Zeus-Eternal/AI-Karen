@@ -10,7 +10,7 @@
 "use client";
 
 import { createContext, useCallback, useState } from 'react';
-import type { ComponentType, FC, ReactNode } from 'react';
+import type { FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
@@ -48,6 +48,8 @@ export interface ErrorContextType {
 }
 
 const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
+
+export { ErrorContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
@@ -252,22 +254,5 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
     </ErrorContext.Provider>
   );
 };
-
-/**
- * Higher-order component to wrap components with error provider
- */
-/* eslint-disable-next-line react-refresh/only-export-components -- HOC export is kept for backward compatibility. */
-export function withErrorProvider<P extends object>(
-  Component: ComponentType<P>,
-  providerProps?: Omit<ErrorProviderProps, 'children'>
-) {
-  return function WrappedComponent(props: P) {
-    return (
-      <ErrorProvider {...providerProps}>
-        <Component {...props} />
-      </ErrorProvider>
-    );
-  };
-}
 
 export default ErrorProvider;

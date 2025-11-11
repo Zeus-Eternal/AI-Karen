@@ -65,7 +65,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
     try {
       const response = await backend.makeRequestPublic<ProviderNotification[]>('/api/providers/notifications');
       setNotifications(response || []);
-    } catch (error) {
+    } catch (error: unknown) {
       logNotificationError('Failed to load provider notifications', error);
       // Use mock data for development
       setNotifications([]);
@@ -81,7 +81,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         setSettings(response);
         return;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logNotificationError('Failed to load provider notification settings from backend', error);
     }
     // Fallback to localStorage
@@ -90,7 +90,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
       if (savedSettings) {
         setSettings(JSON.parse(savedSettings));
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logNotificationError('Failed to load provider notification settings from localStorage', error);
     }
   }, [backend, logNotificationError]);
@@ -101,13 +101,13 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
         method: 'POST',
         body: JSON.stringify(newSettings)
       });
-    } catch (error) {
+    } catch (error: unknown) {
       logNotificationError('Failed to save provider notification settings to backend', error);
     }
     // Always save to localStorage as backup
     try {
       localStorage.setItem('provider_notification_settings', JSON.stringify(newSettings));
-    } catch (error) {
+    } catch (error: unknown) {
       logNotificationError('Failed to persist provider notification settings locally', error);
     }
     setSettings(newSettings);
@@ -157,7 +157,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
           try {
             const notification: ProviderNotification = JSON.parse(event.data);
             addNotification(notification);
-          } catch (error) {
+          } catch (error: unknown) {
             logNotificationError('Failed to parse provider notification event', error);
           }
         };
@@ -170,7 +170,7 @@ export function useProviderNotifications(options: UseProviderNotificationsOption
             }, 30000); // Poll every 30 seconds
           }
         };
-      } catch (error) {
+      } catch (error: unknown) {
         logNotificationError('Failed to establish real-time provider notifications, falling back to polling', error);
         // Fallback to polling
         pollInterval = setInterval(() => {

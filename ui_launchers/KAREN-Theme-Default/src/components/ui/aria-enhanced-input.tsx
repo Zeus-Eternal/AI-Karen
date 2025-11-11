@@ -73,7 +73,8 @@ export const AriaEnhancedInput = React.forwardRef<HTMLInputElement, AriaEnhanced
       ariaProps
     );
     // Filter out properties that conflict with HTML input attributes
-    const { 'aria-relevant': _ariaRelevant, ...finalAriaProps } = mergedAriaProps;
+    const finalAriaProps = { ...mergedAriaProps };
+    delete finalAriaProps['aria-relevant'];
     return (
       <input
         type={type}

@@ -92,7 +92,7 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
         }
         return success;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       logSelectionError('Failed to copy text to clipboard', error);
       return false;
     }
@@ -229,7 +229,7 @@ export function highlightSelection(className: string = 'highlighted-selection') 
     const span = document.createElement('span');
     span.className = className;
     range.surroundContents(span);
-  } catch (error) {
+  } catch (error: unknown) {
     warnInDevelopment('Failed to apply highlight to the current selection', error);
     // If surroundContents fails (e.g., range spans multiple elements),
     // we could implement a more complex highlighting solution

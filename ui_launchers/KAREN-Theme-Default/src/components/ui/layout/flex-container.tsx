@@ -170,16 +170,17 @@ function processResponsiveValue<T>(
     const responsiveValue = value as ResponsiveValue<T>;
     const result: Record<`--${string}`, string> = {};
     
-    Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
+    for (const breakpoint of Object.keys(responsiveValue) as Array<keyof ResponsiveValue<T>>) {
+      const val = responsiveValue[breakpoint];
       if (val !== undefined) {
         const processedValue = processor ? processor(val) : String(val);
         if (breakpoint === 'base') {
           result['--flex-base'] = processedValue;
         } else {
-          result[`--flex-${breakpoint}`] = processedValue;
+          result[`--flex-${breakpoint as Exclude<keyof ResponsiveValue<T>, 'base'>}`] = processedValue;
         }
       }
-    });
+    }
 
     return result;
   }
@@ -217,9 +218,9 @@ function generateFlexStyles(props: FlexStyleProps): CSSCustomPropertyStyles {
     if (typeof gapValue === 'string') {
       styles.gap = gapValue;
     } else {
-      Object.entries(gapValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      for (const [key, value] of Object.entries(gapValue) as Array<[`--${string}`, string]>) {
+        styles[key] = value;
+      }
     }
   }
   
@@ -301,7 +302,9 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
   
   // Handle responsive direction
   if (props.responsive && typeof props.direction === 'object') {
-    Object.entries(props.direction).forEach(([breakpoint, value]) => {
+    const directionValues = props.direction as ResponsiveValue<'row' | 'column' | 'row-reverse' | 'column-reverse'>;
+    for (const breakpoint of Object.keys(directionValues) as Array<keyof ResponsiveValue<'row' | 'column' | 'row-reverse' | 'column-reverse'>>) {
+      const value = directionValues[breakpoint];
       if (value && breakpoint !== 'base') {
         const directionClasses = {
           row: 'flex-row',
@@ -309,18 +312,20 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           'row-reverse': 'flex-row-reverse',
           'column-reverse': 'flex-col-reverse',
         } as const;
-        
+
         const directionClass = directionClasses[value as keyof typeof directionClasses];
         if (directionClass) {
-          classes.push(`${breakpoint}:${directionClass}`);
+          classes.push(`${String(breakpoint)}:${directionClass}`);
         }
       }
-    });
+    }
   }
   
   // Handle responsive align
   if (props.responsive && typeof props.align === 'object') {
-    Object.entries(props.align).forEach(([breakpoint, value]) => {
+    const alignValues = props.align as ResponsiveValue<'start' | 'center' | 'end' | 'stretch' | 'baseline'>;
+    for (const breakpoint of Object.keys(alignValues) as Array<keyof ResponsiveValue<'start' | 'center' | 'end' | 'stretch' | 'baseline'>>) {
+      const value = alignValues[breakpoint];
       if (value && breakpoint !== 'base') {
         const alignClasses = {
           start: 'items-start',
@@ -329,18 +334,20 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           stretch: 'items-stretch',
           baseline: 'items-baseline',
         } as const;
-        
+
         const alignClass = alignClasses[value as keyof typeof alignClasses];
         if (alignClass) {
-          classes.push(`${breakpoint}:${alignClass}`);
+          classes.push(`${String(breakpoint)}:${alignClass}`);
         }
       }
-    });
+    }
   }
   
   // Handle responsive justify
   if (props.responsive && typeof props.justify === 'object') {
-    Object.entries(props.justify).forEach(([breakpoint, value]) => {
+    const justifyValues = props.justify as ResponsiveValue<'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'>;
+    for (const breakpoint of Object.keys(justifyValues) as Array<keyof ResponsiveValue<'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'>>) {
+      const value = justifyValues[breakpoint];
       if (value && breakpoint !== 'base') {
         const justifyClasses = {
           start: 'justify-start',
@@ -350,23 +357,25 @@ function getResponsiveClasses(props: FlexResponsiveProps): string {
           around: 'justify-around',
           evenly: 'justify-evenly',
         } as const;
-        
+
         const justifyClass = justifyClasses[value as keyof typeof justifyClasses];
         if (justifyClass) {
-          classes.push(`${breakpoint}:${justifyClass}`);
+          classes.push(`${String(breakpoint)}:${justifyClass}`);
         }
       }
-    });
+    }
   }
   
   // Handle responsive wrap
   if (props.responsive && typeof props.wrap === 'object') {
-    Object.entries(props.wrap).forEach(([breakpoint, value]) => {
+    const wrapValues = props.wrap as ResponsiveValue<boolean | 'reverse'>;
+    for (const breakpoint of Object.keys(wrapValues) as Array<keyof ResponsiveValue<boolean | 'reverse'>>) {
+      const value = wrapValues[breakpoint];
       if (value !== undefined && breakpoint !== 'base') {
         const wrapClass = value === true ? 'flex-wrap' : value === 'reverse' ? 'flex-wrap-reverse' : 'flex-nowrap';
-        classes.push(`${breakpoint}:${wrapClass}`);
+        classes.push(`${String(breakpoint)}:${wrapClass}`);
       }
-    });
+    }
   }
   
   return classes.join(' ');

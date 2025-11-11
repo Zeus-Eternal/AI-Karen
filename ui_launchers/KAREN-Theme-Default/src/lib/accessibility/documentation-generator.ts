@@ -106,6 +106,12 @@ export class AccessibilityDocumentationGenerator {
       ...config
     };
   }
+
+  private logDevelopmentWarning(message: string, error: unknown): void {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(message, error);
+    }
+  }
   /**
    * Generate complete accessibility documentation
    */
@@ -130,10 +136,11 @@ export class AccessibilityDocumentationGenerator {
         if (componentInfo) {
           this.componentRegistry.set(componentInfo.name, componentInfo);
         }
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Failed to analyze accessibility component at ${filePath}`, error);
-        }
+      } catch (error: unknown) {
+        this.logDevelopmentWarning(
+          `Failed to analyze accessibility component at ${filePath}`,
+          error
+        );
       }
     }
   }
@@ -156,12 +163,13 @@ export class AccessibilityDocumentationGenerator {
             }
           }
         }
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Skipping inaccessible directory during accessibility scan: ${dir}`, error);
+        } catch (error: unknown) {
+          this.logDevelopmentWarning(
+            `Skipping inaccessible directory during accessibility scan: ${dir}`,
+            error
+          );
         }
-      }
-    };
+      };
     await scanDirectory(this.config.sourceDir);
     return files;
   }
@@ -200,10 +208,11 @@ export class AccessibilityDocumentationGenerator {
         commonIssues: this.identifyCommonIssues(componentName, analysis),
         testingInstructions: this.generateTestingInstructions(componentName, analysis)
       };
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`Failed to process accessibility metadata for ${filePath}`, error);
-      }
+    } catch (error: unknown) {
+      this.logDevelopmentWarning(
+        `Failed to process accessibility metadata for ${filePath}`,
+        error
+      );
       return null;
     }
   }

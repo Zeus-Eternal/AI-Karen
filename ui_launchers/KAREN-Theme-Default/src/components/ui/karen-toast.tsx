@@ -161,6 +161,7 @@ KarenToastProgress.displayName = "KarenToastProgress";
  * Root Toast
  * ------------------------------------------------------------------------- */
 
+// eslint-disable-next-line react-refresh/only-export-components
 export type KarenToastRootProps = React.ComponentPropsWithoutRef<
   typeof ToastPrimitives.Root
 > &
@@ -521,8 +522,10 @@ const KarenToastProvider = ToastPrimitives.Provider;
  * Types & Exports
  * ------------------------------------------------------------------------- */
 
+// eslint-disable-next-line react-refresh/only-export-components
 export type KarenToastProps =
   React.ComponentPropsWithoutRef<typeof KarenToast>;
+// eslint-disable-next-line react-refresh/only-export-components
 export type KarenToastActionElement =
   React.ReactElement<typeof KarenToastAction>;
 

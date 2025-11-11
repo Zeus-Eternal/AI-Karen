@@ -344,7 +344,8 @@ export function ProviderConfigurationGuide({
         title: "Copied to Clipboard",
         description: "Code snippet copied successfully.",
       });
-    } catch (e) {
+    } catch (error) {
+      console.error('Failed to copy provider configuration step to clipboard.', error);
       toast({
         title: "Copy Failed",
         description: "Could not copy to clipboard. Please copy manually.",

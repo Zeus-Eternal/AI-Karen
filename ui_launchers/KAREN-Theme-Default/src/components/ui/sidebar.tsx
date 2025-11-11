@@ -241,3 +241,5 @@ export {
   SidebarMenuAction,
   SidebarSeparator,
 };
+export { SidebarProvider } from './sidebar-context';
+export type { SidebarContextValue, SidebarProviderProps } from './sidebar-context';

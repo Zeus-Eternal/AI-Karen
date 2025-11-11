@@ -1,70 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FC, ReactNode } from 'react';
 
-// Hook types for AG-UI and chat enhancement
-export interface HookRegistration {
-  id: string;
-  type: string;
-  handler: (context: unknown, userContext?: unknown) => Promise<unknown>;
-  priority: number;
-  conditions?: Record<string, unknown>;
-  sourceType: 'plugin' | 'extension' | 'ui' | 'custom';
-}
-
-export interface HookResult {
-  hookId: string;
-  result?: unknown;
-  error?: string;
-  success: boolean;
-}
-
-export interface HookContextType {
-  // Hook registration
-  registerHook: (
-    type: string,
-    handler: (context: unknown, userContext?: unknown) => Promise<unknown>,
-    options?: {
-      priority?: number;
-      conditions?: Record<string, unknown>;
-      sourceType?: HookRegistration['sourceType'];
-    }
-  ) => string;
-  
-  // Hook execution
-  triggerHooks: (
-    type: string,
-    context: unknown,
-    userContext?: unknown
-  ) => Promise<HookResult[]>;
-  
-  // Hook management
-  unregisterHook: (hookId: string) => boolean;
-  getRegisteredHooks: (type?: string) => HookRegistration[];
-  
-  // AG-UI specific hooks
-  registerGridHook: (
-    gridId: string,
-    event: 'dataLoad' | 'cellValueChanged' | 'rowSelected',
-    handler: (params: Record<string, unknown>) => Promise<unknown>
-  ) => string;
-  
-  registerChartHook: (
-    chartId: string,
-    event: 'dataLoad' | 'seriesClick' | 'legendClick' | 'metricChange' | 'nodeClick',
-    handler: (params: Record<string, unknown>) => Promise<unknown>
-  ) => string;
-  
-  // Chat enhancement hooks
-  registerChatHook: (
-    event: 'preMessage' | 'postMessage' | 'messageProcessed' | 'aiSuggestion',
-    handler: (params: Record<string, unknown>) => Promise<unknown>
-  ) => string;
-}
-
-/* eslint-disable-next-line react-refresh/only-export-components -- Context object is exported for custom hooks. */
-export const HookContext = createContext<HookContextType | undefined>(undefined);
+import { HookContext, type HookContextType, type HookRegistration, type HookResult } from './hook-context';
 
 export interface HookProviderProps {
   children: ReactNode;
@@ -205,4 +144,8 @@ export const HookProvider: FC<HookProviderProps> = ({ children }) => {
   );
 };
 
-// Hook moved to separate file for React Fast Refresh compatibility
+export { HookContext };
+export type { HookContextType, HookRegistration, HookResult };
+
+// Hook definitions moved to hook-context.ts for React Fast Refresh compatibility
+

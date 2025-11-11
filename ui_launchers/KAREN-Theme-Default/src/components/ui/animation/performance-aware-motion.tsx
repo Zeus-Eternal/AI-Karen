@@ -10,6 +10,7 @@ import {
   useWillChange
 } from '@/utils/animation-performance';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export interface PerformanceAwareMotionProps extends Omit<MotionProps, 'variants'> {
   variant?: keyof typeof performanceAnimationVariants;
   children: React.ReactNode;
@@ -110,6 +111,7 @@ export const SpringMotion: React.FC<Omit<PerformanceAwareMotionProps, 'variant'>
 );
 
 // Staggered animation container
+// eslint-disable-next-line react-refresh/only-export-components
 export interface StaggeredMotionProps {
   children: React.ReactNode;
   staggerDelay?: number;
@@ -204,6 +206,7 @@ export const StaggeredItem: React.FC<{
 };
 
 // Performance-aware AnimatePresence wrapper
+// eslint-disable-next-line react-refresh/only-export-components
 export interface PerformanceAnimatePresenceProps {
   children: React.ReactNode;
   mode?: 'wait' | 'sync' | 'popLayout';

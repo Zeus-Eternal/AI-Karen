@@ -269,8 +269,9 @@ export function useMultipleNonBlockingOperations() {
         return prev;
       }
 
-      const { [key]: omitted, ...rest } = prev;
-      void omitted;
+      const { [key]: removedOperation, ...rest } = prev;
+      removedOperation?.resetLoading?.();
+
       return rest;
     });
   }, []);
