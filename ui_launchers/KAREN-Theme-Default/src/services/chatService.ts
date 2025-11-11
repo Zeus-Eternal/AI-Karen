@@ -54,6 +54,21 @@ interface ApiConversationPayload {
   summary?: string;
 }
 
+interface CreateConversationResponse {
+  conversation: {
+    id: string;
+    session_id?: string;
+  };
+}
+
+interface ConversationSummaryResponse {
+  summary: string;
+}
+
+interface ConversationListResponse {
+  conversations: ApiConversationPayload[];
+}
+
 const mapApiMessageToChatMessage = (msg: ApiConversationMessage): ChatMessage => {
   const timestampValue = msg.created_at ?? msg.timestamp;
   return {
@@ -107,7 +122,7 @@ export class ChatService {
     return this.errorHandler.withRetry(
       async () => {
         const sessionId = generateUUID();
-        const response = await this.apiClient.post('/api/conversations/create', {
+        const response = await this.apiClient.post<CreateConversationResponse>('/api/conversations/create', {
           session_id: sessionId,
           ui_source: 'web',
           title: 'New Conversation',
@@ -155,7 +170,9 @@ export class ChatService {
       if (this.cache.has(sessionId)) {
         return this.cache.get(sessionId)!;
       }
-      const response = await this.apiClient.get(`/api/conversations/by-session/${sessionId}`);
+      const response = await this.apiClient.get<ApiConversationPayload>(
+        `/api/conversations/by-session/${sessionId}`
+      );
       const data: ApiConversationPayload = response.data;
       const session: ConversationSession = {
         conversationId: data.id,
@@ -183,7 +200,9 @@ export class ChatService {
   }
   async generateConversationSummary(sessionId: string): Promise<string | null> {
     try {
-      const response = await this.apiClient.post(`/api/conversations/${sessionId}/summary`);
+      const response = await this.apiClient.post<ConversationSummaryResponse>(
+        `/api/conversations/${sessionId}/summary`
+      );
       return response.data.summary;
     } catch (error) {
       console.warn('Failed to generate conversation summary', sessionId, error);
@@ -192,8 +211,10 @@ export class ChatService {
   }
   async getUserConversations(_userId: string): Promise<ConversationSession[]> {
     try {
-      const response = await this.apiClient.get('/api/conversations');
-      const conversations = (response.data.conversations || []) as ApiConversationPayload[];
+      const response = await this.apiClient.get<ConversationListResponse>(
+        '/api/conversations'
+      );
+      const conversations = response.data.conversations || [];
       return conversations.map((conv) => ({
         conversationId: conv.id,
         sessionId: conv.session_id,
