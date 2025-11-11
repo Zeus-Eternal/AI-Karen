@@ -141,7 +141,7 @@ export function AgentDashboard({
           break;
       }
     } catch (error) {
-      // Handle any errors here
+      console.error('Agent action failed', error);
     } finally {
       setIsLoading(prev => ({ ...prev, [agentId]: false }));
     }

@@ -217,7 +217,7 @@ export type KeyboardHandler<TElement = HTMLElement> = (
 export type FocusHandler<TElement = HTMLElement> = (
   event: React.FocusEvent<TElement>,
 ) => void;
-export type ChangeHandler<T = any> = (value: T) => void;
+export type ChangeHandler<T = unknown> = (value: T) => void;
 
 // Component State Types
 export interface LoadingState {
@@ -226,7 +226,7 @@ export interface LoadingState {
   data: unknown;
 }
 
-export interface AsyncState<T = any> {
+export interface AsyncState<T = unknown> {
   data: T | null;
   loading: boolean;
   error: Error | null;

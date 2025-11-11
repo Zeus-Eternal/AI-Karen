@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import {
   CheckSquare,
   Pin,
@@ -166,7 +165,6 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
     const isExecuting = executingActions.has(actionKey);
     const isCompleted = completedActions.has(actionKey);
     const IconComponent = actionIcons[action.type] ?? Sparkles;
-    const colorClass = actionColors[action.type] ?? 'bg-gray-500 hover:bg-gray-600';
 
     return (
       <motion.div

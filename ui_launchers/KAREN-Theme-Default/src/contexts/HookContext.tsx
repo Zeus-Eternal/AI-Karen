@@ -63,6 +63,7 @@ export interface HookContextType {
   ) => string;
 }
 
+/* eslint-disable-next-line react-refresh/only-export-components -- Context object is exported for custom hooks. */
 export const HookContext = createContext<HookContextType | undefined>(undefined);
 
 export interface HookProviderProps {

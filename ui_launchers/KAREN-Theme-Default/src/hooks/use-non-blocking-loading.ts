@@ -265,7 +265,12 @@ export function useMultipleNonBlockingOperations() {
 
   const removeOperation = useCallback((key: string) => {
     setOperations(prev => {
-      const { [key]: _removed, ...rest } = prev;
+      if (!(key in prev)) {
+        return prev;
+      }
+
+      const { [key]: omitted, ...rest } = prev;
+      void omitted;
       return rest;
     });
   }, []);

@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- Placeholder theme exports are required for compatibility with legacy imports. */
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +32,7 @@ export function CodeBlock({
         className
       )}
     >
-      <pre className="p-4 m-0">
+      <pre className="p-4 m-0" data-language={language}>
         {showLineNumbers ? (
           <div className="flex">
             <div className={cn(

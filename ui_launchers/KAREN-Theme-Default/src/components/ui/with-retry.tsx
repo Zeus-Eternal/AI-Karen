@@ -53,7 +53,7 @@ export function withRetry<P extends object>(
         ...defaultOptions,
         ...retryConfig,
       }),
-      [defaultOptions, retryConfig],
+      [retryConfig],
     );
 
     const [state, setState] = React.useState<WithRetryState>({

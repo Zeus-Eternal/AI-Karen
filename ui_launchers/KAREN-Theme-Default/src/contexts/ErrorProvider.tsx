@@ -9,7 +9,7 @@
 
 "use client";
 
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useState } from 'react';
 import type { ComponentType, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
@@ -256,6 +256,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
 /**
  * Higher-order component to wrap components with error provider
  */
+/* eslint-disable-next-line react-refresh/only-export-components -- HOC export is kept for backward compatibility. */
 export function withErrorProvider<P extends object>(
   Component: ComponentType<P>,
   providerProps?: Omit<ErrorProviderProps, 'children'>

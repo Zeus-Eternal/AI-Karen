@@ -1,6 +1,6 @@
 
 "use client";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
 import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
@@ -87,16 +87,16 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const isCheckingAuth = useRef<boolean>(false);
 
   // Helper functions - declare these first
-  const determineUserRole = (
+  const determineUserRole = useCallback((
     roles: string[]
   ): "super_admin" | "admin" | "user" => {
     if (roles.includes("super_admin")) return "super_admin";
     if (roles.includes("admin")) return "admin";
     return "user";
-  };
+  }, []);
 
   // Convert technical errors to user-friendly messages
-  const getUserFriendlyErrorMessage = (error: ConnectionError): string => {
+  const getUserFriendlyErrorMessage = useCallback((error: ConnectionError): string => {
     switch (error.category) {
       case ErrorCategory.NETWORK_ERROR:
         return "Unable to connect to server. Please check your internet connection and try again.";
@@ -120,10 +120,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       default:
         return error.message;
     }
-  };
+  }, []);
 
   // Create standardized auth error from various error types
-  const createAuthError = (error: unknown): AuthError => {
+  const createAuthError = useCallback((error: unknown): AuthError => {
     if (error instanceof ConnectionError) {
       return {
         message: getUserFriendlyErrorMessage(error),
@@ -149,7 +149,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       retryable: true,
       timestamp: new Date(),
     };
-  };
+  }, [getUserFriendlyErrorMessage]);
 
   // Helper function to get default permissions for a role
   const getRolePermissions = (
@@ -312,6 +312,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       setAuthState((prev) => ({ ...prev, error: null, isRefreshing: false }));
       return false;
     } catch (error) {
+      console.error("Session validation request failed", error);
       setUser(null);
       setIsAuthenticated(false);
       setAuthState((prev) => ({ ...prev, isRefreshing: false }));
@@ -548,7 +549,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [hasRole]);
 
   // Enhanced authentication check with improved error handling
-  const checkAuth = async (): Promise<boolean> => {
+  const checkAuth = useCallback(async (): Promise<boolean> => {
     // Prevent multiple simultaneous auth checks
     if (isCheckingAuth.current) {
       connectivityLogger.logAuthentication(
@@ -752,7 +753,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     } finally {
       isCheckingAuth.current = false;
     }
-  };
+  }, [
+    connectionManager,
+    createAuthError,
+    determineUserRole,
+    isAuthenticated,
+    startSessionRefreshTimer,
+    stopSessionRefreshTimer,
+    timeoutManager,
+  ]);
 
   // Clear authentication error
   const clearError = useCallback((): void => {
