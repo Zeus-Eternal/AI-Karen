@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
 // import { CopilotSidebar } from '@copilotkit/react-ui'; // Not available in current version
 import { useHooks } from '@/hooks/use-hooks';
@@ -10,51 +10,12 @@ import { getConfigManager } from '@/lib/endpoint-config';
 import { getApiClient } from '@/lib/api-client';
 import { safeDebug } from '@/lib/safe-console';
 
-export interface CopilotKitConfig {
-  apiKey?: string;
-  baseUrl: string;
-  fallbackUrls: string[];
-  features: {
-    codeCompletion: boolean;
-    contextualSuggestions: boolean;
-    debuggingAssistance: boolean;
-    documentationGeneration: boolean;
-    chatAssistance: boolean;
-  };
-  models: {
-    completion: string;
-    chat: string;
-    embedding: string;
-  };
-  endpoints: {
-    assist: string;
-    suggestions: string;
-    analyze: string;
-    docs: string;
-  };
-}
-
-export interface CopilotContextType {
-  config: CopilotKitConfig;
-  isEnabled: boolean;
-  isLoading: boolean;
-  error: string | null;
-  updateConfig: (newConfig: Partial<CopilotKitConfig>) => void;
-  toggleFeature: (feature: keyof CopilotKitConfig['features']) => void;
-  getSuggestions: (context: string, type?: string) => Promise<any[]>;
-  analyzeCode: (code: string, language: string) => Promise<unknown>;
-  generateDocumentation: (code: string, language: string) => Promise<string>;
-}
-
-const CopilotContext = createContext<CopilotContextType | null>(null);
-
-export const useCopilotKit = () => {
-  const context = useContext(CopilotContext);
-  if (!context) {
-    throw new Error('useCopilotKit must be used within a CopilotKitProvider');
-  }
-  return context;
-};
+import {
+  CopilotContext,
+  CopilotContextType,
+  CopilotKitConfig,
+  CopilotSuggestion,
+} from './CopilotContext';
 
 interface CopilotKitProviderProps {
   children: React.ReactNode;
@@ -95,13 +56,13 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
   const { toast } = useToast();
   const configManager = getConfigManager();
   const apiClient = getApiClient();
-  
+
   const [config, setConfig] = useState<CopilotKitConfig>({
     ...defaultConfig,
     ...initialConfig
   });
 
-  const [isEnabled, setIsEnabled] = useState(true);
+  const [isEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,26 +124,28 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     const hookIds: string[] = [];
 
     // Register suggestion hook
-    hookIds.push(registerHook('copilot_suggestion_request', async (context: unknown) => {
+    hookIds.push(registerHook('copilot_suggestion_request', async (context: Record<string, unknown>) => {
       safeDebug('CopilotKit suggestion requested:', context);
       return { success: true, provider: 'copilotkit' };
     }));
 
     // Register code analysis hook
-    hookIds.push(registerHook('copilot_code_analysis', async (context: unknown) => {
+    hookIds.push(registerHook('copilot_code_analysis', async (context: Record<string, unknown>) => {
       safeDebug('CopilotKit code analysis:', context);
-      return { success: true, analysisType: context.type };
+      const analysisType = typeof context["type"] === 'string' ? context["type"] : undefined;
+      return { success: true, analysisType };
     }));
 
     // Register documentation generation hook
-    hookIds.push(registerHook('copilot_doc_generation', async (context: unknown) => {
+    hookIds.push(registerHook('copilot_doc_generation', async (context: Record<string, unknown>) => {
       safeDebug('CopilotKit documentation generation:', context);
-      return { success: true, language: context.language };
+      const language = typeof context["language"] === 'string' ? context["language"] : undefined;
+      return { success: true, language };
     }));
 
     return () => {
       // Cleanup hooks on unmount
-      hookIds.forEach(id => {
+      hookIds.forEach((_id) => {
         // Note: unregisterHook would be called here in a real implementation
       });
     };
@@ -202,7 +165,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     }));
   };
 
-  const getSuggestions = async (context: string, type: string = 'general'): Promise<any[]> => {
+  const getSuggestions = async (context: string, type: string = 'general'): Promise<CopilotSuggestion[]> => {
     if (!config.features.contextualSuggestions) {
       return [];
     }
@@ -220,7 +183,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
       }, { userId: user?.userId });
 
       // Use unified API client with fallback support
-      const response = await apiClient.post(config.endpoints.suggestions, {
+      const response = await apiClient.post<{ suggestions?: CopilotSuggestion[] }>(config.endpoints.suggestions, {
         context,
         type,
         model: config.models.completion,
@@ -228,7 +191,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         user_id: user?.userId
       });
 
-      return response.data.suggestions || [];
+      return response.data.suggestions ?? [];
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get suggestions';
@@ -264,7 +227,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
       }, { userId: user?.userId });
 
       // Use unified API client with fallback support
-      const response = await apiClient.post(config.endpoints.analyze, {
+      const response = await apiClient.post<Record<string, unknown>>(config.endpoints.analyze, {
         code,
         language,
         model: config.models.completion,
@@ -272,7 +235,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         user_id: user?.userId
       });
 
-      return response.data.analysis || response.data;
+      return (response.data as { analysis?: unknown }).analysis ?? response.data;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze code';
@@ -308,7 +271,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
       }, { userId: user?.userId });
 
       // Use unified API client with fallback support
-      const response = await apiClient.post(config.endpoints.docs, {
+      const response = await apiClient.post<{ documentation?: string | undefined }>(config.endpoints.docs, {
         code,
         language,
         model: config.models.completion,
@@ -316,7 +279,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         user_id: user?.userId
       });
 
-      return response.data.documentation || response.data;
+      return response.data.documentation ?? String(response.data);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate documentation';

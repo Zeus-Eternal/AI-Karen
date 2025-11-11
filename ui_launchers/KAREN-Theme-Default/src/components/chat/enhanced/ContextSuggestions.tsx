@@ -43,7 +43,6 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
     if (!messages || messages.length === 0 || !conversationContext) return [];
 
     const lastMessage = messages[messages.length - 1];
-    const recentMessages = messages.slice(-5);
     const currentTopic = conversationContext.currentThread?.topic ?? "";
     const userPatterns = conversationContext.userPatterns ?? [];
 
@@ -184,12 +183,26 @@ export const ContextSuggestions: React.FC<ContextSuggestionsProps> = ({
   }, [messages, conversationContext, maxSuggestions]);
 
   useEffect(() => {
-    setIsGenerating(true);
+    let isActive = true;
+
+    void Promise.resolve().then(() => {
+      if (isActive) {
+        setIsGenerating(true);
+      }
+    });
+
     const timer = setTimeout(() => {
+      if (!isActive) {
+        return;
+      }
       setSuggestions(generatedSuggestions);
       setIsGenerating(false);
     }, 300);
-    return () => clearTimeout(timer);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
   }, [generatedSuggestions]);
 
   const getSuggestionIcon = (type: ContextSuggestion["type"]) => {
