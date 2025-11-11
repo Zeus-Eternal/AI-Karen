@@ -223,13 +223,26 @@ export function getExtensionErrorMessage(status: number, url: string): string {
   return 'Extension service encountered an issue. Some features may be limited.';
 }
 
+export interface ExtensionErrorIntegration {
+  handleExtensionError: typeof handleExtensionError;
+  shouldUseExtensionFallback: typeof shouldUseExtensionFallback;
+  getExtensionErrorMessage: (status: number, url: string) => string;
+}
+
+declare global {
+  interface Window {
+    extensionErrorIntegration?: ExtensionErrorIntegration;
+    handleExtensionError?: typeof handleExtensionError;
+  }
+}
+
 // Make functions available globally for KarenBackend integration
 if (typeof window !== 'undefined') {
-  (window as any).extensionErrorIntegration = {
+  const integration: ExtensionErrorIntegration = {
     handleExtensionError,
     shouldUseExtensionFallback,
-    getExtensionErrorMessage
+    getExtensionErrorMessage,
   };
-  
+  window.extensionErrorIntegration = integration;
   logger.info('Extension error integration initialized');
 }

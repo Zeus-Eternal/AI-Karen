@@ -496,7 +496,7 @@ export class SecurityManager {
     resolvedBy: string,
     options: { resolution_notes?: string } = {},
   ): Promise<void> {
-    for (const [_key, events] of securityEvents.entries()) {
+    for (const events of securityEvents.values()) {
       const event = events.find((e) => e.id === eventId);
       if (event) {
         event.resolved = true;

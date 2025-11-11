@@ -13,13 +13,13 @@ export default function ExtensionStats() {
         const plugins = await getPluginService().getAvailablePlugins();
         setPluginCount(plugins.length);
       } catch (error) {
-        console.error('Failed to load plugin count', error);
+        console.error("Failed to fetch available plugins", error);
       }
       try {
         const exts = await getExtensionService().getInstalledExtensions();
         setExtensionCount(exts.length);
       } catch (error) {
-        console.error('Failed to load extension count', error);
+        console.error("Failed to fetch installed extensions", error);
       }
     }
     load();

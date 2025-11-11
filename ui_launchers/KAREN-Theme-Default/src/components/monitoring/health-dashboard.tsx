@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,128 +22,146 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  const initialState = useMemo(() => {
-    const monitor = getHealthMonitor?.();
-
-    if (!monitor) {
-      return {
-        monitor: null,
-        metrics: null,
-        alerts: [] as HealthAlert[],
-        isMonitoring: false,
-      };
-    }
-
-    let metrics: HealthMetrics | null = null;
+  const healthMonitor = useMemo(() => {
     try {
-      metrics = monitor.getMetrics();
+      return getHealthMonitor();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
+    if (!healthMonitor) {
+      return null;
+    }
+    try {
+      return healthMonitor?.getMetrics?.() ?? null;
     } catch {
       metrics = null;
     }
-
-    let alerts: HealthAlert[] = [];
-    try {
-      alerts = monitor.getAlerts(20);
-    } catch {
-      alerts = [];
+  });
+  const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
+    if (!healthMonitor) {
+      return [];
     }
-
-    let isMonitoring = false;
     try {
-      isMonitoring = monitor.getStatus().isMonitoring;
+      setMetrics(monitor.getMetrics());
     } catch {
-      isMonitoring = false;
+      setMetrics(null);
     }
-
-    return {
-      monitor,
-      metrics,
-      alerts,
-      isMonitoring,
-    };
-  }, []);
-
-  const healthMonitorRef = useRef(initialState.monitor);
-
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialState.metrics);
-  const [alerts, setAlerts] = useState<HealthAlert[]>(initialState.alerts);
-  const [isMonitoring, setIsMonitoring] = useState(initialState.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>('');
+  });
+  const [isMonitoring, setIsMonitoring] = useState(() => {
+    if (!healthMonitor) {
+      return false;
+    }
+    try {
+      setAlerts(monitor.getAlerts(20));
+    } catch {
+      setAlerts([]);
+    }
 
   useEffect(() => {
-    const monitor = healthMonitorRef.current ?? getHealthMonitor?.();
-    healthMonitorRef.current = monitor ?? null;
-
-    if (!monitor) {
+    if (!healthMonitor) {
       return;
     }
 
     const unsubscribeMetrics =
-      monitor.onMetricsUpdate?.((newMetrics) => {
+      healthMonitor.onMetricsUpdate?.((newMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
         try {
-          setIsMonitoring(monitor.getStatus().isMonitoring);
-        } catch (error) {
-          console.error('Failed to read monitor status', error);
+          setIsMonitoring(healthMonitor.getStatus().isMonitoring);
+        } catch {
+          // noop
         }
       }) ?? (() => {});
 
     const unsubscribeAlerts =
-      monitor.onAlert?.((newAlert) => {
-        setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
+      healthMonitor.onAlert?.((newAlert) => {
+        setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
       }) ?? (() => {});
 
-    let frame: number | null = null;
     try {
-      if (!monitor.getStatus().isMonitoring) {
-        frame = requestAnimationFrame(() => {
-          try {
-            monitor.start?.();
-            setIsMonitoring(true);
-          } catch (error) {
-            console.error('Failed to start health monitor', error);
-          }
-        });
+      if (!healthMonitor.getStatus().isMonitoring) {
+        healthMonitor.start?.();
+        setIsMonitoring(true);
       }
-    } catch (error) {
-      console.error('Failed to determine monitor status', error);
+    } catch {
+      // noop
     }
 
     return () => {
-      if (frame !== null) {
-        cancelAnimationFrame(frame);
+      try {
+        unsubscribeMetrics();
+        unsubscribeAlerts();
+      } catch {
+        // noop
       }
-      unsubscribeMetrics();
-      unsubscribeAlerts();
     };
   }, []);
 
+  const resolveHealthMonitor = () => {
+    if (healthMonitor) {
+      return healthMonitor;
+    }
+
+    try {
+      return getHealthMonitor();
+    } catch {
+      return null;
+    }
+  };
+
   const handleToggleMonitoring = () => {
-    const healthMonitor = getHealthMonitor();
-    
-    if (isMonitoring) {
-      healthMonitor.stop();
-      setIsMonitoring(false);
-    } else {
-      healthMonitor.start();
-      setIsMonitoring(true);
+    const monitor = resolveHealthMonitor();
+    if (!monitor) {
+      return;
+    }
+
+    try {
+      if (isMonitoring) {
+        monitor.stop?.();
+        setIsMonitoring(false);
+      } else {
+        monitor.start?.();
+        setIsMonitoring(true);
+      }
+    } catch {
+      // noop
     }
   };
 
   const handleAcknowledgeAlert = (alertId: string) => {
-    const healthMonitor = getHealthMonitor();
-    if (healthMonitor.acknowledgeAlert(alertId)) {
-      setAlerts(prev => prev.map(alert => 
-        alert.id === alertId ? { ...alert, acknowledged: true } : alert
-      ));
+    const monitor = resolveHealthMonitor();
+    if (!monitor) {
+      return;
+    }
+
+    try {
+      if (monitor.acknowledgeAlert?.(alertId)) {
+        setAlerts((prev) =>
+          prev.map((alert) =>
+            alert.id === alertId ? { ...alert, acknowledged: true } : alert
+          )
+        );
+      }
+    } catch {
+      // noop
     }
   };
 
   const handleClearAlerts = () => {
-    const healthMonitor = getHealthMonitor();
-    healthMonitor.clearAlerts();
-    setAlerts([]);
+    const monitor = resolveHealthMonitor();
+    if (!monitor) {
+      return;
+    }
+
+    try {
+      monitor.clearAlerts?.();
+      setAlerts([]);
+    } catch {
+      // noop
+    }
   };
 
   const getStatusIcon = (status: string) => {

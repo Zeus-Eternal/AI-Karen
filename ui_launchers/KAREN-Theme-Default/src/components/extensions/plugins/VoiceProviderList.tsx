@@ -1,6 +1,4 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
@@ -11,18 +9,12 @@ interface VoiceProvider {
   previewText?: string;
 }
 
+const DEFAULT_VOICE_PROVIDERS: VoiceProvider[] = [
+  { id: "system", name: "System Voices", previewText: "Hello from your system" },
+];
+
 export default function VoiceProviderList() {
-  const [providers, setProviders] = useState<VoiceProvider[]>([]);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      setProviders([
-        { id: "system", name: "System Voices", previewText: "Hello from your system" },
-      ]);
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, []);
+  const providers = DEFAULT_VOICE_PROVIDERS;
 
   const handlePreview = (text?: string) => {
     if (!text) return;

@@ -11,7 +11,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRole } from "@/hooks/useRole";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import type { User, UpdateUserRequest, AdminApiResponse } from "@/types/admin";
 

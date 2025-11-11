@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,28 +20,22 @@ interface WorkflowInfo {
   steps: WorkflowStep[];
 }
 
+const DEFAULT_WORKFLOWS: WorkflowInfo[] = [
+  {
+    id: "wf1",
+    name: "Release Pipeline",
+    status: "idle",
+    steps: [
+      { name: "Build", action: "build" },
+      { name: "Test", action: "test" },
+      { name: "Deploy", action: "deploy" },
+    ],
+  },
+];
+
 export default function WorkflowList() {
-  const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowInfo[]>(DEFAULT_WORKFLOWS);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      setWorkflows([
-        {
-          id: "wf1",
-          name: "Release Pipeline",
-          status: "idle",
-          steps: [
-            { name: "Build", action: "build" },
-            { name: "Test", action: "test" },
-            { name: "Deploy", action: "deploy" },
-          ],
-        },
-      ]);
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   const executeWorkflow = (id: string) => {
     setWorkflows(prev => prev.map(w => w.id === id ? { ...w, status: "running" } : w));

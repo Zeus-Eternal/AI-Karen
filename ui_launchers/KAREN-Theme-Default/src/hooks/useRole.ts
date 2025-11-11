@@ -4,7 +4,7 @@
  * Provides convenient hooks for role-based functionality and permission checking
  */
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface UseRoleReturn {
   role: 'super_admin' | 'admin' | 'user' | null;

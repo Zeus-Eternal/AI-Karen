@@ -10,7 +10,7 @@
  * No diffs, no TODOs, no placeholders. Dragon-mode engaged.
  */
 
-export type AnyFn = (...args: unknown[]) => any;
+export type AnyFn = (...args: unknown[]) => unknown;
 
 export type KarenBackendPatchState = {
   earlyFetchPatched?: boolean;
