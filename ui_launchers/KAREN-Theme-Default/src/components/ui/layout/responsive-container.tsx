@@ -11,6 +11,8 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+import type { CSSCustomPropertyStyles } from './css-custom-properties';
+
 // ============================================================================
 // TYPES AND INTERFACES
 // ============================================================================
@@ -96,36 +98,6 @@ export interface ResponsiveContainerProps extends React.HTMLAttributes<HTMLDivEl
 }
 
 // ============================================================================
-// DEFAULT BREAKPOINTS
-// ============================================================================
-
-/**
- * Default container breakpoints
- */
-export const defaultContainerBreakpoints: ContainerBreakpoints = {
-  xs: '320px',
-  sm: '640px',
-  md: '768px',
-  lg: '1024px',
-  xl: '1280px',
-  '2xl': '1536px',
-};
-
-/**
- * Container size mappings
- */
-export const containerSizes: Record<ContainerSize, string> = {
-  xs: '320px',
-  sm: '640px',
-  md: '768px',
-  lg: '1024px',
-  xl: '1280px',
-  '2xl': '1536px',
-  full: '100%',
-  screen: '100vw',
-};
-
-// ============================================================================
 // COMPONENT VARIANTS
 // ============================================================================
 
@@ -183,10 +155,10 @@ const responsiveContainerVariants = cva(
 function processResponsiveValue<T>(
   value: T | ResponsiveValue<T>,
   processor?: (val: T) => string
-): Record<string, string> | string {
+): Record<`--${string}`, string> | string {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const responsiveValue = value as ResponsiveValue<T>;
-    const result: Record<string, string> = {};
+    const result: Record<`--${string}`, string> = {};
     
     Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
       if (val !== undefined) {
@@ -226,8 +198,8 @@ export interface ContainerStyleProps {
 /**
  * Generate container styles
  */
-function generateContainerStyles(props: ContainerStyleProps): React.CSSProperties {
-  const styles: React.CSSProperties = {};
+function generateContainerStyles(props: ContainerStyleProps): CSSCustomPropertyStyles {
+  const styles: CSSCustomPropertyStyles = {};
   
   // Process padding
   if (props.padding) {
@@ -236,7 +208,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
       styles.padding = paddingValue;
     } else {
       Object.entries(paddingValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }
@@ -248,7 +220,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
       styles.margin = marginValue;
     } else {
       Object.entries(marginValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }
@@ -286,7 +258,7 @@ function generateContainerStyles(props: ContainerStyleProps): React.CSSPropertie
   // Custom breakpoints
   if (props.breakpoints) {
     Object.entries(props.breakpoints).forEach(([breakpoint, value]) => {
-      (styles as any)[`--breakpoint-${breakpoint}`] = value;
+      styles[`--breakpoint-${breakpoint}` as `--${string}`] = value;
     });
   }
   
@@ -525,81 +497,3 @@ export const ContentContainer = React.forwardRef<HTMLDivElement, Omit<Responsive
 
 ContentContainer.displayName = 'ContentContainer';
 
-// ============================================================================
-// CONTAINER QUERY UTILITIES
-// ============================================================================
-
-/**
- * Container query hook for JavaScript-based container queries
- */
-export function useContainerQuery(containerName: string, query: string): boolean {
-  const [matches, setMatches] = React.useState(false);
-  
-  React.useEffect(() => {
-    if (!window.CSS || !window.CSS.supports || !window.CSS.supports('container-type', 'inline-size')) {
-      return;
-    }
-    
-    const mediaQuery = window.matchMedia(`@container ${containerName} ${query}`);
-    
-    const handleChange = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-    
-    setMatches(mediaQuery.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange);
-    };
-  }, [containerName, query]);
-  
-  return matches;
-}
-
-/**
- * Container size detection hook
- */
-export function useContainerSize(ref: React.RefObject<HTMLElement>): {
-  width: number;
-  height: number;
-  size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
-} {
-  const [dimensions, setDimensions] = React.useState<{
-    width: number;
-    height: number;
-    size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
-  }>({
-    width: 0,
-    height: 0,
-    size: 'xs',
-  });
-
-  React.useEffect(() => {
-    if (!ref.current) return;
-    
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        
-        let size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' = 'xs';
-        
-        if (width >= 1536) size = '2xl';
-        else if (width >= 1280) size = 'xl';
-        else if (width >= 1024) size = 'lg';
-        else if (width >= 768) size = 'md';
-        else if (width >= 640) size = 'sm';
-        
-        setDimensions({ width, height, size });
-      }
-    });
-
-    resizeObserver.observe(ref.current);
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [ref]);
-  
-  return dimensions;
-}

@@ -11,6 +11,8 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+import type { CSSCustomPropertyStyles } from './css-custom-properties';
+
 // ============================================================================
 // TYPES AND INTERFACES
 // ============================================================================
@@ -187,10 +189,10 @@ function processGridTemplate(value: string | number): string {
 function processResponsiveValue<T>(
   value: T | ResponsiveValue<T>,
   processor?: (val: T) => string
-): Record<string, string> | string {
+): Record<`--${string}`, string> | string {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const responsiveValue = value as ResponsiveValue<T>;
-    const result: Record<string, string> = {};
+    const result: Record<`--${string}`, string> = {};
     
     Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
       if (val !== undefined) {
@@ -240,8 +242,8 @@ export interface GridStyleProps {
 /**
  * Generate CSS custom properties for responsive grid
  */
-function generateGridStyles(props: GridStyleProps): React.CSSProperties {
-  const styles: React.CSSProperties = {};
+function generateGridStyles(props: GridStyleProps): CSSCustomPropertyStyles {
+  const styles: CSSCustomPropertyStyles = {};
   
   // Process columns
   if (props.columns) {
@@ -253,7 +255,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
       styles.gridTemplateColumns = columnsValue;
     } else {
       Object.entries(columnsValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }
@@ -268,7 +270,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
       styles.gridTemplateRows = rowsValue;
     } else {
       Object.entries(rowsValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }
@@ -280,7 +282,7 @@ function generateGridStyles(props: GridStyleProps): React.CSSProperties {
       styles.gap = gapValue;
     } else {
       Object.entries(gapValue).forEach(([key, value]) => {
-        (styles as any)[key] = value;
+        styles[key as `--${string}`] = value;
       });
     }
   }

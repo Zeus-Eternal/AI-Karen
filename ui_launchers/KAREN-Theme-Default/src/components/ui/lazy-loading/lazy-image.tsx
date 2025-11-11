@@ -96,6 +96,16 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const showError = hasError && isInView;
   const showImage = isInView && !hasError;
 
+  const resolvedPlaceholder =
+    fallback ??
+    (placeholder ? (
+      <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+        {placeholder}
+      </div>
+    ) : (
+      <DefaultPlaceholder className="w-full h-full" />
+    ));
+
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
       {/* Placeholder */}
@@ -106,7 +116,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           animate={{ opacity: isLoading ? 0.7 : 1 }}
           transition={{ duration: 0.2 }}
         >
-          {fallback || <DefaultPlaceholder className="w-full h-full" />}
+          {resolvedPlaceholder}
           {blurDataURL && (
             <img
               src={blurDataURL}
@@ -158,46 +168,5 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     </div>
   );
 };
-
-// Hook for batch image preloading
-export function useImagePreloader() {
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
-
-  const preloadImages = React.useCallback((urls: string[]) => {
-    const promises = urls.map(url => {
-      return new Promise<string>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          setLoadedImages(prev => new Set([...prev, url]));
-          resolve(url);
-        };
-        img.onerror = () => {
-          setFailedImages(prev => new Set([...prev, url]));
-          reject(new Error(`Failed to load image: ${url}`));
-        };
-        img.src = url;
-      });
-    });
-
-    return Promise.allSettled(promises);
-  }, []);
-
-  const isImageLoaded = React.useCallback((url: string) => {
-    return loadedImages.has(url);
-  }, [loadedImages]);
-
-  const isImageFailed = React.useCallback((url: string) => {
-    return failedImages.has(url);
-  }, [failedImages]);
-
-  return {
-    preloadImages,
-    isImageLoaded,
-    isImageFailed,
-    loadedImages: Array.from(loadedImages),
-    failedImages: Array.from(failedImages),
-  };
-}
 
 export default LazyImage;

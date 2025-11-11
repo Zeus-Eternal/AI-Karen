@@ -23,7 +23,7 @@ import type { AlertAction, KarenAlert } from "@/types/karen-alerts";
  * Variants
  * ------------------------------------------------------------------------- */
 
-export const karenToastVariants = cva(
+const karenToastVariants = cva(
   "group pointer-events-auto relative flex w-full items-start justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-xl focus-within:ring-2 focus-within:ring-offset-2 data-[state=open]:animate-in data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[swipe=cancel]:translate-x-0 data-[swipe=end]:animate-out data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none motion-reduce:hover:scale-100 motion-reduce:transition-none",
   {
     variants: {
@@ -155,7 +155,7 @@ const KarenToastProgress = React.forwardRef<
   );
 });
 
-(KarenToastProgress as any).displayName = "KarenToastProgress";
+KarenToastProgress.displayName = "KarenToastProgress";
 
 /* ----------------------------------------------------------------------------
  * Root Toast
