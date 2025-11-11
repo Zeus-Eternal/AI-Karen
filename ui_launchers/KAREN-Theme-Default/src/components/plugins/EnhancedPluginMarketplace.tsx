@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -234,7 +234,7 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
   onInstall,
   onPurchase,
 }) => {
-  const [plugins] = useState<PluginMarketplaceEntry[]>(() => mockEnhancedPlugins);
+  const plugins = useMemo(() => mockEnhancedPlugins, []);
   const [reviews] = useState<PluginReview[]>(mockReviews);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlugin, setSelectedPlugin] = useState<PluginMarketplaceEntry | null>(null);

@@ -18,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   PluginConfig,
@@ -115,7 +114,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to save configuration.");
-    } finally {
     }
   };
 
@@ -129,7 +127,6 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to update security policy.");
-    } finally {
     }
   };
 

@@ -1,8 +1,6 @@
 // Performance-aware animation components
-export { 
-  default as PerformanceAwareMotion,
-  usePerformanceAwareMotionValue
-} from './performance-aware-motion';
+export { default as PerformanceAwareMotion } from './performance-aware-motion';
+export { usePerformanceAwareMotionValue } from './performance-aware-motion-helpers';
 
 export { 
   default as AnimationMonitor 

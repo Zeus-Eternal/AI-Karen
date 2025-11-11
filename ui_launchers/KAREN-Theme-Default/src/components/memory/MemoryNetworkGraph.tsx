@@ -71,7 +71,6 @@ export interface FilterOptions {
 
 export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   userId,
-  tenantId,
   onNodeSelect,
   onNodeDoubleClick,
   onClusterSelect,
@@ -94,7 +93,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [showControls, setShowControls] = useState(true);
+  const showControls = true;
 
   const [config, setConfig] = useState<NetworkConfig>({
     nodeSize: [5, 20],

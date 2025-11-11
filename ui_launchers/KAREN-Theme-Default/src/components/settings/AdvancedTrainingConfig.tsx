@@ -533,11 +533,11 @@ const AdvancedTrainingConfig: React.FC = () => {
         gradient_explosion_detected: gradientExplosionDetected,
         gradient_vanishing_detected: gradientVanishingDetected,
         gradient_norm_history: gradientNormHistory,
-        weight_updates,
+        weight_updates: weightUpdates,
       },
       performance_metrics: {
         gpu_utilization: gpuUtilization,
-        memory_usage,
+        memory_usage: memoryUsage,
         throughput,
         latency,
       },

@@ -15,10 +15,7 @@ import { Label } from "@/components/ui/label";
 import { webUIConfig } from "@/lib/config";
 
 // Health / Diagnostics providers
-import {
-  getHealthMonitor,
-  type HealthMetrics,
-} from "@/lib/health-monitor";
+import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
 import {
   getDiagnosticLogger,
   type DiagnosticInfo,

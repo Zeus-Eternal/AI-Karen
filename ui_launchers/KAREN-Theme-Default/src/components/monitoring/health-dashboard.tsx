@@ -5,8 +5,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,35 +22,26 @@ export interface HealthDashboardProps {
 }
 
 export function HealthDashboard({ className }: HealthDashboardProps) {
-  type HealthMonitor = ReturnType<typeof getHealthMonitor>;
-  const healthMonitorRef = React.useRef<HealthMonitor | null>(null);
-  if (!healthMonitorRef.current) {
-    try {
-      healthMonitorRef.current = getHealthMonitor();
-    } catch {
-      healthMonitorRef.current = null;
-    }
-  }
-
+  const healthMonitorRef = useRef(getHealthMonitor());
   const healthMonitor = healthMonitorRef.current;
 
   const [metrics, setMetrics] = useState<HealthMetrics | null>(() => {
     try {
-      return healthMonitor?.getMetrics() ?? null;
+      return healthMonitor.getMetrics();
     } catch {
       return null;
     }
   });
   const [alerts, setAlerts] = useState<HealthAlert[]>(() => {
     try {
-      return healthMonitor?.getAlerts(20) ?? [];
+      return healthMonitor.getAlerts(20);
     } catch {
       return [];
     }
   });
   const [isMonitoring, setIsMonitoring] = useState(() => {
     try {
-      return !!healthMonitor?.getStatus().isMonitoring;
+      return healthMonitor.getStatus().isMonitoring;
     } catch {
       return false;
     }
@@ -58,36 +49,29 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
-    if (!healthMonitor) {
-      return;
-    }
+    const monitor = healthMonitorRef.current;
 
-    const unsubscribeMetrics = healthMonitor.onMetricsUpdate((newMetrics) => {
+    // Set up listeners
+    const unsubscribeMetrics = monitor.onMetricsUpdate((newMetrics) => {
       setMetrics(newMetrics);
       setLastUpdate(new Date().toLocaleTimeString());
+      setIsMonitoring(healthMonitor.getStatus().isMonitoring);
     });
 
-    const unsubscribeAlerts = healthMonitor.onAlert((newAlert) => {
+    const unsubscribeAlerts = monitor.onAlert((newAlert) => {
       setAlerts(prev => [newAlert, ...prev.slice(0, 19)]);
     });
 
+    // Start monitoring if not already started
+    if (!monitor.getStatus().isMonitoring) {
+      monitor.start();
+      setIsMonitoring(true);
+    }
+
     return () => {
-      unsubscribeMetrics?.();
-      unsubscribeAlerts?.();
+      unsubscribeMetrics();
+      unsubscribeAlerts();
     };
-  }, [healthMonitor]);
-
-  useEffect(() => {
-    if (!healthMonitor) {
-      return;
-    }
-
-    if (!healthMonitor.getStatus().isMonitoring) {
-      healthMonitor.start();
-      void Promise.resolve().then(() => {
-        setIsMonitoring(healthMonitor.getStatus().isMonitoring);
-      });
-    }
   }, [healthMonitor]);
 
   const handleToggleMonitoring = () => {

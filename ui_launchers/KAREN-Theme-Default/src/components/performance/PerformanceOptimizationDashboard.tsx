@@ -1,16 +1,20 @@
 // ui_launchers/KAREN-Theme-Default/src/components/performance/PerformanceOptimizationDashboard.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ErrorBoundary,
   type ErrorFallbackProps,
 } from "@/components/error-handling/ErrorBoundary";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -200,7 +204,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       setRecommendations(performanceOptimizer.generateRecommendations());
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error("Failed to apply performance optimizations", error);
+      console.error("[PerformanceOptimization] Failed to apply optimizations", error);
     } finally {
       setIsOptimizing(false);
     }
