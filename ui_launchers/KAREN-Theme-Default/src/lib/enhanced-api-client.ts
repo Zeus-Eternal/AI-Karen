@@ -6,8 +6,9 @@
  */
 import { useAppStore } from "@/store/app-store";
 import { queryClient } from "@/lib/query-client";
+
 // Enhanced API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   status: "success" | "error" | "warning";
@@ -28,7 +29,7 @@ export interface ApiResponse<T = any> {
 export interface ApiErrorInterface extends Error {
   code?: string;
   status?: number;
-  details?: any;
+  details?: unknown;
   timestamp?: string;
   requestId?: string;
 }
@@ -44,7 +45,7 @@ export interface EnhancedRequestConfig extends RequestInit {
   loadingKey?: string;
   optimistic?: boolean;
   invalidateQueries?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 // Interceptor types
 export type RequestInterceptor = (
@@ -58,6 +59,12 @@ export type ErrorInterceptor = (
   error: ApiError,
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
+
+interface ErrorResponseData extends Record<string, unknown> {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
 // Request/Response logging
 export interface RequestLog {
   id: string;
@@ -122,7 +129,7 @@ export class EnhancedApiClient {
         }
         config.headers = headers;
         return config;
-      } catch (error) {
+      } catch (_error) {
         return config;
       }
     });
@@ -140,7 +147,7 @@ export class EnhancedApiClient {
           }
         }
         return config;
-      } catch (error) {
+      } catch (_error) {
         return config;
       }
     });
@@ -150,7 +157,7 @@ export class EnhancedApiClient {
       try {
         // Clear loading states
         if (!config.skipLoading) {
-          const { setLoading, setGlobalLoading, clearLoading } =
+          const { setGlobalLoading, clearLoading } =
             useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
@@ -190,7 +197,7 @@ export class EnhancedApiClient {
           });
         }
         return response;
-      } catch (error) {
+      } catch (_error) {
         return response;
       }
     });
@@ -200,8 +207,7 @@ export class EnhancedApiClient {
       try {
         // Clear loading states on error
         if (!config.skipLoading) {
-          const { setLoading, setGlobalLoading, clearLoading } =
-            useAppStore.getState();
+          const { setGlobalLoading, clearLoading } = useAppStore.getState();
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
             setGlobalLoading(false);
@@ -249,7 +255,7 @@ export class EnhancedApiClient {
           }
         }
         return error;
-      } catch (interceptorError) {
+      } catch (_interceptorError) {
         return error;
       }
     });
@@ -294,7 +300,7 @@ export class EnhancedApiClient {
     return true;
   }
   // Make HTTP request with enhanced features
-  public async request<T = any>(
+  public async request<T = unknown>(
     endpoint: string,
     config: EnhancedRequestConfig = {}
   ): Promise<ApiResponse<T>> {
@@ -329,7 +335,7 @@ export class EnhancedApiClient {
     for (const interceptor of this.requestInterceptors) {
       try {
         finalConfig = await interceptor(finalConfig);
-      } catch (error) {
+      } catch (_error) {
         // Continue with current config if interceptor fails
       }
     }
@@ -354,7 +360,7 @@ export class EnhancedApiClient {
         for (const interceptor of this.responseInterceptors) {
           try {
             finalResponse = await interceptor(finalResponse, config);
-          } catch (error) {
+          } catch (_error) {
             // Continue with current response if interceptor fails
           }
         }
@@ -433,7 +439,7 @@ export class EnhancedApiClient {
       for (const interceptor of this.errorInterceptors) {
         try {
           lastError = await interceptor(lastError, config);
-        } catch (error) {
+        } catch (_error) {
           // Continue with current error if interceptor fails
         }
       }
@@ -441,15 +447,15 @@ export class EnhancedApiClient {
     throw lastError;
   }
   // HTTP method helpers
-  public async get<T = any>(
+  public async get<T = unknown>(
     endpoint: string,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: "GET" });
   }
-  public async post<T = any>(
+  public async post<T = unknown>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -458,9 +464,9 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-  public async put<T = any>(
+  public async put<T = unknown>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -469,9 +475,9 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-  public async patch<T = any>(
+  public async patch<T = unknown>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -480,14 +486,14 @@ export class EnhancedApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
-  public async delete<T = any>(
+  public async delete<T = unknown>(
     endpoint: string,
     config?: EnhancedRequestConfig
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...config, method: "DELETE" });
   }
   // Upload with progress tracking
-  public async upload<T = any>(
+  public async upload<T = unknown>(
     endpoint: string,
     file: File,
     config?: Omit<EnhancedRequestConfig, "body">,
@@ -508,10 +514,22 @@ export class EnhancedApiClient {
         xhr.addEventListener("load", () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
+              const parsed = JSON.parse(xhr.responseText) as unknown;
+              if (this.isApiResponseData<T>(parsed)) {
+                resolve(parsed);
+              } else {
+                resolve({
+                  data: parsed as T,
+                  status: "success",
+                  meta: { timestamp: new Date().toISOString() },
+                });
+              }
             } catch {
-              resolve({ data: xhr.responseText as T, status: "success" });
+              resolve({
+                data: xhr.responseText as unknown as T,
+                status: "success",
+                meta: { timestamp: new Date().toISOString() },
+              });
             }
           } else {
             reject(
@@ -553,7 +571,7 @@ export class EnhancedApiClient {
   // Default retry condition
   private defaultRetryCondition = (
     error: ApiError,
-    attempt: number
+    _attempt: number
   ): boolean => {
     // Don't retry on client errors (4xx) except for specific cases
     if (error.status && error.status >= 400 && error.status < 500) {
@@ -570,40 +588,63 @@ export class EnhancedApiClient {
   private async parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
-      const json = await response.json();
-      // Handle different response formats
-      if (json.data !== undefined) {
-        return json as ApiResponse<T>;
-      } else {
-        return {
-          data: json as T,
-          status: "success",
-          meta: {
-            timestamp: new Date().toISOString(),
-          },
-        };
+      const json = (await response.json()) as unknown;
+      if (this.isApiResponseData<T>(json)) {
+        return json;
       }
-    } else {
-      const text = await response.text();
       return {
-        data: text as T,
+        data: json as T,
         status: "success",
         meta: {
           timestamp: new Date().toISOString(),
         },
       };
     }
+
+    const text = await response.text();
+    return {
+      data: text as unknown as T,
+      status: "success",
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    };
   }
+
+  private isApiResponseData<T>(value: unknown): value is ApiResponse<T> {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return record.hasOwnProperty("data") && record.hasOwnProperty("status");
+  }
+
   // Parse error response
-  private async parseErrorResponse(response: Response): Promise<any> {
+  private async parseErrorResponse(response: Response): Promise<ErrorResponseData> {
     try {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
-        return await response.json();
-      } else {
-        const text = await response.text();
-        return { message: text || response.statusText };
+        const json = (await response.json()) as unknown;
+        if (json && typeof json === "object") {
+          const record = json as Record<string, unknown>;
+          const message =
+            typeof record.message === "string"
+              ? record.message
+              : response.statusText || "Unknown error";
+          const code = typeof record.code === "string" ? record.code : undefined;
+          const details = record.details;
+          return {
+            ...record,
+            message,
+            code,
+            details,
+          };
+        }
+        return { message: response.statusText || "Unknown error" };
       }
+
+      const text = await response.text();
+      return { message: text || response.statusText };
     } catch {
       return { message: response.statusText || "Unknown error" };
     }
@@ -641,7 +682,7 @@ export class EnhancedApiClient {
 class ApiError extends Error {
   public code?: string;
   public status?: number;
-  public details?: any;
+  public details?: unknown;
   public timestamp?: string;
   public requestId?: string;
   constructor(message: string, code?: string, status?: number) {

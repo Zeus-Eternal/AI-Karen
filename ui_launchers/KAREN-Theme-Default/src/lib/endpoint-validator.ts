@@ -28,7 +28,7 @@ export interface HealthCheckResult {
   responseTime: number;
   timestamp: string;
   details: {
-    services?: Record<string, any>;
+    services?: Record<string, HealthServiceStatus>;
     version?: string;
     uptime?: number;
     error?: string;
@@ -45,9 +45,20 @@ export interface ConnectivityTestResult {
   timestamp: string;
 }
 
-function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof document !== "undefined";
-}
+type HealthServiceStatus = {
+  status?: string;
+  responseTime?: number;
+  error?: string;
+  [key: string]: unknown;
+};
+
+type HealthResponse = {
+  status?: string;
+  services?: Record<string, HealthServiceStatus>;
+  version?: string;
+  uptime?: number;
+  [key: string]: unknown;
+};
 
 function safeNowISO(): string {
   try {
@@ -420,9 +431,14 @@ export class EndpointValidationService {
       const responseTime = Math.max(0, perfNow() - startTime);
 
       if (response.ok) {
-        let healthData: any = {};
+        let healthData: HealthResponse = {};
         try {
-          healthData = await response.json();
+          const json = await response.json();
+          if (json && typeof json === "object") {
+            healthData = json as HealthResponse;
+          } else {
+            healthData = { status: "ok" };
+          }
         } catch {
           healthData = { status: "ok" };
         }
@@ -485,7 +501,7 @@ export class EndpointValidationService {
    * Determine health status based on response data and performance
    */
   private determineHealthStatus(
-    healthData: any,
+    healthData: HealthResponse,
     responseTime: number
   ): "healthy" | "degraded" | "unhealthy" {
     // Latency heuristic
@@ -493,10 +509,12 @@ export class EndpointValidationService {
 
     // Service map heuristic
     if (healthData?.services) {
-      const services = Object.values(healthData.services) as any[];
-      const unhealthy = services.filter(
-        (s) => s?.status === "error" || s?.status === "unhealthy"
-      );
+      const services = Object.values(healthData.services ?? {});
+      const unhealthy = services.filter(service => {
+        const status =
+          typeof service?.status === "string" ? service.status.toLowerCase() : "";
+        return status === "error" || status === "unhealthy";
+      });
       if (unhealthy.length > 0) {
         return unhealthy.length === services.length ? "unhealthy" : "degraded";
       }
