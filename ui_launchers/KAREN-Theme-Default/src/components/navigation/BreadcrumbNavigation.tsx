@@ -142,13 +142,7 @@ export const BreadcrumbNavigation = React.forwardRef<
   }
 );
 
-BreadcrumbNavigation.displayName = "BreadcrumbNavigation";
-
-// Individual Breadcrumb Item Component
-export interface BreadcrumbItemProps {
-  item: BreadcrumbItem;
-  onClick: () => void;
-}
+BreadcrumbNavigationComponent.displayName = "BreadcrumbNavigation";
 
 const BreadcrumbNode: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
   const Icon = item.icon;

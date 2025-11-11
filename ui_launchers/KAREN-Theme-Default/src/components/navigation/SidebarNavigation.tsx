@@ -19,185 +19,20 @@ import React, {
   useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useAppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 
-// Lucide icons (use proven names to avoid TS errors)
 import {
-  Home,
-  MessageSquare,
-  GitBranch,
-  Brain,
-  Puzzle,
-  BarChart3,
-  Shield,
-  Settings,
-  ChevronDown,
-  ChevronRight,
-  Menu,
-  X,
-} from "lucide-react";
+  sidebarNavigationVariants,
+  defaultNavigationItems,
+  type NavigationItem,
+  type SidebarNavigationProps,
+  type NavigationItemComponentProps,
+  sidebarIcons,
+} from "./SidebarNavigation.config";
 
-/* ---------------------------------- Types --------------------------------- */
-
-// Navigation item types
-export interface NavigationItem {
-  id: string;
-  label: string;
-  href?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  badge?: string | number;
-  children?: NavigationItem[];
-  disabled?: boolean;
-  external?: boolean;
-}
-
-// Default navigation structure (icons mapped to known Lucide names)
-export const defaultNavigationItems: NavigationItem[] = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: Home,
-  },
-  {
-    id: "chat",
-    label: "Chat Interface",
-    href: "/chat",
-    icon: MessageSquare,
-  },
-  {
-    id: "agents",
-    label: "Agents & Workflows",
-    icon: GitBranch, // previously "Workflow"
-    children: [
-      {
-        id: "agents-list",
-        label: "Agent Management",
-        href: "/agents",
-      },
-      {
-        id: "workflows",
-        label: "Workflow Builder",
-        href: "/workflows",
-      },
-      {
-        id: "automation",
-        label: "Automation",
-        href: "/automation",
-      },
-    ],
-  },
-  {
-    id: "memory",
-    label: "Memory & Analytics",
-    icon: Brain,
-    children: [
-      {
-        id: "memory-analytics",
-        label: "Memory Analytics",
-        href: "/memory/analytics",
-      },
-      {
-        id: "memory-search",
-        label: "Semantic Search",
-        href: "/memory/search",
-      },
-      {
-        id: "memory-network",
-        label: "Memory Network",
-        href: "/memory/network",
-      },
-    ],
-  },
-  {
-    id: "plugins",
-    label: "Plugins & Extensions",
-    icon: Puzzle,
-    children: [
-      {
-        id: "plugins-installed",
-        label: "Installed Plugins",
-        href: "/plugins",
-      },
-      {
-        id: "plugins-marketplace",
-        label: "Plugin Marketplace",
-        href: "/plugins/marketplace",
-      },
-      {
-        id: "extensions",
-        label: "Extensions",
-        href: "/extensions",
-      },
-    ],
-  },
-  {
-    id: "providers",
-    label: "Providers & Models",
-    icon: BarChart3,
-    children: [
-      {
-        id: "providers-config",
-        label: "Provider Configuration",
-        href: "/providers",
-      },
-      {
-        id: "models",
-        label: "Model Management",
-        href: "/models",
-      },
-      {
-        id: "performance",
-        label: "Performance Metrics",
-        href: "/performance",
-      },
-    ],
-  },
-  {
-    id: "security",
-    label: "Security & RBAC",
-    icon: Shield,
-    children: [
-      {
-        id: "users",
-        label: "User Management",
-        href: "/users",
-      },
-      {
-        id: "roles",
-        label: "Roles & Permissions",
-        href: "/roles",
-      },
-      {
-        id: "audit",
-        label: "Audit Logs",
-        href: "/audit",
-      },
-    ],
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    href: "/settings",
-    icon: Settings,
-  },
-];
-
-// Sidebar navigation variants
-export const sidebarNavigationVariants = cva(["flex flex-col h-full", "overflow-hidden"]);
-
-export interface SidebarNavigationProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof sidebarNavigationVariants> {
-  items?: NavigationItem[];
-  onItemClick?: (item: NavigationItem) => void;
-  enableKeyboardNavigation?: boolean;
-  autoFocus?: boolean;
-  ariaLabel?: string;
-}
+const { ChevronDown, ChevronRight, Menu, X } = sidebarIcons;
 
 /* --------------------------- Sidebar Navigation --------------------------- */
 
@@ -219,7 +54,6 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
     const pathname = usePathname();
     const router = useRouter();
     const localNavRef = useRef<HTMLDivElement | null>(null);
-    const navRef = localNavRef;
     const assignNavRef = useCallback(
       (node: HTMLDivElement | null) => {
         localNavRef.current = node;
@@ -312,7 +146,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
       if (!enableKeyboardNavigation) return;
 
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (!navRef.current?.contains(event.target as Node)) return;
+        if (!localNavRef.current?.contains(event.target as Node)) return;
 
         const currentButton = event.target as HTMLButtonElement;
         const currentItemId = Array.from(itemRefs.current.entries()).find(
@@ -429,6 +263,7 @@ export const SidebarNavigation = React.forwardRef<HTMLDivElement | null, Sidebar
                   if (el) itemRefs.current.set(item.id, el);
                   else itemRefs.current.delete(item.id);
                 }}
+                isExpandedById={(id) => visibleExpandedItems.has(id)}
               />
             ))}
           </ul>
@@ -442,17 +277,6 @@ SidebarNavigation.displayName = "SidebarNavigation";
 
 /* ------------------------- Navigation Item Component ---------------------- */
 
-export interface NavigationItemComponentProps {
-  item: NavigationItem;
-  isExpanded: boolean;
-  isActive: boolean;
-  isCollapsed: boolean;
-  onToggle: () => void;
-  onClick: (item: NavigationItem) => void;
-  level?: number;
-  itemRef?: (el: HTMLButtonElement | null) => void;
-}
-
 const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
   item,
   isExpanded,
@@ -462,6 +286,7 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
   onClick,
   level = 0,
   itemRef,
+  isExpandedById,
 }) => {
   const pathname = usePathname();
   const hasChildren = !!(item.children && item.children.length > 0);
@@ -560,13 +385,14 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
             <NavigationItemComponent
               key={child.id}
               item={child}
-              isExpanded={false}
+              isExpanded={isExpandedById?.(child.id) ?? false}
               isActive={isItemActive(child, pathname || '/')}
               isCollapsed={false}
               onToggle={() => {}}
               onClick={() => onClick(child)}
               level={level + 1}
               itemRef={itemRef}
+              isExpandedById={isExpandedById}
             />
           ))}
         </ul>

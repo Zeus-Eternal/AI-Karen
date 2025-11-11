@@ -39,12 +39,16 @@ export type {
 export type { BreadcrumbItemProps } from './BreadcrumbNavigation';
 
 // Sidebar Navigation
-export { SidebarNavigation, defaultNavigationItems, sidebarNavigationVariants } from './SidebarNavigation';
+export {
+  SidebarNavigation,
+  defaultNavigationItems,
+  sidebarNavigationVariants,
+} from './SidebarNavigation';
 export type {
   NavigationItem,
   SidebarNavigationProps,
   NavigationItemComponentProps,
-} from './SidebarNavigation';
+} from './SidebarNavigation.config';
 
 // Navigation Layout
 export { NavigationLayout, default as NavigationLayoutDefault } from './NavigationLayout';
