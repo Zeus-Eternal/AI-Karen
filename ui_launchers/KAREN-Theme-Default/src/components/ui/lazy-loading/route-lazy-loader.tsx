@@ -7,11 +7,7 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import { Button } from "@/components/ui/button";
 
-import type {
-  FallbackComponent,
-  RouteErrorFallback,
-  RouteLazyLoaderProps,
-} from "./route-lazy-loader.types";
+import type { RouteLazyLoaderProps } from "./route-lazy-loader.types";
 
 const DefaultRouteFallback: React.FC = () => (
   <motion.div
