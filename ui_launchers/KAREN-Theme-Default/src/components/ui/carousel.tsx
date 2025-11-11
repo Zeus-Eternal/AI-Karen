@@ -67,19 +67,21 @@ const Carousel = React.forwardRef<
     const [canScrollPrev, setCanScrollPrev] = React.useState(false);
     const [canScrollNext, setCanScrollNext] = React.useState(false);
     const carouselRef = React.useRef<HTMLDivElement>(null);
+    const scrollAmount = opts?.scrollAmount;
+    const scrollBehavior = opts?.behavior ?? "smooth";
 
     const getScrollAmount = React.useCallback(() => {
       const element = carouselRef.current;
       if (!element) {
         return 0;
       }
-      if (opts?.scrollAmount !== undefined) {
-        return opts.scrollAmount;
+      if (scrollAmount !== undefined) {
+        return scrollAmount;
       }
       return orientation === "horizontal"
         ? element.clientWidth
         : element.clientHeight;
-    }, [opts?.scrollAmount, orientation]);
+    }, [orientation, scrollAmount]);
 
     const api = React.useMemo<CarouselApi>(() => ({
       scrollPrev: () => {
@@ -91,7 +93,7 @@ const Carousel = React.forwardRef<
         element.scrollBy({
           left: orientation === "horizontal" ? -scrollAmount : 0,
           top: orientation === "vertical" ? -scrollAmount : 0,
-          behavior: opts?.behavior ?? "smooth",
+          behavior: scrollBehavior,
         });
       },
       scrollNext: () => {
@@ -103,12 +105,12 @@ const Carousel = React.forwardRef<
         element.scrollBy({
           left: orientation === "horizontal" ? scrollAmount : 0,
           top: orientation === "vertical" ? scrollAmount : 0,
-          behavior: opts?.behavior ?? "smooth",
+          behavior: scrollBehavior,
         });
       },
       canScrollPrev,
       canScrollNext,
-    }), [canScrollNext, canScrollPrev, getScrollAmount, opts?.behavior, orientation]);
+    }), [canScrollNext, canScrollPrev, getScrollAmount, orientation, scrollBehavior]);
 
     const onSelect = React.useCallback(() => {
       const element = carouselRef.current;

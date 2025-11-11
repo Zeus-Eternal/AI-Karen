@@ -1,5 +1,6 @@
 // Re-export all UI components
-export { Button, buttonVariants, type ButtonProps } from './button';
+export { Button, type ButtonProps } from './button';
+export { buttonVariants } from './button-variants';
 export { 
   Toast, 
   ToastAction, 

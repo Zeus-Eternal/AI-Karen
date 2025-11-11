@@ -5,6 +5,12 @@ import * as React from "react";
 // import * as RechartsPrimitive from "recharts";
 
 import { cn } from "@/lib/utils";
+import {
+  ChartContext,
+  useChart,
+  type ChartConfig,
+  type ChartThemeKey,
+} from "./chart-context";
 
 type RechartsFallbackComponentProps = {
   children?: React.ReactNode;
@@ -24,33 +30,7 @@ const RechartsPrimitive = {
 } as const;
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
-
-export type ChartConfig = {
-  [k in string]: {
-    label?: React.ReactNode;
-    icon?: React.ComponentType;
-  } & (
-    | { color?: string; theme?: never }
-    | { color?: never; theme: Record<keyof typeof THEMES, string> }
-  );
-};
-
-export type ChartContextProps = {
-  config: ChartConfig;
-};
-
-const ChartContext = React.createContext<ChartContextProps | null>(null);
-
-function useChart(): ChartContextProps {
-  const context = React.useContext(ChartContext);
-
-  if (!context) {
-    throw new Error("useChart must be used within a <ChartContainer />");
-  }
-
-  return context;
-}
+const THEMES: Record<ChartThemeKey, string> = { light: "", dark: ".dark" };
 
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
@@ -418,5 +398,6 @@ export {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  useChart,
 };
+
+export type { ChartConfig } from "./chart-context";

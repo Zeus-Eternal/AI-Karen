@@ -29,7 +29,6 @@ export {
 // Form compound
 export {
   default as Form,
-  useFormField,
   FormRoot,
   FormField,
   FormGroup,
@@ -42,5 +41,7 @@ export {
   FormSection,
   FormLegend,
 } from "./form";
+
+export { useFormField } from "./form-context";
 
 export type { FormFieldProps, ModalProps, CardProps } from "./types";
