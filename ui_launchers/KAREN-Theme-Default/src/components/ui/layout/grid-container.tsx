@@ -12,6 +12,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 import type { CSSCustomPropertyStyles } from './css-custom-properties';
+import { assignResponsiveProperties } from './responsive-style-helpers';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -193,21 +194,25 @@ function processResponsiveValue<T>(
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const responsiveValue = value as ResponsiveValue<T>;
     const result: Record<`--${string}`, string> = {};
-    
-    Object.entries(responsiveValue).forEach(([breakpoint, val]) => {
+
+    const entries = Object.entries(responsiveValue) as Array<
+      [keyof ResponsiveValue<T>, T | undefined]
+    >;
+
+    entries.forEach(([breakpoint, val]) => {
       if (val !== undefined) {
         const processedValue = processor ? processor(val) : String(val);
         if (breakpoint === 'base') {
           result['--grid-base'] = processedValue;
         } else {
-          result[`--grid-${breakpoint}`] = processedValue;
+          result[`--grid-${String(breakpoint)}`] = processedValue;
         }
       }
     });
 
     return result;
   }
-  
+
   return processor ? processor(value as T) : String(value);
 }
 
@@ -254,9 +259,7 @@ function generateGridStyles(props: GridStyleProps): CSSCustomPropertyStyles {
     if (typeof columnsValue === 'string') {
       styles.gridTemplateColumns = columnsValue;
     } else {
-      Object.entries(columnsValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      assignResponsiveProperties(styles, columnsValue);
     }
   }
   
@@ -269,9 +272,7 @@ function generateGridStyles(props: GridStyleProps): CSSCustomPropertyStyles {
     if (typeof rowsValue === 'string') {
       styles.gridTemplateRows = rowsValue;
     } else {
-      Object.entries(rowsValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      assignResponsiveProperties(styles, rowsValue);
     }
   }
   
@@ -281,9 +282,7 @@ function generateGridStyles(props: GridStyleProps): CSSCustomPropertyStyles {
     if (typeof gapValue === 'string') {
       styles.gap = gapValue;
     } else {
-      Object.entries(gapValue).forEach(([key, value]) => {
-        styles[key as `--${string}`] = value;
-      });
+      assignResponsiveProperties(styles, gapValue);
     }
   }
   

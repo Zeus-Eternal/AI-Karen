@@ -25,11 +25,11 @@ export {
 // Responsive Container Components
 export {
   type ResponsiveContainerProps,
-  type ResponsiveContainerVariants,
   type ContainerBreakpoints,
   type ContainerSize,
   type ResponsiveValue as ContainerResponsiveValue,
-} from './responsive-container';
+} from './responsive-container.types';
+export { type ResponsiveContainerVariants } from './responsive-container.variants';
 
 export { useContainerQuery, useContainerSize } from './responsive-container-hooks';
 export { defaultContainerBreakpoints, containerSizes } from './responsive-container-constants';

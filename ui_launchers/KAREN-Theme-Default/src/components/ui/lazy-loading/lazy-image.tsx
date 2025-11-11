@@ -4,19 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ImageIcon, AlertCircle } from 'lucide-react';
 
-export interface LazyImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'loading'> {
-  src: string;
-  alt: string;
-  fallback?: React.ReactNode;
-  errorFallback?: React.ReactNode;
-  threshold?: number;
-  rootMargin?: string;
-  placeholder?: string;
-  blurDataURL?: string;
-  onLoad?: () => void;
-  onError?: () => void;
-  className?: string;
-}
+import type { LazyImageProps } from './lazy-image.types';
 
 const DefaultPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
   <div className={`flex items-center justify-center bg-muted ${className}`}>
@@ -29,6 +17,8 @@ const DefaultErrorFallback: React.FC<{ className?: string }> = ({ className }) =
     <AlertCircle className="h-8 w-8 text-destructive " />
   </div>
 );
+
+type ImageAttributes = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'loading'>;
 
 export const LazyImage: React.FC<LazyImageProps> = ({
   src,
@@ -96,6 +86,16 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const showError = hasError && isInView;
   const showImage = isInView && !hasError;
 
+  const sanitizedImageProps: Partial<ImageAttributes> = {};
+
+  (Object.keys(props) as Array<keyof ImageAttributes>).forEach(key => {
+    if (key.startsWith('onDrag') || key.startsWith('onDrop') || key === 'draggable') {
+      return;
+    }
+
+    sanitizedImageProps[key] = props[key];
+  });
+
   const resolvedPlaceholder =
     fallback ??
     (placeholder ? (
@@ -156,13 +156,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
-          {...(Object.fromEntries(
-            Object.entries(props).filter(([key]) => 
-              !key.startsWith('onDrag') && 
-              !key.startsWith('onDrop') && 
-              key !== 'draggable'
-            )
-          ))}
+          {...sanitizedImageProps}
         />
       )}
     </div>

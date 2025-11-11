@@ -2,7 +2,8 @@
 
 import React, { lazy, useCallback, type ComponentType } from 'react';
 
-import RouteLazyLoader, { type RouteLazyLoaderProps } from './route-lazy-loader';
+import RouteLazyLoader from './route-lazy-loader';
+import type { RouteLazyLoaderProps } from './route-lazy-loader.types';
 
 type PropsOf<T extends ComponentType<unknown>> = T extends ComponentType<infer P> ? P : never;
 

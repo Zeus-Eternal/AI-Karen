@@ -10,7 +10,8 @@ import React, {
   type LazyExoticComponent,
 } from 'react';
 
-import LazyComponent, { type LazyLoadOptions } from './lazy-component';
+import LazyComponent from './lazy-component';
+import type { LazyLoadOptions } from './lazy-component.types';
 
 type ComponentProps<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
   ? P
