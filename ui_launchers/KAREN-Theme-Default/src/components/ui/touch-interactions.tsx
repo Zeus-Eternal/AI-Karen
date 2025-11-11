@@ -442,13 +442,3 @@ export const TouchMenu: React.FC<TouchMenuProps> = ({ trigger, items, className 
   );
 };
 
-export const touchInteractions = {
-  TouchButton,
-  SwipeableCard,
-  PullToRefresh,
-  FloatingActionButton,
-  TouchSlider,
-  TouchMenu,
-};
-
-export default touchInteractions;

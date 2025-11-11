@@ -165,7 +165,7 @@ export function WorkflowBuilder({
     } finally {
       setIsValidating(false);
     }
-  }, [nodes, edges]);
+  }, [convertToWorkflowDefinition]);
 
   const testWorkflow = React.useCallback(async () => {
     if (!onTest) return;
@@ -178,7 +178,7 @@ export function WorkflowBuilder({
     } finally {
       setIsTesting(false);
     }
-  }, [nodes, edges, onTest]);
+  }, [convertToWorkflowDefinition, onTest]);
 
   const convertToWorkflowDefinition = React.useCallback((): WorkflowDefinition => {
     const allowedNodeTypes: WorkflowNode['type'][] = ['input', 'output', 'llm', 'memory', 'plugin', 'condition', 'loop', 'custom'];

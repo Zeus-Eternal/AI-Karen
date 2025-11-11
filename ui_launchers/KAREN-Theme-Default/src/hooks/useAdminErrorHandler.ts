@@ -7,7 +7,7 @@
  * Requirements: 7.2, 7.4
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import AdminErrorHandler, { type AdminError, type ErrorContext } from '@/lib/errors/admin-error-handler';
 import { useAriaLiveRegion } from '@/lib/accessibility/aria-helpers';
 
@@ -51,8 +51,8 @@ export function useAdminErrorHandler(
     logErrors = true,
     context: defaultContext = {}
   } = options;
-  const normalizedMaxRetries = Math.max(0, maxRetries);
-  const normalizedRetryDelay = Math.max(0, retryDelay);
+  const normalizedMaxRetries = useMemo(() => Math.max(0, maxRetries), [maxRetries]);
+  const normalizedRetryDelay = useMemo(() => Math.max(0, retryDelay), [retryDelay]);
 
   const [errorState, setErrorState] = useState<ErrorState>({
     error: null,

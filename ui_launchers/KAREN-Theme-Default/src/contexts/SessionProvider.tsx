@@ -9,7 +9,7 @@
 
 "use client";
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, ReactNode } from 'react';
 import {
   isAuthenticated,
   getCurrentUser,
@@ -111,6 +111,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
 /**
  * Higher-order component to wrap components with session provider
  */
+/* eslint-disable-next-line react-refresh/only-export-components -- HOC export is retained for legacy usage. */
 export function withSessionProvider<P extends object>(
   Component: React.ComponentType<P>,
   providerProps?: Omit<SessionProviderProps, 'children'>

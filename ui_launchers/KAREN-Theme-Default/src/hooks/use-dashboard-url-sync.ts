@@ -9,6 +9,17 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDashboardStore, type TimeRange } from '@/store/dashboard-store';
 import type { DashboardFilter } from '@/types/dashboard';
 
+const TIME_RANGE_PRESETS: ReadonlyArray<NonNullable<TimeRange['preset']>> = [
+  'last-hour',
+  'last-day',
+  'last-week',
+  'last-month',
+  'custom',
+];
+
+const isTimeRangePreset = (value: unknown): value is NonNullable<TimeRange['preset']> =>
+  typeof value === 'string' && TIME_RANGE_PRESETS.includes(value as NonNullable<TimeRange['preset']>);
+
 export interface DashboardUrlState {
   dashboardId?: string;
   timeRange?: {
@@ -163,10 +174,11 @@ export const useDashboardUrlSync = () => {
 
     // Set time range
     if (urlState.timeRange) {
+      const presetValue = urlState.timeRange.preset;
       const timeRange: TimeRange = {
         start: new Date(urlState.timeRange.start),
         end: new Date(urlState.timeRange.end),
-        preset: urlState.timeRange.preset as any
+        ...(isTimeRangePreset(presetValue) ? { preset: presetValue } : {}),
       };
 
       // Only update if different
@@ -191,7 +203,8 @@ export const useDashboardUrlSync = () => {
         if (currentFiltersJson !== urlFiltersJson) {
           clearGlobalFilters();
           filters.forEach(filter => {
-            const { id: _id, ...filterData } = filter;
+            const { id: _ignoredId, ...filterData } = filter;
+            void _ignoredId;
             addGlobalFilter(filterData);
           });
         }

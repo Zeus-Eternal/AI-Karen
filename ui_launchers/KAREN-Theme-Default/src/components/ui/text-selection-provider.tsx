@@ -127,6 +127,7 @@ export function TextSelectionProvider({
   return <>{children}</>;
 }
 
+/* eslint-disable-next-line react-refresh/only-export-components -- Higher-order helper is intentionally exported with the provider. */
 export function withTextSelection<P extends object>(
   Component: React.ComponentType<P>,
   options: Omit<TextSelectionProviderProps, "children"> = {},

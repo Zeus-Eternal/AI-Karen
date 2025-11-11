@@ -3,7 +3,7 @@
  */
 "use client";
 
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useReducer } from 'react';
 import type { ExtensionAction, ExtensionState, ExtensionCategory, NavigationState } from './types';
 
 const initialNavigationState: NavigationState = {
@@ -243,6 +243,7 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
   }
 }
 
+/* eslint-disable-next-line react-refresh/only-export-components -- Context is exported for consumer hooks. */
 export const ExtensionContext = createContext<{ state: ExtensionState; dispatch: React.Dispatch<ExtensionAction> } | undefined>(undefined);
 
 export const ExtensionProvider: React.FC<{ initialCategory?: ExtensionCategory; children: React.ReactNode }> = ({
