@@ -268,6 +268,34 @@ interface UserRecord {
   created_by?: string | null;
 }
 
+interface AuditLogRow {
+  id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: string | Date;
+  user_email?: string | null;
+  user_full_name?: string | null;
+}
+
+interface SystemConfigRow {
+  id: string;
+  key: string;
+  value: string | number | boolean;
+  value_type: string;
+  category: string;
+  description?: string | null;
+  updated_by: string;
+  updated_at: string | Date;
+  created_at: string | Date;
+  updated_by_email?: string | null;
+  updated_by_name?: string | null;
+}
+
 type ConfigValue = string | number | boolean | Record<string, unknown> | unknown[];
 
 export interface SecurityAlert {

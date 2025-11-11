@@ -117,11 +117,11 @@ export interface AriaReport {
 // ============================================================================
 
 export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
-  private container: ElementContext;
+  private container: Document | Element;
   private options: RunOptions;
 
   constructor(
-    container: ElementContext = document,
+    container: Document | Element = document,
     options: RunOptions = {}
   ) {
     this.container = container;
@@ -153,7 +153,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async basic(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] },
       });
@@ -169,7 +169,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   async comprehensive(): Promise<AccessibilityReport> {
     const startTime = performance.now();
     try {
-      const results = await axe.run(this.container, {
+      const results = await axe.run(this.container as ElementContext, {
         ...this.options,
         runOnly: {
           type: "tag",
@@ -593,7 +593,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     const violations: AccessibilityViolation[] = results.violations.map(
       (violation: Result) => ({
         id: violation.id,
-        impact: violation.impact,
+        impact: (violation.impact ?? "minor") as AccessibilityViolation["impact"],
         description: violation.description,
         help: violation.help,
         helpUrl: violation.helpUrl,
