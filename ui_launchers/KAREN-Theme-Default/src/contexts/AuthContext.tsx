@@ -843,5 +843,3 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 };
-
-export { useAuth } from '@/hooks/use-auth';
