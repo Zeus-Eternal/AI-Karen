@@ -1,4 +1,3 @@
-import { Variants } from 'framer-motion';
 import { AnimationVariants } from './types';
 
 export const animationVariants: AnimationVariants = {
