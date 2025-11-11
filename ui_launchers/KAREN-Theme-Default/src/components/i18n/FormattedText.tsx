@@ -102,7 +102,11 @@ export interface TimeAgoProps {
   className?: string;
 }
 
-type RelativeTimeParts = { value: number; unit: Intl.RelativeTimeFormatUnit };
+export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
+  // Capture the reference time once per render cycle to keep the component pure
+  const now = React.useMemo(() => Date.now(), [date]);
+  const inputMs =
+    date instanceof Date ? date.getTime() : typeof date === "number" ? date : new Date(date).getTime();
 
 const DEFAULT_RELATIVE_TIME: RelativeTimeParts = { value: 0, unit: "second" };
 

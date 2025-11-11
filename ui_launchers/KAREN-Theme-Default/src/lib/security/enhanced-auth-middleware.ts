@@ -340,7 +340,6 @@ export class EnhancedAuthMiddleware {
     try {
       const sessionToken = this.extractSessionToken(request);
       const ipAddress = this.extractClientIP(request);
-      const userAgent = request.headers.get('user-agent') || undefined;
 
       if (!sessionToken) {
         return this.unauthorizedResponse('SESSION_TOKEN_MISSING', 'Session token required');

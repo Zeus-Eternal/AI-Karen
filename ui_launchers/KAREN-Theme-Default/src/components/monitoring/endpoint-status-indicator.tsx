@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/monitoring/endpoint-status-indicator.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -97,51 +97,84 @@ export function EndpointStatusIndicator({
   compact = false,
 }: EndpointStatusIndicatorProps) {
   const initialSnapshot = useMemo(resolveInitialSnapshot, []);
+  const monitorRef = useRef<MonitorSnapshot["monitor"]>(initialSnapshot.monitor);
+  const loggerRef = useRef<MonitorSnapshot["logger"]>(initialSnapshot.logger);
 
-  const [metrics, setMetrics] = useState<HealthMetrics | null>(initialSnapshot.metrics);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(initialSnapshot.isMonitoring);
-  const [lastUpdate, setLastUpdate] = useState<string>(initialSnapshot.lastUpdate);
-  const [recentErrors, setRecentErrors] = useState<number>(initialSnapshot.recentErrors);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(
+    () => initialSnapshot.metrics
+  );
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(
+    () => initialSnapshot.isMonitoring
+  );
+  const [lastUpdate, setLastUpdate] = useState<string>(
+    () => initialSnapshot.lastUpdate
+  );
+  const [recentErrors, setRecentErrors] = useState<number>(
+    () => initialSnapshot.recentErrors
+  );
 
   useEffect(() => {
-    const monitor = getHealthMonitor?.();
-    const logger = getDiagnosticLogger?.();
+    if (!monitorRef.current || !loggerRef.current) {
+      monitorRef.current = getHealthMonitor?.() ?? null;
+      loggerRef.current = getDiagnosticLogger?.() ?? null;
+    }
+
+    const monitor = monitorRef.current;
+    const logger = loggerRef.current;
 
     if (!monitor || !logger) {
-      return;
+      return undefined;
     }
 
-    const latestMetrics = monitor.getMetrics?.();
-    if (latestMetrics) {
-      setMetrics(latestMetrics);
+    try {
       setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
-      setLastUpdate(new Date().toLocaleTimeString());
+    } catch {
+      // noop
     }
+
+    const errorTimers: number[] = [];
 
     const unsubscribeMetrics =
       monitor.onMetricsUpdate?.((newMetrics: HealthMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch {
+          // noop
+        }
       }) ?? (() => {});
 
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
     const unsubscribeLogs =
-      logger.onLog?.((newLog: unknown) => {
+      logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
         if (newLog?.level === "error" && newLog?.category === "network") {
           setRecentErrors((prev) => prev + 1);
-          setTimeout(() => {
+          const timeoutId = window.setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
+            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
+          errorTimers.push(timeoutId);
         }
       }) ?? (() => {});
 
     return () => {
       try {
         unsubscribeMetrics();
+      } catch {
+        // noop
+      }
+      try {
         unsubscribeLogs();
       } catch {
         // noop
       }
+
+      errorTimers.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
     };
   }, []);
 

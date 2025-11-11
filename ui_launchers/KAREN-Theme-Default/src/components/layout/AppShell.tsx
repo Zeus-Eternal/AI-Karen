@@ -141,7 +141,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
             );
           } catch (error) {
             if (process.env.NODE_ENV !== "production") {
-              console.warn("Failed to persist AppShell sidebar open state", error);
+              console.warn("Failed to persist sidebar open state", error);
             }
           }
         }
@@ -162,7 +162,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
             );
           } catch (error) {
             if (process.env.NODE_ENV !== "production") {
-              console.warn("Failed to persist AppShell sidebar collapsed state", error);
+              console.warn("Failed to persist sidebar collapsed state", error);
             }
           }
         }

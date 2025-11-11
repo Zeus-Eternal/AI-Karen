@@ -373,17 +373,30 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
-  const autoSelectionRef = useRef<string | null>(null);
-  const autoSelectedModelId =
-    topRecommendation && topRecommendation.score > 60 ? topRecommendation.model.id : null;
-
-  const selectedModelId =
-    manualSelectedModelId ?? (autoSelect && autoSelectedModelId ? autoSelectedModelId : "");
-
-  const effectiveSelectedModelId = useMemo(
-    () => (autoSelect && autoSelectedModelId ? autoSelectedModelId : selectedModelId),
-    [autoSelect, autoSelectedModelId, selectedModelId]
+  const selectedModelId = manualSelectedModelId ?? (
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : ''
   );
+
+  const autoSelectionRef = useRef<string | null>(null);
+
+  const autoSelectedModelId =
+    autoSelect && topRecommendation && topRecommendation.score > 60
+      ? topRecommendation.model.id
+      : '';
+
+  const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
+
+  const effectiveSelectedModelId = useMemo(() => {
+    if (manualSelectedModelId) {
+      return manualSelectedModelId;
+    }
+    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
+      return topRecommendation.model.id;
+    }
+    return '';
+  }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
     if (autoSelect && autoSelectedModelId) {
@@ -393,7 +406,7 @@ export default function IntelligentModelSelector({
         onModelSelect(recommendedId);
       }
     }
-  }, [autoSelect, autoSelectedModelId, onModelSelect]);
+  }, [autoSelect, topRecommendation, onModelSelect]);
 
   const handleManualSelect = useCallback((modelId: string) => {
     setManualSelectedModelId(modelId);
@@ -402,15 +415,15 @@ export default function IntelligentModelSelector({
 
   const handleAutoSelectChange = useCallback((checked: boolean) => {
     setAutoSelect(checked);
-    if (!checked && !manualSelectedModelId && autoSelectedModelId) {
-      setManualSelectedModelId(autoSelectedModelId);
-      onModelSelect(autoSelectedModelId);
+    if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
+      setManualSelectedModelId(topRecommendation.model.id);
+      onModelSelect(topRecommendation.model.id);
     }
     if (checked) {
       setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [manualSelectedModelId, autoSelectedModelId, onModelSelect]);
+  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
 
   if (!contextAnalysis) {
     return (
@@ -460,7 +473,7 @@ export default function IntelligentModelSelector({
         {/* Top Recommendation */}
         {topRecommendation && (
           <div className={`p-4 rounded-lg border-2 ${
-            effectiveSelectedModelId === topRecommendation.model.id
+            selectedModelId === topRecommendation.model.id
               ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20'
               : 'border-gray-200'
           }`}>
@@ -485,9 +498,9 @@ export default function IntelligentModelSelector({
               <Button
                 size="sm"
                 onClick={() => handleManualSelect(topRecommendation.model.id)}
-                disabled={effectiveSelectedModelId === topRecommendation.model.id}
+                disabled={selectedModelId === topRecommendation.model.id}
               >
-                {effectiveSelectedModelId === topRecommendation.model.id ? 'Selected' : 'Select'}
+                {selectedModelId === topRecommendation.model.id ? 'Selected' : 'Select'}
               </Button>
             </div>
 
@@ -587,7 +600,7 @@ export default function IntelligentModelSelector({
         {recommendations.length > 1 && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">Alternative Models</Label>
-            <Select value={effectiveSelectedModelId} onValueChange={handleManualSelect}>
+            <Select value={selectedModelId} onValueChange={handleManualSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>

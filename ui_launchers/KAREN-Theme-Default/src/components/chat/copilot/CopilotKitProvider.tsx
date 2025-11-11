@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from '
 import { CopilotKit } from '@copilotkit/react-core';
 // import { CopilotSidebar } from '@copilotkit/react-ui'; // Not available in current version
 import { useHooks } from '@/hooks/use-hooks';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getConfigManager } from '@/lib/endpoint-config';
 import { getApiClient } from '@/lib/api-client';

@@ -82,10 +82,6 @@ export interface OptimizedRequestOptions {
   retryOn?: number[];    // HTTP codes to retry
 }
 
-function _clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n));
-}
-
 function stableStringify(obj: unknown): string {
   if (obj == null) return '';
   if (typeof obj === 'string') return obj;
@@ -110,8 +106,13 @@ function headersToObject(headers: HeaderLike): Record<string, string> {
     return out;
   }
   // Record<string, string>
-  const out: Record<string, string> = {};
-  for (const k of Object.keys(headers)) out[k.toLowerCase()] = String((headers as any)[k]);
+  const headerRecord = headers as Record<string, string | number | boolean | undefined>;
+  for (const k of Object.keys(headerRecord)) {
+    const value = headerRecord[k];
+    if (value !== undefined) {
+      out[k.toLowerCase()] = String(value);
+    }
+  }
   return out;
 }
 

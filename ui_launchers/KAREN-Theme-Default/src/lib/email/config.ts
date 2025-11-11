@@ -268,7 +268,6 @@ export function validateEmailConfig(config: Partial<EmailServiceConfig>): { isVa
  * Test email service connection
  */
 export async function testEmailService(config: EmailServiceConfig): Promise<EmailServiceHealth> {
-  const startTime = Date.now();
   try {
     // This would implement actual connection testing based on provider
     // For now, return a mock response
