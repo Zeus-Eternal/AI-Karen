@@ -4,7 +4,11 @@
  */
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { createAriaLive, generateAriaId } from '@/utils/aria';
+import {
+  createAriaLive,
+  generateAriaId,
+  type ExtendedAriaRelevantValue,
+} from '@/utils/aria';
 import { cn } from '@/lib/utils';
 import { useAriaAnnouncements } from './aria-live-announcements';
 
@@ -15,7 +19,7 @@ export interface AriaLiveRegionProps {
   /** Whether the entire region should be announced when any part changes */
   atomic?: boolean;
   /** What types of changes should be announced */
-  relevant?: 'additions' | 'removals' | 'text' | 'all' | 'additions text' | 'additions removals' | 'text removals' | 'additions text removals';
+  relevant?: ExtendedAriaRelevantValue;
   /** Custom className for styling */
   className?: string;
   /** Children to render in the live region */
@@ -42,14 +46,9 @@ export const AriaLiveRegion = React.forwardRef<HTMLDivElement, AriaLiveRegionPro
       [id]
     );
     const ariaPropsRaw = createAriaLive(politeness, atomic, relevant);
-    
+
     // Filter out properties that conflict with HTML div attributes
     const { 'aria-relevant': ariaRelevant, ...safeAriaProps } = ariaPropsRaw;
-    
-    // Create safe aria-relevant value for HTML
-    const htmlAriaRelevant = ariaRelevant === 'additions text removals' ? 'all' : 
-                            ariaRelevant === 'additions text' ? 'additions text' as const :
-                            ariaRelevant;
 
     return (
       <div
@@ -61,7 +60,7 @@ export const AriaLiveRegion = React.forwardRef<HTMLDivElement, AriaLiveRegionPro
           className
         )}
         {...safeAriaProps}
-        aria-relevant={htmlAriaRelevant}
+        aria-relevant={ariaRelevant}
         {...props}
       >
         {children}

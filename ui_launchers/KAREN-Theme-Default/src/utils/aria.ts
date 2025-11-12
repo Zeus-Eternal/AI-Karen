@@ -7,6 +7,8 @@
  * - Opinionated validations for common pitfalls
  */
 
+import type { AriaAttributes } from 'react';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -39,18 +41,15 @@ export interface AriaRelationshipProps {
   'aria-details'?: string;
 }
 
+export type AriaRelevantValue = NonNullable<AriaAttributes['aria-relevant']>;
+export type ExtendedAriaRelevantValue =
+  | AriaRelevantValue
+  | 'additions text removals';
+
 export interface AriaLiveProps {
   'aria-live'?: 'off' | 'polite' | 'assertive';
   'aria-atomic'?: boolean;
-  'aria-relevant'?:
-    | 'additions'
-    | 'removals'
-    | 'text'
-    | 'all'
-    | 'additions text'
-    | 'additions removals'
-    | 'text removals'
-    | 'additions text removals';
+  'aria-relevant'?: AriaRelevantValue;
 }
 
 export interface AriaGridProps {
@@ -111,20 +110,17 @@ export const createAriaLabel = (
 export const createAriaLive = (
   level: 'off' | 'polite' | 'assertive' = 'polite',
   atomic: boolean = false,
-  relevant:
-    | 'additions'
-    | 'removals'
-    | 'text'
-    | 'all'
-    | 'additions text'
-    | 'additions removals'
-    | 'text removals'
-    | 'additions text removals' = 'additions text'
-): AriaLiveProps => ({
-  'aria-live': level,
-  'aria-atomic': atomic,
-  'aria-relevant': relevant,
-});
+  relevant: ExtendedAriaRelevantValue = 'additions text'
+): AriaLiveProps => {
+  const normalizedRelevant: AriaRelevantValue =
+    relevant === 'additions text removals' ? 'all' : relevant;
+
+  return {
+    'aria-live': level,
+    'aria-atomic': atomic,
+    'aria-relevant': normalizedRelevant,
+  };
+};
 
 /** Create ARIA attributes for interactive elements */
 export const createInteractiveAria = (
