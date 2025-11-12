@@ -89,7 +89,8 @@ def create_background_task_router(extension_manager) -> APIRouter:
     ):
         """List all registered background tasks."""
         try:
-            logger.info(f"User {user_context['user_id']} listing background tasks")
+            user_id = user_context.get('user_id', 'unknown') if isinstance(user_context, dict) else 'unknown'
+            logger.info(f"User {user_id} listing background tasks")
             tasks = extension_manager.get_extension_tasks(extension_name)
             
             return [
@@ -108,7 +109,8 @@ def create_background_task_router(extension_manager) -> APIRouter:
             ]
             
         except Exception as e:
-            logger.error(f"Error listing background tasks for user {user_context.get('user_id')}: {e}")
+            user_id = user_context.get('user_id', 'unknown') if isinstance(user_context, dict) else 'unknown'
+            logger.error(f"Error listing background tasks for user {user_id}: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     
     @router.get("/{extension_name}/{task_name}", response_model=TaskDefinitionResponse)
