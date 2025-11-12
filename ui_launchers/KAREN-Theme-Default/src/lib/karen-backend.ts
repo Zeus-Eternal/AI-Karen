@@ -264,7 +264,9 @@ class KarenBackendService {
     return (
       endpoint.startsWith("/api/extensions") ||
       endpoint.includes("/background-tasks") ||
-      endpoint.includes("extension")
+      endpoint.includes("extension") ||
+      endpoint.includes("/copilot/") || // LLM copilot endpoints
+      endpoint.includes("/api/chat") // Chat API endpoints
     );
   }
 
@@ -324,13 +326,14 @@ class KarenBackendService {
   }
   /**
    * Handle authentication failures with comprehensive extension error handling
+   * Returns object with shouldRetry flag and optional delay
    */
   private async handleAuthFailure(
     endpoint: string,
     response: Response,
     attempt: number,
     maxRetries: number
-  ): Promise<boolean> {
+  ): Promise<{ shouldRetry: boolean; delay?: number }> {
     // Handle extension endpoint authentication failures with comprehensive error handling
     if (
       this.isExtensionEndpoint(endpoint) &&
@@ -361,8 +364,25 @@ class KarenBackendService {
             endpoint,
             this.getOperationFromEndpoint(endpoint)
           );
-        // Return true if recovery was successful and we should retry
-        return recoveryResult.success && attempt < maxRetries;
+
+        // If recovery succeeded or we should retry, use the delay from recovery result
+        const shouldRetry = (recoveryResult.success || !recoveryResult.requiresUserAction) && attempt < maxRetries;
+        const delay = recoveryResult.nextAttemptDelay || 1000; // Default to 1s if no delay specified
+
+        if (shouldRetry) {
+          logger.info('Extension auth recovery suggests retry', {
+            endpoint,
+            attempt: attempt + 1,
+            delay,
+            success: recoveryResult.success,
+            message: recoveryResult.message
+          });
+        }
+
+        return {
+          shouldRetry,
+          delay: shouldRetry ? delay : undefined
+        };
       } catch (recoveryError) {
         logger.error("Extension auth recovery failed:", recoveryError);
         // Create a recovery failure error
@@ -376,6 +396,14 @@ class KarenBackendService {
 
         // Handle the recovery failure
         extensionAuthErrorHandler.handleError(recoveryFailureError);
+
+        // Retry with backoff even on recovery failure (up to maxRetries)
+        if (attempt < maxRetries) {
+          return {
+            shouldRetry: true,
+            delay: 2000 * Math.pow(2, attempt) // Exponential backoff: 2s, 4s, 8s
+          };
+        }
       }
     }
     // Standard authentication failure handling
@@ -392,12 +420,18 @@ class KarenBackendService {
         // ignore secondary auth errors
       }
     }
-    return false; // No retry
+    return { shouldRetry: false }; // No retry
   }
   /**
    * Extract operation name from endpoint for error context
    */
   private getOperationFromEndpoint(endpoint: string): string {
+    if (endpoint.includes("/copilot/")) {
+      return "llm_copilot";
+    }
+    if (endpoint.includes("/api/chat")) {
+      return "llm_chat";
+    }
     if (endpoint.includes("/extensions/")) {
       if (endpoint.includes("/background-tasks")) {
         return "background_tasks";
@@ -877,15 +911,17 @@ class KarenBackendService {
             }
           }
           // Handle authentication failures with extension-specific retry logic
-          const shouldRetryAuth = await this.handleAuthFailure(
+          const authRetryResult = await this.handleAuthFailure(
             endpoint,
             response,
             attempt,
             maxRetries
           );
-          if (shouldRetryAuth) {
-            // Wait a bit before retrying with fresh auth
-            await this.sleep(500);
+          if (authRetryResult.shouldRetry) {
+            // Wait with progressive delay before retrying with fresh auth
+            const retryDelay = authRetryResult.delay || 1000;
+            logger.info(`Retrying ${endpoint} after auth recovery in ${retryDelay}ms`);
+            await this.sleep(retryDelay);
             continue;
           }
           // Don't retry non-retryable errors
