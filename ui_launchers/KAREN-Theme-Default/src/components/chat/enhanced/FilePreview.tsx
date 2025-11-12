@@ -111,7 +111,8 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           const text = await response.text();
           setFileContent(text ?? "");
         }
-      } catch (_error) {
+      } catch (error) {
+        console.error("Failed to load file content", error);
         setFileContent("Failed to load file content");
       } finally {
         setIsLoading(false);
@@ -132,7 +133,8 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         title: "Analysis complete",
         description: "File has been analyzed successfully.",
       });
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to analyze file attachment", error);
       toast({
         variant: "destructive",
         title: "Analysis failed",
@@ -151,7 +153,8 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         title: "Copied",
         description: "Content copied to clipboard.",
       });
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to copy file preview to clipboard", error);
       toast({
         variant: "destructive",
         title: "Copy failed",

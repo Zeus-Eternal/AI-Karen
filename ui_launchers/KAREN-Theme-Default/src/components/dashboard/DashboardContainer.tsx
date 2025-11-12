@@ -55,7 +55,6 @@ import { useAppStore, selectUser } from "@/store/app-store";
 import {
   useDashboardStore,
   selectGlobalTimeRange,
-  selectGlobalFilters,
   selectIsEditing,
   selectTemplatesForUser,
 } from "@/store/dashboard-store";

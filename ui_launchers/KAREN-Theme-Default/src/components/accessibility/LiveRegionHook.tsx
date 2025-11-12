@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { cn } from "../../lib/utils";
+import React, { useCallback, useRef } from 'react';
+import { cn } from '../../lib/utils';
 
 type PolitenessSetting = 'polite' | 'assertive';
 

@@ -100,20 +100,29 @@ export function HealthDashboard({
     return "";
   });
 
+  const monitoringSyncTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scheduleMonitoringSync = React.useCallback(
     (monitor: HealthMonitorInstance) => {
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
+      }
+
       if (!monitor) {
-        setIsMonitoring(false);
+        monitoringSyncTimeoutRef.current = setTimeout(() => {
+          setIsMonitoring(false);
+        }, 0);
         return;
       }
 
-      Promise.resolve().then(() => {
+      monitoringSyncTimeoutRef.current = setTimeout(() => {
         try {
           setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
         } catch {
           // noop
         }
-      });
+      }, 0);
     },
     []
   );
@@ -123,28 +132,33 @@ export function HealthDashboard({
       return undefined;
     }
 
-    const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
-    const deferMonitoringSync = () => {
-      const runSync = () => scheduleMonitoringSync(healthMonitor);
+    const enqueueSync = (monitor: HealthMonitorInstance) => {
+      let cancelled = false;
+      const runSync = () => {
+        if (!cancelled) {
+          scheduleMonitoringSync(monitor);
+        }
+      };
 
-      if (typeof queueMicrotask === "function") {
-        queueMicrotask(runSync);
-        return;
+      if (typeof window !== "undefined") {
+        const timeoutId = window.setTimeout(runSync, 0);
+        return () => {
+          cancelled = true;
+          window.clearTimeout(timeoutId);
+        };
       }
 
-      const timeoutId = setTimeout(() => {
-        pendingTimeouts.delete(timeoutId);
-        runSync();
-      }, 0);
-
-      pendingTimeouts.add(timeoutId);
+      Promise.resolve().then(runSync);
+      return () => {
+        cancelled = true;
+      };
     };
 
     const unsubscribeMetrics =
       healthMonitor.onMetricsUpdate?.((newMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        deferMonitoringSync();
+        enqueueSync(healthMonitor);
       }) ?? (() => {});
 
     const unsubscribeAlerts =
@@ -152,22 +166,20 @@ export function HealthDashboard({
         setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
       }) ?? (() => {});
 
+    let cancelInitialSync: (() => void) | undefined;
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        deferMonitoringSync();
       }
     } catch {
+      cancelInitialSync?.();
       // noop
     }
 
     deferMonitoringSync();
 
     return () => {
-      pendingTimeouts.forEach((timeoutId) => {
-        clearTimeout(timeoutId);
-      });
-
+      cancelInitialSync?.();
       try {
         unsubscribeMetrics();
       } catch {
@@ -178,6 +190,11 @@ export function HealthDashboard({
         unsubscribeAlerts();
       } catch {
         // noop
+      }
+
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
       }
     };
   }, [healthMonitor, scheduleMonitoringSync]);

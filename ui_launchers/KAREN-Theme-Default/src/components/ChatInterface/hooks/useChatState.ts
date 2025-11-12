@@ -9,18 +9,33 @@ import { safeDebug, safeError } from "@/lib/safe-console";
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (initialMessages.length > 0) {
-      return initialMessages;
-    }
+  const sessionIdRef = useRef<string | null>(null);
+  if (!sessionIdRef.current) {
+    sessionIdRef.current = generateUUID();
+  }
 
-    if (welcomeMessage) {
-      return [
+  const conversationIdRef = useRef<string | null>(null);
+  if (!conversationIdRef.current) {
+    conversationIdRef.current = generateUUID();
+  }
+
+  const [sessionStartTime] = useState(() => Date.now());
+
+  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  const welcomeMessageIdRef = useRef<string | null>(null);
+  if (initialMessagesRef.current === null) {
+    if (initialMessages.length > 0) {
+      initialMessagesRef.current = initialMessages;
+    } else if (welcomeMessage) {
+      if (!welcomeMessageIdRef.current) {
+        welcomeMessageIdRef.current = `welcome-${generateUUID()}`;
+      }
+      initialMessagesRef.current = [
         {
-          id: generateUUID(),
+          id: welcomeMessageIdRef.current,
           role: "assistant",
           content: welcomeMessage,
-          timestamp: new Date(),
+          timestamp: new Date(sessionStartTime),
           type: "text",
           metadata: { confidence: 1.0 },
         },
@@ -43,8 +58,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");
-  const [sessionStartTime] = useState(() => Date.now());
-
   // Refs for media recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
