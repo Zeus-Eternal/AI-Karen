@@ -835,7 +835,7 @@ export const useChatMessages = (
           }
         }
 
-        metadata = {
+          metadata = {
             ...metadata,
             origin: metadata?.origin ?? responseOrigin,
             endpoint: metadata?.endpoint ?? activeEndpoint,

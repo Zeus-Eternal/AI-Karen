@@ -138,7 +138,6 @@ export function HealthDashboard({
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        scheduleMonitoringSync(healthMonitor);
       }
     } catch {
       // noop
