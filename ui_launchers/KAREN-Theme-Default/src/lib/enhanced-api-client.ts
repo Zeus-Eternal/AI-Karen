@@ -651,7 +651,10 @@ export class EnhancedApiClient {
       return false;
     }
     const record = value as Record<string, unknown>;
-    return record.hasOwnProperty("data") && record.hasOwnProperty("status");
+    return (
+      Object.prototype.hasOwnProperty.call(record, "data") &&
+      Object.prototype.hasOwnProperty.call(record, "status")
+    );
   }
 
   // Parse error response
