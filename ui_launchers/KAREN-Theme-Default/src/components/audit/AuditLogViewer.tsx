@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/audit/AuditLogViewer.tsx
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";

@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 
-import type { WidgetProps, WidgetData } from "@/types/dashboard";
+import type { WidgetProps } from "@/types/dashboard";
 
 export interface WidgetBaseProps extends WidgetProps {
   children: React.ReactNode;

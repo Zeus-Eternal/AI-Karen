@@ -25,7 +25,7 @@ function LoginForm({ onSuccess }: LoginFormProps) {
     if (authState.error) {
       clearError();
     }
-  }, [email, password]);
+  }, [email, password, authState.error, clearError]);
 
   // Validate email format
   const validateEmail = (email: string): boolean => {

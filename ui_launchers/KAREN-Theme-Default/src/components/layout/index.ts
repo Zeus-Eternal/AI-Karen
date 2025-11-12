@@ -13,11 +13,6 @@ export {
   AppShellMain,
   AppShellFooter,
   useAppShell,
-  appShellVariants,
-  appShellSidebarVariants,
-  appShellHeaderVariants,
-  appShellMainVariants,
-  appShellFooterVariants,
 } from "./AppShell";
 export type {
   AppShellProps,
@@ -27,6 +22,15 @@ export type {
   AppShellFooterProps,
   AppShellContextType,
 } from "./AppShell";
+
+export {
+  appShellVariants,
+  appShellSidebarVariants,
+  appShellHeaderVariants,
+  appShellMainVariants,
+  appShellFooterVariants,
+} from "./app-shell-variants";
+export type { AppShellMainVariants } from "./app-shell-variants";
 
 // Headers
 export { AuthenticatedHeader } from "./AuthenticatedHeader";

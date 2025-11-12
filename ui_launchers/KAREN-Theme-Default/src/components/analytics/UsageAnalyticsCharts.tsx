@@ -38,6 +38,15 @@ export default function UsageAnalyticsCharts() {
   );
   const [loading, setLoading] = useState(true);
 
+  const topHours = React.useMemo(
+    () =>
+      [...peakHours]
+        .sort((a, b) => b.count - a.count)
+        .filter((entry) => entry.count > 0)
+        .slice(0, 5),
+    [peakHours]
+  );
+
   useEffect(() => {
     // Make the API call directly from the client to avoid SSR issues
     const fetchAnalytics = async () => {
@@ -117,11 +126,29 @@ export default function UsageAnalyticsCharts() {
         </CardHeader>
         <CardContent>
           {/* Temporarily disabled recharts due to lodash dependency issues */}
-          <div className="flex items-center justify-center h-64">
-            <div className="text-muted-foreground">
-              Chart temporarily unavailable - recharts dependency issue
+          {features.length > 0 ? (
+            <ul className="space-y-2 text-sm">
+              {features.map((feature) => (
+                <li
+                  key={feature.name}
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                >
+                  <span className="font-medium">{feature.name}</span>
+                  <span className="text-muted-foreground">
+                    {feature.usage_count.toLocaleString()} uses
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-muted-foreground text-center">
+                Chart temporarily unavailable - recharts dependency issue
+                <br />
+                No feature usage data available yet.
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
       <Card>
@@ -130,11 +157,31 @@ export default function UsageAnalyticsCharts() {
         </CardHeader>
         <CardContent>
           {/* Temporarily disabled recharts due to lodash dependency issues */}
-          <div className="flex items-center justify-center h-64">
-            <div className="text-muted-foreground">
-              Chart temporarily unavailable - recharts dependency issue
+          {topHours.length > 0 ? (
+            <ul className="space-y-2 text-sm">
+              {topHours.map((entry) => (
+                <li
+                  key={entry.hour}
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                >
+                  <span className="font-medium">
+                    {entry.hour}:00 - {entry.hour + 1}:00
+                  </span>
+                  <span className="text-muted-foreground">
+                    {entry.count.toLocaleString()} interactions
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-muted-foreground text-center">
+                Chart temporarily unavailable - recharts dependency issue
+                <br />
+                No peak usage data available yet.
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

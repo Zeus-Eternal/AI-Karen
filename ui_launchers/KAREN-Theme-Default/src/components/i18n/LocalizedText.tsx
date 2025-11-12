@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useI18n } from '../../providers/i18n-hooks';
-import type { InterpolationOptions, PluralOptions } from '../../lib/i18n';
+import type { InterpolationOptions } from '../../lib/i18n';
 
 export interface LocalizedTextProps {
   /** Translation key */

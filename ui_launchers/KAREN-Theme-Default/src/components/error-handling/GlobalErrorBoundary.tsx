@@ -36,6 +36,8 @@ interface Props {
   level?: "global" | "feature" | "component";
 }
 
+export type GlobalErrorBoundaryProps = Props;
+
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -420,7 +422,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     return sessionId;
   }
 
-  private getMemoryInfo(): any {
+  private getMemoryInfo(): Record<string, unknown> {
     try {
       if (typeof performance !== "undefined" && (performance as unknown)?.memory) {
         return {
@@ -435,7 +437,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     return null;
   }
 
-  private getPerformanceInfo(): any {
+  private getPerformanceInfo(): Record<string, unknown> {
     try {
       if (
         typeof performance !== "undefined" &&
@@ -502,23 +504,5 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 /* HOC                                                                */
 /* ------------------------------------------------------------------ */
 
-export function withGlobalErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, "children">
-) {
-  const WithGlobalErrorBoundaryComponent = (props: P) => (
-    <GlobalErrorBoundary {...(errorBoundaryProps as Props)}>
-      <WrappedComponent {...props} />
-    </GlobalErrorBoundary>
-  );
-
-  WithGlobalErrorBoundaryComponent.displayName = `withGlobalErrorBoundary(${
-    (WrappedComponent as unknown).displayName ||
-    WrappedComponent.name ||
-    "Component"
-  })`;
-
-  return WithGlobalErrorBoundaryComponent;
-}
-
 export default GlobalErrorBoundary;
+

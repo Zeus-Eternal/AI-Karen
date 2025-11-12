@@ -189,7 +189,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
 
     return () => {
       // Cleanup hooks on unmount
-      hookIds.forEach(id => {
+      hookIds.forEach((_id) => {
         // Note: unregisterHook would be called here in a real implementation
       });
     };

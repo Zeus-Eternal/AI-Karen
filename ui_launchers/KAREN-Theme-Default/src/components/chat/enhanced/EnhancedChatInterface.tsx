@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/chat/enhanced/EnhancedChatInterface.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { ErrorBoundary } from "@/components/error-handling/ErrorBoundary";
 
@@ -55,10 +55,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   enableContextPanel = true,
   enableSuggestions = true,
   enableThreading = true,
-  enableMemoryIntegration = true, // reserved for future hook-in
-  enableFileUpload = false, // reserved for future hook-in
-  enableImageAnalysis = false, // reserved for future hook-in
-  enableVoiceInput = false, // reserved for future hook-in
+  enableMemoryIntegration: _enableMemoryIntegration = true, // reserved for future hook-in
+  enableFileUpload: _enableFileUpload = false, // reserved for future hook-in
+  enableImageAnalysis: _enableImageAnalysis = false, // reserved for future hook-in
+  enableVoiceInput: _enableVoiceInput = false, // reserved for future hook-in
   enableReasoning = true, // toggles reasoning UI in the mocked response
   enableExport = true,
   enableSharing = true,
@@ -335,7 +335,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       setMessages((prev) => [...prev, assistantMessage]);
       onMessageReceived?.(assistantMessage);
-    } catch (err) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Message failed",
@@ -402,7 +402,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
        */
       toast({
         title: "Thread Updated",
-        description: "Conversation thread has been updated",
+        description: `Conversation thread ${threadId} has been updated`,
       });
     },
     [toast]
@@ -414,10 +414,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
        * PRODUCTION NOTE: Thread deletion not persisted.
        * Integrate with backend API: await deleteThread(threadId)
        * After deletion, reroute to new thread or home
-       */
+      */
       toast({
         title: "Thread Deleted",
-        description: "Conversation thread has been deleted",
+        description: `Conversation thread ${threadId} has been deleted`,
       });
     },
     [toast]
@@ -428,10 +428,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       /**
        * PRODUCTION NOTE: Thread archival not persisted.
        * Integrate with backend API: await archiveThread(threadId)
-       */
+      */
       toast({
         title: "Thread Archived",
-        description: "Conversation thread has been archived",
+        description: `Conversation thread ${threadId} has been archived`,
       });
     },
     [toast]
