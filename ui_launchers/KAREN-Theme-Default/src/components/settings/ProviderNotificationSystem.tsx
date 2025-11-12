@@ -35,6 +35,35 @@ export interface NotificationSettings {
   maintenance_notifications: boolean;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const getMetadataString = (
+  metadata: Record<string, unknown> | undefined,
+  key: string
+): string | undefined => {
+  if (!metadata) {
+    return undefined;
+  }
+  const value = metadata[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getMetadataStringArray = (
+  metadata: Record<string, unknown> | undefined,
+  key: string
+): string[] => {
+  if (!metadata) {
+    return [];
+  }
+  const value = metadata[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === 'string');
+};
+
 export interface ProviderNotification {
   id: string;
   type: 'status_change' | 'fallback' | 'recovery' | 'system_health' | 'performance' | 'error' | 'maintenance';
@@ -193,6 +222,30 @@ export function ProviderNotificationSystem({
   const dismissNotification = (notificationId: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, dismissed: true } : n)
+    );
+  };
+
+  const renderNotificationMetadata = (notification: ProviderNotification) => {
+    const metadata = isRecord(notification.metadata) ? notification.metadata : undefined;
+    if (!metadata) {
+      return null;
+    }
+    const fallbackProvider = getMetadataString(metadata, 'fallback_provider');
+    const failedProviders = getMetadataStringArray(metadata, 'failed_providers');
+    if (!fallbackProvider && failedProviders.length === 0) {
+      return null;
+    }
+    return (
+      <CardContent className="pt-0">
+        <div className="text-xs text-muted-foreground">
+          {notification.type === 'fallback' && fallbackProvider && (
+            <p>Using fallback: {fallbackProvider}</p>
+          )}
+          {notification.type === 'system_health' && failedProviders.length > 0 && (
+            <p>Failed providers: {failedProviders.join(', ')}</p>
+          )}
+        </div>
+      </CardContent>
     );
   };
 
@@ -430,18 +483,7 @@ export function ProviderNotificationSystem({
               )}
               
               {/* Metadata */}
-              {notification.metadata && (
-                <CardContent className="pt-0">
-                  <div className="text-xs text-muted-foreground">
-                    {notification.type === 'fallback' && notification.metadata.fallback_provider && (
-                      <p>Using fallback: {notification.metadata.fallback_provider}</p>
-                    )}
-                    {notification.type === 'system_health' && notification.metadata.failed_providers && (
-                      <p>Failed providers: {notification.metadata.failed_providers.join(', ')}</p>
-                    )}
-                  </div>
-                </CardContent>
-              )}
+              {renderNotificationMetadata(notification)}
             </Card>
           ))
         )}
