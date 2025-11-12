@@ -175,14 +175,29 @@ type ContainerPolymorphicComponent<P = Record<string, never>> =
 
 type ContainerComponent = ContainerPolymorphicComponent;
 
-type PolymorphicForwardRef<DefaultElement extends React.ElementType, Props> = <
-  T extends React.ElementType = DefaultElement
->(
+type PolymorphicForwardRef<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown>
+> = <T extends React.ElementType = DefaultElement>(
   props: PolymorphicComponentPropWithRef<T, Props>,
   ref: PolymorphicRef<T>
 ) => React.ReactElement | null;
 
 type ContainerForwardRef = PolymorphicForwardRef<"div", ContainerBaseProps>;
+
+function forwardRefWithAs<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown>
+>(
+  component: PolymorphicForwardRef<DefaultElement, Props>
+) {
+  return React.forwardRef(
+    component as unknown as React.ForwardRefRenderFunction<any, any>
+  ) as unknown as PolymorphicComponentWithDisplayName<
+    DefaultElement,
+    Props
+  >;
+}
 
 const displayClassMap: Record<ContainerDisplay, string> = {
   block: "block",
@@ -485,16 +500,16 @@ function ContainerInner<T extends React.ElementType = "div">(
       )}
       style={inlineStyles}
       data-variant={variant}
-      {...(rest as ContainerProps<T>)}
+      {...(rest as Record<string, unknown>)}
     >
       {children}
     </ComponentToRender>
   );
 }
 
-const Container = React.forwardRef(
+const Container = forwardRefWithAs<"div", ContainerBaseProps>(
   ContainerInner as ContainerForwardRef
-) as ContainerComponent;
+);
 
 Container.displayName = "Container";
 
@@ -502,21 +517,21 @@ const createVariantContainer = (
   defaultVariant: ContainerVariant,
   displayName: string
 ): ContainerComponent => {
-  const BaseContainer: ContainerComponent = Container;
-  const Variant = React.forwardRef(function VariantComponent<
-    T extends React.ElementType = "div"
-  >(
-    { variant: providedVariant, ...rest }: ContainerProps<T>,
-    ref: PolymorphicRef<T>
-  ) {
-    return (
-      <BaseContainer
-        ref={ref as React.Ref<unknown>}
-        variant={providedVariant ?? defaultVariant}
-        {...(rest as ContainerProps<T>)}
-      />
-    );
-  }) as ContainerComponent;
+  const BaseContainer = Container as unknown as React.ElementType;
+  const Variant = forwardRefWithAs<"div", ContainerBaseProps>(
+    (function VariantComponent<T extends React.ElementType = "div">(
+      { variant: providedVariant, ...rest }: ContainerProps<T>,
+      ref: PolymorphicRef<T>
+    ) {
+      return (
+        <BaseContainer
+          ref={ref as React.Ref<unknown>}
+          variant={providedVariant ?? defaultVariant}
+          {...(rest as Record<string, unknown>)}
+        />
+      );
+    }) as ContainerForwardRef
+  );
 
   Variant.displayName = displayName;
   return Variant;
@@ -592,8 +607,9 @@ function FlexContainerInner<T extends React.ElementType = "div">(
   const wrapClass =
     wrap === "reverse" ? "flex-wrap-reverse" : wrap ? "flex-wrap" : "flex-nowrap";
   const gapClass = gap === "custom" ? undefined : gapClassMap[gap];
+  const BaseContainer = Container as unknown as React.ElementType;
   return (
-    <Container
+    <BaseContainer
       ref={ref as React.Ref<unknown>}
       as={as}
       display={display}
@@ -609,14 +625,15 @@ function FlexContainerInner<T extends React.ElementType = "div">(
         ...(style as React.CSSProperties | undefined),
         ...(customGap !== undefined ? { gap: customGap } : undefined),
       }}
-      {...(rest as ContainerProps<T>)}
+      {...(rest as Record<string, unknown>)}
     />
   );
 }
 
-const FlexContainer = React.forwardRef(
-  FlexContainerInner as FlexContainerForwardRef
-) as ContainerPolymorphicComponent<FlexContainerExtras>;
+const FlexContainer = forwardRefWithAs<
+  "div",
+  ContainerBaseProps & FlexContainerExtras
+>(FlexContainerInner as FlexContainerForwardRef) as ContainerPolymorphicComponent<FlexContainerExtras>;
 
 FlexContainer.displayName = "FlexContainer";
 
@@ -684,8 +701,9 @@ function GridContainerInner<T extends React.ElementType = "div">(
       ? areas.map((area) => `'${area}'`).join(" ")
       : undefined);
 
+  const BaseContainer = Container as unknown as React.ElementType;
   return (
-    <Container
+    <BaseContainer
       ref={ref as React.Ref<unknown>}
       as={as}
       display={display}
@@ -698,14 +716,15 @@ function GridContainerInner<T extends React.ElementType = "div">(
         ...(gridTemplateAreas ? { gridTemplateAreas } : undefined),
         ...(autoFlow ? { gridAutoFlow: autoFlow } : undefined),
       }}
-      {...(rest as ContainerProps<T>)}
+      {...(rest as Record<string, unknown>)}
     />
   );
 }
 
-const GridContainer = React.forwardRef(
-  GridContainerInner as GridContainerForwardRef
-) as ContainerPolymorphicComponent<GridContainerExtras>;
+const GridContainer = forwardRefWithAs<
+  "div",
+  ContainerBaseProps & GridContainerExtras
+>(GridContainerInner as GridContainerForwardRef) as ContainerPolymorphicComponent<GridContainerExtras>;
 
 GridContainer.displayName = "GridContainer";
 
@@ -753,24 +772,26 @@ function AspectRatioContainerInner<T extends React.ElementType = "div">(
   }: AspectRatioContainerProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
+  const BaseContainer = Container as unknown as React.ElementType;
   return (
-    <Container
+    <BaseContainer
       ref={ref as React.Ref<unknown>}
       className={cn("overflow-hidden", className)}
       style={{
         ...(style as React.CSSProperties | undefined),
         aspectRatio: customRatio ?? ratio,
       }}
-      {...(rest as ContainerProps<T>)}
+      {...(rest as Record<string, unknown>)}
     >
       {children}
-    </Container>
+    </BaseContainer>
   );
 }
 
-const AspectRatioContainer = React.forwardRef(
-  AspectRatioContainerInner as AspectRatioContainerForwardRef
-) as ContainerPolymorphicComponent<AspectRatioExtras>;
+const AspectRatioContainer = forwardRefWithAs<
+  "div",
+  ContainerBaseProps & AspectRatioExtras
+>(AspectRatioContainerInner as AspectRatioContainerForwardRef) as ContainerPolymorphicComponent<AspectRatioExtras>;
 
 AspectRatioContainer.displayName = "AspectRatioContainer";
 
@@ -799,8 +820,9 @@ function ScrollContainerInner<T extends React.ElementType = "div">(
   }: ScrollContainerProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
+  const BaseContainer = Container as unknown as React.ElementType;
   return (
-    <Container
+    <BaseContainer
       ref={ref as React.Ref<unknown>}
       className={cn(
         "overflow-auto",
@@ -815,14 +837,15 @@ function ScrollContainerInner<T extends React.ElementType = "div">(
         snapType === "proximity" ? "snap-proximity" : undefined,
         className
       )}
-      {...(rest as ContainerProps<T>)}
+      {...(rest as Record<string, unknown>)}
     />
   );
 }
 
-const ScrollContainer = React.forwardRef(
-  ScrollContainerInner as ScrollContainerForwardRef
-) as ContainerPolymorphicComponent<ScrollContainerExtras>;
+const ScrollContainer = forwardRefWithAs<
+  "div",
+  ContainerBaseProps & ScrollContainerExtras
+>(ScrollContainerInner as ScrollContainerForwardRef) as ContainerPolymorphicComponent<ScrollContainerExtras>;
 
 ScrollContainer.displayName = "ScrollContainer";
 

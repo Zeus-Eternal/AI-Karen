@@ -40,6 +40,28 @@ type ButtonComponent = PolymorphicComponentWithDisplayName<
   ButtonBaseProps
 >;
 
+type PolymorphicForwardRef<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown>
+> = <T extends React.ElementType = DefaultElement>(
+  props: PolymorphicComponentPropWithRef<T, Props>,
+  ref: PolymorphicRef<T>
+) => React.ReactElement | null;
+
+function forwardRefWithAs<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown>
+>(
+  component: PolymorphicForwardRef<DefaultElement, Props>
+) {
+  return React.forwardRef(
+    component as unknown as React.ForwardRefRenderFunction<any, any>
+  ) as unknown as PolymorphicComponentWithDisplayName<
+    DefaultElement,
+    Props
+  >;
+}
+
 const variantClasses: Record<ButtonVariant, string> = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90",
   destructive:
@@ -110,7 +132,7 @@ function ButtonInner<T extends React.ElementType = "button">(
       disabled={isButtonElement ? isDisabled : undefined}
       data-variant={variant}
       data-size={size}
-      {...(props as ButtonProps<T>)}
+      {...(props as Record<string, unknown>)}
     >
       {loading && (
         <svg
@@ -141,9 +163,9 @@ function ButtonInner<T extends React.ElementType = "button">(
   );
 }
 
-const Button = React.forwardRef(
+const Button = forwardRefWithAs<"button", ButtonBaseProps>(
   ButtonInner as ButtonForwardRef
-) as ButtonComponent;
+);
 
 Button.displayName = "Button";
 
@@ -168,9 +190,9 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 
 IconButton.displayName = "IconButton";
 
-type LinkButtonProps<T extends React.ElementType = "a"> = ButtonProps<T> & {
-  href?: string;
-};
+type LinkButtonProps<
+  T extends React.ElementType = "a"
+> = PolymorphicComponentPropWithRef<T, ButtonBaseProps & { href?: string }>;
 
 type LinkButtonComponent = PolymorphicComponentWithDisplayName<
   "a",
@@ -191,22 +213,22 @@ function LinkButtonInner<T extends React.ElementType = "a">(
   }: LinkButtonProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseButton: ButtonComponent = Button;
+  const BaseButton = Button as unknown as React.ElementType;
   return (
     <BaseButton
       as={as ?? ("a" as T)}
       ref={ref as React.Ref<unknown>}
       variant={variant}
-      {...(props as ButtonProps<T>)}
+      {...(props as Record<string, unknown>)}
     >
       {children}
     </BaseButton>
   );
 }
 
-const LinkButton = React.forwardRef(
+const LinkButton = forwardRefWithAs<"a", ButtonBaseProps & { href?: string }>(
   LinkButtonInner as LinkButtonForwardRef
-) as LinkButtonComponent;
+);
 
 LinkButton.displayName = "LinkButton";
 
