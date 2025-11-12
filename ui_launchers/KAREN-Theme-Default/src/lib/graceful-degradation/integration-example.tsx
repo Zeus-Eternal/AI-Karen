@@ -2,6 +2,7 @@
  * Integration example showing how to fix the ModelProviderIntegration 4xx/5xx errors
  * This demonstrates the practical application of the graceful degradation system
  */
+/* eslint-disable react-refresh/only-export-components -- Example module intentionally exports hooks and utilities alongside components. */
 import * as React from 'react';
 import { useModelProviders, useGracefulDegradation } from './use-graceful-backend';
 import { DegradedModeBanner, ServiceUnavailable } from './fallback-ui';
@@ -23,9 +24,8 @@ export function FixedModelProviderIntegration() {
     maxStaleAge: 60 * 60 * 1000 // 1 hour
   });
 
-  const { showDegradedBanner, dismissBanner, forceRetry } = useGracefulDegradation(
-    'modelProviderIntegration'
-  );
+  const { showDegradedBanner, dismissBanner, forceRetry } =
+    useGracefulDegradation('modelProviderIntegration');
 
   // Show degraded mode banner when appropriate
   const shouldShowBanner =
@@ -193,7 +193,8 @@ export function useModelProviderSuggestions() {
     try {
       // The graceful degradation system will handle errors automatically
       return suggestions || [];
-    } catch {
+    } catch (err) {
+      console.error('Failed to load provider model suggestions', err);
       // Return empty array as fallback instead of throwing
       return [];
     }

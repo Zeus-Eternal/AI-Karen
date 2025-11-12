@@ -7,51 +7,8 @@
 "use client";
 
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { extensionIntegration } from './extension-integration';
-import { safeLog, safeError } from '../safe-console';
-
-/**
- * Hook to initialize extension integration service
- */
-export function useExtensionInitialization() {
-  const [initialized, setInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeExtensions = async () => {
-      try {
-        safeLog('ExtensionInitializer: Starting extension integration initialization...');
-        
-        await extensionIntegration.initialize();
-        
-        if (mounted) {
-          setInitialized(true);
-          setError(null);
-          safeLog('ExtensionInitializer: Extension integration initialized successfully');
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        safeError('ExtensionInitializer: Failed to initialize extension integration:', err);
-        
-        if (mounted) {
-          setError(errorMessage);
-          setInitialized(false);
-        }
-      }
-    };
-
-    initializeExtensions();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  return { initialized, error };
-}
+import { useExtensionInitialization } from './use-extension-initialization';
+import { safeError } from '../safe-console';
 
 /**
  * Extension Integration Provider Component
@@ -73,12 +30,4 @@ export function ExtensionIntegrationProvider({ children }: { children: React.Rea
   }
 
   return <>{children}</>;
-}
-
-/**
- * Hook to check if extensions are available
- */
-export function useExtensionsAvailable() {
-  const { initialized, error } = useExtensionInitialization();
-  return initialized && !error;
 }

@@ -264,5 +264,3 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
-export { withErrorBoundary } from "./withErrorBoundary";
