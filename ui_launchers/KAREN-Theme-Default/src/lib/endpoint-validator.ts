@@ -41,6 +41,44 @@ export interface HealthCheckResult {
   };
 }
 
+type HealthApiResponse = {
+  status?: string;
+  timestamp?: string;
+  services?: Record<string, HealthServiceDetail>;
+  version?: string;
+  uptime?: number;
+  error?: string;
+  [key: string]: unknown;
+};
+
+function isHealthApiResponse(value: unknown): value is HealthApiResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const { status, timestamp, services, version, uptime } = candidate;
+
+  const hasValidStatus =
+    status === undefined || typeof status === "string";
+  const hasValidTimestamp =
+    timestamp === undefined || typeof timestamp === "string";
+  const hasValidServices =
+    services === undefined || typeof services === "object";
+  const hasValidVersion =
+    version === undefined || typeof version === "string";
+  const hasValidUptime =
+    uptime === undefined || typeof uptime === "number";
+
+  return (
+    hasValidStatus &&
+    hasValidTimestamp &&
+    hasValidServices &&
+    hasValidVersion &&
+    hasValidUptime
+  );
+}
+
 export interface ConnectivityTestResult {
   endpoint: string;
   isReachable: boolean;
@@ -99,40 +137,37 @@ export class EndpointValidationService {
   private readonly CONNECTIVITY_CACHE_TTL = 60_000; // 60s
 
   private parseHealthEndpointData(rawData: unknown): HealthEndpointData {
-    if (!rawData || typeof rawData !== "object") {
+    if (!isHealthApiResponse(rawData)) {
       return {};
     }
 
-    const payload = rawData as Record<string, unknown>;
-    const status = payload.status;
-    const version = payload.version;
-    const uptime = payload.uptime;
+    const { status, services, version, uptime } = rawData;
 
     return {
       status: typeof status === "string" ? status : undefined,
-      services: this.parseHealthServices(payload["services"]),
+      services: this.parseHealthServices(services),
       version: typeof version === "string" ? version : undefined,
       uptime: typeof uptime === "number" ? uptime : undefined,
     };
   }
 
   private parseHealthServices(
-    services: unknown
+    services: HealthApiResponse["services"]
   ): Record<string, HealthServiceStatus> | undefined {
     if (!services || typeof services !== "object") {
       return undefined;
     }
 
     const normalized: Record<string, HealthServiceStatus> = {};
-    for (const [key, value] of Object.entries(
-      services as Record<string, unknown>
-    )) {
+    for (const [key, value] of Object.entries(services)) {
       normalized[key] = this.parseHealthServiceStatus(value);
     }
     return normalized;
   }
 
-  private parseHealthServiceStatus(value: unknown): HealthServiceStatus {
+  private parseHealthServiceStatus(
+    value: HealthServiceDetail | undefined
+  ): HealthServiceStatus {
     if (!value || typeof value !== "object") {
       return {};
     }
