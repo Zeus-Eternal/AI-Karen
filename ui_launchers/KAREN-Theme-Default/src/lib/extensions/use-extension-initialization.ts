@@ -51,7 +51,3 @@ export function useExtensionsAvailable() {
   return initialized && !error;
 }
 
-export const extensionUtils = {
-  getInitializationStatus: () => extensionIntegration.initialize,
-  getService: () => extensionIntegration,
-};

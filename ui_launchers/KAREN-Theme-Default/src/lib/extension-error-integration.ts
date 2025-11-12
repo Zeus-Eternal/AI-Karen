@@ -201,7 +201,7 @@ export function shouldUseExtensionFallback(status: number, url: string): boolean
 /**
  * Get user-friendly message for extension errors
  */
-export function getExtensionErrorMessage(status: number, _url: string): string {
+export function getExtensionErrorMessage(status: number, url: string): string {
   if (status === 403) {
     return 'Extension features are running in read-only mode. Some functionality may be limited.';
   }

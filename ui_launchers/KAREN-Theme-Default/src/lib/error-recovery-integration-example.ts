@@ -64,7 +64,21 @@ type NavigatorWithConnection = Navigator & {
 type RecoveryWindow = Window & {
   __RECOVERY_FETCH_WRAP__?: boolean;
   handleKarenBackendError?: HandleKarenBackendErrorFn;
+  __RECOVERY_FLAG_STORE__?: Record<string, boolean>;
 };
+
+const flagStore: Record<string, boolean> = (() => {
+  if (!isBrowser()) {
+    return {};
+  }
+
+  const win = window as RecoveryWindow;
+  if (!win.__RECOVERY_FLAG_STORE__) {
+    win.__RECOVERY_FLAG_STORE__ = {};
+  }
+
+  return win.__RECOVERY_FLAG_STORE__;
+})();
 
 // ---------- Enhanced Error Handler ----------
 export class EnhancedErrorHandler {
