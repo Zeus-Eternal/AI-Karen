@@ -100,20 +100,29 @@ export function HealthDashboard({
     return "";
   });
 
+  const monitoringSyncTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scheduleMonitoringSync = React.useCallback(
     (monitor: HealthMonitorInstance) => {
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
+      }
+
       if (!monitor) {
-        setIsMonitoring(false);
+        monitoringSyncTimeoutRef.current = setTimeout(() => {
+          setIsMonitoring(false);
+        }, 0);
         return;
       }
 
-      Promise.resolve().then(() => {
+      monitoringSyncTimeoutRef.current = setTimeout(() => {
         try {
           setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
         } catch {
           // noop
         }
-      });
+      }, 0);
     },
     []
   );
@@ -161,7 +170,6 @@ export function HealthDashboard({
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        cancelInitialSync = enqueueSync(healthMonitor);
       }
     } catch {
       cancelInitialSync?.();
@@ -180,6 +188,11 @@ export function HealthDashboard({
         unsubscribeAlerts();
       } catch {
         // noop
+      }
+
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
       }
     };
   }, [healthMonitor, scheduleMonitoringSync]);

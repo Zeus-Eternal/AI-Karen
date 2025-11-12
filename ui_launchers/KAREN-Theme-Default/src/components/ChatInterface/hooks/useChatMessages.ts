@@ -8,6 +8,16 @@ import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
 import { ChatMessage, ChatSettings } from "../types";
 
+type MessageMetadata = Record<string, unknown> & {
+  origin?: string;
+  endpoint?: string;
+  model?: string;
+  tokens?: number;
+  cost?: number;
+  confidence?: number;
+  latencyMs?: number;
+};
+
 interface BackendChatRuntimeRequest {
   message: string;
   conversation_id?: string;
@@ -444,7 +454,7 @@ export const useChatMessages = (
 
           // Handle streaming or complete response
           let fullText = "";
-          let metadata: Record<string, unknown> = {};
+          let metadata: MessageMetadata = {};
 
           const ct = response.headers.get("content-type") || "";
           const isStream =
@@ -557,14 +567,14 @@ export const useChatMessages = (
                       json.data ||
                       json.usage ||
                       json.model)
-                  ) {
-                    const usage = json.usage || json.token_usage || {};
-                    const baseMeta =
-                      json.metadata || json.meta || json.data || {};
-                    const metaUpdate: unknown = { ...(baseMeta as unknown) };
-                    if ((json as unknown).kire_metadata && !metaUpdate.kire)
-                      metaUpdate.kire = (json as unknown).kire_metadata;
-                    if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
+                    ) {
+                      const usage = json.usage || json.token_usage || {};
+                      const baseMeta =
+                        (json.metadata || json.meta || json.data || {}) as Partial<MessageMetadata>;
+                      const metaUpdate: Partial<MessageMetadata> = { ...baseMeta };
+                      if ((json as unknown).kire_metadata && !metaUpdate.kire)
+                        metaUpdate.kire = (json as unknown).kire_metadata;
+                      if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
                     if (typeof json.confidence === "number")
                       metaUpdate.confidence = json.confidence;
                     if (
@@ -706,8 +716,8 @@ export const useChatMessages = (
                 ) {
                   const usage = json.usage || json.token_usage || {};
                   const baseMeta =
-                    json.metadata || json.meta || json.data || {};
-                  const metaUpdate: unknown = { ...(baseMeta as unknown) };
+                    (json.metadata || json.meta || json.data || {}) as Partial<MessageMetadata>;
+                  const metaUpdate: Partial<MessageMetadata> = { ...baseMeta };
                   if ((json as unknown).kire_metadata && !metaUpdate.kire)
                     metaUpdate.kire = (json as unknown).kire_metadata;
                   if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
@@ -811,24 +821,31 @@ export const useChatMessages = (
                 result.message ||
                 result.response ||
                 "";
-              const usage = result.usage || result.token_usage || {};
-              metadata = {
-                ...(result.metadata || result.meta || {}),
-                ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
-                model:
-                  result.model ||
-                  (result.metadata?.model ?? result.meta?.model),
-                tokens:
-                  usage.total_tokens ||
-                  (usage.prompt_tokens && usage.completion_tokens
-                    ? usage.prompt_tokens + usage.completion_tokens
-                    : undefined),
-                cost: result.cost,
-                confidence:
-                  typeof result.confidence === "number"
-                    ? result.confidence
-                    : result.metadata?.confidence ?? result.meta?.confidence,
-              } as unknown;
+                const usage = result.usage || result.token_usage || {};
+                const baseMetadata =
+                  (result.metadata || result.meta || {}) as Partial<MessageMetadata>;
+                metadata = {
+                  ...baseMetadata,
+                  ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
+                  model:
+                    typeof result.model === "string" && result.model.length > 0
+                      ? result.model
+                      : (baseMetadata.model ?? undefined),
+                  tokens:
+                    typeof usage.total_tokens === "number"
+                      ? usage.total_tokens
+                      : usage.prompt_tokens && usage.completion_tokens
+                      ? usage.prompt_tokens + usage.completion_tokens
+                      : baseMetadata.tokens,
+                  cost:
+                    typeof result.cost === "number"
+                      ? result.cost
+                      : (baseMetadata.cost ?? undefined),
+                  confidence:
+                    typeof result.confidence === "number"
+                      ? result.confidence
+                      : (baseMetadata.confidence ?? undefined),
+                } as MessageMetadata;
             } else {
               fullText = await response.text();
             }
@@ -837,8 +854,8 @@ export const useChatMessages = (
 
         metadata = {
           ...metadata,
-          origin: metadata?.origin ?? responseOrigin,
-          endpoint: metadata?.endpoint ?? activeEndpoint,
+          origin: metadata.origin ?? responseOrigin,
+          endpoint: metadata.endpoint ?? activeEndpoint,
         };
 
         // Calculate final metrics
@@ -849,75 +866,80 @@ export const useChatMessages = (
           fullTextPreview:
             fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
           latencyMs: latency,
-          metadata: metadata,
+          metadata,
           hasMetadata: !!metadata,
           metadataKeys: metadata ? Object.keys(metadata) : [],
-          modelFromMetadata: metadata?.model,
+          modelFromMetadata: metadata.model,
           modelFromSettings: settings.model,
-          finalModel: (metadata && (metadata as unknown).model) || settings.model,
+          finalModel:
+            typeof metadata.model === "string" && metadata.model.length > 0
+              ? metadata.model
+              : settings.model,
         });
 
         // Create final message
-          const finalMessage: ChatMessage = {
-            ...placeholder,
-            content: fullText.trim(),
-            status: "completed",
-            metadata: {
-              ...metadata,
-              latencyMs: latency,
-              model: (metadata && (metadata as unknown).model) || settings.model,
-              tokens:
-                (metadata && (metadata as unknown).tokens) ||
-                Math.ceil(fullText.length / 4),
-              cost: metadata.cost || 0,
-              origin: metadata.origin ?? responseOrigin,
-              endpoint: metadata.endpoint ?? activeEndpoint,
-            },
-          };
+        const finalMessage: ChatMessage = {
+          ...placeholder,
+          content: fullText.trim(),
+          status: "completed",
+          metadata: {
+            ...metadata,
+            latencyMs: latency,
+            model:
+              typeof metadata.model === "string" && metadata.model.length > 0
+                ? metadata.model
+                : settings.model,
+            tokens:
+              typeof metadata.tokens === "number"
+                ? metadata.tokens
+                : Math.ceil(fullText.length / 4),
+            cost:
+              typeof metadata.cost === "number" ? metadata.cost : 0,
+            origin: metadata.origin ?? responseOrigin,
+            endpoint: metadata.endpoint ?? activeEndpoint,
+          },
+        };
 
-          safeDebug("🔍 useChatMessages: Final message created:", {
-            messageId: finalMessage.id,
-            contentLength: finalMessage.content.length,
-            status: finalMessage.status,
-            model: finalMessage.metadata?.model,
-            latencyMs: finalMessage.metadata?.latencyMs,
-            tokens: finalMessage.metadata?.tokens,
-          });
+        safeDebug("🔍 useChatMessages: Final message created:", {
+          messageId: finalMessage.id,
+          contentLength: finalMessage.content.length,
+          status: finalMessage.status,
+          model: finalMessage.metadata?.model,
+          latencyMs: finalMessage.metadata?.latencyMs,
+          tokens: finalMessage.metadata?.tokens,
+        });
 
-          // Update message
-          setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? finalMessage : m))
-          );
+        // Update message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId ? finalMessage : m))
+        );
 
-          // Trigger hooks
-          await triggerHooks(
-            "chat_message_received",
-            {
-              messageId: assistantId,
-              confidence: finalMessage.metadata?.confidence,
-              type: finalMessage.type,
-              latencyMs: latency,
-              model: settings.model,
-              userId: user?.user_id,
-              sessionId,
-              conversationId,
-            },
-            { userId: user?.user_id }
-          );
+        // Trigger hooks
+        await triggerHooks(
+          "chat_message_received",
+          {
+            messageId: assistantId,
+            confidence: finalMessage.metadata?.confidence,
+            type: finalMessage.type,
+            latencyMs: latency,
+            model: settings.model,
+            userId: user?.user_id,
+            sessionId,
+            conversationId,
+          },
+          { userId: user?.user_id }
+        );
 
-          if (onMessageReceived) {
-            onMessageReceived(finalMessage);
-          }
+        if (onMessageReceived) {
+          onMessageReceived(finalMessage);
+        }
 
-          safeInfo(
-            "🔍 useChatMessages: Message successfully processed and stored:",
-            {
-              messageId: assistantId,
-              totalMessages: messages.length + 1,
-              success: true,
-              timestamp: new Date().toISOString(),
-            }
-          );
+        safeInfo("🔍 useChatMessages: Message successfully processed and stored:", {
+          messageId: assistantId,
+          totalMessages: messages.length + 1,
+          success: true,
+          timestamp: new Date().toISOString(),
+        });
 
           // Generate artifacts for certain message types
           if (
@@ -1075,17 +1097,17 @@ export const useChatMessages = (
           }
         );
 
-      setIsTyping(false);
+        setIsTyping(false);
 
-      toast({
-        variant: "destructive",
-        title: "Critical Error",
-        description:
-          "An unexpected error occurred. Please refresh the page and try again.",
-      });
-    }
-  },
-  [
+        toast({
+          variant: "destructive",
+          title: "Critical Error",
+          description:
+            "An unexpected error occurred. Please refresh the page and try again.",
+        });
+      }
+    },
+    [
       messages,
       isTyping,
       settings,
@@ -1102,10 +1124,8 @@ export const useChatMessages = (
       maxMessages,
       toast,
       configManager,
-      messages,
       setIsTyping,
       setMessages,
-      messages,
     ]
   );
 
