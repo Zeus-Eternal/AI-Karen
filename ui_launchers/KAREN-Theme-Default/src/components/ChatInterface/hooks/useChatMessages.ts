@@ -527,188 +527,36 @@ export const useChatMessages = (
           }
 
           if (isStream) {
-            // Handle streaming response
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
 
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) break;
-
-              buffer += decoder.decode(value || new Uint8Array(), { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
-
-              for (const rawLine of lines) {
-                const line = rawLine.replace(/\r$/, "");
-                const trimmed = line.trim();
-                if (!trimmed || trimmed === "data: [DONE]" || trimmed === "[DONE]") {
-                  continue;
-                }
-
-                let data = trimmed;
-                if (trimmed.startsWith("data:")) {
-                  data = trimmed.replace(/^data:\s*/, "");
-                }
-
-                try {
-                  const json = JSON.parse(data);
-                  const jsonType = (json as unknown)?.type;
-
-                  if (
-                    jsonType !== "token" &&
-                    jsonType !== "delta" &&
-                    (json.event === "meta" ||
-                      jsonType === "meta" ||
-                      json.kind === "metadata" ||
-                      json.metadata ||
-                      json.meta ||
-                      json.data ||
-                      json.usage ||
-                      json.model)
-                    ) {
-                      const usage = json.usage || json.token_usage || {};
-                      const baseMeta =
-                        (json.metadata || json.meta || json.data || {}) as Partial<MessageMetadata>;
-                      const metaUpdate: Partial<MessageMetadata> = { ...baseMeta };
-                      if ((json as unknown).kire_metadata && !metaUpdate.kire)
-                        metaUpdate.kire = (json as unknown).kire_metadata;
-                      if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
-                    if (typeof json.confidence === "number")
-                      metaUpdate.confidence = json.confidence;
-                    if (
-                      usage.total_tokens ||
-                      (usage.prompt_tokens && usage.completion_tokens)
-                    ) {
-                      metaUpdate.tokens =
-                        usage.total_tokens ||
-                        usage.prompt_tokens + usage.completion_tokens;
-                    }
-                    if (
-                      typeof metaUpdate.total_tokens === "number" &&
-                      metaUpdate.tokens === undefined
-                    ) {
-                      metaUpdate.tokens = metaUpdate.total_tokens;
-                    }
-                    if (
-                      typeof (metaUpdate as unknown).totalTokens === "number" &&
-                      metaUpdate.tokens === undefined
-                    ) {
-                      metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
-                    }
-                    if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                    if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
-                    if (metaUpdate.endpoint === undefined)
-                      metaUpdate.endpoint = activeEndpoint;
-                    metadata = { ...metadata, ...metaUpdate };
-                  }
-
-                  if (
-                    typeof json === "string" ||
-                    json.delta ||
-                    json.content ||
-                    json.text ||
-                    json.answer ||
-                    (jsonType === "token" && json.data)
-                  ) {
-                    const tokenData =
-                      jsonType === "token" && typeof json.data === "object"
-                        ? typeof json.data.token === "string"
-                          ? json.data.token
-                          : typeof json.data.delta === "string"
-                          ? json.data.delta
-                          : typeof json.data.content === "string"
-                          ? json.data.content
-                          : typeof json.data.text === "string"
-                          ? json.data.text
-                          : typeof json.data.answer === "string"
-                          ? json.data.answer
-                          : ""
-                        : "";
-
-                    const newContent =
-                      (typeof json === "string" && json) ||
-                      (typeof json.delta === "string" && json.delta) ||
-                      (json.content as string | undefined) ||
-                      (json.text as string | undefined) ||
-                      (json.answer as string | undefined) ||
-                      tokenData ||
-                      "";
-                    if (newContent) {
-                      fullText += newContent;
-                      setMessages((prev) =>
-                        prev.map((m) =>
-                          m.id === assistantId ? { ...m, content: fullText } : m
-                        )
-                      );
-                    }
-                  }
-                } catch {
-                  if (!data.startsWith("{")) {
-                    fullText += data;
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId ? { ...m, content: fullText } : m
-                      )
-                    );
-                  }
-                }
+            const processStreamChunk = (chunk: string) => {
+              const trimmedChunk = chunk.trim();
+              if (
+                !trimmedChunk ||
+                trimmedChunk === "data: [DONE]" ||
+                trimmedChunk === "[DONE]"
+              ) {
+                return;
               }
-            }
 
-            const tail = (buffer || "").trim();
-            if (tail && tail !== "data: [DONE]") {
-              const data = tail.startsWith("data:")
-                ? tail.replace(/^data:\s*/, "")
-                : tail;
+              let payload = trimmedChunk;
+              if (trimmedChunk.startsWith("data:")) {
+                payload = trimmedChunk.replace(/^data:\s*/, "");
+              }
+
               try {
-                const json = JSON.parse(data);
-                const jsonTypeTail = (json as unknown)?.type;
+                const json = JSON.parse(payload);
+                const jsonType = (json as unknown)?.type;
 
                 if (
-                  typeof json === "string" ||
-                  json.content ||
-                  json.text ||
-                  json.answer ||
-                  (jsonTypeTail === "token" && json.data)
-                ) {
-                  const tokenDataTail =
-                    jsonTypeTail === "token" && typeof json.data === "object"
-                      ? typeof json.data.token === "string"
-                        ? json.data.token
-                        : typeof json.data.delta === "string"
-                        ? json.data.delta
-                        : typeof json.data.content === "string"
-                        ? json.data.content
-                        : typeof json.data.text === "string"
-                        ? json.data.text
-                        : typeof json.data.answer === "string"
-                        ? json.data.answer
-                        : ""
-                      : "";
-
-                  const newContent =
-                    (typeof json === "string" && json) ||
-                    (json.content as string | undefined) ||
-                    (json.text as string | undefined) ||
-                    (json.answer as string | undefined) ||
-                    tokenDataTail ||
-                    "";
-                  if (newContent) {
-                    fullText += newContent;
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId ? { ...m, content: fullText } : m
-                      )
-                    );
-                  }
-                }
-
-                if (
-                  jsonTypeTail !== "token" &&
-                  jsonTypeTail !== "delta" &&
-                  (json.metadata ||
+                  jsonType !== "token" &&
+                  jsonType !== "delta" &&
+                  (json.event === "meta" ||
+                    jsonType === "meta" ||
+                    json.kind === "metadata" ||
+                    json.metadata ||
                     json.meta ||
                     json.data ||
                     json.usage ||
@@ -721,6 +569,8 @@ export const useChatMessages = (
                   if ((json as unknown).kire_metadata && !metaUpdate.kire)
                     metaUpdate.kire = (json as unknown).kire_metadata;
                   if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
+                  if (typeof json.confidence === "number")
+                    metaUpdate.confidence = json.confidence;
                   if (
                     usage.total_tokens ||
                     (usage.prompt_tokens && usage.completion_tokens)
@@ -748,17 +598,77 @@ export const useChatMessages = (
                     metaUpdate.endpoint = activeEndpoint;
                   metadata = { ...metadata, ...metaUpdate };
                 }
+
+                if (
+                  typeof json === "string" ||
+                  json.delta ||
+                  json.content ||
+                  json.text ||
+                  json.answer ||
+                  (jsonType === "token" && json.data)
+                ) {
+                  const tokenData =
+                    jsonType === "token" && typeof json.data === "object"
+                      ? typeof json.data.token === "string"
+                        ? json.data.token
+                        : typeof json.data.delta === "string"
+                        ? json.data.delta
+                        : typeof json.data.content === "string"
+                        ? json.data.content
+                        : typeof json.data.text === "string"
+                        ? json.data.text
+                        : typeof json.data.answer === "string"
+                        ? json.data.answer
+                        : ""
+                      : "";
+
+                  const newContent =
+                    (typeof json === "string" && json) ||
+                    (typeof json.delta === "string" && json.delta) ||
+                    (json.content as string | undefined) ||
+                    (json.text as string | undefined) ||
+                    (json.answer as string | undefined) ||
+                    tokenData ||
+                    "";
+                  if (newContent) {
+                    fullText += newContent;
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId ? { ...m, content: fullText } : m
+                      )
+                    );
+                  }
+                }
               } catch {
-                fullText += data;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId ? { ...m, content: fullText } : m
-                  )
-                );
+                if (!payload.startsWith("{")) {
+                  fullText += payload;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId ? { ...m, content: fullText } : m
+                    )
+                  );
+                }
+              }
+            };
+
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value || new Uint8Array(), { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const rawLine of lines) {
+                processStreamChunk(rawLine);
               }
             }
+
+            const tail = (buffer || "").trim();
+            if (tail && tail !== "data: [DONE]") {
+              processStreamChunk(tail);
+            }
           } else {
-            // Handle non-streaming response (JSON or text)
             const ct2 = response.headers.get("content-type") || "";
             if (ct2.includes("application/json")) {
               const result = await response.json();
@@ -821,36 +731,37 @@ export const useChatMessages = (
                 result.message ||
                 result.response ||
                 "";
-                const usage = result.usage || result.token_usage || {};
-                const baseMetadata =
-                  (result.metadata || result.meta || {}) as Partial<MessageMetadata>;
-                metadata = {
-                  ...baseMetadata,
-                  ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
-                  model:
-                    typeof result.model === "string" && result.model.length > 0
-                      ? result.model
-                      : (baseMetadata.model ?? undefined),
-                  tokens:
-                    typeof usage.total_tokens === "number"
-                      ? usage.total_tokens
-                      : usage.prompt_tokens && usage.completion_tokens
-                      ? usage.prompt_tokens + usage.completion_tokens
-                      : baseMetadata.tokens,
-                  cost:
-                    typeof result.cost === "number"
-                      ? result.cost
-                      : (baseMetadata.cost ?? undefined),
-                  confidence:
-                    typeof result.confidence === "number"
-                      ? result.confidence
-                      : (baseMetadata.confidence ?? undefined),
-                } as MessageMetadata;
+
+              const usage = result.usage || result.token_usage || {};
+              const baseMetadata =
+                (result.metadata || result.meta || {}) as Partial<MessageMetadata>;
+              metadata = {
+                ...metadata,
+                ...baseMetadata,
+                ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
+                model:
+                  typeof result.model === "string" && result.model.length > 0
+                    ? result.model
+                    : baseMetadata.model,
+                tokens:
+                  typeof usage.total_tokens === "number"
+                    ? usage.total_tokens
+                    : usage.prompt_tokens && usage.completion_tokens
+                    ? usage.prompt_tokens + usage.completion_tokens
+                    : baseMetadata.tokens,
+                cost:
+                  typeof result.cost === "number"
+                    ? result.cost
+                    : baseMetadata.cost,
+                confidence:
+                  typeof result.confidence === "number"
+                    ? result.confidence
+                    : baseMetadata.confidence,
+              } as MessageMetadata;
             } else {
               fullText = await response.text();
             }
           }
-        }
 
         metadata = {
           ...metadata,
