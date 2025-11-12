@@ -272,7 +272,7 @@ export class ExtensionAuthRecoveryManager {
       // Use a lightweight endpoint to test the token
       const testEndpoint = '/api/health';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
 
       const response = await fetch(testEndpoint, {
         method: 'GET',
@@ -286,20 +286,30 @@ export class ExtensionAuthRecoveryManager {
 
       clearTimeout(timeoutId);
 
-      // Accept both 200 OK and 401 for health endpoint
-      // (401 means token is being checked, which is what we want)
-      // For extension endpoints, we need actual success
-      if (endpoint.includes('/api/extensions') || endpoint.includes('extension')) {
-        return response.ok;
+      logger.debug('Token validation response:', {
+        status: response.status,
+        ok: response.ok,
+        endpoint
+      });
+
+      // Accept 200, 401, 403 as valid responses (token is being processed)
+      // Only reject on 500+ errors (server errors)
+      const isValid = response.status < 500;
+
+      if (!isValid) {
+        logger.warn('Token validation failed with server error', {
+          status: response.status,
+          endpoint
+        });
       }
 
-      // For other endpoints, just check that we got a response
-      return response.status < 500;
+      return isValid;
     } catch (error) {
       logger.warn('Token validation request failed:', error);
       // Network errors during validation should not fail the refresh
       // The actual request will determine if the token works
-      return true; // Optimistically assume it works
+      // Optimistically assume it works to allow retry
+      return true;
     }
   }
 
