@@ -22,4 +22,4 @@ export {
 // Export error boundary components
 export {
   withOptimisticErrorBoundary
-} from '../../components/error/optimistic-error-boundary';
+} from '../../components/error/withOptimisticErrorBoundary';
