@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * React hooks for extension integration
  */

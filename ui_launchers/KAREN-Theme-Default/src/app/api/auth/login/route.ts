@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from "next/server";
 //   getConnectionStatus,
 // } from "@/app/api/_utils/backend";
 import { isSimpleAuthEnabled } from "@/lib/auth/env";
-import { ConnectionError } from "@/lib/connection/connection-manager";
 
 interface DatabaseConnectivityResult {
   isConnected: boolean;
@@ -40,7 +39,6 @@ interface ErrorResponse {
 const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
 // Use simple timeout and retry config
 const timeoutConfig = { authentication: 15000 };
-const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
 
 // ---- Attempt tracking (in-memory) ----
@@ -173,14 +171,6 @@ export async function POST(request: NextRequest) {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
-  const connectionOptions = {
-    timeout: timeoutConfig.authentication,
-    retryAttempts: retryPolicy.maxAttempts,
-    retryDelay: retryPolicy.baseDelay,
-    exponentialBackoff: retryPolicy.jitterEnabled,
-    headers: baseHeaders,
-  };
-
   try {
     // Simple direct backend request
     const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';

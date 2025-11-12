@@ -1,13 +1,7 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -27,10 +21,7 @@ import {
 import type { ExtensionStatus } from "../../../lib/extensions/extension-integration";
 
 import {
-  Package,
   Settings,
-  Play,
-  Pause,
   Trash2,
   Upload,
   BarChart3,

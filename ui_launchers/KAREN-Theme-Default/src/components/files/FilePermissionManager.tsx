@@ -454,6 +454,25 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
     };
   }, [currentPermissions]);
 
+  const ruleSummaries = useMemo(
+    () =>
+      permissionRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        scope: rule.file_types.length ? rule.file_types.join(", ") : "All file types",
+        roles: rule.user_roles.length ? rule.user_roles.join(", ") : "All roles",
+        permissions: rule.permissions.join(", "),
+        active: rule.is_active,
+      })),
+    [permissionRules]
+  );
+
+  const handleRuleSync = useCallback(() => {
+    if (onRuleUpdate) {
+      onRuleUpdate(permissionRules);
+    }
+  }, [onRuleUpdate, permissionRules]);
+
   return (
     <ErrorBoundary fallback={PermissionManagerFallback}>
       <div className={cn("w-full space-y-6", className)}>
@@ -711,6 +730,49 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </CardContent>
           </Card>
         </div>
+
+        {ruleSummaries.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <CardTitle>Rule Overview</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRuleSync}
+                aria-label="Sync permission rules"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+                Sync Rules
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3 md:space-y-4">
+              {ruleSummaries.map((rule) => (
+                <div
+                  key={rule.id}
+                  className="rounded-lg border border-border p-3 md:p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold md:text-base lg:text-lg">
+                        {rule.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground md:text-sm lg:text-base">
+                        Applies to: {rule.scope}
+                      </p>
+                    </div>
+                    <Badge variant={rule.active ? "default" : "secondary"}>
+                      {rule.active ? "Active" : "Disabled"}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2 md:text-sm lg:text-base">
+                    <span>Roles: {rule.roles}</span>
+                    <span>Permissions: {rule.permissions}</span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Permissions Grid */}
         <Card>

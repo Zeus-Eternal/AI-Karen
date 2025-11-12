@@ -173,7 +173,8 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
         title: "Analysis Complete",
         description: "Image has been analyzed successfully.",
       });
-    } catch (err) {
+    } catch (error) {
+      console.error("Image analysis failed", error);
       toast({
         variant: "destructive",
         title: "Analysis Failed",
@@ -191,7 +192,8 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
     try {
       await navigator.clipboard.writeText(text);
       toast({ title: "Copied", description: "Extracted text copied to clipboard." });
-    } catch (err) {
+    } catch (error) {
+      console.error("Failed to copy extracted image text", error);
       toast({
         variant: "destructive",
         title: "Copy Failed",

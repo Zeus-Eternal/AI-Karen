@@ -1,5 +1,6 @@
 export { SetupWizard } from './SetupWizard';
-export { SetupRouteGuard, useSetupRouteAccess, withSetupRouteGuard, FirstRunRedirect } from './SetupRouteGuard';
+export { SetupRouteGuard, FirstRunRedirect } from './SetupRouteGuard';
+export { useSetupRouteAccess, withSetupRouteGuard } from './SetupRouteGuardAccess';
 
 // Step components
 export { WelcomeStep } from './steps/WelcomeStep';

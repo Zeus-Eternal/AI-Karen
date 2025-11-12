@@ -389,8 +389,9 @@ export default function AuditLogViewer({
     } else {
       // clearing query resets q
       setFilter((prev) => {
-        const { q, ...rest } = prev;
-        return rest;
+        const next = { ...prev };
+        delete next.q;
+        return next;
       });
       setPagination((p) => ({ ...p, page: 1 }));
     }

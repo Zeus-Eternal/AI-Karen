@@ -225,25 +225,25 @@ interface AuditLogRow {
   user_id: string;
   action: string;
   resource_type: string;
-  resource_id?: string | null;
-  details?: Record<string, unknown> | string | null;
-  ip_address?: string | null;
-  user_agent?: string | null;
-  timestamp: Date;
-  user_email?: string | null;
-  user_full_name?: string | null;
+  resource_id: string | null;
+  details: Record<string, unknown> | string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: string | Date;
+  user_email: string | null;
+  user_full_name: string | null;
 }
 
 interface SystemConfigRow {
   id: string;
   key: string;
-  value?: unknown;
+  value: string | number | boolean | null;
   value_type: string;
   category: string;
   description?: string | null;
   updated_by: string;
-  updated_at: Date;
-  created_at: Date;
+  updated_at: string | Date;
+  created_at: string | Date;
   updated_by_email?: string | null;
   updated_by_name?: string | null;
 }
@@ -266,34 +266,6 @@ interface UserRecord {
   two_factor_enabled?: boolean | number | null;
   two_factor_secret?: string | null;
   created_by?: string | null;
-}
-
-interface AuditLogRow {
-  id: string;
-  user_id: string;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  details: Record<string, unknown> | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  timestamp: string | Date;
-  user_email?: string | null;
-  user_full_name?: string | null;
-}
-
-interface SystemConfigRow {
-  id: string;
-  key: string;
-  value: string | number | boolean;
-  value_type: string;
-  category: string;
-  description?: string | null;
-  updated_by: string;
-  updated_at: string | Date;
-  created_at: string | Date;
-  updated_by_email?: string | null;
-  updated_by_name?: string | null;
 }
 
 type ConfigValue = string | number | boolean | Record<string, unknown> | unknown[];
@@ -319,72 +291,6 @@ interface BlockedIpRecord {
   blocked_at: Date;
   blocked_by?: string | null;
   expires_at?: Date | null;
-}
-
-interface AuditLogRecord {
-  id: string;
-  user_id: string;
-  action: string;
-  resource_type: string;
-  resource_id?: string | null;
-  details?: unknown;
-  ip_address?: string | null;
-  user_agent?: string | null;
-  timestamp: string | Date;
-  user_email?: string | null;
-  user_full_name?: string | null;
-}
-
-interface SystemConfigRow {
-  id: string;
-  key: string;
-  value: string;
-  value_type: unknown;
-  category: unknown;
-  description?: string | null;
-  updated_by: string;
-  updated_at: string | Date;
-  created_at: string | Date;
-  updated_by_email?: string | null;
-  updated_by_name?: string | null;
-}
-
-const SYSTEM_CONFIG_VALUE_TYPES: ReadonlyArray<SystemConfig["value_type"]> = [
-  "string",
-  "number",
-  "boolean",
-  "json",
-];
-
-const SYSTEM_CONFIG_CATEGORIES: ReadonlyArray<SystemConfig["category"]> = [
-  "security",
-  "email",
-  "general",
-  "authentication",
-];
-
-function normalizeSystemConfigValueType(
-  value: unknown
-): SystemConfig["value_type"] {
-  if (typeof value === "string") {
-    const lower = value.toLowerCase() as SystemConfig["value_type"];
-    if (SYSTEM_CONFIG_VALUE_TYPES.includes(lower)) {
-      return lower;
-    }
-  }
-
-  return "string";
-}
-
-function normalizeSystemConfigCategory(value: unknown): SystemConfig["category"] {
-  if (typeof value === "string") {
-    const lower = value.toLowerCase() as SystemConfig["category"];
-    if (SYSTEM_CONFIG_CATEGORIES.includes(lower)) {
-      return lower;
-    }
-  }
-
-  return "general";
 }
 
 export interface BlockedIpEntry {
@@ -1004,6 +910,7 @@ export class AdminDatabaseUtils {
 
       // Transform results to include user information
       const data: AuditLog[] = dataResult.map((row: AuditLogRow) => {
+        const timestamp = row.timestamp instanceof Date ? row.timestamp : new Date(row.timestamp);
         const rawDetails = row.details as Record<string, unknown> | string | null | undefined;
         let details: Record<string, unknown> = {};
         if (typeof rawDetails === 'string') {
@@ -1028,7 +935,7 @@ export class AdminDatabaseUtils {
           details,
           ip_address: typeof row.ip_address === 'string' ? row.ip_address : undefined,
           user_agent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
-          timestamp: row.timestamp,
+          timestamp,
           user: row.user_email
             ? {
               user_id: row.user_id,
@@ -1095,6 +1002,8 @@ export class AdminDatabaseUtils {
       return result.map((row: SystemConfigRow) => {
         const valueType = toSystemConfigValueType(row.value_type);
         const categoryValue = toSystemConfigCategory(row.category);
+        const updatedAt = row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at);
+        const createdAt = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
 
         return {
           id: row.id,
@@ -1104,8 +1013,8 @@ export class AdminDatabaseUtils {
           category: categoryValue,
           description: row.description ?? undefined,
           updated_by: row.updated_by,
-          updated_at: row.updated_at,
-          created_at: row.created_at,
+          updated_at: updatedAt,
+          created_at: createdAt,
           updated_by_user: row.updated_by_email
             ? {
               user_id: row.updated_by,

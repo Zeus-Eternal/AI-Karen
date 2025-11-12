@@ -1,4 +1,5 @@
 import type { ExtensionErrorIntegration } from './extension-error-integration';
+import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 
 /**
  * Verify Extension Fix (production-grade)
@@ -9,8 +10,6 @@ import type { ExtensionErrorIntegration } from './extension-error-integration';
  * - Resilient fetch test (handles non-JSON/headers missing)
  * - Minimal dev logging
  */
-
-import type { ExtensionErrorIntegration } from './extension-error-integration';
 
 export type Status = 'not_browser' | 'active' | 'inactive' | 'success' | 'error';
 
@@ -51,7 +50,7 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 interface ExtensionFixWindow extends Window {
   __EXT_FIX_PATCHED__?: { type: 'immediate' | 'standard' };
   extensionErrorIntegration?: ExtensionErrorIntegration;
-  handleKarenBackendError?: unknown;
+  handleKarenBackendError?: HandleKarenBackendErrorFn;
 }
 
 // Optional: a more reliable signal your fetch patch can set.
@@ -223,4 +222,3 @@ if (isBrowser && process.env.NODE_ENV === 'development') {
     }
   }, 300);
 }
-import type { ExtensionErrorIntegration } from './extension-error-integration';

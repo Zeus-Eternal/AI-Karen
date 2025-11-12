@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { format as formatDate } from "date-fns";
 import { CodeBlock } from "@/components/ui/syntax-highlighter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -113,6 +112,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           setFileContent(text ?? "");
         }
       } catch (error) {
+        console.error("Failed to load file content", error);
         setFileContent("Failed to load file content");
       } finally {
         setIsLoading(false);
@@ -134,6 +134,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         description: "File has been analyzed successfully.",
       });
     } catch (error) {
+      console.error("Failed to analyze file attachment", error);
       toast({
         variant: "destructive",
         title: "Analysis failed",
@@ -153,6 +154,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         description: "Content copied to clipboard.",
       });
     } catch (error) {
+      console.error("Failed to copy file preview to clipboard", error);
       toast({
         variant: "destructive",
         title: "Copy failed",
@@ -408,7 +410,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
   /* -------------------- Full Card Preview -------------------- */
   return (
-    <Card className={`h-full flex flex-col ${className}`}>
+    <Card data-theme={theme ?? undefined} className={`h-full flex flex-col ${className}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">

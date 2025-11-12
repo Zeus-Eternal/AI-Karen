@@ -327,6 +327,7 @@ export interface FallbackConfig {
   id: string;
   name: string;
   enabled: boolean;
+  description?: string;
   chains: FallbackChain[];
   healthChecks: HealthCheck[];
   failoverRules: FailoverRule[];
@@ -424,6 +425,8 @@ export interface FallbackEvent {
   duration: number;
   impact: string;
   resolved: boolean;
+  chainName?: string;
+  details?: string;
 }
 
 export interface ModelComparison {

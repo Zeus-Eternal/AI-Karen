@@ -65,7 +65,7 @@ export const createQueryClient = () => {
   return new QueryClient({
     defaultOptions,
     mutationCache: new MutationCache({
-      onError: (error, variables, context, _mutation) => {
+      onError: (error, _variables, _context, _mutation) => {
         const { setError, addNotification } = useAppStore.getState();
         const message = resolveErrorMessage(error, 'An error occurred');
         setError('mutation', message);

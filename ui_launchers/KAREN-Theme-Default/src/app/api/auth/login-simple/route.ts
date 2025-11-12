@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try {
     body = await request.json();
-  } catch (e) {
+  } catch {
     const errorResponse: ErrorResponse = {
       error: 'Invalid JSON body',
       errorType: 'server',

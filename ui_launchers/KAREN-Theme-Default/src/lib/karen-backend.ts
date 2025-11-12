@@ -267,6 +267,18 @@ class KarenBackendService {
       endpoint.includes("extension")
     );
   }
+
+  private isOptionalExtensionEndpoint(endpoint: string): boolean {
+    if (!this.isExtensionEndpoint(endpoint)) {
+      return false;
+    }
+
+    return (
+      endpoint.includes("/extensions/background-tasks") ||
+      endpoint.includes("/background-tasks") ||
+      endpoint.includes("/extensions/system/health")
+    );
+  }
   /**
    * Get authentication headers with extension-specific handling
    */
@@ -709,6 +721,38 @@ class KarenBackendService {
           throw lastFetchError || new Error("Network error");
         }
         if (!response.ok) {
+          const isExpectedExtension404 =
+            this.isExtensionEndpoint(endpoint) &&
+            response.status === 404 &&
+            safeFallback !== undefined;
+
+          if (isExpectedExtension404) {
+            if (this.requestLogging || this.debugLogging) {
+              logger.info(
+                "KarenBackendService optional extension endpoint missing",
+                {
+                  status: response.status,
+                  endpoint,
+                }
+              );
+            }
+            return safeFallback as T;
+          }
+
+          const isOptionalExtensionFailure =
+            safeFallback !== undefined &&
+            this.isOptionalExtensionEndpoint(endpoint) &&
+            response.status >= 500;
+
+          if (isOptionalExtensionFailure) {
+            logger.warn("KarenBackendService optional extension endpoint unavailable", {
+              status: response.status,
+              url: response.url,
+              endpoint,
+            });
+            return safeFallback as T;
+          }
+
           // Reduce noise for expected health and extension auth failures
           const isHealthCheck =
             endpoint.includes("/health") ||
@@ -1048,6 +1092,21 @@ class KarenBackendService {
               );
             }
           }
+
+          const shouldUseOptionalFallback =
+            safeFallback !== undefined &&
+            this.isOptionalExtensionEndpoint(endpoint) &&
+            lastError instanceof APIError &&
+            (lastError.status >= 500 || lastError.status === 0);
+
+          if (shouldUseOptionalFallback) {
+            logger.warn(
+              `KarenBackendService optional extension request failed for ${endpoint}:`,
+              lastError
+            );
+            return safeFallback;
+          }
+
           logger.error(
             `Backend request failed for ${endpoint} after ${
               attempt + 1
@@ -1676,6 +1735,47 @@ class KarenBackendService {
           },
         }),
       });
+
+      const aiData =
+        aiResponse && typeof aiResponse === "object"
+          ? (aiResponse.ai_data as Record<string, unknown> | undefined)
+          : undefined;
+      const isDegradedResponse = Boolean(
+        (aiData &&
+          (aiData["degraded_mode"] === true || aiData["status"] === "degraded")) ||
+          (aiResponse as Record<string, unknown>)?.["degraded_mode"] === true
+      );
+
+      if (isDegradedResponse) {
+        const degradeMessage =
+          (typeof aiResponse.response === "string" &&
+            aiResponse.response) ||
+          "AI services returned a degraded response";
+        const degradeReason =
+          (aiData?.["reason"] as string | undefined) ||
+          (aiData?.["status"] as string | undefined);
+
+        logger.warn(`[${requestId}] Received degraded AI response`, {
+          reason: degradeReason,
+          aiData,
+        });
+
+        throw new APIError(
+          degradeMessage,
+          503,
+          {
+            error: "AI_SERVICE_DEGRADED",
+            message: degradeMessage,
+            type: "SERVICE_UNAVAILABLE",
+            timestamp: new Date().toISOString(),
+            details: {
+              reason: degradeReason,
+              endpoint: "/api/ai/conversation-processing",
+            },
+          },
+          true
+        );
+      }
 
       // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
       const response: HandleUserMessageResult = {

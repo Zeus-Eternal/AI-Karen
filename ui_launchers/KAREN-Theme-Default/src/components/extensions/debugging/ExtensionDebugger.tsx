@@ -197,8 +197,19 @@ export function ExtensionDebugger({
           minTime: 1.2,
         },
       ];
-      setLogs(sampleLogs);
-      setMetrics(sampleMetrics);
+      setLogs(
+        sampleLogs.map((entry) => ({
+          ...entry,
+          id: `${extensionId}-${entry.id}`,
+          message: `[${extensionId}] ${entry.message}`,
+        }))
+      );
+      setMetrics(
+        sampleMetrics.map((metric) => ({
+          ...metric,
+          name: `${metric.name} (${extensionId})`,
+        }))
+      );
       setPerformanceProfile(sampleProfile);
     } catch (error) {
       console.error("Failed to load debugging data:", error);

@@ -14,13 +14,13 @@ import type { ErrorInfo, FC, ReactNode } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError, type ErrorAnalysisResponse, type ErrorAnalysisRequest, type UseIntelligentErrorOptions } from '@/hooks/use-intelligent-error';
 
-interface ExtendedApiError extends Error {
+type ApiErrorLike = Error & {
   status?: number;
   isNetworkError?: boolean;
   isCorsError?: boolean;
   isTimeoutError?: boolean;
   responseTime?: number;
-}
+};
 
 export interface ErrorContextType {
   // Current error analysis
@@ -30,7 +30,7 @@ export interface ErrorContextType {
   
   // Error handling functions
   analyzeError: (error: Error | string, context?: Partial<ErrorAnalysisRequest>) => Promise<void>;
-  handleApiError: (error: ExtendedApiError, requestContext?: {
+  handleApiError: (error: ApiErrorLike, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;
@@ -61,14 +61,6 @@ export { ErrorContext };
 
 // Hook moved to separate file for React Fast Refresh compatibility
 
-interface ApiErrorLike extends Error {
-  status?: number;
-  isNetworkError?: boolean;
-  isCorsError?: boolean;
-  isTimeoutError?: boolean;
-  responseTime?: number;
-}
-
 export interface ErrorProviderProps {
   children: ReactNode;
   options?: UseIntelligentErrorOptions;
@@ -76,14 +68,6 @@ export interface ErrorProviderProps {
   onAnalysisError?: (error: Error) => void;
   maxGlobalErrors?: number;
 }
-
-type ApiErrorLike = Error & {
-  status?: number;
-  isNetworkError?: boolean;
-  isCorsError?: boolean;
-  isTimeoutError?: boolean;
-  responseTime?: number;
-};
 
 export const ErrorProvider: FC<ErrorProviderProps> = ({
   children,
@@ -218,7 +202,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
   }, [addGlobalError, boundaryError]);
 
   // Handle API errors
-  const handleApiError = useCallback((error: ExtendedApiError, requestContext?: {
+  const handleApiError = useCallback((error: ApiErrorLike, requestContext?: {
     endpoint?: string;
     method?: string;
     provider?: string;

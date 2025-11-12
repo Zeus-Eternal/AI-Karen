@@ -12,18 +12,15 @@ type ComponentWithRef<P, RefType> = React.ForwardRefExoticComponent<
 export function withFocusIndicator<P extends object, RefType = unknown>(
   Component: ComponentWithRef<P, RefType>,
   indicatorProps?: Partial<FocusIndicatorProps>
-) {
-  const WrappedComponent = React.forwardRef<RefType, React.PropsWithoutRef<P>>((props, ref) => (
+): ComponentWithRef<P, RefType> {
+  const WrappedComponent = React.forwardRef<RefType, P>((props, ref) => (
     <FocusIndicator {...indicatorProps}>
-      {React.createElement(
-        Component as React.ComponentType<P & { ref?: React.Ref<RefType> }>,
-        { ...props, ref }
-      )}
+      <Component {...props} ref={ref} />
     </FocusIndicator>
   ));
 
   const componentName = Component.displayName || Component.name || 'Component';
   WrappedComponent.displayName = `withFocusIndicator(${componentName})`;
 
-  return WrappedComponent as React.ComponentType<any>;
+  return WrappedComponent;
 }

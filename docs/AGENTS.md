@@ -1,319 +1,83 @@
-# **AI-Karen Agent Architecture & Documentation**
+# Kari AI Agent Playbook
 
-*Production-Ready Multi-Agent Orchestration System*
-
-**Last Updated**: November 12, 2025
-**Status**: Production v1.0
+This guide orients human contributors and automated agents that generate patches for the Kari AI platform. Use it as your first stop before touching code—everything here reflects the current production architecture and workflow expectations.
 
 ---
 
-## 🎯 **Mission: Enterprise-Grade AI Orchestration**
+## 1. Mission & Scope
 
-AI-Karen is a production-ready, modular AI platform with sophisticated multi-agent orchestration, unified memory systems, and enterprise-grade observability. Every component is designed for scalability, reliability, and maintainability.
-
----
-
-## 1. **Core Architecture Principle**
-
-* **All core runtime logic, services, and integrations live under `src/ai_karen_engine/` as independent, importable modules.**
-* **UI launchers live under `/ui_launchers/` (web_ui, desktop_ui, admin_ui)—strictly separated from backend.**
-* **Production-ready with 167 service modules, 75 API endpoints, and comprehensive observability.**
-* **All imports are absolute: `from ai_karen_engine.<module> import ...`**
+- **Primary objective:** maintain a modular, production-grade AI platform that powers FastAPI services, multi-LLM orchestration, and rich desktop/launcher experiences.
+- **Key pillars:** deterministic routing (KIRE/KRO), NeuroVault-style memory services, in-process llama.cpp inference, security-first authentication, and observability baked into every layer.
+- **Expectations for every change:** keep runtime modules composable, keep UI launchers decoupled, and protect the contract-level APIs consumed by automation and external integrators.
 
 ---
 
-## 2. **Current Production Architecture**
+## 2. Repository Layout (2025)
 
-### Core Orchestrators (5 Major Systems)
+### Backend: `src/ai_karen_engine/`
+The backend is a single Python package with absolute imports only (`from ai_karen_engine.<module>`). Major areas include:
 
-| Orchestrator | File | Purpose | Key Features |
-| ------------ | ---- | ------- | ------------ |
-| **LLM Orchestrator** | `llm_orchestrator.py` (1,700+ lines) | Zero-trust LLM routing with cryptographic validation | HMAC-SHA256 signing, hardware isolation, circuit breakers, 8-concurrent limit |
-| **Chat Orchestrator** | `chat/chat_orchestrator.py` (2,300+ lines) | Message processing with NLP integration | spaCy + DistilBERT, retry logic, memory processor, tool integration |
-| **CORTEX Dispatch** | `core/cortex/dispatch.py` | Central intent/command dispatcher | Intent resolution, memory recall (max 10), RBAC validation |
-| **LLM Router** | `integrations/llm_router.py` (3,200+ lines) | Policy-based intelligent routing | Privacy-aware routing, 4-level fallback, performance profiling |
-| **Agent Orchestrator** | `agents/agent_orchestrator.py` | Multi-agent orchestration | Planner, execution pipeline, audit logger |
+| Path | Purpose |
+| ---- | ------- |
+| `core/` | Request lifecycle, orchestration primitives, and platform bootstrap. |
+| `routing/` & `llm_orchestrator.py` | KIRE router, KRO orchestrator, policy enforcement, and provider coordination. |
+| `agents/`, `automation_manager/`, `capsules/` | Declarative workflows, task agents, and capsule execution runtime. |
+| `echocore/`, `doc_store/`, `learning/` | Persona/memory services, retrieval stores, and adaptive learning loops. |
+| `inference/`, `integrations/`, `clients/` | llama.cpp runtime, external LLM/API adapters, and transport clients. |
+| `plugins/`, `community_plugins/`, `plugin_manager.py`, `plugin_router.py`, `plugin_orchestrator.py` | First-party plugins, registry definitions, and dynamic loading. |
+| `services/`, `api_routes/`, `server/`, `middleware/` | FastAPI routers, background workers, middleware, and startup surfaces. |
+| `database/`, `auth/`, `health/`, `monitoring/`, `audit/` | Persistence, authentication, health probes, telemetry, and compliance logging. |
+| `event_bus/`, `hooks/`, `extensions/`, `tools/`, `utils/` | Cross-cutting events, extension hooks, CLI/tooling, and helper utilities. |
+| `logging/`, `guardrails/`, `error_tracking/`, `compatibility.py` | Reliability, safety, compatibility shims, and error handling. |
+| `chat/`, `copilotkit/`, `mcp/` | Conversational surfaces, Copilot integrations, and Model Context Protocol support. |
+| `tests/` | Contract/regression tests covering routing, memory, and plugin behaviors. |
 
-### Agent Components
+### Shared Packages under `src/`
+- `auth/`, `extensions/`, `plugins/`, and `theme/` expose reusable packages for launchers and external tools.
+- `config/` and `dotenv.py` centralize configuration loading.
+- `cachetools/` and `test/` provide supporting utilities and stubs for deterministic testing.
 
-| Component Type | Description | Location | Status |
-| -------------- | ----------- | -------- | ------ |
-| **Core Agents** | Orchestration, planning, execution, audit | `src/ai_karen_engine/agents/` | ✅ Production |
-| **Memory Systems** | 4 unified systems (Original, RecallManager, NeuroVault, NeuroRecall) | `src/ai_karen_engine/core/memory/` | ✅ Phase 1 Complete |
-| **Reasoning Engines** | Soft reasoning, causal, graph-based | `src/ai_karen_engine/core/reasoning/` | ✅ Production |
-| **Chat Services** | 20+ chat-related services | `src/ai_karen_engine/chat/` | ✅ Production |
-| **LLM Integrations** | 7 providers with health monitoring | `src/ai_karen_engine/integrations/` | ✅ Production |
-| **Database Layer** | Multi-tenant support (PostgreSQL, Redis, Milvus, DuckDB) | `src/ai_karen_engine/database/` | ✅ Production |
+### UI Launchers: `ui_launchers/`
+- `desktop_ui/` (Tauri) remains the primary packaged interface.
+- `backend/` exposes lightweight developer tooling APIs for launcher builds.
+- `common/` and `KAREN-Theme-Default/` hold shared UI assets.
+- The legacy web launcher has been retired; any new UI must live in a dedicated subdirectory here.
 
----
-
-## 3. **Production Directory Structure (Current)**
-
-```
-AI-Karen/
-├── src/ai_karen_engine/
-│   ├── agents/              # Agent orchestration (4 core agents)
-│   ├── api_routes/          # 75 REST API endpoints
-│   ├── chat/                # Chat orchestration & streaming (20 modules)
-│   ├── clients/             # External service integrations
-│   ├── core/                # Core infrastructure (50+ modules)
-│   │   ├── cortex/          # CORTEX dispatch & intent routing
-│   │   ├── memory/          # Unified memory system (Phase 1)
-│   │   ├── neuro_vault/     # Tri-partite neural memory
-│   │   ├── neuro_recall/    # Hierarchical recall agents
-│   │   ├── reasoning/       # Soft, causal, graph-based reasoning
-│   │   ├── services/        # Service infrastructure & DI
-│   │   ├── logging/         # Structured logging
-│   │   └── gateway/         # FastAPI gateway
-│   ├── database/            # Multi-tenant data layer (8 modules)
-│   ├── integrations/        # LLM providers & health (40+ modules)
-│   ├── services/            # Business logic (167 modules)
-│   ├── monitoring/          # Observability & metrics (5 modules)
-│   ├── plugins/             # Plugin execution & management
-│   ├── extensions/          # Extension system & marketplace
-│   ├── models/              # Data models & schemas
-│   ├── tools/               # Tool definitions
-│   └── config/              # Configuration management
-├── ui_launchers/
-│   ├── KAREN-Theme-Default/ # Next.js web UI (production)
-│   ├── desktop_ui/          # Desktop application
-│   └── admin_ui/            # Admin interface
-├── docs/                    # Comprehensive documentation
-│   ├── AI_KAREN_ARCHITECTURE_OVERVIEW.md  # Full technical reference
-│   ├── QUICK_REFERENCE.md                 # Quick lookup guide
-│   └── AGENTS.md                          # This file
-├── .env.production          # Production configuration
-└── docker-compose.yml       # Container orchestration
-```
+### Tooling & Operations
+- `docker/`, `docker-compose.yml`, and scripts like `start.py`/`start_backend_with_cors.sh` define runtime flows.
+- `monitoring/` and top-level `reports/*.md` document production readiness, audits, and incident learnings.
+- `models/llama-cpp/` is the canonical location for bundled GGUF models.
 
 ---
 
-## 4. **Agent Orchestration Patterns**
+## 3. Coding Doctrine
 
-### Multi-Agent Workflow
-
-```
-User Request
-    ↓
-[CORTEX Dispatch] → Intent resolution
-    ↓
-[Memory Recall] → Context retrieval (max 10 items)
-    ↓
-[Agent Orchestrator]
-    ├→ [Planner Agent] → Strategic planning
-    ├→ [Execution Agent] → Task execution
-    └→ [Audit Agent] → Logging & compliance
-    ↓
-[Chat Orchestrator] → Message processing
-    ├→ [NLP Services] → spaCy + DistilBERT
-    ├→ [Tool Integration] → Execute tools
-    └→ [LLM Router] → Select optimal model
-        ↓
-    [LLM Orchestrator] → Zero-trust execution
-        ↓
-    [Memory Update] → Store results
-        ↓
-    Response to User
-```
-
-### Agent Communication Patterns
-
-**1. Direct Invocation** - Synchronous agent-to-agent calls
-**2. Event Bus** - Asynchronous event-driven communication
-**3. Memory Sharing** - Shared memory context across agents
-**4. Tool Integration** - Agents can invoke tools via tool service
+1. **Absolute imports only.** Never modify `sys.path`—every module under `src` must be importable via the package root.
+2. **Modularity over monolith.** Design new subsystems so they can be extracted into independent packages without refactoring callers.
+3. **UI/backend isolation.** Backend logic stays inside `src/ai_karen_engine/` (or sibling packages); UI launchers interact through public APIs.
+4. **Config discipline.** Runtime toggles live in config modules or `.env` files—never hardcode environment-specific values.
+5. **Pydantic & typing.** Leverage Pydantic models for IO contracts and keep strict typing to protect agent-generated patches.
+6. **Documentation-first.** Significant architectural changes require updating the relevant report/README so downstream agents inherit context.
+7. **Respect dual licensing.** All code must comply with the MPL 2.0 + commercial licensing terms that govern Kari AI.
 
 ---
 
-## 5. **Memory Architecture (4 Unified Systems)**
+## 4. Working Agreement for Agents
 
-### Current Status: Phase 1 Complete
-
-| System | Purpose | Location | Integration |
-| ------ | ------- | -------- | ----------- |
-| **Original Memory** | AG-UI manager, session buffers | `core/memory/manager.py` | ✅ Unified |
-| **RecallManager** | Specialized retrieval patterns | `core/recalls/` | ✅ Unified |
-| **NeuroVault** | Tri-partite neural memory | `core/neuro_vault/` | ✅ Unified |
-| **NeuroRecall** | Hierarchical agent-based recall | `core/neuro_recall/` | ✅ Unified |
-
-### Unified Types
-
-```python
-@dataclass
-class MemoryEntry:
-    id: str
-    content: str
-    embedding: Optional[List[float]]
-    memory_type: MemoryType  # Episodic/Semantic/Procedural
-    namespace: MemoryNamespace  # Short/Long/Persistent/Ephemeral
-    timestamp: datetime
-    importance: float  # 1-10
-    confidence: float  # 0-1
-```
-
-### Storage Backends
-
-- **PostgreSQL**: Conversation memory, JSON/vector support
-- **Redis**: Cache, session state, recent context (3600s TTL)
-- **Milvus**: Vector search, semantic similarity
-- **DuckDB**: Analytics, historical patterns
+- **Before implementing:** inspect existing modules, reuse service abstractions, and prefer extending registries over introducing new global state.
+- **When adding integrations or plugins:** include an `__init__.py`, follow the plugin manager contracts, and document activation steps.
+- **When touching KIRE/KRO or memory systems:** update related simulation tests under `src/ai_karen_engine/tests/` and maintain fallbacks.
+- **Testing expectation:** run targeted pytest modules or FastAPI integration checks when feasible; document skipped tests if infrastructure is unavailable.
+- **Pull requests:** summarize subsystem changes (routing, memory, auth, etc.) and mention any migration or config follow-up required by operators.
 
 ---
 
-## 6. **LLM Provider Integration (7 Providers)**
+## 5. Quick Orientation Checklist
 
-| Provider | Type | Status | Features |
-| -------- | ---- | ------ | -------- |
-| **LlamaCppProvider** | Local | ✅ Active | CPU/GPU, streaming, privacy-first |
-| **OpenAIProvider** | Cloud | ✅ Active | GPT-4, embeddings, vision |
-| **GeminiProvider** | Cloud | ✅ Active | Multimodal, streaming |
-| **DeepseekProvider** | Cloud | ✅ Active | Reasoning models |
-| **HuggingFaceProvider** | Cloud | ✅ Active | Text gen, embeddings |
-| **CopilotKitProvider** | Cloud | ✅ Active | CopilotKit integration |
-| **FallbackProvider** | Meta | ✅ Active | Error recovery, degradation |
+1. Read `README.md` for release highlights and operational modes.
+2. Review `src/ai_karen_engine/core/`, `routing/`, and `services/` to understand execution flow.
+3. Check `monitoring/` and `reports/` for the latest audit findings and production constraints.
+4. Verify local model paths and `.env` overrides before running `start.py` or Docker workflows.
+5. Keep this playbook handy—update it whenever scope or architecture changes.
 
-### Fallback Strategy (4 Levels)
-
-1. **User preference** → Preferred model/provider
-2. **System defaults** → Configured fallback providers
-3. **Local models** → llama.cpp local execution
-4. **Degraded mode** → Minimal response capability
-
----
-
-## 7. **Observability & Monitoring**
-
-### Structured Logging
-
-- **Format**: JSON with correlation tracking
-- **Categories**: API, Database, AI, System, Business
-- **Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-### Prometheus Metrics
-
-- `kari_model_operations_total` - Operation counts by type/status
-- `kari_model_operation_duration_seconds` - Timing histograms
-- `kari_model_storage_usage_bytes` - Storage gauges
-
-### Health Monitoring
-
-- Provider availability checks (30s intervals)
-- Circuit breaker pattern
-- Response latency tracking (p95)
-- Error rate monitoring
-
----
-
-## 8. **Production Configuration**
-
-### Key Environment Variables
-
-```env
-ENVIRONMENT=production
-ENABLE_STREAMING=true
-ENABLE_FALLBACK=true
-ENABLE_MEMORY=true
-MAX_MESSAGE_LENGTH=10000
-MAX_TOKENS_DEFAULT=4096
-RATE_LIMIT_REQUESTS=10
-RATE_LIMIT_WINDOW=60
-ENABLE_STRUCTURED_LOGGING=true
-ENABLE_PROMETHEUS=true
-CIRCUIT_BREAKER_ENABLED=true
-GRACEFUL_DEGRADATION_ENABLED=true
-```
-
----
-
-## 9. **Module Development Guidelines**
-
-### Import Rules
-
-* **Always**: `from ai_karen_engine.<module> import ...`
-* **Never**: Relative imports or sys.path hacks
-
-### Service Registration
-
-```python
-from ai_karen_engine.core.services import ServiceRegistry
-
-registry = ServiceRegistry()
-registry.register("my_service", MyService())
-```
-
-### Example Agent Import
-
-```python
-from ai_karen_engine.agents.agent_orchestrator import AgentOrchestrator
-from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
-from ai_karen_engine.integrations.llm_router import LLMRouter
-from ai_karen_engine.core.memory.unified_memory_service import UnifiedMemoryService
-```
-
----
-
-## 10. **Agent Development Best Practices**
-
-### Security
-
-- Zero-trust model validation with HMAC-SHA256
-- RBAC enforcement for plugin execution
-- Credential redaction in logs
-- Hardware isolation via CPU affinity
-
-### Resilience
-
-- Retry logic with exponential backoff (max 3 attempts)
-- Circuit breaker pattern (threshold: 5 failures)
-- Graceful degradation (4 levels)
-- Timeout management (60s default)
-
-### Performance
-
-- Connection pooling (20 connections, 30 overflow)
-- Query caching with Redis
-- Async/await architecture
-- Max 8-50 concurrent requests (configurable)
-
----
-
-## 11. **Production Readiness**
-
-### ✅ Production-Ready
-
-- Chat runtime API with streaming
-- Memory architecture (Phase 1)
-- Database multi-tenant support
-- LLM provider fallback
-- Observability infrastructure
-
-### ⚠️ In Progress
-
-- Frontend error handling (77% complete)
-- Plugin system (needs mock API replacement)
-- Service error logging (67% complete)
-
----
-
-## 12. **Documentation & References**
-
-### Key Documentation Files
-
-- **AI_KAREN_ARCHITECTURE_OVERVIEW.md** - Complete technical reference (1,031 lines)
-- **QUICK_REFERENCE.md** - Quick lookup guide (435 lines)
-- **AGENTS.md** - This file (agent architecture)
-
-### Statistics
-
-- **167 service modules** across 10 categories
-- **75 API endpoints** organized by function
-- **5 core orchestrators** for intelligent routing
-- **4 memory systems** being unified
-- **7 LLM providers** with health monitoring
-- **4 database backends** for multi-tenant support
-
----
-
-## 13. **License**
-
-All modules respect AI-Karen's dual license: **MPL 2.0** + commercial.
+Welcome to the Hydra—keep the heads modular and the mission sharp.

@@ -523,7 +523,7 @@ export function ExtensionConfigurationPanel({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [extensionId]);
 
   // Load extension configuration
   useEffect(() => {

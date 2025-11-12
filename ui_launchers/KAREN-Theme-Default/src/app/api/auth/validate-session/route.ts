@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 //   checkBackendHealth,
 //   getConnectionStatus,
 // } from '@/app/api/_utils/backend';
-import { ConnectionError } from '@/lib/connection/connection-manager';
 
 interface DatabaseConnectivityResult {
   isConnected: boolean;
@@ -40,7 +39,6 @@ interface ErrorResponse {
 
 // Use simple timeout and retry config
 const timeoutConfig = { sessionValidation: 10000 };
-const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 
 // In-memory ring buffer of attempts by IP
 const sessionValidationAttempts = new Map<string, SessionValidationAttempt[]>();
@@ -68,10 +66,29 @@ function logSessionValidationAttempt(attempt: SessionValidationAttempt): void {
 }
 
 /** Heuristics for retryable errors */
-function isRetryableError(error: Error): boolean {
-  if (!error) return false;
-  const msg = String(error.message || error).toLowerCase();
-  const isAbort = error.name === 'AbortError' || msg.includes('timeout');
+type NormalizedError = {
+  name: string;
+  message: string;
+  status?: number;
+};
+
+function normalizeError(error: unknown): NormalizedError {
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as { name?: unknown; message?: unknown; status?: unknown };
+    return {
+      name: typeof candidate.name === 'string' ? candidate.name : '',
+      message: typeof candidate.message === 'string' ? candidate.message : '',
+      status: typeof candidate.status === 'number' ? candidate.status : undefined,
+    };
+  }
+
+  return { name: '', message: String(error ?? ''), status: undefined };
+}
+
+function isRetryableError(error: unknown): boolean {
+  const { name, message } = normalizeError(error);
+  const msg = message.toLowerCase();
+  const isAbort = name === 'AbortError' || msg.includes('timeout');
   const isNet = msg.includes('network') || msg.includes('connection') || msg.includes('fetch');
   const isSocket = msg.includes('und_err_socket') || msg.includes('other side closed');
   return isAbort || isNet || isSocket;
@@ -176,17 +193,6 @@ export async function GET(request: NextRequest) {
     const cookieHeader = request.headers.get('cookie');
     if (cookieHeader) headers['Cookie'] = cookieHeader;
 
-    const connectionOptions = {
-      timeout: timeoutConfig.sessionValidation,
-      retryAttempts: retryPolicy.maxAttempts,
-      retryDelay: retryPolicy.baseDelay,
-      exponentialBackoff: retryPolicy.jitterEnabled,
-      headers,
-      // extra retry guards for transient failures
-      shouldRetry: (status?: number, error?: unknown) =>
-        (typeof status === 'number' && isRetryableStatus(status)) || isRetryableError(error),
-    };
-
     let result: {
       data: unknown;
       statusCode?: number;
@@ -210,22 +216,27 @@ export async function GET(request: NextRequest) {
       };
     } catch (error) {
       const totalResponseTime = Date.now() - startTime;
+      const normalized = normalizeError(error);
 
       let errorType: 'timeout' | 'network' | 'credentials' | 'database' | 'server' = 'server';
       let statusCode = 502;
       let retryable = true;
 
       // Simple error mapping
-      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      if (normalized.name === 'AbortError' || normalized.message.toLowerCase().includes('timeout')) {
         errorType = 'timeout';
         statusCode = 504;
-      } else if (error.message?.includes('fetch') || error.message?.includes('network')) {
+      } else if (normalized.message.toLowerCase().includes('fetch') || normalized.message.toLowerCase().includes('network')) {
         errorType = 'network';
         statusCode = 502;
-      } else if (error.status === 401 || error.status === 403) {
+      } else if (normalized.status === 401 || normalized.status === 403) {
         errorType = 'credentials';
-        statusCode = error.status;
+        statusCode = normalized.status;
         retryable = false;
+      }
+
+      if (retryable) {
+        retryable = isRetryableStatus(statusCode) || isRetryableError(error);
       }
 
       logSessionValidationAttempt({
@@ -279,6 +290,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const totalResponseTime = Date.now() - startTime;
     const databaseConnectivity = await testDatabaseConnectivity();
+
+    console.error('Session validation request failed', error);
 
     logSessionValidationAttempt({
       timestamp: new Date(),

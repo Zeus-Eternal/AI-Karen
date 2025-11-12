@@ -14,7 +14,16 @@ export { reducedMotionVariants, animationCSS, useWillChange, usePerformanceAware
 export type { AnimationMetrics } from './animation-performance';
 
 export { createModalAria, createNavigationAria, joinIds, createLoadingAria, createInteractiveAria, createFormAria, createAriaLabel, createAriaLive, generateAriaId, mergeAriaProps, validateAriaProps, createGridAria, ARIA_ROLES } from './aria';
-export type { AriaLabelProps, AriaRole, AriaLiveProps, AriaProps, AriaGridProps, AriaStateProps, AriaRelationshipProps } from './aria';
+export type {
+  AriaLabelProps,
+  AriaRole,
+  AriaLiveProps,
+  AriaProps,
+  AriaGridProps,
+  AriaStateProps,
+  AriaRelationshipProps,
+  AriaRelevant,
+} from './aria';
 
 export { BUNDLE_BUDGETS, createBundleAnalyzer, BundleAnalyzer, DEFAULT_BUNDLE_BUDGETS, summarizeBundle, bundleAnalyzer } from './bundle-analyzer';
 export type { ModuleInfo, BudgetSeverity, BundleStats, BundleBudget, ChunkInfo, AssetInfo, BudgetViolation, BudgetViolationType, BudgetWarning, BundleAnalysisResult } from './bundle-analyzer';

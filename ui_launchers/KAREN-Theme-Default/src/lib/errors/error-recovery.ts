@@ -82,7 +82,7 @@ export class ErrorRecoveryManager {
             nextRetryDelay: 1000 // Short delay before retry
           };
         }
-      } catch (error) {
+      } catch {
         // Continue to next action
       }
     }

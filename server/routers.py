@@ -6,8 +6,32 @@ Handles all include_router() wiring without changing route definitions.
 
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, Response as FastAPIResponse
+
 from .config import Settings
+
+
+def _ensure_asgi_response(response: FastAPIResponse) -> FastAPIResponse:
+    """Ensure downstream responses remain ASGI-callable objects."""
+    if callable(response):
+        return response
+
+    logger.error(
+        "⚠️ Downstream handler returned non-callable response type %s; wrapping in JSONResponse",
+        type(response),
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
+def _http_exception_response(exc: HTTPException) -> FastAPIResponse:
+    """Convert HTTPException into a proper ASGI response while preserving headers."""
+    content = {"detail": exc.detail} if exc.detail else {}
+    response = JSONResponse(status_code=exc.status_code, content=content)
+    if exc.headers:
+        for header, value in exc.headers.items():
+            response.headers[header] = value
+    return response
 
 logger = logging.getLogger("kari")
 
@@ -107,26 +131,39 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     try:
         from src.auth.auth_middleware import get_auth_middleware
         auth_middleware = get_auth_middleware()
-        
+
         # Use FastAPI middleware for global auth
         @app.middleware("http")
         async def auth_middleware_handler(request, call_next):
             # Skip auth for public endpoints
             if auth_middleware.is_public_endpoint(request.url.path):
                 response = await call_next(request)
-                return response
-            
+                return _ensure_asgi_response(response)
+
             # For protected endpoints, authenticate and add user to request state
             try:
                 user_data = await auth_middleware.authenticate_request(request)
                 request.state.user = user_data
-            except Exception as e:
+            except HTTPException as exc:
+                logger.warning(
+                    "🚫 Authentication failed for %s %s: %s",
+                    request.method,
+                    request.url.path,
+                    exc.detail,
+                )
+                return _http_exception_response(exc)
+            except Exception:
                 # Let the dependency handle auth errors for specific endpoints
+                logger.exception(
+                    "⚠️ Unexpected error during authentication for %s %s",
+                    request.method,
+                    request.url.path,
+                )
                 request.state.user = None
-            
+
             response = await call_next(request)
-            return response
-        
+            return _ensure_asgi_response(response)
+
         logger.info("🔐 Auth middleware loaded successfully")
     except ImportError:
         logger.warning("🚫 Auth middleware not available")

@@ -9,7 +9,7 @@
  * - Lightweight logs (no big payloads)
  */
 
-import type { PerformanceAlert } from './performance-monitor';
+import type { PerformanceAlert, RequestMetrics } from './performance-monitor';
 import { toast } from '../hooks/use-toast';
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -158,11 +158,20 @@ class PerformanceAlertService {
     endpoint?: string;
     duration?: number;
   } {
-    const metrics = alert.metrics as Record<string, unknown> | undefined;
-    return {
-      endpoint: typeof metrics?.endpoint === 'string' ? metrics.endpoint : undefined,
-      duration: typeof metrics?.duration === 'number' ? metrics.duration : undefined,
-    };
+    const metrics = alert.metrics;
+
+    if (metrics && typeof metrics === 'object' && 'endpoint' in metrics) {
+      const requestMetrics = metrics as Partial<RequestMetrics>;
+
+      return {
+        endpoint:
+          typeof requestMetrics.endpoint === 'string' ? requestMetrics.endpoint : undefined,
+        duration:
+          typeof requestMetrics.duration === 'number' ? requestMetrics.duration : undefined,
+      };
+    }
+
+    return {};
   }
 
   private isSuppressedByEndpoint(alert: PerformanceAlert): boolean {

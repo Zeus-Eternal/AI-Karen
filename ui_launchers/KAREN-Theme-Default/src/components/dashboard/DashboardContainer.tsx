@@ -55,7 +55,6 @@ import { useAppStore, selectUser } from "@/store/app-store";
 import {
   useDashboardStore,
   selectGlobalTimeRange,
-  selectGlobalFilters,
   selectIsEditing,
   selectTemplatesForUser,
 } from "@/store/dashboard-store";
@@ -98,7 +97,6 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
   const user = useAppStore(selectUser);
   const globalTimeRange = useDashboardStore(selectGlobalTimeRange);
-  const globalFilters = useDashboardStore(selectGlobalFilters);
   const isEditing = useDashboardStore(selectIsEditing);
   const templates = useDashboardStore(
     selectTemplatesForUser(user?.roles || [])

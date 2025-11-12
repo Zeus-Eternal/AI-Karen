@@ -1,5 +1,6 @@
 import axe, {
   type AxeResults,
+  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,
@@ -134,7 +135,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     };
   }
 
-  private resolveContainer(container: ElementContext): Document | Element {
+  private resolveContainer(
+    container: ElementContext | Document
+  ): Document | Element {
     if (typeof container === "string") {
       return document.querySelector(container) ?? document;
     }
@@ -144,11 +147,34 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }
 
     if (Array.isArray(container)) {
-      return container[0] ?? document;
+      const elementCandidate = container.find(
+        (item): item is Element | Document =>
+          item instanceof Element || item instanceof Document
+      );
+
+      if (elementCandidate) {
+        return elementCandidate;
+      }
+
+      const selectorCandidate = container.find(
+        (item): item is string => typeof item === "string"
+      );
+
+      if (selectorCandidate) {
+        return document.querySelector(selectorCandidate) ?? document;
+      }
+
+      return document;
     }
 
     if (container instanceof NodeList) {
-      return container[0] ?? document;
+      const firstNode = container.item(0);
+
+      if (firstNode instanceof Element || firstNode instanceof Document) {
+        return firstNode;
+      }
+
+      return document;
     }
 
     return document;

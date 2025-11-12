@@ -163,8 +163,6 @@ export function WorkflowBuilder({
         ? (nodeData.nodeType as WorkflowNode['type'])
         : 'custom';
 
-      const style = node.style ? { ...node.style } : undefined;
-
       return {
         id: node.id,
         type: resolvedType,
@@ -182,8 +180,6 @@ export function WorkflowBuilder({
       const normalizedType = allowedEdgeTypes.includes(edge.type as WorkflowEdge['type'])
         ? (edge.type as WorkflowEdge['type'])
         : 'default';
-
-      const style = edge.style ? { ...edge.style } : undefined;
 
       return {
         id: edge.id,
@@ -217,110 +213,6 @@ export function WorkflowBuilder({
       },
     };
   }, [edges, nodes, workflow]);
-
-  const validateWorkflow = React.useCallback(async () => {
-    setIsValidating(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      const result = await WorkflowValidator.validate(workflowDef);
-      setValidationResult(result);
-    } catch (error) {
-      console.error('Workflow validation failed', error);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [convertToWorkflowDefinition]);
-
-  const testWorkflow = React.useCallback(async () => {
-    if (!onTest) return;
-    setIsTesting(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      await onTest(workflowDef);
-    } catch (error) {
-      console.error('Workflow test failed', error);
-    } finally {
-      setIsTesting(false);
-    }
-  }, [convertToWorkflowDefinition, onTest]);
-
-  const validateWorkflow = React.useCallback(async () => {
-    setIsValidating(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      const result = await WorkflowValidator.validate(workflowDef);
-      setValidationResult(result);
-    } catch (error) {
-      console.error('Workflow validation failed', error);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [convertToWorkflowDefinition]);
-
-  const testWorkflow = React.useCallback(async () => {
-    if (!onTest) return;
-    setIsTesting(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      await onTest(workflowDef);
-    } catch (error) {
-      console.error('Workflow test failed', error);
-    } finally {
-      setIsTesting(false);
-    }
-  }, [convertToWorkflowDefinition, onTest]);
-
-  const validateWorkflow = React.useCallback(async () => {
-    setIsValidating(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      const result = await WorkflowValidator.validate(workflowDef);
-      setValidationResult(result);
-    } catch (error) {
-      console.error('Workflow validation failed', error);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [convertToWorkflowDefinition]);
-
-  const testWorkflow = React.useCallback(async () => {
-    if (!onTest) return;
-    setIsTesting(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      await onTest(workflowDef);
-    } catch (error) {
-      console.error('Workflow test failed', error);
-    } finally {
-      setIsTesting(false);
-    }
-  }, [convertToWorkflowDefinition, onTest]);
-
-  const validateWorkflow = React.useCallback(async () => {
-    setIsValidating(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      const result = await WorkflowValidator.validate(workflowDef);
-      setValidationResult(result);
-    } catch (error) {
-      console.error('Workflow validation failed', error);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [convertToWorkflowDefinition]);
-
-  const testWorkflow = React.useCallback(async () => {
-    if (!onTest) return;
-    setIsTesting(true);
-    try {
-      const workflowDef = convertToWorkflowDefinition();
-      await onTest(workflowDef);
-    } catch (error) {
-      console.error('Workflow test failed', error);
-    } finally {
-      setIsTesting(false);
-    }
-  }, [convertToWorkflowDefinition, onTest]);
 
   const validateWorkflow = React.useCallback(async () => {
     setIsValidating(true);

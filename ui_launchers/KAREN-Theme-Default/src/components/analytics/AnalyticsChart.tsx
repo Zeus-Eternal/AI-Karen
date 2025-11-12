@@ -96,7 +96,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
   const [selectedMetric, setSelectedMetric] = useState<MetricType>("messages");
   const [viewMode, setViewMode] = useState<ViewMode>("overview");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedProviders] = useState<string[]>([]);
 
   const statusRegionId = useId();
 
@@ -350,6 +350,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
         description: "Analytics data has been updated successfully.",
       });
     } catch (error) {
+      console.error("Failed to refresh analytics data", error);
       toast({
         variant: "destructive",
         title: "Refresh Failed",

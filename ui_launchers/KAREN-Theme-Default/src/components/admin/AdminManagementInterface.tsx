@@ -139,14 +139,15 @@ export default function AdminManagementInterface() {
             : [];
 
       setAdmins(adminsData.map((a: unknown) => normalizeAdmin(a)));
-    } catch (_error: Error) {
-      if (error?.name !== "AbortError") {
-        toast({
-          title: "Error",
-          description: "Failed to load administrators",
-          variant: "destructive"
-        });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
+      toast({
+        title: "Error",
+        description: "Failed to load administrators",
+        variant: "destructive"
+      });
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -204,10 +205,11 @@ export default function AdminManagementInterface() {
       setShowInviteDialog(false);
       setInviteForm({ email: "", message: "" });
       loadAdmins();
-    } catch (_error: Error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send invitation";
       toast({
         title: "Error",
-        description: error?.message || "Failed to send invitation",
+        description: message,
         variant: "destructive"
       });
     }
@@ -229,10 +231,11 @@ export default function AdminManagementInterface() {
       setSelectedUserId(null);
       loadAdmins();
       loadUsers();
-    } catch (_error: Error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to promote user";
       toast({
         title: "Error",
-        description: error?.message || "Failed to promote user",
+        description: message,
         variant: "destructive"
       });
     }
@@ -257,10 +260,11 @@ export default function AdminManagementInterface() {
       toast({ title: "Success", description: "Administrator demoted." });
       loadAdmins();
       loadUsers();
-    } catch (_error: Error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to demote administrator";
       toast({
         title: "Error",
-        description: error?.message || "Failed to demote administrator",
+        description: message,
         variant: "destructive"
       });
     }
@@ -284,10 +288,11 @@ export default function AdminManagementInterface() {
         description: `Administrator ${!isActive ? "activated" : "deactivated"}.`
       });
       loadAdmins();
-    } catch (_error: Error) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update administrator status";
       toast({
         title: "Error",
-        description: error?.message || "Failed to update administrator status",
+        description: message,
         variant: "destructive"
       });
     }

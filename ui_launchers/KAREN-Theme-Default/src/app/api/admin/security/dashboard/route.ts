@@ -21,7 +21,6 @@ import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware'
 import { securityManager } from '@/lib/security/security-manager';
 import { sessionTimeoutManager } from '@/lib/security/session-timeout-manager';
 import { ipSecurityManager } from '@/lib/security/ip-security-manager';
-import { mfaManager } from '@/lib/security/mfa-manager';
 import { getAdminDatabaseUtils, type BlockedIpEntry, type IpWhitelistEntry } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
 
@@ -481,7 +480,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           resolution_notes,
         });
 
-        return NextResponse.json({
+        const response: AdminApiResponse<{
+          event_id: string;
+          resolved_by: string;
+          resolved_at: string;
+          resolution_notes?: string;
+        }> = {
           success: true,
           data: {
             event_id,
@@ -489,7 +493,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             resolved_at: new Date().toISOString(),
             resolution_notes,
           },
-        } as AdminApiResponse<any>);
+        };
+
+        return NextResponse.json(response);
       } catch (error) {
         return NextResponse.json(
           {

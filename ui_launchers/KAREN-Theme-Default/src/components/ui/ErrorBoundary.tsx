@@ -8,6 +8,27 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { agUIErrorHandler, FallbackStrategy, type FallbackResponse } from '../../lib/ag-ui-error-handler';
 
+interface SimpleTableColumn {
+  field: string;
+  headerName?: string;
+}
+
+type SimpleTableRow = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const isSimpleTableColumn = (column: unknown): column is SimpleTableColumn => {
+  if (!isRecord(column)) {
+    return false;
+  }
+  const { field, headerName } = column;
+  const isFieldValid = typeof field === 'string' && field.length > 0;
+  const isHeaderNameValid = headerName === undefined || typeof headerName === 'string';
+  return isFieldValid && isHeaderNameValid;
+};
+
 export interface FallbackComponentProps {
   error: Error | null;
   errorInfo: ErrorInfo | null;
@@ -174,6 +195,20 @@ export class ErrorBoundary extends Component<Props, State> {
     enableRetry: boolean
   ) {
     const { data, columns, message, degradedFeatures } = fallbackResponse;
+    const resolvedData: SimpleTableRow[] = Array.isArray(data)
+      ? data.filter((row): row is SimpleTableRow => isRecord(row))
+      : [];
+    const resolvedColumns: SimpleTableColumn[] = Array.isArray(columns)
+      ? columns.filter((column): column is SimpleTableColumn => isSimpleTableColumn(column))
+      : [];
+    const effectiveColumns: SimpleTableColumn[] = resolvedColumns.length
+      ? resolvedColumns
+      : resolvedData.length
+        ? Object.keys(resolvedData[0]).map((key) => ({
+            field: key,
+            headerName: key.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+          }))
+        : [{ field: 'message', headerName: 'Status' }];
     return (
       <div className="error-boundary-container">
         <div className="fallback-warning">
@@ -188,21 +223,24 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
         </div>
         <div className="simple-table-container">
-          {data && data.length > 0 ? (
+          {resolvedData.length > 0 ? (
             <table className="simple-table">
               <thead>
                 <tr>
-                  {columns.map((col: unknown, index: number) => (
-                    <th key={index}>{col.headerName || col.field}</th>
+                  {effectiveColumns.map((column, index) => (
+                    <th key={index}>{column.headerName || column.field}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {data.map((row: unknown, rowIndex: number) => (
+                {resolvedData.map((row, rowIndex) => (
                   <tr key={rowIndex}>
-                    {columns.map((col: unknown, colIndex: number) => (
-                      <td key={colIndex}>{row[col.field] || '-'}</td>
-                    ))}
+                    {effectiveColumns.map((column, colIndex) => {
+                      const cellValue = row[column.field];
+                      return (
+                        <td key={colIndex}>{cellValue != null ? String(cellValue) : '-'}</td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

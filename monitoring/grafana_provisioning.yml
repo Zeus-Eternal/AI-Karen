@@ -11,7 +11,16 @@ providers:
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
-      path: /etc/grafana/provisioning/dashboards
+      path: /etc/grafana/provisioning/dashboards/model-orchestrator
+  - name: 'llamacpp-runtime'
+    orgId: 1
+    folder: 'Runtime Intelligence'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/llamacpp-runtime
 
 # Datasources
 datasources:

@@ -17,8 +17,6 @@ import {
   CardContent
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-
 export default function AuditLogTable() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);

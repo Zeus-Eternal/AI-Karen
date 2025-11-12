@@ -3,6 +3,7 @@
  */
 
 import * as React from 'react';
+import type { Variants } from 'framer-motion';
 
 // Performance-aware animation variants for Framer Motion
 export const performanceAnimationVariants = {
@@ -388,33 +389,36 @@ export function usePerformanceAwareAnimation(
     }
   }, [enableHardwareDetection]);
 
-  const getOptimizedVariant = React.useCallback((variantName: keyof typeof performanceAnimationVariants) => {
-    const baseVariant = variants[variantName] as Record<string, unknown> & {
-      transition?: Record<string, unknown> & { duration?: number };
-    };
-    
-    if (animationQuality === 'low') {
-      return {
-        ...baseVariant,
-        transition: {
-          ...baseVariant.transition,
-          duration: (baseVariant.transition?.duration || 0.3) * 0.5, // Faster animations
-        },
+  const getOptimizedVariant = React.useCallback(
+    (variantName: keyof typeof performanceAnimationVariants): Variants => {
+      const baseVariant = variants[variantName] as Variants & {
+        transition?: { duration?: number };
       };
-    }
-    
-    if (animationQuality === 'medium') {
-      return {
-        ...baseVariant,
-        transition: {
-          ...baseVariant.transition,
-          duration: (baseVariant.transition?.duration || 0.3) * 0.75, // Slightly faster
-        },
-      };
-    }
-    
-    return baseVariant;
-  }, [variants, animationQuality]);
+
+      if (animationQuality === 'low') {
+        return {
+          ...baseVariant,
+          transition: {
+            ...baseVariant.transition,
+            duration: (baseVariant.transition?.duration || 0.3) * 0.5, // Faster animations
+          },
+        } as Variants;
+      }
+
+      if (animationQuality === 'medium') {
+        return {
+          ...baseVariant,
+          transition: {
+            ...baseVariant.transition,
+            duration: (baseVariant.transition?.duration || 0.3) * 0.75, // Slightly faster
+          },
+        } as Variants;
+      }
+
+      return baseVariant;
+    },
+    [variants, animationQuality],
+  );
 
   const getOptimizedCSS = React.useCallback(() => {
     if (!shouldUseGPU) {

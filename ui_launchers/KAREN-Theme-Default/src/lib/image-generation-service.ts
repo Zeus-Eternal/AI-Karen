@@ -376,14 +376,21 @@ export class ImageGenerationService {
 
   private trace(phase: TraceEvent['phase'], correlationId: string, extra: TraceExtras = {}): void {
     if (!this.cfg.onTrace) return;
-    const { elapsed_ms = 0, phase: _ignoredPhase, correlation_id: _ignoredCorrelation, ...rest } = extra as TraceExtras & {
+    const extras = (extra ?? {}) as TraceExtras & {
+      elapsed_ms?: number;
       phase?: TraceEvent['phase'];
       correlation_id?: string;
     };
+    const {
+      elapsed_ms = 0,
+      phase: extraPhase,
+      correlation_id: extraCorrelation,
+      ...rest
+    } = extras;
 
     const event: TraceEvent = {
-      phase,
-      correlation_id: correlationId,
+      phase: extraPhase ?? phase,
+      correlation_id: extraCorrelation ?? correlationId,
       elapsed_ms,
       ...(rest as Partial<Omit<TraceEvent, 'phase' | 'correlation_id' | 'elapsed_ms'>>)
     };

@@ -103,7 +103,7 @@ export function getProviderIcon(provider: string): string {
 /**
  * Get provider icon as JSX element (for React components)
  */
-export function getProviderIconJSX(provider: string): React.ReactNode {
+export function getProviderIconJSX(_provider: string): React.ReactNode {
   // This will be implemented in the component file since it needs React imports
   return null;
 }

@@ -158,7 +158,11 @@ export class DatabaseQueryOptimizer {
   /**
    * Mock execute query implementation - replace with actual DB query execution logic
    */
-  private async executeQuery(query: string, params: unknown[], preparedStatement?: PreparedStatement | null): Promise<unknown> {
+  private async executeQuery(
+    query: string,
+    params: unknown[],
+    _preparedStatement?: PreparedStatement | null
+  ): Promise<unknown> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 10)); // Simulate query time
     if (query.includes('SELECT') && query.includes('users')) {
       if (params[0] === 'admin@example.com') {

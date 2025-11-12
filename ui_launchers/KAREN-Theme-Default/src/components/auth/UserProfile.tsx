@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { User } from '@/types/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -298,7 +297,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (_event: React.ChangeEvent<HTMLInputElement>) => {
     setSaveMessage('Avatar upload is currently not available in simplified authentication mode.');
     setTimeout(() => setSaveMessage(''), 3000);
   };
@@ -310,8 +309,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   }
 
   const handleSavePreferences = async () => {
+    setIsSaving(true);
     setSaveMessage('User preferences updates are currently not available in simplified authentication mode.');
-    setTimeout(() => setSaveMessage(''), 3000);
+    setTimeout(() => {
+      setSaveMessage('');
+      setIsSaving(false);
+    }, 3000);
   };
 
   const handleLogout = () => {

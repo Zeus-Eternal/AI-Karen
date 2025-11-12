@@ -5,7 +5,11 @@ import React, { lazy, useCallback, type ComponentType } from 'react';
 import RouteLazyLoader from './route-lazy-loader';
 import type { RouteLazyLoaderProps } from './route-lazy-loader.types';
 
-type PropsOf<T extends ComponentType<unknown>> = T extends ComponentType<infer P> ? P : never;
+type PropsOf<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
+  ? P extends object
+    ? P
+    : never
+  : never;
 
 type RouteLoaderOptions = Pick<RouteLazyLoaderProps, 'fallback' | 'errorFallback'> & {
   preload?: boolean;
@@ -29,7 +33,12 @@ export function createLazyRoute<T extends ComponentType<unknown>>(
     </RouteLazyLoader>
   );
 
-  Wrapped.displayName = `LazyRouteWrapper(${LazyComponent.displayName ?? LazyComponent.name ?? 'Component'})`;
+  const lazyComponentMeta = LazyComponent as {
+    displayName?: string;
+    name?: string;
+  };
+
+  Wrapped.displayName = `LazyRouteWrapper(${lazyComponentMeta.displayName ?? lazyComponentMeta.name ?? 'Component'})`;
   return Wrapped;
 }
 

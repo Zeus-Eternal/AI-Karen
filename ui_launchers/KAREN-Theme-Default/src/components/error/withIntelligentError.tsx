@@ -16,7 +16,6 @@ import React, {
   useMemo,
   useRef,
   useState,
-  ReactNode,
 } from "react";
 import {
   IntelligentErrorPanel,
@@ -62,13 +61,6 @@ export interface WithIntelligentErrorProps {
 }
 
 /* ------------------------------ Utilities ------------------------------- */
-
-function shallowArrayEqual(a?: unknown[], b?: unknown[]) {
-  if (a === b) return true;
-  if (!a || !b || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
-}
 
 function normalizeError(e: Error | string | null | undefined) {
   if (!e) return null;
@@ -133,8 +125,8 @@ export function withIntelligentError<P extends object>(
         intelligentErrorOptions.onAnalysisComplete?.(analysis);
         // Best-effort telemetry
         try {
-          const anyWindow = window as unknown;
-          anyWindow?.dispatchEvent?.(
+          const dispatchTarget = window as { dispatchEvent?: (event: Event) => void };
+          dispatchTarget?.dispatchEvent?.(
             new CustomEvent("kari:intelligent-error", {
               detail: {
                 boundary: boundaryName ?? "withIntelligentError",
@@ -150,7 +142,7 @@ export function withIntelligentError<P extends object>(
     });
 
     // Keep a previous-props ref for custom detectors that need diffing
-    const prevPropsRef = useRef<any>(null);
+    const prevPropsRef = useRef<(P & WithIntelligentErrorProps) | null>(null);
     useEffect(() => {
       prevPropsRef.current = props;
     }, [props]);

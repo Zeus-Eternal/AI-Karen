@@ -108,7 +108,7 @@ const GRID_OFFSET_CLASSES = {
  * Provides consistent content structure with 12-column grid system,
  * proper overflow handling, and flexible layout options.
  */
-export const PanelContent = forwardRef<HTMLDivElement, PanelContentProps>(
+const PanelContentRoot = forwardRef<HTMLDivElement, PanelContentProps>(
   function PanelContent(
     {
       padding = "md",
@@ -177,7 +177,7 @@ export const PanelContent = forwardRef<HTMLDivElement, PanelContentProps>(
   }
 );
 
-PanelContent.displayName = "PanelContent";
+PanelContentRoot.displayName = "PanelContent";
 
 // ============================================================================
 // SPECIALIZED CONTENT COMPONENTS
@@ -212,7 +212,7 @@ export const PanelSection = forwardRef<HTMLDivElement, PanelSectionProps>(
     ref
   ) {
     return (
-      <PanelContent ref={ref} {...contentProps}>
+      <PanelContentRoot ref={ref} {...contentProps}>
         <section className="space-y-4">
           {(title || description || actions) && (
             <header className="space-y-2">
@@ -241,7 +241,7 @@ export const PanelSection = forwardRef<HTMLDivElement, PanelSectionProps>(
             {children}
           </div>
         </section>
-      </PanelContent>
+      </PanelContentRoot>
     );
   }
 );
@@ -252,7 +252,12 @@ PanelSection.displayName = "PanelSection";
 // COMPOUND COMPONENT EXPORTS
 // ============================================================================
 
-/**
- * Compound component pattern export
- */
-(PanelContent as unknown).Section = PanelSection;
+type PanelContentCompoundComponent = React.ForwardRefExoticComponent<
+  PanelContentProps & React.RefAttributes<HTMLDivElement>
+> & {
+  Section: typeof PanelSection;
+};
+
+export const PanelContent = Object.assign(PanelContentRoot, {
+  Section: PanelSection,
+}) as PanelContentCompoundComponent;

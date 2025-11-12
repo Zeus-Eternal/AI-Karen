@@ -1,6 +1,6 @@
 "use client";
 import * as React from 'react';
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -71,19 +71,12 @@ function AuthenticatedHomePage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const [activeMainView, setActiveMainView] = useState<ActiveView>(() =>
-    parseView(searchParams)
+  const activeMainView = useMemo(
+    () => parseView(searchParams as unknown),
+    [searchParams]
   );
 
-  useEffect(() => {
-    const currentView = parseView(searchParams);
-    if (currentView !== activeMainView) {
-      setActiveMainView(currentView);
-    }
-  }, [searchParams, activeMainView]);
-
   const navigate = (view: ActiveView) => {
-    setActiveMainView(view);
     const params = new URLSearchParams(
       searchParams ? searchParams.toString() : ""
     );

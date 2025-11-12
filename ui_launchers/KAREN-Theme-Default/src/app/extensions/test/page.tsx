@@ -12,14 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * Test page to verify extension integration is working
  */
 
-import {
-  useExtensionStatuses,
-  useExtensionRoutes,
-  useExtensionNavigation,
-  useExtensionHealth,
-  useExtensionPerformance,
-  useExtensionTaskMonitoring
-} from '@/lib/extensions/hooks';
+import { useExtensionStatuses } from '@/lib/extensions/hooks';
 
 // Dynamically import extension components to avoid SSR issues with WebSocket
 const ExtensionMarketplace = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionMarketplace })), { ssr: false });
@@ -31,11 +24,25 @@ const ExtensionPerformanceMonitor = dynamic(() => import('@/components/extension
 export default function ExtensionTestPage() {
   const [activeTab, setActiveTab] = useState('statuses');
   const { statuses, loading: statusesLoading, error: statusesError } = useExtensionStatuses();
-  const routes = useExtensionRoutes();
-  const navItems = useExtensionNavigation();
-  const healthData = useExtensionHealth();
-  const performanceData = useExtensionPerformance();
-  const taskData = useExtensionTaskMonitoring();
+  // Hook subscriptions ensure these extension APIs remain healthy during manual testing
+  useExtensionRoutes();
+  useExtensionNavigation();
+  useExtensionHealth();
+  useExtensionPerformance();
+  useExtensionTaskMonitoring();
+
+  const renderJson = (label: string, data: unknown) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <pre className="text-xs overflow-x-auto bg-muted/40 rounded-md p-3">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -88,6 +95,7 @@ export default function ExtensionTestPage() {
               </div>
             </CardContent>
           </Card>
+          {healthData && renderJson('Health Checks', healthData)}
         </TabsContent>
 
         <TabsContent value="marketplace">
@@ -120,14 +128,22 @@ export default function ExtensionTestPage() {
         </TabsContent>
 
         <TabsContent value="debug">
-          <ExtensionDebugger
-            extensionId="test-extension"
-            extensionName="Test Extension"
-          />
+          <div className="space-y-4">
+            <ExtensionDebugger
+              extensionId="test-extension"
+              extensionName="Test Extension"
+            />
+            {renderJson('Registered Routes', routes)}
+            {renderJson('Navigation', navItems)}
+          </div>
         </TabsContent>
 
         <TabsContent value="monitor">
-          <ExtensionPerformanceMonitor />
+          <div className="space-y-4">
+            <ExtensionPerformanceMonitor />
+            {renderJson('Performance Data', performanceData)}
+            {renderJson('Task Monitoring', taskData)}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

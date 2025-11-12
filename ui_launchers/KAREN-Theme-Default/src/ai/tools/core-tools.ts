@@ -6,6 +6,21 @@
 
 import type { TemperatureUnit, WeatherServiceOption } from '@/lib/types';
 import { getKarenBackend } from '@/lib/karen-backend';
+import type { MemoryEntry } from '@/types/memory';
+
+interface WttrInWeatherCondition {
+  weatherDesc?: Array<{ value?: string }>;
+  temp_C?: string;
+  FeelsLikeC?: string;
+  humidity?: number | string;
+  windspeedKmph?: number | string;
+}
+
+interface WttrInResponse {
+  current_condition?: WttrInWeatherCondition[];
+  nearest_area?: Array<{ areaName?: Array<{ value?: string }> }>;
+  weather?: Array<{ maxtempC?: string; mintempC?: string }>;
+}
 
 /* ----------------------------- Date / Time ----------------------------- */
 
@@ -355,7 +370,7 @@ export async function getWeather(
       throw new Error(`Failed to fetch weather for "${locationToUse}". ${errorInfo}`);
     }
 
-    const data = JSON.parse(responseText) as any;
+    const data: WttrInResponse = JSON.parse(responseText) as WttrInResponse;
     if (data?.current_condition?.[0]) {
       const currentCondition = data.current_condition[0];
       const description: string =
@@ -419,7 +434,7 @@ export async function getWeather(
 
 export async function executeKarenPlugin(
   pluginName: string,
-  parameters: Record<string, any> = {},
+  parameters: Record<string, unknown> = {},
   userId?: string
 ): Promise<string> {
   console.warn('executeKarenPlugin: This function is deprecated. Use getPluginService().executePlugin() instead.');
@@ -473,7 +488,7 @@ export async function queryKarenMemory(
     });
 
     if (memories.length > 0) {
-      const formattedMemories = memories.map((mem: any) => ({
+      const formattedMemories = memories.map((mem: MemoryEntry) => ({
         content: mem.content,
         similarity: mem.similarity_score != null ? Number(mem.similarity_score).toFixed(3) : undefined,
         tags: mem.tags,
@@ -512,7 +527,7 @@ export async function storeKarenMemory(
   sessionId?: string,
   options: {
     tags?: string[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   } = {}
 ): Promise<string> {
   console.warn('storeKarenMemory: This function is deprecated. Use getMemoryService().storeMemory() instead.');

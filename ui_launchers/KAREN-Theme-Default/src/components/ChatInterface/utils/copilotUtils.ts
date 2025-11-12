@@ -1,12 +1,27 @@
 import { DEFAULT_COPILOT_ACTION_CATEGORIES } from "../constants";
-import type { CopilotAction, ChatContext } from "../types";
+import type {
+  CopilotAction,
+  ChatContext,
+  CopilotActionCategory,
+} from "../types";
+
+const isKnownCategory = (
+  category: string
+): category is CopilotActionCategory =>
+  (DEFAULT_COPILOT_ACTION_CATEGORIES as readonly string[]).includes(category);
 
 export const normalizeCopilotActions = (actions: CopilotAction[]) => {
   const categoryOrder = DEFAULT_COPILOT_ACTION_CATEGORIES;
   return actions.slice().sort((a, b) => {
-    const categoryDiff =
-      categoryOrder.indexOf(a.category as unknown) -
-      categoryOrder.indexOf(b.category as unknown);
+    const resolveIndex = (category: CopilotAction["category"]) => {
+      const normalized = typeof category === "string" ? category : String(category);
+      if (isKnownCategory(normalized)) {
+        return categoryOrder.indexOf(normalized);
+      }
+      return categoryOrder.length;
+    };
+
+    const categoryDiff = resolveIndex(a.category) - resolveIndex(b.category);
     if (categoryDiff !== 0) return categoryDiff;
     return a.title.localeCompare(b.title);
   });

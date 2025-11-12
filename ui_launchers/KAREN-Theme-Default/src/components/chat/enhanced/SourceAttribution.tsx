@@ -150,7 +150,8 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
       try {
         await navigator.clipboard.writeText(info);
         toast({ title: "Copied", description: "Source information copied to clipboard." });
-      } catch (err) {
+      } catch (error) {
+        console.error("Failed to copy source information", error);
         toast({
           variant: "destructive",
           title: "Copy Failed",

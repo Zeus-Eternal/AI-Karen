@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as os from 'os';
 
 interface HealthCheckResult {
   status: 'healthy' | 'unhealthy' | 'degraded';
@@ -60,6 +61,11 @@ interface RequestMetrics {
   failed: number;
   averageResponseTime: number;
 }
+
+type FallbackHealthResponse = HealthCheckResult & {
+  error: string;
+  details?: string;
+};
 
 // Global metrics tracking
 const requestMetrics: RequestMetrics = {
@@ -224,7 +230,7 @@ async function checkFilesystem(): Promise<HealthCheck> {
     for (const criticalPath of criticalPaths) {
       try {
         await fs.access(criticalPath, fs.constants.F_OK);
-      } catch (error) {
+      } catch {
         throw new Error(`Critical path not accessible: ${criticalPath}`);
       }
     }
@@ -234,7 +240,7 @@ async function checkFilesystem(): Promise<HealthCheck> {
     try {
       await fs.writeFile(tempFile, 'health check');
       await fs.unlink(tempFile);
-    } catch (error) {
+    } catch {
       throw new Error('Temporary directory not writable');
     }
     
@@ -374,8 +380,6 @@ function getMemoryMetrics(): MemoryMetrics {
  * Get performance metrics
  */
 function getPerformanceMetrics(): PerformanceMetrics {
-  const os = require('os');
-  
   return {
     uptime: process.uptime(),
     loadAverage: os.loadavg(),
@@ -388,7 +392,7 @@ function getPerformanceMetrics(): PerformanceMetrics {
  */
 function updateRequestMetrics(responseTime: number, success: boolean) {
   requestMetrics.total++;
-  
+
   if (success) {
     requestMetrics.successful++;
   } else {
@@ -405,20 +409,68 @@ function updateRequestMetrics(responseTime: number, success: boolean) {
   requestMetrics.averageResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
 }
 
+async function buildFallbackHealthResponse(errorMessage: string, error: unknown): Promise<FallbackHealthResponse> {
+  const [database, redis, externalAPIs, filesystem] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkExternalAPIs(),
+    checkFilesystem(),
+  ]);
+
+  const memory = checkMemory();
+  const performance = checkPerformance();
+  const details =
+    process.env.NODE_ENV === 'development'
+      ? error instanceof Error
+        ? error.message
+        : String(error)
+      : undefined;
+
+  const requestsSnapshot: RequestMetrics = { ...requestMetrics };
+
+  return {
+    status: 'unhealthy',
+    error: errorMessage,
+    timestamp: new Date().toISOString(),
+    version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.APP_VERSION || 'unknown',
+    uptime: Math.floor(process.uptime()),
+    checks: {
+      database,
+      redis,
+      external_apis: externalAPIs,
+      filesystem,
+      memory,
+      performance,
+    },
+    metrics: {
+      memory: getMemoryMetrics(),
+      performance: getPerformanceMetrics(),
+      requests: requestsSnapshot,
+    },
+    environment: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      environment: process.env.NODE_ENV || 'development',
+    },
+    details,
+  };
+}
+
 // Backend URL configuration
 const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL || 'http://localhost:8000';
 
 /**
  * Main health check handler - proxies to backend
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+
   try {
     // Proxy the health check request to the backend
     const backendUrl = `${BACKEND_URL}/api/health`;
-    
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
@@ -428,10 +480,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       signal: controller.signal,
       cache: 'no-store',
     });
-    
+
     clearTimeout(timeout);
+
+    const totalResponseTime = Date.now() - startTime;
+    updateRequestMetrics(totalResponseTime, response.ok);
     
-    let data;
+    let data: BackendHealthData;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {
@@ -441,33 +496,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
       data = await response.text();
     }
-    
+
+    const responseTime = Date.now() - startTime;
+    updateRequestMetrics(responseTime, response.ok);
+
     // Return the backend response with the same status code
     return NextResponse.json(
       typeof data === 'string' ? { error: data } : data,
-      { 
+      {
         status: response.status,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      }
+          'Expires': '0',
+        },
+      },
     );
-    
+
   } catch (error) {
+    const responseTime = Date.now() - startTime;
+    updateRequestMetrics(responseTime, false);
     console.error('Health check proxy error:', error);
-    
+
     // Return error response
     let status = 503;
     let errorMessage = 'Backend health check failed';
-    
+
     if (error instanceof Error) {
       if (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout')) {
         status = 504;
@@ -481,21 +541,63 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    return NextResponse.json(
-      {
-        status: 'unhealthy',
-        error: errorMessage,
-        timestamp: new Date().toISOString(),
-        details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : String(error) : undefined
+    const totalResponseTime = Date.now() - startTime;
+    updateRequestMetrics(totalResponseTime, false);
+
+    const [database, redis, externalApis, filesystem] = await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      checkExternalAPIs(),
+      checkFilesystem(),
+    ]);
+    const memoryCheck = checkMemory();
+    const performanceCheck = checkPerformance();
+
+    const fallback: HealthCheckResult = {
+      status: status === 504 ? 'degraded' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.APP_VERSION || 'unknown',
+      uptime: process.uptime(),
+      checks: {
+        database,
+        redis,
+        external_apis: externalApis,
+        filesystem,
+        memory: memoryCheck,
+        performance: performanceCheck,
       },
-      { 
+      metrics: {
+        memory: getMemoryMetrics(),
+        performance: getPerformanceMetrics(),
+        requests: { ...requestMetrics },
+      },
+      environment: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        environment: process.env.NODE_ENV || 'development',
+      },
+    };
+
+    return NextResponse.json(
+      await buildFallbackHealthResponse(errorMessage, error),
+      {
+        ...fallback,
+        error: errorMessage,
+        details:
+          process.env.NODE_ENV === 'development'
+            ? error instanceof Error
+              ? error.message
+              : String(error)
+            : undefined,
+      },
+      {
         status,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      }
+          'Expires': '0',
+        },
+      },
     );
   }
 }
