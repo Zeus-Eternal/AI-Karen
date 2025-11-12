@@ -7,9 +7,13 @@
  * - Opinionated validations for common pitfalls
  */
 
+import type { AriaAttributes } from 'react';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+export type AriaRelevant = NonNullable<AriaAttributes['aria-relevant']>;
 
 export interface AriaLabelProps {
   'aria-label'?: string;
@@ -42,15 +46,7 @@ export interface AriaRelationshipProps {
 export interface AriaLiveProps {
   'aria-live'?: 'off' | 'polite' | 'assertive';
   'aria-atomic'?: boolean;
-  'aria-relevant'?:
-    | 'additions'
-    | 'removals'
-    | 'text'
-    | 'all'
-    | 'additions text'
-    | 'additions removals'
-    | 'text removals'
-    | 'additions text removals';
+  'aria-relevant'?: AriaRelevant;
 }
 
 export interface AriaGridProps {
@@ -111,15 +107,7 @@ export const createAriaLabel = (
 export const createAriaLive = (
   level: 'off' | 'polite' | 'assertive' = 'polite',
   atomic: boolean = false,
-  relevant:
-    | 'additions'
-    | 'removals'
-    | 'text'
-    | 'all'
-    | 'additions text'
-    | 'additions removals'
-    | 'text removals'
-    | 'additions text removals' = 'additions text'
+  relevant: AriaRelevant = 'additions text'
 ): AriaLiveProps => ({
   'aria-live': level,
   'aria-atomic': atomic,
