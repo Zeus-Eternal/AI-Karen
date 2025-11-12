@@ -1,30 +1,33 @@
 """
 Chat Runtime API Routes
-Unified chat endpoint for all platforms (Web UI, Desktop)
+Production-grade unified chat endpoint for all platforms (Web, Desktop, Mobile)
+Backed by:
+- Prompt-first orchestration
+- LLM registry routing (KIRE-style)
+- Fallback-safe Lite orchestrator
+- Structured logging & metrics
+- SSE streaming
 """
 
 import asyncio
+import html
 import json
-import re
 import time
 import uuid
 from datetime import datetime, timezone
-from functools import lru_cache
-from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple
+from functools import lru_cache, wraps
+from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-try:
-    from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ai_karen_engine.chat import chat_orchestrator
-from ai_karen_engine.chat.chat_orchestrator import (
-    ChatRequest,
-    ChatResponse,
-    ChatStreamChunk,
-)
+try:
+    from pydantic import BaseModel, Field, validator
+except ImportError:
+    # Fallback for environments where pydantic is vendored internally
+    from ai_karen_engine.pydantic_stub import BaseModel, Field, validator  # type: ignore
+
+from ai_karen_engine.chat.chat_orchestrator import ChatRequest
 from ai_karen_engine.core.config_manager import get_config
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
@@ -36,191 +39,341 @@ from ai_karen_engine.services.tool_service import (
     get_tool_service as get_global_tool_service,
 )
 
-try:
-    from ai_karen_engine.chat.factory import get_chat_orchestrator as get_production_chat_orchestrator
-except ImportError:
-    get_production_chat_orchestrator = None
-
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
 
 
-# Request/Response Models
-class ChatMessage(BaseModel):
-    """Chat message model"""
+# =========================================================
+# ChatConfig - centralized runtime tuning (hydrated)
+# =========================================================
 
-    role: str = Field(..., description="Message role: user, assistant, or system")
-    content: str = Field(..., description="Message content")
-    timestamp: Optional[datetime] = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+class ChatConfig:
+    """Production chat configuration (hydrated from global config when available)."""
+
+    MAX_MESSAGE_LENGTH: int = 10000
+    MAX_TOKENS_DEFAULT: int = 4096
+    STREAM_TIMEOUT: float = 30.0
+    FALLBACK_ENABLED: bool = True
+
+    RATE_LIMIT_REQUESTS: int = 10
+    RATE_LIMIT_WINDOW: int = 60  # seconds
+
+    CACHE_SIZE_USER_PREFS: int = 1000
+    CACHE_SIZE_PROVIDER_ROUTING: int = 100
+
+    @classmethod
+    def hydrate_from_app_config(cls) -> None:
+        try:
+            config = get_config()
+            chat_cfg = getattr(config, "chat", None)
+            llm_cfg = getattr(config, "llm", None)
+
+            if chat_cfg:
+                cls.MAX_MESSAGE_LENGTH = int(
+                    getattr(chat_cfg, "max_message_length", cls.MAX_MESSAGE_LENGTH)
+                )
+                cls.STREAM_TIMEOUT = float(
+                    getattr(chat_cfg, "stream_timeout", cls.STREAM_TIMEOUT)
+                )
+                cls.FALLBACK_ENABLED = bool(
+                    getattr(chat_cfg, "fallback_enabled", cls.FALLBACK_ENABLED)
+                )
+
+            if llm_cfg:
+                cls.MAX_TOKENS_DEFAULT = int(
+                    getattr(llm_cfg, "max_tokens", cls.MAX_TOKENS_DEFAULT)
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "ChatConfig hydration failed; using safe defaults",
+                extra={"error": str(exc)},
+            )
+
+
+ChatConfig.hydrate_from_app_config()
+
+
+# =========================================================
+# Exceptions
+# =========================================================
+
+class ChatRuntimeError(Exception):
+    """Base exception for chat runtime errors."""
+
+
+class ValidationError(ChatRuntimeError):
+    """Request validation errors."""
+
+
+class ServiceUnavailableError(ChatRuntimeError):
+    """Service initialization / availability errors."""
+
+
+class RateLimitExceededError(ChatRuntimeError):
+    """Rate limiting errors."""
+
+
+# =========================================================
+# Models
+# =========================================================
+
+class ChatMessage(BaseModel):
+    """Enhanced chat message model with validation."""
+
+    role: Literal["user", "assistant", "system"] = Field(..., description="Message role")
+    content: str = Field(
+        ...,
+        min_length=1,
+        max_length=ChatConfig.MAX_MESSAGE_LENGTH,
+        description="Message content",
     )
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @validator("role")
+    def validate_role(cls, v: str) -> str:
+        if v not in ("user", "assistant", "system"):
+            raise ValueError("role must be user, assistant, or system")
+        return v
+
+    @validator("content")
+    def sanitize_content(cls, v: str) -> str:
+        v = str(v)
+        if not v.strip():
+            raise ValueError("Message content cannot be empty")
+        return html.escape(v)
 
 
 class ToolCall(BaseModel):
-    """Tool call model"""
+    """Tool call record."""
 
     id: str = Field(..., description="Unique tool call ID")
     tool_name: str = Field(..., description="Name of the tool to execute")
-    parameters: Dict[str, Any] = Field(
-        default_factory=dict, description="Tool parameters"
-    )
-    result: Optional[Any] = Field(None, description="Tool execution result")
-    error: Optional[str] = Field(None, description="Tool execution error")
-    execution_time: Optional[float] = Field(
-        None, description="Tool execution time in seconds"
-    )
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    execution_time: Optional[float] = None
     status: str = Field(default="pending", description="Tool execution status")
 
 
 class MemoryOperation(BaseModel):
-    """Memory operation model"""
+    """Memory operation audit entry."""
 
     id: str = Field(..., description="Unique operation ID")
-    operation_type: str = Field(
-        ..., description="Operation type: store, retrieve, update, delete"
-    )
-    memory_tier: str = Field(
-        ..., description="Memory tier: short_term, long_term, persistent"
-    )
-    content: Dict[str, Any] = Field(
-        default_factory=dict, description="Operation content"
-    )
+    operation_type: str = Field(..., description="store | retrieve | update | delete")
+    memory_tier: str = Field(..., description="short_term | long_term | persistent")
+    content: Dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    success: bool = Field(default=True, description="Operation success status")
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Operation metadata"
-    )
+    success: bool = True
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class ChatRuntimeRequest(BaseModel):
-    """Chat runtime request model"""
+class SanitizedChatRuntimeRequest(BaseModel):
+    """Production chat request model with strict validation & sanitization."""
 
-    message: str = Field(..., description="User message")
-    context: Optional[Dict[str, Any]] = Field(
-        default_factory=dict, description="Chat context"
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=ChatConfig.MAX_MESSAGE_LENGTH,
+        description="User message",
     )
-    tools: Optional[List[str]] = Field(
-        default_factory=list, description="Available tools"
-    )
-    memory_context: Optional[str] = Field(None, description="Memory context identifier")
-    user_preferences: Optional[Dict[str, Any]] = Field(
-        default_factory=dict, description="User preferences"
-    )
-    platform: Optional[str] = Field(default="web", description="Platform identifier")
-    conversation_id: Optional[str] = Field(None, description="Conversation ID")
-    stream: bool = Field(default=True, description="Enable streaming response")
-    model: Optional[str] = Field(
-        default=None, description="Explicit model identifier requested by the client"
-    )
-    provider: Optional[str] = Field(
-        default=None, description="Explicit provider requested by the client"
-    )
-    temperature: Optional[float] = Field(
-        default=None, ge=0.0, le=2.0, description="Requested sampling temperature"
-    )
-    max_tokens: Optional[int] = Field(
-        default=None, gt=0, description="Requested maximum tokens for the response"
-    )
+    context: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    tools: Optional[List[str]] = Field(default_factory=list)
+    memory_context: Optional[str] = None
+    user_preferences: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    platform: Optional[str] = Field(default="web")
+    conversation_id: Optional[str] = None
+    stream: bool = Field(default=True)
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, gt=0)
+
+    @validator("message")
+    def sanitize_message(cls, v: str) -> str:
+        msg = (v or "").strip()
+        if not msg:
+            raise ValidationError("Message cannot be empty")
+        if len(msg) > ChatConfig.MAX_MESSAGE_LENGTH:
+            raise ValidationError(
+                f"Message exceeds maximum length of {ChatConfig.MAX_MESSAGE_LENGTH} characters"
+            )
+        return html.escape(msg)
+
+    @validator("tools")
+    def validate_tools(cls, v: List[str]) -> List[str]:
+        if not v:
+            return v
+        try:
+            tool_service = get_global_tool_service()
+            valid = set(tool_service.list_tools())
+            for name in v:
+                if name not in valid:
+                    raise ValidationError(f"Invalid tool requested: {name}")
+        except Exception:
+            # Defer failures to actual tool resolution time.
+            pass
+        return v
+
+    @validator("temperature")
+    def validate_temperature(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and not (0.0 <= v <= 2.0):
+            raise ValidationError("Temperature must be between 0.0 and 2.0")
+        return v
 
 
 class ChatRuntimeResponse(BaseModel):
-    """Chat runtime response model"""
+    """Chat runtime response payload."""
 
     content: str = Field(..., description="Response content")
-    tool_calls: List[ToolCall] = Field(
-        default_factory=list, description="Tool calls made"
-    )
-    memory_operations: List[MemoryOperation] = Field(
-        default_factory=list, description="Memory operations"
-    )
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Response metadata"
-    )
-    conversation_id: Optional[str] = Field(None, description="Conversation ID")
+    tool_calls: List[ToolCall] = Field(default_factory=list)
+    memory_operations: List[MemoryOperation] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    conversation_id: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ChatError(BaseModel):
-    """Chat error model"""
+    """Structured error response."""
 
-    error_type: str = Field(..., description="Error type")
-    message: str = Field(..., description="Error message")
-    details: Optional[Dict[str, Any]] = Field(
-        default_factory=dict, description="Error details"
-    )
+    error_type: str
+    message: str
+    details: Optional[Dict[str, Any]] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    correlation_id: Optional[str] = None
+    suggestion: Optional[str] = None
 
 
-# Dependency functions
+class StopRequest(BaseModel):
+    """Stop request body."""
+
+    conversation_id: str = Field(..., min_length=1)
+    correlation_id: Optional[str] = None
+
+
+# =========================================================
+# Utility: Metadata & Validation
+# =========================================================
+
 async def get_request_metadata(request: Request) -> Dict[str, Any]:
-    """Extract request metadata"""
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "")
     return {
-        "ip_address": request.client.host if request.client else "unknown",
-        "user_agent": request.headers.get("user-agent", ""),
+        "ip_address": client_ip,
+        "user_agent": user_agent,
         "platform": request.headers.get("x-platform", "web"),
         "client_id": request.headers.get("x-client-id", "unknown"),
         "correlation_id": request.headers.get("x-correlation-id", str(uuid.uuid4())),
+        "request_id": str(uuid.uuid4()),
+        "received_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
-async def validate_chat_request(request: ChatRuntimeRequest) -> ChatRuntimeRequest:
-    """Validate chat request"""
-    if not request.message.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty"
-        )
-
-    if len(request.message) > 10000:  # 10KB limit
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message too long (max 10KB)",
-        )
-
-    if request.max_tokens is not None and request.max_tokens <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="max_tokens must be greater than zero",
-        )
-
+async def validate_chat_request(
+    request: SanitizedChatRuntimeRequest,
+) -> SanitizedChatRuntimeRequest:
+    if request.max_tokens is not None:
+        if request.max_tokens <= 0:
+            raise ValidationError("max_tokens must be greater than zero")
+        if request.max_tokens > 100000:
+            raise ValidationError("max_tokens exceeds reasonable limit")
     return request
 
 
-def _extract_generation_preferences(
-    request: ChatRuntimeRequest,
-) -> Tuple[Optional[str], Optional[str], Dict[str, Any]]:
-    """Derive generation hints from the request and associated metadata."""
+# =========================================================
+# Rate Limiter (in-memory, per user/IP)
+# =========================================================
 
+class RateLimiter:
+    def __init__(self, max_requests: int, window_seconds: int) -> None:
+        self.max_requests = max_requests
+        self.window = window_seconds
+        self._store: Dict[str, List[float]] = {}
+        self._lock = asyncio.Lock()
+
+    async def check(self, key: str) -> None:
+        now = time.time()
+        async with self._lock:
+            recent = [t for t in self._store.get(key, []) if t > now - self.window]
+            if len(recent) >= self.max_requests:
+                raise RateLimitExceededError("Rate limit exceeded for this identity.")
+            recent.append(now)
+            self._store[key] = recent
+
+
+rate_limiter = RateLimiter(
+    max_requests=ChatConfig.RATE_LIMIT_REQUESTS,
+    window_seconds=ChatConfig.RATE_LIMIT_WINDOW,
+)
+
+
+# =========================================================
+# Preference & Routing Cache
+# =========================================================
+
+@lru_cache(maxsize=ChatConfig.CACHE_SIZE_USER_PREFS)
+def _cache_user_preferences(
+    user_id: str, platform: str
+) -> Tuple[Optional[str], Optional[str]]:
+    try:
+        config = get_config()
+        profile_data = getattr(config, "user_profiles", {}) or {}
+        for profile in profile_data.get("profiles", []):
+            if not profile.get("is_active", False):
+                continue
+            assignments = profile.get("assignments", {})
+            chat_assignment = assignments.get("chat", {})
+            if isinstance(chat_assignment, dict):
+                return chat_assignment.get("provider"), chat_assignment.get("model")
+    except Exception:  # noqa: BLE001
+        pass
+    return None, None
+
+
+@lru_cache(maxsize=ChatConfig.CACHE_SIZE_PROVIDER_ROUTING)
+def _cache_provider_routing(provider: str, model: str) -> Dict[str, Any]:
+    return {
+        "provider": provider,
+        "model": model,
+        "cached_at": time.time(),
+    }
+
+
+def _extract_generation_preferences(
+    request: SanitizedChatRuntimeRequest,
+) -> Tuple[Optional[str], Optional[str], Dict[str, Any]]:
     hints: Dict[str, Any] = {}
 
-    def _first_non_empty(values: Iterable[Optional[str]]) -> Optional[str]:
-        for value in values:
-            if isinstance(value, str):
-                cleaned = value.strip()
-                if cleaned:
-                    return cleaned
+    def first(values: Iterable[Optional[str]]) -> Optional[str]:
+        for v in values:
+            if isinstance(v, str) and v.strip():
+                return v.strip()
         return None
 
     user_prefs = request.user_preferences or {}
-    context_prefs = {}
-    if request.context and isinstance(request.context, dict):
-        context_prefs = request.context.get("llm_preferences", {}) or {}
+    context_prefs = (request.context or {}).get("llm_preferences", {}) or {}
 
-    provider = _first_non_empty(
+    cached_provider, cached_model = _cache_user_preferences(
+        user_prefs.get("user_id", "default"), request.platform or "web"
+    )
+
+    provider = first(
         (
             request.provider,
             user_prefs.get("preferred_llm_provider"),
             context_prefs.get("preferred_llm_provider"),
+            cached_provider,
         )
     )
     if provider:
         hints["provider"] = provider
 
-    model = _first_non_empty(
+    model = first(
         (
             request.model,
             user_prefs.get("preferred_model"),
             context_prefs.get("preferred_model"),
+            cached_model,
         )
     )
     if model:
@@ -228,88 +381,118 @@ def _extract_generation_preferences(
 
     temperature = request.temperature
     if temperature is None:
-        temp_from_prefs = user_prefs.get("temperature") if isinstance(user_prefs, dict) else None
-        if isinstance(temp_from_prefs, (int, float)):
-            temperature = float(temp_from_prefs)
+        t = user_prefs.get("temperature")
+        if isinstance(t, (int, float)):
+            temperature = float(t)
     if temperature is not None:
-        hints["temperature"] = temperature
+        hints["temperature"] = max(0.0, min(2.0, float(temperature)))
 
     max_tokens = request.max_tokens
     if max_tokens is None:
-        tokens_from_prefs = user_prefs.get("max_tokens") if isinstance(user_prefs, dict) else None
-        if isinstance(tokens_from_prefs, int) and tokens_from_prefs > 0:
-            max_tokens = tokens_from_prefs
+        mt = user_prefs.get("max_tokens")
+        if isinstance(mt, int) and mt > 0:
+            max_tokens = mt
     if max_tokens is not None:
-        hints["max_tokens"] = max_tokens
+        hints["max_tokens"] = min(int(max_tokens), 100000)
 
     return provider, model, hints
 
 
-# Orchestrator dependency
-@lru_cache
-def get_chat_orchestrator() -> chat_orchestrator.ChatOrchestrator:
-    """Return the production orchestrator or a lightweight fallback if unavailable."""
-    if get_production_chat_orchestrator:
-        try:
-            orchestrator = get_production_chat_orchestrator()
-            if orchestrator:
-                logger.info("Using production ChatOrchestrator for chat runtime")
-                return orchestrator
-        except Exception as prod_err:  # pragma: no cover - defensive
-            logger.warning(
-                "Production ChatOrchestrator unavailable, falling back to lite orchestrator: %s",
-                prod_err,
-            )
+# =========================================================
+# Circuit Breaker
+# =========================================================
 
-    logger.info("Creating LiteChatOrchestrator for degraded mode support")
+class CircuitBreaker:
+    """Async circuit breaker used by the lite orchestrator."""
 
-    class LiteChatOrchestrator(chat_orchestrator.ChatOrchestrator):
-        """Minimal orchestrator that provides meaningful degraded-mode replies."""
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failures = 0
+        self.last_failure_time = 0.0
+        self.state = "CLOSED"  # CLOSED, HALF_OPEN, OPEN
 
-        def __init__(self) -> None:
-            super().__init__()
-            self._restricted_ops = [
-                "long_term_memory_write",
-                "long_term_memory_read",
-                "vector_memory_query",
-            ]
+    def __call__(self, func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            now = time.time()
+            if self.state == "OPEN":
+                if now - self.last_failure_time > self.recovery_timeout:
+                    self.state = "HALF_OPEN"
+                else:
+                    raise ServiceUnavailableError("Circuit breaker is OPEN")
 
-        async def process_message(self, request):
-            """Return either a full response or a streaming generator."""
+            try:
+                result = await func(*args, **kwargs)
+                if self.state == "HALF_OPEN":
+                    self.state = "CLOSED"
+                    self.failures = 0
+                return result
+            except Exception as exc:  # noqa: BLE001
+                self.failures += 1
+                self.last_failure_time = now
+                if self.failures >= self.failure_threshold:
+                    self.state = "OPEN"
+                raise ServiceUnavailableError(f"Circuit breaker triggered: {exc}") from exc
 
+        return wrapper
+
+
+# =========================================================
+# LiteChatOrchestrator - hardened fallback
+# =========================================================
+
+class LiteChatOrchestrator:
+    """
+    Ultra-reliable minimal orchestrator when primary orchestration is unavailable.
+
+    - No external network calls
+    - No long-term writes
+    - Deterministic, safe, logged
+    """
+
+    def __init__(self) -> None:
+        self._restricted_ops = [
+            "long_term_memory_write",
+            "long_term_memory_read",
+            "vector_memory_query",
+        ]
+        self._breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=30)
+
+    async def process_message(self, request: ChatRequest):
+        from ai_karen_engine.chat.chat_orchestrator import ChatResponse, ChatStreamChunk
+
+        @self._breaker
+        async def _run():
             start_time = time.perf_counter()
             correlation_id = getattr(request, "session_id", str(uuid.uuid4()))
-            message = getattr(request, "message", "")
+            message = str(getattr(request, "message", "") or "")
 
             response_text, reasoning, extra_metadata = self._generate_response(message)
 
             base_metadata: Dict[str, Any] = {
                 "fallback_mode": True,
-                "mode": "minimal",
+                "mode": "lite",
                 "status": "degraded",
-                "message": "AI services are initializing",
-                "notice": (
-                    "Responding with Kari's local lite assistant while full services load. "
-                    "Some advanced features like deep memory search remain temporarily disabled."
-                ),
+                "message": "Kari lite orchestrator handling request.",
                 "restricted_operations": list(self._restricted_ops),
                 "capabilities": {
                     "reasoning": "basic",
                     "qa": "lightweight",
-                    "tools": "unavailable",
+                    "tools": "disabled",
                 },
                 "reasoning_summary": reasoning,
             }
-            if extra_metadata:
-                base_metadata.update(extra_metadata)
+            base_metadata.update(extra_metadata or {})
 
             processing_time = time.perf_counter() - start_time
-            base_metadata.setdefault("local_model", "lite-rule-engine")
+            base_metadata.setdefault("local_model", "kari-lite-rule-engine")
             base_metadata["processing_time"] = processing_time
             base_metadata["response_length"] = len(response_text)
 
             if getattr(request, "stream", False):
-                async def _stream_response() -> AsyncGenerator[ChatStreamChunk, None]:
+
+                async def _stream() -> AsyncGenerator[ChatStreamChunk, None]:
                     yield ChatStreamChunk(
                         type="metadata",
                         content="",
@@ -330,7 +513,7 @@ def get_chat_orchestrator() -> chat_orchestrator.ChatOrchestrator:
                         metadata=base_metadata,
                     )
 
-                return _stream_response()
+                return _stream()
 
             return ChatResponse(
                 response=response_text,
@@ -340,167 +523,297 @@ def get_chat_orchestrator() -> chat_orchestrator.ChatOrchestrator:
                 metadata=base_metadata,
             )
 
-        async def cancel_processing(
-            self, conversation_id: str, correlation_id: Optional[str] = None
-        ) -> List[str]:
-            """No asynchronous processing is queued in lite mode, so nothing to cancel."""
+        return await _run()
 
-            return []
+    async def cancel_processing(
+        self, conversation_id: str, correlation_id: Optional[str] = None
+    ) -> List[str]:
+        # Lite has no queued async work; nothing to cancel.
+        return []
 
-        def _generate_response(self, message: str) -> Tuple[str, str, Dict[str, Any]]:
-            normalized = (message or "").strip()
-            lower_message = normalized.lower()
-            reasoning_steps: List[str] = []
+    async def _emergency_fallback(self, request: ChatRequest):
+        from ai_karen_engine.chat.chat_orchestrator import ChatResponse, ChatStreamChunk
 
-            if not normalized:
-                reasoning_steps.append("Received empty input; prompting user for clarification.")
-                response = (
-                    "It looks like nothing was sent. I'm in minimal mode while the full AI spins up, "
-                    "but I'm ready to help with questions or small tasks."
+        fallback_text = (
+            "Degraded safety mode active. Core orchestrator unavailable; responding with minimal guarantees."
+        )
+        correlation_id = getattr(request, "session_id", "unknown")
+
+        if getattr(request, "stream", False):
+
+            async def _stream():
+                yield ChatStreamChunk(
+                    type="metadata",
+                    content="",
+                    correlation_id=correlation_id,
+                    metadata={"emergency_mode": True, "status": "degraded"},
                 )
-                return response, "; ".join(reasoning_steps), {}
-
-            if any(greeting in lower_message for greeting in ["hello", "hi", "hey", "good morning", "good evening"]):
-                reasoning_steps.append("Detected greeting and crafted friendly acknowledgement.")
-                response = (
-                    "Hello! Kari's full AI services are still initializing, so I'm operating in minimal mode. "
-                    "I can answer quick questions and keep you posted until everything is ready."
+                yield ChatStreamChunk(
+                    type="content",
+                    content=fallback_text,
+                    correlation_id=correlation_id,
+                    metadata={},
                 )
-                return response, "; ".join(reasoning_steps), {}
-
-            if "what can you do" in lower_message or "help" in lower_message:
-                reasoning_steps.append("User asked about capabilities; summarising degraded-mode abilities.")
-                response = (
-                    "Right now I'm running Kari's lite assistant while the full orchestrator comes online. "
-                    "I can help with quick Q&A, light reasoning, and progress updates. "
-                    "Features such as long-term memory or advanced tool calls are temporarily paused."
+                yield ChatStreamChunk(
+                    type="complete",
+                    content="",
+                    correlation_id=correlation_id,
+                    metadata={"emergency_mode": True},
                 )
-                return response, "; ".join(reasoning_steps), {}
 
-            if any(keyword in lower_message for keyword in ["code", "debug", "program"]):
-                reasoning_steps.append("Detected coding intent; providing contextual response.")
-                response = (
-                    "I'd love to help with code. The deep analyzers are still waking up, but share your snippet "
-                    "or question and I'll walk through it with lightweight reasoning."
-                )
-                return response, "; ".join(reasoning_steps), {}
+            return _stream()
 
-            math_answer = self._handle_basic_math(lower_message)
-            if math_answer is not None:
-                reasoning_steps.append("Solved arithmetic expression in minimal mode.")
-                response = (
-                    f"While in minimal mode I can still reason through quick math. The answer is {math_answer}. "
-                    "I'll have deeper analytical tools once the full stack loads."
-                )
-                return response, "; ".join(reasoning_steps), {}
+        return ChatResponse(
+            response=fallback_text,
+            correlation_id=correlation_id,
+            processing_time=0.05,
+            used_fallback=True,
+            metadata={"emergency_mode": True},
+        )
 
-            canned_answer = self._lookup_faq(lower_message)
-            if canned_answer:
-                reasoning_steps.append("Matched question against lite knowledge base.")
-                return canned_answer, "; ".join(reasoning_steps), {}
+    def _generate_response(
+        self, message: str
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        import re
 
-            reasoning_steps.append("No template matched; generating supportive default message.")
-            response = (
-                "I'm currently running Kari's minimal chat mode. I don't have access to long-term memory or external tools yet, "
-                "but I can still help reason through questions and keep you updated. Let me know what you need!"
+        normalized = (message or "").strip()
+        lower = normalized.lower()
+        reasoning: List[str] = []
+
+        if not normalized:
+            reasoning.append("Empty input; returning guidance from lite mode.")
+            return (
+                "Lite runtime online. Send a prompt and I will handle it safely while full systems operate separately.",
+                "; ".join(reasoning),
+                {},
             )
-            return response, "; ".join(reasoning_steps), {}
 
-        def _handle_basic_math(self, lower_message: str) -> Optional[str]:
-            pattern = re.compile(r"(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)")
-            match = pattern.search(lower_message)
-            if not match:
-                return None
+        if any(g in lower for g in ("hello", " hi", "hey", "good morning", "good evening")):
+            reasoning.append("Greeting detected.")
+            return (
+                "Kari's chat runtime is active. Primary brain routes above; I'm the hardened safety net.",
+                "; ".join(reasoning),
+                {},
+            )
 
-            left, operator_symbol, right = match.groups()
+        if any(q in lower for q in ("what can you do", "help", "capabilities")):
+            reasoning.append("Capabilities inquiry.")
+            return (
+                "This path guarantees a response even if advanced subsystems fail. I keep messages safe, contextual, and deterministic.",
+                "; ".join(reasoning),
+                {},
+            )
+
+        if any(k in lower for k in ("code", "debug", "python", "javascript", "typescript")):
+            reasoning.append("Technical-intent detected.")
+            return (
+                "I can outline logic and safeguards here. Full deep-dive is handled via Kari's main orchestrator layer.",
+                "; ".join(reasoning),
+                {},
+            )
+
+        # arithmetic
+        m = re.search(r"(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)", lower)
+        if m:
+            a_str, op, b_str = m.groups()
             try:
-                left_val = float(left)
-                right_val = float(right)
-            except ValueError:
-                return None
+                a = float(a_str)
+                b = float(b_str)
+                if op == "/" and b == 0:
+                    result = "undefined (division by zero)"
+                else:
+                    if op == "+":
+                        val = a + b
+                    elif op == "-":
+                        val = a - b
+                    elif op == "*":
+                        val = a * b
+                    else:
+                        val = a / b
+                    result = (
+                        str(int(val))
+                        if float(val).is_integer()
+                        else f"{val:.4f}".rstrip("0").rstrip(".")
+                    )
+                reasoning.append("Inline arithmetic solved in lite mode.")
+                return (
+                    f"The result is {result}.",
+                    "; ".join(reasoning),
+                    {},
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
-            if operator_symbol == "/" and right_val == 0:
-                return "undefined (division by zero)"
+        pm = re.search(r"(\d+)\s*percent\s*of\s*(\d+)", lower)
+        if pm:
+            pct, base = pm.groups()
+            try:
+                val = (float(pct) / 100.0) * float(base)
+                result = str(int(val)) if float(val).is_integer() else f"{val:.2f}"
+                reasoning.append("Percentage calculation handled.")
+                return (
+                    f"{pct}% of {base} is {result}.",
+                    "; ".join(reasoning),
+                    {},
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
-            operations = {
-                "+": left_val + right_val,
-                "-": left_val - right_val,
-                "*": left_val * right_val,
-                "/": left_val / right_val,
-            }
+        faq = {
+            "who are you": (
+                "This is Kari's resilient chat runtime fallback. If anything upstream breaks, I don't."
+            ),
+            "status": (
+                "If you're seeing this style, the system is prioritizing safety and resilience while core services are verified."
+            ),
+            "where is my data": (
+                "Lite mode avoids long-term writes while upstream health is uncertain. Persistent policies live in the main services."
+            ),
+        }
+        for key, text in faq.items():
+            if key in lower:
+                reasoning.append(f"Matched FAQ: {key}")
+                return text, "; ".join(reasoning), {}
 
-            result = operations.get(operator_symbol)
-            if result is None:
-                return None
+        reasoning.append("Default safe fallback message used.")
+        return (
+            "Lite runtime is active. I ensure a stable response path while Kari's advanced stack operates above.",
+            "; ".join(reasoning),
+            {},
+        )
 
-            if isinstance(result, float) and result.is_integer():
-                return str(int(result))
-            return f"{result:.4f}".rstrip("0").rstrip(".")
-
-        def _lookup_faq(self, lower_message: str) -> Optional[str]:
-            faq_responses = {
-                "who are you": (
-                    "I'm Kari's lite assistant. While the full AI services initialize, I'm here to provide quick guidance and "
-                    "basic answers."
-                ),
-                "status": (
-                    "Core services are warming up. Minimal mode is active, so tool usage and deep memory are temporarily disabled."
-                ),
-                "where is my data": (
-                    "Your data remains secure. Minimal mode avoids long-term memory writes until the full stack is verified."
-                ),
-            }
-
-            for key, value in faq_responses.items():
-                if key in lower_message:
-                    return value
-            return None
-
-        def _tokenize_response(self, response: str) -> Iterable[str]:
-            for token in response.split():
-                yield f"{token} "
-
-    return LiteChatOrchestrator()
+    def _tokenize_response(self, response: str) -> Iterable[str]:
+        words = response.split()
+        for i, w in enumerate(words):
+            yield w + (" " if i < len(words) - 1 else "")
 
 
-# Chat Runtime Routes
-@router.post("/chat/runtime", response_model=ChatRuntimeResponse)
-async def chat_runtime(
-    request: ChatRuntimeRequest = Depends(validate_chat_request),
-    user_context: Dict[str, Any] = Depends(get_current_user_context),
-    request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
-) -> ChatRuntimeResponse:
+# =========================================================
+# Orchestrator Resolver (Primary + Fallback)
+# =========================================================
+
+@lru_cache
+def get_chat_orchestrator() -> Any:
     """
-    Main chat runtime endpoint for non-streaming responses
+    Resolve the primary orchestrator with automatic Lite fallback.
     """
     try:
-        start_time = time.time()
-        correlation_id = request_metadata.get("correlation_id")
-        conversation_id = request.conversation_id or str(uuid.uuid4())
+        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator as PrimaryChatOrchestrator
 
+        orchestrator = PrimaryChatOrchestrator()
+        logger.info("Using PrimaryChatOrchestrator for chat runtime")
+        return orchestrator
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "PrimaryChatOrchestrator init failed; using LiteChatOrchestrator",
+            extra={"error": str(exc)},
+        )
+        return LiteChatOrchestrator()
+
+
+# =========================================================
+# Logging & Metrics
+# =========================================================
+
+def log_chat_event(
+    event_type: str,
+    user_id: str,
+    correlation_id: str,
+    level: str = "info",
+    **extra: Any,
+) -> None:
+    payload = {
+        "event_type": event_type,
+        "user_id": user_id,
+        "correlation_id": correlation_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        **extra,
+    }
+    log_fn = getattr(logger, level, logger.info)
+    log_fn(f"chat-runtime:{event_type}", extra=payload)
+
+
+class ChatMetrics:
+    @staticmethod
+    def record_request(
+        latency_ms: float,
+        success: bool,
+        platform: str,
+        used_fallback: bool = False,
+    ) -> None:
         logger.info(
-            "Chat runtime request received",
+            "chat-metrics:request",
             extra={
-                "user_id": user_context.get("user_id"),
-                "platform": request.platform,
-                "correlation_id": correlation_id,
-                "message_length": len(request.message),
+                "latency_ms": round(latency_ms, 2),
+                "success": success,
+                "platform": platform,
+                "fallback": used_fallback,
             },
         )
 
-        # Route via LLMRegistry.get_provider_with_routing to select provider/model
+    @staticmethod
+    def record_fallback_used(reason: str) -> None:
+        logger.info("chat-metrics:fallback_used", extra={"reason": reason})
+
+    @staticmethod
+    def record_streaming_metrics(
+        total_tokens: int,
+        first_token_latency_ms: float,
+        total_latency_ms: float,
+    ) -> None:
+        logger.info(
+            "chat-metrics:streaming",
+            extra={
+                "total_tokens": total_tokens,
+                "first_token_latency_ms": round(first_token_latency_ms, 2),
+                "total_latency_ms": round(total_latency_ms, 2),
+            },
+        )
+
+
+# =========================================================
+# /chat/runtime  (Non-streaming)
+# =========================================================
+
+@router.post("/chat/runtime", response_model=ChatRuntimeResponse)
+async def chat_runtime(
+    request: SanitizedChatRuntimeRequest = Depends(validate_chat_request),
+    user_context: Dict[str, Any] = Depends(get_current_user_context),
+    request_metadata: Dict[str, Any] = Depends(get_request_metadata),
+    chat_orchestrator: Any = Depends(get_chat_orchestrator),
+) -> ChatRuntimeResponse:
+    start_time = time.time()
+    correlation_id = request_metadata.get("correlation_id")
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    user_id = user_context.get("user_id", "anonymous")
+    platform = request.platform or "web"
+    identity_key = f"{user_id}:{request_metadata.get('ip_address', 'unknown')}"
+
+    try:
+        await rate_limiter.check(identity_key)
+
+        log_chat_event(
+            "chat_request_received",
+            user_id,
+            correlation_id,
+            message_length=len(request.message),
+            platform=platform,
+            conversation_id=conversation_id,
+        )
+
         reg = get_registry()
         _routed = await reg.get_provider_with_routing(
-            user_ctx={"user_id": user_context.get("user_id", "anon")},
+            user_ctx={"user_id": user_id},
             query=request.message,
             task_type="chat",
             khrp_step="output_rendering",
-            requirements={}
+            requirements={},
         )
         kire_decision = _routed.get("decision")
 
-        user_provider, user_model, generation_hints = _extract_generation_preferences(request)
+        user_provider, user_model, generation_hints = _extract_generation_preferences(
+            request
+        )
         preferred_provider = user_provider or (
             getattr(kire_decision, "provider", None) if kire_decision else None
         )
@@ -510,27 +823,28 @@ async def chat_runtime(
 
         metadata_payload: Dict[str, Any] = {
             **(request.context or {}),
-            "platform": request.platform,
+            "platform": platform,
             "request_metadata": request_metadata,
         }
         if generation_hints:
             metadata_payload["requested_generation"] = generation_hints
         if preferred_provider:
             metadata_payload["preferred_llm_provider"] = preferred_provider
+            _cache_provider_routing(preferred_provider, preferred_model or "default")
         if preferred_model:
             metadata_payload["preferred_model"] = preferred_model
         if kire_decision:
             metadata_payload["kire"] = {
-                "provider": kire_decision.provider,
-                "model": kire_decision.model,
-                "reason": kire_decision.reasoning,
-                "confidence": kire_decision.confidence,
-                "fallback_chain": kire_decision.fallback_chain,
+                "provider": getattr(kire_decision, "provider", None),
+                "model": getattr(kire_decision, "model", None),
+                "reason": getattr(kire_decision, "reasoning", ""),
+                "confidence": getattr(kire_decision, "confidence", 0.0),
+                "fallback_chain": getattr(kire_decision, "fallback_chain", []),
             }
 
         chat_request = ChatRequest(
             message=request.message,
-            user_id=user_context.get("user_id"),
+            user_id=user_id,
             conversation_id=conversation_id,
             session_id=correlation_id,
             stream=False,
@@ -540,145 +854,192 @@ async def chat_runtime(
 
         orchestrator_response = await chat_orchestrator.process_message(chat_request)
 
-        latency_ms = (time.time() - start_time) * 1000
+        latency_ms = (time.time() - start_time) * 1000.0
+        used_fallback = bool(getattr(orchestrator_response, "used_fallback", False))
+
+        ChatMetrics.record_request(latency_ms, True, platform, used_fallback)
+        if used_fallback:
+            ChatMetrics.record_fallback_used("orchestrator_fallback")
 
         response_metadata: Dict[str, Any] = {
-            "platform": request.platform,
-            "correlation_id": orchestrator_response.correlation_id,
-            "user_id": user_context.get("user_id"),
-            "processing_time": orchestrator_response.processing_time,
+            "platform": platform,
+            "correlation_id": getattr(
+                orchestrator_response, "correlation_id", correlation_id
+            ),
+            "user_id": user_id,
+            "processing_time": getattr(
+                orchestrator_response, "processing_time", latency_ms / 1000.0
+            ),
             "latency_ms": latency_ms,
-            **orchestrator_response.metadata,
+            **getattr(orchestrator_response, "metadata", {}),
         }
+
         if generation_hints and "requested_generation" not in response_metadata:
             response_metadata["requested_generation"] = generation_hints
         if preferred_provider and "preferred_llm_provider" not in response_metadata:
             response_metadata["preferred_llm_provider"] = preferred_provider
         if preferred_model and "preferred_model" not in response_metadata:
             response_metadata["preferred_model"] = preferred_model
-        if kire_decision:
-            response_metadata.setdefault("kire_metadata", {
-                "provider": kire_decision.provider,
-                "model": kire_decision.model,
-                "reason": kire_decision.reasoning,
-                "confidence": kire_decision.confidence,
-            })
+        if kire_decision and "kire_metadata" not in response_metadata:
+            response_metadata["kire_metadata"] = {
+                "provider": getattr(kire_decision, "provider", None),
+                "model": getattr(kire_decision, "model", None),
+                "reason": getattr(kire_decision, "reasoning", ""),
+                "confidence": getattr(kire_decision, "confidence", 0.0),
+            }
 
         response = ChatRuntimeResponse(
-            content=orchestrator_response.response,
+            content=getattr(orchestrator_response, "response", ""),
             conversation_id=conversation_id,
             metadata=response_metadata,
         )
 
-        logger.info(
-            "Chat runtime response generated",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "correlation_id": correlation_id,
-                "response_length": len(response.content),
-                "latency_ms": latency_ms,
-            },
+        log_chat_event(
+            "chat_response_sent",
+            user_id,
+            correlation_id,
+            response_length=len(response.content),
+            latency_ms=latency_ms,
+            used_fallback=used_fallback,
         )
 
         return response
 
-    except HTTPException:
-        raise
+    except RateLimitExceededError as exc:
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, False, platform, False)
+        log_chat_event(
+            "chat_rate_limited",
+            user_id,
+            correlation_id,
+            level="warning",
+            error_message=str(exc),
+            latency_ms=latency_ms,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+
+    except (ValidationError, ServiceUnavailableError) as exc:
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, False, platform, True)
+        log_chat_event(
+            "chat_request_failed",
+            user_id,
+            correlation_id,
+            level="warning",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+            latency_ms=latency_ms,
+        )
+        status_code = (
+            status.HTTP_400_BAD_REQUEST
+            if isinstance(exc, ValidationError)
+            else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
     except asyncio.CancelledError:
-        logger.info(
-            "Chat runtime request cancelled",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "correlation_id": request_metadata.get("correlation_id"),
-            },
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, False, platform, False)
+        log_chat_event(
+            "chat_request_cancelled",
+            user_id,
+            correlation_id,
+            level="info",
+            latency_ms=latency_ms,
         )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Generation cancelled",
         )
-    except Exception as e:
-        logger.error(
-            "Chat runtime error",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "correlation_id": request_metadata.get("correlation_id"),
-                "error": str(e),
+
+    except Exception as exc:  # noqa: BLE001
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, False, platform, True)
+        log_chat_event(
+            "chat_request_error",
+            user_id,
+            correlation_id,
+            level="error",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+            latency_ms=latency_ms,
+        )
+        fallback_response = ChatRuntimeResponse(
+            content=(
+                "Runtime is in a degraded state. A safe fallback response path "
+                "handled this request while core services stabilize."
+            ),
+            conversation_id=conversation_id,
+            metadata={
+                "platform": platform,
+                "correlation_id": correlation_id,
+                "user_id": user_id,
+                "fallback_mode": True,
+                "error_type": "unhandled_exception",
+                "processing_time": latency_ms / 1000.0,
+                "latency_ms": latency_ms,
+                "emergency_fallback": True,
             },
         )
-        
-        # Provide a graceful fallback response instead of crashing
-        try:
-            fallback_response = ChatRuntimeResponse(
-                content="I'm experiencing technical difficulties right now. The AI services are initializing and will be available shortly. Please try again in a moment.",
-                conversation_id=request.conversation_id or str(uuid.uuid4()),
-                metadata={
-                    "platform": request.platform,
-                    "correlation_id": request_metadata.get("correlation_id"),
-                    "user_id": user_context.get("user_id"),
-                    "fallback_mode": True,
-                    "error_type": "initialization_error",
-                    "processing_time": 0.0,
-                    "latency_ms": 0.0,
-                },
-            )
-            
-            logger.info(
-                "Chat runtime fallback response provided",
-                extra={
-                    "user_id": user_context.get("user_id"),
-                    "correlation_id": request_metadata.get("correlation_id"),
-                },
-            )
-            
-            return fallback_response
-        except Exception as fallback_error:
-            logger.error(f"Failed to create fallback response: {fallback_error}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error",
-            )
+        log_chat_event(
+            "chat_fallback_used",
+            user_id,
+            correlation_id,
+            level="warning",
+            fallback_reason="unhandled_exception",
+        )
+        return fallback_response
 
+
+# =========================================================
+# /chat/runtime/stream  (SSE streaming)
+# =========================================================
 
 @router.post("/chat/runtime/stream")
 async def chat_runtime_stream(
-    request: ChatRuntimeRequest = Depends(validate_chat_request),
+    request: SanitizedChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
+    chat_orchestrator: Any = Depends(get_chat_orchestrator),
 ) -> StreamingResponse:
-    """
-    Streaming chat runtime endpoint using Server-Sent Events
-    """
+    platform = request.platform or "web"
 
     async def generate_stream():
         start_time = time.time()
-        first_token_time = None
+        first_token_time: Optional[float] = None
         token_count = 0
         correlation_id = request_metadata.get("correlation_id")
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        user_id = user_context.get("user_id", "anonymous")
+        identity_key = f"{user_id}:{request_metadata.get('ip_address', 'unknown')}"
 
         try:
-            logger.info(
-                "Chat runtime stream started",
-                extra={
-                    "user_id": user_context.get("user_id"),
-                    "platform": request.platform,
-                    "correlation_id": correlation_id,
-                },
+            await rate_limiter.check(identity_key)
+
+            log_chat_event(
+                "chat_stream_started",
+                user_id,
+                correlation_id,
+                platform=platform,
+                conversation_id=conversation_id,
             )
 
-            # KIRE routing for streaming via registry; send early metadata with selection
             reg = get_registry()
             _routed = await reg.get_provider_with_routing(
-                user_ctx={"user_id": user_context.get("user_id", "anon")},
+                user_ctx={"user_id": user_id},
                 query=request.message,
                 task_type="chat",
                 khrp_step="output_rendering",
-                requirements={}
+                requirements={},
             )
             kire_decision = _routed.get("decision")
 
-            user_provider, user_model, generation_hints = _extract_generation_preferences(request)
+            user_provider, user_model, generation_hints = _extract_generation_preferences(
+                request
+            )
             preferred_provider = user_provider or (
                 getattr(kire_decision, "provider", None) if kire_decision else None
             )
@@ -686,11 +1047,13 @@ async def chat_runtime_stream(
                 getattr(kire_decision, "model", None) if kire_decision else None
             )
 
-            metadata_event = {
+            metadata_event: Dict[str, Any] = {
                 "type": "metadata",
                 "data": {
                     "conversation_id": conversation_id,
                     "correlation_id": correlation_id,
+                    "user_id": user_id,
+                    "platform": platform,
                 },
             }
             if generation_hints:
@@ -701,8 +1064,8 @@ async def chat_runtime_stream(
                 metadata_event["data"]["preferred_model"] = preferred_model
             if kire_decision:
                 metadata_event["data"]["kire"] = {
-                    "provider": getattr(kire_decision, "provider", "unknown"),
-                    "model": getattr(kire_decision, "model", "unknown"),
+                    "provider": getattr(kire_decision, "provider", None),
+                    "model": getattr(kire_decision, "model", None),
                     "reason": getattr(kire_decision, "reasoning", ""),
                     "confidence": getattr(kire_decision, "confidence", 0.0),
                     "fallback_chain": getattr(kire_decision, "fallback_chain", []),
@@ -712,7 +1075,7 @@ async def chat_runtime_stream(
 
             metadata_payload: Dict[str, Any] = {
                 **(request.context or {}),
-                "platform": request.platform,
+                "platform": platform,
                 "request_metadata": request_metadata,
             }
             if generation_hints:
@@ -723,16 +1086,16 @@ async def chat_runtime_stream(
                 metadata_payload["preferred_model"] = preferred_model
             if kire_decision:
                 metadata_payload["kire"] = {
-                    "provider": kire_decision.provider,
-                    "model": kire_decision.model,
-                    "reason": kire_decision.reasoning,
-                    "confidence": kire_decision.confidence,
-                    "fallback_chain": kire_decision.fallback_chain,
+                    "provider": getattr(kire_decision, "provider", None),
+                    "model": getattr(kire_decision, "model", None),
+                    "reason": getattr(kire_decision, "reasoning", ""),
+                    "confidence": getattr(kire_decision, "confidence", 0.0),
+                    "fallback_chain": getattr(kire_decision, "fallback_chain", []),
                 }
 
             chat_request = ChatRequest(
                 message=request.message,
-                user_id=user_context.get("user_id"),
+                user_id=user_id,
                 conversation_id=conversation_id,
                 session_id=correlation_id,
                 stream=True,
@@ -740,318 +1103,267 @@ async def chat_runtime_stream(
                 metadata=metadata_payload,
             )
 
-            stream_result = await chat_orchestrator.process_message(chat_request)
+            async with asyncio.timeout(ChatConfig.STREAM_TIMEOUT):
+                stream = await chat_orchestrator.process_message(chat_request)
 
-            if isinstance(stream_result, ChatResponse):
-                total_latency = (time.time() - start_time) * 1000
-                completion_data = {
-                    **stream_result.metadata,
-                    "total_tokens": 0,
-                    "latency_ms": total_latency,
-                    "first_token_latency_ms": total_latency,
-                }
-                if generation_hints and "requested_generation" not in completion_data:
-                    completion_data["requested_generation"] = generation_hints
-                if preferred_provider and "preferred_llm_provider" not in completion_data:
-                    completion_data["preferred_llm_provider"] = preferred_provider
-                if preferred_model and "preferred_model" not in completion_data:
-                    completion_data["preferred_model"] = preferred_model
-                yield f"data: {json.dumps({'type': 'token', 'data': {'token': stream_result.response}})}\n\n"
-                yield f"data: {json.dumps({'type': 'complete', 'data': completion_data})}\n\n"
+                async for chunk in stream:
+                    ctype = getattr(chunk, "type", None)
 
-                logger.info(
-                    "Chat runtime stream completed (single response)",
-                    extra={
-                        "user_id": user_context.get("user_id"),
-                        "correlation_id": correlation_id,
-                    },
-                )
-                return
+                    if ctype == "content":
+                        if first_token_time is None:
+                            first_token_time = time.time()
+                        token_count += 1
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {"type": "token", "data": {"token": chunk.content}}
+                            )
+                            + "\n\n"
+                        )
 
-            async for chunk in stream_result:
-                if chunk.type == "content":
-                    if first_token_time is None:
-                        first_token_time = time.time()
-                    token_count += 1
-                    yield f"data: {json.dumps({'type': 'token', 'data': {'token': chunk.content}})}\n\n"
-                elif chunk.type == "metadata":
-                    yield f"data: {json.dumps({'type': 'metadata', 'data': chunk.metadata})}\n\n"
-                elif chunk.type == "error":
-                    yield f"data: {json.dumps({'type': 'error', 'data': {'message': chunk.content, **chunk.metadata}})}\n\n"
-                elif chunk.type == "complete":
-                    total_latency = (time.time() - start_time) * 1000
-                    first_latency = (
-                        (first_token_time - start_time) * 1000
-                        if first_token_time
-                        else total_latency
-                    )
-                    completion_data = {
-                        **chunk.metadata,
-                        "total_tokens": token_count,
-                        "latency_ms": total_latency,
-                        "first_token_latency_ms": first_latency,
+                    elif ctype == "metadata":
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {"type": "metadata", "data": chunk.metadata}
+                            )
+                            + "\n\n"
+                        )
+
+                    elif ctype == "error":
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {
+                                    "type": "error",
+                                    "data": {
+                                        "message": chunk.content,
+                                        **(chunk.metadata or {}),
+                                    },
+                                }
+                            )
+                            + "\n\n"
+                        )
+
+                    elif ctype == "complete":
+                        total_latency_ms = (time.time() - start_time) * 1000.0
+                        first_latency_ms = (
+                            (first_token_time - start_time) * 1000.0
+                            if first_token_time
+                            else total_latency_ms
+                        )
+
+                        completion_data: Dict[str, Any] = {
+                            **(chunk.metadata or {}),
+                            "total_tokens": token_count,
+                            "latency_ms": total_latency_ms,
+                            "first_token_latency_ms": first_latency_ms,
+                        }
+
+                        if generation_hints and "requested_generation" not in completion_data:
+                            completion_data["requested_generation"] = generation_hints
+                        if (
+                            preferred_provider
+                            and "preferred_llm_provider" not in completion_data
+                        ):
+                            completion_data[
+                                "preferred_llm_provider"
+                            ] = preferred_provider
+                        if preferred_model and "preferred_model" not in completion_data:
+                            completion_data["preferred_model"] = preferred_model
+
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {"type": "complete", "data": completion_data}
+                            )
+                            + "\n\n"
+                        )
+
+                        ChatMetrics.record_streaming_metrics(
+                            token_count, first_latency_ms, total_latency_ms
+                        )
+
+            log_chat_event(
+                "chat_stream_completed",
+                user_id,
+                correlation_id,
+                token_count=token_count,
+                total_latency_ms=(time.time() - start_time) * 1000.0,
+            )
+
+        except RateLimitExceededError as exc:
+            log_chat_event(
+                "chat_stream_rate_limited",
+                user_id,
+                correlation_id,
+                level="warning",
+                error_message=str(exc),
+            )
+            yield (
+                "data: "
+                + json.dumps({"type": "error", "data": {"message": str(exc)}})
+                + "\n\n"
+            )
+
+        except asyncio.TimeoutError:
+            log_chat_event(
+                "chat_stream_timeout",
+                user_id,
+                correlation_id,
+                level="warning",
+                timeout_seconds=ChatConfig.STREAM_TIMEOUT,
+            )
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "error",
+                        "data": {"message": "Stream timeout exceeded"},
                     }
-                    if generation_hints and "requested_generation" not in completion_data:
-                        completion_data["requested_generation"] = generation_hints
-                    if preferred_provider and "preferred_llm_provider" not in completion_data:
-                        completion_data["preferred_llm_provider"] = preferred_provider
-                    if preferred_model and "preferred_model" not in completion_data:
-                        completion_data["preferred_model"] = preferred_model
-                    yield f"data: {json.dumps({'type': 'complete', 'data': completion_data})}\n\n"
-
-            logger.info(
-                "Chat runtime stream completed",
-                extra={
-                    "user_id": user_context.get("user_id"),
-                    "correlation_id": correlation_id,
-                },
+                )
+                + "\n\n"
             )
 
         except asyncio.CancelledError:
-            logger.info(
-                "Chat runtime stream cancelled",
-                extra={
-                    "user_id": user_context.get("user_id"),
-                    "correlation_id": correlation_id,
-                },
+            log_chat_event(
+                "chat_stream_cancelled",
+                user_id,
+                correlation_id,
+                level="info",
             )
-            yield "data: {\"type\": \"error\", \"data\": {\"message\": \"Generation cancelled\"}}\n\n"
-        except Exception as e:
-            logger.error(
-                "Chat runtime stream error",
-                extra={
-                    "user_id": user_context.get("user_id"),
-                    "correlation_id": correlation_id,
-                    "error": str(e),
-                },
+            yield (
+                'data: {"type": "error", "data": {"message": "Generation cancelled"}}\n\n'
             )
-            yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'Stream processing error'}})}\n\n"
 
-    # Stream as Server-Sent Events and avoid gzip to reduce latency
+        except Exception as exc:  # noqa: BLE001
+            log_chat_event(
+                "chat_stream_error",
+                user_id,
+                correlation_id,
+                level="error",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "type": "error",
+                        "data": {"message": "Stream processing error"},
+                    }
+                )
+                + "\n\n"
+            )
+
     return StreamingResponse(
         generate_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
-            "Content-Encoding": "identity",  # Hint middleware/proxies not to compress
+            "X-Accel-Buffering": "no",
+            "Content-Encoding": "identity",
+            "X-Content-Type-Options": "nosniff",
         },
     )
 
 
+# =========================================================
+# /chat/runtime/stop
+# =========================================================
+
 @router.post("/chat/runtime/stop")
 async def stop_chat_generation(
-    conversation_id: str,
-    correlation_id: Optional[str] = None,
+    body: StopRequest,
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
+    chat_orchestrator: Any = Depends(get_chat_orchestrator),
 ) -> Dict[str, Any]:
-    """
-    Stop ongoing chat generation
-    """
+    conversation_id = body.conversation_id
+    correlation_id = body.correlation_id or request_metadata.get("correlation_id")
+    user_id = user_context.get("user_id", "anonymous")
+
     try:
-        correlation = correlation_id or request_metadata.get("correlation_id")
+        if not conversation_id or len(conversation_id) > 100:
+            raise ValidationError("Invalid conversation ID")
 
-        logger.info(
-            "Chat generation stop requested",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "conversation_id": conversation_id,
-                "correlation_id": correlation,
-            },
-        )
-
-        cancelled = await chat_orchestrator.cancel_processing(
+        log_chat_event(
+            "chat_stop_requested",
+            user_id,
+            correlation_id,
             conversation_id=conversation_id,
-            correlation_id=correlation_id,
+            requested_correlation_id=body.correlation_id,
         )
 
-        if not cancelled:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No active generation found for conversation",
+        cancelled_ids: List[str] = []
+        if hasattr(chat_orchestrator, "cancel_processing"):
+            cancelled_ids = await chat_orchestrator.cancel_processing(
+                conversation_id=conversation_id,
+                correlation_id=body.correlation_id,
             )
+
+        log_chat_event(
+            "chat_generation_stopped",
+            user_id,
+            correlation_id,
+            cancelled_ids=cancelled_ids,
+        )
 
         return {
             "status": "stopped",
             "conversation_id": conversation_id,
-            "correlation_ids": cancelled,
+            "correlation_ids": cancelled_ids,
+            "stopped_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    except ValueError as exc:
-        logger.warning(
-            "Invalid stop request",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "conversation_id": conversation_id,
-                "error": str(exc),
-            },
+    except ValidationError as exc:
+        log_chat_event(
+            "chat_stop_validation_failed",
+            user_id,
+            correlation_id,
+            level="warning",
+            error_message=str(exc),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
-        )
-    except Exception as e:
-        logger.error(
-            "Failed to stop chat generation",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "conversation_id": conversation_id,
-                "error": str(e),
-            },
+        ) from exc
+
+    except Exception as exc:  # noqa: BLE001
+        log_chat_event(
+            "chat_stop_failed",
+            user_id,
+            correlation_id,
+            level="error",
+            error_message=str(exc),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to stop generation",
-        )
+        ) from exc
 
 
-@router.get("/chat/runtime/health")
-async def chat_runtime_health() -> Dict[str, Any]:
-    """
-    Health check for chat runtime
-    """
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "service": "chat-runtime",
-        "version": "1.0.0",
-    }
-
-
-@router.post("/chat/runtime/response-core", response_model=ChatRuntimeResponse)
-async def chat_runtime_response_core(
-    request: ChatRuntimeRequest = Depends(validate_chat_request),
-    user_context: Dict[str, Any] = Depends(get_current_user_context),
-    request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-) -> ChatRuntimeResponse:
-    """
-    Chat runtime endpoint using Response Core orchestrator
-    
-    This endpoint provides an alternative to the standard chat runtime
-    using the Response Core orchestrator with local-first processing.
-    """
-    try:
-        start_time = time.time()
-        correlation_id = request_metadata.get("correlation_id")
-        conversation_id = request.conversation_id or str(uuid.uuid4())
-        user_id = user_context.get("user_id", "anonymous")
-
-        logger.info(
-            "Response Core chat runtime request received",
-            extra={
-                "user_id": user_id,
-                "platform": request.platform,
-                "correlation_id": correlation_id,
-                "message_length": len(request.message),
-            },
-        )
-
-        # Get Response Core orchestrator
-        response_orchestrator = get_global_orchestrator(user_id=user_id)
-        
-        # Process through Response Core using the ResponseOrchestrator API
-        ui_caps = {
-            "platform": request.platform,
-            "conversation_id": conversation_id,
-            "tools": request.tools or [],
-            "memory_context": request.memory_context,
-            "user_preferences": request.user_preferences or {},
-        }
-
-        result = response_orchestrator.respond(
-            request.message,
-            ui_caps=ui_caps,
-        )
-
-        # ResponseOrchestrator returns a structured payload; extract content
-        if isinstance(result, dict):
-            content = result.get("content", "")
-            orchestrator_metadata = {
-                "intent": result.get("intent"),
-                "persona": result.get("persona"),
-                "mood": result.get("mood"),
-            }
-
-            orchestrator_metadata.update(result.get("metadata", {}))
-
-            if "onboarding" in result:
-                orchestrator_metadata["onboarding"] = result["onboarding"]
-        else:
-            content = str(result)
-            orchestrator_metadata = {}
-
-        latency_ms = (time.time() - start_time) * 1000
-
-        response = ChatRuntimeResponse(
-            content=content,
-            conversation_id=conversation_id,
-            metadata={
-                **orchestrator_metadata,
-                "platform": request.platform,
-                "correlation_id": correlation_id,
-                "user_id": user_id,
-                "processing_time": latency_ms / 1000,
-                "latency_ms": latency_ms,
-                "orchestrator": "response_core",
-                "local_processing": True,
-                "prompt_driven": True,
-            },
-        )
-
-        logger.info(
-            "Response Core chat runtime response sent",
-            extra={
-                "user_id": user_id,
-                "correlation_id": correlation_id,
-                "latency_ms": latency_ms,
-                "response_length": len(content),
-            },
-        )
-
-        return response
-
-    except Exception as e:
-        logger.error(
-            "Response Core chat runtime error",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "correlation_id": request_metadata.get("correlation_id"),
-                "error": str(e),
-            },
-        )
-        
-        # Return error response
-        return ChatRuntimeResponse(
-            content=f"I apologize, but I encountered an error: {str(e)}",
-            conversation_id=request.conversation_id or "error",
-            metadata={
-                "platform": request.platform,
-                "correlation_id": request_metadata.get("correlation_id"),
-                "user_id": user_context.get("user_id"),
-                "processing_time": (time.time() - start_time),
-                "error": str(e),
-                "orchestrator": "response_core",
-                "used_fallback": True,
-            },
-        )
-
+# =========================================================
+# /chat/runtime/config
+# =========================================================
 
 @router.get("/chat/runtime/config")
 async def get_chat_config(
     user_context: Dict[str, Any] = Depends(get_current_user_context),
 ) -> Dict[str, Any]:
-    """
-    Get chat configuration for the current user
-    """
+    user_id = user_context.get("user_id", "anonymous")
+
     try:
         config = get_config()
         llm_registry = get_registry()
         service_registry = get_service_registry()
 
-        # Resolve available tools from the global tool service
+        def _cfg_get(obj: Any, key: str, default: Any = None) -> Any:
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
         tools_section: Dict[str, Any] = {"available": [], "metrics": {}}
         try:
             tool_service = get_global_tool_service()
@@ -1085,14 +1397,13 @@ async def get_chat_config(
                     )
 
             tools_section["metrics"] = tool_service.get_service_stats()
-        except Exception as tool_error:  # pragma: no cover - defensive
+        except Exception as tool_error:  # noqa: BLE001
             logger.warning(
-                "Tool service unavailable during chat config retrieval: %s",
-                tool_error,
+                "Tool service unavailable during chat config retrieval",
+                extra={"error": str(tool_error), "user_id": user_id},
             )
             tools_section["error"] = str(tool_error)
 
-        # Gather provider information from the LLM registry
         provider_details: List[Dict[str, Any]] = []
         registry_chain: List[str] = []
         try:
@@ -1118,21 +1429,20 @@ async def get_chat_config(
                         "last_health_check": provider_info.get("last_health_check"),
                     }
                 )
-        except Exception as registry_error:  # pragma: no cover - defensive
+        except Exception as registry_error:  # noqa: BLE001
             logger.warning(
-                "LLM registry unavailable during chat config retrieval: %s",
-                registry_error,
+                "LLM registry unavailable during chat config retrieval",
+                extra={"error": str(registry_error), "user_id": user_id},
             )
 
-        # Determine routing preferences from user profiles and config defaults
-        profile_data = config.user_profiles or {}
-        active_profile_id = config.active_profile or profile_data.get(
+        profile_data = getattr(config, "user_profiles", {}) or {}
+        active_profile_id = getattr(config, "active_profile", None) or profile_data.get(
             "active_profile"
         )
         profile_summaries: List[Dict[str, Any]] = []
         fallback_chain: List[str] = []
-        default_provider = config.llm.provider
-        default_model = config.llm.model
+        default_provider = _cfg_get(config.llm, "provider", None)
+        default_model = _cfg_get(config.llm, "model", None)
 
         for profile in profile_data.get("profiles", []):
             assignments = profile.get("assignments", {})
@@ -1155,7 +1465,6 @@ async def get_chat_config(
 
         routing_chain = fallback_chain or registry_chain
 
-        # Derive service health information for observability in the UI
         services_summary: List[Dict[str, Any]] = []
         ready_states = {"ready", "degraded"}
         try:
@@ -1182,19 +1491,19 @@ async def get_chat_config(
                         "initialization_time": info.initialization_time,
                     }
                 )
-        except Exception as service_error:  # pragma: no cover - defensive
+        except Exception as service_error:  # noqa: BLE001
             logger.warning(
-                "Service registry introspection failed during chat config retrieval: %s",
-                service_error,
+                "Service registry introspection failed during chat config retrieval",
+                extra={"error": str(service_error), "user_id": user_id},
             )
 
         ready_services = sum(
             1 for service in services_summary if service["status"] in ready_states
         )
 
-        monitoring_config = config.monitoring
-        web_ui_config = config.web_ui
-        memory_config = config.memory or {}
+        monitoring_config = getattr(config, "monitoring", {})
+        web_ui_config = getattr(config, "web_ui", {})
+        memory_config = getattr(config, "memory", {}) or {}
 
         response_payload = {
             "user": {
@@ -1203,8 +1512,8 @@ async def get_chat_config(
                 "roles": user_context.get("roles", []),
             },
             "environment": {
-                "name": config.environment.value,
-                "debug": bool(config.debug),
+                "name": getattr(getattr(config, "environment", None), "value", None),
+                "debug": bool(getattr(config, "debug", False)),
             },
             "llm": {
                 "default_provider": default_provider,
@@ -1219,11 +1528,13 @@ async def get_chat_config(
             },
             "tools": tools_section,
             "memory": {
-                "enabled": bool(memory_config.get("enabled", True)),
-                "provider": memory_config.get("provider", "local"),
-                "embedding_dim": memory_config.get("embedding_dim"),
-                "decay_lambda": memory_config.get("decay_lambda"),
-                "ui_enabled": bool(web_ui_config.enable_memory_integration),
+                "enabled": bool(_cfg_get(memory_config, "enabled", True)),
+                "provider": _cfg_get(memory_config, "provider", "local"),
+                "embedding_dim": _cfg_get(memory_config, "embedding_dim", None),
+                "decay_lambda": _cfg_get(memory_config, "decay_lambda", None),
+                "ui_enabled": bool(
+                    _cfg_get(web_ui_config, "enable_memory_integration", False)
+                ),
             },
             "services": {
                 "registered": len(services_summary),
@@ -1231,40 +1542,199 @@ async def get_chat_config(
                 "items": services_summary,
             },
             "ui": {
-                "platforms": list(web_ui_config.ui_sources),
-                "session_timeout": web_ui_config.session_timeout,
-                "max_history": web_ui_config.max_conversation_history,
-                "theme": config.theme,
+                "platforms": list(_cfg_get(web_ui_config, "ui_sources", [])),
+                "session_timeout": _cfg_get(web_ui_config, "session_timeout", None),
+                "max_history": _cfg_get(web_ui_config, "max_conversation_history", None),
+                "theme": getattr(config, "theme", None),
                 "proactive_suggestions": bool(
-                    web_ui_config.enable_proactive_suggestions
+                    _cfg_get(web_ui_config, "enable_proactive_suggestions", False)
                 ),
             },
             "limits": {
-                "max_message_length": 10000,
-                "max_tokens": config.llm.max_tokens,
-                "temperature": config.llm.temperature,
+                "max_message_length": ChatConfig.MAX_MESSAGE_LENGTH,
+                "max_tokens": _cfg_get(
+                    config.llm, "max_tokens", ChatConfig.MAX_TOKENS_DEFAULT
+                ),
+                "temperature": _cfg_get(config.llm, "temperature", None),
             },
             "observability": {
-                "metrics_enabled": monitoring_config.enable_metrics,
-                "prometheus_port": monitoring_config.metrics_port,
-                "prometheus_enabled": monitoring_config.prometheus_enabled,
-                "tracing_enabled": monitoring_config.enable_tracing,
-                "log_level": monitoring_config.log_level,
+                "metrics_enabled": bool(
+                    _cfg_get(monitoring_config, "enable_metrics", False)
+                ),
+                "prometheus_port": _cfg_get(monitoring_config, "metrics_port", None),
+                "prometheus_enabled": bool(
+                    _cfg_get(monitoring_config, "prometheus_enabled", False)
+                ),
+                "tracing_enabled": bool(
+                    _cfg_get(monitoring_config, "enable_tracing", False)
+                ),
+                "log_level": _cfg_get(monitoring_config, "log_level", None),
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
+        logger.info(
+            "Chat runtime configuration retrieved",
+            extra={"user_id": user_id, "profile": active_profile_id},
+        )
         return response_payload
 
-    except Exception as e:
+    except Exception as exc:  # noqa: BLE001
         logger.error(
-            "Failed to get chat config",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "error": str(e),
-            },
+            "Failed to get chat configuration",
+            extra={"user_id": user_id, "error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get configuration",
+        ) from exc
+
+
+# =========================================================
+# /chat/runtime/health
+# =========================================================
+
+@router.get("/chat/runtime/health")
+async def chat_runtime_health() -> Dict[str, Any]:
+    try:
+        service_registry = get_service_registry()
+        services_status: Dict[str, Any] = {}
+        for name in service_registry.list_services().keys():
+            info = service_registry.get_service_info(name)
+            if info:
+                services_status[name] = {
+                    "status": info.status.value,
+                    "initialized": info.initialized,
+                    "error": info.error_message,
+                }
+
+        cfg = get_config()
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "chat-runtime",
+            "version": "2.0.0",
+            "environment": cfg.environment.value,
+            "services": services_status,
+            "config": {
+                "max_message_length": ChatConfig.MAX_MESSAGE_LENGTH,
+                "stream_timeout": ChatConfig.STREAM_TIMEOUT,
+                "fallback_enabled": ChatConfig.FALLBACK_ENABLED,
+            },
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "degraded",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "chat-runtime",
+            "version": "2.0.0",
+            "error": str(exc),
+        }
+
+
+# =========================================================
+# /chat/runtime/response-core  (backward-compatible)
+# =========================================================
+
+@router.post("/chat/runtime/response-core", response_model=ChatRuntimeResponse)
+async def chat_runtime_response_core(
+    request: SanitizedChatRuntimeRequest = Depends(validate_chat_request),
+    user_context: Dict[str, Any] = Depends(get_current_user_context),
+    request_metadata: Dict[str, Any] = Depends(get_request_metadata),
+) -> ChatRuntimeResponse:
+    start_time = time.time()
+    correlation_id = request_metadata.get("correlation_id")
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    user_id = user_context.get("user_id", "anonymous")
+    platform = request.platform or "web"
+
+    try:
+        log_chat_event(
+            "response_core_request_received",
+            user_id,
+            correlation_id,
+            platform=platform,
+            message_length=len(request.message),
+        )
+
+        response_orchestrator = get_global_orchestrator(user_id=user_id)
+        ui_caps = {
+            "platform": platform,
+            "conversation_id": conversation_id,
+            "tools": request.tools or [],
+            "memory_context": request.memory_context,
+            "user_preferences": request.user_preferences or {},
+        }
+
+        result = response_orchestrator.respond(request.message, ui_caps=ui_caps)
+
+        if isinstance(result, dict):
+            content = result.get("content", "")
+            orchestrator_metadata: Dict[str, Any] = {
+                "intent": result.get("intent"),
+                "persona": result.get("persona"),
+                "mood": result.get("mood"),
+            }
+            orchestrator_metadata.update(result.get("metadata", {}) or {})
+            if "onboarding" in result:
+                orchestrator_metadata["onboarding"] = result["onboarding"]
+        else:
+            content = str(result)
+            orchestrator_metadata = {}
+
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, True, platform, False)
+
+        response = ChatRuntimeResponse(
+            content=content,
+            conversation_id=conversation_id,
+            metadata={
+                **orchestrator_metadata,
+                "platform": platform,
+                "correlation_id": correlation_id,
+                "user_id": user_id,
+                "processing_time": latency_ms / 1000.0,
+                "latency_ms": latency_ms,
+                "orchestrator": "response_core",
+                "local_processing": True,
+                "prompt_driven": True,
+            },
+        )
+
+        log_chat_event(
+            "response_core_response_sent",
+            user_id,
+            correlation_id,
+            response_length=len(content),
+            latency_ms=latency_ms,
+        )
+
+        return response
+
+    except Exception as exc:  # noqa: BLE001
+        latency_ms = (time.time() - start_time) * 1000.0
+        ChatMetrics.record_request(latency_ms, False, platform, True)
+        log_chat_event(
+            "response_core_error",
+            user_id,
+            correlation_id,
+            level="error",
+            error_message=str(exc),
+            latency_ms=latency_ms,
+        )
+        return ChatRuntimeResponse(
+            content=(
+                "Response-core encountered an internal error and returned a safe fallback message."
+            ),
+            conversation_id=conversation_id,
+            metadata={
+                "platform": platform,
+                "correlation_id": correlation_id,
+                "user_id": user_id,
+                "processing_time": latency_ms / 1000.0,
+                "latency_ms": latency_ms,
+                "error": str(exc),
+                "orchestrator": "response_core",
+                "used_fallback": True,
+            },
         )
