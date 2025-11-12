@@ -24,6 +24,22 @@ import { cn } from "../../lib/utils";
 
 type TestType = "basic" | "keyboard" | "screenReader" | "colorContrast";
 
+type AccessibilityTestResult = {
+  passed?: boolean;
+  score?: number;
+  violations?: unknown[];
+  summary?: {
+    passes?: number;
+    violations?: number;
+    incomplete?: number;
+    inapplicable?: number;
+  };
+  checks?: unknown[];
+  error?: string;
+  _error?: string;
+  [key: string]: unknown;
+};
+
 interface AccessibilityTestRunnerProps {
   className?: string;
 }
@@ -31,7 +47,7 @@ interface AccessibilityTestRunnerProps {
 export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerProps) {
   const [testType, setTestType] = useState<TestType>("basic");
   const [customHtml, setCustomHtml] = useState<string>("");
-  const [testResults, setTestResults] = useState<any>(null);
+  const [testResults, setTestResults] = useState<AccessibilityTestResult | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"html" | "results">("html");
 
@@ -139,12 +155,12 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
   const renderResults = () => {
     if (!testResults) return null;
 
-    if (testResults.error) {
+    if (testResults.error || testResults._error) {
       return (
         <Alert variant="destructive">
           <div className="flex items-start">
             <XCircle className="h-4 w-4 mt-0.5" />
-            <AlertDescription className="ml-2">{testResults.error}</AlertDescription>
+            <AlertDescription className="ml-2">{testResults.error || testResults._error}</AlertDescription>
           </div>
         </Alert>
       );

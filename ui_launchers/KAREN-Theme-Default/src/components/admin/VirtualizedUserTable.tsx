@@ -315,7 +315,6 @@ export function VirtualizedUserTable({
   itemHeight = 60,
   overscan = 6,
 }: VirtualizedUserTableProps) {
-  const { hasRole } = useRole(); // reserved for future column gating
   const columns = useMemo(() => buildColumns(), []);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -476,12 +475,6 @@ export function VirtualizedUserTable({
   }, [filters, pagination.page, pagination.limit, pagination.sort_by, pagination.sort_order]);
 
   // Reset page when filters change
-  const updateFilters = useCallback((newFilters: UserListFilter) => {
-    setUsers([]);
-    setPagination((p) => ({ ...p, page: 1 }));
-    setFilters(newFilters);
-  }, []);
-
   // Sorting
   const handleSort = (column: keyof User) => {
     setUsers([]);

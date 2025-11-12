@@ -8,7 +8,9 @@
 export { AccessibilityEnhancementsProvider } from './AccessibilityProvider';
 export { useAccessibilityEnhancements } from './AccessibilityEnhancementsContext';
 export { default as SkipLinks } from './SkipLinks';
-export { default as LiveRegion, useLiveRegion } from './LiveRegion';
+export { default as LiveRegion } from './LiveRegion';
+export { useLiveRegion } from './LiveRegionHook';
 export { AccessibilitySettings } from './AccessibilitySettings';
-export { default as KeyboardNavigationProvider, useKeyboardNavigationContext, useNavigationContainer, useNavigationItem } from './KeyboardNavigationProvider';
+export { default as KeyboardNavigationProvider } from './KeyboardNavigationProvider';
+export { useKeyboardNavigationContext, useNavigationContainer, useNavigationItem } from './KeyboardNavigationContext';
 export { default as ColorBlindnessFilters } from './ColorBlindnessFilters';

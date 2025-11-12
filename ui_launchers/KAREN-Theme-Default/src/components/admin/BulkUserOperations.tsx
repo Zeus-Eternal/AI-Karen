@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminApiResponse, BulkUserOperation } from "@/types/admin";
 import { Download, UploadCloud, AlertTriangle } from "lucide-react";
@@ -105,6 +104,49 @@ export function BulkUserOperations({
     setProgress((p) => (p ? { ...p, failed: p.total - p.completed, errors: [...p.errors, message] } : p));
   }, []);
 
+  const handleImport = useCallback(async () => {
+    if (!canPerformOperation("import")) {
+      toast({ title: "Insufficient permissions", variant: "destructive" });
+      return;
+    }
+    if (!importFile) {
+      toast({ title: "No file selected", description: "Choose a CSV or JSON file to import.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    beginProgress(1);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      formData.append("format", importFile.name.endsWith(".json") ? "json" : "csv");
+      formData.append("skip_duplicates", "true");
+      formData.append("send_invitations", "true");
+      formData.append("default_role", "user");
+
+      const res = await fetch("/api/admin/users/import", { method: "POST", body: formData });
+      const data: AdminApiResponse<{ imported_count?: number }> = await safeJson(res);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error?.message || "Import failed");
+      }
+
+      completeProgress();
+      toast({
+        title: "Import completed",
+        description: `${data.data?.imported_count ?? 0} user(s) imported successfully.`
+      });
+      onOperationComplete();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Import failed";
+      failProgress(msg);
+      toast({ title: "Import failed", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [beginProgress, canPerformOperation, completeProgress, failProgress, importFile, onOperationComplete, toast]);
+
   const handleBulkOperation = useCallback(async () => {
     if (!canPerformOperation(selectedOperation)) {
       toast({ title: "Insufficient permissions", variant: "destructive" });
@@ -153,7 +195,7 @@ export function BulkUserOperations({
         body: JSON.stringify(payload)
       });
 
-      const data: AdminApiResponse<any> = await safeJson(res);
+      const data: AdminApiResponse<{ download_url?: string; filename?: string }> = await safeJson(res);
 
       if (!res.ok || !data?.success) {
         throw new Error(data?.error?.message || "Bulk operation failed");
@@ -180,8 +222,8 @@ export function BulkUserOperations({
 
       // Give the UX a beat, then notify parent
       setTimeout(() => onOperationComplete(), 600);
-    } catch (_err: Error) {
-      const msg = err?.message || "Operation failed";
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Operation failed";
       failProgress(msg);
       toast({ title: "Bulk operation failed", description: msg, variant: "destructive" });
     } finally {
@@ -194,6 +236,7 @@ export function BulkUserOperations({
     confirmDelete,
     exportFormat,
     failProgress,
+    handleImport,
     newRole,
     onOperationComplete,
     operations,
@@ -201,49 +244,6 @@ export function BulkUserOperations({
     selectedUserIds,
     toast
   ]);
-
-  const handleImport = useCallback(async () => {
-    if (!canPerformOperation("import")) {
-      toast({ title: "Insufficient permissions", variant: "destructive" });
-      return;
-    }
-    if (!importFile) {
-      toast({ title: "No file selected", description: "Choose a CSV or JSON file to import.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    beginProgress(1);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", importFile);
-      formData.append("format", importFile.name.endsWith(".json") ? "json" : "csv");
-      formData.append("skip_duplicates", "true");
-      formData.append("send_invitations", "true");
-      formData.append("default_role", "user");
-
-      const res = await fetch("/api/admin/users/import", { method: "POST", body: formData });
-      const data: AdminApiResponse<any> = await safeJson(res);
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error?.message || "Import failed");
-      }
-
-      completeProgress();
-      toast({
-        title: "Import completed",
-        description: `${data.data?.imported_count ?? 0} user(s) imported successfully.`
-      });
-      onOperationComplete();
-    } catch (_err: Error) {
-      const msg = err?.message || "Import failed";
-      failProgress(msg);
-      toast({ title: "Import failed", description: msg, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [beginProgress, canPerformOperation, completeProgress, failProgress, importFile, onOperationComplete, toast]);
 
   /* ------------------------------ UI Builders ------------------------------ */
 

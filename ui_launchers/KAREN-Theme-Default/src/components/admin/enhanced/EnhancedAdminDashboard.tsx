@@ -85,7 +85,9 @@ export function EnhancedAdminDashboard({
 
     const result = await handleAsyncOperation(
       async () => {
-        setDashboardData((prev) => ({ ...prev, loading: true }));
+        Promise.resolve().then(() => {
+          setDashboardData((prev) => ({ ...prev, loading: true }));
+        });
 
         // Load user statistics
         const statsResponse = await fetch("/api/admin/users/stats");

@@ -6,14 +6,12 @@
  * This component provides advanced security settings management including
  * MFA requirements, session timeouts, IP restrictions, and security monitoring.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
@@ -117,12 +115,7 @@ export default function SecuritySettingsPanel() {
   const [showResolvedAlerts, setShowResolvedAlerts] = useState(false);
   const { toast } = useToast();
   // Load security settings and data
-  useEffect(() => {
-    loadSecuritySettings();
-    loadSecurityAlerts();
-    loadBlockedIPs();
-  }, []);
-  const loadSecuritySettings = async () => {
+  const loadSecuritySettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/security/settings');
@@ -131,6 +124,7 @@ export default function SecuritySettingsPanel() {
         setSettings({ ...defaultSettings, ...data });
       }
     } catch (error) {
+      console.error('Failed to load security settings', error);
       toast({
         title: 'Error',
         description: 'Failed to load security settings',
@@ -139,8 +133,9 @@ export default function SecuritySettingsPanel() {
     } finally {
       setLoading(false);
     }
-  };
-  const loadSecurityAlerts = async () => {
+  }, [toast]);
+
+  const loadSecurityAlerts = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/alerts');
       if (response.ok) {
@@ -148,10 +143,11 @@ export default function SecuritySettingsPanel() {
         setAlerts(data);
       }
     } catch (error) {
-    // Handle error silently
-  }
-  };
-  const loadBlockedIPs = async () => {
+      console.error('Failed to load security alerts', error);
+    }
+  }, []);
+
+  const loadBlockedIPs = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/blocked-ips');
       if (response.ok) {
@@ -159,9 +155,15 @@ export default function SecuritySettingsPanel() {
         setBlockedIPs(data);
       }
     } catch (error) {
-    // Handle error silently
-  }
-  };
+      console.error('Failed to load blocked IPs', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSecuritySettings();
+    loadSecurityAlerts();
+    loadBlockedIPs();
+  }, [loadSecuritySettings, loadSecurityAlerts, loadBlockedIPs]);
   const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
       const keys = path.split('.');
@@ -197,6 +199,7 @@ export default function SecuritySettingsPanel() {
         throw new Error(error.message || 'Failed to save settings');
       }
     } catch (error) {
+      console.error('Failed to save security settings', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save settings',
@@ -221,6 +224,7 @@ export default function SecuritySettingsPanel() {
         });
       }
     } catch (error) {
+      console.error('Failed to resolve alert', error);
       toast({
         title: 'Error',
         description: 'Failed to resolve alert',
@@ -241,6 +245,7 @@ export default function SecuritySettingsPanel() {
         });
       }
     } catch (error) {
+      console.error('Failed to unblock IP address', error);
       toast({
         title: 'Error',
         description: 'Failed to unblock IP address',
@@ -263,6 +268,7 @@ export default function SecuritySettingsPanel() {
         URL.revokeObjectURL(url);
       }
     } catch (error) {
+      console.error('Failed to export security report', error);
       toast({
         title: 'Error',
         description: 'Failed to export security report',

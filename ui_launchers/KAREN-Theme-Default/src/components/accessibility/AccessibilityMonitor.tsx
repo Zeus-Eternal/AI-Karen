@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -35,13 +35,7 @@ export function AccessibilityMonitor({
   const [showDetails, setShowDetails] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const {
-    violations,
-    warnings,
-    report,
-    hasIssues,
-    runTest,
-  } = useAccessibilityMonitor(containerRef, enabled);
+  const { violations, warnings, hasIssues, runTest } = useAccessibilityMonitor(containerRef, enabled);
 
   const handleToggle = (newEnabled: boolean) => {
     setEnabled(newEnabled);
