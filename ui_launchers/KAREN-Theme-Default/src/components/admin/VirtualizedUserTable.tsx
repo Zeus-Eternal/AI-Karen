@@ -22,7 +22,6 @@ import { FixedSizeList as List, ListOnScrollProps } from "react-window";
 // import AutoSizer from "react-virtualized-auto-sizer";
 const AutoSizer: unknown = ({ children }: unknown) => children({ height: 600, width: 800 });
 import { Button } from "@/components/ui/button";
-import { useRole } from "@/hooks/useRole";
 import {
   UserListCache,
   AdminCacheManager,
@@ -322,7 +321,7 @@ export function VirtualizedUserTable({
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  const [filters, setFilters] = useState<UserListFilter>({});
+  const [filters, _setFilters] = useState<UserListFilter>({});
   const [pagination, setPagination] = useState<PaginationParams>({
     page: 1,
     limit: 100, // large page for virtual scroll

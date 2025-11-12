@@ -373,57 +373,41 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
-  const selectedModelId = manualSelectedModelId ?? (
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : ''
-  );
+    const autoSelectionRef = useRef<string | null>(null);
 
-  const autoSelectionRef = useRef<string | null>(null);
+    const autoSelectedModelId =
+      autoSelect && topRecommendation && topRecommendation.score > 60
+        ? topRecommendation.model.id
+        : '';
 
-  const autoSelectedModelId =
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : '';
+    const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
 
-  const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
-
-  const effectiveSelectedModelId = useMemo(() => {
-    if (manualSelectedModelId) {
-      return manualSelectedModelId;
-    }
-    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
-      return topRecommendation.model.id;
-    }
-    return '';
-  }, [autoSelect, manualSelectedModelId, topRecommendation]);
-
-  useEffect(() => {
-    if (autoSelect && autoSelectedModelId) {
-      const recommendedId = autoSelectedModelId;
-      if (autoSelectionRef.current !== recommendedId) {
-        autoSelectionRef.current = recommendedId;
-        onModelSelect(recommendedId);
+    useEffect(() => {
+      if (autoSelect && autoSelectedModelId) {
+        const recommendedId = autoSelectedModelId;
+        if (autoSelectionRef.current !== recommendedId) {
+          autoSelectionRef.current = recommendedId;
+          onModelSelect(recommendedId);
+        }
       }
-    }
-  }, [autoSelect, topRecommendation, onModelSelect]);
+    }, [autoSelect, autoSelectedModelId, onModelSelect]);
 
-  const handleManualSelect = useCallback((modelId: string) => {
-    setManualSelectedModelId(modelId);
-    onModelSelect(modelId);
-  }, [onModelSelect]);
+    const handleManualSelect = useCallback((modelId: string) => {
+      setManualSelectedModelId(modelId);
+      onModelSelect(modelId);
+    }, [onModelSelect]);
 
-  const handleAutoSelectChange = useCallback((checked: boolean) => {
-    setAutoSelect(checked);
-    if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
-      setManualSelectedModelId(topRecommendation.model.id);
-      onModelSelect(topRecommendation.model.id);
-    }
-    if (checked) {
-      setManualSelectedModelId(null);
-      autoSelectionRef.current = null;
-    }
-  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
+    const handleAutoSelectChange = useCallback((checked: boolean) => {
+      setAutoSelect(checked);
+      if (!checked && !selectedModelId && topRecommendation && topRecommendation.score > 60) {
+        setManualSelectedModelId(topRecommendation.model.id);
+        onModelSelect(topRecommendation.model.id);
+      }
+      if (checked) {
+        setManualSelectedModelId(null);
+        autoSelectionRef.current = null;
+      }
+    }, [onModelSelect, selectedModelId, topRecommendation]);
 
   if (!contextAnalysis) {
     return (

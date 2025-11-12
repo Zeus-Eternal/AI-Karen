@@ -119,15 +119,63 @@ export default function ExtensionTestPage() {
           />
         </TabsContent>
 
-        <TabsContent value="debug">
+        <TabsContent value="debug" className="space-y-4">
           <ExtensionDebugger
             extensionId="test-extension"
             extensionName="Test Extension"
           />
+          <Card>
+            <CardHeader>
+              <CardTitle>Extension Routing Metadata</CardTitle>
+              <CardDescription>
+                Inspect discovered routes and navigation items provided by extensions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="font-medium">Routes</h3>
+                <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-3 text-sm">
+                  {JSON.stringify(routes, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-medium">Navigation Items</h3>
+                <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-3 text-sm">
+                  {JSON.stringify(navItems, null, 2)}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="monitor">
+        <TabsContent value="monitor" className="space-y-4">
           <ExtensionPerformanceMonitor />
+          <Card>
+            <CardHeader>
+              <CardTitle>Live Extension Telemetry</CardTitle>
+              <CardDescription>Raw values returned from the monitoring hooks.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="font-medium">Health</h3>
+                <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-3 text-sm">
+                  {JSON.stringify(healthData, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-medium">Performance</h3>
+                <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-3 text-sm">
+                  {JSON.stringify(performanceData, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h3 className="font-medium">Tasks</h3>
+                <pre className="mt-2 max-h-48 overflow-auto rounded bg-muted p-3 text-sm">
+                  {JSON.stringify(taskData, null, 2)}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

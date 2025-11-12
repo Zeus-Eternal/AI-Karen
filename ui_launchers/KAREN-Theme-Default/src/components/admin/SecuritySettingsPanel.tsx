@@ -222,14 +222,14 @@ export default function SecuritySettingsPanel() {
           description: 'Alert resolved successfully'
         });
       }
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to resolve alert',
-        variant: 'destructive'
-      });
-    }
-  };
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to resolve alert',
+          variant: 'destructive'
+        });
+      }
+    };
   const handleUnblockIP = async (ipId: string) => {
     try {
       const response = await fetch(`/api/admin/security/blocked-ips/${ipId}`, {
@@ -242,14 +242,14 @@ export default function SecuritySettingsPanel() {
           description: 'IP address unblocked successfully'
         });
       }
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to unblock IP address',
-        variant: 'destructive'
-      });
-    }
-  };
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to unblock IP address',
+          variant: 'destructive'
+        });
+      }
+    };
   const handleExportSecurityReport = async () => {
     try {
       const response = await fetch('/api/admin/security/report');
@@ -264,13 +264,13 @@ export default function SecuritySettingsPanel() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-    } catch (_error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to export security report',
-        variant: 'destructive'
-      });
-    }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to export security report',
+          variant: 'destructive'
+        });
+      }
   };
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {

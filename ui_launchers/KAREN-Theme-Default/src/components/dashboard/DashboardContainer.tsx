@@ -52,13 +52,12 @@ import {
 
 // Stores
 import { useAppStore, selectUser } from "@/store/app-store";
-import {
-  useDashboardStore,
-  selectGlobalTimeRange,
-  selectGlobalFilters,
-  selectIsEditing,
-  selectTemplatesForUser,
-} from "@/store/dashboard-store";
+  import {
+    useDashboardStore,
+    selectGlobalTimeRange,
+    selectIsEditing,
+    selectTemplatesForUser,
+  } from "@/store/dashboard-store";
 
 // Types
 import type {

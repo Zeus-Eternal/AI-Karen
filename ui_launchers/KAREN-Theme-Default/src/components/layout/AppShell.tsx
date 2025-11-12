@@ -8,13 +8,7 @@
 
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import {
@@ -24,32 +18,13 @@ import {
   appShellMainVariants,
   appShellFooterVariants,
 } from "./app-shell-variants";
+import {
+  AppShellContext,
+  useAppShell,
+  type AppShellContextType,
+} from "./AppShellContext";
 
 // -------------------- Context --------------------
-
-export interface AppShellContextType {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (
-    collapsed: boolean | ((prev: boolean) => boolean)
-  ) => void;
-  isMobile: boolean;
-  isTablet: boolean;
-  toggleSidebar: () => void;
-  closeSidebar: () => void;
-  openSidebar: () => void;
-}
-
-const AppShellContext = createContext<AppShellContextType | undefined>(
-  undefined
-);
-
-export function useAppShell() {
-  const context = useContext(AppShellContext);
-  if (!context) throw new Error("useAppShell must be used within an AppShell");
-  return context;
-}
 
 export interface AppShellProps
   extends React.HTMLAttributes<HTMLDivElement>,

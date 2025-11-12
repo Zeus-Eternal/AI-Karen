@@ -19,7 +19,7 @@ import React, {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useAppShell } from "@/components/layout/AppShell";
+import { useAppShell } from "@/components/layout/AppShellContext";
 import { Button } from "@/components/ui/button";
 
 import {

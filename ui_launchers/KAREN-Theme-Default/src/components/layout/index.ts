@@ -12,7 +12,6 @@ export {
   AppShellHeader,
   AppShellMain,
   AppShellFooter,
-  useAppShell,
 } from "./AppShell";
 export type {
   AppShellProps,
@@ -20,8 +19,9 @@ export type {
   AppShellHeaderProps,
   AppShellMainProps,
   AppShellFooterProps,
-  AppShellContextType,
 } from "./AppShell";
+export { useAppShell } from "./AppShellContext";
+export type { AppShellContextType } from "./AppShellContext";
 
 export {
   appShellVariants,

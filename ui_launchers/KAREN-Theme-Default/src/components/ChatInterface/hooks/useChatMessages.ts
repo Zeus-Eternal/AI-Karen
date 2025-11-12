@@ -833,31 +833,29 @@ export const useChatMessages = (
               fullText = await response.text();
             }
           }
-        }
-
         metadata = {
-            ...metadata,
-            origin: metadata?.origin ?? responseOrigin,
-            endpoint: metadata?.endpoint ?? activeEndpoint,
-          };
+          ...metadata,
+          origin: metadata?.origin ?? responseOrigin,
+          endpoint: metadata?.endpoint ?? activeEndpoint,
+        };
 
-          // Calculate final metrics
-          const latency = Math.round(performance.now() - startTime);
+        // Calculate final metrics
+        const latency = Math.round(performance.now() - startTime);
 
-          safeDebug("🔍 useChatMessages: Response processing completed:", {
-            fullTextLength: fullText.length,
-            fullTextPreview:
-              fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
-            latencyMs: latency,
-            metadata: metadata,
-            hasMetadata: !!metadata,
-            metadataKeys: metadata ? Object.keys(metadata) : [],
-            modelFromMetadata: metadata?.model,
-            modelFromSettings: settings.model,
-            finalModel: (metadata && (metadata as unknown).model) || settings.model,
-          });
+        safeDebug("🔍 useChatMessages: Response processing completed:", {
+          fullTextLength: fullText.length,
+          fullTextPreview:
+            fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
+          latencyMs: latency,
+          metadata: metadata,
+          hasMetadata: !!metadata,
+          metadataKeys: metadata ? Object.keys(metadata) : [],
+          modelFromMetadata: metadata?.model,
+          modelFromSettings: settings.model,
+          finalModel: (metadata && (metadata as unknown).model) || settings.model,
+        });
 
-          // Create final message
+        // Create final message
           const finalMessage: ChatMessage = {
             ...placeholder,
             content: fullText.trim(),

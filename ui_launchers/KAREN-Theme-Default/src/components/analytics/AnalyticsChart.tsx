@@ -349,12 +349,13 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
         title: "Analytics Refreshed",
         description: "Analytics data has been updated successfully.",
       });
-    } catch (_error) {
-      toast({
-        variant: "destructive",
-        title: "Refresh Failed",
-        description: "Failed to refresh analytics data. Please try again.",
-      });
+      } catch (error) {
+        console.error("Failed to refresh analytics data", error);
+        toast({
+          variant: "destructive",
+          title: "Refresh Failed",
+          description: "Failed to refresh analytics data. Please try again.",
+        });
     } finally {
       setIsLoading(false);
     }

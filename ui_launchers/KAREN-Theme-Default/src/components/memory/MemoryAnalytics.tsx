@@ -230,7 +230,7 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userId, tenantId, memoryService, onError]);
+  }, [userId, memoryService, onError]);
 
   // Initial load and refresh interval
   useEffect(() => {

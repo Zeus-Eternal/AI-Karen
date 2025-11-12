@@ -147,15 +147,16 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
         source.url ? `\nURL: ${source.url}` : ""
       }${source.snippet ? `\nSnippet: ${source.snippet}` : ""}`;
 
-      try {
-        await navigator.clipboard.writeText(info);
-        toast({ title: "Copied", description: "Source information copied to clipboard." });
-      } catch (_error) {
-        toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Failed to copy source information.",
-        });
+        try {
+          await navigator.clipboard.writeText(info);
+          toast({ title: "Copied", description: "Source information copied to clipboard." });
+        } catch (error) {
+          console.error("Failed to copy source attribution details", error);
+          toast({
+            variant: "destructive",
+            title: "Copy Failed",
+            description: "Failed to copy source information.",
+          });
       }
     },
     [toast]

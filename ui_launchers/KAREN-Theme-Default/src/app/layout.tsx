@@ -7,12 +7,15 @@ import '@fontsource/inter/700.css'
 import '../styles/globals.css'
 import { Providers } from './providers'
 
+// Next.js requires exporting metadata/dynamic from this file; disable the fast-refresh rule for these exports.
+// eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
   title: 'AI Karen',
   description: 'AI Assistant Interface',
 }
 
 // Force dynamic rendering
+// eslint-disable-next-line react-refresh/only-export-components
 export const dynamic = 'force-dynamic'
 
 export default function RootLayout({

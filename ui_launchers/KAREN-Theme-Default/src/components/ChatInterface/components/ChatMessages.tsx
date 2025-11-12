@@ -61,6 +61,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               {enableCodeAssistance &&
                 " Try asking me about code or programming concepts!"}
             </div>
+            <p className="mt-3 text-xs text-muted-foreground md:text-sm">
+              Currently configured model: <span className="font-medium">{settings.model}</span>
+            </p>
           </div>
         ) : (
           messages.map((message) => (

@@ -386,15 +386,16 @@ export default function AuditLogViewer({
         ...parsed.filters,
       }));
       setPagination((p) => ({ ...p, page: 1 }));
-    } else {
-      // clearing query resets q
-      setFilter((prev) => {
-        const { q: _query, ...rest } = prev;
-        return rest;
-      });
-      setPagination((p) => ({ ...p, page: 1 }));
-    }
-  };
+      } else {
+        // clearing query resets q
+        setFilter((prev) => {
+          const rest = { ...prev };
+          delete rest.q;
+          return rest;
+        });
+        setPagination((p) => ({ ...p, page: 1 }));
+      }
+    };
 
   const handleFilterChange = (newFilter: Partial<AuditLogFilter>) => {
     setFilter((prev) => ({ ...prev, ...newFilter }));

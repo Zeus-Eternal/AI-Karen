@@ -93,9 +93,9 @@ export class ErrorBoundary extends Component<Props, State> {
         userId: this.getCurrentUserId(),
         sessionId: this.getSessionId(),
       });
-    } catch (_error) {
-    // Handle error silently
-  }
+    } catch (reportError) {
+      console.error('Failed to report boundary error', reportError);
+    }
   }
   private getCurrentUserId(): string | null {
     // Get from auth context or local storage
@@ -119,9 +119,9 @@ export class ErrorBoundary extends Component<Props, State> {
         if (recoveryStrategy.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
-      } catch (_error) {
-    // Handle error silently
-  } finally {
+      } catch (recoveryError) {
+        console.error('Automatic recovery failed', recoveryError);
+      } finally {
         this.setState({ isRecovering: false });
       }
     }
@@ -263,5 +263,3 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
     </div>
   );
 };
-
-export { withErrorBoundary } from "./withErrorBoundary";
