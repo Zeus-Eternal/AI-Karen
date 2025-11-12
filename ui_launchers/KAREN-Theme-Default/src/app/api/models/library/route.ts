@@ -76,7 +76,7 @@ function sanitizeParam(value: string | null, allowList?: string[]): string | und
   return v;
 }
 
-async function getModelHealthStatus(modelId: string): Promise<ModelHealthStatus> {
+async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus> {
   try {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     // Hook in real checks when available (GPU mem, warmup ping, etc.)

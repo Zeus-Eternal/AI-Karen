@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
+
 const collector = new QualityMetricsCollector();
 export async function GET(_request: NextRequest) {
   try {
@@ -21,9 +22,9 @@ export async function POST(request: NextRequest) {
     const { forceRefresh } = body;
     if (forceRefresh) {
       // Clear cache and collect fresh metrics
-      const collector = new QualityMetricsCollector();
-      const metrics = await collector.collectAllMetrics();
-      await collector.saveTrend(metrics);
+      const freshCollector = new QualityMetricsCollector();
+      const metrics = await freshCollector.collectAllMetrics();
+      await freshCollector.saveTrend(metrics);
       return NextResponse.json(metrics);
     }
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
