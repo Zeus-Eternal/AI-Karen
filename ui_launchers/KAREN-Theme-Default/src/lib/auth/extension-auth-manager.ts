@@ -431,13 +431,12 @@ export class ExtensionAuthManager {
         this.tokenStorage.setTokens(mainToken);
         return mainToken;
       }
-      
-      throw new ConnectionError(
-        'No refresh token available',
-        ErrorCategory.CONFIGURATION_ERROR,
-        false,
-        0
-      );
+
+      // No refresh token available - return null gracefully instead of throwing
+      // This allows the calling code to handle unauthenticated state properly
+      logger.debug('No refresh token available for extension auth');
+      this.authState.isAuthenticated = false;
+      return null;
     }
 
     try {

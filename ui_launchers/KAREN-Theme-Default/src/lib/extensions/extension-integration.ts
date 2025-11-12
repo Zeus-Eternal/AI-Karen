@@ -808,6 +808,11 @@ export class ExtensionIntegrationService {
   }
 
   private async updateAllExtensionStatuses(): Promise<void> {
+    // Skip if extensions access is denied (e.g., due to auth failure)
+    if (this.extensionsAccessDenied) {
+      return;
+    }
+
     try {
       const backend = getKarenBackend();
       const response = await backend.makeRequestPublic("/api/extensions/system/health");

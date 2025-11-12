@@ -45,6 +45,17 @@ const ExtensionSidebar = dynamic(
 
 type ActiveView = "settings" | "dashboard" | "commsCenter";
 
+// Helper function to parse view from URL params
+const parseView = (
+  sp: ReturnType<typeof useSearchParams> | null
+): ActiveView => {
+  const v = sp?.get("view") ?? "";
+  const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
+  return (allowed as readonly string[]).includes(v)
+    ? (v as ActiveView)
+    : "dashboard";
+};
+
 export default function HomePage() {
   return (
     <TextSelectionProvider enableGlobalSelection={true} enableKeyboardShortcuts={true}>
@@ -59,22 +70,13 @@ function AuthenticatedHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const parseView = (
-    sp: ReturnType<typeof useSearchParams> | null
-  ): ActiveView => {
-    const v = sp?.get("view") ?? "";
-    const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
-    return (allowed as readonly string[]).includes(v)
-      ? (v as ActiveView)
-      : "dashboard";
-  };
 
   const [activeMainView, setActiveMainView] = useState<ActiveView>(() =>
-    parseView(searchParams as unknown)
+    parseView(searchParams)
   );
 
   useEffect(() => {
-    const currentView = parseView(searchParams as unknown);
+    const currentView = parseView(searchParams);
     if (currentView !== activeMainView) {
       setActiveMainView(currentView);
     }

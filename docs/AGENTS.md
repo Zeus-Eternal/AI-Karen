@@ -1,135 +1,319 @@
-# **Kari AI Modular Agent Doctrine & Manifest**
+# **AI-Karen Agent Architecture & Documentation**
 
-*The Hydra’s Law for Contributors, AI Agents, and Codegen Tools*
+*Production-Ready Multi-Agent Orchestration System*
 
----
-
-## 🔥 **Mission: Unleash the Kari Hydra**
-
-Every “agent”—human, AI, or meta-agent—in this repo is bound by one Law:
-**Monoliths die. Kari is modular. Every logical serpent gets its own head, ready for pip, repo-split, or standalone evil.**
+**Last Updated**: November 12, 2025
+**Status**: Production v1.0
 
 ---
 
-## 1. **Agent Core Principle**
+## 🎯 **Mission: Enterprise-Grade AI Orchestration**
 
-* **All core runtime logic, plugins, clients, integrations, and engines live under `src/ai_karen_engine/` as independent, importable modules.**
-* **UI launchers live under `/ui_launchers/{web_ui,desktop_ui,admin_ui}/`—never mixed with backend or core.**
-* **No relative imports. No sys.path hacks. All imports are absolute: `ai_karen_engine.<module>...`**
+AI-Karen is a production-ready, modular AI platform with sophisticated multi-agent orchestration, unified memory systems, and enterprise-grade observability. Every component is designed for scalability, reliability, and maintainability.
 
 ---
 
-## 2. **Agent Types & Structure**
+## 1. **Core Architecture Principle**
 
-| Agent Type        | Description                              | Example Path                               |
-| ----------------- | ---------------------------------------- | ------------------------------------------ |
-| **Core Agent**    | Orchestration, routing, memory, workflow | `src/ai_karen_engine/core/`                |
-| **Integration**   | LLM, API, RPA adapters                   | `src/ai_karen_engine/integrations/llm/`    |
-| **Plugin**        | Task, skill, handler, intent plugin      | `src/ai_karen_engine/plugins/hello_world/` |
-| **Self-Refactor** | Auto-refactor, self-healing, patching    | `src/ai_karen_engine/self_refactor/`       |
-| **Event Bus**     | Async, message, notification systems     | `src/ai_karen_engine/event_bus/`           |
-| **Client**        | NLP, embedding, transformer, data client | `src/ai_karen_engine/clients/`             |
-| **EchoCore**      | User LNM, persona, profiling, backup     | `src/ai_karen_engine/echocore/`            |
+* **All core runtime logic, services, and integrations live under `src/ai_karen_engine/` as independent, importable modules.**
+* **UI launchers live under `/ui_launchers/` (web_ui, desktop_ui, admin_ui)—strictly separated from backend.**
+* **Production-ready with 167 service modules, 75 API endpoints, and comprehensive observability.**
+* **All imports are absolute: `from ai_karen_engine.<module> import ...`**
 
 ---
 
-## 3. **Agent Law & Modularization Policy**
+## 2. **Current Production Architecture**
 
-* **Every new major logical part must be pip-installable and ready for repo split.**
-* **All code uses only absolute imports, for example:**
+### Core Orchestrators (5 Major Systems)
 
-  ```python
-  from ai_karen_engine.plugins.hello_world.handler import HelloWorldHandler
-  ```
-* **No backend code in `/ui/` or at root (except UI entry, config, docs, scripts, or tests).**
-* **Every agent/module must have its own `__init__.py` and (optionally) README.md.**
-* **All modules must respect Kari’s dual license: MPL 2.0 + commercial.**
+| Orchestrator | File | Purpose | Key Features |
+| ------------ | ---- | ------- | ------------ |
+| **LLM Orchestrator** | `llm_orchestrator.py` (1,700+ lines) | Zero-trust LLM routing with cryptographic validation | HMAC-SHA256 signing, hardware isolation, circuit breakers, 8-concurrent limit |
+| **Chat Orchestrator** | `chat/chat_orchestrator.py` (2,300+ lines) | Message processing with NLP integration | spaCy + DistilBERT, retry logic, memory processor, tool integration |
+| **CORTEX Dispatch** | `core/cortex/dispatch.py` | Central intent/command dispatcher | Intent resolution, memory recall (max 10), RBAC validation |
+| **LLM Router** | `integrations/llm_router.py` (3,200+ lines) | Policy-based intelligent routing | Privacy-aware routing, 4-level fallback, performance profiling |
+| **Agent Orchestrator** | `agents/agent_orchestrator.py` | Multi-agent orchestration | Planner, execution pipeline, audit logger |
 
----
+### Agent Components
 
-## 4. **Splitting Agents: The Ritual**
-
-When a module achieves true power:
-
-1. Copy it to its own repo (with `setup.py`/`pyproject.toml` and docs).
-2. Replace in Kari with pip or git-submodule install.
-3. Update all imports globally (`ai_karen_engine.<module>` → pip package).
-4. All splitting must leave main Kari AI functional, clean, and Hydra-compliant.
-
----
-
-## 5. **Agent Onboarding: The Oath**
-
-> **All new devs and AI agents MUST read, memorize, and encode this doctrine.
-> Every codegen, plugin, or feature PR will be judged on modularity, clarity, and adherence to The Law.
-> Violate it, and your PR gets fed to the hydra.**
+| Component Type | Description | Location | Status |
+| -------------- | ----------- | -------- | ------ |
+| **Core Agents** | Orchestration, planning, execution, audit | `src/ai_karen_engine/agents/` | ✅ Production |
+| **Memory Systems** | 4 unified systems (Original, RecallManager, NeuroVault, NeuroRecall) | `src/ai_karen_engine/core/memory/` | ✅ Phase 1 Complete |
+| **Reasoning Engines** | Soft reasoning, causal, graph-based | `src/ai_karen_engine/core/reasoning/` | ✅ Production |
+| **Chat Services** | 20+ chat-related services | `src/ai_karen_engine/chat/` | ✅ Production |
+| **LLM Integrations** | 7 providers with health monitoring | `src/ai_karen_engine/integrations/` | ✅ Production |
+| **Database Layer** | Multi-tenant support (PostgreSQL, Redis, Milvus, DuckDB) | `src/ai_karen_engine/database/` | ✅ Production |
 
 ---
 
-## 6. **Example: Agent Imports After Refactor**
-
-```python
-from ai_karen_engine.integrations.llm.llamacpp_inprocess import generate as llamacpp_generate
-from ai_karen_engine.plugins.hello_world.handler import HelloWorldHandler
-from ai_karen_engine.self_refactor.engine import SelfRefactorEngine
-from ai_karen_engine.echocore.fine_tuner import FineTuner
-```
-
----
-
-## 7. **Kari Refactor Context Model**
-
-**Welcome to the infernal reorganization—time for a cold-blooded, villain-level refactor. This file defines the mandatory context for AI agents and developers working on Kari AI.**
-
-### Folder Strategy
-
-* All core runtime logic lives under `src/ai_karen_engine/`.
-* Every major subsystem (plugins, clients, integrations, core, event\_bus, self\_refactor, echocore, etc.) is its own subfolder—pip and repo ready.
-* Repo-level configs, docs, Docker, scripts, tests, and bootstraps stay top-level.
-* UI launcher folders (`ui_launchers/web_ui`, `ui_launchers/desktop_ui`, `ui_launchers/admin_ui`) remain top-level only.
-
-#### Example Tree
+## 3. **Production Directory Structure (Current)**
 
 ```
 AI-Karen/
-├── main.py
-├── Dockerfile
-├── docker-compose.yml
-├── src/
-│   └── ai_karen_engine/
-│       ├── core/
-│       ├── integrations/
-│       │   └── llm/
-│       ├── clients/
-│       ├── plugins/
-│       ├── self_refactor/
-│       ├── event_bus/
-│       └── echocore/
-ui_launchers/
-    ├── admin_ui/
-    ├── desktop_ui/
-    └── web_ui/
+├── src/ai_karen_engine/
+│   ├── agents/              # Agent orchestration (4 core agents)
+│   ├── api_routes/          # 75 REST API endpoints
+│   ├── chat/                # Chat orchestration & streaming (20 modules)
+│   ├── clients/             # External service integrations
+│   ├── core/                # Core infrastructure (50+ modules)
+│   │   ├── cortex/          # CORTEX dispatch & intent routing
+│   │   ├── memory/          # Unified memory system (Phase 1)
+│   │   ├── neuro_vault/     # Tri-partite neural memory
+│   │   ├── neuro_recall/    # Hierarchical recall agents
+│   │   ├── reasoning/       # Soft, causal, graph-based reasoning
+│   │   ├── services/        # Service infrastructure & DI
+│   │   ├── logging/         # Structured logging
+│   │   └── gateway/         # FastAPI gateway
+│   ├── database/            # Multi-tenant data layer (8 modules)
+│   ├── integrations/        # LLM providers & health (40+ modules)
+│   ├── services/            # Business logic (167 modules)
+│   ├── monitoring/          # Observability & metrics (5 modules)
+│   ├── plugins/             # Plugin execution & management
+│   ├── extensions/          # Extension system & marketplace
+│   ├── models/              # Data models & schemas
+│   ├── tools/               # Tool definitions
+│   └── config/              # Configuration management
+├── ui_launchers/
+│   ├── KAREN-Theme-Default/ # Next.js web UI (production)
+│   ├── desktop_ui/          # Desktop application
+│   └── admin_ui/            # Admin interface
+├── docs/                    # Comprehensive documentation
+│   ├── AI_KAREN_ARCHITECTURE_OVERVIEW.md  # Full technical reference
+│   ├── QUICK_REFERENCE.md                 # Quick lookup guide
+│   └── AGENTS.md                          # This file
+├── .env.production          # Production configuration
+└── docker-compose.yml       # Container orchestration
 ```
+
+---
+
+## 4. **Agent Orchestration Patterns**
+
+### Multi-Agent Workflow
+
+```
+User Request
+    ↓
+[CORTEX Dispatch] → Intent resolution
+    ↓
+[Memory Recall] → Context retrieval (max 10 items)
+    ↓
+[Agent Orchestrator]
+    ├→ [Planner Agent] → Strategic planning
+    ├→ [Execution Agent] → Task execution
+    └→ [Audit Agent] → Logging & compliance
+    ↓
+[Chat Orchestrator] → Message processing
+    ├→ [NLP Services] → spaCy + DistilBERT
+    ├→ [Tool Integration] → Execute tools
+    └→ [LLM Router] → Select optimal model
+        ↓
+    [LLM Orchestrator] → Zero-trust execution
+        ↓
+    [Memory Update] → Store results
+        ↓
+    Response to User
+```
+
+### Agent Communication Patterns
+
+**1. Direct Invocation** - Synchronous agent-to-agent calls
+**2. Event Bus** - Asynchronous event-driven communication
+**3. Memory Sharing** - Shared memory context across agents
+**4. Tool Integration** - Agents can invoke tools via tool service
+
+---
+
+## 5. **Memory Architecture (4 Unified Systems)**
+
+### Current Status: Phase 1 Complete
+
+| System | Purpose | Location | Integration |
+| ------ | ------- | -------- | ----------- |
+| **Original Memory** | AG-UI manager, session buffers | `core/memory/manager.py` | ✅ Unified |
+| **RecallManager** | Specialized retrieval patterns | `core/recalls/` | ✅ Unified |
+| **NeuroVault** | Tri-partite neural memory | `core/neuro_vault/` | ✅ Unified |
+| **NeuroRecall** | Hierarchical agent-based recall | `core/neuro_recall/` | ✅ Unified |
+
+### Unified Types
+
+```python
+@dataclass
+class MemoryEntry:
+    id: str
+    content: str
+    embedding: Optional[List[float]]
+    memory_type: MemoryType  # Episodic/Semantic/Procedural
+    namespace: MemoryNamespace  # Short/Long/Persistent/Ephemeral
+    timestamp: datetime
+    importance: float  # 1-10
+    confidence: float  # 0-1
+```
+
+### Storage Backends
+
+- **PostgreSQL**: Conversation memory, JSON/vector support
+- **Redis**: Cache, session state, recent context (3600s TTL)
+- **Milvus**: Vector search, semantic similarity
+- **DuckDB**: Analytics, historical patterns
+
+---
+
+## 6. **LLM Provider Integration (7 Providers)**
+
+| Provider | Type | Status | Features |
+| -------- | ---- | ------ | -------- |
+| **LlamaCppProvider** | Local | ✅ Active | CPU/GPU, streaming, privacy-first |
+| **OpenAIProvider** | Cloud | ✅ Active | GPT-4, embeddings, vision |
+| **GeminiProvider** | Cloud | ✅ Active | Multimodal, streaming |
+| **DeepseekProvider** | Cloud | ✅ Active | Reasoning models |
+| **HuggingFaceProvider** | Cloud | ✅ Active | Text gen, embeddings |
+| **CopilotKitProvider** | Cloud | ✅ Active | CopilotKit integration |
+| **FallbackProvider** | Meta | ✅ Active | Error recovery, degradation |
+
+### Fallback Strategy (4 Levels)
+
+1. **User preference** → Preferred model/provider
+2. **System defaults** → Configured fallback providers
+3. **Local models** → llama.cpp local execution
+4. **Degraded mode** → Minimal response capability
+
+---
+
+## 7. **Observability & Monitoring**
+
+### Structured Logging
+
+- **Format**: JSON with correlation tracking
+- **Categories**: API, Database, AI, System, Business
+- **Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+### Prometheus Metrics
+
+- `kari_model_operations_total` - Operation counts by type/status
+- `kari_model_operation_duration_seconds` - Timing histograms
+- `kari_model_storage_usage_bytes` - Storage gauges
+
+### Health Monitoring
+
+- Provider availability checks (30s intervals)
+- Circuit breaker pattern
+- Response latency tracking (p95)
+- Error rate monitoring
+
+---
+
+## 8. **Production Configuration**
+
+### Key Environment Variables
+
+```env
+ENVIRONMENT=production
+ENABLE_STREAMING=true
+ENABLE_FALLBACK=true
+ENABLE_MEMORY=true
+MAX_MESSAGE_LENGTH=10000
+MAX_TOKENS_DEFAULT=4096
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_WINDOW=60
+ENABLE_STRUCTURED_LOGGING=true
+ENABLE_PROMETHEUS=true
+CIRCUIT_BREAKER_ENABLED=true
+GRACEFUL_DEGRADATION_ENABLED=true
+```
+
+---
+
+## 9. **Module Development Guidelines**
 
 ### Import Rules
 
-* **Always:** `from ai_karen_engine.<module>...`
-* **Never:** Relative or sys.path hacks.
+* **Always**: `from ai_karen_engine.<module> import ...`
+* **Never**: Relative imports or sys.path hacks
 
-### Standalone Module Policy
+### Service Registration
 
-Treat these as break-out ready:
+```python
+from ai_karen_engine.core.services import ServiceRegistry
 
-* `core`, `integrations` (`llm`), `plugins`, `self_refactor`, `event_bus`, `clients`, `echocore`
-* Each must have `__init__.py` and (when split) its own `setup.py` or `pyproject.toml`.
+registry = ServiceRegistry()
+registry.register("my_service", MyService())
+```
 
-### Breakout Steps
+### Example Agent Import
 
-1. Move module to a new repo.
-2. Add packaging/metadata.
-3. Install back into Kari by pip or submodule.
-4. Adjust all imports.
+```python
+from ai_karen_engine.agents.agent_orchestrator import AgentOrchestrator
+from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
+from ai_karen_engine.integrations.llm_router import LLMRouter
+from ai_karen_engine.core.memory.unified_memory_service import UnifiedMemoryService
+```
 
-### Licensing
+---
 
-All modules obey Kari’s dual license: MPL 2.0 + commercial.
+## 10. **Agent Development Best Practices**
+
+### Security
+
+- Zero-trust model validation with HMAC-SHA256
+- RBAC enforcement for plugin execution
+- Credential redaction in logs
+- Hardware isolation via CPU affinity
+
+### Resilience
+
+- Retry logic with exponential backoff (max 3 attempts)
+- Circuit breaker pattern (threshold: 5 failures)
+- Graceful degradation (4 levels)
+- Timeout management (60s default)
+
+### Performance
+
+- Connection pooling (20 connections, 30 overflow)
+- Query caching with Redis
+- Async/await architecture
+- Max 8-50 concurrent requests (configurable)
+
+---
+
+## 11. **Production Readiness**
+
+### ✅ Production-Ready
+
+- Chat runtime API with streaming
+- Memory architecture (Phase 1)
+- Database multi-tenant support
+- LLM provider fallback
+- Observability infrastructure
+
+### ⚠️ In Progress
+
+- Frontend error handling (77% complete)
+- Plugin system (needs mock API replacement)
+- Service error logging (67% complete)
+
+---
+
+## 12. **Documentation & References**
+
+### Key Documentation Files
+
+- **AI_KAREN_ARCHITECTURE_OVERVIEW.md** - Complete technical reference (1,031 lines)
+- **QUICK_REFERENCE.md** - Quick lookup guide (435 lines)
+- **AGENTS.md** - This file (agent architecture)
+
+### Statistics
+
+- **167 service modules** across 10 categories
+- **75 API endpoints** organized by function
+- **5 core orchestrators** for intelligent routing
+- **4 memory systems** being unified
+- **7 LLM providers** with health monitoring
+- **4 database backends** for multi-tenant support
+
+---
+
+## 13. **License**
+
+All modules respect AI-Karen's dual license: **MPL 2.0** + commercial.
