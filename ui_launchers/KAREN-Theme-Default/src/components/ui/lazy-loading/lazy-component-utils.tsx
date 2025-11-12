@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type ComponentType,
   type LazyExoticComponent,
 } from 'react';
@@ -13,9 +14,9 @@ import React, {
 import LazyComponent from './lazy-component';
 import type { LazyLoadOptions } from './lazy-component.types';
 
-type ComponentProps<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
-  ? P
-  : never;
+type ComponentProps<T extends ComponentType<unknown>> = ComponentPropsWithoutRef<T> extends object
+  ? ComponentPropsWithoutRef<T>
+  : Record<string, never>;
 
 export function createLazyComponent<T extends ComponentType<unknown>>(
   importFn: () => Promise<{ default: T }>,

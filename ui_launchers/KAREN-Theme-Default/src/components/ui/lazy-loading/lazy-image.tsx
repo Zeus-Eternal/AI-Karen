@@ -20,6 +20,20 @@ const DefaultErrorFallback: React.FC<{ className?: string }> = ({ className }) =
 
 type ImageAttributes = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'loading'>;
 
+type MotionIncompatibleProps =
+  | 'onDrag'
+  | 'onDragCapture'
+  | 'onDragEnd'
+  | 'onDragEnter'
+  | 'onDragExit'
+  | 'onDragLeave'
+  | 'onDragOver'
+  | 'onDragStart'
+  | 'onDrop'
+  | 'draggable';
+
+type MotionSafeImageProps = Omit<ImageAttributes, MotionIncompatibleProps>;
+
 export const LazyImage: React.FC<LazyImageProps> = ({
   src,
   alt,
@@ -32,7 +46,17 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   onLoad,
   onError,
   className = '',
-  ...props
+  draggable: _draggable,
+  onDrag: _onDrag,
+  onDragCapture: _onDragCapture,
+  onDragEnd: _onDragEnd,
+  onDragEnter: _onDragEnter,
+  onDragExit: _onDragExit,
+  onDragLeave: _onDragLeave,
+  onDragOver: _onDragOver,
+  onDragStart: _onDragStart,
+  onDrop: _onDrop,
+  ...restProps
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
@@ -86,15 +110,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const showError = hasError && isInView;
   const showImage = isInView && !hasError;
 
-  const sanitizedImageProps: Partial<ImageAttributes> = {};
-
-  (Object.keys(props) as Array<keyof ImageAttributes>).forEach(key => {
-    if (key.startsWith('onDrag') || key.startsWith('onDrop') || key === 'draggable') {
-      return;
-    }
-
-    sanitizedImageProps[key] = props[key];
-  });
+  const motionCompatibleProps = restProps as MotionSafeImageProps;
 
   const resolvedPlaceholder =
     fallback ??
@@ -156,7 +172,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
-          {...sanitizedImageProps}
+          {...motionCompatibleProps}
         />
       )}
     </div>
