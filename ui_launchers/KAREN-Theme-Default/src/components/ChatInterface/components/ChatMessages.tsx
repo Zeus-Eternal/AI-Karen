@@ -6,14 +6,13 @@ import { Bot, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import MessageActions from "./MessageActions";
-import type { ChatMessage, ChatSettings } from "../types";
+import type { ChatMessage } from "../types";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
   isTyping: boolean;
   useCopilotKit: boolean;
   enableCodeAssistance: boolean;
-  settings: ChatSettings;
   onMessageAction: (messageId: string, action: string) => void;
   messagesEndRef?: React.RefObject<HTMLDivElement>;
 }
@@ -23,7 +22,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   isTyping,
   useCopilotKit,
   enableCodeAssistance,
-  settings,
   onMessageAction,
   messagesEndRef,
 }: ChatMessagesProps) => {

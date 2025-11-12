@@ -26,7 +26,7 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
     } else if (welcomeMessage) {
       initialMessagesRef.current = [
         {
-          id: `welcome-${Date.now()}`,
+          id: `welcome-${generateUUID()}`,
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(),

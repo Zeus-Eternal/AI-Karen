@@ -80,9 +80,9 @@ export function usePerformanceMonitor(
       const result = await fn();
       end(metricName);
       return result;
-    } catch (_error) {
+    } catch (error) {
       end(`${metricName || name}_error`);
-      throw _error;
+      throw error;
     }
   };
 

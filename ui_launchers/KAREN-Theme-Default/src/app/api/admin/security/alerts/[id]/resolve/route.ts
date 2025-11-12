@@ -113,7 +113,8 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (_error) {
+  } catch (error) {
+    console.error('Failed to resolve security alert', error);
     return NextResponse.json(
       { error: 'Failed to resolve security alert' },
       { status: 500 }

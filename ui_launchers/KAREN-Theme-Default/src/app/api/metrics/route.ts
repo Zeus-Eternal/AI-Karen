@@ -161,7 +161,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // kari_http_request_duration_seconds (histogram with path)
     const httpBounds = [0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    requestDurationEntries.forEach(([path, d]) => {
+    requestDurationEntries.forEach(([path, durationMetrics]) => {
+      if (!durationMetrics) {
+        return;
+      }
       emitHistogram(
         lines,
         'kari_http_request_duration_seconds',
@@ -174,7 +177,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         },
         httpBounds,
       );
-    }
+    });
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
@@ -223,7 +226,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // Model response time (histogram by model)
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
-    modelResponseTimeEntries.forEach(([model, d]) => {
+    modelResponseTimeEntries.forEach(([model, responseMetrics]) => {
+      if (!responseMetrics) {
+        return;
+      }
       emitHistogram(
         lines,
         'kari_model_response_time_seconds',
@@ -236,7 +242,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         },
         modelBounds,
       );
-    }
+    });
 
     // ----------------------
     // PERFORMANCE METRICS

@@ -496,7 +496,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           data = JSON.parse(text);
         }
-      } catch (_error) {
+      } catch (error) {
+        console.error('Invalid JSON received from backend health endpoint', error);
         data = { error: 'Invalid JSON response from server' };
       }
     } else {

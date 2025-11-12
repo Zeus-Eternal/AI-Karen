@@ -288,13 +288,13 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(payload, { status: 200 });
-  } catch (_error) {
+  } catch (error) {
     const totalResponseTime = Date.now() - startTime;
     const databaseConnectivity = await testDatabaseConnectivity();
 
-      console.error('Session validation request failed', error);
+    console.error('Session validation request failed', error);
 
-      logSessionValidationAttempt({
+    logSessionValidationAttempt({
       timestamp: new Date(),
       success: false,
       errorType: 'server',

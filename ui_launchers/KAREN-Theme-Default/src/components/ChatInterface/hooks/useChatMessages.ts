@@ -836,10 +836,10 @@ export const useChatMessages = (
         }
 
         metadata = {
-            ...metadata,
-            origin: metadata?.origin ?? responseOrigin,
-            endpoint: metadata?.endpoint ?? activeEndpoint,
-          };
+          ...metadata,
+          origin: metadata?.origin ?? responseOrigin,
+          endpoint: metadata?.endpoint ?? activeEndpoint,
+        };
 
           // Calculate final metrics
           const latency = Math.round(performance.now() - startTime);
@@ -1075,17 +1075,17 @@ export const useChatMessages = (
           }
         );
 
-      setIsTyping(false);
+        setIsTyping(false);
 
-      toast({
-        variant: "destructive",
-        title: "Critical Error",
-        description:
-          "An unexpected error occurred. Please refresh the page and try again.",
-      });
-    }
-  },
-  [
+        toast({
+          variant: "destructive",
+          title: "Critical Error",
+          description:
+            "An unexpected error occurred. Please refresh the page and try again.",
+        });
+      }
+    },
+    [
       messages,
       isTyping,
       settings,
@@ -1102,10 +1102,8 @@ export const useChatMessages = (
       maxMessages,
       toast,
       configManager,
-      messages,
       setIsTyping,
       setMessages,
-      messages,
     ]
   );
 

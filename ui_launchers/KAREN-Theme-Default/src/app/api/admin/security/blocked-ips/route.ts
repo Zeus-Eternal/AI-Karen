@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     const adminUtils = getAdminUtils();
     const blockedIPs = await adminUtils.getBlockedIPs({ limit, offset });
     return NextResponse.json(blockedIPs);
-  } catch (_error) {
+  } catch (error) {
+    console.error('Failed to load blocked IP addresses', error);
     return NextResponse.json(
       { error: 'Failed to load blocked IP addresses' },
       { status: 500 }

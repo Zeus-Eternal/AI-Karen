@@ -222,7 +222,7 @@ export default function SecuritySettingsPanel() {
           description: 'Alert resolved successfully'
         });
       }
-    } catch (_error) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to resolve alert',
@@ -242,7 +242,7 @@ export default function SecuritySettingsPanel() {
           description: 'IP address unblocked successfully'
         });
       }
-    } catch (_error) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to unblock IP address',
@@ -264,7 +264,7 @@ export default function SecuritySettingsPanel() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-    } catch (_error) {
+    } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to export security report',

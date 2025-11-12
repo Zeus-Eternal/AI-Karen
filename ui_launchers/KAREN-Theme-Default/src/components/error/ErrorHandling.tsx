@@ -114,8 +114,8 @@ const ErrorHandlingExample: React.FC = () => {
       // Simulated success
       await new Promise((resolve) => setTimeout(resolve, 750));
       showSuccess("API call completed successfully!", { title: "Success" });
-    } catch (_error) {
-      const serviceError = errorHandler.handleError(err, {
+    } catch (error) {
+      const serviceError = errorHandler.handleError(error, {
         service: "ExampleService",
         method: "handleApiCall",
         endpoint: "/api/example",
@@ -149,7 +149,8 @@ const ErrorHandlingExample: React.FC = () => {
       );
 
       showSuccess("Service call completed with retry logic!", { title: "Retried Successfully" });
-    } catch (_error) {
+    } catch (error) {
+      console.error("Service call failed after retries", error);
       showError("Service call failed after retries", {
         title: "Service Error",
         actionLabel: "Retry now",

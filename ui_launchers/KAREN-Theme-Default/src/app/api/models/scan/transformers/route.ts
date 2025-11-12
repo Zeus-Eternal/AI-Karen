@@ -3,6 +3,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
+type TransformersConfig = Record<string, unknown>;
+
 type ModelDir = {
   dirname: string;
   path: string;
@@ -10,8 +12,8 @@ type ModelDir = {
   size_human: string;
   modified: string;             // ISO
   file_count: number;
-  config?: any | null;
-  tokenizer_config?: any | null;
+  config?: TransformersConfig | null;
+  tokenizer_config?: TransformersConfig | null;
 };
 
 type QueryOpts = {
@@ -87,13 +89,20 @@ function isIgnored(name: string, ignore: string[]): boolean {
   return ignore.some(seg => seg && name.includes(seg));
 }
 
-async function readConfigFile(dirPath: string, filename: string): Promise<any | null> {
+async function readConfigFile(
+  dirPath: string,
+  filename: string,
+): Promise<TransformersConfig | null> {
   try {
     const p = path.join(dirPath, filename);
     const ok = await safeAccess(p);
     if (!ok) return null;
     const raw = await fs.readFile(p, 'utf-8');
-    try { return JSON.parse(raw); } catch { return null; }
+    try {
+      return JSON.parse(raw) as TransformersConfig;
+    } catch {
+      return null;
+    }
   } catch { return null; }
 }
 
@@ -107,7 +116,7 @@ async function calculateDirectorySizeWithBudget(
 
   async function walk(p: string): Promise<void> {
     if (Date.now() > deadline) return; // time budget exceeded
-    let entries: unknown[];
+    let entries: import('fs').Dirent[];
     try {
       entries = await fs.readdir(p, { withFileTypes: true });
     } catch { return; }
