@@ -188,6 +188,14 @@ export function ProviderTestingInterface({
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
+  const getPerformanceDetailNumber = (
+    details: TestResult['details'],
+    key: 'tokens_per_second' | 'total_tokens'
+  ) => {
+    const value = details?.[key];
+    return typeof value === 'number' ? value : undefined;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -455,13 +463,19 @@ export function ProviderTestingInterface({
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold">
-                        {getNumberDetail(testResults.performance_test.details, 'tokens_per_second')}
+                        {getPerformanceDetailNumber(
+                          testResults.performance_test.details,
+                          'tokens_per_second'
+                        ) ?? 0}
                       </div>
                       <div className="text-xs text-muted-foreground">Tokens/sec</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold">
-                        {getNumberDetail(testResults.performance_test.details, 'total_tokens')}
+                        {getPerformanceDetailNumber(
+                          testResults.performance_test.details,
+                          'total_tokens'
+                        ) ?? 0}
                       </div>
                       <div className="text-xs text-muted-foreground">Total Tokens</div>
                     </div>

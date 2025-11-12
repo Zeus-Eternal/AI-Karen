@@ -148,7 +148,7 @@ export function forwardRefWithAs<
   return React.forwardRef(
     render as unknown as React.ForwardRefRenderFunction<
       React.ElementRef<DefaultElement>,
-      PolymorphicComponentProp<DefaultElement, Props>
+      React.PropsWithoutRef<PolymorphicComponentProp<DefaultElement, Props>>
     >
   ) as unknown as PolymorphicComponentWithDisplayName<DefaultElement, Props>
 }

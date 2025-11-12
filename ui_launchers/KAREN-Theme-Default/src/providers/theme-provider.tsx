@@ -5,6 +5,8 @@ import { useUIStore, selectThemeState } from '../store';
 import { generateCompleteCSS } from '../design-tokens/css-tokens';
 import { ThemeContext, type Theme, type ThemeContextValue, type Density } from './theme-context';
 
+export type { Theme, ThemeContextValue, Density } from './theme-context';
+
 const VALID_THEMES: Theme[] = ['light', 'dark', 'system'];
 const VALID_DENSITIES: Density[] = ['compact', 'comfortable', 'spacious'];
 

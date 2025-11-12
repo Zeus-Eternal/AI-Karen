@@ -11,37 +11,26 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
 
   const [sessionStartTime] = useState(() => Date.now());
 
-  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
-  const welcomeMessageIdRef = useRef<string | null>(null);
-
-  const resolveInitialMessages = useCallback((): ChatMessage[] => {
-    if (initialMessagesRef.current === null) {
-      if (initialMessages.length > 0) {
-        initialMessagesRef.current = initialMessages;
-      } else if (welcomeMessage) {
-        if (!welcomeMessageIdRef.current) {
-          welcomeMessageIdRef.current = `welcome-${generateUUID()}`;
-        }
-
-        initialMessagesRef.current = [
-          {
-            id: welcomeMessageIdRef.current,
-            role: "assistant",
-            content: welcomeMessage,
-            timestamp: new Date(sessionStartTime),
-            type: "text",
-            metadata: { confidence: 1.0 },
-          },
-        ];
-      } else {
-        initialMessagesRef.current = [];
-      }
+  const buildInitialMessages = (): ChatMessage[] => {
+    if (initialMessages.length > 0) {
+      return initialMessages;
     }
+    if (welcomeMessage) {
+      return [
+        {
+          id: `welcome-${generateUUID()}`,
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(sessionStartTime),
+          type: "text",
+          metadata: { confidence: 1.0 },
+        },
+      ];
+    }
+    return [];
+  };
 
-    return initialMessagesRef.current;
-  }, [initialMessages, sessionStartTime, welcomeMessage]);
-
-  const [messages, setMessages] = useState<ChatMessage[]>(() => resolveInitialMessages());
+  const [messages, setMessages] = useState<ChatMessage[]>(buildInitialMessages);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
