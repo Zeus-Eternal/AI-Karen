@@ -130,8 +130,6 @@ type BatchMemoryOperation =
   | { type: 'update'; data: MemoryUpdatePayload }
   | { type: 'delete'; data: MemoryDeletePayload };
 
-type BatchOperationType = BatchMemoryOperation['type'];
-
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export type EndpointKey = keyof ConsolidatedEndpoints;
@@ -302,7 +300,7 @@ export class UnifiedApiClient {
           await this.apiClient.get(url, { timeout: this.config.timeout });
           const ms = Date.now() - start;
           return { name: key, available: true, responseTime: ms };
-        } catch (e) {
+        } catch {
           // try next url
           continue;
         }

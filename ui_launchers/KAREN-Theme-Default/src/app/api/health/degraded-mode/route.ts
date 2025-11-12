@@ -151,10 +151,10 @@ export async function GET(request: NextRequest) {
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });
-  } catch (_error) {
+  } catch {
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
-      { 
+      {
         is_active: true,
         reason: 'Health check failed',
         infrastructure_issues: ['Health check system'],

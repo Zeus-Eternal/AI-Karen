@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 
 export interface KeyboardNavigationContextValue {
   currentFocusIndex: number;

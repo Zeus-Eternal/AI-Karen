@@ -39,7 +39,6 @@ interface ErrorResponse {
 
 // Use simple timeout and retry config
 const timeoutConfig = { sessionValidation: 10000 };
-const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 
 // In-memory ring buffer of attempts by IP
 const sessionValidationAttempts = new Map<string, SessionValidationAttempt[]>();
@@ -288,13 +287,13 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(payload, { status: 200 });
-  } catch (_error) {
+  } catch (error) {
     const totalResponseTime = Date.now() - startTime;
     const databaseConnectivity = await testDatabaseConnectivity();
 
-      console.error('Session validation request failed', error);
+    console.error('Session validation request failed', error);
 
-      logSessionValidationAttempt({
+    logSessionValidationAttempt({
       timestamp: new Date(),
       success: false,
       errorType: 'server',

@@ -93,9 +93,9 @@ export class ErrorBoundary extends Component<Props, State> {
         userId: this.getCurrentUserId(),
         sessionId: this.getSessionId(),
       });
-    } catch (_error) {
-    // Handle error silently
-  }
+    } catch (error) {
+      console.error('Error reporting failed', error);
+    }
   }
   private getCurrentUserId(): string | null {
     // Get from auth context or local storage
@@ -119,9 +119,9 @@ export class ErrorBoundary extends Component<Props, State> {
         if (recoveryStrategy.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
-      } catch (_error) {
-    // Handle error silently
-  } finally {
+      } catch (error) {
+        console.error('Error recovery strategy failed', error);
+      } finally {
         this.setState({ isRecovering: false });
       }
     }
@@ -264,4 +264,5 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { withErrorBoundary } from "./withErrorBoundary";

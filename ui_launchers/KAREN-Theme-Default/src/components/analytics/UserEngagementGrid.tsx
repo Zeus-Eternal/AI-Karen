@@ -439,7 +439,8 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         title: "Export Successful",
         description: `Exported ${filteredData.length} engagement records.`,
       });
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to export engagement data", error);
       toast({
         variant: "destructive",
         title: "Export Failed",
@@ -459,7 +460,8 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         title: "Data Refreshed",
         description: "User engagement data has been updated.",
       });
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to refresh engagement data", error);
       toast({
         variant: "destructive",
         title: "Refresh Failed",

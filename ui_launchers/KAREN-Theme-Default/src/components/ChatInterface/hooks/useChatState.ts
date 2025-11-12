@@ -22,13 +22,17 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   const [sessionStartTime] = useState(() => Date.now());
 
   const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  const welcomeMessageIdRef = useRef<string | null>(null);
   if (initialMessagesRef.current === null) {
     if (initialMessages.length > 0) {
       initialMessagesRef.current = initialMessages;
     } else if (welcomeMessage) {
+      if (!welcomeMessageIdRef.current) {
+        welcomeMessageIdRef.current = `welcome-${generateUUID()}`;
+      }
       initialMessagesRef.current = [
         {
-          id: `welcome-${sessionStartTime}`,
+          id: welcomeMessageIdRef.current,
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(sessionStartTime),

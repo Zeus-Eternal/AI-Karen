@@ -100,20 +100,29 @@ export function HealthDashboard({
     return "";
   });
 
+  const monitoringSyncTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scheduleMonitoringSync = React.useCallback(
     (monitor: HealthMonitorInstance) => {
-      Promise.resolve().then(() => {
-        if (!monitor) {
-          setIsMonitoring(false);
-          return;
-        }
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
+      }
 
+      if (!monitor) {
+        monitoringSyncTimeoutRef.current = setTimeout(() => {
+          setIsMonitoring(false);
+        }, 0);
+        return;
+      }
+
+      monitoringSyncTimeoutRef.current = setTimeout(() => {
         try {
           setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
         } catch {
           // noop
         }
-      });
+      }, 0);
     },
     []
   );
@@ -123,11 +132,33 @@ export function HealthDashboard({
       return undefined;
     }
 
+    const enqueueSync = (monitor: HealthMonitorInstance) => {
+      let cancelled = false;
+      const runSync = () => {
+        if (!cancelled) {
+          scheduleMonitoringSync(monitor);
+        }
+      };
+
+      if (typeof window !== "undefined") {
+        const timeoutId = window.setTimeout(runSync, 0);
+        return () => {
+          cancelled = true;
+          window.clearTimeout(timeoutId);
+        };
+      }
+
+      Promise.resolve().then(runSync);
+      return () => {
+        cancelled = true;
+      };
+    };
+
     const unsubscribeMetrics =
       healthMonitor.onMetricsUpdate?.((newMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        scheduleMonitoringSync(healthMonitor);
+        enqueueSync(healthMonitor);
       }) ?? (() => {});
 
     const unsubscribeAlerts =
@@ -135,16 +166,18 @@ export function HealthDashboard({
         setAlerts((prev) => [newAlert, ...prev.slice(0, 19)]);
       }) ?? (() => {});
 
+    let cancelInitialSync: (() => void) | undefined;
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        scheduleMonitoringSync(healthMonitor);
       }
     } catch {
+      cancelInitialSync?.();
       // noop
     }
 
     return () => {
+      cancelInitialSync?.();
       try {
         unsubscribeMetrics();
       } catch {
@@ -155,6 +188,11 @@ export function HealthDashboard({
         unsubscribeAlerts();
       } catch {
         // noop
+      }
+
+      if (monitoringSyncTimeoutRef.current) {
+        clearTimeout(monitoringSyncTimeoutRef.current);
+        monitoringSyncTimeoutRef.current = null;
       }
     };
   }, [healthMonitor, scheduleMonitoringSync]);
