@@ -386,7 +386,7 @@ export class ErrorAnalytics {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANALYTICS_API_KEY}`
         },
         body: JSON.stringify(metrics)
-      }).catch(error => {
+      }).catch((error: unknown) => {
         console.error('Error sending to analytics service:', error);
       });
     }

@@ -154,7 +154,7 @@ export function ProgressiveFeature({
         }
 
         setIsLoading(false);
-      } catch (err) {
+      } catch (err: unknown) {
         setError(err instanceof Error ? err : new Error(String(err)));
         setIsLoading(false);
       }
@@ -281,8 +281,8 @@ export function useProgressiveData<T>(
 
       setData(result);
       setIsStale(false);
-    } catch (err) {
-      setError(err as Error);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
 
       // Try to use stale data on error
       if (useStaleOnError && enableCaching && cacheKey) {

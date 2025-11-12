@@ -131,17 +131,22 @@ export class UserService {
   async createUser(userData: unknown) {
     return this.handleServiceError(async () => {
       // Type guard for userData
-      const user = userData as { email?: string; name?: string };
+      const { email, name } = userData as {
+        email?: string;
+        name?: string;
+      };
       
       // Simulate validation
-      if (!user.email) {
+      if (!email) {
         throw new Error('Validation error: Email is required');
       }
-      if (!user.email.includes('@')) {
+      if (!email.includes('@')) {
         throw new Error('Validation error: Invalid email format');
       }
       // Simulate database call
-      await databaseOperation(`INSERT INTO users (email, name) VALUES ('${user.email}', '${user.name || 'Unknown'}')`);
+      await databaseOperation(
+        `INSERT INTO users (email, name) VALUES ('${email}', '${name || 'Unknown'}')`
+      );
       return {
         success: true,
         userId: 'new-user-id',

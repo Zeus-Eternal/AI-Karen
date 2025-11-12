@@ -105,9 +105,13 @@ export function checkResourceFeasibility(
   // Check disk space
   const diskAvailable = systemResources.disk.available;
   const hasEnoughDiskSpace = diskAvailable >= requirements.disk_space;
+  const canLoadInGPU =
+    requirements.gpu_memory !== undefined
+      ? gpuMemoryAvailable >= requirements.gpu_memory
+      : true;
   
   // Determine if model can be loaded
-  const canLoad = canLoadInMemory && hasEnoughDiskSpace;
+  const canLoad = canLoadInMemory && hasEnoughDiskSpace && canLoadInGPU;
   
   let reason: string | undefined;
     if (!canLoad) {

@@ -174,7 +174,7 @@ export class NetworkDiagnostics {
 
       this.logger.logNetworkDiagnostic(diagnostic);
       return diagnostic;
-    } catch (e) {
+    } catch (e: unknown) {
       const responseTime = Date.now() - start;
       const message = e instanceof Error ? e.message : String(e);
       const status = classifyErrorMessage(message);
@@ -229,7 +229,7 @@ export class NetworkDiagnostics {
       if (allowOrigin) info.allowedOrigins = [allowOrigin];
       if (allowMethods) info.allowedMethods = allowMethods.split(',').map(s => s.trim());
       if (allowHeaders) info.allowedHeaders = allowHeaders.split(',').map(s => s.trim());
-    } catch (e) {
+    } catch (e: unknown) {
       info.corsError = e instanceof Error ? e.message : String(e);
     }
 
@@ -318,7 +318,7 @@ export class NetworkDiagnostics {
           diagnostic,
           recommendations: this.generateTestRecommendations(test, diagnostic),
         });
-      } catch (e) {
+      } catch (e: unknown) {
         const diagnostic: NetworkDiagnostic = {
           endpoint: buildFullUrl(test.endpoint),
           method: test.method,
@@ -477,8 +477,9 @@ export class NetworkDiagnostics {
             error: hc.error,
           });
         }
-      } catch (e) {
-        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, e as Error);
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, error);
       }
     }, intervalMs);
 

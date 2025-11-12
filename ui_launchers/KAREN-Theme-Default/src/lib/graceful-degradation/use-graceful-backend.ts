@@ -105,8 +105,8 @@ export function useGracefulBackend<T>(
           setIsStale(Date.now() > cachedEntry.metadata.expiresAt);
         }
       }
-    } catch (err) {
-      const error = err as Error;
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
 
       // Try to get cached data as fallback

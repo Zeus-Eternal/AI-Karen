@@ -34,6 +34,19 @@ export interface ApiErrorInterface extends Error {
   requestId?: string;
 }
 
+interface ErrorResponseData {
+  message?: string;
+  code?: string;
+  details?: unknown;
+  [key: string]: unknown;
+}
+
+interface ParsedErrorResponse {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
+
 // Enhanced Request configuration
 export interface EnhancedRequestConfig extends RequestInit {
   timeout?: number;

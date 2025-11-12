@@ -41,7 +41,9 @@ export interface HealthCheckResult {
   };
 }
 
-type HealthApiResponse = {
+function isHealthApiResponse(
+  value: unknown
+): value is {
   status?: string;
   timestamp?: string;
   services?: Record<string, HealthServiceDetail>;
@@ -49,9 +51,7 @@ type HealthApiResponse = {
   uptime?: number;
   error?: string;
   [key: string]: unknown;
-};
-
-function isHealthApiResponse(value: unknown): value is HealthApiResponse {
+} {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -152,7 +152,7 @@ export class EndpointValidationService {
   }
 
   private parseHealthServices(
-    services: HealthApiResponse["services"]
+    services: Record<string, unknown> | undefined
   ): Record<string, HealthServiceStatus> | undefined {
     if (!services || typeof services !== "object") {
       return undefined;
