@@ -131,6 +131,28 @@ export type PolymorphicComponentWithDisplayName<
   displayName?: string
 }
 
+type ForwardRefWithAsRenderFunction<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown>
+> = <T extends React.ElementType = DefaultElement>(
+  props: PolymorphicComponentProp<T, Props>,
+  ref: PolymorphicRef<T>
+) => React.ReactElement | null
+
+export function forwardRefWithAs<
+  DefaultElement extends React.ElementType,
+  Props extends Record<string, unknown> = Record<string, unknown>
+>(
+  render: ForwardRefWithAsRenderFunction<DefaultElement, Props>
+): PolymorphicComponentWithDisplayName<DefaultElement, Props> {
+  return React.forwardRef(
+    render as unknown as React.ForwardRefRenderFunction<
+      React.ElementRef<DefaultElement>,
+      PolymorphicComponentProp<DefaultElement, Props>
+    >
+  ) as unknown as PolymorphicComponentWithDisplayName<DefaultElement, Props>
+}
+
 // Polymorphic component factory type
 export interface PolymorphicComponentFactory {
   <
