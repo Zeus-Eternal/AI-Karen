@@ -20,6 +20,9 @@ import type { ChatInterfaceProps, CopilotAction, CopilotArtifact, ChatContext } 
 import { DEFAULT_CHAT_HEIGHT, DEFAULT_PLACEHOLDER } from "./constants";
 import { safeDebug } from "@/lib/safe-console";
 
+const isValidTab = (value: string): value is "chat" | "code" | "analytics" =>
+  value === "chat" || value === "code" || value === "analytics";
+
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   initialMessages = [],
   onMessageSent,
@@ -76,6 +79,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     sessionStartTime,
     copilotArtifacts,
     setCopilotArtifacts,
+    messagesEndRef,
+    removeCopilotArtifact,
   } = useChatState(initialMessages, welcomeMessage);
 
   // Settings management
@@ -157,6 +162,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         artifact.id === artifactId ? { ...artifact, ...updates } : artifact
       ));
     },
+    removeArtifact: (artifactId: string) => {
+      removeCopilotArtifact(artifactId);
+    },
   });
 
   // Chat context for CopilotActions
@@ -201,6 +209,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       sendMessage(prompt);
     },
     [sendMessage, setInputValue]
+  );
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      if (isValidTab(value)) {
+        setActiveTab(value);
+      }
+    },
+    [setActiveTab]
   );
 
   // Handle copilot action
@@ -280,7 +297,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
 
         {showTabs ? (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as unknown)} className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
             <TabsList className="w-full justify-start border-b rounded-none">
               <TabsTrigger value="chat">Chat</TabsTrigger>
               {enableCodeAssistance && <TabsTrigger value="code">Code</TabsTrigger>}
