@@ -434,7 +434,7 @@ export class ExtensionAuthManager {
 
       // No refresh token available - return null gracefully instead of throwing
       // This allows the calling code to handle unauthenticated state properly
-      logger.debug('No refresh token available for extension auth');
+      logger.warn('No refresh token available for extension auth - tried fallback to main auth');
       this.authState.isAuthenticated = false;
       return null;
     }
