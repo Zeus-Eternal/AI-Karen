@@ -436,54 +436,6 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       : new Date(provider.updatedAt),
   }), []);
 
-  // Enhanced data loading with retry logic
-  const loadProviders = useCallback(async (retryCount = 0) => {
-    setLoading(true);
-    try {
-      const response = await enhancedApiClient.get<
-        ProviderConfigResponse[] | { providers?: ProviderConfigResponse[] }
-      >('/api/providers', {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'X-Request-ID': `provider-load-${Date.now()}`
-        }
-      });
-
-      const payload = response.data;
-      const providerList = Array.isArray(payload)
-        ? payload
-        : payload?.providers ?? [];
-      const normalizedProviders = providerList.map(normalizeProvider);
-      setProviders(normalizedProviders);
-
-      // Validate provider configurations
-      normalizedProviders.forEach((provider) => {
-        const providerValidationErrors = validateProviderConfig(provider);
-        if (providerValidationErrors.length > 0) {
-          console.warn(
-            `Provider ${provider.id} has configuration issues:`,
-            providerValidationErrors
-          );
-        }
-      });
-    } catch (error) {
-      console.error('Failed to load providers:', error);
-
-      if (retryCount < 3) {
-        setTimeout(() => loadProviders(retryCount + 1), 1000 * Math.pow(2, retryCount));
-        return;
-      }
-      
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to load provider configurations. Please check your connection.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [normalizeProvider, toast, validateProviderConfig]);
-
   const loadProviderHealth = useCallback(async () => {
     try {
       const response = await enhancedApiClient.get<
@@ -645,7 +597,12 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
           isValid = value !== undefined && value !== '' && value !== null;
           break;
         case 'pattern':
-          if (rule.field === 'apiKey' && value && !value.startsWith('sk-')) {
+          if (
+            rule.field === 'apiKey' &&
+            typeof value === 'string' &&
+            value &&
+            !value.startsWith('sk-')
+          ) {
             isValid = false;
           }
           break;
@@ -683,6 +640,57 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
       enabled: provider.enabled
     });
   }, [validateForm]);
+
+  // Enhanced data loading with retry logic
+  const loadProviders = useCallback(
+    async (retryCount = 0) => {
+      setLoading(true);
+      try {
+        const response = await enhancedApiClient.get<
+          ProviderConfigResponse[] | { providers?: ProviderConfigResponse[] }
+        >('/api/providers', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'X-Request-ID': `provider-load-${Date.now()}`
+          }
+        });
+
+        const payload = response.data;
+        const providerList = Array.isArray(payload)
+          ? payload
+          : payload?.providers ?? [];
+        const normalizedProviders = providerList.map(normalizeProvider);
+        setProviders(normalizedProviders);
+
+        // Validate provider configurations
+        normalizedProviders.forEach((provider) => {
+          const providerValidationErrors = validateProviderConfig(provider);
+          if (providerValidationErrors.length > 0) {
+            console.warn(
+              `Provider ${provider.id} has configuration issues:`,
+              providerValidationErrors
+            );
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load providers:', error);
+
+        if (retryCount < 3) {
+          setTimeout(() => loadProviders(retryCount + 1), 1000 * Math.pow(2, retryCount));
+          return;
+        }
+
+        toast({
+          title: 'Connection Error',
+          description: 'Failed to load provider configurations. Please check your connection.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [normalizeProvider, toast, validateProviderConfig]
+  );
 
   // Enhanced connection testing with detailed diagnostics
   const handleTestConnection = async () => {
@@ -797,21 +805,35 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
     setSaving(true);
 
     try {
+      const providerName =
+        typeof formData.name === 'string' && formData.name.trim().length > 0
+          ? formData.name
+          : `${selectedType.name} Provider`;
+
+      const credentialEntries = selectedType.configSchema.fields
+        .filter(field => field.sensitive)
+        .map((field) => {
+          const rawValue = formData[field.name];
+          const stringValue =
+            typeof rawValue === 'string'
+              ? rawValue
+              : rawValue === undefined || rawValue === null
+              ? ''
+              : String(rawValue);
+          return [field.name, stringValue] as const;
+        });
+
       const providerData: ProviderConfig = {
         id: selectedProvider?.id || `${selectedType.id}-${Date.now()}`,
-        name: formData.name || `${selectedType.name} Provider`,
+        name: providerName,
         type: selectedType.id,
         enabled: formData.enabled !== false,
         configuration: Object.fromEntries(
-          Object.entries(formData).filter(([key]) => 
+          Object.entries(formData).filter(([key]) =>
             !selectedType.configSchema.fields.find(f => f.name === key)?.sensitive
           )
         ),
-        credentials: Object.fromEntries(
-          selectedType.configSchema.fields
-            .filter(field => field.sensitive)
-            .map(field => [field.name, formData[field.name] || ''])
-        ),
+        credentials: Object.fromEntries(credentialEntries),
         metadata: {
           version: '2.0.0',
           description: selectedType.description,

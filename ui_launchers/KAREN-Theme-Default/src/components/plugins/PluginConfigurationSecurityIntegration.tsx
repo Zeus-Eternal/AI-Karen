@@ -84,6 +84,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
   const [securityDirty, setSecurityDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const validationRules = useMemo(
     () => plugin.manifest.configSchema ?? [],
@@ -106,6 +107,7 @@ const PluginConfigurationSecurityIntegration: React.FC<
 
   const handleSaveConfiguration = async (config: PluginConfig) => {
     setStatusMessage(null);
+    setSaving(true);
     try {
       await onSaveConfiguration(config);
       setConfigurationDirty(false);
@@ -114,11 +116,14 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to save configuration.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleSaveSecurity = async (policy: SecurityPolicy) => {
     setStatusMessage(null);
+    setSaving(true);
     try {
       await onUpdateSecurity(policy);
       setSecurityDirty(false);
@@ -127,6 +132,8 @@ const PluginConfigurationSecurityIntegration: React.FC<
     } catch (error) {
       console.error(error);
       setStatusMessage("Failed to update security policy.");
+    } finally {
+      setSaving(false);
     }
   };
 

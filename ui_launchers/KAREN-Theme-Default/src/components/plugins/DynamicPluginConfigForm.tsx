@@ -67,6 +67,7 @@ export interface DynamicPluginConfigFormProps {
   onValidate?: (config: PluginConfig) => ValidationError[];
   onPreview?: (config: PluginConfig) => void;
   readOnly?: boolean;
+  showAdvanced?: boolean;
 }
 export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = ({
   plugin,
@@ -353,9 +354,9 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           <input
             id={fieldId}
             type={isPassword && !showPassword ? 'password' : 'text'}
-            value={value}
+            value={typeof value === 'string' ? value : value === undefined || value === null ? '' : String(value)}
             onChange={(e) => handleFieldChange(field.key, e.target.value)}
-            placeholder={field.default?.toString()}
+            placeholder={typeof field.default === 'string' ? field.default : undefined}
             disabled={readOnly}
             className={error ? 'border-destructive' : ''}
           />
@@ -364,7 +365,13 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
           <input
             id={fieldId}
             type="number"
-            value={value}
+            value={(() => {
+              if (typeof value === 'number') return String(value);
+              if (typeof field.default === 'number') return String(field.default);
+              if (value === undefined || value === null) return '';
+              const parsed = Number(value);
+              return Number.isFinite(parsed) ? String(parsed) : '';
+            })()}
             onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
             min={field.validation?.min}
             max={field.validation?.max}
@@ -387,8 +394,11 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         )}
         {field.type === 'select' && field.options && (
           <Select
-            value={value?.toString() || ''}
-            onValueChange={(newValue) => handleFieldChange(field.key, newValue)}
+            value={typeof value === 'string' ? value : value === undefined || value === null ? '' : String(value)}
+            onValueChange={(newValue) => {
+              const selectedOption = field.options.find((option) => String(option.value) === newValue);
+              handleFieldChange(field.key, selectedOption ? selectedOption.value : newValue);
+            }}
             disabled={readOnly}
           >
             <SelectTrigger className={error ? 'border-destructive' : ''}>
@@ -396,7 +406,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
             </SelectTrigger>
             <SelectContent>
               {field.options.map((option) => (
-                <SelectItem key={option.value} value={option.value.toString()}>
+                <SelectItem key={String(option.value)} value={String(option.value)}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -406,9 +416,9 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         {field.type === 'multiselect' && field.options && (
           <div className="space-y-2 max-h-32 overflow-y-auto">
             {field.options.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
+              <div key={String(option.value)} className="flex items-center space-x-2">
                 <Checkbox
-                  id={`${fieldId}-${option.value}`}
+                  id={`${fieldId}-${String(option.value)}`}
                   checked={Array.isArray(value) && value.includes(option.value)}
                   onCheckedChange={(checked) => {
                     const currentValues = Array.isArray(value) ? value : [];
