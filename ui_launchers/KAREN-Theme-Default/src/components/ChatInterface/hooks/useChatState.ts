@@ -9,16 +9,6 @@ import { safeDebug, safeError } from "@/lib/safe-console";
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  const sessionIdRef = useRef<string | null>(null);
-  if (!sessionIdRef.current) {
-    sessionIdRef.current = generateUUID();
-  }
-
-  const conversationIdRef = useRef<string | null>(null);
-  if (!conversationIdRef.current) {
-    conversationIdRef.current = generateUUID();
-  }
-
   const [sessionStartTime] = useState(() => Date.now());
 
   const initialMessagesRef = useRef<ChatMessage[] | null>(null);

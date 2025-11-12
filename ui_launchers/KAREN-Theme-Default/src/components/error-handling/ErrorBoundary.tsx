@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components */
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -226,6 +226,7 @@ export const useDashboardUrlSync = () => {
           clearGlobalFilters();
           filters.forEach(filter => {
             const { id: _unusedId, ...sanitizedFilter } = filter;
+            void _unusedId;
             addGlobalFilter(sanitizedFilter);
           });
         }
