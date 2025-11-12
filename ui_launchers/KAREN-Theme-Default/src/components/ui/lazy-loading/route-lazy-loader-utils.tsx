@@ -1,24 +1,18 @@
 "use client";
 
-import React, { lazy, useCallback, type ComponentType } from 'react';
+import React, { lazy, useCallback, type ComponentType } from "react";
 
-import RouteLazyLoader from './route-lazy-loader';
-import type { RouteLazyLoaderProps } from './route-lazy-loader.types';
+import RouteLazyLoader from "./route-lazy-loader";
+import type { RouteLazyLoaderProps } from "./route-lazy-loader.types";
 
-type PropsOf<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
-  ? P extends object
-    ? P
-    : never
-  : never;
-
-type RouteLoaderOptions = Pick<RouteLazyLoaderProps, 'fallback' | 'errorFallback'> & {
+type RouteLoaderOptions = Pick<RouteLazyLoaderProps, "fallback" | "errorFallback"> & {
   preload?: boolean;
 };
 
-export function createLazyRoute<T extends ComponentType<unknown>>(
-  importFn: () => Promise<{ default: T }>,
+export function createLazyRoute<Props extends Record<string, unknown>>(
+  importFn: () => Promise<{ default: ComponentType<Props> }>,
   options: RouteLoaderOptions = {}
-): ComponentType<PropsOf<T>> {
+): ComponentType<Props> {
   const load = async () => importFn();
 
   if (options.preload) {
@@ -27,7 +21,7 @@ export function createLazyRoute<T extends ComponentType<unknown>>(
 
   const LazyComponent = lazy(load);
 
-  const Wrapped: React.FC<PropsOf<T>> = (props) => (
+  const Wrapped: React.FC<Props> = (props) => (
     <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
       <LazyComponent {...props} />
     </RouteLazyLoader>
@@ -38,14 +32,19 @@ export function createLazyRoute<T extends ComponentType<unknown>>(
     name?: string;
   };
 
-  Wrapped.displayName = `LazyRouteWrapper(${lazyComponentMeta.displayName ?? lazyComponentMeta.name ?? 'Component'})`;
+  Wrapped.displayName = `LazyRouteWrapper(${
+    lazyComponentMeta.displayName ?? lazyComponentMeta.name ?? "Component"
+  })`;
   return Wrapped;
 }
 
 export function useRoutePreloader() {
-  const preloadRoute = useCallback((importFn: () => Promise<{ default: ComponentType<unknown> }>) => {
-    void importFn().catch(() => undefined);
-  }, []);
+  const preloadRoute = useCallback(
+    (importFn: () => Promise<{ default: ComponentType<Record<string, unknown>> }>) => {
+      void importFn().catch(() => undefined);
+    },
+    []
+  );
 
   return { preloadRoute };
 }
@@ -60,7 +59,9 @@ export function withLazyLoading<P extends object>(
     </RouteLazyLoader>
   );
 
-  WrappedComponent.displayName = `withLazyLoading(${Component.displayName ?? Component.name ?? 'Component'})`;
+  WrappedComponent.displayName = `withLazyLoading(${
+    Component.displayName ?? Component.name ?? "Component"
+  })`;
   return WrappedComponent;
 }
 
