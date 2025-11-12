@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    console.error('Retry full mode request failed', err);
     // Timeout / network failure
     return NextResponse.json(
       {

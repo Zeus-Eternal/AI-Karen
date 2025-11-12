@@ -3,10 +3,15 @@ import { withBackendPath } from "@/app/api/_utils/backend";
 
 const AUTH_TIMEOUT_MS = 10_000;
 
+type AbortSignalWithTimeout = typeof AbortSignal & {
+  timeout?: (ms: number) => AbortSignal;
+};
+
 function buildTimeoutSignal(ms: number): AbortSignal {
   // Fallback if AbortSignal.timeout isn't available in the runtime
-  if (typeof (AbortSignal as any).timeout === "function") {
-    return (AbortSignal as any).timeout(ms);
+  const abortSignal = AbortSignal as AbortSignalWithTimeout;
+  if (typeof abortSignal.timeout === "function") {
+    return abortSignal.timeout(ms);
   }
   const controller = new AbortController();
   setTimeout(() => controller.abort(), ms);
@@ -66,10 +71,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Append all Set-Cookie headers from backend
-    const getAll = (backendResp.headers as any).getAll?.bind(
-      backendResp.headers
-    );
-    const setCookies: string[] = getAll ? getAll("set-cookie") ?? [] : [];
+      type HeadersWithGetAll = Headers & {
+        getAll?: (name: string) => string[];
+      };
+      const headersWithGetAll = backendResp.headers as HeadersWithGetAll;
+      const setCookies: string[] = headersWithGetAll.getAll?.call(
+        headersWithGetAll,
+        "set-cookie"
+      ) ?? [];
     if (setCookies.length === 0) {
       const single = backendResp.headers.get("set-cookie");
       if (single) setCookies.push(single);
@@ -83,11 +92,15 @@ export async function GET(request: NextRequest) {
     }
 
     return resp;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const isTimeout =
-      (error as any)?.name === "AbortError" ||
-      String(message).toLowerCase().includes("timeout");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error ?? "Unknown error");
+      const errorName =
+        typeof error === "object" && error !== null && "name" in error
+          ? String((error as { name?: unknown }).name)
+          : undefined;
+      const isTimeout =
+        errorName === "AbortError" ||
+        message.toLowerCase().includes("timeout");
 
     return NextResponse.json(
       {

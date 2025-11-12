@@ -12,7 +12,7 @@ import type { AdminApiResponse, SystemConfig, SystemConfigUpdate } from '@/types
 /**
  * GET /api/admin/system/config - Get system configuration (super admin only)
  */
-export const GET = requireSuperAdmin(async (request: NextRequest, context) => {
+export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || undefined;

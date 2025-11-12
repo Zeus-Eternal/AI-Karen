@@ -83,12 +83,13 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
 
     // Basic per-user rate limiting: deny if a reset was requested in the last 5 minutes
     const RATE_WINDOW_MS = 5 * 60 * 1000;
+    const rateWindowMinutes = Math.round(RATE_WINDOW_MS / (60 * 1000));
     const recent = await db.query(
       `
         SELECT 1
         FROM user_password_resets
         WHERE user_id = $1
-          AND created_at >= NOW() - INTERVAL '5 minutes'
+          AND created_at >= NOW() - INTERVAL '${rateWindowMinutes} minutes'
           AND used_at IS NULL
         LIMIT 1
       `,
@@ -100,8 +101,8 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           success: false,
           error: {
             code: 'RESET_RATE_LIMITED',
-            message: 'A recent password reset was already requested. Please wait a few minutes and try again.',
-            details: { window_minutes: 5 },
+            message: `A recent password reset was already requested. Please wait ${rateWindowMinutes} minute${rateWindowMinutes === 1 ? '' : 's'} and try again.`,
+            details: { window_minutes: rateWindowMinutes },
           },
         } as AdminApiResponse<never>,
         noStore({ status: 429 })

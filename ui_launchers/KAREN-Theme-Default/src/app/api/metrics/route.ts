@@ -12,8 +12,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { MetricsCollector } from '../../../lib/monitoring/metrics-collector';
+import type {
+  ApplicationMetrics,
+  BusinessMetrics,
+  SystemMetrics,
+} from '../../../lib/monitoring/metrics-collector';
 import { PerformanceTracker } from '../../../lib/monitoring/performance-tracker';
+import type { PerformanceMetrics as TrackerPerformanceMetrics } from '../../../lib/monitoring/performance-tracker';
 import { ErrorMetricsCollector } from '../../../lib/monitoring/error-metrics-collector';
+import type { ErrorMetrics } from '../../../lib/monitoring/error-metrics-collector';
 
 // Initialize collectors once (process-lifetime singletons)
 const metricsCollector = new MetricsCollector();
@@ -88,6 +95,12 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       errorMetrics,
       systemMetrics,
       businessMetrics,
+    ]: [
+      ApplicationMetrics,
+      TrackerPerformanceMetrics,
+      ErrorMetrics,
+      SystemMetrics,
+      BusinessMetrics,
     ] = await Promise.all([
       metricsCollector.getApplicationMetrics(),
       performanceTracker.getPerformanceMetrics(),
@@ -108,27 +121,34 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // kari_http_requests_total (counter with path/method)
     lines.push('# HELP kari_http_requests_total Total number of HTTP requests');
     lines.push('# TYPE kari_http_requests_total counter');
-    const appHttp = applicationMetrics?.httpRequests ?? {};
-    Object.entries(appHttp).forEach(([path, data]: [string, any]) => {
-      Object.entries(data?.methods ?? {}).forEach(([method, count]) => {
-        const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
-        lines.push(`kari_http_requests_total{path="${esc(path)}",method="${esc(method)}"} ${n(numericCount)}`);
-      });
-    });
+    const httpRequests = applicationMetrics.httpRequests;
+    for (const path of Object.keys(httpRequests)) {
+      const metricsForPath = httpRequests[path];
+      const methods = metricsForPath.methods;
+      for (const method of Object.keys(methods)) {
+        const count = methods[method];
+        lines.push(`kari_http_requests_total{path="${esc(path)}",method="${esc(method)}"} ${n(count)}`);
+      }
+    }
 
     // kari_http_request_duration_seconds (histogram with path)
-    const reqDur = applicationMetrics?.requestDurations ?? {};
+    const requestDurations = applicationMetrics.requestDurations;
     const httpBounds = [0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    Object.entries(reqDur).forEach(([path, d]: [string, any]) => {
+    for (const path of Object.keys(requestDurations)) {
+      const durationMetrics = requestDurations[path];
       emitHistogram(
         lines,
         'kari_http_request_duration_seconds',
         'HTTP request duration in seconds',
         { path: esc(path) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        httpBounds
+        {
+          buckets: durationMetrics.buckets,
+          sum: n(durationMetrics.sum),
+          count: n(durationMetrics.count),
+        },
+        httpBounds,
       );
-    });
+    }
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
@@ -151,42 +171,48 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Feature usage (counter by feature)
     lines.push('# HELP kari_feature_usage_total Total usage count for application features');
     lines.push('# TYPE kari_feature_usage_total counter');
-    Object.entries(applicationMetrics?.featureUsage ?? {}).forEach(([feature, count]) => {
-      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
-      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(numericCount)}`);
-    });
+    const featureUsage = applicationMetrics.featureUsage;
+    for (const feature of Object.keys(featureUsage)) {
+      const count = featureUsage[feature];
+      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(count)}`);
+    }
 
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
     lines.push('# TYPE kari_plugin_executions_total counter');
-    Object.entries(applicationMetrics?.pluginExecutions ?? {}).forEach(([plugin, d]: [string, any]) => {
-      const successCount = typeof d?.success === 'number' ? d.success : Number(d?.success ?? 0);
-      const failureCount = typeof d?.failure === 'number' ? d.failure : Number(d?.failure ?? 0);
-      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(successCount)}`);
-      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(failureCount)}`);
-    });
+    const pluginExecutions = applicationMetrics.pluginExecutions;
+    for (const plugin of Object.keys(pluginExecutions)) {
+      const executionMetrics = pluginExecutions[plugin];
+      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(executionMetrics.success)}`);
+      lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(executionMetrics.failure)}`);
+    }
 
     // Model requests (counter by model)
     lines.push('# HELP kari_model_requests_total Total number of model requests');
     lines.push('# TYPE kari_model_requests_total counter');
-    Object.entries(applicationMetrics?.modelRequests ?? {}).forEach(([model, count]) => {
-      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
-      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(numericCount)}`);
-    });
+    const modelRequests = applicationMetrics.modelRequests;
+    for (const model of Object.keys(modelRequests)) {
+      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(modelRequests[model])}`);
+    }
 
     // Model response time (histogram by model)
-    const modelRT = applicationMetrics?.modelResponseTimes ?? {};
+    const modelResponseTimes = applicationMetrics.modelResponseTimes;
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
-    Object.entries(modelRT).forEach(([model, d]: [string, any]) => {
+    for (const model of Object.keys(modelResponseTimes)) {
+      const responseMetrics = modelResponseTimes[model];
       emitHistogram(
         lines,
         'kari_model_response_time_seconds',
         'Model response time in seconds',
         { model: esc(model) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        modelBounds
+        {
+          buckets: responseMetrics.buckets,
+          sum: n(responseMetrics.sum),
+          count: n(responseMetrics.count),
+        },
+        modelBounds,
       );
-    });
+    }
 
     // ----------------------
     // PERFORMANCE METRICS
@@ -234,15 +260,17 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // ----------------------
     lines.push('# HELP kari_health_check_status Health check status (1 = healthy, 0 = unhealthy)');
     lines.push('# TYPE kari_health_check_status gauge');
-      Object.entries(systemMetrics?.healthChecks ?? {}).forEach(([check, status]) => {
-        let val = 0;
-        if (status === 'healthy') {
-          val = 1;
-        } else if (status === 'degraded') {
-          val = 0.5;
-        }
-        lines.push(`kari_health_check_status{check_name="${esc(String(check))}"} ${val}`);
-      });
+    const healthChecks = systemMetrics.healthChecks;
+    for (const check of Object.keys(healthChecks)) {
+      const status = healthChecks[check];
+      let val = 0;
+      if (status === 'healthy') {
+        val = 1;
+      } else if (status === 'degraded') {
+        val = 0.5;
+      }
+      lines.push(`kari_health_check_status{check_name="${esc(String(check))}"} ${val}`);
+    }
 
     lines.push('# HELP kari_database_connections_total Number of database connections');
     lines.push('# TYPE kari_database_connections_total gauge');
@@ -262,18 +290,23 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     lines.push(`kari_redis_connections_failed_total ${n(systemMetrics?.redis?.failedConnections)}`);
 
     // Database query duration (histogram by query label)
-    const qDur = systemMetrics?.database?.queryDurations ?? {};
+    const queryDurations = systemMetrics.database.queryDurations;
     const dbBounds = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    Object.entries(qDur).forEach(([query, d]: [string, any]) => {
+    for (const query of Object.keys(queryDurations)) {
+      const queryMetrics = queryDurations[query];
       emitHistogram(
         lines,
         'kari_database_query_duration_seconds',
         'Database query duration in seconds',
         { query: esc(query) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        dbBounds
+        {
+          buckets: queryMetrics.buckets,
+          sum: n(queryMetrics.sum),
+          count: n(queryMetrics.count),
+        },
+        dbBounds,
       );
-    });
+    }
 
     // ----------------------
     // BUSINESS METRICS
@@ -296,9 +329,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     lines.push('# HELP kari_failed_login_attempts_total Total number of failed login attempts');
     lines.push('# TYPE kari_failed_login_attempts_total counter');
-    Object.entries(businessMetrics?.failedLogins ?? {}).forEach(([sourceIp, count]) => {
-      lines.push(`kari_failed_login_attempts_total{source_ip="${esc(String(sourceIp))}"} ${n(count)}`);
-    });
+    const failedLogins = businessMetrics.failedLogins;
+    for (const sourceIp of Object.keys(failedLogins)) {
+      lines.push(`kari_failed_login_attempts_total{source_ip="${esc(String(sourceIp))}"} ${n(failedLogins[sourceIp])}`);
+    }
 
     lines.push('# HELP kari_evil_mode_activations_total Total number of Evil Mode activations');
     lines.push('# TYPE kari_evil_mode_activations_total counter');
@@ -326,7 +360,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         Expires: '0',
       },
     });
-  } catch (_err) {
+  } catch {
     // Minimal but valid fallback payload for Prometheus
     const fallback =
       '# HELP kari_metrics_collection_errors_total Total number of metrics collection errors\n' +
