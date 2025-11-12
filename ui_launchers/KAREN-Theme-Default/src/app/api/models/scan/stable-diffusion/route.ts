@@ -5,6 +5,8 @@ import crypto from 'crypto';
 
 type ModelType = 'checkpoint' | 'diffusers';
 
+type DiffusersConfig = Record<string, unknown>;
+
 type SdModel = {
   name: string;                // filename or directory name
   path: string;                // relative to request 'directory'
@@ -12,7 +14,7 @@ type SdModel = {
   size: number;                // bytes
   size_human: string;
   modified: string;            // ISO
-  config?: any | null;         // diffusers model_index.json (optional)
+  config?: DiffusersConfig | null; // diffusers model_index.json (optional)
 };
 
 type QueryOpts = {
@@ -107,11 +109,11 @@ async function isDiffusersModelDirectory(dirPath: string): Promise<boolean> {
   }
 }
 
-async function readDiffusersConfig(dirPath: string): Promise<any | null> {
+async function readDiffusersConfig(dirPath: string): Promise<DiffusersConfig | null> {
   try {
     const p = path.join(dirPath, 'model_index.json');
     const raw = await fs.readFile(p, 'utf-8');
-    return JSON.parse(raw);
+    return JSON.parse(raw) as DiffusersConfig;
   } catch { return null; }
 }
 

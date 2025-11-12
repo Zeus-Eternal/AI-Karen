@@ -6,7 +6,7 @@ import ProfileSelector from "@/components/chat/ProfileSelector";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import CopilotArtifacts from "./CopilotArtifacts";
-import type { ChatMessage, ChatSettings, ChatContext, CopilotArtifact, CopilotAction } from "../types";
+import type { ChatMessage, ChatContext, CopilotArtifact, CopilotAction } from "../types";
 
 interface ChatMainContentProps {
   messages: ChatMessage[];
@@ -18,7 +18,6 @@ interface ChatMainContentProps {
   enableCodeAssistance: boolean;
   enableVoiceInput: boolean;
   enableFileUpload: boolean;
-  settings: ChatSettings;
   chatContext: ChatContext;
   artifacts: CopilotArtifact[];
   copilotActions?: CopilotAction[];
@@ -45,7 +44,6 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
   enableCodeAssistance,
   enableVoiceInput,
   enableFileUpload,
-  settings,
   chatContext,
   artifacts,
   copilotActions,
@@ -87,7 +85,6 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
         isTyping={isTyping}
         useCopilotKit={useCopilotKit}
         enableCodeAssistance={enableCodeAssistance}
-        settings={settings}
         onMessageAction={onMessageAction}
         messagesEndRef={messagesEndRef}
       />
