@@ -1,6 +1,6 @@
 "use client";
 import * as React from 'react';
-import { useState, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -59,35 +59,32 @@ function AuthenticatedHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const parseView = (
-    sp: ReturnType<typeof useSearchParams> | null
-  ): ActiveView => {
-    const v = sp?.get("view") ?? "";
-    const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
-    return (allowed as readonly string[]).includes(v)
-      ? (v as ActiveView)
-      : "dashboard";
-  };
 
-  const [activeMainView, setActiveMainView] = useState<ActiveView>(() =>
-    parseView(searchParams as unknown)
+  type SearchParamsType = ReturnType<typeof useSearchParams>;
+  const parseView = useCallback(
+    (sp: SearchParamsType | null): ActiveView => {
+      const view = sp?.get("view") ?? "";
+      const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
+      return (allowed as readonly string[]).includes(view)
+        ? (view as ActiveView)
+        : "dashboard";
+    },
+    [],
   );
 
-  useEffect(() => {
-    const currentView = parseView(searchParams as unknown);
-    if (currentView !== activeMainView) {
-      setActiveMainView(currentView);
-    }
-  }, [searchParams, activeMainView]);
+  const activeMainView = useMemo(
+    () => parseView(searchParams as SearchParamsType),
+    [parseView, searchParams],
+  );
 
-  const navigate = (view: ActiveView) => {
-    setActiveMainView(view);
-    const params = new URLSearchParams(
-      searchParams ? searchParams.toString() : ""
-    );
-    params.set("view", view);
-    router.push(`/?${params.toString()}`);
-  };
+  const navigate = useCallback(
+    (view: ActiveView) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.set("view", view);
+      router.push(`/?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   return (
     <SidebarProvider>

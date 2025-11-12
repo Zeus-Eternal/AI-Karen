@@ -129,7 +129,18 @@ export function EnhancedAdminDashboard({
 
   // Load data on mount
   useEffect(() => {
-    loadDashboardData();
+    let cancelled = false;
+
+    const task = Promise.resolve().then(() => {
+      if (!cancelled) {
+        void loadDashboardData();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      void task;
+    };
   }, [loadDashboardData]);
 
   // Access control
