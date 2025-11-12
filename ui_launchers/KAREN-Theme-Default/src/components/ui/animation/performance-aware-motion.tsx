@@ -106,14 +106,6 @@ export const SpringMotion: React.FC<Omit<PerformanceAwareMotionProps, 'variant'>
 );
 
 // Staggered animation container
-// eslint-disable-next-line react-refresh/only-export-components
-export interface StaggeredMotionProps {
-  children: React.ReactNode;
-  staggerDelay?: number;
-  className?: string;
-  optimizeForPerformance?: boolean;
-}
-
 export const StaggeredMotion: React.FC<StaggeredMotionProps> = ({
   children,
   staggerDelay = 0.05,
