@@ -13,6 +13,7 @@
 import React from "react";
 import { getKarenBackend, APIError } from "../karen-backend";
 import { safeError, safeLog } from "../safe-console";
+import { getSampleExtensionsList } from "./sample-data";
 import type {
   ExtensionTaskHistoryEntry,
   HealthStatus,
@@ -263,91 +264,10 @@ export class ExtensionIntegrationService {
   }
 
   private async loadSampleExtensions(): Promise<void> {
-    const sampleExtensions = [
-      {
-        id: "analytics-dashboard",
-        display_name: "Analytics Dashboard",
-        name: "analytics-dashboard",
-        description: "Advanced analytics and reporting dashboard with real-time metrics",
-        version: "1.2.0",
-        author: "Kari Team",
-        category: "analytics",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-      {
-        id: "automation-engine",
-        display_name: "Automation Engine",
-        name: "automation-engine",
-        description: "Intelligent workflow automation with AI-powered task orchestration",
-        version: "2.1.0",
-        author: "Kari Team",
-        category: "automation",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: true,
-        },
-      },
-      {
-        id: "communication-hub",
-        display_name: "Communication Hub",
-        name: "communication-hub",
-        description: "Unified communication platform with multi-channel support",
-        version: "1.0.5",
-        author: "Community",
-        category: "communication",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: false,
-          provides_webhooks: true,
-        },
-      },
-      {
-        id: "security-monitor",
-        display_name: "Security Monitor",
-        name: "security-monitor",
-        description: "Real-time security monitoring and threat detection system",
-        version: "3.0.1",
-        author: "Security Team",
-        category: "security",
-        status: "error",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-      {
-        id: "experimental-ai",
-        display_name: "Experimental AI Features",
-        name: "experimental-ai",
-        description: "Cutting-edge AI features and experimental capabilities",
-        version: "0.8.0-beta",
-        author: "Research Team",
-        category: "experimental",
-        status: "inactive",
-        capabilities: {
-          provides_ui: true,
-          provides_api: false,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-    ];
+    const sampleExtensions = getSampleExtensionsList();
 
     for (const ext of sampleExtensions) {
-      await this.processExtension(ext.id, ext);
+      await this.processExtension(ext.id, ext as Record<string, unknown>);
     }
     safeLog("ExtensionIntegrationService: Loaded sample extensions for demonstration");
   }
