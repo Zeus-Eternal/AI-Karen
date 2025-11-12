@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExtensionNavigation } from "@/components/extensions/ExtensionNavigation";
-import { useExtensionsAvailable } from "@/lib/extensions/extension-initializer";
+import { useExtensionsAvailable } from "@/lib/extensions/use-extension-initialization";
 
 // Icons
 import {

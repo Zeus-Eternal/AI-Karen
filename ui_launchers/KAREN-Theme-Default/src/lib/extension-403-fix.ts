@@ -41,7 +41,10 @@ function isGracefulStatus(status: number): boolean {
 /**
  * Get appropriate fallback data based on the extension endpoint
  */
-function getFallbackDataForExtensionEndpoint(url: string, status: number = 403): any {
+function getFallbackDataForExtensionEndpoint(
+  url: string,
+  status: number = 403
+): Record<string, unknown> {
   // Main extensions list endpoint
   if (isListEndpoint(url)) {
     if (status === 504) {

@@ -190,7 +190,7 @@ export async function demonstrateErrorHandling() {
   // Example 6: Service class usage
   const userService = new UserService();
   try {
-    const user = await userService.getUser('123');
+    await userService.getUser('123');
   } catch (error) {
     console.error('Service method failed', error);
   }

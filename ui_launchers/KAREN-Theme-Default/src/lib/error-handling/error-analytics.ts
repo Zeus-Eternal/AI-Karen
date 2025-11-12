@@ -1,5 +1,11 @@
 import type { ErrorInfo } from 'react';
 
+type GtagFunction = (...args: unknown[]) => void;
+
+interface AnalyticsWindow extends Window {
+  gtag?: GtagFunction;
+}
+
 export interface ErrorAnalyticsConfig {
   enabled: boolean;
   section: string;
@@ -344,18 +350,21 @@ export class ErrorAnalytics {
   }
 
   private sendToAnalyticsServices(metrics: ErrorMetrics) {
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'exception', {
-        description: `${metrics.section}: ${metrics.errorMessage}`,
-        fatal: metrics.severity === 'critical',
-        custom_map: {
-          error_id: metrics.errorId,
-          section: metrics.section,
-          category: metrics.category,
-          severity: metrics.severity,
-          recovery_attempts: metrics.recoveryAttempts,
-        },
-      });
+    if (typeof window !== 'undefined') {
+      const analyticsWindow = window as AnalyticsWindow;
+      if (typeof analyticsWindow.gtag === 'function') {
+        analyticsWindow.gtag('event', 'exception', {
+          description: `${metrics.section}: ${metrics.errorMessage}`,
+          fatal: metrics.severity === 'critical',
+          custom_map: {
+            error_id: metrics.errorId,
+            section: metrics.section,
+            category: metrics.category,
+            severity: metrics.severity,
+            recovery_attempts: metrics.recoveryAttempts,
+          },
+        });
+      }
     }
 
     if (typeof window === 'undefined') {

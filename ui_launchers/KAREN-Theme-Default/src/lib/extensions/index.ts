@@ -16,3 +16,4 @@ export * from './dynamic-router';
 
 // Initialization
 export * from './extension-initializer';
+export * from './use-extension-initialization';
