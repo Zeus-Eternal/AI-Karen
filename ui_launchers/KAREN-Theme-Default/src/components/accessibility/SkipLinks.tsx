@@ -43,7 +43,7 @@ export function SkipLinks({ links = defaultLinks, className }: SkipLinksProps) {
             // High contrast mode
             'high-contrast:bg-black high-contrast:text-white high-contrast:border-white'
           )}
-          onFocus={(e) => {
+          onFocus={() => {
             // Ensure the target element exists and is focusable
             const target = document.querySelector(link.href);
             if (target && !target.hasAttribute('tabindex')) {
