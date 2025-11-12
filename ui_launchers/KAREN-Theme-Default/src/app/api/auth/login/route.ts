@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from "next/server";
 //   getConnectionStatus,
 // } from "@/app/api/_utils/backend";
 import { isSimpleAuthEnabled } from "@/lib/auth/env";
-import { ConnectionError } from "@/lib/connection/connection-manager";
 
 interface DatabaseConnectivityResult {
   isConnected: boolean;
@@ -173,14 +172,6 @@ export async function POST(request: NextRequest) {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
-  const connectionOptions = {
-    timeout: timeoutConfig.authentication,
-    retryAttempts: retryPolicy.maxAttempts,
-    retryDelay: retryPolicy.baseDelay,
-    exponentialBackoff: retryPolicy.jitterEnabled,
-    headers: baseHeaders,
-  };
-
   try {
     // Simple direct backend request
     const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';

@@ -147,7 +147,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         // ignore, will continue with original response
       }
     }
-    let data: any;
+    let data: unknown;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {

@@ -52,7 +52,7 @@ async function tryFetch(
     const resp = await fetch(url, {
       ...init,
       signal: controller.signal,
-      // @ts-ignore (Node/undici hint)
+      // @ts-expect-error (Node/undici hint)
       keepalive: true,
       cache: 'no-store',
     });

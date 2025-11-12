@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * Check if this is the first run (no super admin exists)
  * GET /api/admin/setup/check-first-run
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const adminUtils = getAdminDatabaseUtils();
 
@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
     let setupToken: string | undefined;
     if (!superAdminExists) {
       setupToken = await generateSetupToken(); // format: setup_<timestamp>_<32hex>
+      const validation = verifySetupToken(setupToken);
+      if (!validation.isValid) {
+        throw new Error(validation.error ?? 'Generated invalid setup token');
+      }
     }
 
     const setupData: FirstRunSetup = {

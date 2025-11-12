@@ -273,32 +273,50 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          valid: true,
-          user: {
-            user_id: authContext.user.user_id,
-            email: authContext.user.email,
-            full_name: authContext.user.full_name,
-            role: authContext.user.role,
-            two_factor_enabled: authContext.user.two_factor_enabled,
-          },
-          session: {
-            expires_at: authContext.sessionStatus.expiresAt.toISOString(),
-            time_remaining: authContext.sessionStatus.timeRemaining,
-            warning_active: authContext.sessionStatus.warningActive,
-          },
-          security: {
-            mfa_required: authContext.mfaRequired,
-            mfa_verified: authContext.mfaVerified,
-            ip_address: authContext.ipAddress,
-          },
+    const response: AdminApiResponse<{
+      valid: true;
+      user: {
+        user_id: string;
+        email: string;
+        full_name?: string | null;
+        role: string;
+        two_factor_enabled: boolean;
+      };
+      session: {
+        expires_at: string;
+        time_remaining: number;
+        warning_active: boolean;
+      };
+      security: {
+        mfa_required: boolean;
+        mfa_verified: boolean;
+        ip_address?: string | null;
+      };
+    }> = {
+      success: true,
+      data: {
+        valid: true,
+        user: {
+          user_id: authContext.user.user_id,
+          email: authContext.user.email,
+          full_name: authContext.user.full_name,
+          role: authContext.user.role,
+          two_factor_enabled: authContext.user.two_factor_enabled,
         },
-      } as AdminApiResponse<any>,
-      withCommonHeaders(200),
-    );
+        session: {
+          expires_at: authContext.sessionStatus.expiresAt.toISOString(),
+          time_remaining: authContext.sessionStatus.timeRemaining,
+          warning_active: authContext.sessionStatus.warningActive,
+        },
+        security: {
+          mfa_required: authContext.mfaRequired,
+          mfa_verified: authContext.mfaVerified,
+          ip_address: authContext.ipAddress,
+        },
+      },
+    };
+
+    return NextResponse.json(response, withCommonHeaders(200));
   } catch {
     return NextResponse.json(
       {
