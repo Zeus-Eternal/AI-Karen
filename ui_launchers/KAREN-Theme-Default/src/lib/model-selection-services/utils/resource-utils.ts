@@ -110,16 +110,21 @@ export function checkResourceFeasibility(
   const canLoad = canLoadInMemory && hasEnoughDiskSpace;
   
   let reason: string | undefined;
-  if (!canLoad) {
-    const reasons: string[] = [];
-    if (!canLoadInMemory) {
-      reasons.push(`Insufficient memory: need ${formatMemorySize(requirements.memory)}, have ${formatMemorySize(memoryAvailable)}`);
+    if (!canLoad) {
+      const reasons: string[] = [];
+      if (!canLoadInMemory) {
+        reasons.push(`Insufficient memory: need ${formatMemorySize(requirements.memory)}, have ${formatMemorySize(memoryAvailable)}`);
+      }
+      if (!hasEnoughDiskSpace) {
+        reasons.push(`Insufficient disk space: need ${formatMemorySize(requirements.disk_space)}, have ${formatMemorySize(diskAvailable)}`);
+      }
+      if (requirements.gpu_memory && !canLoadInGPU) {
+        reasons.push(
+          `Insufficient GPU memory: need ${formatMemorySize(requirements.gpu_memory)}, have ${formatMemorySize(gpuMemoryAvailable)}`
+        );
+      }
+      reason = reasons.join('; ');
     }
-    if (!hasEnoughDiskSpace) {
-      reasons.push(`Insufficient disk space: need ${formatMemorySize(requirements.disk_space)}, have ${formatMemorySize(diskAvailable)}`);
-    }
-    reason = reasons.join('; ');
-  }
   
   return {
     canLoad,

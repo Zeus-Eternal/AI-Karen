@@ -54,6 +54,7 @@ export interface CacheEntry {
   compressed: boolean;
   accessCount: number;
   lastAccessed: number;
+  compressionRatio?: number;
 }
 
 export interface CacheStats {
@@ -249,6 +250,7 @@ export class CacheManager {
       compressed: used, // mark compressed only if "beneficial"
       accessCount: 0,
       lastAccessed: Date.now(),
+      compressionRatio: used ? ratio : undefined,
     };
 
     this.cache.set(key, entry);

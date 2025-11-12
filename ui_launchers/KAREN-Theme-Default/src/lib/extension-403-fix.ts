@@ -9,6 +9,19 @@
 
 import { logger } from './logger';
 
+type ExtensionFallbackResponse = {
+  extensions?: Record<string, unknown>;
+  total?: number;
+  message?: string;
+  access_level?: string;
+  available_features?: string[];
+  restricted_features?: string[];
+  fallback_mode?: boolean;
+  error_type?: string;
+  status?: string;
+  health?: Record<string, unknown>;
+} & Record<string, unknown>;
+
 declare global {
   interface Window {
     __EXT_PATCH__?: {

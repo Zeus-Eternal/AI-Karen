@@ -384,8 +384,8 @@ export class ImageGenerationService {
     const { elapsed_ms = 0, ...rest } = extras;
 
     const event: TraceEvent = {
-      phase,
-      correlation_id: correlationId,
+      phase: extraPhase ?? phase,
+      correlation_id: extraCorrelation ?? correlationId,
       elapsed_ms,
       ...(rest as Partial<Omit<TraceEvent, 'phase' | 'correlation_id' | 'elapsed_ms'>>)
     };

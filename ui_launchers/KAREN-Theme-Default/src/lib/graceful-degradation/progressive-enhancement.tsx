@@ -27,6 +27,7 @@ export interface EnhancedComponentProps {
 }
 
 // Higher-order component for progressive enhancement
+// eslint-disable-next-line react-refresh/only-export-components
 export function withProgressiveEnhancement<P extends object>(
   Component: React.ComponentType<P & EnhancedComponentProps>,
   featureName: string,
@@ -115,6 +116,7 @@ export function withProgressiveEnhancement<P extends object>(
 }
 
 // Progressive feature wrapper component
+// eslint-disable-next-line react-refresh/only-export-components
 export function ProgressiveFeature({
   featureName,
   fallbackComponent,
@@ -216,6 +218,7 @@ export function ProgressiveFeature({
 }
 
 // Hook for progressive data loading
+// eslint-disable-next-line react-refresh/only-export-components
 export function useProgressiveData<T>(
   featureName: string,
   fetchFunction: () => Promise<T>,

@@ -442,9 +442,9 @@ let connectionPool: HttpConnectionPool | null = null;
  * Get the global HTTP connection pool instance
  */
 export function getHttpConnectionPool(): HttpConnectionPool {
-  if (!connectionPool) {
-    // Get configuration from environment
-    const _configManager = getEnvironmentConfigManager();
+    if (!connectionPool) {
+      // Get configuration from environment
+      getEnvironmentConfigManager();
     const timeoutManager = getTimeoutManager();
     const config: Partial<ConnectionPoolConfig> = {
       connectionTimeout: timeoutManager.getTimeout(OperationType.CONNECTION),

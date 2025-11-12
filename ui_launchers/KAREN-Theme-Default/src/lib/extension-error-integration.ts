@@ -7,6 +7,8 @@
 
 import { logger } from './logger';
 
+type ExtensionFallbackData = Record<string, unknown> | unknown[] | null;
+
 export interface ExtensionErrorResponse {
   fallback_data?: Record<string, unknown>;
   retry?: boolean;

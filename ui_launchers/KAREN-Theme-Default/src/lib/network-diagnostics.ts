@@ -505,3 +505,17 @@ export function initializeNetworkDiagnostics(): NetworkDiagnostics {
 }
 
 export default NetworkDiagnostics;
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+  mozConnection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+  webkitConnection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+};

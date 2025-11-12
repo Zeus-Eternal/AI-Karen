@@ -49,7 +49,7 @@ export async function fetchProviderDiscovery(): Promise<ProviderDiscoveryItem[]>
   try {
     const result = await getJson<ProviderDiscoveryItem[]>('/api/providers/discovery');
     return Array.isArray(result) ? result : [];
-  } catch (_err) {
+  } catch {
     // Fallback to public endpoint if auth is required
     try {
       const result = await getJson<ProviderDiscoveryItem[]>('/api/public/providers/discovery');
