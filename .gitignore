@@ -78,7 +78,7 @@ config/llm_settings.local.json
 /models
 /.env_karen/bin
 /.env_karen
-
+.tools
 # Temporary and development files
 temp_files/
 *.tmp
@@ -121,3 +121,5 @@ ui_launchers/KAREN-Theme-Default/package-lock.json
 ui_launchers/KAREN-Theme-Default/package.json
 ui_launchers/KAREN-Theme-Default/next.config.js
 ui_launchers/KAREN-Theme-Default/postcss.config.js
+*/test*
+data/users.json
