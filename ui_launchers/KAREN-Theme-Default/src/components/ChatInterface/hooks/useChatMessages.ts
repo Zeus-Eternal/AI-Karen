@@ -655,7 +655,6 @@ export const useChatMessages = (
                   }
                 }
               }
-            }
             // Flush any remaining buffered data after stream ends
             const tail = (buffer || "").trim();
             if (tail && tail !== "data: [DONE]") {
@@ -1083,17 +1082,18 @@ export const useChatMessages = (
           }
         );
 
-        setIsTyping(false);
+      setIsTyping(false);
 
-        toast({
-          variant: "destructive",
-          title: "Critical Error",
-          description:
-            "An unexpected error occurred. Please refresh the page and try again.",
-        });
-      }
-    },
-    [
+      toast({
+        variant: "destructive",
+        title: "Critical Error",
+        description:
+          "An unexpected error occurred. Please refresh the page and try again.",
+      });
+    }
+  },
+  [
+      messages,
       isTyping,
       settings,
       sessionId,

@@ -173,8 +173,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   useEffect(() => {
     return () => {
       mediaRecorderRef.current?.stop();
-      setIsTyping(false);
-      setIsRecording(false);
     };
   }, []);
 

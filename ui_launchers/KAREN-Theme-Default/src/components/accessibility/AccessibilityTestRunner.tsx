@@ -50,6 +50,32 @@ interface AccessibilityTestResult {
 
 type TestType = "basic" | "keyboard" | "screenReader" | "colorContrast";
 
+interface AxeViolation {
+  id?: string;
+  impact?: string;
+  description?: string;
+  help?: string;
+  helpUrl?: string;
+  nodes?: Array<Record<string, unknown>>;
+  elements?: Array<unknown>;
+}
+
+interface AxeSummary {
+  passes?: number;
+  violations?: number;
+  incomplete?: number;
+  inapplicable?: number;
+}
+
+type AccessibilityTestResult = {
+  passed?: boolean;
+  score?: number;
+  violations?: AxeViolation[];
+  summary?: AxeSummary;
+  error?: string;
+  [key: string]: unknown;
+} | null;
+
 interface AccessibilityTestRunnerProps {
   className?: string;
 }

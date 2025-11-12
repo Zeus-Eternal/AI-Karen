@@ -238,6 +238,7 @@ export function BulkUserOperations({
     handleImport,
     newRole,
     onOperationComplete,
+    handleImport,
     operations,
     selectedOperation,
     selectedUserIds,

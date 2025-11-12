@@ -17,8 +17,7 @@ interface CopilotActionsProps {
   showShortcuts?: boolean;
 }
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-};
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {};
 
 const defaultActions: CopilotAction[] = [
   {
@@ -207,6 +206,5 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   );
 };
 
-export const DEFAULT_COPILOT_ACTIONS = defaultActions;
 export type { CopilotAction, ChatContext };
 export default CopilotActions;

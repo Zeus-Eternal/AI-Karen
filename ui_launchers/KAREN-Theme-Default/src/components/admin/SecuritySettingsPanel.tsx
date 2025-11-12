@@ -164,14 +164,15 @@ export default function SecuritySettingsPanel() {
   const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
       const keys = path.split('.');
-      const updated = { ...prev };
-      let current: unknown = updated;
+      const updated: Record<string, unknown> = { ...prev };
+      let current: Record<string, unknown> = updated;
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
+        const key = keys[i];
+        current[key] = { ...(current[key] as Record<string, unknown>) };
+        current = current[key] as Record<string, unknown>;
       }
-      current[keys[keys.length - 1]] = value;
-      return updated;
+      current[keys[keys.length - 1]] = value as unknown;
+      return updated as SecuritySettings;
     });
     setHasChanges(true);
   };
@@ -222,7 +223,7 @@ export default function SecuritySettingsPanel() {
     } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to resolve alert',
+        description: error instanceof Error ? error.message : 'Failed to resolve alert',
         variant: 'destructive'
       });
     }
@@ -242,7 +243,7 @@ export default function SecuritySettingsPanel() {
     } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to unblock IP address',
+        description: error instanceof Error ? error.message : 'Failed to unblock IP address',
         variant: 'destructive'
       });
     }
@@ -264,7 +265,7 @@ export default function SecuritySettingsPanel() {
     } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to export security report',
+        description: error instanceof Error ? error.message : 'Failed to export security report',
         variant: 'destructive'
       });
     }

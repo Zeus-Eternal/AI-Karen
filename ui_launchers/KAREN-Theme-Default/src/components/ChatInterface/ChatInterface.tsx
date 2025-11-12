@@ -380,5 +380,3 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 // Export for backward compatibility
 export default ChatInterface;
 
-// Export commonly used exports to prevent import errors
-export const DEFAULT_COPILOT_ACTIONS: CopilotAction[] = [];
