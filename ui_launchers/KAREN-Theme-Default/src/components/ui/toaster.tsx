@@ -51,7 +51,7 @@ export interface AppToasterProps {
 }
 
 function buildToastClassName(
-  variant: ToastProps["variant"],
+  variant: UiToastProps["variant"],
   className: string | undefined,
   richColors?: boolean,
 ) {
