@@ -39,7 +39,6 @@ interface ErrorResponse {
 const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
 // Use simple timeout and retry config
 const timeoutConfig = { authentication: 15000 };
-const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
 
 // ---- Attempt tracking (in-memory) ----

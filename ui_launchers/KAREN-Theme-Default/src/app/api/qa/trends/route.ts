@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '30');
     const trends = await collector.generateTrends(days);
     return NextResponse.json(trends);
-  } catch (_error) {
+  } catch (error) {
+    console.error('Failed to generate quality trends', error);
     return NextResponse.json(
       { error: 'Failed to generate quality trends' },
       { status: 500 }

@@ -114,7 +114,7 @@ async function readDiffusersConfig(dirPath: string): Promise<DiffusersConfig | n
     const p = path.join(dirPath, 'model_index.json');
     const raw = await fs.readFile(p, 'utf-8');
     const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    if (parsed && typeof parsed === 'object') {
       return parsed as DiffusersConfig;
     }
     return null;

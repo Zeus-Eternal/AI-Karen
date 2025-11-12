@@ -89,10 +89,7 @@ function isIgnored(name: string, ignore: string[]): boolean {
   return ignore.some(seg => seg && name.includes(seg));
 }
 
-async function readConfigFile(
-  dirPath: string,
-  filename: string,
-): Promise<ConfigData | null> {
+async function readConfigFile(dirPath: string, filename: string): Promise<ConfigData | null> {
   try {
     const p = path.join(dirPath, filename);
     const ok = await safeAccess(p);
@@ -100,11 +97,13 @@ async function readConfigFile(
     const raw = await fs.readFile(p, 'utf-8');
     try {
       const parsed = JSON.parse(raw) as unknown;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      if (parsed && typeof parsed === 'object') {
         return parsed as ConfigData;
       }
       return null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   } catch { return null; }
 }
 
@@ -118,7 +117,7 @@ async function calculateDirectorySizeWithBudget(
 
   async function walk(p: string): Promise<void> {
     if (Date.now() > deadline) return; // time budget exceeded
-    let entries: unknown[];
+    let entries: import('fs').Dirent[];
     try {
       entries = await fs.readdir(p, { withFileTypes: true });
     } catch { return; }

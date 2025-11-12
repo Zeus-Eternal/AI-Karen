@@ -169,8 +169,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         { path: esc(path) },
         {
           buckets: durationMetrics?.buckets,
-          sum: n(durationMetrics?.sum),
-          count: n(durationMetrics?.count),
+          sum: durationMetrics?.sum,
+          count: durationMetrics?.count,
         },
         httpBounds,
       );
@@ -197,11 +197,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Feature usage (counter by feature)
     lines.push('# HELP kari_feature_usage_total Total usage count for application features');
     lines.push('# TYPE kari_feature_usage_total counter');
-    const featureUsage = applicationMetrics.featureUsage ?? {};
-    for (const feature of Object.keys(featureUsage)) {
-      const count = featureUsage[feature];
+    const featureUsage = applicationMetrics?.featureUsage ?? {};
+    Object.entries(featureUsage).forEach(([feature, count]) => {
       lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(count)}`);
-    }
+    });
 
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
@@ -216,10 +215,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Model requests (counter by model)
     lines.push('# HELP kari_model_requests_total Total number of model requests');
     lines.push('# TYPE kari_model_requests_total counter');
-    const modelRequests = applicationMetrics.modelRequests;
-    for (const model of Object.keys(modelRequests)) {
-      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(modelRequests[model])}`);
-    }
+    const modelRequests = applicationMetrics?.modelRequests ?? {};
+    Object.entries(modelRequests).forEach(([model, count]) => {
+      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(count)}`);
+    });
 
     // Model response time (histogram by model)
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
@@ -231,8 +230,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         { model: esc(model) },
         {
           buckets: responseMetrics?.buckets,
-          sum: n(responseMetrics?.sum),
-          count: n(responseMetrics?.count),
+          sum: responseMetrics?.sum,
+          count: responseMetrics?.count,
         },
         modelBounds,
       );
@@ -321,8 +320,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         { query: esc(query) },
         {
           buckets: queryMetrics?.buckets,
-          sum: n(queryMetrics?.sum),
-          count: n(queryMetrics?.count),
+          sum: queryMetrics?.sum,
+          count: queryMetrics?.count,
         },
         dbBounds,
       );

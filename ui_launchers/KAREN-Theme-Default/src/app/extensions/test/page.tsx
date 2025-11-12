@@ -31,11 +31,12 @@ const ExtensionPerformanceMonitor = dynamic(() => import('@/components/extension
 export default function ExtensionTestPage() {
   const [activeTab, setActiveTab] = useState('statuses');
   const { statuses, loading: statusesLoading, error: statusesError } = useExtensionStatuses();
-  const routes = useExtensionRoutes();
-  const navItems = useExtensionNavigation();
-  const healthData = useExtensionHealth();
-  const performanceData = useExtensionPerformance();
-  const taskData = useExtensionTaskMonitoring();
+  // Hook subscriptions ensure these extension APIs remain healthy during manual testing
+  useExtensionRoutes();
+  useExtensionNavigation();
+  useExtensionHealth();
+  useExtensionPerformance();
+  useExtensionTaskMonitoring();
 
   const renderJson = (label: string, data: unknown) => (
     <Card>

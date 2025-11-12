@@ -7,6 +7,7 @@ import '@fontsource/inter/700.css'
 import '../styles/globals.css'
 import { Providers } from './providers'
 
+// Next.js requires exporting metadata from layout files; suppress Fast Refresh warning.
 // eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
   title: 'AI Karen',
