@@ -10,7 +10,7 @@ import { logger } from './logger';
 type ExtensionFallbackData = Record<string, unknown> | unknown[] | null;
 
 export interface ExtensionErrorResponse {
-  fallback_data?: Record<string, unknown>;
+  fallback_data?: ExtensionFallbackData;
   retry?: boolean;
   delay?: number;
   requires_login?: boolean;
