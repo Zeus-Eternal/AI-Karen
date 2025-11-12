@@ -381,7 +381,12 @@ export class ImageGenerationService {
       phase?: TraceEvent['phase'];
       correlation_id?: string;
     };
-    const { elapsed_ms = 0, ...rest } = extras;
+    const {
+      elapsed_ms = 0,
+      phase: extraPhase,
+      correlation_id: extraCorrelation,
+      ...rest
+    } = extras;
 
     const event: TraceEvent = {
       phase: extraPhase ?? phase,

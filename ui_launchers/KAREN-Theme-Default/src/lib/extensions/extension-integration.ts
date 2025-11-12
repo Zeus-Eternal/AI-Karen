@@ -425,7 +425,7 @@ export class ExtensionIntegrationService {
       if (normalizedTasks.length > 0 || tasksResponse !== undefined) {
         const status = this.extensionStatuses.get(extensionId);
         if (status) {
-          const activeTaskCount = normalizedTasks.reduce((count, task) => {
+          const activeTaskCount = normalizedTasks.reduce<number>((count, task) => {
             if (task && typeof task === "object") {
               const rawStatus =
                 "status" in task
