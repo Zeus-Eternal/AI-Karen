@@ -35,8 +35,6 @@ const presetRanges = [
   { key: "last-month", label: "Last 30 Days", duration: 30 * 24 * 60 * 60 * 1000 },
 ] as const;
 
-type PresetKey = (typeof presetRanges)[number]["key"] | "custom";
-
 interface TimeRangeSelectorProps {
   value: TimeRange; // { start: Date; end: Date; preset?: string }
   onChange: (timeRange: TimeRange) => void;

@@ -1,7 +1,6 @@
 // ui_launchers/KAREN-Theme-Default/src/components/dashboard/WidgetRegistry.tsx
 "use client";
 
-import React from "react";
 import {
   AlertCircle,
   TrendingUp,

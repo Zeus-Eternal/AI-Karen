@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/dashboard/widgets/WidgetConfigPanel.tsx
 "use client";
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";

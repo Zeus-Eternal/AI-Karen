@@ -107,7 +107,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                   onMessageAction(message.id, "regenerate");
                 }}
                 showMetadata={true}
-                isDarkMode={settings.theme === "dark"}
               />
             </div>
           ))

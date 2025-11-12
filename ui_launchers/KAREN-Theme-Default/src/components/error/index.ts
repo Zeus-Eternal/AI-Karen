@@ -4,8 +4,10 @@
 // Primary boundaries
 export { ChatErrorBoundary } from "./ChatErrorBoundary";
 export { GlobalErrorBoundary } from "./GlobalErrorBoundary";
-export { ApiErrorBoundary, withApiErrorBoundary } from "./ApiErrorBoundary";
+export { ApiErrorBoundary } from "./ApiErrorBoundary";
+export { withApiErrorBoundary } from "./withApiErrorBoundary";
 export { StreamingErrorBoundary } from "./StreamingErrorBoundary";
+export { withOptimisticErrorBoundary } from "./withOptimisticErrorBoundary";
 
 // Intelligent error UX
 export { IntelligentErrorPanel } from "./IntelligentErrorPanel";

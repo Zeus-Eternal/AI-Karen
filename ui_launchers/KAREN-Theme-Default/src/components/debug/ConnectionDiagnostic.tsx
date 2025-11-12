@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { getConfigManager } from '@/lib/endpoint-config';
 
 interface ConnectionTest {
   endpoint: string;
@@ -16,8 +15,6 @@ export function ConnectionDiagnostic() {
 
   const runDiagnostics = async () => {
     setIsRunning(true);
-    const configManager = getConfigManager();
-    
     const endpoints = [
       { name: 'Backend Direct', url: 'http://localhost:8000/api/health' },
       { name: 'Proxy Health', url: '/api/health' },

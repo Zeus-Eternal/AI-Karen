@@ -45,8 +45,8 @@ export {
   default as DirectionalContent,
   RTLAware,
   FlipIcon,
-  isRTLLocale,
 } from "./DirectionalContent";
+export { isRTLLocale } from "./directional-utils";
 export type {
   DirectionalContentProps,
   RTLAwareProps,

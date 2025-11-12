@@ -2,20 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirstRunSetup } from '@/hooks/useFirstRunSetup';
-import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { enhancedApiClient, ApiResponse } from '@/lib/enhanced-api-client';
 // Step components
 import { WelcomeStep } from './steps/WelcomeStep';
 import { AdminDetailsStep } from './steps/AdminDetailsStep';
 import { EmailVerificationStep } from './steps/EmailVerificationStep';
 import { SetupCompleteStep } from './steps/SetupCompleteStep';
-import type { CreateSuperAdminRequest } from '@/types/admin';
 export interface SetupWizardProps {
   className?: string;
 }
@@ -44,7 +41,6 @@ const SETUP_STEPS = [
 ];
 export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
   const router = useRouter();
-  const { login } = useAuth();
   const { isFirstRun, setupCompleted, markSetupCompleted, isLoading: setupLoading } = useFirstRunSetup();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,8 +135,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
         throw new Error(errorData.detail || errorData.message || 'Failed to create super admin account');
       }
 
-      const data = await response.json();
-
       // Production endpoint auto-authenticates and returns tokens
       // Mark setup as completed and move to completion step
       markSetupCompleted();
@@ -209,7 +203,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
     }
   };
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4 sm:p-4 md:p-6">
+    <div
+      className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4 sm:p-4 md:p-6 ${
+        className ?? ""
+      }`}
+    >
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4">
         <ThemeToggle />
