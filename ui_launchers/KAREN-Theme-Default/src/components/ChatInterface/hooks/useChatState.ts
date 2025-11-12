@@ -19,6 +19,8 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
     conversationIdRef.current = generateUUID();
   }
 
+  const [sessionStartTime] = useState(() => Date.now());
+
   const initialMessagesRef = useRef<ChatMessage[] | null>(null);
   if (initialMessagesRef.current === null) {
     if (initialMessages.length > 0) {
@@ -26,7 +28,7 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
     } else if (welcomeMessage) {
       initialMessagesRef.current = [
         {
-          id: `welcome-${Date.now()}`,
+          id: `welcome-${sessionStartTime}`,
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(),
@@ -59,8 +61,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");
-  const [sessionStartTime] = useState(() => Date.now());
-
   // Refs for media recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);

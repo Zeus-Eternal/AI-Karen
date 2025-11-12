@@ -836,44 +836,44 @@ export const useChatMessages = (
         }
 
         metadata = {
+          ...metadata,
+          origin: metadata?.origin ?? responseOrigin,
+          endpoint: metadata?.endpoint ?? activeEndpoint,
+        };
+
+        // Calculate final metrics
+        const latency = Math.round(performance.now() - startTime);
+
+        safeDebug("🔍 useChatMessages: Response processing completed:", {
+          fullTextLength: fullText.length,
+          fullTextPreview:
+            fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
+          latencyMs: latency,
+          metadata: metadata,
+          hasMetadata: !!metadata,
+          metadataKeys: metadata ? Object.keys(metadata) : [],
+          modelFromMetadata: metadata?.model,
+          modelFromSettings: settings.model,
+          finalModel: (metadata && (metadata as unknown).model) || settings.model,
+        });
+
+        // Create final message
+        const finalMessage: ChatMessage = {
+          ...placeholder,
+          content: fullText.trim(),
+          status: "completed",
+          metadata: {
             ...metadata,
-            origin: metadata?.origin ?? responseOrigin,
-            endpoint: metadata?.endpoint ?? activeEndpoint,
-          };
-
-          // Calculate final metrics
-          const latency = Math.round(performance.now() - startTime);
-
-          safeDebug("🔍 useChatMessages: Response processing completed:", {
-            fullTextLength: fullText.length,
-            fullTextPreview:
-              fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
             latencyMs: latency,
-            metadata: metadata,
-            hasMetadata: !!metadata,
-            metadataKeys: metadata ? Object.keys(metadata) : [],
-            modelFromMetadata: metadata?.model,
-            modelFromSettings: settings.model,
-            finalModel: (metadata && (metadata as unknown).model) || settings.model,
-          });
-
-          // Create final message
-          const finalMessage: ChatMessage = {
-            ...placeholder,
-            content: fullText.trim(),
-            status: "completed",
-            metadata: {
-              ...metadata,
-              latencyMs: latency,
-              model: (metadata && (metadata as unknown).model) || settings.model,
-              tokens:
-                (metadata && (metadata as unknown).tokens) ||
-                Math.ceil(fullText.length / 4),
-              cost: metadata.cost || 0,
-              origin: metadata.origin ?? responseOrigin,
-              endpoint: metadata.endpoint ?? activeEndpoint,
-            },
-          };
+            model: (metadata && (metadata as unknown).model) || settings.model,
+            tokens:
+              (metadata && (metadata as unknown).tokens) ||
+              Math.ceil(fullText.length / 4),
+            cost: metadata.cost || 0,
+            origin: metadata.origin ?? responseOrigin,
+            endpoint: metadata.endpoint ?? activeEndpoint,
+          },
+        };
 
           safeDebug("🔍 useChatMessages: Final message created:", {
             messageId: finalMessage.id,

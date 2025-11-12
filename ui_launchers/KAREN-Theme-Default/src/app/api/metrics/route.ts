@@ -174,7 +174,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         },
         httpBounds,
       );
-    }
+    });
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
