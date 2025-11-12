@@ -460,6 +460,8 @@ async def get_basic_training_status():
             job for job in basic_training.training_interface.active_jobs.values()
             if job.status in [TrainingStatus.PENDING, TrainingStatus.TRAINING, TrainingStatus.VALIDATING]
         ])
+        recommended_presets = await basic_training.get_recommended_presets()
+        system_backups = basic_training.list_system_backups()
         
         return {
             "status": "operational",
@@ -471,8 +473,8 @@ async def get_basic_training_status():
                 "supports_mixed_precision": hardware.supports_mixed_precision
             },
             "active_training_jobs": active_jobs,
-            "available_presets": len(basic_training.get_recommended_presets()),
-            "system_backups": len(basic_training.list_system_backups())
+            "available_presets": len(recommended_presets),
+            "system_backups": len(system_backups)
         }
         
     except Exception as e:
