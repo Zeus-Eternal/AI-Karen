@@ -45,6 +45,11 @@ export interface ComprehensiveNetworkReport {
 const isBrowser = typeof window !== 'undefined';
 const nowISO = () => new Date().toISOString();
 
+type NavigatorConnectionInfo = {
+  effectiveType?: string;
+  type?: string;
+};
+
 function buildFullUrl(endpoint: string): string {
   if (/^https?:\/\//i.test(endpoint)) return endpoint;
   const base = webUIConfig.backendUrl?.replace(/\/+$/, '') ?? '';
@@ -99,9 +104,9 @@ export class NetworkDiagnostics {
   private getConnectionType(): string | undefined {
     if (!isBrowser) return undefined;
     type NavigatorWithConnection = Navigator & {
-      connection?: NetworkInformation;
-      mozConnection?: NetworkInformation;
-      webkitConnection?: NetworkInformation;
+      connection?: NavigatorConnectionInfo;
+      mozConnection?: NavigatorConnectionInfo;
+      webkitConnection?: NavigatorConnectionInfo;
     };
 
     const nav = navigator as NavigatorWithConnection;
