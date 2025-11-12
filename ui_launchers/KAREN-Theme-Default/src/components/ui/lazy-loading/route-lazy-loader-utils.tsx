@@ -5,7 +5,7 @@ import React, { lazy, useCallback, type ComponentType } from 'react';
 import RouteLazyLoader from './route-lazy-loader';
 import type { RouteLazyLoaderProps } from './route-lazy-loader.types';
 
-type PropsOf<T extends ComponentType<any>> = T extends ComponentType<infer P>
+type PropsOf<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
   ? P extends object
     ? P
     : never
@@ -15,7 +15,7 @@ type RouteLoaderOptions = Pick<RouteLazyLoaderProps, 'fallback' | 'errorFallback
   preload?: boolean;
 };
 
-export function createLazyRoute<T extends ComponentType<any>>(
+export function createLazyRoute<T extends ComponentType<unknown>>(
   importFn: () => Promise<{ default: T }>,
   options: RouteLoaderOptions = {}
 ): ComponentType<PropsOf<T>> {

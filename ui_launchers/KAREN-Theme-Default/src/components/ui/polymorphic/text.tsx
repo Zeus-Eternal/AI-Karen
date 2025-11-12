@@ -4,10 +4,10 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-import type {
-  PolymorphicComponentPropWithRef,
-  PolymorphicComponentWithDisplayName,
-  PolymorphicRef,
+import {
+  forwardRefWithAs,
+  type PolymorphicComponentPropWithRef,
+  type PolymorphicRef,
 } from "../compound/types";
 
 export type TextVariant =
@@ -46,35 +46,6 @@ type TextBaseProps = {
 
 export type TextProps<T extends React.ElementType = "span"> =
   PolymorphicComponentPropWithRef<T, TextBaseProps>;
-
-type TextComponent = PolymorphicComponentWithDisplayName<
-  "span",
-  TextBaseProps
->;
-
-type PolymorphicForwardRef<
-  DefaultElement extends React.ElementType,
-  Props extends Record<string, unknown>
-> = <
-  T extends React.ElementType = DefaultElement
->(
-  props: PolymorphicComponentPropWithRef<T, Props>,
-  ref: PolymorphicRef<T>
-) => React.ReactElement | null;
-
-function forwardRefWithAs<
-  DefaultElement extends React.ElementType,
-  Props extends Record<string, unknown>
->(
-  component: PolymorphicForwardRef<DefaultElement, Props>
-) {
-  return React.forwardRef(
-    component as unknown as React.ForwardRefRenderFunction<any, any>
-  ) as unknown as PolymorphicComponentWithDisplayName<
-    DefaultElement,
-    Props
-  >;
-}
 
 const variantClassMap: Record<TextVariant, string> = {
   default: "text-foreground",
@@ -156,11 +127,6 @@ Text.displayName = "Text";
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-type HeadingComponent = PolymorphicComponentWithDisplayName<
-  HeadingLevel,
-  TextBaseProps
->;
-
 const headingDefaultSize: Record<HeadingLevel, TextSize> = {
   h1: "4xl",
   h2: "3xl",
@@ -199,11 +165,6 @@ const Heading = forwardRefWithAs<HeadingLevel, TextBaseProps>(HeadingInner);
 
 Heading.displayName = "Heading";
 
-type ParagraphComponent = PolymorphicComponentWithDisplayName<
-  "p",
-  TextBaseProps
->;
-
 export type ParagraphProps<T extends React.ElementType = "p"> = TextProps<T>;
 
 function ParagraphInner<T extends React.ElementType = "p">(
@@ -224,11 +185,6 @@ function ParagraphInner<T extends React.ElementType = "p">(
 const Paragraph = forwardRefWithAs<"p", TextBaseProps>(ParagraphInner);
 
 Paragraph.displayName = "Paragraph";
-
-type LabelComponent = PolymorphicComponentWithDisplayName<
-  "label",
-  TextBaseProps
->;
 
 export type LabelProps<T extends React.ElementType = "label"> = TextProps<T>;
 
@@ -252,11 +208,6 @@ const Label = forwardRefWithAs<"label", TextBaseProps>(LabelInner);
 
 Label.displayName = "Label";
 
-type CaptionComponent = PolymorphicComponentWithDisplayName<
-  "span",
-  TextBaseProps
->;
-
 export type CaptionProps<T extends React.ElementType = "span"> = TextProps<T>;
 
 function CaptionInner<T extends React.ElementType = "span">(
@@ -278,11 +229,6 @@ function CaptionInner<T extends React.ElementType = "span">(
 const Caption = forwardRefWithAs<"span", TextBaseProps>(CaptionInner);
 
 Caption.displayName = "Caption";
-
-type CodeComponent = PolymorphicComponentWithDisplayName<
-  "code",
-  TextBaseProps
->;
 
 export type CodeProps<T extends React.ElementType = "code"> = TextProps<T>;
 
