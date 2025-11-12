@@ -45,6 +45,17 @@ const ExtensionSidebar = dynamic(
 
 type ActiveView = "settings" | "dashboard" | "commsCenter";
 
+// Helper function to parse view from URL params
+const parseView = (
+  sp: ReturnType<typeof useSearchParams> | null
+): ActiveView => {
+  const v = sp?.get("view") ?? "";
+  const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
+  return (allowed as readonly string[]).includes(v)
+    ? (v as ActiveView)
+    : "dashboard";
+};
+
 export default function HomePage() {
   return (
     <TextSelectionProvider enableGlobalSelection={true} enableKeyboardShortcuts={true}>
