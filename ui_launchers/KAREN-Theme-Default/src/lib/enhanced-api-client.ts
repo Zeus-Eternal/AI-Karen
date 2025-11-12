@@ -61,11 +61,6 @@ export type ErrorInterceptor = (
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
 
-interface ErrorResponseData extends Record<string, unknown> {
-  message?: string;
-  code?: string;
-  details?: unknown;
-}
 // Request/Response logging
 export interface RequestLog {
   id: string;
@@ -77,11 +72,6 @@ export interface RequestLog {
   error?: string;
 }
 
-interface ParsedErrorResponse {
-  message?: string;
-  code?: string;
-  details?: unknown;
-}
 // Enhanced API Client class
 export class EnhancedApiClient {
   private baseURL: string;
