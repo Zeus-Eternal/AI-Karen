@@ -25,7 +25,18 @@ export interface MicroInteractionConfig {
   animationDuration: AnimationSpeed;
 }
 
-export interface InteractiveButtonProps extends ButtonProps {
+type MotionCompatibleButtonProps = Omit<
+  ButtonProps,
+  | 'onDrag'
+  | 'onDragStart'
+  | 'onDragEnd'
+  | 'draggable'
+  | 'onAnimationStart'
+  | 'onAnimationEnd'
+  | 'onAnimationIteration'
+>;
+
+export interface InteractiveButtonProps extends MotionCompatibleButtonProps {
   loading?: boolean;
   hapticFeedback?: boolean;
   animationVariant?: ButtonAnimationVariant;
