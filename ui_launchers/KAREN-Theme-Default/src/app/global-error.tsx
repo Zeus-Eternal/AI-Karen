@@ -1,12 +1,13 @@
 'use client'
 
 export default function GlobalError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  console.error('Global application error boundary triggered', error);
   return (
     <html>
       <body>

@@ -104,10 +104,11 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
     let parsed: unknown = null;
     try {
       parsed = await response.json();
-    } catch (parseError) {
+    } catch (_parseError) {
       safeWarn('Readiness check received non-JSON response from backend health endpoint', {
         url: healthUrl,
         statusCode: response.status,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
       });
     }
 
