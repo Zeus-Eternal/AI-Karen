@@ -40,6 +40,10 @@ interface DashboardData {
   loading: boolean;
 }
 
+interface LoadDashboardDataOptions {
+  skipLoadingState?: boolean;
+}
+
 export function EnhancedAdminDashboard({
   className = "",
 }: EnhancedAdminDashboardProps) {
@@ -77,23 +81,22 @@ export function EnhancedAdminDashboard({
     },
   });
 
-  const markDashboardLoading = useCallback(() => {
-    setDashboardData((prev) => ({ ...prev, loading: true }));
-  }, []);
-
   // Load dashboard data with error handling
   const loadDashboardData = useCallback(
-    async ({ signal }: { signal?: AbortSignal } = {}) => {
+    async (options: LoadDashboardDataOptions = {}) => {
+      const { skipLoadingState = false } = options;
       if (!hasAdminAccess) {
         return;
       }
 
       const result = await handleAsyncOperation(
         async () => {
+          if (!skipLoadingState) {
+            setDashboardData((prev) => ({ ...prev, loading: true }));
+          }
+
           // Load user statistics
-          const statsResponse = await fetch("/api/admin/users/stats", {
-            signal,
-          });
+          const statsResponse = await fetch("/api/admin/users/stats");
           if (!statsResponse.ok) {
             throw new Error(
               `Failed to load user statistics: ${statsResponse.statusText}`
@@ -103,8 +106,7 @@ export function EnhancedAdminDashboard({
 
           // Load activity summary
           const activityResponse = await fetch(
-            "/api/admin/system/activity-summary?period=week",
-            { signal }
+            "/api/admin/system/activity-summary?period=week"
           );
           if (!activityResponse.ok) {
             throw new Error(
@@ -120,10 +122,6 @@ export function EnhancedAdminDashboard({
         },
         { resource: "dashboard_data" }
       );
-
-      if (signal?.aborted) {
-        return;
-      }
 
       if (result) {
         setDashboardData({
@@ -141,10 +139,19 @@ export function EnhancedAdminDashboard({
 
   // Load data on mount
   useEffect(() => {
-    const controller = new AbortController();
-    void loadDashboardData({ signal: controller.signal });
+    let cancelled = false;
+
+    const run = async () => {
+      await Promise.resolve();
+      if (!cancelled) {
+        await loadDashboardData();
+      }
+    };
+
+    void run();
+
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, [loadDashboardData]);
 
