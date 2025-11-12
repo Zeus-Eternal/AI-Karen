@@ -95,7 +95,6 @@ function stableStringify(obj: unknown): string {
 
 function headersToObject(headers: HeaderLike): Record<string, string> {
   if (!headers) return {};
-  const out: Record<string, string> = {};
   if (Array.isArray(headers)) {
     const normalized: Record<string, string> = {};
     for (const [k, v] of headers) {
