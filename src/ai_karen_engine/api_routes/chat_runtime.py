@@ -313,330 +313,70 @@ def _extract_generation_preferences(
     return provider, model, hints
 
 
-# Enhanced Orchestrator with Circuit Breaker
-class CircuitBreaker:
-    """Simple circuit breaker pattern implementation"""
-    
-    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failures = 0
-        self.last_failure_time = 0
-        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
-    
-    def __call__(self, func):
-        async def wrapper(*args, **kwargs):
-            if self.state == "OPEN":
-                if time.time() - self.last_failure_time > self.recovery_timeout:
-                    self.state = "HALF_OPEN"
-                else:
-                    raise ServiceUnavailableError("Circuit breaker is OPEN")
-            
-            try:
-                result = await func(*args, **kwargs)
-                if self.state == "HALF_OPEN":
-                    self.state = "CLOSED"
-                    self.failures = 0
-                return result
-            except Exception as e:
-                self.failures += 1
-                self.last_failure_time = time.time()
-                
-                if self.failures >= self.failure_threshold:
-                    self.state = "OPEN"
-                
-                raise ServiceUnavailableError(f"Circuit breaker triggered: {e}") from e
-        return wrapper
-
-
-class ChatOrchestrator:
-    """Production-grade minimal orchestrator with enhanced reliability"""
-
-    def __init__(self) -> None:
-        self._restricted_ops = [
-            "long_term_memory_write",
-            "long_term_memory_read",
-            "vector_memory_query",
-        ]
-        self.circuit_breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=30)
-
-    @CircuitBreaker()
-    async def process_message(self, request):
-        """Enhanced process message with circuit breaker"""
-        try:
-            return await self._process_message_impl(request)
-        except Exception as e:
-            logger.warning(f"Lite orchestrator failed, using emergency fallback: {e}")
-            return await self._emergency_fallback(request)
-
-    async def _process_message_impl(self, request):
-        """Main implementation"""
-        from ai_karen_engine.chat.chat_orchestrator import ChatResponse, ChatStreamChunk
-
-        start_time = time.perf_counter()
-        correlation_id = getattr(request, "session_id", str(uuid.uuid4()))
-        message = getattr(request, "message", "")
-
-        response_text, reasoning, extra_metadata = self._generate_response(message)
-
-        base_metadata: Dict[str, Any] = {
-            "fallback_mode": True,
-            "mode": "minimal",
-            "status": "degraded",
-            "message": "AI services are initializing",
-            "notice": (
-                "Responding with Kari's local lite assistant while full services load. "
-                "Some advanced features like deep memory search remain temporarily disabled."
-            ),
-            "restricted_operations": list(self._restricted_ops),
-            "capabilities": {
-                "reasoning": "basic",
-                "qa": "lightweight",
-                "tools": "unavailable",
-            },
-            "reasoning_summary": reasoning,
-        }
-        if extra_metadata:
-            base_metadata.update(extra_metadata)
-
-        processing_time = time.perf_counter() - start_time
-        base_metadata.setdefault("local_model", "lite-rule-engine")
-        base_metadata["processing_time"] = processing_time
-        base_metadata["response_length"] = len(response_text)
-
-        if getattr(request, "stream", False):
-            async def _stream_response() -> AsyncGenerator[ChatStreamChunk, None]:
-                yield ChatStreamChunk(
-                    type="metadata",
-                    content="",
-                    correlation_id=correlation_id,
-                    metadata=base_metadata,
-                )
-                for token in self._tokenize_response(response_text):
-                    yield ChatStreamChunk(
-                        type="content",
-                        content=token,
-                        correlation_id=correlation_id,
-                        metadata={},
-                    )
-                yield ChatStreamChunk(
-                    type="complete",
-                    content="",
-                    correlation_id=correlation_id,
-                    metadata=base_metadata,
-                )
-
-            return _stream_response()
-
-        return ChatResponse(
-            response=response_text,
-            correlation_id=correlation_id,
-            processing_time=processing_time,
-            used_fallback=True,
-            metadata=base_metadata,
-        )
-
-    async def _emergency_fallback(self, request) -> Any:
-        """Ultra-reliable fallback when even lite mode fails"""
-        from ai_karen_engine.chat.chat_orchestrator import ChatResponse, ChatStreamChunk
-        
-        fallback_text = "I'm currently experiencing high load. Please try again in a moment."
-        
-        if getattr(request, "stream", False):
-            async def _fallback_stream():
-                yield ChatStreamChunk(
-                    type="metadata",
-                    content="",
-                    correlation_id=getattr(request, "session_id", "unknown"),
-                    metadata={"emergency_mode": True, "status": "degraded"}
-                )
-                yield ChatStreamChunk(
-                    type="content",
-                    content=fallback_text,
-                    correlation_id=getattr(request, "session_id", "unknown"),
-                    metadata={}
-                )
-                yield ChatStreamChunk(
-                    type="complete",
-                    content="",
-                    correlation_id=getattr(request, "session_id", "unknown"),
-                    metadata={"emergency_mode": True}
-                )
-            return _fallback_stream()
-        
-        return ChatResponse(
-            response=fallback_text,
-            correlation_id=getattr(request, "session_id", "unknown"),
-            processing_time=0.1,
-            used_fallback=True,
-            metadata={"emergency_mode": True}
-        )
-
-    async def cancel_processing(
-        self, conversation_id: str, correlation_id: Optional[str] = None
-    ) -> List[str]:
-        """No asynchronous processing is queued in lite mode, so nothing to cancel."""
-        return []
-
-    def _generate_response(self, message: str) -> Tuple[str, str, Dict[str, Any]]:
-        """Enhanced response generation with better reasoning"""
-        import re
-        
-        normalized = (message or "").strip()
-        lower_message = normalized.lower()
-        reasoning_steps: List[str] = []
-
-        if not normalized:
-            reasoning_steps.append("Received empty input; prompting user for clarification.")
-            response = (
-                "It looks like nothing was sent. I'm in minimal mode while the full AI spins up, "
-                "but I'm ready to help with questions or small tasks."
-            )
-            return response, "; ".join(reasoning_steps), {}
-
-        # Enhanced greeting detection
-        greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"]
-        if any(greeting in lower_message for greeting in greetings):
-            reasoning_steps.append("Detected greeting and crafted friendly acknowledgement.")
-            response = (
-                "Hello! Kari's full AI services are still initializing, so I'm operating in minimal mode. "
-                "I can answer quick questions and keep you posted until everything is ready."
-            )
-            return response, "; ".join(reasoning_steps), {}
-
-        # Enhanced capability queries
-        if any(query in lower_message for query in ["what can you do", "help", "capabilities"]):
-            reasoning_steps.append("User asked about capabilities; summarising degraded-mode abilities.")
-            response = (
-                "Right now I'm running Kari's lite assistant while the full orchestrator comes online. "
-                "I can help with quick Q&A, light reasoning, and progress updates. "
-                "Features such as long-term memory or advanced tool calls are temporarily paused."
-            )
-            return response, "; ".join(reasoning_steps), {}
-
-        # Enhanced technical queries
-        if any(keyword in lower_message for keyword in ["code", "debug", "program", "python", "javascript"]):
-            reasoning_steps.append("Detected technical/coding intent; providing contextual response.")
-            response = (
-                "I'd love to help with code. The deep analyzers are still waking up, but share your snippet "
-                "or question and I'll walk through it with lightweight reasoning."
-            )
-            return response, "; ".join(reasoning_steps), {}
-
-        # Enhanced math handling
-        math_answer = self._handle_enhanced_math(lower_message)
-        if math_answer is not None:
-            reasoning_steps.append("Solved arithmetic expression in minimal mode.")
-            response = (
-                f"While in minimal mode I can still reason through quick math. The answer is {math_answer}. "
-                "I'll have deeper analytical tools once the full stack loads."
-            )
-            return response, "; ".join(reasoning_steps), {}
-
-        # Enhanced FAQ lookup
-        canned_answer = self._lookup_enhanced_faq(lower_message)
-        if canned_answer:
-            reasoning_steps.append("Matched question against enhanced lite knowledge base.")
-            return canned_answer, "; ".join(reasoning_steps), {}
-
-        reasoning_steps.append("No template matched; generating supportive default message.")
-        response = (
-            "I'm currently running Kari's minimal chat mode. I don't have access to long-term memory or external tools yet, "
-            "but I can still help reason through questions and keep you updated. Let me know what you need!"
-        )
-        return response, "; ".join(reasoning_steps), {}
-
-    def _handle_enhanced_math(self, lower_message: str) -> Optional[str]:
-        """Enhanced math handling with more operations"""
-        # Handle basic arithmetic
-        basic_pattern = re.compile(r"(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)")
-        match = basic_pattern.search(lower_message)
-        if match:
-            left, operator_symbol, right = match.groups()
-            try:
-                left_val = float(left)
-                right_val = float(right)
-            except ValueError:
-                return None
-
-            if operator_symbol == "/" and right_val == 0:
-                return "undefined (division by zero)"
-
-            operations = {
-                "+": left_val + right_val,
-                "-": left_val - right_val,
-                "*": left_val * right_val,
-                "/": left_val / right_val,
-            }
-
-            result = operations.get(operator_symbol)
-            if result is None:
-                return None
-
-            if isinstance(result, float) and result.is_integer():
-                return str(int(result))
-            return f"{result:.4f}".rstrip("0").rstrip(".")
-        
-        # Handle simple percentage calculations
-        percent_pattern = re.compile(r"(\d+)\s*percent\s*of\s*(\d+)")
-        percent_match = percent_pattern.search(lower_message)
-        if percent_match:
-            percent, number = percent_match.groups()
-            try:
-                result = (float(percent) / 100) * float(number)
-                if result.is_integer():
-                    return str(int(result))
-                return f"{result:.2f}"
-            except ValueError:
-                pass
-        
-        return None
-
-    def _lookup_enhanced_faq(self, lower_message: str) -> Optional[str]:
-        """Enhanced FAQ with more comprehensive coverage"""
-        faq_responses = {
-            "who are you": (
-                "I'm Kari's lite assistant. While the full AI services initialize, I'm here to provide quick guidance and "
-                "basic answers. I can handle simple questions, math, and keep you company until the full system is ready."
-            ),
-            "status": (
-                "Core services are warming up. Minimal mode is active, so tool usage and deep memory are temporarily disabled. "
-                "Basic chat and reasoning are available."
-            ),
-            "where is my data": (
-                "Your data remains secure. Minimal mode avoids long-term memory writes until the full stack is verified. "
-                "Conversations in this mode are ephemeral for safety."
-            ),
-            "when will full service be available": (
-                "The full AI system is initializing in the background. This typically takes a few moments. "
-                "I'll automatically switch to full capabilities once everything is ready."
-            ),
-            "what is kari": (
-                "Kari is an advanced AI assistant designed to help with complex tasks, reasoning, and conversations. "
-                "I'm the lightweight version that keeps things running while the main system loads."
-            ),
-        }
-
-        for key, value in faq_responses.items():
-            if key in lower_message:
-                return value
-        return None
-
-    def _tokenize_response(self, response: str) -> Iterable[str]:
-        """Enhanced tokenization for better streaming"""
-        # Simple word-based tokenization for minimal mode
-        words = response.split()
-        for i, word in enumerate(words):
-            # Add space except for the last word
-            yield word + (" " if i < len(words) - 1 else "")
+# Production orchestrator singleton - will be initialized on first use
+_chat_orchestrator_instance: Optional['ChatOrchestrator'] = None
+_orchestrator_lock = asyncio.Lock()
 
 
 # Enhanced Orchestrator dependency
-@lru_cache
-def get_chat_orchestrator() -> ChatOrchestrator:
-    """Return a production-grade chat orchestrator"""
-    logger.info("Creating ChatOrchestrator for production mode")
-    return ChatOrchestrator()
+async def get_chat_orchestrator():
+    """
+    Return a production-grade chat orchestrator singleton with full capabilities.
+
+    This initializes the real ChatOrchestrator with all integrated services:
+    - Memory processing (Redis, Milvus, DuckDB)
+    - IntelligentResponseController with fallback
+    - Instruction processing and context integration
+    - NLP services (spaCy, DistilBERT)
+    """
+    global _chat_orchestrator_instance
+
+    if _chat_orchestrator_instance is not None:
+        return _chat_orchestrator_instance
+
+    async with _orchestrator_lock:
+        # Double-check after acquiring lock
+        if _chat_orchestrator_instance is not None:
+            return _chat_orchestrator_instance
+
+        try:
+            logger.info("Initializing production ChatOrchestrator with full capabilities")
+
+            # Import real orchestrator
+            from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator as RealChatOrchestrator
+            from ai_karen_engine.chat.memory_processor import MemoryProcessor
+            from ai_karen_engine.chat.instruction_processor import InstructionProcessor
+            from ai_karen_engine.chat.context_integrator import ContextIntegrator
+
+            # Try to initialize memory processor (optional - will degrade gracefully if unavailable)
+            memory_processor = None
+            try:
+                memory_processor = MemoryProcessor()
+                logger.info("✅ Memory processor initialized")
+            except Exception as e:
+                logger.warning(f"Memory processor unavailable, will operate without memory: {e}")
+
+            # Initialize instruction processor and context integrator
+            instruction_processor = InstructionProcessor()
+            context_integrator = ContextIntegrator()
+
+            # Create the real orchestrator with all services
+            _chat_orchestrator_instance = RealChatOrchestrator(
+                memory_processor=memory_processor,
+                instruction_processor=instruction_processor,
+                context_integrator=context_integrator,
+                enable_monitoring=True
+            )
+
+            logger.info("✅ Production ChatOrchestrator initialized successfully")
+            return _chat_orchestrator_instance
+
+        except Exception as e:
+            logger.error(f"Failed to initialize ChatOrchestrator: {e}")
+            # Create a minimal fallback orchestrator
+            logger.warning("Using minimal fallback orchestrator")
+            _chat_orchestrator_instance = RealChatOrchestrator()
+            return _chat_orchestrator_instance
 
 
 # Production Monitoring & Logging
@@ -693,7 +433,6 @@ async def chat_runtime(
     request: SanitizedChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> ChatRuntimeResponse:
     """
     Production-grade main chat runtime endpoint for non-streaming responses
@@ -702,6 +441,9 @@ async def chat_runtime(
     correlation_id = request_metadata.get("correlation_id")
     conversation_id = request.conversation_id or str(uuid.uuid4())
     user_id = user_context.get("user_id", "anonymous")
+
+    # Get orchestrator instance
+    chat_orchestrator = await get_chat_orchestrator()
 
     try:
         log_chat_event(
@@ -897,11 +639,12 @@ async def chat_runtime_stream(
     request: SanitizedChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> StreamingResponse:
     """
     Production-grade streaming chat runtime endpoint with enhanced reliability
     """
+    # Get orchestrator instance outside the generator
+    chat_orchestrator = await get_chat_orchestrator()
 
     async def generate_stream():
         start_time = time.time()
@@ -1094,11 +837,13 @@ async def stop_chat_generation(
     correlation_id: Optional[str] = Field(None, description="Specific correlation ID to stop"),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> Dict[str, Any]:
     """
     Enhanced stop ongoing chat generation with better validation
     """
+    # Get orchestrator instance
+    chat_orchestrator = await get_chat_orchestrator()
+
     try:
         correlation = correlation_id or request_metadata.get("correlation_id")
         user_id = user_context.get("user_id", "anonymous")
