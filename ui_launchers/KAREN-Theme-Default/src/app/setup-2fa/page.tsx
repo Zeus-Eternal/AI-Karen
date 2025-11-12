@@ -1,25 +1,20 @@
 "use client";
 
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { authService } from '@/services/authService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function Setup2FAPage() {
   const { user } = useAuth();
-  const [qrUrl, setQrUrl] = useState('');
+  const qrUrl = '';
   const [code, setCode] = useState('');
-  const [message, setMessage] = useState('Two-factor authentication setup is currently not available.');
-
-  useEffect(() => {
-    setMessage('Two-factor authentication setup is currently not available.');
-  }, []);
+  const message = 'Two-factor authentication setup is currently not available.';
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('Two-factor authentication setup is currently not available.');
+    // The 2FA flow is intentionally disabled until the backend implementation is ready.
   };
 
   if (!user) return null;
