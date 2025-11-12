@@ -54,7 +54,7 @@ export function UserManagementTable({
   onUserUpdated,
   className = "",
 }: UserManagementTableProps) {
-  const { hasRole, hasPermission } = useRole();
+  const { hasRole } = useRole();
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

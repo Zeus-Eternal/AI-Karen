@@ -434,7 +434,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const totalResponseTime = Date.now() - startTime;
     updateRequestMetrics(totalResponseTime, response.ok);
     
-    let data;
+    let data: BackendHealthData;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {
@@ -444,7 +444,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch (_error) {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
