@@ -22,9 +22,6 @@ export default function Setup2FAPage() {
   return (
     <div className="p-6 max-w-md mx-auto space-y-4">
       <h1 className="text-xl font-semibold">Two-Factor Authentication</h1>
-      {qrUrl && (
-        <img src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrUrl)}`} alt="2FA QR" />
-      )}
       <form onSubmit={handleConfirm} className="space-y-2">
         <Input value={code} onChange={e => setCode(e.target.value)} placeholder="Enter code" />
         <Button type="submit">Confirm</Button>

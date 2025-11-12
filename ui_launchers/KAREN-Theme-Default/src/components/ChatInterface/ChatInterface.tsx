@@ -72,7 +72,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setShowCodePreview,
     sessionId,
     conversationId,
-    messagesEndRef,
     selectedText,
     sessionStartTime,
     copilotArtifacts,

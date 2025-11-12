@@ -1111,6 +1111,7 @@ export const useChatMessages = (
       configManager,
       setIsTyping,
       setMessages,
+      messages,
     ]
   );
 
