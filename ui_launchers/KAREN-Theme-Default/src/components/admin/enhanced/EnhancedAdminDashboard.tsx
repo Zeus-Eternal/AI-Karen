@@ -40,6 +40,10 @@ interface DashboardData {
   loading: boolean;
 }
 
+interface LoadDashboardDataOptions {
+  skipLoadingState?: boolean;
+}
+
 export function EnhancedAdminDashboard({
   className = "",
 }: EnhancedAdminDashboardProps) {
@@ -78,58 +82,64 @@ export function EnhancedAdminDashboard({
   });
 
   // Load dashboard data with error handling
-  const loadDashboardData = useCallback(async () => {
-    if (!hasAdminAccess) {
-      return;
-    }
+  const loadDashboardData = useCallback(
+    async (options: LoadDashboardDataOptions = {}) => {
+      const { skipLoadingState = false } = options;
+      if (!hasAdminAccess) {
+        return;
+      }
 
-    const result = await handleAsyncOperation(
-      async () => {
-        setDashboardData((prev) => ({ ...prev, loading: true }));
+      const result = await handleAsyncOperation(
+        async () => {
+          if (!skipLoadingState) {
+            setDashboardData((prev) => ({ ...prev, loading: true }));
+          }
 
-        // Load user statistics
-        const statsResponse = await fetch("/api/admin/users/stats");
-        if (!statsResponse.ok) {
-          throw new Error(
-            `Failed to load user statistics: ${statsResponse.statusText}`
+          // Load user statistics
+          const statsResponse = await fetch("/api/admin/users/stats");
+          if (!statsResponse.ok) {
+            throw new Error(
+              `Failed to load user statistics: ${statsResponse.statusText}`
+            );
+          }
+          const statsData = await statsResponse.json();
+
+          // Load activity summary
+          const activityResponse = await fetch(
+            "/api/admin/system/activity-summary?period=week"
           );
-        }
-        const statsData = await statsResponse.json();
+          if (!activityResponse.ok) {
+            throw new Error(
+              `Failed to load activity summary: ${activityResponse.statusText}`
+            );
+          }
+          const activityData = await activityResponse.json();
 
-        // Load activity summary
-        const activityResponse = await fetch(
-          "/api/admin/system/activity-summary?period=week"
-        );
-        if (!activityResponse.ok) {
-          throw new Error(
-            `Failed to load activity summary: ${activityResponse.statusText}`
-          );
-        }
-        const activityData = await activityResponse.json();
+          return {
+            userStats: statsData.data as UserStatistics,
+            activitySummary: activityData.data as ActivitySummary,
+          };
+        },
+        { resource: "dashboard_data" }
+      );
 
-        return {
-          userStats: statsData.data as UserStatistics,
-          activitySummary: activityData.data as ActivitySummary,
-        };
-      },
-      { resource: "dashboard_data" }
-    );
-
-    if (result) {
-      setDashboardData({
-        userStats: result.userStats,
-        activitySummary: result.activitySummary,
-        loading: false,
-      });
-      announce("Dashboard data loaded successfully");
-    } else {
-      setDashboardData((prev) => ({ ...prev, loading: false }));
-    }
-  }, [announce, handleAsyncOperation, hasAdminAccess]);
+      if (result) {
+        setDashboardData({
+          userStats: result.userStats,
+          activitySummary: result.activitySummary,
+          loading: false,
+        });
+        announce("Dashboard data loaded successfully");
+      } else {
+        setDashboardData((prev) => ({ ...prev, loading: false }));
+      }
+    },
+    [announce, handleAsyncOperation, hasAdminAccess]
+  );
 
   // Load data on mount
   useEffect(() => {
-    loadDashboardData();
+    loadDashboardData({ skipLoadingState: true });
   }, [loadDashboardData]);
 
   // Access control
