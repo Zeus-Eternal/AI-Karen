@@ -373,30 +373,17 @@ export default function IntelligentModelSelector({
   const lowConfidenceRecommendation =
     topRecommendation && topRecommendation.confidence < 60 ? topRecommendation : null;
 
-  const selectedModelId = manualSelectedModelId ?? (
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : ''
-  );
-
   const autoSelectionRef = useRef<string | null>(null);
 
-  const autoSelectedModelId =
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : '';
+  const autoSelectedModelId = useMemo(
+    () =>
+      autoSelect && topRecommendation && topRecommendation.score > 60
+        ? topRecommendation.model.id
+        : '',
+    [autoSelect, topRecommendation]
+  );
 
   const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
-
-  const effectiveSelectedModelId = useMemo(() => {
-    if (manualSelectedModelId) {
-      return manualSelectedModelId;
-    }
-    if (autoSelect && topRecommendation && topRecommendation.score > 60) {
-      return topRecommendation.model.id;
-    }
-    return '';
-  }, [autoSelect, manualSelectedModelId, topRecommendation]);
 
   useEffect(() => {
     if (autoSelect && autoSelectedModelId) {
@@ -406,7 +393,7 @@ export default function IntelligentModelSelector({
         onModelSelect(recommendedId);
       }
     }
-  }, [autoSelect, topRecommendation, onModelSelect]);
+  }, [autoSelect, autoSelectedModelId, onModelSelect]);
 
   const handleManualSelect = useCallback((modelId: string) => {
     setManualSelectedModelId(modelId);
@@ -423,7 +410,7 @@ export default function IntelligentModelSelector({
       setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [manualSelectedModelId, onModelSelect, topRecommendation]);
+  }, [onModelSelect, selectedModelId, topRecommendation]);
 
   if (!contextAnalysis) {
     return (

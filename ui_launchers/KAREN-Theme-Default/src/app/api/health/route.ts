@@ -496,7 +496,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
