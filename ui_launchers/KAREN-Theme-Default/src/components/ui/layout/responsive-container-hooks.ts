@@ -27,15 +27,17 @@ export function useContainerQuery(containerName: string, query: string): boolean
   return matches;
 }
 
-export function useContainerSize(ref: React.RefObject<HTMLElement>): {
+type ContainerDimensions = {
   width: number;
   height: number;
   size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
-} {
-  const [dimensions, setDimensions] = React.useState({
+};
+
+export function useContainerSize(ref: React.RefObject<HTMLElement>): ContainerDimensions {
+  const [dimensions, setDimensions] = React.useState<ContainerDimensions>({
     width: 0,
     height: 0,
-    size: 'xs' as const,
+    size: 'xs',
   });
 
   React.useEffect(() => {
