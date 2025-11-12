@@ -205,9 +205,15 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
     lines.push('# TYPE kari_plugin_executions_total counter');
-    pluginExecutionEntries.forEach(([plugin, d]) => {
-      const successCount = typeof d.success === 'number' ? d.success : Number(d.success ?? 0);
-      const failureCount = typeof d.failure === 'number' ? d.failure : Number(d.failure ?? 0);
+    pluginExecutionEntries.forEach(([plugin, executionStats]) => {
+      const successCount =
+        typeof executionStats.success === 'number'
+          ? executionStats.success
+          : Number(executionStats.success ?? 0);
+      const failureCount =
+        typeof executionStats.failure === 'number'
+          ? executionStats.failure
+          : Number(executionStats.failure ?? 0);
       lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(successCount)}`);
       lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(failureCount)}`);
     });
@@ -317,7 +323,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         lines,
         'kari_database_query_duration_seconds',
         'Database query duration in seconds',
-        { query: esc(query) },
+        { query: esc(String(query)) },
         {
           buckets: queryMetrics?.buckets,
           sum: queryMetrics?.sum,

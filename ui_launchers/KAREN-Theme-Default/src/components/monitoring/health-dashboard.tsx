@@ -176,6 +176,8 @@ export function HealthDashboard({
       // noop
     }
 
+    deferMonitoringSync();
+
     return () => {
       cancelInitialSync?.();
       try {

@@ -184,7 +184,7 @@ export const useChatMessages = (
         });
         let activeEndpoint = chatRuntimeUrl;
 
-        try {
+        const processResponseBody = async () => {
           const controller = new AbortController();
           abortControllerRef.current = controller;
           const startTime = performance.now();
@@ -860,6 +860,10 @@ export const useChatMessages = (
               finalMessage.id
             );
           }
+        };
+
+        try {
+          await processResponseBody();
         } catch (error) {
           if ((error as unknown)?.name === "AbortError") {
             setIsTyping(false);
