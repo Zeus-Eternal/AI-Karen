@@ -519,24 +519,23 @@ export const useChatMessages = (
           if (isStream) {
             // Handle streaming response
             const reader = response.body.getReader();
-              const decoder = new TextDecoder();
-              let buffer = "";
+            const decoder = new TextDecoder();
+            let buffer = "";
 
             while (true) {
               const { value, done } = await reader.read();
               if (done) break;
 
-              buffer += decoder.decode(value, { stream: true });
+              buffer += decoder.decode(value || new Uint8Array(), { stream: true });
               const lines = buffer.split("\n");
               buffer = lines.pop() || "";
 
               for (const rawLine of lines) {
                 const line = rawLine.replace(/\r$/, "");
                 const trimmed = line.trim();
-                if (!trimmed) continue;
-                  if (trimmed === "data: [DONE]" || trimmed === "[DONE]") {
-                    continue;
-                  }
+                if (!trimmed || trimmed === "data: [DONE]" || trimmed === "[DONE]") {
+                  continue;
+                }
 
                 let data = trimmed;
                 if (trimmed.startsWith("data:")) {
@@ -545,8 +544,6 @@ export const useChatMessages = (
 
                 try {
                   const json = JSON.parse(data);
-
-                  // Merge metadata
                   const jsonType = (json as unknown)?.type;
 
                   if (
@@ -565,11 +562,9 @@ export const useChatMessages = (
                     const baseMeta =
                       json.metadata || json.meta || json.data || {};
                     const metaUpdate: unknown = { ...(baseMeta as unknown) };
-                    // If KIRE metadata present under 'kire' or 'kire_metadata', keep it nested
                     if ((json as unknown).kire_metadata && !metaUpdate.kire)
                       metaUpdate.kire = (json as unknown).kire_metadata;
-                    if (json.model && !metaUpdate.model)
-                      metaUpdate.model = json.model;
+                    if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
                     if (typeof json.confidence === "number")
                       metaUpdate.confidence = json.confidence;
                     if (
@@ -593,14 +588,12 @@ export const useChatMessages = (
                       metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
                     }
                     if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                    if (metaUpdate.origin === undefined)
-                      metaUpdate.origin = responseOrigin;
+                    if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
                     if (metaUpdate.endpoint === undefined)
                       metaUpdate.endpoint = activeEndpoint;
                     metadata = { ...metadata, ...metaUpdate };
                   }
 
-                  // Content deltas
                   if (
                     typeof json === "string" ||
                     json.delta ||
@@ -634,17 +627,14 @@ export const useChatMessages = (
                       "";
                     if (newContent) {
                       fullText += newContent;
-
-                      // Update message in real-time
                       setMessages((prev) =>
                         prev.map((m) =>
                           m.id === assistantId ? { ...m, content: fullText } : m
                         )
                       );
                     }
-                    }
-                  } catch {
-                  // Handle non-JSON streaming data
+                  }
+                } catch {
                   if (!data.startsWith("{")) {
                     fullText += data;
                     setMessages((prev) =>
@@ -655,7 +645,8 @@ export const useChatMessages = (
                   }
                 }
               }
-            // Flush any remaining buffered data after stream ends
+            }
+
             const tail = (buffer || "").trim();
             if (tail && tail !== "data: [DONE]") {
               const data = tail.startsWith("data:")
@@ -664,6 +655,7 @@ export const useChatMessages = (
               try {
                 const json = JSON.parse(data);
                 const jsonTypeTail = (json as unknown)?.type;
+
                 if (
                   typeof json === "string" ||
                   json.content ||
@@ -702,6 +694,7 @@ export const useChatMessages = (
                     );
                   }
                 }
+
                 if (
                   jsonTypeTail !== "token" &&
                   jsonTypeTail !== "delta" &&
@@ -717,8 +710,7 @@ export const useChatMessages = (
                   const metaUpdate: unknown = { ...(baseMeta as unknown) };
                   if ((json as unknown).kire_metadata && !metaUpdate.kire)
                     metaUpdate.kire = (json as unknown).kire_metadata;
-                  if (json.model && !metaUpdate.model)
-                    metaUpdate.model = json.model;
+                  if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
                   if (
                     usage.total_tokens ||
                     (usage.prompt_tokens && usage.completion_tokens)
@@ -841,8 +833,9 @@ export const useChatMessages = (
               fullText = await response.text();
             }
           }
+        }
 
-          metadata = {
+        metadata = {
             ...metadata,
             origin: metadata?.origin ?? responseOrigin,
             endpoint: metadata?.endpoint ?? activeEndpoint,
