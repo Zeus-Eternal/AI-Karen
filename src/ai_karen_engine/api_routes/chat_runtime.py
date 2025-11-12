@@ -5,6 +5,7 @@ Unified chat endpoint for all platforms (Web UI, Desktop)
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -18,7 +19,12 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
+from ai_karen_engine.chat import chat_orchestrator
+from ai_karen_engine.chat.chat_orchestrator import (
+    ChatRequest,
+    ChatResponse,
+    ChatStreamChunk,
+)
 from ai_karen_engine.core.config_manager import get_config
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
@@ -29,6 +35,11 @@ from ai_karen_engine.services.tool_service import (
     ToolStatus,
     get_tool_service as get_global_tool_service,
 )
+
+try:
+    from ai_karen_engine.chat.factory import get_chat_orchestrator as get_production_chat_orchestrator
+except ImportError:
+    get_production_chat_orchestrator = None
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
@@ -236,16 +247,27 @@ def _extract_generation_preferences(
 
 # Orchestrator dependency
 @lru_cache
-def get_chat_orchestrator() -> ChatOrchestrator:
-    """Return a lightweight chat orchestrator that keeps the API responsive."""
+def get_chat_orchestrator() -> chat_orchestrator.ChatOrchestrator:
+    """Return the production orchestrator or a lightweight fallback if unavailable."""
+    if get_production_chat_orchestrator:
+        try:
+            orchestrator = get_production_chat_orchestrator()
+            if orchestrator:
+                logger.info("Using production ChatOrchestrator for chat runtime")
+                return orchestrator
+        except Exception as prod_err:  # pragma: no cover - defensive
+            logger.warning(
+                "Production ChatOrchestrator unavailable, falling back to lite orchestrator: %s",
+                prod_err,
+            )
+
     logger.info("Creating LiteChatOrchestrator for degraded mode support")
 
-    import re
-
-    class LiteChatOrchestrator:
+    class LiteChatOrchestrator(chat_orchestrator.ChatOrchestrator):
         """Minimal orchestrator that provides meaningful degraded-mode replies."""
 
         def __init__(self) -> None:
+            super().__init__()
             self._restricted_ops = [
                 "long_term_memory_write",
                 "long_term_memory_read",
@@ -254,11 +276,6 @@ def get_chat_orchestrator() -> ChatOrchestrator:
 
         async def process_message(self, request):
             """Return either a full response or a streaming generator."""
-
-            from ai_karen_engine.chat.chat_orchestrator import (  # Import locally to avoid cycles
-                ChatResponse,
-                ChatStreamChunk,
-            )
 
             start_time = time.perf_counter()
             correlation_id = getattr(request, "session_id", str(uuid.uuid4()))
@@ -452,7 +469,7 @@ async def chat_runtime(
     request: ChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
+    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> ChatRuntimeResponse:
     """
     Main chat runtime endpoint for non-streaming responses
@@ -627,7 +644,7 @@ async def chat_runtime_stream(
     request: ChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
+    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> StreamingResponse:
     """
     Streaming chat runtime endpoint using Server-Sent Events
@@ -723,9 +740,35 @@ async def chat_runtime_stream(
                 metadata=metadata_payload,
             )
 
-            stream = await chat_orchestrator.process_message(chat_request)
+            stream_result = await chat_orchestrator.process_message(chat_request)
 
-            async for chunk in stream:
+            if isinstance(stream_result, ChatResponse):
+                total_latency = (time.time() - start_time) * 1000
+                completion_data = {
+                    **stream_result.metadata,
+                    "total_tokens": 0,
+                    "latency_ms": total_latency,
+                    "first_token_latency_ms": total_latency,
+                }
+                if generation_hints and "requested_generation" not in completion_data:
+                    completion_data["requested_generation"] = generation_hints
+                if preferred_provider and "preferred_llm_provider" not in completion_data:
+                    completion_data["preferred_llm_provider"] = preferred_provider
+                if preferred_model and "preferred_model" not in completion_data:
+                    completion_data["preferred_model"] = preferred_model
+                yield f"data: {json.dumps({'type': 'token', 'data': {'token': stream_result.response}})}\n\n"
+                yield f"data: {json.dumps({'type': 'complete', 'data': completion_data})}\n\n"
+
+                logger.info(
+                    "Chat runtime stream completed (single response)",
+                    extra={
+                        "user_id": user_context.get("user_id"),
+                        "correlation_id": correlation_id,
+                    },
+                )
+                return
+
+            async for chunk in stream_result:
                 if chunk.type == "content":
                     if first_token_time is None:
                         first_token_time = time.time()
@@ -803,7 +846,7 @@ async def stop_chat_generation(
     correlation_id: Optional[str] = None,
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
+    chat_orchestrator: chat_orchestrator.ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> Dict[str, Any]:
     """
     Stop ongoing chat generation
