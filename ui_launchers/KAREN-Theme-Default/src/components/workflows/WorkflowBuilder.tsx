@@ -163,8 +163,6 @@ export function WorkflowBuilder({
         ? (nodeData.nodeType as WorkflowNode['type'])
         : 'custom';
 
-      const style = node.style ? { ...node.style } : undefined;
-
       return {
         id: node.id,
         type: resolvedType,
@@ -182,8 +180,6 @@ export function WorkflowBuilder({
       const normalizedType = allowedEdgeTypes.includes(edge.type as WorkflowEdge['type'])
         ? (edge.type as WorkflowEdge['type'])
         : 'default';
-
-      const style = edge.style ? { ...edge.style } : undefined;
 
       return {
         id: edge.id,

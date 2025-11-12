@@ -8,30 +8,10 @@ import {
   getConnectionManager,
   ConnectionError,
   ErrorCategory,
-  type ConnectionResponse,
 } from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 import { AuthContext } from "./auth-context-instance";
 
-
-interface ApiUserResponse {
-  user_id: string;
-  email: string;
-  roles?: string[];
-  tenant_id: string;
-  permissions?: string[];
-}
-
-interface SessionValidationResponse {
-  valid: boolean;
-  user?: ApiUserResponse;
-  user_data?: ApiUserResponse;
-}
-
-interface LoginResponse {
-  user?: ApiUserResponse;
-  user_data?: ApiUserResponse;
-}
 
 export interface User {
   userId: string;
@@ -40,25 +20,6 @@ export interface User {
   tenantId?: string;
   role?: "super_admin" | "admin" | "user";
   permissions?: string[];
-}
-
-interface UserApiResponse {
-  user_id: string;
-  email: string;
-  roles?: string[];
-  tenant_id: string;
-  permissions?: string[];
-}
-
-interface SessionValidationResponse {
-  valid: boolean;
-  user?: UserApiResponse | null;
-  user_data?: UserApiResponse | null;
-}
-
-interface LoginResponse {
-  user?: UserApiResponse | null;
-  user_data?: UserApiResponse | null;
 }
 
 export interface LoginCredentials {
@@ -144,7 +105,13 @@ function isApiUserData(value: unknown): value is ApiUserData {
   );
 }
 
-function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+function extractUserData(
+  response: AuthApiResponse | AuthApiResponseRaw | null | undefined
+): ApiUserData | null {
+  if (!response) {
+    return null;
+  }
+
   if (response.user && isApiUserData(response.user)) {
     return response.user;
   }
@@ -391,17 +358,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      const userData = extractUserData(data);
 
       if (data?.valid && userData) {
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id || "default",
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+        const user = createUserFromApiData(userData);
 
         setUser(user);
         setIsAuthenticated(true);
@@ -506,7 +466,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Handle successful login response
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      const userData = extractUserData(data);
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -747,17 +707,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      const userData = extractUserData(data);
 
       if (data?.valid && userData) {
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id || "default",
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+        const user = createUserFromApiData(userData);
 
         setUser(user);
         setIsAuthenticated(true);

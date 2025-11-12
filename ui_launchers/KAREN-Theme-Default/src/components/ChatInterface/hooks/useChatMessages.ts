@@ -711,14 +711,20 @@ export const useChatMessages = (
                 throw degradeError;
               }
 
-              const usage = (result.usage || result.token_usage) as
-                | Record<string, unknown>
+              const usageDetails = (result.usage || result.token_usage) as
+                | {
+                    total_tokens?: number;
+                    prompt_tokens?: number;
+                    completion_tokens?: number;
+                  }
                 | undefined;
-              const totalTokens = (usage?.total_tokens as number | undefined) ??
-                (typeof usage?.prompt_tokens === "number" &&
-                typeof usage?.completion_tokens === "number"
-                  ? (usage.prompt_tokens as number) + (usage.completion_tokens as number)
-                  : undefined);
+              const totalTokens =
+                typeof usageDetails?.total_tokens === "number"
+                  ? usageDetails.total_tokens
+                  : typeof usageDetails?.prompt_tokens === "number" &&
+                    typeof usageDetails?.completion_tokens === "number"
+                  ? usageDetails.prompt_tokens + usageDetails.completion_tokens
+                  : undefined;
 
               fullText =
                 (result.answer as string | undefined) ||
@@ -728,7 +734,6 @@ export const useChatMessages = (
                 (result.response as string | undefined) ||
                 "";
 
-              const usage = result.usage || result.token_usage || {};
               const baseMetadata =
                 (result.metadata || result.meta || {}) as Partial<MessageMetadata>;
               metadata = {
@@ -740,10 +745,8 @@ export const useChatMessages = (
                     ? result.model
                     : baseMetadata.model,
                 tokens:
-                  typeof usage.total_tokens === "number"
-                    ? usage.total_tokens
-                    : usage.prompt_tokens && usage.completion_tokens
-                    ? usage.prompt_tokens + usage.completion_tokens
+                  typeof totalTokens === "number"
+                    ? totalTokens
                     : baseMetadata.tokens,
                 cost:
                   typeof result.cost === "number"
