@@ -25,6 +25,7 @@ export interface EnhancedComponentProps {
 }
 
 // Higher-order component for progressive enhancement
+// eslint-disable-next-line react-refresh/only-export-components
 export function withProgressiveEnhancement<P extends object>(
   Component: React.ComponentType<P & EnhancedComponentProps>,
   featureName: string,
@@ -36,24 +37,23 @@ export function withProgressiveEnhancement<P extends object>(
 ) {
   return function ProgressivelyEnhancedComponent(props: P) {
     const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
-    const [cachedData, setCachedData] = React.useState<any>(null);
-    const [retryCount, setRetryCount] = React.useState(0);
+    const [cachedData, setCachedData] = React.useState<unknown>(null);
+    const { cacheKey, enableCaching } = options;
 
     // Load cached data if caching is enabled
     React.useEffect(() => {
-      if (options.enableCaching && options.cacheKey) {
-        const cached = extensionCache.get(options.cacheKey);
+      if (enableCaching && cacheKey) {
+        const cached = extensionCache.get(cacheKey);
         if (cached) {
           setCachedData(cached);
         }
       }
-    }, [options.cacheKey, options.enableCaching]);
+    }, [cacheKey, enableCaching]);
 
-    const handleRetry = React.useCallback(() => {
-      setRetryCount(prev => prev + 1);
+    const handleRetry = () => {
       // Try to re-enable the feature flag
       featureFlagManager.setFlag(featureName, true);
-    }, [featureName]);
+    };
 
     if (!isEnabled) {
       switch (fallbackBehavior) {
@@ -114,6 +114,7 @@ export function withProgressiveEnhancement<P extends object>(
 }
 
 // Progressive feature wrapper component
+// eslint-disable-next-line react-refresh/only-export-components
 export function ProgressiveFeature({
   featureName,
   fallbackComponent,
@@ -126,7 +127,7 @@ export function ProgressiveFeature({
   const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
-  const [cachedData, setCachedData] = React.useState<any>(null);
+  const [cachedData, setCachedData] = React.useState<unknown>(null);
 
   // Simulate feature loading/detection
   React.useEffect(() => {
@@ -215,6 +216,7 @@ export function ProgressiveFeature({
 }
 
 // Hook for progressive data loading
+// eslint-disable-next-line react-refresh/only-export-components
 export function useProgressiveData<T>(
   featureName: string,
   fetchFunction: () => Promise<T>,

@@ -345,7 +345,11 @@ export class ErrorAnalytics {
 
   private sendToAnalyticsServices(metrics: ErrorMetrics) {
     if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'exception', {
+      const gtagWindow = window as Window & {
+        gtag?: (...args: unknown[]) => void;
+      };
+
+      gtagWindow.gtag?.('event', 'exception', {
         description: `${metrics.section}: ${metrics.errorMessage}`,
         fatal: metrics.severity === 'critical',
         custom_map: {

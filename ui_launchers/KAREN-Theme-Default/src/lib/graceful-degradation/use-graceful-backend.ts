@@ -139,8 +139,7 @@ export function useGracefulBackend<T>(
     useStaleOnError,
     maxStaleAge,
     fallbackData,
-    serviceName,
-    retryCount
+    serviceName
   ]);
 
   // Initial fetch

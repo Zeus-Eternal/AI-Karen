@@ -98,8 +98,8 @@ export class NetworkDiagnostics {
 
   private getConnectionType(): string | undefined {
     if (!isBrowser) return undefined;
-    const n = navigator as any;
-    const conn = n?.connection ?? n?.mozConnection ?? n?.webkitConnection;
+    const nav = navigator as NavigatorWithConnection;
+    const conn = nav.connection ?? nav.mozConnection ?? nav.webkitConnection;
     return conn?.effectiveType || conn?.type;
   }
 
@@ -498,3 +498,17 @@ export function initializeNetworkDiagnostics(): NetworkDiagnostics {
 }
 
 export default NetworkDiagnostics;
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+  mozConnection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+  webkitConnection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+};

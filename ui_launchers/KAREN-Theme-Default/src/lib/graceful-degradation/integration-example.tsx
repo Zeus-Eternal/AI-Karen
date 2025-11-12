@@ -23,12 +23,7 @@ export function FixedModelProviderIntegration() {
     maxStaleAge: 60 * 60 * 1000 // 1 hour
   });
 
-  const {
-    isEnabled,
-    showDegradedBanner,
-    dismissBanner,
-    forceRetry
-  } = useGracefulDegradation('modelProviderIntegration');
+  const { showDegradedBanner, dismissBanner, forceRetry } = useGracefulDegradation('modelProviderIntegration');
 
   // Show degraded mode banner when appropriate
   const shouldShowBanner =
@@ -127,6 +122,7 @@ export function FixedModelProviderIntegration() {
 }
 
 // Example of how to wrap any existing component with graceful degradation
+// eslint-disable-next-line react-refresh/only-export-components
 export function withGracefulDegradation<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   featureName: string
@@ -181,6 +177,7 @@ const GracefulModelProviderIntegration = withGracefulDegradation(
 export { GracefulModelProviderIntegration };
 
 // Hook for handling the specific error you're experiencing
+// eslint-disable-next-line react-refresh/only-export-components
 export function useModelProviderSuggestions() {
   const {
     data: suggestions,
@@ -194,7 +191,7 @@ export function useModelProviderSuggestions() {
     try {
       // The graceful degradation system will handle errors automatically
       return suggestions || [];
-    } catch (err) {
+    } catch (_err) {
       // Return empty array as fallback instead of throwing
       return [];
     }
@@ -210,6 +207,7 @@ export function useModelProviderSuggestions() {
 }
 
 // Example of how to initialize the system in your app
+// eslint-disable-next-line react-refresh/only-export-components
 export function initializeGracefulDegradationInApp() {
   // Import the init function
   import('./init').then(({ initGracefulDegradation }) => { 

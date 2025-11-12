@@ -7,55 +7,11 @@
 "use client";
 
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { extensionIntegration } from './extension-integration';
-import { safeLog, safeError } from '../safe-console';
-
-// Constants for extension initialization
-export const EXTENSION_INIT_TIMEOUT = 5000;
-export const EXTENSION_RETRY_DELAY = 1000;
-
-/**
- * Hook to initialize extension integration service
- */
-export function useExtensionInitialization() {
-  const [initialized, setInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeExtensions = async () => {
-      try {
-        safeLog('ExtensionInitializer: Starting extension integration initialization...');
-        
-        await extensionIntegration.initialize();
-        
-        if (mounted) {
-          setInitialized(true);
-          setError(null);
-          safeLog('ExtensionInitializer: Extension integration initialized successfully');
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        safeError('ExtensionInitializer: Failed to initialize extension integration:', err);
-        
-        if (mounted) {
-          setError(errorMessage);
-          setInitialized(false);
-        }
-      }
-    };
-
-    initializeExtensions();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  return { initialized, error };
-}
+import { safeError } from '../safe-console';
+import {
+  useExtensionInitialization,
+  useExtensionsAvailable as useExtensionsAvailableHook,
+} from './hooks';
 
 /**
  * Extension Integration Provider Component
@@ -82,13 +38,10 @@ export function ExtensionIntegrationProvider({ children }: { children: React.Rea
 /**
  * Hook to check if extensions are available
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useExtensionsAvailable() {
-  const { initialized, error } = useExtensionInitialization();
-  return initialized && !error;
+  return useExtensionsAvailableHook();
 }
 
-// Utility functions for extension management
-export const extensionUtils = {
-  getInitializationStatus: () => extensionIntegration.initialize,
-  getService: () => extensionIntegration,
-};
+// Re-export for convenience
+export { useExtensionInitialization } from './hooks';

@@ -1,10 +1,12 @@
+"use client";
+
 /**
  * React hooks for extension integration
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { extensionIntegration, ExtensionStatus, ExtensionUIComponent, ExtensionRoute, ExtensionNavItem } from './extension-integration';
-import { safeError } from '../safe-console';
+import { safeLog, safeError } from '../safe-console';
 import type { ExtensionTaskHistoryEntry } from '../../extensions/types';
 
 /**
@@ -126,6 +128,50 @@ export function useExtensionRoutes(extensionId?: string) {
   }, [extensionId]);
 
   return routes;
+}
+
+export function useExtensionInitialization() {
+  const [initialized, setInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeExtensions = async () => {
+      try {
+        safeLog('ExtensionInitializer: Starting extension integration initialization...');
+
+        await extensionIntegration.initialize();
+
+        if (mounted) {
+          setInitialized(true);
+          setError(null);
+          safeLog('ExtensionInitializer: Extension integration initialized successfully');
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        safeError('ExtensionInitializer: Failed to initialize extension integration:', err);
+
+        if (mounted) {
+          setError(errorMessage);
+          setInitialized(false);
+        }
+      }
+    };
+
+    initializeExtensions();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return { initialized, error };
+}
+
+export function useExtensionsAvailable() {
+  const { initialized, error } = useExtensionInitialization();
+  return initialized && !error;
 }
 
 /**

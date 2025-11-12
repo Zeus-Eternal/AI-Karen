@@ -9,6 +9,19 @@
 
 import { logger } from './logger';
 
+type ExtensionFallbackResponse = {
+  extensions?: Record<string, unknown>;
+  total?: number;
+  message?: string;
+  access_level?: string;
+  available_features?: string[];
+  restricted_features?: string[];
+  fallback_mode?: boolean;
+  error_type?: string;
+  status?: string;
+  health?: Record<string, unknown>;
+} & Record<string, unknown>;
+
 declare global {
   interface Window {
     __EXT_PATCH__?: {
@@ -41,7 +54,10 @@ function isGracefulStatus(status: number): boolean {
 /**
  * Get appropriate fallback data based on the extension endpoint
  */
-function getFallbackDataForExtensionEndpoint(url: string, status: number = 403): any {
+function getFallbackDataForExtensionEndpoint(
+  url: string,
+  status: number = 403
+): ExtensionFallbackResponse {
   // Main extensions list endpoint
   if (isListEndpoint(url)) {
     if (status === 504) {

@@ -2,7 +2,7 @@
  * Types and interfaces for the Model Selection Service
  */
 
-import type { Model, ModelHealth } from "../model-utils";
+import type { Model } from "../model-utils";
 
 // Re-export Model for convenience
 export type { Model } from "../model-utils";

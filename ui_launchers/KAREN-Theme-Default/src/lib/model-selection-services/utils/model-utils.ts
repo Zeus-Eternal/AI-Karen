@@ -47,7 +47,11 @@ export function generateModelName(filename: string, metadata: Record<string, unk
  */
 export function generateModelDescription(metadata: Record<string, unknown>, type: string): string {
   const parts: string[] = [];
-  
+
+  if (type.trim()) {
+    parts.push(`${type.trim()} model`);
+  }
+
   if (metadata.parameter_count) {
     parts.push(`${metadata.parameter_count} parameter model`);
   }

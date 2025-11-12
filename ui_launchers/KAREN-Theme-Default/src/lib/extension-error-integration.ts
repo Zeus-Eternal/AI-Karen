@@ -7,8 +7,10 @@
 
 import { logger } from './logger';
 
+type ExtensionFallbackData = Record<string, unknown> | unknown[] | null;
+
 export interface ExtensionErrorResponse {
-  fallback_data?: any;
+  fallback_data?: ExtensionFallbackData;
   retry?: boolean;
   delay?: number;
   requires_login?: boolean;
@@ -23,7 +25,7 @@ export function handleExtensionError(
   url: string,
   operation: string = 'extension_api'
 ): ExtensionErrorResponse {
-  logger.info(`Handling extension error: ${status} for ${url}`);
+  logger.info(`Handling extension error: ${status} for ${url} (operation: ${operation})`);
 
   // Handle 403 Forbidden errors for extensions
   if (status === 403 && url.includes('/api/extensions')) {

@@ -41,16 +41,6 @@ export interface HealthCheckResult {
   };
 }
 
-type HealthApiResponse = {
-  status?: string;
-  timestamp?: string;
-  services?: Record<string, HealthServiceDetail>;
-  version?: string;
-  uptime?: number;
-  error?: string;
-  [key: string]: unknown;
-};
-
 export interface ConnectivityTestResult {
   endpoint: string;
   isReachable: boolean;
