@@ -137,15 +137,6 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
-function _percent(n: number) {
-  return Math.round(n * 100);
-}
-
-function _safeDivide(num: number, den: number) {
-  if (!den || Number.isNaN(den)) return 0;
-  return num / den;
-}
-
 function safeExec(cmd: string, cwd: string): { ok: boolean; out: string; err?: string } {
   try {
     const out = execSync(cmd, {

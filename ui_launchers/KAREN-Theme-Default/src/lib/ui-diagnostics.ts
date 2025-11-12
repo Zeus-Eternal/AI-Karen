@@ -433,7 +433,7 @@ export const useUIDiagnostics = (componentName: string) => {
         diagnostics.checkChatInterface(node, additional?.messageCount ?? 0);
       }
     },
-    [componentName]
+    [componentName, diagnostics]
   );
 
   return {
