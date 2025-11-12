@@ -100,6 +100,24 @@ export function HealthDashboard({
     return "";
   });
 
+  const scheduleMonitoringSync = React.useCallback(
+    (monitor: HealthMonitorInstance) => {
+      if (!monitor) {
+        setIsMonitoring(false);
+        return;
+      }
+
+      Promise.resolve().then(() => {
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch {
+          // noop
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (!healthMonitor) {
       return undefined;
@@ -109,11 +127,7 @@ export function HealthDashboard({
       healthMonitor.onMetricsUpdate?.((newMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        try {
-          setIsMonitoring(!!healthMonitor.getStatus?.().isMonitoring);
-        } catch {
-          // noop
-        }
+        scheduleMonitoringSync(healthMonitor);
       }) ?? (() => {});
 
     const unsubscribeAlerts =
@@ -124,7 +138,7 @@ export function HealthDashboard({
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        setIsMonitoring(true);
+        scheduleMonitoringSync(healthMonitor);
       }
     } catch {
       // noop
@@ -143,7 +157,7 @@ export function HealthDashboard({
         // noop
       }
     };
-  }, [healthMonitor]);
+  }, [healthMonitor, scheduleMonitoringSync]);
 
   const resolveHealthMonitor = () => {
     if (healthMonitor) {

@@ -113,6 +113,24 @@ export function EndpointStatusIndicator({
     () => initialSnapshot.recentErrors
   );
 
+  const scheduleMonitoringSync = React.useCallback(
+    (monitor: MonitorSnapshot["monitor"]) => {
+      if (!monitor) {
+        setIsMonitoring(false);
+        return;
+      }
+
+      Promise.resolve().then(() => {
+        try {
+          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
+        } catch {
+          // noop
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (!monitorRef.current || !loggerRef.current) {
       monitorRef.current = getHealthMonitor?.() ?? null;
@@ -126,11 +144,7 @@ export function EndpointStatusIndicator({
       return undefined;
     }
 
-    try {
-      setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
-    } catch {
-      // noop
-    }
+    scheduleMonitoringSync(monitor);
 
     const errorTimers: number[] = [];
 
@@ -139,11 +153,7 @@ export function EndpointStatusIndicator({
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
 
-        try {
-          setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
-        } catch {
-          // noop
-        }
+        scheduleMonitoringSync(monitor);
       }) ?? (() => {});
 
     const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -176,7 +186,7 @@ export function EndpointStatusIndicator({
         window.clearTimeout(timeoutId);
       });
     };
-  }, []);
+  }, [scheduleMonitoringSync]);
 
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";
