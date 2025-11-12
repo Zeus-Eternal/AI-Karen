@@ -674,17 +674,10 @@ export const useChatMessages = (
               const result = await response.json();
 
               const degraded = Boolean(
-                (result?.ai_data &&
-                  typeof result.ai_data === "object" &&
-                  ((result.ai_data as Record<string, unknown>).degraded_mode ===
-                    true ||
-                    (result.ai_data as Record<string, unknown>).status ===
-                      "degraded")) ||
-                  (result?.metadata &&
-                    typeof result.metadata === "object" &&
-                    (result.metadata as Record<string, unknown>).degraded_mode ===
-                      true) ||
-                  (result as Record<string, unknown>)?.degraded_mode === true
+                (aiData &&
+                  (aiData.degraded_mode === true || aiData.status === "degraded")) ||
+                  (resultMetadata && resultMetadata.degraded_mode === true) ||
+                  result.degraded_mode === true
               );
 
               if (degraded) {
@@ -692,28 +685,22 @@ export const useChatMessages = (
                   origin: responseOrigin,
                   endpoint: activeEndpoint,
                   upstreamStatus,
-                  reason:
-                    (result?.ai_data as Record<string, unknown>)?.reason ||
-                    fallbackReason,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
                 });
 
                 const degradedMessage =
-                  (result?.response && typeof result.response === "string"
+                  (typeof result.response === "string"
                     ? result.response
-                    : result?.message && typeof result.message === "string"
+                    : typeof result.message === "string"
                     ? result.message
                     : "The AI service is currently unavailable.") ??
                   "The AI service is currently unavailable.";
 
                 const degradeError = new Error(degradedMessage);
                 degradeError.name = "LLMFallbackResponseError";
-                (degradeError as Error & {
-                  details?: Record<string, unknown>;
-                }).details = {
+                (degradeError as Error & { details?: Record<string, unknown> }).details = {
                   header: fallbackHeader,
-                  reason:
-                    (result?.ai_data as Record<string, unknown>)?.reason ||
-                    fallbackReason,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
                   upstreamStatus,
                   origin: responseOrigin,
                   endpoint: activeEndpoint,
@@ -724,12 +711,21 @@ export const useChatMessages = (
                 throw degradeError;
               }
 
+              const usage = (result.usage || result.token_usage) as
+                | Record<string, unknown>
+                | undefined;
+              const totalTokens = (usage?.total_tokens as number | undefined) ??
+                (typeof usage?.prompt_tokens === "number" &&
+                typeof usage?.completion_tokens === "number"
+                  ? (usage.prompt_tokens as number) + (usage.completion_tokens as number)
+                  : undefined);
+
               fullText =
-                result.answer ||
-                result.content ||
-                result.text ||
-                result.message ||
-                result.response ||
+                (result.answer as string | undefined) ||
+                (result.content as string | undefined) ||
+                (result.text as string | undefined) ||
+                (result.message as string | undefined) ||
+                (result.response as string | undefined) ||
                 "";
 
               const usage = result.usage || result.token_usage || {};

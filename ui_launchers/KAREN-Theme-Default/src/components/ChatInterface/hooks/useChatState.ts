@@ -35,7 +35,7 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
           id: welcomeMessageIdRef.current,
           role: "assistant",
           content: welcomeMessage,
-          timestamp: new Date(),
+          timestamp: new Date(sessionStartTime),
           type: "text",
           metadata: { confidence: 1.0 },
         },
