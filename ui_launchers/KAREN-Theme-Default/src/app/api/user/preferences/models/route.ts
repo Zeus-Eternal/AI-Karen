@@ -31,7 +31,7 @@ function errJson(message: string, status = 500, extra?: Record<string, unknown>)
 
 // ---- GET /api/user/preferences/models ---------------------------------------
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Proxy to backend API
     const response = await fetch(`${BACKEND_URL}/api/user/preferences/models`, {

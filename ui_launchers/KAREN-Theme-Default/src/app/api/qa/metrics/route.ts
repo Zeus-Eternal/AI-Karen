@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
 const collector = new QualityMetricsCollector();
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const metrics = await collector.collectAllMetrics();
     // Save trend data
     await collector.saveTrend(metrics);
     return NextResponse.json(metrics);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to collect quality metrics' },
       { status: 500 }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(metrics);
     }
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to refresh quality metrics' },
       { status: 500 }
