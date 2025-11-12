@@ -161,20 +161,20 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // kari_http_request_duration_seconds (histogram with path)
     const httpBounds = [0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    requestDurationEntries.forEach(([path, d]) => {
+    requestDurationEntries.forEach(([path, durationMetrics]) => {
       emitHistogram(
         lines,
         'kari_http_request_duration_seconds',
         'HTTP request duration in seconds',
         { path: esc(path) },
         {
-          buckets: durationMetrics.buckets,
-          sum: n(durationMetrics.sum),
-          count: n(durationMetrics.count),
+          buckets: durationMetrics?.buckets,
+          sum: n(durationMetrics?.sum),
+          count: n(durationMetrics?.count),
         },
         httpBounds,
       );
-    }
+    });
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');

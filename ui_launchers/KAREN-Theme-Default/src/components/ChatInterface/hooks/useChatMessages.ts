@@ -749,22 +749,22 @@ export const useChatMessages = (
             }
           } else {
             // Handle non-streaming response (JSON or text)
-            const ct2 = response.headers.get("content-type") || "";
-            if (ct2.includes("application/json")) {
-              const result = await response.json();
+            const nonStreamContentType = response.headers.get("content-type") || "";
+            if (nonStreamContentType.includes("application/json")) {
+              const result = (await response.json()) as Record<string, unknown>;
+
+              const aiData = (result.ai_data ?? result.data) as
+                | Record<string, unknown>
+                | undefined;
+              const resultMetadata = (result.metadata ?? result.meta) as
+                | Record<string, unknown>
+                | undefined;
 
               const degraded = Boolean(
-                (result?.ai_data &&
-                  typeof result.ai_data === "object" &&
-                  ((result.ai_data as Record<string, unknown>).degraded_mode ===
-                    true ||
-                    (result.ai_data as Record<string, unknown>).status ===
-                      "degraded")) ||
-                  (result?.metadata &&
-                    typeof result.metadata === "object" &&
-                    (result.metadata as Record<string, unknown>).degraded_mode ===
-                      true) ||
-                  (result as Record<string, unknown>)?.degraded_mode === true
+                (aiData &&
+                  (aiData.degraded_mode === true || aiData.status === "degraded")) ||
+                  (resultMetadata && resultMetadata.degraded_mode === true) ||
+                  result.degraded_mode === true
               );
 
               if (degraded) {
@@ -772,28 +772,22 @@ export const useChatMessages = (
                   origin: responseOrigin,
                   endpoint: activeEndpoint,
                   upstreamStatus,
-                  reason:
-                    (result?.ai_data as Record<string, unknown>)?.reason ||
-                    fallbackReason,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
                 });
 
                 const degradedMessage =
-                  (result?.response && typeof result.response === "string"
+                  (typeof result.response === "string"
                     ? result.response
-                    : result?.message && typeof result.message === "string"
+                    : typeof result.message === "string"
                     ? result.message
                     : "The AI service is currently unavailable.") ??
                   "The AI service is currently unavailable.";
 
                 const degradeError = new Error(degradedMessage);
                 degradeError.name = "LLMFallbackResponseError";
-                (degradeError as Error & {
-                  details?: Record<string, unknown>;
-                }).details = {
+                (degradeError as Error & { details?: Record<string, unknown> }).details = {
                   header: fallbackHeader,
-                  reason:
-                    (result?.ai_data as Record<string, unknown>)?.reason ||
-                    fallbackReason,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
                   upstreamStatus,
                   origin: responseOrigin,
                   endpoint: activeEndpoint,
@@ -804,38 +798,42 @@ export const useChatMessages = (
                 throw degradeError;
               }
 
+              const usage = (result.usage || result.token_usage) as
+                | Record<string, unknown>
+                | undefined;
+              const totalTokens = (usage?.total_tokens as number | undefined) ??
+                (typeof usage?.prompt_tokens === "number" &&
+                typeof usage?.completion_tokens === "number"
+                  ? (usage.prompt_tokens as number) + (usage.completion_tokens as number)
+                  : undefined);
+
               fullText =
-                result.answer ||
-                result.content ||
-                result.text ||
-                result.message ||
-                result.response ||
+                (result.answer as string | undefined) ||
+                (result.content as string | undefined) ||
+                (result.text as string | undefined) ||
+                (result.message as string | undefined) ||
+                (result.response as string | undefined) ||
                 "";
-              const usage = result.usage || result.token_usage || {};
+
               metadata = {
-                ...(result.metadata || result.meta || {}),
+                ...(resultMetadata ?? {}),
                 ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
                 model:
-                  result.model ||
-                  (result.metadata?.model ?? result.meta?.model),
-                tokens:
-                  usage.total_tokens ||
-                  (usage.prompt_tokens && usage.completion_tokens
-                    ? usage.prompt_tokens + usage.completion_tokens
-                    : undefined),
+                  (result.model as string | undefined) ||
+                  (resultMetadata?.model as string | undefined),
+                tokens: totalTokens,
                 cost: result.cost,
                 confidence:
                   typeof result.confidence === "number"
                     ? result.confidence
-                    : result.metadata?.confidence ?? result.meta?.confidence,
-              } as unknown;
+                    : (resultMetadata?.confidence as number | undefined),
+              } as Record<string, unknown>;
             } else {
               fullText = await response.text();
             }
           }
-        }
 
-        metadata = {
+          metadata = {
             ...metadata,
             origin: metadata?.origin ?? responseOrigin,
             endpoint: metadata?.endpoint ?? activeEndpoint,

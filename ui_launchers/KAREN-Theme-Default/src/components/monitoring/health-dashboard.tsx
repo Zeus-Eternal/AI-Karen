@@ -102,12 +102,12 @@ export function HealthDashboard({
 
   const scheduleMonitoringSync = React.useCallback(
     (monitor: HealthMonitorInstance) => {
-      if (!monitor) {
-        setIsMonitoring(false);
-        return;
-      }
-
       Promise.resolve().then(() => {
+        if (!monitor) {
+          setIsMonitoring(false);
+          return;
+        }
+
         try {
           setIsMonitoring(!!monitor.getStatus?.().isMonitoring);
         } catch {
