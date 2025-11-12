@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { AdminApiResponse, BulkUserOperation } from "@/types/admin";
 import { Download, UploadCloud, AlertTriangle } from "lucide-react";
 
+type GenericAdminResponse = AdminApiResponse<Record<string, unknown>>;
+
 export interface BulkUserOperationsProps {
   selectedUserIds: string[];
   onOperationComplete: () => void;
@@ -126,7 +128,7 @@ export function BulkUserOperations({
       formData.append("default_role", "user");
 
       const res = await fetch("/api/admin/users/import", { method: "POST", body: formData });
-      const data: AdminApiResponse<{ imported_count?: number }> = await safeJson(res);
+      const data = await safeJson<GenericAdminResponse>(res);
 
       if (!res.ok || !data?.success) {
         throw new Error(data?.error?.message || "Import failed");
@@ -138,7 +140,7 @@ export function BulkUserOperations({
         description: `${data.data?.imported_count ?? 0} user(s) imported successfully.`
       });
       onOperationComplete();
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : "Import failed";
       failProgress(msg);
       toast({ title: "Import failed", description: msg, variant: "destructive" });
@@ -167,7 +169,6 @@ export function BulkUserOperations({
       return;
     }
 
-    // Import is handled in handleImport()
     if (selectedOperation === "import") {
       await handleImport();
       return;
@@ -195,13 +196,12 @@ export function BulkUserOperations({
         body: JSON.stringify(payload)
       });
 
-      const data: AdminApiResponse<{ download_url?: string; filename?: string }> = await safeJson(res);
+      const data = await safeJson<GenericAdminResponse>(res);
 
       if (!res.ok || !data?.success) {
         throw new Error(data?.error?.message || "Bulk operation failed");
       }
 
-      // Export: trigger download
       if (selectedOperation === "export" && data.data?.download_url) {
         const link = document.createElement("a");
         link.href = data.data.download_url as string;
@@ -220,9 +220,8 @@ export function BulkUserOperations({
             : `${operations.find((o) => o.id === selectedOperation)?.label} completed successfully.`
       });
 
-      // Give the UX a beat, then notify parent
       setTimeout(() => onOperationComplete(), 600);
-    } catch (error: unknown) {
+    } catch (error) {
       const msg = error instanceof Error ? error.message : "Operation failed";
       failProgress(msg);
       toast({ title: "Bulk operation failed", description: msg, variant: "destructive" });
@@ -239,6 +238,7 @@ export function BulkUserOperations({
     handleImport,
     newRole,
     onOperationComplete,
+    handleImport,
     operations,
     selectedOperation,
     selectedUserIds,
@@ -473,9 +473,9 @@ export function BulkUserOperations({
 
 /* --------------------------------- Utils --------------------------------- */
 
-async function safeJson(res: Response) {
+async function safeJson<T>(res: Response): Promise<T | null> {
   try {
-    return (await res.json()) as unknown;
+    return (await res.json()) as T;
   } catch {
     return null;
   }

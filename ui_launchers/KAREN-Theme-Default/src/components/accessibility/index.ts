@@ -9,8 +9,12 @@ export { AccessibilityEnhancementsProvider } from './AccessibilityProvider';
 export { useAccessibilityEnhancements } from './AccessibilityEnhancementsContext';
 export { default as SkipLinks } from './SkipLinks';
 export { default as LiveRegion } from './LiveRegion';
-export { useLiveRegion } from './LiveRegionHook';
+export { useLiveRegion } from './useLiveRegion';
 export { AccessibilitySettings } from './AccessibilitySettings';
 export { default as KeyboardNavigationProvider } from './KeyboardNavigationProvider';
-export { useKeyboardNavigationContext, useNavigationContainer, useNavigationItem } from './KeyboardNavigationContext';
+export {
+  useKeyboardNavigationContext,
+  useNavigationContainer,
+  useNavigationItem,
+} from './KeyboardNavigationContext';
 export { default as ColorBlindnessFilters } from './ColorBlindnessFilters';

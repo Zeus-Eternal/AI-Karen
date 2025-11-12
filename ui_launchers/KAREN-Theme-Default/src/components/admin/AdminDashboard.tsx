@@ -66,10 +66,11 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
       ]);
       setUserStats(stats);
       setActivitySummary(activity);
-    } catch (error: unknown) {
-      if ((error as { name?: string } | undefined)?.name !== "AbortError") {
-        setError(error instanceof Error ? error.message : "Failed to load dashboard data");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
       }
+      setError(error instanceof Error ? error.message : "Failed to load dashboard data");
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }

@@ -152,7 +152,7 @@ async function parseJSONUsers(
   let json: unknown;
   try {
     json = JSON.parse(fileText);
-  } catch (e) {
+  } catch (_e) {
     throw new Error('Invalid JSON format');
   }
   if (!Array.isArray(json)) {

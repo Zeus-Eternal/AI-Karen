@@ -73,7 +73,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   className = "",
   showConfidenceBadge = true,
 }) => {
-  const speechRecognitionCtor = React.useMemo(() => {
+  const speechRecognitionCtor = useMemo(() => {
     if (typeof window === "undefined") {
       return undefined;
     }

@@ -72,7 +72,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setShowCodePreview,
     sessionId,
     conversationId,
-    messagesEndRef,
     selectedText,
     sessionStartTime,
     copilotArtifacts,
@@ -154,7 +153,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const { artifacts, approveArtifact, rejectArtifact, applyArtifact } = useArtifactManagement({
     artifacts: copilotArtifacts,
     updateArtifact: (artifactId: string, updates: Partial<CopilotArtifact>) => {
-      setCopilotArtifacts(prev => prev.map(artifact => 
+      setCopilotArtifacts(prev => prev.map(artifact =>
         artifact.id === artifactId ? { ...artifact, ...updates } : artifact
       ));
     },
@@ -377,3 +376,4 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
 // Export for backward compatibility
 export default ChatInterface;
+

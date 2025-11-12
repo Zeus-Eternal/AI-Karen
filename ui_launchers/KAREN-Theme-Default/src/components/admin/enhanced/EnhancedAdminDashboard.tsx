@@ -40,6 +40,10 @@ interface DashboardData {
   loading: boolean;
 }
 
+interface LoadDashboardDataOptions {
+  skipLoadingState?: boolean;
+}
+
 export function EnhancedAdminDashboard({
   className = "",
 }: EnhancedAdminDashboardProps) {
@@ -78,60 +82,77 @@ export function EnhancedAdminDashboard({
   });
 
   // Load dashboard data with error handling
-  const loadDashboardData = useCallback(async () => {
-    if (!hasAdminAccess) {
-      return;
-    }
+  const loadDashboardData = useCallback(
+    async (options: LoadDashboardDataOptions = {}) => {
+      const { skipLoadingState = false } = options;
+      if (!hasAdminAccess) {
+        return;
+      }
 
-    const result = await handleAsyncOperation(
-      async () => {
-        Promise.resolve().then(() => {
-          setDashboardData((prev) => ({ ...prev, loading: true }));
+      const result = await handleAsyncOperation(
+        async () => {
+          if (!skipLoadingState) {
+            setDashboardData((prev) => ({ ...prev, loading: true }));
+          }
+
+          // Load user statistics
+          const statsResponse = await fetch("/api/admin/users/stats");
+          if (!statsResponse.ok) {
+            throw new Error(
+              `Failed to load user statistics: ${statsResponse.statusText}`
+            );
+          }
+          const statsData = await statsResponse.json();
+
+          // Load activity summary
+          const activityResponse = await fetch(
+            "/api/admin/system/activity-summary?period=week"
+          );
+          if (!activityResponse.ok) {
+            throw new Error(
+              `Failed to load activity summary: ${activityResponse.statusText}`
+            );
+          }
+          const activityData = await activityResponse.json();
+
+          return {
+            userStats: statsData.data as UserStatistics,
+            activitySummary: activityData.data as ActivitySummary,
+          };
+        },
+        { resource: "dashboard_data" }
+      );
+
+      if (result) {
+        setDashboardData({
+          userStats: result.userStats,
+          activitySummary: result.activitySummary,
+          loading: false,
         });
-
-        // Load user statistics
-        const statsResponse = await fetch("/api/admin/users/stats");
-        if (!statsResponse.ok) {
-          throw new Error(
-            `Failed to load user statistics: ${statsResponse.statusText}`
-          );
-        }
-        const statsData = await statsResponse.json();
-
-        // Load activity summary
-        const activityResponse = await fetch(
-          "/api/admin/system/activity-summary?period=week"
-        );
-        if (!activityResponse.ok) {
-          throw new Error(
-            `Failed to load activity summary: ${activityResponse.statusText}`
-          );
-        }
-        const activityData = await activityResponse.json();
-
-        return {
-          userStats: statsData.data as UserStatistics,
-          activitySummary: activityData.data as ActivitySummary,
-        };
-      },
-      { resource: "dashboard_data" }
-    );
-
-    if (result) {
-      setDashboardData({
-        userStats: result.userStats,
-        activitySummary: result.activitySummary,
-        loading: false,
-      });
-      announce("Dashboard data loaded successfully");
-    } else {
-      setDashboardData((prev) => ({ ...prev, loading: false }));
-    }
-  }, [announce, handleAsyncOperation, hasAdminAccess]);
+        announce("Dashboard data loaded successfully");
+      } else {
+        setDashboardData((prev) => ({ ...prev, loading: false }));
+      }
+    },
+    [announce, handleAsyncOperation, hasAdminAccess]
+  );
 
   // Load data on mount
   useEffect(() => {
-    loadDashboardData();
+    let cancelled = false;
+
+    const run = async () => {
+      await Promise.resolve();
+      if (!cancelled) {
+        await loadDashboardData();
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadDashboardData]);
 
   // Access control
@@ -159,13 +180,15 @@ export function EnhancedAdminDashboard({
   };
 
   const handleUserCreated = () => {
-    loadDashboardData();
+    markDashboardLoading();
+    void loadDashboardData();
     setCurrentView("users");
     announce("User created successfully, switching to user management view");
   };
 
   const handleBulkOperationComplete = () => {
-    loadDashboardData();
+    markDashboardLoading();
+    void loadDashboardData();
     setSelectedUsers([]);
     setCurrentView("users");
     announce("Bulk operation completed, returning to user management");
@@ -418,7 +441,10 @@ export function EnhancedAdminDashboard({
               <EnhancedUserManagementTable
                 selectedUsers={selectedUsers}
                 onSelectionChange={handleUserSelectionChange}
-                onUserUpdated={loadDashboardData}
+                onUserUpdated={() => {
+                  markDashboardLoading();
+                  void loadDashboardData();
+                }}
               />
             </ErrorBoundary>
           </div>

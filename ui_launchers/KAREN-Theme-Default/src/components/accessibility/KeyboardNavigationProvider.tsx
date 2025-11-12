@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useKeyboardNavigation } from '../../hooks/use-keyboard-navigation';
-import { KeyboardNavigationContext, type KeyboardNavigationContextValue } from './KeyboardNavigationContext';
+import {
+  KeyboardNavigationContext,
+  type KeyboardNavigationContextValue,
+} from './KeyboardNavigationContext';
 
 interface KeyboardNavigationProviderProps {
   children: React.ReactNode;

@@ -1,12 +1,17 @@
-import React, { useRef } from 'react';
+"use client";
+
+import React, { useCallback, useRef } from 'react';
 import { cn } from '../../lib/utils';
 
-export function useLiveRegion(politeness: 'polite' | 'assertive' = 'polite') {
+type PolitenessSetting = 'polite' | 'assertive';
+
+export function useLiveRegion(politeness: PolitenessSetting = 'polite') {
   const regionRef = useRef<HTMLDivElement>(null);
 
-  const announce = React.useCallback((message: string) => {
+  const announce = useCallback((message: string) => {
     if (regionRef.current) {
       regionRef.current.textContent = '';
+
       setTimeout(() => {
         if (regionRef.current) {
           regionRef.current.textContent = message;
@@ -15,7 +20,7 @@ export function useLiveRegion(politeness: 'polite' | 'assertive' = 'polite') {
     }
   }, []);
 
-  const LiveRegionComponent = React.useCallback(
+  const LiveRegionComponent = useCallback(
     ({ className }: { className?: string }) => (
       <div
         ref={regionRef}

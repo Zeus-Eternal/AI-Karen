@@ -90,7 +90,7 @@ export function UserSearchFilters({
 
   // derived counts for quick indicator
   const activeCount = useMemo(() => {
-    return Object.entries(localFilters).reduce((acc, [, v]) => {
+    return Object.entries(localFilters).reduce((acc, [_key, v]) => {
       if (v === undefined || v === null || v === "") return acc;
       return acc + 1;
     }, 0);

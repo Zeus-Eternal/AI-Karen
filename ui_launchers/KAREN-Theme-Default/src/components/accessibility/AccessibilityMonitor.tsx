@@ -35,7 +35,12 @@ export function AccessibilityMonitor({
   const [showDetails, setShowDetails] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const { violations, warnings, hasIssues, runTest } = useAccessibilityMonitor(containerRef, enabled);
+  const {
+    violations,
+    warnings,
+    hasIssues,
+    runTest,
+  } = useAccessibilityMonitor(containerRef, enabled);
 
   const handleToggle = (newEnabled: boolean) => {
     setEnabled(newEnabled);

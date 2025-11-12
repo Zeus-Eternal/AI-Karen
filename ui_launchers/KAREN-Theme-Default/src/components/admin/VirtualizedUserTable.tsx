@@ -474,7 +474,6 @@ export function VirtualizedUserTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.page, pagination.limit, pagination.sort_by, pagination.sort_order]);
 
-  // Reset page when filters change
   // Sorting
   const handleSort = (column: keyof User) => {
     setUsers([]);

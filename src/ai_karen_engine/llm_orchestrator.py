@@ -25,7 +25,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, Union
 
 from ai_karen_engine.core.errors.exceptions import RateLimitError
 
@@ -221,6 +221,39 @@ class ModelStatus(Enum):
     RATE_LIMITED = auto()
     FAILED = auto()
     CIRCUIT_BROKEN = auto()
+
+
+@dataclass
+class LLMRouteResult:
+    """Structured result returned from routing a prompt to a provider."""
+
+    content: str
+    model_id: Optional[str]
+    provider: Optional[str]
+    tags: List[str] = field(default_factory=list)
+    is_degraded: bool = False
+    attempted_models: List[str] = field(default_factory=list)
+    failure_reason: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_metadata(self) -> Dict[str, Any]:
+        """Return a serialisable dictionary for downstream consumers."""
+
+        data: Dict[str, Any] = {
+            "model_id": self.model_id,
+            "provider": self.provider,
+            "tags": list(self.tags),
+            "is_degraded": self.is_degraded,
+        }
+
+        if self.attempted_models:
+            data["attempted_models"] = list(self.attempted_models)
+        if self.failure_reason:
+            data["failure_reason"] = self.failure_reason
+        if self.metadata:
+            data["extra"] = dict(self.metadata)
+
+        return data
 
 
 @dataclass
@@ -726,10 +759,17 @@ class LLMOrchestrator:
             info.record_latency(latency)
             info.warmed = True
 
-    def route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
+    def route(
+        self,
+        prompt: str,
+        skill: Optional[str] = None,
+        *,
+        return_metadata: bool = False,
+        **kwargs,
+    ) -> Union[str, LLMRouteResult]:
         """Route request to appropriate model with advanced fallback handling."""
 
-        return self._route_request(
+        result = self._route_request(
             prompt,
             skill,
             mode="text",
@@ -737,12 +777,19 @@ class LLMOrchestrator:
             **kwargs,
         )
 
+        return result if return_metadata else result.content
+
     def route_with_copilotkit(
-        self, prompt: str, context: Optional[Dict[str, Any]] = None, **kwargs
-    ) -> str:
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        *,
+        return_metadata: bool = False,
+        **kwargs,
+    ) -> Union[str, LLMRouteResult]:
         """Route request specifically to CopilotKit provider with enhanced context."""
 
-        return self._route_request(
+        result = self._route_request(
             prompt,
             None,
             mode="copilotkit",
@@ -750,18 +797,27 @@ class LLMOrchestrator:
             **kwargs,
         )
 
+        return result if return_metadata else result.content
+
     async def enhanced_route(
-        self, prompt: str, skill: Optional[str] = None, **kwargs
-    ) -> str:
+        self,
+        prompt: str,
+        skill: Optional[str] = None,
+        *,
+        return_metadata: bool = False,
+        **kwargs,
+    ) -> Union[str, LLMRouteResult]:
         """Enhanced routing with instruction-aware providers and fallback orchestration."""
 
-        return self._route_request(
+        result = self._route_request(
             prompt,
             skill,
             mode="enhanced",
             context=None,
             **kwargs,
         )
+
+        return result if return_metadata else result.content
 
     def _route_request(
         self,
@@ -771,7 +827,7 @@ class LLMOrchestrator:
         mode: str,
         context: Optional[Dict[str, Any]],
         **kwargs,
-    ) -> str:
+    ) -> LLMRouteResult:
         """Core routing pipeline with retry, backoff, and degraded-mode handling."""
 
         attempted_models: List[str] = []
@@ -827,13 +883,31 @@ class LLMOrchestrator:
             )
 
             try:
-                return self._execute_model(
+                response_text = self._execute_model(
                     model_id,
                     model,
                     prompt,
                     mode=mode,
                     context=context,
                     **kwargs,
+                )
+
+                provider_name = (
+                    model_id.split(":", 1)[0] if ":" in model_id else model_id
+                )
+
+                return LLMRouteResult(
+                    content=response_text,
+                    model_id=model_id,
+                    provider=provider_name,
+                    tags=list(model.tags),
+                    is_degraded=False,
+                    attempted_models=list(attempted_models),
+                    metadata={
+                        "mode": mode,
+                        "skill": skill,
+                        "context_provided": bool(context),
+                    },
                 )
             except CircuitOpenError as circuit_error:
                 last_error = circuit_error
@@ -908,7 +982,13 @@ class LLMOrchestrator:
                 )
                 self._handle_model_failure(model_id, model, generic_error)
 
-        return self._generate_degraded_response(prompt, attempted_models, last_error)
+        return self._generate_degraded_response(
+            prompt,
+            attempted_models,
+            last_error,
+            mode,
+            skill,
+        )
 
     def _execute_model(
         self,
@@ -1289,7 +1369,9 @@ class LLMOrchestrator:
         prompt: str,
         attempted_models: List[str],
         last_error: Optional[Exception],
-    ) -> str:
+        mode: str,
+        skill: Optional[str],
+    ) -> LLMRouteResult:
         """Generate a graceful degraded response when all providers fail."""
 
         reason = str(last_error) if last_error else "Unknown provider failure"
@@ -1345,7 +1427,24 @@ class LLMOrchestrator:
                     mode="degraded",
                     metadata={"original_models": attempted},
                 )
-                return response
+                return LLMRouteResult(
+                    content=response,
+                    model_id=fallback_id,
+                    provider=(
+                        fallback_id.split(":", 1)[0]
+                        if ":" in fallback_id
+                        else fallback_id
+                    ),
+                    tags=list(fallback_model.tags),
+                    is_degraded=True,
+                    attempted_models=list(attempted),
+                    failure_reason=reason,
+                    metadata={
+                        "mode": mode,
+                        "skill": skill,
+                        "fallback_type": "model",
+                    },
+                )
             except Exception as fallback_error:
                 logger.error(
                     "Fallback provider %s failed during degraded mode: %s",
@@ -1360,7 +1459,22 @@ class LLMOrchestrator:
             mode="degraded",
             metadata={"original_models": attempted},
         )
-        return self._build_rule_based_response(prompt, attempted, reason)
+        rule_based = self._build_rule_based_response(prompt, attempted, reason)
+
+        return LLMRouteResult(
+            content=rule_based,
+            model_id="degraded:rule_based",
+            provider="degraded",
+            tags=["degraded", "fallback"],
+            is_degraded=True,
+            attempted_models=list(attempted),
+            failure_reason=reason,
+            metadata={
+                "mode": mode,
+                "skill": skill,
+                "fallback_type": "rule_based",
+            },
+        )
 
     def _build_rule_based_response(
         self, prompt: str, attempted_models: List[str], reason: str

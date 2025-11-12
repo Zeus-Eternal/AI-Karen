@@ -134,7 +134,6 @@ export default function SecuritySettingsPanel() {
       setLoading(false);
     }
   }, [toast]);
-
   const loadSecurityAlerts = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/alerts');
@@ -142,11 +141,10 @@ export default function SecuritySettingsPanel() {
         const data = await response.json();
         setAlerts(data);
       }
-    } catch (error) {
-      console.error('Failed to load security alerts', error);
+    } catch {
+      /* silent */
     }
   }, []);
-
   const loadBlockedIPs = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/blocked-ips');
@@ -154,27 +152,28 @@ export default function SecuritySettingsPanel() {
         const data = await response.json();
         setBlockedIPs(data);
       }
-    } catch (error) {
-      console.error('Failed to load blocked IPs', error);
+    } catch {
+      /* silent */
     }
   }, []);
 
   useEffect(() => {
-    loadSecuritySettings();
-    loadSecurityAlerts();
-    loadBlockedIPs();
+    void loadSecuritySettings();
+    void loadSecurityAlerts();
+    void loadBlockedIPs();
   }, [loadSecuritySettings, loadSecurityAlerts, loadBlockedIPs]);
   const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
       const keys = path.split('.');
-      const updated = { ...prev };
-      let current: unknown = updated;
+      const updated: Record<string, unknown> = { ...prev };
+      let current: Record<string, unknown> = updated;
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
+        const key = keys[i];
+        current[key] = { ...(current[key] as Record<string, unknown>) };
+        current = current[key] as Record<string, unknown>;
       }
-      current[keys[keys.length - 1]] = value;
-      return updated;
+      current[keys[keys.length - 1]] = value as unknown;
+      return updated as SecuritySettings;
     });
     setHasChanges(true);
   };
@@ -223,11 +222,10 @@ export default function SecuritySettingsPanel() {
           description: 'Alert resolved successfully'
         });
       }
-    } catch (error) {
-      console.error('Failed to resolve alert', error);
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to resolve alert',
+        description: error instanceof Error ? error.message : 'Failed to resolve alert',
         variant: 'destructive'
       });
     }
@@ -244,11 +242,10 @@ export default function SecuritySettingsPanel() {
           description: 'IP address unblocked successfully'
         });
       }
-    } catch (error) {
-      console.error('Failed to unblock IP address', error);
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to unblock IP address',
+        description: error instanceof Error ? error.message : 'Failed to unblock IP address',
         variant: 'destructive'
       });
     }
@@ -267,11 +264,10 @@ export default function SecuritySettingsPanel() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-    } catch (error) {
-      console.error('Failed to export security report', error);
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to export security report',
+        description: error instanceof Error ? error.message : 'Failed to export security report',
         variant: 'destructive'
       });
     }
