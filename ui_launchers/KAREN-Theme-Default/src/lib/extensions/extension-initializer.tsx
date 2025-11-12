@@ -7,11 +7,8 @@
 "use client";
 
 import * as React from 'react';
+import { useExtensionInitialization } from './use-extension-initialization';
 import { safeError } from '../safe-console';
-import {
-  useExtensionInitialization,
-  useExtensionsAvailable as useExtensionsAvailableHook,
-} from './hooks';
 
 /**
  * Extension Integration Provider Component
@@ -34,14 +31,3 @@ export function ExtensionIntegrationProvider({ children }: { children: React.Rea
 
   return <>{children}</>;
 }
-
-/**
- * Hook to check if extensions are available
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function useExtensionsAvailable() {
-  return useExtensionsAvailableHook();
-}
-
-// Re-export for convenience
-export { useExtensionInitialization } from './hooks';

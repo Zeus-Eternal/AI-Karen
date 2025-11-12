@@ -2,8 +2,6 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
-import type { ToastProps } from "@/components/ui/toast"
-
 import type { ToastProps as UiToastProps } from "@/components/ui/toast"
 
 type ToastActionElement = React.ReactElement

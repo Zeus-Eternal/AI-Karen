@@ -97,11 +97,9 @@ export function checkResourceFeasibility(
   const canLoadInMemory = memoryAvailable >= requirements.memory;
   
   // Check GPU memory if available
-  let canLoadInGPU = false;
   let gpuMemoryAvailable = 0;
   if (systemResources.gpu.length > 0 && requirements.gpu_memory) {
     gpuMemoryAvailable = Math.max(...systemResources.gpu.map(gpu => gpu.memory_available));
-    canLoadInGPU = gpuMemoryAvailable >= requirements.gpu_memory;
   }
   
   // Check disk space

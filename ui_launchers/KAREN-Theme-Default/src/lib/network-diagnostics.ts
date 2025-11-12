@@ -98,9 +98,16 @@ export class NetworkDiagnostics {
 
   private getConnectionType(): string | undefined {
     if (!isBrowser) return undefined;
+    type NavigatorWithConnection = Navigator & {
+      connection?: NetworkInformation;
+      mozConnection?: NetworkInformation;
+      webkitConnection?: NetworkInformation;
+    };
+
     const nav = navigator as NavigatorWithConnection;
-    const conn = nav.connection ?? nav.mozConnection ?? nav.webkitConnection;
-    return conn?.effectiveType || conn?.type;
+    const connection =
+      nav.connection ?? nav.mozConnection ?? nav.webkitConnection;
+    return connection?.effectiveType ?? connection?.type;
   }
 
   /**

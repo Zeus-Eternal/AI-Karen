@@ -186,10 +186,10 @@ function getClientIP(request: NextRequest): string {
     }
     
     return realIP || remoteAddr || 'unknown';
-    } catch (_error) {
+    } catch {
       return 'unknown';
     }
-  }
+}
 
 /**
  * Create admin authentication context

@@ -10,7 +10,7 @@ import { logger } from './logger';
 type ExtensionFallbackData = Record<string, unknown> | unknown[] | null;
 
 export interface ExtensionErrorResponse {
-  fallback_data?: ExtensionFallbackData;
+  fallback_data?: Record<string, unknown>;
   retry?: boolean;
   delay?: number;
   requires_login?: boolean;
@@ -25,7 +25,7 @@ export function handleExtensionError(
   url: string,
   operation: string = 'extension_api'
 ): ExtensionErrorResponse {
-  logger.info(`Handling extension error: ${status} for ${url} (operation: ${operation})`);
+  logger.info(`Handling extension error: ${status} for ${url} during ${operation}`);
 
   // Handle 403 Forbidden errors for extensions
   if (status === 403 && url.includes('/api/extensions')) {
@@ -201,27 +201,31 @@ export function shouldUseExtensionFallback(status: number, url: string): boolean
 /**
  * Get user-friendly message for extension errors
  */
-export function getExtensionErrorMessage(status: number, url: string): string {
+export function getExtensionErrorMessage(status: number, _url: string): string {
   if (status === 403) {
     return 'Extension features are running in read-only mode. Some functionality may be limited.';
   }
-  
+
   if (status === 401) {
     return 'Please log in to access full extension features.';
   }
-  
+
   if (status === 404) {
     return 'Extension service is not available. Core features will continue to work.';
   }
-  
+
   if (status === 504) {
     return 'Extension service timed out. Core features will continue to work while we retry the connection.';
   }
-  
+
   if (status >= 500) {
     return 'Extension service is temporarily unavailable. Please try again later.';
   }
-  
+
+  if (url.includes('/status') || url.includes('/health')) {
+    return 'Extension status information is temporarily unavailable. Monitoring will resume shortly.';
+  }
+
   return 'Extension service encountered an issue. Some features may be limited.';
 }
 

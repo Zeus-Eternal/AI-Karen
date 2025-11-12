@@ -2,6 +2,8 @@
  * Progressive enhancement system for extension features
  */
 
+/* eslint-disable react-refresh/only-export-components -- Progressive enhancement exports hooks and helpers alongside components. */
+
 import * as React from 'react';
 import { featureFlagManager, useFeatureFlag } from './feature-flags';
 import { extensionCache, CacheAwareDataFetcher } from './cache-manager';
@@ -37,7 +39,7 @@ export function withProgressiveEnhancement<P extends object>(
 ) {
   return function ProgressivelyEnhancedComponent(props: P) {
     const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
-    const [cachedData, setCachedData] = React.useState<unknown>(null);
+    const [cachedData, setCachedData] = React.useState<unknown | null>(null);
     const { cacheKey, enableCaching } = options;
 
     // Load cached data if caching is enabled
@@ -50,10 +52,10 @@ export function withProgressiveEnhancement<P extends object>(
       }
     }, [cacheKey, enableCaching]);
 
-    const handleRetry = () => {
+    const handleRetry = React.useCallback(() => {
       // Try to re-enable the feature flag
       featureFlagManager.setFlag(featureName, true);
-    };
+    }, []);
 
     if (!isEnabled) {
       switch (fallbackBehavior) {
@@ -127,7 +129,7 @@ export function ProgressiveFeature({
   const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
-  const [cachedData, setCachedData] = React.useState<unknown>(null);
+  const [cachedData, setCachedData] = React.useState<unknown | null>(null);
 
   // Simulate feature loading/detection
   React.useEffect(() => {
@@ -153,7 +155,7 @@ export function ProgressiveFeature({
 
         setIsLoading(false);
       } catch (err) {
-        setError(err as Error);
+        setError(err instanceof Error ? err : new Error(String(err)));
         setIsLoading(false);
       }
     };
@@ -233,12 +235,19 @@ export function useProgressiveData<T>(
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
   const [isStale, setIsStale] = React.useState(false);
+  const {
+    cacheKey,
+    enableCaching,
+    useStaleOnError,
+    maxStaleAge,
+    refetchInterval,
+  } = options;
 
   const fetchData = React.useCallback(async () => {
     if (!isEnabled) {
       // Try to get cached data when feature is disabled
-      if (options.enableCaching && options.cacheKey) {
-        const cached = extensionCache.getStale<T>(options.cacheKey, options.maxStaleAge);
+      if (enableCaching && cacheKey) {
+        const cached = extensionCache.getStale<T>(cacheKey, maxStaleAge);
         if (cached) {
           setData(cached);
           setIsStale(true);
@@ -255,16 +264,16 @@ export function useProgressiveData<T>(
 
       let result: T;
 
-      if (options.enableCaching && options.cacheKey) {
+      if (enableCaching && cacheKey) {
         // Use cache-aware fetcher
         const fetcher = new CacheAwareDataFetcher(
           extensionCache,
           async () => await fetchFunction()
         );
 
-        result = await fetcher.fetchWithCache<T>(options.cacheKey, {
-          useStaleOnError: options.useStaleOnError,
-          maxStaleAge: options.maxStaleAge
+        result = await fetcher.fetchWithCache<T>(cacheKey, {
+          useStaleOnError,
+          maxStaleAge
         });
       } else {
         result = await fetchFunction();
@@ -274,10 +283,10 @@ export function useProgressiveData<T>(
       setIsStale(false);
     } catch (err) {
       setError(err as Error);
-      
+
       // Try to use stale data on error
-      if (options.useStaleOnError && options.enableCaching && options.cacheKey) {
-        const staleData = extensionCache.getStale<T>(options.cacheKey, options.maxStaleAge);
+      if (useStaleOnError && enableCaching && cacheKey) {
+        const staleData = extensionCache.getStale<T>(cacheKey, maxStaleAge);
         if (staleData) {
           setData(staleData);
           setIsStale(true);
@@ -286,7 +295,7 @@ export function useProgressiveData<T>(
     } finally {
       setIsLoading(false);
     }
-  }, [isEnabled, fetchFunction, options]);
+  }, [cacheKey, enableCaching, fetchFunction, isEnabled, maxStaleAge, useStaleOnError]);
 
   // Initial fetch
   React.useEffect(() => {
@@ -295,11 +304,11 @@ export function useProgressiveData<T>(
 
   // Refetch interval
   React.useEffect(() => {
-    if (options.refetchInterval && isEnabled) {
-      const interval = setInterval(fetchData, options.refetchInterval);
+    if (refetchInterval && isEnabled) {
+      const interval = setInterval(fetchData, refetchInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchData, options.refetchInterval, isEnabled]);
+  }, [fetchData, refetchInterval, isEnabled]);
 
   const retry = React.useCallback(() => {
     fetchData();
