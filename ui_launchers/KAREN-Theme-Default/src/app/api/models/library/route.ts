@@ -86,13 +86,16 @@ async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus
       issues: [],
     };
     void modelSelectionService; // keep import for future wiring
+    if (typeof logger.debug === 'function') {
+      logger.debug('Model health status stub returning healthy result', { modelId });
+    }
     return status;
   } catch (error) {
     return {
       is_healthy: false,
       last_check: new Date().toISOString(),
       issues: [
-        `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Health check failed for ${modelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       ],
     };
   }
@@ -245,9 +248,10 @@ export async function GET(request: NextRequest) {
         fullUrl,
         status: resp.status,
       });
-    } catch (e: Event) {
+    } catch (error: unknown) {
       clearTimeout(timer);
-      lastError = e?.message || 'Fetch failed';
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = message || 'Fetch failed';
       logger.warn('Backend candidate fetch error', { requestId, fullUrl, error: lastError });
     }
   }
@@ -289,7 +293,7 @@ export async function GET(request: NextRequest) {
     if (Array.isArray(data)) {
       data = { models: data, source: 'backend' };
     } else if (data && typeof data === 'object' && !('source' in data)) {
-      data.source = 'backend';
+      (data as Record<string, unknown>).source = 'backend';
     }
 
     return NextResponse.json(data, {
@@ -304,31 +308,31 @@ export async function GET(request: NextRequest) {
   try {
     logger.warn('Backend unavailable; attempting fallback scan', { requestId });
     const { modelSelectionService } = await import('@/lib/model-selection-service');
-      const fallbackModels = await modelSelectionService.scanLocalDirectories({
-        forceRefresh: true,
-        includeHealth: false,
-      });
+    const fallbackModels = await modelSelectionService.scanLocalDirectories({
+      forceRefresh: true,
+      includeHealth: false,
+    });
 
-      const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: unknown) => ({
-        ...m,
-        type: m.type || 'unknown',
-        last_scanned: new Date().toISOString(),
-      }));
+    const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: unknown) => ({
+      ...m,
+      type: m.type || 'unknown',
+      last_scanned: new Date().toISOString(),
+    }));
 
-      const filteredModels = normalizedModels.filter((model) => {
-        const matchesType = modelType ? (model.type || '').includes(modelType) : true;
-        const matchesProvider = providerFilter ? (model.provider || '') === providerFilter : true;
-        return matchesType && matchesProvider;
-      });
+    const filteredModels = normalizedModels.filter((model) => {
+      const matchesType = modelType ? (model.type || '').includes(modelType) : true;
+      const matchesProvider = providerFilter ? (model.provider || '') === providerFilter : true;
+      return matchesType && matchesProvider;
+    });
 
-      const response: LibraryResponse = {
-        models: filteredModels,
-        total_count: filteredModels.length,
-        local_count: filteredModels.filter((m) => m.status === 'local').length,
-        available_count: filteredModels.filter((m) => m.status === 'available').length,
-        source: 'fallback_scan',
-        message: 'Backend unavailable, using local directory scanning',
-      };
+    const response: LibraryResponse = {
+      models: filteredModels,
+      total_count: filteredModels.length,
+      local_count: filteredModels.filter((m) => m.status === 'local').length,
+      available_count: filteredModels.filter((m) => m.status === 'available').length,
+      source: 'fallback_scan',
+      message: 'Backend unavailable, using local directory scanning',
+    };
 
     logger.warn('Fallback scan succeeded', {
       requestId,

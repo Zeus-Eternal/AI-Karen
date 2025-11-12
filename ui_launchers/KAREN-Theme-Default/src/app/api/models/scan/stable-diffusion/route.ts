@@ -14,7 +14,7 @@ type SdModel = {
   size: number;                // bytes
   size_human: string;
   modified: string;            // ISO
-  config?: DiffusersConfig | null; // diffusers model_index.json (optional)
+  config?: DiffusersConfig | null;         // diffusers model_index.json (optional)
 };
 
 type QueryOpts = {
@@ -113,7 +113,11 @@ async function readDiffusersConfig(dirPath: string): Promise<DiffusersConfig | n
   try {
     const p = path.join(dirPath, 'model_index.json');
     const raw = await fs.readFile(p, 'utf-8');
-    return JSON.parse(raw) as DiffusersConfig;
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object') {
+      return parsed as DiffusersConfig;
+    }
+    return null;
   } catch { return null; }
 }
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
 
 const collector = new QualityMetricsCollector();
-
 export async function GET(_request: NextRequest) {
   try {
     const metrics = await collector.collectAllMetrics();

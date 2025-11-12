@@ -47,9 +47,9 @@ export async function GET(_request: NextRequest) {
 
     const data = await response.json();
     return okJson(data);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: unknown) {
     // Fallback to defaults if backend is unavailable
+    const message = error instanceof Error ? error.message : String(error);
     console.warn('Backend unavailable, using defaults:', message);
     return okJson(DEFAULT_PREFERENCES);
   }
@@ -96,8 +96,8 @@ export async function PUT(request: NextRequest) {
       message: result.message || 'Model preferences updated successfully',
       status: result.status,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.warn('Backend unavailable for preferences update:', message);
     return errJson('Failed to update user model preferences', 500, {
       hint: 'Backend unavailable',

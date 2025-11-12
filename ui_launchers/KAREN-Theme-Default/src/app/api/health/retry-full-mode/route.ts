@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(response.status),
       },
     });
-  } catch (_err) {
+  } catch {
     // Timeout / network failure
     return NextResponse.json(
       {
