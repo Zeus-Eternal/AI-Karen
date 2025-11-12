@@ -12,6 +12,7 @@
 
 import React from "react";
 import { getKarenBackend, APIError } from "../karen-backend";
+import { webUIConfig } from "../config";
 import { safeError, safeLog } from "../safe-console";
 import { getSampleExtensions } from "./sample-data";
 import type {
@@ -402,17 +403,84 @@ export class ExtensionIntegrationService {
   private async registerBackgroundTaskMonitoring(extensionId: string): Promise<void> {
     try {
       const backend = getKarenBackend();
-      const tasksResponse = await backend.makeRequestPublic(
-        `/api/extensions/background-tasks/?extension_name=${extensionId}`
+      const tasksResponse = await backend.makeRequestPublic<unknown[]>(
+        `/api/extensions/background-tasks/?extension_name=${extensionId}`,
+        {},
+        false,
+        webUIConfig.cacheTtl,
+        0,
+        webUIConfig.retryDelay,
+        []
       );
 
-      if (tasksResponse && Array.isArray(tasksResponse)) {
+      const normalizedTasks = Array.isArray(tasksResponse)
+        ? tasksResponse
+        : tasksResponse &&
+            typeof tasksResponse === "object" &&
+            "tasks" in tasksResponse &&
+            Array.isArray((tasksResponse as { tasks?: unknown[] }).tasks)
+        ? ((tasksResponse as { tasks: unknown[] }).tasks)
+        : [];
+
+      if (normalizedTasks.length > 0 || tasksResponse !== undefined) {
         const status = this.extensionStatuses.get(extensionId);
         if (status) {
+          const activeTaskCount = normalizedTasks.reduce((count, task) => {
+            if (task && typeof task === "object") {
+              const rawStatus =
+                "status" in task
+                  ? String((task as { status?: unknown }).status ?? "")
+                  : "";
+              const normalizedStatus = rawStatus.toLowerCase();
+              if (
+                normalizedStatus === "running" ||
+                normalizedStatus === "active" ||
+                normalizedStatus === "in_progress" ||
+                normalizedStatus === "in-progress"
+              ) {
+                return count + 1;
+              }
+            }
+            return count;
+          }, 0);
+
+          const lastExecutionTimestamp = normalizedTasks.reduce<
+            string | undefined
+          >((latest, task) => {
+            if (task && typeof task === "object") {
+              const taskRecord = task as Record<string, unknown>;
+              const timestampKeys = [
+                "last_run",
+                "last_execution",
+                "last_executed_at",
+                "lastRun",
+                "completed_at",
+                "updated_at",
+                "timestamp",
+                "executed_at",
+              ];
+              for (const key of timestampKeys) {
+                if (key in taskRecord) {
+                  const value = taskRecord[key];
+                  if (typeof value === "string" && value.trim().length > 0) {
+                    const parsed = new Date(value);
+                    if (!Number.isNaN(parsed.getTime())) {
+                      const isoString = parsed.toISOString();
+                      if (!latest || parsed.getTime() > new Date(latest).getTime()) {
+                        latest = isoString;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return latest;
+          }, undefined);
+
           status.backgroundTasks = {
-            active: 0,
-            total: tasksResponse.length,
-            lastExecution: undefined,
+            active: activeTaskCount,
+            total: normalizedTasks.length,
+            lastExecution: lastExecutionTimestamp,
           };
           this.updateExtensionStatus(extensionId, status);
         }
