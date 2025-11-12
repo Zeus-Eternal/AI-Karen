@@ -711,19 +711,23 @@ export const useChatMessages = (
                 throw degradeError;
               }
 
-              const usageDetails = (result.usage || result.token_usage) as
-                | {
-                    total_tokens?: number;
-                    prompt_tokens?: number;
-                    completion_tokens?: number;
-                  }
+              type UsageSummary = {
+                total_tokens?: number;
+                prompt_tokens?: number;
+                completion_tokens?: number;
+                [key: string]: unknown;
+              };
+
+              const usageSummary = (result.usage || result.token_usage) as
+                | UsageSummary
                 | undefined;
+
               const totalTokens =
-                typeof usageDetails?.total_tokens === "number"
-                  ? usageDetails.total_tokens
-                  : typeof usageDetails?.prompt_tokens === "number" &&
-                    typeof usageDetails?.completion_tokens === "number"
-                  ? usageDetails.prompt_tokens + usageDetails.completion_tokens
+                typeof usageSummary?.total_tokens === "number"
+                  ? usageSummary.total_tokens
+                  : typeof usageSummary?.prompt_tokens === "number" &&
+                    typeof usageSummary?.completion_tokens === "number"
+                  ? usageSummary.prompt_tokens + usageSummary.completion_tokens
                   : undefined;
 
               fullText =

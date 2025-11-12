@@ -1,5 +1,17 @@
 import type { ErrorInfo } from 'react';
 
+type GtagFunction = (
+  command: 'event',
+  action: string,
+  params?: Record<string, unknown>
+) => void;
+
+declare global {
+  interface Window {
+    gtag?: GtagFunction;
+  }
+}
+
 export interface ErrorAnalyticsConfig {
   enabled: boolean;
   section: string;
@@ -344,8 +356,11 @@ export class ErrorAnalytics {
   }
 
   private sendToAnalyticsServices(metrics: ErrorMetrics) {
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'exception', {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.gtag === 'function'
+    ) {
+      window.gtag('event', 'exception', {
         description: `${metrics.section}: ${metrics.errorMessage}`,
         fatal: metrics.severity === 'critical',
         custom_map: {

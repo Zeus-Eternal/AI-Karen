@@ -10,7 +10,6 @@ import {
   handleExtensionError,
   shouldUseExtensionFallback,
   getExtensionErrorMessage,
-  type ExtensionErrorResponse,
 } from './extension-error-integration';
 import type { HandleKarenBackendErrorFn } from './error-recovery-integration-example';
 

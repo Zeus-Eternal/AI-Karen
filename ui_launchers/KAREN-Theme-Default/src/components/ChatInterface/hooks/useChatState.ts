@@ -10,26 +10,38 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
   const [sessionStartTime] = useState(() => Date.now());
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (initialMessages.length > 0) {
-      return initialMessages;
+
+  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  const welcomeMessageIdRef = useRef<string | null>(null);
+
+  const resolveInitialMessages = useCallback((): ChatMessage[] => {
+    if (initialMessagesRef.current === null) {
+      if (initialMessages.length > 0) {
+        initialMessagesRef.current = initialMessages;
+      } else if (welcomeMessage) {
+        if (!welcomeMessageIdRef.current) {
+          welcomeMessageIdRef.current = `welcome-${generateUUID()}`;
+        }
+
+        initialMessagesRef.current = [
+          {
+            id: welcomeMessageIdRef.current,
+            role: "assistant",
+            content: welcomeMessage,
+            timestamp: new Date(sessionStartTime),
+            type: "text",
+            metadata: { confidence: 1.0 },
+          },
+        ];
+      } else {
+        initialMessagesRef.current = [];
+      }
     }
 
-    if (welcomeMessage) {
-      return [
-        {
-          id: `welcome-${generateUUID()}`,
-          role: "assistant",
-          content: welcomeMessage,
-          timestamp: new Date(sessionStartTime),
-          type: "text",
-          metadata: { confidence: 1.0 },
-        },
-      ];
-    }
+    return initialMessagesRef.current;
+  }, [initialMessages, sessionStartTime, welcomeMessage]);
 
-    return [];
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>(() => resolveInitialMessages());
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);

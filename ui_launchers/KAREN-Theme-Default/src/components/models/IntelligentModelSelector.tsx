@@ -375,10 +375,13 @@ export default function IntelligentModelSelector({
 
   const autoSelectionRef = useRef<string | null>(null);
 
-  const autoSelectedModelId =
-    autoSelect && topRecommendation && topRecommendation.score > 60
-      ? topRecommendation.model.id
-      : '';
+  const autoSelectedModelId = useMemo(
+    () =>
+      autoSelect && topRecommendation && topRecommendation.score > 60
+        ? topRecommendation.model.id
+        : '',
+    [autoSelect, topRecommendation]
+  );
 
   const selectedModelId = manualSelectedModelId ?? autoSelectedModelId;
 
@@ -407,7 +410,7 @@ export default function IntelligentModelSelector({
       setManualSelectedModelId(null);
       autoSelectionRef.current = null;
     }
-  }, [selectedModelId, onModelSelect, topRecommendation]);
+  }, [onModelSelect, selectedModelId, topRecommendation]);
 
   if (!contextAnalysis) {
     return (

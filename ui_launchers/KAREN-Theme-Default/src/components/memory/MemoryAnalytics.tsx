@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Database, Clock, Zap } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
 import type { MemoryAnalytics as MemoryAnalyticsData, MemoryAnalyticsProps } from '@/types/memory';
+import { safeDebug } from '@/lib/safe-console';
 
 // Lazy load charts for better performance
 const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
@@ -96,7 +97,12 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
   const fetchAnalytics = useCallback(async () => {
     try {
       setError(null);
-      
+
+      safeDebug('MemoryAnalytics: fetching analytics', {
+        userId,
+        tenantId,
+      });
+
       // Get basic memory stats
       const stats = await memoryService.getMemoryStats(userId);
       

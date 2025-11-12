@@ -52,7 +52,6 @@ export function useGracefulBackend<T>(
   const [error, setError] = React.useState<Error | null>(null);
   const [isStale, setIsStale] = React.useState(false);
   const [isFromCache, setIsFromCache] = React.useState(false);
-  const [retryCount, setRetryCount] = React.useState(0);
 
   // Get the enhanced backend service
   const enhancedService = React.useMemo(() => {
@@ -139,8 +138,7 @@ export function useGracefulBackend<T>(
     useStaleOnError,
     maxStaleAge,
     fallbackData,
-    serviceName,
-    retryCount
+    serviceName
   ]);
 
   // Initial fetch
@@ -157,15 +155,15 @@ export function useGracefulBackend<T>(
   }, [fetchData, refetchInterval, enabled]);
 
   const retry = React.useCallback(() => {
-    setRetryCount((prev) => prev + 1);
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const refresh = React.useCallback(() => {
     if (cacheKey) {
       extensionCache.delete(cacheKey);
     }
-    setRetryCount((prev) => prev + 1);
-  }, [cacheKey]);
+    fetchData();
+  }, [cacheKey, fetchData]);
 
   return {
     data,
