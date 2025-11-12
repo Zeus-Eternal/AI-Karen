@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
   } catch {
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
-      { 
+      {
         is_active: true,
         reason: 'Health check failed',
         infrastructure_issues: ['Health check system'],

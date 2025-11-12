@@ -45,6 +45,7 @@ const AppShellContext = createContext<AppShellContextType | undefined>(
   undefined
 );
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppShell() {
   const context = useContext(AppShellContext);
   if (!context) throw new Error("useAppShell must be used within an AppShell");

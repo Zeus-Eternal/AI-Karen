@@ -12,14 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * Test page to verify extension integration is working
  */
 
-import {
-  useExtensionStatuses,
-  useExtensionRoutes,
-  useExtensionNavigation,
-  useExtensionHealth,
-  useExtensionPerformance,
-  useExtensionTaskMonitoring
-} from '@/lib/extensions/hooks';
+import { useExtensionStatuses } from '@/lib/extensions/hooks';
 
 // Dynamically import extension components to avoid SSR issues with WebSocket
 const ExtensionMarketplace = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionMarketplace })), { ssr: false });

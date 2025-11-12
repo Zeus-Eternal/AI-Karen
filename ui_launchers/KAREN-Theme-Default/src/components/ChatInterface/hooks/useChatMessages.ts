@@ -1097,17 +1097,17 @@ export const useChatMessages = (
           }
         );
 
-      setIsTyping(false);
+        setIsTyping(false);
 
-      toast({
-        variant: "destructive",
-        title: "Critical Error",
-        description:
-          "An unexpected error occurred. Please refresh the page and try again.",
-      });
-    }
-  },
-  [
+        toast({
+          variant: "destructive",
+          title: "Critical Error",
+          description:
+            "An unexpected error occurred. Please refresh the page and try again.",
+        });
+      }
+    },
+    [
       messages,
       isTyping,
       settings,
@@ -1124,10 +1124,8 @@ export const useChatMessages = (
       maxMessages,
       toast,
       configManager,
-      messages,
       setIsTyping,
       setMessages,
-      messages,
     ]
   );
 
