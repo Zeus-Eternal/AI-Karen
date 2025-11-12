@@ -335,7 +335,8 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       setMessages((prev) => [...prev, assistantMessage]);
       onMessageReceived?.(assistantMessage);
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to send enhanced chat message", error);
       toast({
         variant: "destructive",
         title: "Message failed",
