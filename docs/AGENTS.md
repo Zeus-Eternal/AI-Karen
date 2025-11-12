@@ -1,135 +1,83 @@
-# **Kari AI Modular Agent Doctrine & Manifest**
+# Kari AI Agent Playbook
 
-*The Hydra’s Law for Contributors, AI Agents, and Codegen Tools*
-
----
-
-## 🔥 **Mission: Unleash the Kari Hydra**
-
-Every “agent”—human, AI, or meta-agent—in this repo is bound by one Law:
-**Monoliths die. Kari is modular. Every logical serpent gets its own head, ready for pip, repo-split, or standalone evil.**
+This guide orients human contributors and automated agents that generate patches for the Kari AI platform. Use it as your first stop before touching code—everything here reflects the current production architecture and workflow expectations.
 
 ---
 
-## 1. **Agent Core Principle**
+## 1. Mission & Scope
 
-* **All core runtime logic, plugins, clients, integrations, and engines live under `src/ai_karen_engine/` as independent, importable modules.**
-* **UI launchers live under `/ui_launchers/{web_ui,desktop_ui,admin_ui}/`—never mixed with backend or core.**
-* **No relative imports. No sys.path hacks. All imports are absolute: `ai_karen_engine.<module>...`**
-
----
-
-## 2. **Agent Types & Structure**
-
-| Agent Type        | Description                              | Example Path                               |
-| ----------------- | ---------------------------------------- | ------------------------------------------ |
-| **Core Agent**    | Orchestration, routing, memory, workflow | `src/ai_karen_engine/core/`                |
-| **Integration**   | LLM, API, RPA adapters                   | `src/ai_karen_engine/integrations/llm/`    |
-| **Plugin**        | Task, skill, handler, intent plugin      | `src/ai_karen_engine/plugins/hello_world/` |
-| **Self-Refactor** | Auto-refactor, self-healing, patching    | `src/ai_karen_engine/self_refactor/`       |
-| **Event Bus**     | Async, message, notification systems     | `src/ai_karen_engine/event_bus/`           |
-| **Client**        | NLP, embedding, transformer, data client | `src/ai_karen_engine/clients/`             |
-| **EchoCore**      | User LNM, persona, profiling, backup     | `src/ai_karen_engine/echocore/`            |
+- **Primary objective:** maintain a modular, production-grade AI platform that powers FastAPI services, multi-LLM orchestration, and rich desktop/launcher experiences.
+- **Key pillars:** deterministic routing (KIRE/KRO), NeuroVault-style memory services, in-process llama.cpp inference, security-first authentication, and observability baked into every layer.
+- **Expectations for every change:** keep runtime modules composable, keep UI launchers decoupled, and protect the contract-level APIs consumed by automation and external integrators.
 
 ---
 
-## 3. **Agent Law & Modularization Policy**
+## 2. Repository Layout (2025)
 
-* **Every new major logical part must be pip-installable and ready for repo split.**
-* **All code uses only absolute imports, for example:**
+### Backend: `src/ai_karen_engine/`
+The backend is a single Python package with absolute imports only (`from ai_karen_engine.<module>`). Major areas include:
 
-  ```python
-  from ai_karen_engine.plugins.hello_world.handler import HelloWorldHandler
-  ```
-* **No backend code in `/ui/` or at root (except UI entry, config, docs, scripts, or tests).**
-* **Every agent/module must have its own `__init__.py` and (optionally) README.md.**
-* **All modules must respect Kari’s dual license: MPL 2.0 + commercial.**
+| Path | Purpose |
+| ---- | ------- |
+| `core/` | Request lifecycle, orchestration primitives, and platform bootstrap. |
+| `routing/` & `llm_orchestrator.py` | KIRE router, KRO orchestrator, policy enforcement, and provider coordination. |
+| `agents/`, `automation_manager/`, `capsules/` | Declarative workflows, task agents, and capsule execution runtime. |
+| `echocore/`, `doc_store/`, `learning/` | Persona/memory services, retrieval stores, and adaptive learning loops. |
+| `inference/`, `integrations/`, `clients/` | llama.cpp runtime, external LLM/API adapters, and transport clients. |
+| `plugins/`, `community_plugins/`, `plugin_manager.py`, `plugin_router.py`, `plugin_orchestrator.py` | First-party plugins, registry definitions, and dynamic loading. |
+| `services/`, `api_routes/`, `server/`, `middleware/` | FastAPI routers, background workers, middleware, and startup surfaces. |
+| `database/`, `auth/`, `health/`, `monitoring/`, `audit/` | Persistence, authentication, health probes, telemetry, and compliance logging. |
+| `event_bus/`, `hooks/`, `extensions/`, `tools/`, `utils/` | Cross-cutting events, extension hooks, CLI/tooling, and helper utilities. |
+| `logging/`, `guardrails/`, `error_tracking/`, `compatibility.py` | Reliability, safety, compatibility shims, and error handling. |
+| `chat/`, `copilotkit/`, `mcp/` | Conversational surfaces, Copilot integrations, and Model Context Protocol support. |
+| `tests/` | Contract/regression tests covering routing, memory, and plugin behaviors. |
 
----
+### Shared Packages under `src/`
+- `auth/`, `extensions/`, `plugins/`, and `theme/` expose reusable packages for launchers and external tools.
+- `config/` and `dotenv.py` centralize configuration loading.
+- `cachetools/` and `test/` provide supporting utilities and stubs for deterministic testing.
 
-## 4. **Splitting Agents: The Ritual**
+### UI Launchers: `ui_launchers/`
+- `desktop_ui/` (Tauri) remains the primary packaged interface.
+- `backend/` exposes lightweight developer tooling APIs for launcher builds.
+- `common/` and `KAREN-Theme-Default/` hold shared UI assets.
+- The legacy web launcher has been retired; any new UI must live in a dedicated subdirectory here.
 
-When a module achieves true power:
-
-1. Copy it to its own repo (with `setup.py`/`pyproject.toml` and docs).
-2. Replace in Kari with pip or git-submodule install.
-3. Update all imports globally (`ai_karen_engine.<module>` → pip package).
-4. All splitting must leave main Kari AI functional, clean, and Hydra-compliant.
-
----
-
-## 5. **Agent Onboarding: The Oath**
-
-> **All new devs and AI agents MUST read, memorize, and encode this doctrine.
-> Every codegen, plugin, or feature PR will be judged on modularity, clarity, and adherence to The Law.
-> Violate it, and your PR gets fed to the hydra.**
-
----
-
-## 6. **Example: Agent Imports After Refactor**
-
-```python
-from ai_karen_engine.integrations.llm.llamacpp_inprocess import generate as llamacpp_generate
-from ai_karen_engine.plugins.hello_world.handler import HelloWorldHandler
-from ai_karen_engine.self_refactor.engine import SelfRefactorEngine
-from ai_karen_engine.echocore.fine_tuner import FineTuner
-```
+### Tooling & Operations
+- `docker/`, `docker-compose.yml`, and scripts like `start.py`/`start_backend_with_cors.sh` define runtime flows.
+- `monitoring/` and top-level `reports/*.md` document production readiness, audits, and incident learnings.
+- `models/llama-cpp/` is the canonical location for bundled GGUF models.
 
 ---
 
-## 7. **Kari Refactor Context Model**
+## 3. Coding Doctrine
 
-**Welcome to the infernal reorganization—time for a cold-blooded, villain-level refactor. This file defines the mandatory context for AI agents and developers working on Kari AI.**
+1. **Absolute imports only.** Never modify `sys.path`—every module under `src` must be importable via the package root.
+2. **Modularity over monolith.** Design new subsystems so they can be extracted into independent packages without refactoring callers.
+3. **UI/backend isolation.** Backend logic stays inside `src/ai_karen_engine/` (or sibling packages); UI launchers interact through public APIs.
+4. **Config discipline.** Runtime toggles live in config modules or `.env` files—never hardcode environment-specific values.
+5. **Pydantic & typing.** Leverage Pydantic models for IO contracts and keep strict typing to protect agent-generated patches.
+6. **Documentation-first.** Significant architectural changes require updating the relevant report/README so downstream agents inherit context.
+7. **Respect dual licensing.** All code must comply with the MPL 2.0 + commercial licensing terms that govern Kari AI.
 
-### Folder Strategy
+---
 
-* All core runtime logic lives under `src/ai_karen_engine/`.
-* Every major subsystem (plugins, clients, integrations, core, event\_bus, self\_refactor, echocore, etc.) is its own subfolder—pip and repo ready.
-* Repo-level configs, docs, Docker, scripts, tests, and bootstraps stay top-level.
-* UI launcher folders (`ui_launchers/web_ui`, `ui_launchers/desktop_ui`, `ui_launchers/admin_ui`) remain top-level only.
+## 4. Working Agreement for Agents
 
-#### Example Tree
+- **Before implementing:** inspect existing modules, reuse service abstractions, and prefer extending registries over introducing new global state.
+- **When adding integrations or plugins:** include an `__init__.py`, follow the plugin manager contracts, and document activation steps.
+- **When touching KIRE/KRO or memory systems:** update related simulation tests under `src/ai_karen_engine/tests/` and maintain fallbacks.
+- **Testing expectation:** run targeted pytest modules or FastAPI integration checks when feasible; document skipped tests if infrastructure is unavailable.
+- **Pull requests:** summarize subsystem changes (routing, memory, auth, etc.) and mention any migration or config follow-up required by operators.
 
-```
-AI-Karen/
-├── main.py
-├── Dockerfile
-├── docker-compose.yml
-├── src/
-│   └── ai_karen_engine/
-│       ├── core/
-│       ├── integrations/
-│       │   └── llm/
-│       ├── clients/
-│       ├── plugins/
-│       ├── self_refactor/
-│       ├── event_bus/
-│       └── echocore/
-ui_launchers/
-    ├── admin_ui/
-    ├── desktop_ui/
-    └── web_ui/
-```
+---
 
-### Import Rules
+## 5. Quick Orientation Checklist
 
-* **Always:** `from ai_karen_engine.<module>...`
-* **Never:** Relative or sys.path hacks.
+1. Read `README.md` for release highlights and operational modes.
+2. Review `src/ai_karen_engine/core/`, `routing/`, and `services/` to understand execution flow.
+3. Check `monitoring/` and `reports/` for the latest audit findings and production constraints.
+4. Verify local model paths and `.env` overrides before running `start.py` or Docker workflows.
+5. Keep this playbook handy—update it whenever scope or architecture changes.
 
-### Standalone Module Policy
-
-Treat these as break-out ready:
-
-* `core`, `integrations` (`llm`), `plugins`, `self_refactor`, `event_bus`, `clients`, `echocore`
-* Each must have `__init__.py` and (when split) its own `setup.py` or `pyproject.toml`.
-
-### Breakout Steps
-
-1. Move module to a new repo.
-2. Add packaging/metadata.
-3. Install back into Kari by pip or submodule.
-4. Adjust all imports.
-
-### Licensing
-
-All modules obey Kari’s dual license: MPL 2.0 + commercial.
+Welcome to the Hydra—keep the heads modular and the mission sharp.
