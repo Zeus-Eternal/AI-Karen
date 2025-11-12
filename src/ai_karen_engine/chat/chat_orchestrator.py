@@ -15,11 +15,10 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
-import json
-
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 try:
-    from pydantic import BaseModel, ConfigDict, Field
+    from pydantic import BaseModel, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
@@ -33,10 +32,23 @@ from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor, InstructionContext, InstructionScope
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
+from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:  # pragma: no cover - import only for type hints
+    from ai_karen_engine.llm_orchestrator import LLMRouteResult
+
+
+class LLMResponseVerificationError(RuntimeError):
+    """Raised when the LLM orchestrator returns a degraded or unverifiable reply."""
+
+    def __init__(self, message: str, *, metadata: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message)
+        self.metadata = metadata or {}
 
 
 class ProcessingStatus(str, Enum):
@@ -103,6 +115,7 @@ class ProcessingResult:
     processing_time: float = 0.0
     used_fallback: bool = False
     correlation_id: str = ""
+    llm_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class ChatRequest(BaseModel):
@@ -186,7 +199,84 @@ class ChatOrchestrator:
         self._tasks_lock = asyncio.Lock()
         
         logger.info("ChatOrchestrator initialized with enhanced instruction processing and context integration")
-    
+
+    def _ensure_llm_response_is_valid(
+        self,
+        result: "LLMRouteResult",
+        context_label: str,
+    ) -> None:
+        """Validate that the orchestrator returned a non-degraded LLM response."""
+
+        degrade_manager = get_degraded_mode_manager()
+        if degrade_manager.status.is_active:
+            raise LLMResponseVerificationError(
+                "System is currently operating in degraded mode; refusing to surface fallback replies.",
+                metadata={"stage": context_label, "degraded": True},
+            )
+
+        if result is None:
+            raise LLMResponseVerificationError(
+                "LLM orchestrator returned no result", metadata={"stage": context_label}
+            )
+
+        model_id = getattr(result, "model_id", None)
+        provider = getattr(result, "provider", None)
+        tags = [t.lower() for t in getattr(result, "tags", []) if isinstance(t, str)]
+        is_degraded = bool(getattr(result, "is_degraded", False))
+
+        if not model_id or not provider:
+            raise LLMResponseVerificationError(
+                "Missing provider metadata from LLM orchestrator response",
+                metadata={"stage": context_label, "model_id": model_id, "provider": provider},
+            )
+
+        provider_key = provider.lower()
+        if is_degraded or provider_key in {"fallback", "rule_based", "degraded"} or {
+            "fallback",
+            "degraded",
+        }.intersection(tags):
+            raise LLMResponseVerificationError(
+                "LLM orchestrator produced a degraded or fallback response",
+                metadata={
+                    "stage": context_label,
+                    "model_id": model_id,
+                    "provider": provider,
+                    "tags": tags,
+                    "attempted_models": list(getattr(result, "attempted_models", []) or []),
+                    "failure_reason": getattr(result, "failure_reason", None),
+                },
+            )
+
+    def _build_llm_metadata(
+        self,
+        result: Union["LLMRouteResult", SimpleNamespace],
+        source: str,
+        additional: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Build a serialisable metadata payload describing the LLM response."""
+
+        metadata: Dict[str, Any] = {
+            "source": source,
+            "provider": getattr(result, "provider", None),
+            "model_id": getattr(result, "model_id", None),
+            "tags": list(getattr(result, "tags", []) or []),
+            "is_degraded": bool(getattr(result, "is_degraded", False)),
+            "attempted_models": list(getattr(result, "attempted_models", []) or []),
+        }
+
+        failure_reason = getattr(result, "failure_reason", None)
+        if failure_reason:
+            metadata["failure_reason"] = failure_reason
+
+        extra = getattr(result, "metadata", None)
+        if extra:
+            metadata["extra"] = dict(extra)
+
+        if additional:
+            metadata.update(additional)
+
+        return metadata
+
     async def process_message(
         self,
         request: ChatRequest
@@ -410,11 +500,14 @@ class ChatOrchestrator:
                 # Add hook execution summary to metadata
                 metadata["post_hooks_executed"] = post_hook_summary.successful_hooks
                 metadata["total_hooks_executed"] = (
-                    pre_hook_summary.successful_hooks + 
-                    processed_hook_summary.successful_hooks + 
+                    pre_hook_summary.successful_hooks +
+                    processed_hook_summary.successful_hooks +
                     post_hook_summary.successful_hooks
                 )
-                
+
+                if result.llm_metadata:
+                    metadata["llm"] = result.llm_metadata
+
                 return ChatResponse(
                     response=result.response or "",
                     correlation_id=context.correlation_id,
@@ -465,19 +558,24 @@ class ChatOrchestrator:
                     )
                 
                 # Return error response
+                error_metadata = {
+                    "error": result.error,
+                    "error_type": result.error_type.value if result.error_type else "unknown",
+                    "retry_count": context.retry_count,
+                    "pre_hooks_executed": pre_hook_summary.successful_hooks,
+                    "failed_hooks_executed": failed_hook_summary.successful_hooks,
+                }
+
+                if result.llm_metadata:
+                    error_metadata["llm"] = result.llm_metadata
+
                 return ChatResponse(
                     response=f"I apologize, but I encountered an error processing your message: {result.error}",
                     correlation_id=context.correlation_id,
                     processing_time=processing_time,
                     used_fallback=True,
                     context_used=False,
-                    metadata={
-                        "error": result.error,
-                        "error_type": result.error_type.value if result.error_type else "unknown",
-                        "retry_count": context.retry_count,
-                        "pre_hooks_executed": pre_hook_summary.successful_hooks,
-                        "failed_hooks_executed": failed_hook_summary.successful_hooks
-                    }
+                    metadata=error_metadata,
                 )
                 
         except asyncio.CancelledError:
@@ -581,16 +679,21 @@ class ChatOrchestrator:
                     await asyncio.sleep(0.05)
                 
                 # Send completion chunk
+                completion_metadata = {
+                    "processing_time": result.processing_time,
+                    "used_fallback": result.used_fallback,
+                    "context_used": bool(result.context),
+                    "retry_count": context.retry_count,
+                }
+
+                if result.llm_metadata:
+                    completion_metadata["llm"] = result.llm_metadata
+
                 yield ChatStreamChunk(
                     type="complete",
                     content="",
                     correlation_id=context.correlation_id,
-                    metadata={
-                        "processing_time": result.processing_time,
-                        "used_fallback": result.used_fallback,
-                        "context_used": bool(result.context),
-                        "retry_count": context.retry_count
-                    }
+                    metadata=completion_metadata,
                 )
                 
                 self._successful_requests += 1
@@ -598,14 +701,19 @@ class ChatOrchestrator:
                 
             else:
                 # Send error chunk
+                error_metadata = {
+                    "error_type": result.error_type.value if result.error_type else "unknown",
+                    "retry_count": context.retry_count,
+                }
+
+                if result.llm_metadata:
+                    error_metadata["llm"] = result.llm_metadata
+
                 yield ChatStreamChunk(
                     type="error",
                     content=result.error or "Processing failed",
                     correlation_id=context.correlation_id,
-                    metadata={
-                        "error_type": result.error_type.value if result.error_type else "unknown",
-                        "retry_count": context.retry_count
-                    }
+                    metadata=error_metadata,
                 )
                 
                 self._failed_requests += 1
@@ -913,18 +1021,20 @@ class ChatOrchestrator:
             
             # Step 6: Generate AI response with enhanced context and instructions
             try:
-                ai_response = await self._generate_ai_response_enhanced(
-                    request.message,
-                    parsed_message,
-                    embeddings,
-                    integrated_context,
-                    active_instructions,
-                    context
+                ai_response, llm_metadata, llm_used_fallback = (
+                    await self._generate_ai_response_enhanced(
+                        request.message,
+                        parsed_message,
+                        embeddings,
+                        integrated_context,
+                        active_instructions,
+                        context,
+                    )
                 )
 
                 if context.cancel_event.is_set():
                     raise asyncio.CancelledError()
-                
+
                 return ProcessingResult(
                     success=True,
                     response=ai_response,
@@ -932,10 +1042,23 @@ class ChatOrchestrator:
                     embeddings=embeddings,
                     context=integrated_context.to_dict() if integrated_context else {},
                     processing_time=time.time() - start_time,
-                    used_fallback=True,  # Always true when using fallback response
-                    correlation_id=context.correlation_id
+                    used_fallback=used_fallback or llm_used_fallback,
+                    correlation_id=context.correlation_id,
+                    llm_metadata=llm_metadata,
                 )
-                
+
+            except LLMResponseVerificationError as verification_error:
+                logger.error("AI response verification failed: %s", verification_error)
+                return ProcessingResult(
+                    success=False,
+                    error=str(verification_error),
+                    error_type=ErrorType.AI_MODEL_ERROR,
+                    processing_time=time.time() - start_time,
+                    used_fallback=True,
+                    correlation_id=context.correlation_id,
+                    llm_metadata=getattr(verification_error, "metadata", {}),
+                )
+
             except Exception as e:
                 logger.error(f"AI response generation failed: {e}")
                 return ProcessingResult(
@@ -943,7 +1066,8 @@ class ChatOrchestrator:
                     error=f"AI response generation failed: {str(e)}",
                     error_type=ErrorType.AI_MODEL_ERROR,
                     processing_time=time.time() - start_time,
-                    correlation_id=context.correlation_id
+                    correlation_id=context.correlation_id,
+                    llm_metadata={},
                 )
                 
         except asyncio.CancelledError:
@@ -1094,6 +1218,7 @@ class ChatOrchestrator:
                 "embedding_similarity_threshold": 0.7
             }
     
+
     async def _generate_ai_response_enhanced(
         self,
         message: str,
@@ -1102,67 +1227,133 @@ class ChatOrchestrator:
         integrated_context: Optional[Any],  # IntegratedContext object
         active_instructions: List[Any],     # List of ExtractedInstruction objects
         processing_context: ProcessingContext
-    ) -> str:
-        """Generate AI response using enhanced context integration and instruction following with proper LLM fallback hierarchy."""
-        # Check for code execution requests
+    ) -> Tuple[str, Dict[str, Any], bool]:
+
+        # Check for code execution requests first
         code_execution_result = await self._handle_code_execution_request(
             message, processing_context
         )
         if code_execution_result:
-            return code_execution_result
-        
+            metadata = {
+                "provider": "code_execution",
+                "model_id": None,
+                "source": "code_execution",
+                "fallback_level": "direct_execution",
+            }
+            return code_execution_result, metadata, False
+
         # Check for tool execution requests
         tool_execution_result = await self._handle_tool_execution_request(
             message, processing_context
         )
         if tool_execution_result:
-            return tool_execution_result
-        
+            metadata = {
+                "provider": "tool_executor",
+                "model_id": None,
+                "source": "tool_execution",
+                "fallback_level": "tool_execution",
+            }
+            return tool_execution_result, metadata, False
+
         # Build enhanced prompt with instructions and context
         enhanced_prompt = await self._build_enhanced_prompt(
             message, integrated_context, active_instructions
         )
-        
-        # Implement proper LLM response hierarchy:
-        # 1. User's chosen LLM (like Llama)
-        # 2. System default LLMs if user choice fails  
-        # 3. Hardcoded responses as final fallback
-        
-        # Get user preferences from processing context
-        user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'local')
-        user_model_choice = processing_context.metadata.get('preferred_model', 'tinyllama-1.1b')
-        
-        logger.info(f"Attempting LLM response with user choice: {user_llm_choice}:{user_model_choice}")
-        
-        # Step 1: Try user's chosen LLM
+
+        # Preferred provider/model from request metadata
+        user_llm_choice = processing_context.metadata.get(
+            "preferred_llm_provider", "local"
+        )
+        user_model_choice = processing_context.metadata.get(
+            "preferred_model", "tinyllama-1.1b"
+        )
+
+        attempt_log: List[Dict[str, Any]] = []
+
+        logger.info(
+            "Attempting LLM response with user choice: %s:%s",
+            user_llm_choice,
+            user_model_choice,
+        )
+
         try:
-            response = await self._try_user_chosen_llm(
-                enhanced_prompt, message, parsed_message, integrated_context, active_instructions, 
-                user_llm_choice, user_model_choice
+            user_result = await self._try_user_chosen_llm(
+                enhanced_prompt,
+                message,
+                parsed_message,
+                integrated_context,
+                active_instructions,
+                user_llm_choice,
+                user_model_choice,
+                attempt_log,
             )
-            if response:
-                logger.info(f"Successfully generated response using user's chosen LLM: {user_llm_choice}")
-                return response
-        except Exception as e:
-            logger.warning(f"User's chosen LLM ({user_llm_choice}) failed: {e}")
-        
-        # Step 2: Try system default LLMs
+            if user_result:
+                response_text, metadata = user_result
+                metadata.setdefault("attempt_log", attempt_log)
+                metadata.setdefault("fallback_level", "primary")
+                return response_text, metadata, False
+        except LLMResponseVerificationError:
+            raise
+        except Exception as exc:
+            logger.warning(
+                "User's chosen LLM (%s:%s) failed: %s",
+                user_llm_choice,
+                user_model_choice,
+                exc,
+            )
+
         try:
-            response = await self._try_system_default_llms(
-                enhanced_prompt, message, parsed_message, integrated_context, active_instructions
+            system_result = await self._try_system_default_llms(
+                enhanced_prompt,
+                message,
+                parsed_message,
+                integrated_context,
+                active_instructions,
+                attempt_log,
             )
-            if response:
-                logger.info("Successfully generated response using system default LLM")
-                return response
-        except Exception as e:
-            logger.warning(f"System default LLMs failed: {e}")
-        
-        # Step 3: Use hardcoded fallback response
-        logger.info("All LLM providers failed, using hardcoded fallback response")
-        return await self._generate_enhanced_fallback_response(
+            if system_result:
+                response_text, metadata = system_result
+                metadata.setdefault("attempt_log", attempt_log)
+                metadata.setdefault("fallback_level", "system_default")
+                return response_text, metadata, True
+        except LLMResponseVerificationError:
+            raise
+        except Exception as exc:
+            logger.warning("System default LLMs failed: %s", exc)
+
+        try:
+            local_result = await self._try_local_model_fallback(
+                enhanced_prompt,
+                message,
+                parsed_message,
+                integrated_context,
+                active_instructions,
+                attempt_log,
+            )
+            if local_result:
+                response_text, metadata = local_result
+                metadata.setdefault("attempt_log", attempt_log)
+                metadata.setdefault("fallback_level", "local")
+                return response_text, metadata, True
+        except LLMResponseVerificationError:
+            raise
+        except Exception as exc:
+            logger.warning("Local model fallbacks failed: %s", exc)
+
+        fallback_response = await self._generate_enhanced_fallback_response(
             message, parsed_message, integrated_context, active_instructions
         )
-    
+
+        raise LLMResponseVerificationError(
+            "Verified LLM provider unavailable",
+            metadata={
+                "attempt_log": attempt_log,
+                "degraded_response": fallback_response,
+                "preferred_provider": user_llm_choice,
+                "preferred_model": user_model_choice,
+            },
+        )
+
     async def _try_user_chosen_llm(
         self,
         enhanced_prompt: str,
@@ -1171,309 +1362,495 @@ class ChatOrchestrator:
         integrated_context: Optional[Any],
         active_instructions: List[Any],
         provider: str,
-        model: str
-    ) -> Optional[str]:
-        """Try to generate response using user's chosen LLM provider and model."""
-        try:
-            from ai_karen_engine.llm_orchestrator import get_orchestrator
-            orchestrator = get_orchestrator()
-            
-            # Try to get the specific provider/model combination
-            model_id = f"{provider}:{model}"
-            model_info = orchestrator.registry.get(model_id)
-            
-            if not model_info:
-                logger.debug(f"User's chosen model {model_id} not available in registry")
-                return None
-            
-            # Check if this is a code-related request for enhanced assistance
-            if self._is_code_related_message(message):
-                # Get code suggestions if available
-                code_suggestions = await orchestrator.get_code_suggestions(
-                    message, 
-                    language=self._detect_programming_language(message)
-                )
+        model: str,
+        attempt_log: List[Dict[str, Any]],
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
+        from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        attempt_entry: Dict[str, Any] = {
+            "stage": "user_preference",
+            "provider": provider,
+            "model": model,
+        }
+        attempt_log.append(attempt_entry)
+
+        model_id = f"{provider}:{model}"
+        model_info = orchestrator.registry.get(model_id)
+        if not model_info:
+            attempt_entry["status"] = "unavailable"
+            return None
+
+        try:
+            route_result = orchestrator.route(
+                enhanced_prompt, skill="conversation", return_metadata=True
+            )
+            self._ensure_llm_response_is_valid(
+                route_result, f"user preference {model_id}"
+            )
+
+            metadata = self._build_llm_metadata(
+                route_result,
+                "user_preference",
+                additional={"preferred_model": model_id},
+            )
+            response_text = route_result.content
+
+            if self._is_code_related_message(message):
+                code_suggestions = await orchestrator.get_code_suggestions(
+                    message,
+                    language=self._detect_programming_language(message),
+                )
                 if code_suggestions:
-                    # Use CopilotKit for code-related responses
-                    copilot_response = orchestrator.route_with_copilotkit(
-                        enhanced_prompt, 
-                        context=integrated_context.to_dict() if integrated_context else {}
+                    copilot_result = orchestrator.route_with_copilotkit(
+                        enhanced_prompt,
+                        context=integrated_context.to_dict()
+                        if integrated_context
+                        else {},
+                        return_metadata=True,
                     )
-                    
-                    # Add code suggestions to the response
+                    self._ensure_llm_response_is_valid(
+                        copilot_result, "copilotkit code suggestions"
+                    )
+                    copilot_response = copilot_result.content
                     suggestions_text = "\n\nCode suggestions:\n"
-                    for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
-                        suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
-                        suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
-                        suggestions_text += f"   {suggestion.get('content', '')}\n"
-                        suggestions_text += f"   ```\n"
-                    copilot_response += suggestions_text
-                    
-                    return copilot_response
-            # Use the user's chosen LLM for response generation
-            response = orchestrator.route(enhanced_prompt, skill="conversation")
-            
-            # Get contextual suggestions if available
+                    for i, suggestion in enumerate(code_suggestions[:3], 1):
+                        suggestions_text += (
+                            f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
+                        )
+                        suggestions_text += (
+                            f"   ```{suggestion.get('language', 'python')}\n"
+                        )
+                        suggestions_text += (
+                            f"   {suggestion.get('content', '')}\n"
+                        )
+                        suggestions_text += "   ```\n"
+                    response_text = copilot_response + suggestions_text
+                    metadata["code_suggestions"] = len(code_suggestions)
+                    metadata["copilot_provider"] = copilot_result.provider
+
             try:
                 contextual_suggestions = await orchestrator.get_contextual_suggestions(
-                    message, 
-                    integrated_context.to_dict() if integrated_context else {}
+                    message,
+                    integrated_context.to_dict() if integrated_context else {},
                 )
-                
-                # Add contextual suggestions if available
                 if contextual_suggestions:
                     suggestions_text = "\n\nSuggestions:\n"
-                    for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
-                        if suggestion.get('actionable', True):
-                            suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
-                    response += suggestions_text
-            except Exception as e:
-                logger.debug(f"Failed to get contextual suggestions: {e}")
-            
-            return response
+                    for suggestion in contextual_suggestions[:2]:
+                        if suggestion.get("actionable", True):
+                            suggestions_text += (
+                                f"• {suggestion.get('content', 'AI suggestion')}\n"
+                            )
+                    response_text += suggestions_text
+                    metadata["contextual_suggestions"] = len(contextual_suggestions)
+            except Exception as context_error:
+                logger.debug("Failed to get contextual suggestions: %s", context_error)
 
-        except Exception as e:
-            logger.warning(
-                f"User's chosen LLM ({provider}:{model}) failed: {e}. "
-                "Will attempt system default LLMs as fallback."
+            attempt_entry.update(
+                {
+                    "status": "success",
+                    "model_id": metadata.get("model_id"),
+                    "provider": metadata.get("provider"),
+                }
             )
-            return None
-    
+            metadata.setdefault("fallback_level", "primary")
+            return response_text, metadata
+        except LLMResponseVerificationError:
+            attempt_entry.update(
+                {
+                    "status": "rejected",
+                    "model_id": model_id,
+                    "provider": provider,
+                }
+            )
+            raise
+        except Exception as exc:
+            attempt_entry.update(
+                {
+                    "status": "error",
+                    "model_id": model_id,
+                    "provider": provider,
+                    "error": str(exc),
+                }
+            )
+            raise
+
     async def _try_system_default_llms(
         self,
         enhanced_prompt: str,
         message: str,
         parsed_message: ParsedMessage,
         integrated_context: Optional[Any],
-        active_instructions: List[Any]
-    ) -> Optional[str]:
-        """Try to generate response using system default LLMs in priority order."""
-        try:
-            from ai_karen_engine.llm_orchestrator import get_orchestrator
-            orchestrator = get_orchestrator()
-            
-            # Define system default LLMs in priority order
-            default_providers = [
-                "local:tinyllama-1.1b",  # Local TinyLlama fallback first
-                "openai:gpt-3.5-turbo",
-                "gemini:gemini-1.5-flash",
-                "deepseek:deepseek-chat",
-                "huggingface:microsoft/DialoGPT-large"
-            ]
-            
-            for provider_model in default_providers:
-                try:
-                    provider, model = provider_model.split(":", 1)
-                    model_id = f"{provider}:{model}"
-                    model_info = orchestrator.registry.get(model_id)
-                    
-                    if not model_info:
-                        logger.debug(f"System default model {model_id} not available")
-                        continue
-                    
-                    logger.info(f"Trying system default LLM: {model_id}")
-                    
-                    # Use enhanced routing for response generation
-                    response = await orchestrator.enhanced_route(
-                        enhanced_prompt,
-                        skill="conversation"
-                    )
-                    
-                    if response:
-                        logger.info(f"Successfully used system default LLM: {model_id}")
-                        return response
-                        
-                except Exception as e:
-                    logger.debug(f"System default LLM {provider_model} failed: {e}")
-                    continue
-            
-            # If no specific models work, try generic routing
-            logger.info("Trying generic LLM routing as final system default")
-            response = orchestrator.route(enhanced_prompt, skill="conversation")
-            return response
+        active_instructions: List[Any],
+        attempt_log: List[Dict[str, Any]],
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
-        except Exception as e:
-            logger.error(
-                f"All system default LLMs failed: {e}. "
-                "Attempted providers: openai, gemini, deepseek, huggingface. "
-                "The LLM orchestrator will fall back to local models or degraded mode."
+        from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        default_providers = [
+            "local:tinyllama-1.1b",
+            "openai:gpt-3.5-turbo",
+            "gemini:gemini-1.5-flash",
+            "deepseek:deepseek-chat",
+            "huggingface:microsoft/DialoGPT-large",
+        ]
+
+        for provider_model in default_providers:
+            attempt_entry: Dict[str, Any] = {
+                "stage": "system_default",
+                "candidate": provider_model,
+            }
+            attempt_log.append(attempt_entry)
+
+            try:
+                provider, model = provider_model.split(":", 1)
+            except ValueError:
+                attempt_entry["status"] = "error"
+                attempt_entry["error"] = "invalid_candidate"
+                continue
+
+            model_id = f"{provider}:{model}"
+            model_info = orchestrator.registry.get(model_id)
+            if not model_info:
+                attempt_entry["status"] = "unavailable"
+                continue
+
+            try:
+                route_result = await orchestrator.enhanced_route(
+                    enhanced_prompt, skill="conversation", return_metadata=True
+                )
+                self._ensure_llm_response_is_valid(
+                    route_result, f"system default {model_id}"
+                )
+
+                metadata = self._build_llm_metadata(
+                    route_result,
+                    "system_default",
+                    additional={"system_default_candidate": model_id},
+                )
+                metadata.setdefault("fallback_level", "system_default")
+
+                attempt_entry.update(
+                    {
+                        "status": "success",
+                        "model_id": metadata.get("model_id"),
+                        "provider": metadata.get("provider"),
+                    }
+                )
+                return route_result.content, metadata
+            except LLMResponseVerificationError as verification_error:
+                attempt_entry.update(
+                    {
+                        "status": "rejected",
+                        "model_id": model_id,
+                        "provider": provider,
+                        "error": str(verification_error),
+                    }
+                )
+                continue
+            except Exception as exc:
+                attempt_entry.update(
+                    {
+                        "status": "error",
+                        "model_id": model_id,
+                        "provider": provider,
+                        "error": str(exc),
+                    }
+                )
+                continue
+
+        attempt_entry = {
+            "stage": "system_default",
+            "candidate": "registry_auto",
+        }
+        attempt_log.append(attempt_entry)
+        try:
+            route_result = orchestrator.route(
+                enhanced_prompt, skill="conversation", return_metadata=True
+            )
+            self._ensure_llm_response_is_valid(
+                route_result, "system default registry auto selection"
             )
 
-        # Try local model fallback as final attempt
-        logger.info(
-            "Attempting local model fallback with TinyLlama. "
-            "This is the final attempt before entering degraded mode."
-        )
-        return await self._try_local_model_fallback(enhanced_prompt, message, parsed_message, integrated_context, active_instructions)
-    
+            metadata = self._build_llm_metadata(
+                route_result,
+                "system_default",
+                additional={"system_default_candidate": "registry_auto"},
+            )
+            metadata.setdefault("fallback_level", "system_default")
+
+            attempt_entry.update(
+                {
+                    "status": "success",
+                    "model_id": metadata.get("model_id"),
+                    "provider": metadata.get("provider"),
+                }
+            )
+            return route_result.content, metadata
+        except LLMResponseVerificationError as verification_error:
+            attempt_entry.update({"status": "rejected", "error": str(verification_error)})
+            raise
+        except Exception as exc:
+            attempt_entry.update({"status": "error", "error": str(exc)})
+            return None
+
     async def _try_local_model_fallback(
         self,
         enhanced_prompt: str,
         message: str,
         parsed_message: ParsedMessage,
         integrated_context: Optional[Any],
-        active_instructions: List[Any]
-    ) -> Optional[str]:
-        """Try to use local models as final fallback when all remote providers fail.
-        
-        Fallback hierarchy:
-        1. llama-cpp models (GGUF files)
-        2. transformers models (GPT-2, etc.)
-        3. spaCy-based intelligent responses
-        4. None (triggers degraded mode)
-        """
+        active_instructions: List[Any],
+        attempt_log: List[Dict[str, Any]],
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
+
         logger.info("Starting comprehensive local model fallback")
-        
-        # 1. Try llama-cpp models (GGUF)
-        response = await self._try_llamacpp_models(enhanced_prompt, message)
-        if response:
-            return response
-        
-        # 2. Try transformers models
-        response = await self._try_transformers_models(enhanced_prompt, message)
-        if response:
-            return response
-        
-        # 3. Try spaCy-based intelligent responses
-        response = await self._try_spacy_intelligent_response(enhanced_prompt, message, parsed_message)
-        if response:
-            return response
-        
-        # 4. All local models failed
-        logger.error("All local model fallbacks failed - system should enter degraded mode")
+
+        attempt_entry = {"stage": "local_fallback", "candidate": "llamacpp"}
+        attempt_log.append(attempt_entry)
+        llama_result = await self._try_llamacpp_models(enhanced_prompt, message)
+        if llama_result:
+            response_text, raw_metadata = llama_result
+            result_ns = SimpleNamespace(
+                content=response_text,
+                provider=raw_metadata.get("provider"),
+                model_id=raw_metadata.get("model_id"),
+                tags=raw_metadata.get("tags", []),
+                is_degraded=raw_metadata.get("is_degraded", False),
+                attempted_models=raw_metadata.get("attempted_models", []),
+                failure_reason=raw_metadata.get("failure_reason"),
+                metadata=raw_metadata.get("metadata", {}),
+            )
+            self._ensure_llm_response_is_valid(
+                result_ns, "local llama.cpp fallback"
+            )
+            metadata = self._build_llm_metadata(
+                result_ns,
+                "local_fallback",
+                additional={"local_model_path": raw_metadata.get("model_path")},
+            )
+            metadata.setdefault("fallback_level", "local")
+            attempt_entry.update(
+                {
+                    "status": "success",
+                    "model_id": metadata.get("model_id"),
+                    "provider": metadata.get("provider"),
+                }
+            )
+            return response_text, metadata
+        attempt_entry.setdefault("status", "unavailable")
+
+        transformers_entry = {
+            "stage": "local_fallback",
+            "candidate": "transformers",
+        }
+        attempt_log.append(transformers_entry)
+        transformers_result = await self._try_transformers_models(
+            enhanced_prompt, message
+        )
+        if transformers_result:
+            response_text, raw_metadata = transformers_result
+            result_ns = SimpleNamespace(
+                content=response_text,
+                provider=raw_metadata.get("provider"),
+                model_id=raw_metadata.get("model_id"),
+                tags=raw_metadata.get("tags", []),
+                is_degraded=raw_metadata.get("is_degraded", False),
+                attempted_models=raw_metadata.get("attempted_models", []),
+                failure_reason=raw_metadata.get("failure_reason"),
+                metadata=raw_metadata.get("metadata", {}),
+            )
+            self._ensure_llm_response_is_valid(
+                result_ns, "local transformers fallback"
+            )
+            metadata = self._build_llm_metadata(
+                result_ns,
+                "local_fallback",
+                additional={"transformers_model": raw_metadata.get("model_id")},
+            )
+            metadata.setdefault("fallback_level", "local")
+            transformers_entry.update(
+                {
+                    "status": "success",
+                    "model_id": metadata.get("model_id"),
+                    "provider": metadata.get("provider"),
+                }
+            )
+            return response_text, metadata
+        transformers_entry.setdefault("status", "unavailable")
+
+        spacy_entry = {
+            "stage": "local_fallback",
+            "candidate": "spacy_intelligent",
+        }
+        attempt_log.append(spacy_entry)
+        spacy_response = await self._try_spacy_intelligent_response(
+            enhanced_prompt, message, parsed_message
+        )
+        if spacy_response:
+            spacy_entry.update(
+                {
+                    "status": "rejected",
+                    "error": "heuristic_response_not_allowed",
+                    "preview": spacy_response[:160],
+                }
+            )
+        else:
+            spacy_entry["status"] = "unavailable"
+
+        logger.error(
+            "All local model fallbacks failed - system should enter degraded mode"
+        )
         return None
-    
-    async def _try_llamacpp_models(self, enhanced_prompt: str, message: str) -> Optional[str]:
-        """Try to use llama-cpp models (GGUF files)."""
+
+    async def _try_llamacpp_models(
+        self, enhanced_prompt: str, message: str
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
+
         try:
             from pathlib import Path
             from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
-            
+
             if not LlamaCppRuntime.is_available():
                 logger.debug("llama-cpp-python not available")
                 return None
-            
+
             models_dir = Path("models/llama-cpp")
             if not models_dir.exists():
                 logger.debug("llama-cpp models directory not found")
                 return None
-            
-            # Try all GGUF files in the directory
+
             gguf_files = list(models_dir.glob("*.gguf"))
-            logger.info(f"Found {len(gguf_files)} GGUF files to try")
-            
+            logger.info("Found %d GGUF files to try", len(gguf_files))
+
             for gguf_file in gguf_files:
                 try:
-                    logger.info(f"Trying llama-cpp model: {gguf_file.name}")
-                    
-                    # Try with conservative settings first
+                    logger.info("Trying llama-cpp model: %s", gguf_file.name)
+
                     runtime = LlamaCppRuntime(
                         model_path=str(gguf_file),
-                        n_ctx=512,  # Small context to reduce memory usage
-                        n_batch=128,  # Small batch size
-                        n_gpu_layers=0,  # CPU only for compatibility
-                        verbose=False
+                        n_ctx=512,
+                        n_batch=128,
+                        n_gpu_layers=0,
+                        verbose=False,
                     )
-                    
+
                     if not runtime.is_loaded():
-                        logger.warning(f"Failed to load {gguf_file.name}")
+                        logger.warning("Failed to load %s", gguf_file.name)
                         continue
-                    
-                    # Generate response
+
                     response = runtime.generate(
                         prompt=enhanced_prompt,
-                        max_tokens=128,  # Shorter response for fallback
+                        max_tokens=128,
                         temperature=0.7,
-                        stream=False
+                        stream=False,
                     )
-                    
+
                     if response and response.strip():
-                        logger.info(f"✅ Successfully used llama-cpp model: {gguf_file.name}")
-                        return response.strip()
-                        
-                except Exception as e:
-                    logger.debug(f"llama-cpp model {gguf_file.name} failed: {e}")
+                        metadata = {
+                            "provider": "llamacpp",
+                            "model_id": f"llamacpp:{gguf_file.stem}",
+                            "model_path": str(gguf_file),
+                            "tags": ["local", "offline"],
+                        }
+                        logger.info(
+                            "✅ Successfully used llama-cpp model: %s", gguf_file.name
+                        )
+                        return response.strip(), metadata
+                except Exception as exc:
+                    logger.debug(
+                        "llama-cpp model %s failed: %s", gguf_file.name, exc
+                    )
                     continue
-            
+
             logger.info("No working llama-cpp models found")
             return None
-            
-        except Exception as e:
-            logger.debug(f"llama-cpp fallback failed: {e}")
+        except Exception as exc:
+            logger.debug("llama-cpp fallback failed: %s", exc)
             return None
-    
-    async def _try_transformers_models(self, enhanced_prompt: str, message: str) -> Optional[str]:
-        """Try to use transformers models (GPT-2, etc.)."""
+
+    async def _try_transformers_models(
+        self, enhanced_prompt: str, message: str
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
+
         try:
             from pathlib import Path
-            
-            # Check if transformers is available
+
             try:
                 import transformers
-                from transformers import AutoTokenizer, AutoModelForCausalLM
+                from transformers import AutoModelForCausalLM, AutoTokenizer
             except ImportError:
                 logger.debug("transformers library not available")
                 return None
-            
+
             models_dir = Path("models/transformers")
             if not models_dir.exists():
                 logger.debug("transformers models directory not found")
                 return None
-            
-            # Try all model directories
+
             model_dirs = [d for d in models_dir.iterdir() if d.is_dir()]
-            logger.info(f"Found {len(model_dirs)} transformers models to try")
-            
+            logger.info("Found %d transformers models to try", len(model_dirs))
+
             for model_dir in model_dirs:
                 try:
-                    logger.info(f"Trying transformers model: {model_dir.name}")
-                    
-                    # Load tokenizer and model
+                    logger.info("Trying transformers model: %s", model_dir.name)
+
                     tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
                     model = AutoModelForCausalLM.from_pretrained(str(model_dir))
-                    
-                    # Add pad token if not present
+
                     if tokenizer.pad_token is None:
                         tokenizer.pad_token = tokenizer.eos_token
-                    
-                    # Encode input
-                    inputs = tokenizer.encode(enhanced_prompt, return_tensors="pt", max_length=512, truncation=True)
-                    
-                    # Generate response
+
+                    inputs = tokenizer.encode(
+                        enhanced_prompt,
+                        return_tensors="pt",
+                        max_length=512,
+                        truncation=True,
+                    )
+
                     import torch
+
                     with torch.no_grad():
                         outputs = model.generate(
                             inputs,
-                            max_length=inputs.shape[1] + 64,  # Short response for fallback
+                            max_length=inputs.shape[1] + 64,
                             temperature=0.7,
                             do_sample=True,
                             pad_token_id=tokenizer.eos_token_id,
-                            num_return_sequences=1
+                            num_return_sequences=1,
                         )
-                    
-                    # Decode response
-                    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                    
-                    # Extract only the generated part
+
+                    response = tokenizer.decode(
+                        outputs[0], skip_special_tokens=True
+                    )
+
                     if response.startswith(enhanced_prompt):
-                        response = response[len(enhanced_prompt):].strip()
-                    
+                        response = response[len(enhanced_prompt) :].strip()
+
                     if response:
-                        logger.info(f"✅ Successfully used transformers model: {model_dir.name}")
-                        return response
-                        
-                except Exception as e:
-                    logger.debug(f"transformers model {model_dir.name} failed: {e}")
+                        metadata = {
+                            "provider": "transformers",
+                            "model_id": f"transformers:{model_dir.name}",
+                            "tags": ["local", "offline"],
+                        }
+                        logger.info(
+                            "✅ Successfully used transformers model: %s",
+                            model_dir.name,
+                        )
+                        return response, metadata
+                except Exception as exc:
+                    logger.debug(
+                        "transformers model %s failed: %s", model_dir.name, exc
+                    )
                     continue
-            
+
             logger.info("No working transformers models found")
             return None
-            
-        except Exception as e:
-            logger.debug(f"transformers fallback failed: {e}")
+        except Exception as exc:
+            logger.debug("transformers fallback failed: %s", exc)
             return None
-    
     async def _try_spacy_intelligent_response(
         self, 
         enhanced_prompt: str, 
