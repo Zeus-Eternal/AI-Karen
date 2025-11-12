@@ -20,8 +20,7 @@ export async function GET(request: NextRequest) {
     const settings = await adminUtils.getSecuritySettings();
 
     return NextResponse.json(settings, { status: 200 });
-  } catch (error) {
-    console.error('Failed to load security settings', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to load security settings' },
       { status: 500 },
@@ -109,8 +108,7 @@ export async function PUT(request: NextRequest) {
       },
       { status: 200 },
     );
-  } catch (error) {
-    console.error('Failed to update security settings', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update security settings' },
       { status: 500 },

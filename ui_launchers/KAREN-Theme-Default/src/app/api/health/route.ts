@@ -230,7 +230,7 @@ async function checkFilesystem(): Promise<HealthCheck> {
     for (const criticalPath of criticalPaths) {
       try {
         await fs.access(criticalPath, fs.constants.F_OK);
-      } catch (error) {
+      } catch {
         throw new Error(`Critical path not accessible: ${criticalPath}`);
       }
     }
@@ -240,7 +240,7 @@ async function checkFilesystem(): Promise<HealthCheck> {
     try {
       await fs.writeFile(tempFile, 'health check');
       await fs.unlink(tempFile);
-    } catch (error) {
+    } catch {
       throw new Error('Temporary directory not writable');
     }
     
@@ -462,7 +462,7 @@ const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL ||
 /**
  * Main health check handler - proxies to backend
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
 
   try {
@@ -497,7 +497,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           data = JSON.parse(text);
         }
       } catch (error) {
-        console.error('Invalid JSON received from backend health endpoint', error);
         data = { error: 'Invalid JSON response from server' };
       }
     } else {

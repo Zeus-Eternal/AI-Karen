@@ -39,7 +39,6 @@ interface ErrorResponse {
 
 // Use simple timeout and retry config
 const timeoutConfig = { sessionValidation: 10000 };
-const retryPolicy = { maxAttempts: 2, baseDelay: 300, jitterEnabled: false };
 
 // In-memory ring buffer of attempts by IP
 const sessionValidationAttempts = new Map<string, SessionValidationAttempt[]>();

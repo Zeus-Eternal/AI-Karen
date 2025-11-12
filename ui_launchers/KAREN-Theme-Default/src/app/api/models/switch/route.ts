@@ -41,8 +41,9 @@ async function readBody(req: NextRequest): Promise<SwitchModelRequest> {
   let raw: unknown;
   try {
     raw = await req.json();
-  } catch {
-    throw new Error('Malformed JSON body');
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Malformed JSON body: ${reason}`);
   }
   if (!raw || typeof raw !== 'object') {
     throw new Error('Request body must be a JSON object');

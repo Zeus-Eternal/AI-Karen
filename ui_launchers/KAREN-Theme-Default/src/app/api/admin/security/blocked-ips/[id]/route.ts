@@ -64,8 +64,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'IP address unblocked successfully'
     });
-  } catch (error) {
-    console.error('Failed to unblock IP address', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to unblock IP address' },
       { status: 500 }

@@ -151,8 +151,7 @@ export async function GET(request: NextRequest) {
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });
-  } catch (error) {
-    console.error('Failed to evaluate degraded mode health state', error);
+  } catch {
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
       {

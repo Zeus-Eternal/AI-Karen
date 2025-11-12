@@ -31,7 +31,7 @@ function errJson(message: string, status = 500, extra?: Record<string, unknown>)
 
 // ---- GET /api/user/preferences/models ---------------------------------------
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(_request: NextRequest) {
   try {
     // Proxy to backend API
     const response = await fetch(`${BACKEND_URL}/api/user/preferences/models`, {
@@ -47,9 +47,10 @@ export async function GET(): Promise<NextResponse> {
 
     const data = await response.json();
     return okJson(data);
-  } catch (e: Event) {
+  } catch (error: unknown) {
     // Fallback to defaults if backend is unavailable
-    console.warn('Backend unavailable, using defaults:', e.message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Backend unavailable, using defaults:', message);
     return okJson(DEFAULT_PREFERENCES);
   }
 }
@@ -95,11 +96,12 @@ export async function PUT(request: NextRequest) {
       message: result.message || 'Model preferences updated successfully',
       status: result.status,
     });
-  } catch (e: Event) {
-    console.warn('Backend unavailable for preferences update:', e.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Backend unavailable for preferences update:', message);
     return errJson('Failed to update user model preferences', 500, {
       hint: 'Backend unavailable',
-      message: e.message,
+      message,
     });
   }
 }
