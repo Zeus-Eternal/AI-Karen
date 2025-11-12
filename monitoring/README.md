@@ -22,22 +22,31 @@ The Model Orchestrator monitoring system provides:
   - `/api/models/health/metrics` - Health check metrics
 - **Scrape Interval**: 30 seconds for model operations, 60 seconds for health
 
-### Grafana Dashboard
+### Grafana Dashboards
 
 - **File**: `model_orchestrator_dashboard.json`
-- **Panels**:
-  - Model Operations Overview
-  - Download Success Rate
-  - Storage Usage
-  - Health Status
-  - Download Operations & Duration
-  - Models by Library
-  - Storage by Library
-  - Active Downloads
-  - Registry Operations
-  - Error Rates
-  - License Compliance
-  - Garbage Collection
+  - **Panels**:
+    - Model Operations Overview
+    - Download Success Rate
+    - Storage Usage
+    - Health Status
+    - Download Operations & Duration
+    - Models by Library
+    - Storage by Library
+    - Active Downloads
+    - Registry Operations
+    - Error Rates
+    - License Compliance
+    - Garbage Collection
+- **File**: `llamacpp_runtime_dashboard.json`
+  - **Panels**:
+    - Chat Response Latency (p95)
+    - Llama-CPP Inference Latency (p95)
+    - Tokens Per Second
+    - Memory Fetch Latency
+    - Fallback Activation Rate
+    - System Load & GPU Utilization
+    - Tokens Used Per Response
 
 ### Alert Rules
 
@@ -132,9 +141,31 @@ python scripts/monitoring/setup_model_orchestrator_monitoring.py
 ### Manual Setup
 
 1. **Prometheus**: Ensure `prometheus.yml` includes model orchestrator scrape configs
-2. **Grafana**: Import `model_orchestrator_dashboard.json`
+2. **Grafana**: Import `model_orchestrator_dashboard.json` and `llamacpp_runtime_dashboard.json`
 3. **Alerts**: Load `model_orchestrator_alerts.yml` into Prometheus
 4. **Logging**: Configure logging with `model_orchestrator_logging.yml`
+
+### Grafana Production Readiness
+
+To operate Grafana in production with enterprise capabilities enabled:
+
+1. **Provision Dashboards**
+   - Mount `monitoring/model_orchestrator_dashboard.json` to `/etc/grafana/provisioning/dashboards/model-orchestrator/`.
+   - Mount `monitoring/llamacpp_runtime_dashboard.json` to `/etc/grafana/provisioning/dashboards/llamacpp-runtime/`.
+   - Mount `monitoring/grafana_provisioning.yml` to `/etc/grafana/provisioning/`.
+2. **Apply Enterprise License**
+   - Set `GF_ENTERPRISE_LICENSE_TEXT` or `GF_ENTERPRISE_LICENSE_PATH` before starting Grafana.
+   - Confirm **Administration → License** in Grafana shows status `Active` and matches the production organization.
+3. **Enable Required Features**
+   - Enable and configure enterprise reporting, alerting, RBAC, and SSO/SCIM integrations as mandated by Kari AI policy.
+   - Provide SMTP credentials for scheduled reports and validate Slack/email notifiers defined in `grafana_provisioning.yml`.
+4. **Harden Access**
+   - Enforce SSO/SAML groups, SCIM provisioning, and per-folder RBAC (e.g., `Runtime Intelligence`, `Model Orchestrator`).
+   - Require API tokens to use service accounts with least privilege for automation.
+5. **Health Validation**
+   - Verify `GET http://<grafana-host>/api/health` returns `{"database":"ok"}`.
+   - Validate Prometheus datasource status and dashboard refresh without permission errors.
+   - Generate an on-demand PDF/CSV report from the Llama-CPP dashboard to confirm enterprise licensing is functional.
 
 ### Docker Compose
 
