@@ -607,50 +607,104 @@ export const useChatMessages = (
 
               try {
                 const json = JSON.parse(payload);
-                const jsonType = (json as unknown)?.type;
+                const recordJson = isRecord(json) ? json : undefined;
+                const jsonType =
+                  recordJson && typeof recordJson.type === "string"
+                    ? recordJson.type
+                    : undefined;
+                const eventType =
+                  recordJson && typeof recordJson.event === "string"
+                    ? recordJson.event
+                    : undefined;
+                const kindType =
+                  recordJson && typeof recordJson.kind === "string"
+                    ? recordJson.kind
+                    : undefined;
+
+                const hasMetadataCandidate =
+                  (recordJson?.metadata &&
+                    typeof recordJson.metadata === "object") ||
+                  (recordJson?.meta && typeof recordJson.meta === "object") ||
+                  (recordJson?.data && typeof recordJson.data === "object") ||
+                  (recordJson?.usage && typeof recordJson.usage === "object");
 
                 if (
+                  recordJson &&
                   jsonType !== "token" &&
                   jsonType !== "delta" &&
-                  (json.event === "meta" ||
+                  (eventType === "meta" ||
                     jsonType === "meta" ||
-                    json.kind === "metadata" ||
-                    json.metadata ||
-                    json.meta ||
-                    json.data ||
-                    json.usage ||
-                    json.model)
+                    kindType === "metadata" ||
+                    hasMetadataCandidate ||
+                    typeof recordJson.model === "string")
                 ) {
-                  const usage = json.usage || json.token_usage || {};
-                  const baseMeta =
-                    (json.metadata || json.meta || json.data || {}) as Partial<MessageMetadata>;
+                  const usageRecord: Record<string, unknown> =
+                    isRecord(recordJson.usage)
+                      ? recordJson.usage
+                      : isRecord(recordJson.token_usage)
+                      ? recordJson.token_usage
+                      : {};
+                  const baseMeta = (
+                    isRecord(recordJson.metadata)
+                      ? recordJson.metadata
+                      : isRecord(recordJson.meta)
+                      ? recordJson.meta
+                      : isRecord(recordJson.data)
+                      ? recordJson.data
+                      : {}
+                  ) as Partial<MessageMetadata>;
                   const metaUpdate: Partial<MessageMetadata> = { ...baseMeta };
-                  if ((json as unknown).kire_metadata && !metaUpdate.kire)
-                    metaUpdate.kire = (json as unknown).kire_metadata;
-                  if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
-                  if (typeof json.confidence === "number")
-                    metaUpdate.confidence = json.confidence;
                   if (
-                    usage.total_tokens ||
-                    (usage.prompt_tokens && usage.completion_tokens)
+                    !metaUpdate.kire &&
+                    typeof recordJson.kire_metadata === "string"
+                  ) {
+                    metaUpdate.kire = recordJson.kire_metadata;
+                  }
+                  if (
+                    typeof recordJson.model === "string" &&
+                    !metaUpdate.model
+                  ) {
+                    metaUpdate.model = recordJson.model;
+                  }
+                  if (typeof recordJson.confidence === "number") {
+                    metaUpdate.confidence = recordJson.confidence;
+                  }
+                  if (
+                    typeof usageRecord.total_tokens === "number" ||
+                    (typeof usageRecord.prompt_tokens === "number" &&
+                      typeof usageRecord.completion_tokens === "number")
                   ) {
                     metaUpdate.tokens =
-                      usage.total_tokens ||
-                      usage.prompt_tokens + usage.completion_tokens;
+                      typeof usageRecord.total_tokens === "number"
+                        ? usageRecord.total_tokens
+                        : (usageRecord.prompt_tokens as number) +
+                          (usageRecord.completion_tokens as number);
                   }
+                  const metaTotalTokens =
+                    typeof (metaUpdate as Record<string, unknown>)
+                      .total_tokens === "number"
+                      ? (metaUpdate as Record<string, unknown>).total_tokens
+                      : undefined;
                   if (
-                    typeof metaUpdate.total_tokens === "number" &&
-                    metaUpdate.tokens === undefined
+                    metaUpdate.tokens === undefined &&
+                    typeof metaTotalTokens === "number"
                   ) {
-                    metaUpdate.tokens = metaUpdate.total_tokens;
+                    metaUpdate.tokens = metaTotalTokens;
                   }
+                  const metaTotalTokensAlternate =
+                    typeof (metaUpdate as Record<string, unknown>)
+                      .totalTokens === "number"
+                      ? (metaUpdate as Record<string, unknown>).totalTokens
+                      : undefined;
                   if (
-                    typeof (metaUpdate as unknown).totalTokens === "number" &&
-                    metaUpdate.tokens === undefined
+                    metaUpdate.tokens === undefined &&
+                    typeof metaTotalTokensAlternate === "number"
                   ) {
-                    metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
+                    metaUpdate.tokens = metaTotalTokensAlternate;
                   }
-                  if (json.cost !== undefined) metaUpdate.cost = json.cost;
+                  if (typeof recordJson.cost === "number") {
+                    metaUpdate.cost = recordJson.cost;
+                  }
                   if (metaUpdate.origin === undefined)
                     metaUpdate.origin = responseOrigin;
                   if (metaUpdate.endpoint === undefined)
@@ -658,36 +712,47 @@ export const useChatMessages = (
                   metadata = { ...metadata, ...metaUpdate };
                 }
 
-                if (
+                const hasRelevantToken =
                   typeof json === "string" ||
-                  json.delta ||
-                  json.content ||
-                  json.text ||
-                  json.answer ||
-                  (jsonType === "token" && json.data)
-                ) {
-                  const tokenData =
-                    jsonType === "token" && typeof json.data === "object"
-                      ? typeof json.data.token === "string"
-                        ? json.data.token
-                        : typeof json.data.delta === "string"
-                        ? json.data.delta
-                        : typeof json.data.content === "string"
-                        ? json.data.content
-                        : typeof json.data.text === "string"
-                        ? json.data.text
-                        : typeof json.data.answer === "string"
-                        ? json.data.answer
+                  (recordJson !== undefined &&
+                    (recordJson.delta ||
+                      recordJson.content ||
+                      recordJson.text ||
+                      recordJson.answer ||
+                      (jsonType === "token" && recordJson.data)));
+                if (hasRelevantToken) {
+                  const tokenSource =
+                    jsonType === "token" &&
+                    recordJson &&
+                    isRecord(recordJson.data)
+                      ? typeof recordJson.data.token === "string"
+                        ? recordJson.data.token
+                        : typeof recordJson.data.delta === "string"
+                        ? recordJson.data.delta
+                        : typeof recordJson.data.content === "string"
+                        ? recordJson.data.content
+                        : typeof recordJson.data.text === "string"
+                        ? recordJson.data.text
+                        : typeof recordJson.data.answer === "string"
+                        ? recordJson.data.answer
                         : ""
                       : "";
 
                   const newContent =
                     (typeof json === "string" && json) ||
-                    (typeof json.delta === "string" && json.delta) ||
-                    (json.content as string | undefined) ||
-                    (json.text as string | undefined) ||
-                    (json.answer as string | undefined) ||
-                    tokenData ||
+                    (recordJson &&
+                      typeof recordJson.delta === "string" &&
+                      recordJson.delta) ||
+                    (recordJson &&
+                      typeof recordJson.content === "string" &&
+                      recordJson.content) ||
+                    (recordJson &&
+                      typeof recordJson.text === "string" &&
+                      recordJson.text) ||
+                    (recordJson &&
+                      typeof recordJson.answer === "string" &&
+                      recordJson.answer) ||
+                    tokenSource ||
                     "";
                   if (newContent) {
                     fullText += newContent;
