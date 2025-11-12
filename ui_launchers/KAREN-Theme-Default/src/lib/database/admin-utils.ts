@@ -225,25 +225,25 @@ interface AuditLogRow {
   user_id: string;
   action: string;
   resource_type: string;
-  resource_id?: string | null;
-  details?: Record<string, unknown> | string | null;
-  ip_address?: string | null;
-  user_agent?: string | null;
-  timestamp: Date;
-  user_email?: string | null;
-  user_full_name?: string | null;
+  resource_id: string | null;
+  details: Record<string, unknown> | string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  timestamp: string | Date;
+  user_email: string | null;
+  user_full_name: string | null;
 }
 
 interface SystemConfigRow {
   id: string;
   key: string;
-  value?: unknown;
+  value: string | number | boolean | null;
   value_type: string;
   category: string;
   description?: string | null;
   updated_by: string;
-  updated_at: Date;
-  created_at: Date;
+  updated_at: string | Date;
+  created_at: string | Date;
   updated_by_email?: string | null;
   updated_by_name?: string | null;
 }
@@ -266,34 +266,6 @@ interface UserRecord {
   two_factor_enabled?: boolean | number | null;
   two_factor_secret?: string | null;
   created_by?: string | null;
-}
-
-interface AuditLogRow {
-  id: string;
-  user_id: string;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  details: Record<string, unknown> | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  timestamp: string | Date;
-  user_email?: string | null;
-  user_full_name?: string | null;
-}
-
-interface SystemConfigRow {
-  id: string;
-  key: string;
-  value: string | number | boolean;
-  value_type: string;
-  category: string;
-  description?: string | null;
-  updated_by: string;
-  updated_at: string | Date;
-  created_at: string | Date;
-  updated_by_email?: string | null;
-  updated_by_name?: string | null;
 }
 
 type ConfigValue = string | number | boolean | Record<string, unknown> | unknown[];
