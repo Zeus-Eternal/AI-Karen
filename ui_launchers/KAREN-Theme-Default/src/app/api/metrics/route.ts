@@ -167,10 +167,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         'kari_http_request_duration_seconds',
         'HTTP request duration in seconds',
         { path: esc(path) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        httpBounds
+        {
+          buckets: durationMetrics.buckets,
+          sum: n(durationMetrics.sum),
+          count: n(durationMetrics.count),
+        },
+        httpBounds,
       );
-    });
+    }
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
@@ -193,10 +197,11 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Feature usage (counter by feature)
     lines.push('# HELP kari_feature_usage_total Total usage count for application features');
     lines.push('# TYPE kari_feature_usage_total counter');
-    Object.entries(applicationMetrics?.featureUsage ?? {}).forEach(([feature, count]) => {
-      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
-      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(numericCount)}`);
-    });
+    const featureUsage = applicationMetrics.featureUsage;
+    for (const feature of Object.keys(featureUsage)) {
+      const count = featureUsage[feature];
+      lines.push(`kari_feature_usage_total{feature="${esc(feature)}"} ${n(count)}`);
+    }
 
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
@@ -211,10 +216,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Model requests (counter by model)
     lines.push('# HELP kari_model_requests_total Total number of model requests');
     lines.push('# TYPE kari_model_requests_total counter');
-    Object.entries(applicationMetrics?.modelRequests ?? {}).forEach(([model, count]) => {
-      const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
-      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(numericCount)}`);
-    });
+    const modelRequests = applicationMetrics.modelRequests;
+    for (const model of Object.keys(modelRequests)) {
+      lines.push(`kari_model_requests_total{model="${esc(model)}"} ${n(modelRequests[model])}`);
+    }
 
     // Model response time (histogram by model)
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
@@ -224,10 +229,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         'kari_model_response_time_seconds',
         'Model response time in seconds',
         { model: esc(model) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        modelBounds
+        {
+          buckets: responseMetrics.buckets,
+          sum: n(responseMetrics.sum),
+          count: n(responseMetrics.count),
+        },
+        modelBounds,
       );
-    });
+    }
 
     // ----------------------
     // PERFORMANCE METRICS
@@ -310,10 +319,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         'kari_database_query_duration_seconds',
         'Database query duration in seconds',
         { query: esc(query) },
-        { buckets: d?.buckets, sum: n(d?.sum), count: n(d?.count) },
-        dbBounds
+        {
+          buckets: queryMetrics.buckets,
+          sum: n(queryMetrics.sum),
+          count: n(queryMetrics.count),
+        },
+        dbBounds,
       );
-    });
+    }
 
     // ----------------------
     // BUSINESS METRICS

@@ -89,7 +89,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         SELECT 1
         FROM user_password_resets
         WHERE user_id = $1
-          AND created_at >= NOW() - INTERVAL '5 minutes'
+          AND created_at >= NOW() - INTERVAL '${rateWindowMinutes} minutes'
           AND used_at IS NULL
         LIMIT 1
       `,

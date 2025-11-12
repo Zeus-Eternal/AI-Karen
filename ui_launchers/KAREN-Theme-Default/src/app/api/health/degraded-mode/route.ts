@@ -118,11 +118,23 @@ export async function GET(request: NextRequest) {
         ? 'degraded'
         : (healthData.ai_status || normalizedStatus);
       const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
-      const data = {
-        degraded_mode: isActive,
-        is_active: isActive,
-        status: normalizedStatus,
-        reason: normalizedStatus === 'healthy' ? '' : 'System experiencing issues',
+        const lastErrorMessage =
+          lastErr instanceof Error
+            ? lastErr.message
+            : typeof lastErr === 'string'
+              ? lastErr
+              : undefined;
+        const degradedReason = normalizedStatus === 'healthy'
+          ? ''
+          : lastErrorMessage
+              ? `System experiencing issues: ${lastErrorMessage}`
+              : 'System experiencing issues';
+
+        const data = {
+          degraded_mode: isActive,
+          is_active: isActive,
+          status: normalizedStatus,
+          reason: degradedReason,
         infrastructure_issues: healthData.infrastructure_issues || [],
         core_helpers_available: {
           fallback_responses: true,

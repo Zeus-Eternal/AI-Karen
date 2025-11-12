@@ -62,6 +62,11 @@ interface RequestMetrics {
   averageResponseTime: number;
 }
 
+type FallbackHealthResponse = HealthCheckResult & {
+  error: string;
+  details?: string;
+};
+
 // Global metrics tracking
 const requestMetrics: RequestMetrics = {
   total: 0,
@@ -387,7 +392,7 @@ function getPerformanceMetrics(): PerformanceMetrics {
  */
 function updateRequestMetrics(responseTime: number, success: boolean) {
   requestMetrics.total++;
-  
+
   if (success) {
     requestMetrics.successful++;
   } else {
@@ -402,6 +407,53 @@ function updateRequestMetrics(responseTime: number, success: boolean) {
   
   // Calculate average response time
   requestMetrics.averageResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+}
+
+async function buildFallbackHealthResponse(errorMessage: string, error: unknown): Promise<FallbackHealthResponse> {
+  const [database, redis, externalAPIs, filesystem] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkExternalAPIs(),
+    checkFilesystem(),
+  ]);
+
+  const memory = checkMemory();
+  const performance = checkPerformance();
+  const details =
+    process.env.NODE_ENV === 'development'
+      ? error instanceof Error
+        ? error.message
+        : String(error)
+      : undefined;
+
+  const requestsSnapshot: RequestMetrics = { ...requestMetrics };
+
+  return {
+    status: 'unhealthy',
+    error: errorMessage,
+    timestamp: new Date().toISOString(),
+    version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.APP_VERSION || 'unknown',
+    uptime: Math.floor(process.uptime()),
+    checks: {
+      database,
+      redis,
+      external_apis: externalAPIs,
+      filesystem,
+      memory,
+      performance,
+    },
+    metrics: {
+      memory: getMemoryMetrics(),
+      performance: getPerformanceMetrics(),
+      requests: requestsSnapshot,
+    },
+    environment: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      environment: process.env.NODE_ENV || 'development',
+    },
+    details,
+  };
 }
 
 // Backend URL configuration
@@ -450,27 +502,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     } else {
       data = await response.text();
     }
-    
+
+    const responseTime = Date.now() - startTime;
+    updateRequestMetrics(responseTime, response.ok);
+
     // Return the backend response with the same status code
     return NextResponse.json(
       typeof data === 'string' ? { error: data } : data,
-      { 
+      {
         status: response.status,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      }
+          'Expires': '0',
+        },
+      },
     );
-    
+
   } catch (error) {
+    const responseTime = Date.now() - startTime;
+    updateRequestMetrics(responseTime, false);
     console.error('Health check proxy error:', error);
 
     // Return error response
     let status = 503;
     let errorMessage = 'Backend health check failed';
-    
+
     if (error instanceof Error) {
       if (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout')) {
         status = 504;
@@ -522,6 +579,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     };
 
     return NextResponse.json(
+      await buildFallbackHealthResponse(errorMessage, error),
       {
         ...fallback,
         error: errorMessage,
@@ -537,9 +595,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      }
+          'Expires': '0',
+        },
+      },
     );
   }
 }

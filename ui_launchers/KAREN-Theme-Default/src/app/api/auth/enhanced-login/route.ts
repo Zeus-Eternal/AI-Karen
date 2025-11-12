@@ -35,6 +35,27 @@ interface LoginResponse {
   session_timeout: number;
 }
 
+interface SessionValidationResponse {
+  valid: true;
+  user: {
+    user_id: string;
+    email: string;
+    full_name?: string;
+    role: string;
+    two_factor_enabled: boolean;
+  };
+  session: {
+    expires_at: string;
+    time_remaining: number;
+    warning_active: boolean;
+  };
+  security: {
+    mfa_required: boolean;
+    mfa_verified: boolean;
+    ip_address: string;
+  };
+}
+
 const SESSION_COOKIE = 'session_token';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
