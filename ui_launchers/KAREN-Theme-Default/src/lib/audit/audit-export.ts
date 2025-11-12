@@ -357,7 +357,8 @@ export class AuditLogExporter {
       case 'user_agent':
         return log.user_agent || '';
       default: {
-        const fallbackValue = (log as Record<string, unknown>)[field];
+        const logRecord = log as unknown as Record<string, unknown>;
+        const fallbackValue = field in logRecord ? logRecord[field] : undefined;
         if (fallbackValue === undefined || fallbackValue === null) {
           return '';
         }
