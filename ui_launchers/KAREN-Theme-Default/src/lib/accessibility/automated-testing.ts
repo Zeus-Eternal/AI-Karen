@@ -199,14 +199,6 @@ export class AutomatedAccessibilityTester {
         ...(config.exclude ? { exclude: config.exclude } : {})
       };
 
-      if (config.include) {
-        runOptions.include = config.include;
-      }
-
-      if (config.exclude) {
-        runOptions.exclude = config.exclude;
-      }
-      
       // Run axe-core analysis
       const axeResults = await axe.run(element, runOptions);
       
