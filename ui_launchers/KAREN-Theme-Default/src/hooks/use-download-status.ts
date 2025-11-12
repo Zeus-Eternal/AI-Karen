@@ -100,7 +100,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   // Get download status for a specific task
   const getDownloadStatus = useCallback(async (taskId: string): Promise<DownloadTask | null> => {
     try {
-      const response = await backend.makeRequestPublic<Record<string, unknown>>(`/api/models/download/${taskId}`);
+      const response = await backend.makeRequestPublic<DownloadTaskApiResponse | null>(`/api/models/download/${taskId}`);
       if (response) {
         return convertApiResponseToTask(response);
       }
@@ -199,7 +199,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       }
 
       // Start a new download for the same model
-      const response = await backend.makeRequestPublic<Record<string, unknown>>('/api/models/download', {
+      const response = await backend.makeRequestPublic<DownloadTaskApiResponse | null>('/api/models/download', {
         method: 'POST',
         body: JSON.stringify({ model_id: task.modelId })
       });
