@@ -6,16 +6,58 @@ import { useHooks } from "@/hooks/use-hooks";
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
-import { ChatMessage, ChatSettings } from "../types";
+import {
+  ChatMessage,
+  ChatSettings,
+  ChatMessageMetadata,
+} from "../types";
+type MessageMetadata = ChatMessageMetadata;
 
-type MessageMetadata = Record<string, unknown> & {
-  origin?: string;
-  endpoint?: string;
-  model?: string;
-  tokens?: number;
-  cost?: number;
-  confidence?: number;
-  latencyMs?: number;
+type MinimalUser = {
+  userId?: string | null;
+  user_id?: string | null;
+};
+
+type DegradationMetadata = {
+  degraded_mode?: boolean;
+  status?: string;
+  reason?: string;
+  [key: string]: unknown;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const extractUserId = (user: unknown): string | undefined => {
+  if (!isRecord(user)) {
+    return undefined;
+  }
+
+  const record = user as MinimalUser & Record<string, unknown>;
+  if (typeof record.user_id === "string" && record.user_id.length > 0) {
+    return record.user_id;
+  }
+
+  if (typeof record.userId === "string" && record.userId.length > 0) {
+    return record.userId;
+  }
+
+  return undefined;
+};
+
+const parseDegradationMetadata = (
+  value: string | null
+): DegradationMetadata | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? (parsed as DegradationMetadata) : null;
+  } catch {
+    return null;
+  }
 };
 
 interface BackendChatRuntimeRequest {
@@ -61,6 +103,7 @@ export const useChatMessages = (
   const { toast } = useToast();
   const configManager = getConfigManager();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const resolvedUserId = extractUserId(user);
 
   // Core message sending logic with full streaming support
   const sendMessage = useCallback(
@@ -85,6 +128,7 @@ export const useChatMessages = (
       // Wrap the entire function in a try-catch to prevent unhandled errors
       try {
         const sanitizedContent = sanitizeInput(content.trim());
+        const userId = resolvedUserId;
         const userMessage: ChatMessage = {
           id: `msg_${Date.now()}_user`,
           role: "user",
@@ -119,11 +163,11 @@ export const useChatMessages = (
               (sanitizedContent.length > 100 ? "..." : ""),
             type,
             language: options.language,
-            userId: user?.user_id,
+            userId,
             sessionId,
             conversationId,
           },
-          { userId: user?.user_id }
+          { userId }
         );
 
         if (onMessageSent) {
@@ -160,8 +204,11 @@ export const useChatMessages = (
           : "/api/ai/conversation-processing";
 
         // Force proxy usage in browser environment for better reliability
-        const useProxy = typeof window !== 'undefined' ? true : 
-          (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
+        const useProxy =
+          typeof window !== "undefined"
+            ? true
+            : (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !==
+              "false";
         
         const proxyUrlFor = (path: string) =>
           `/api/chat/proxy?path=${encodeURIComponent(path)}`;
@@ -204,8 +251,11 @@ export const useChatMessages = (
           }
 
           const originalContext = options.context;
+          const contextRecord = isRecord(originalContext)
+            ? (originalContext as Record<string, unknown>)
+            : undefined;
           const { tools: contextTools, ...contextWithoutTools } =
-            originalContext || {};
+            contextRecord ?? {};
           const normalizedTools = Array.isArray(contextTools)
             ? contextTools.filter(
                 (tool): tool is string => typeof tool === "string"
@@ -222,7 +272,7 @@ export const useChatMessages = (
             language: options.language || settings.language,
             session_id: sessionId,
             conversation_id: conversationId,
-            user_id: user?.user_id,
+            user_id: userId,
             platform: "web",
             enable_analysis: options.enableAnalysis || enableCodeAssistance,
             conversation_history: messages.map((m) => ({
@@ -278,8 +328,8 @@ export const useChatMessages = (
                 max_tokens: settings.maxTokens,
                 type,
                 language: options.language || settings.language,
-                context: originalContext,
-                user_id: user?.user_id,
+                context: contextRecord ?? null,
+                user_id: userId,
                 enable_analysis: options.enableAnalysis || enableCodeAssistance,
                 enable_suggestions: settings.enableSuggestions,
                 copilot_features: {
@@ -308,11 +358,11 @@ export const useChatMessages = (
                   language: options.language || settings.language,
                   session_id: sessionId,
                   conversation_id: conversationId,
-                  user_id: user?.user_id,
+                  user_id: userId,
                   platform: "web",
                   enable_analysis:
                     options.enableAnalysis || enableCodeAssistance,
-                  ...originalContext,
+                  ...(contextRecord ?? {}),
                 },
                 session_id: sessionId,
                 include_memories: true,
@@ -330,7 +380,7 @@ export const useChatMessages = (
               ? "text/event-stream, application/json"
               : "application/json",
             ...(authToken && { Authorization: `Bearer ${authToken}` }),
-            ...(user?.user_id && { "X-User-ID": user.user_id }),
+            ...(userId && { "X-User-ID": userId }),
             "X-Session-ID": sessionId || "",
             "X-Conversation-ID": conversationId || "",
           };
@@ -349,11 +399,14 @@ export const useChatMessages = (
             stream: chatRuntimePayload.stream,
           });
 
-          const executeRequest = async (url: string, body: unknown) => {
+          const executeRequest = async <T extends object>(
+            url: string,
+            body: T
+          ) => {
             safeDebug("🔍 useChatMessages: Executing request", {
               url,
               method: "POST",
-              bodyKeys: Object.keys(body),
+              bodyKeys: Object.keys(body as object),
               headersKeys: Object.keys(headers),
             });
 
@@ -363,8 +416,8 @@ export const useChatMessages = (
               body: JSON.stringify(body),
               signal: controller.signal,
               // Add additional fetch options for better reliability
-              cache: 'no-cache',
-              credentials: 'same-origin',
+              cache: "no-cache",
+              credentials: "same-origin",
             });
           };
 
@@ -466,6 +519,12 @@ export const useChatMessages = (
           const fallbackHeader = response.headers.get("x-fallback");
           const fallbackReason = response.headers.get("x-fallback-reason");
           const upstreamStatus = response.headers.get("x-proxy-upstream-status");
+          const aiData = parseDegradationMetadata(
+            response.headers.get("x-ai-data")
+          );
+          const resultMetadata = parseDegradationMetadata(
+            response.headers.get("x-result-metadata")
+          );
 
           if (fallbackHeader) {
             let fallbackBody: unknown = null;
@@ -792,26 +851,27 @@ export const useChatMessages = (
         });
 
         // Create final message
+        const finalMetadata: MessageMetadata = {
+          ...metadata,
+          latencyMs: latency,
+          model:
+            typeof metadata.model === "string" && metadata.model.length > 0
+              ? metadata.model
+              : settings.model,
+          tokens:
+            typeof metadata.tokens === "number"
+              ? metadata.tokens
+              : Math.ceil(fullText.length / 4),
+          cost: typeof metadata.cost === "number" ? metadata.cost : 0,
+          origin: metadata.origin ?? responseOrigin,
+          endpoint: metadata.endpoint ?? activeEndpoint,
+        };
+
         const finalMessage: ChatMessage = {
           ...placeholder,
           content: fullText.trim(),
           status: "completed",
-          metadata: {
-            ...metadata,
-            latencyMs: latency,
-            model:
-              typeof metadata.model === "string" && metadata.model.length > 0
-                ? metadata.model
-                : settings.model,
-            tokens:
-              typeof metadata.tokens === "number"
-                ? metadata.tokens
-                : Math.ceil(fullText.length / 4),
-            cost:
-              typeof metadata.cost === "number" ? metadata.cost : 0,
-            origin: metadata.origin ?? responseOrigin,
-            endpoint: metadata.endpoint ?? activeEndpoint,
-          },
+          metadata: finalMetadata,
         };
 
         safeDebug("🔍 useChatMessages: Final message created:", {
@@ -837,11 +897,11 @@ export const useChatMessages = (
             type: finalMessage.type,
             latencyMs: latency,
             model: settings.model,
-            userId: user?.user_id,
+            userId,
             sessionId,
             conversationId,
           },
-          { userId: user?.user_id }
+          { userId }
         );
 
         if (onMessageReceived) {
@@ -872,22 +932,31 @@ export const useChatMessages = (
         try {
           await processResponseBody();
         } catch (error) {
-          if ((error as unknown)?.name === "AbortError") {
+          const isAbortError =
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error instanceof Error && error.name === "AbortError");
+          if (isAbortError) {
             setIsTyping(false);
             return;
           }
 
           // Prevent console error interceptor issues by using structured logging
+          const normalizedError =
+            error instanceof Error ? error : new Error(String(error));
           const errorDetails = {
-            name: (error as unknown)?.name || "UnknownError",
-            message: (error as unknown)?.message || "Unknown error occurred",
-            stack: (error as unknown)?.stack,
-            cause: (error as unknown)?.cause,
+            name: normalizedError.name || "UnknownError",
+            message:
+              normalizedError.message || "Unknown error occurred",
+            stack: normalizedError.stack,
+            cause:
+              "cause" in normalizedError
+                ? (normalizedError as { cause?: unknown }).cause
+                : undefined,
             timestamp: new Date().toISOString(),
             context: {
               sessionId,
               conversationId,
-              userId: user?.user_id,
+              userId,
               endpoint: activeEndpoint,
               primaryEndpoint: chatRuntimeUrl,
               fallbackEndpoint: fallbackUrl,
@@ -902,10 +971,11 @@ export const useChatMessages = (
           });
 
           const isFallbackError =
-            (error as Error)?.name === "LLMFallbackResponseError";
+            normalizedError.name === "LLMFallbackResponseError";
           const fallbackDetails = isFallbackError
-            ? ((error as Error & { details?: Record<string, unknown> }).details ??
-              null)
+            ? ((normalizedError as Error & {
+                details?: Record<string, unknown>;
+              }).details ?? null)
             : null;
           const fallbackDetailsRecord = fallbackDetails as
             | Record<string, unknown>
@@ -916,25 +986,23 @@ export const useChatMessages = (
             "I apologize, but I encountered an error processing your request. Please try again.";
           let errorTitle = "Chat Error";
 
-          if (isFallbackError) {
-            const fallbackBody = fallbackDetailsRecord?.["body"];
-            const fallbackMessage =
-              fallbackBody &&
-              typeof fallbackBody === "object" &&
-              (fallbackBody as Record<string, unknown>).response
-                ? String(
-                    (fallbackBody as Record<string, unknown>).response as string
-                  )
-                : error instanceof Error && error.message
-                ? error.message
-                : null;
+            if (isFallbackError) {
+              const fallbackBody = fallbackDetailsRecord?.["body"];
+              const fallbackMessage =
+                fallbackBody &&
+                typeof fallbackBody === "object" &&
+                (fallbackBody as Record<string, unknown>).response
+                  ? String(
+                      (fallbackBody as Record<string, unknown>).response as string
+                    )
+                  : normalizedError.message || null;
             errorContent =
               fallbackMessage ||
               "The AI service is currently unavailable. Please try again once connectivity is restored.";
             errorTitle = "AI Service Unavailable";
           } else if (
-            error instanceof TypeError &&
-            error.message.includes("Failed to fetch")
+            normalizedError instanceof TypeError &&
+            normalizedError.message.includes("Failed to fetch")
           ) {
             errorContent =
               "Unable to connect to the AI service. Please check if the backend is running and try again.";
@@ -956,7 +1024,7 @@ export const useChatMessages = (
               });
           }
 
-          const errorMetadata = {
+          const errorMetadata: MessageMetadata = {
             ...(isFallbackError
               ? {
                   degraded: true,
@@ -969,7 +1037,7 @@ export const useChatMessages = (
                   },
                 }
               : {}),
-          } as Record<string, unknown>;
+          };
 
           const errorMessage: ChatMessage = {
             id: assistantId,
@@ -987,9 +1055,7 @@ export const useChatMessages = (
 
           const toastDescription = isFallbackError
             ? ((fallbackDetailsRecord?.["reason"] as string) || errorContent)
-            : error instanceof Error
-            ? error.message
-            : "Failed to get AI response";
+            : normalizedError.message || "Failed to get AI response";
 
           toast({
             variant: "destructive",
@@ -1001,12 +1067,16 @@ export const useChatMessages = (
         }
       } catch (outerError) {
         // Catch any unhandled errors in the sendMessage function
+        const normalizedOuterError =
+          outerError instanceof Error
+            ? outerError
+            : new Error(String(outerError));
         safeError(
           "Critical error in sendMessage",
           {
-            error: outerError,
-            message: (outerError as unknown)?.message,
-            stack: (outerError as unknown)?.stack,
+            error: normalizedOuterError,
+            message: normalizedOuterError.message,
+            stack: normalizedOuterError.stack,
             timestamp: new Date().toISOString(),
           },
           {
@@ -1031,7 +1101,7 @@ export const useChatMessages = (
       settings,
       sessionId,
       conversationId,
-      user?.user_id,
+      resolvedUserId,
       triggerHooks,
       onMessageSent,
       onMessageReceived,
@@ -1087,9 +1157,9 @@ export const useChatMessages = (
             {
               messageId,
               rating,
-              userId: user?.user_id,
+              userId: resolvedUserId,
             },
-            { userId: user?.user_id }
+            { userId: resolvedUserId }
           );
 
           toast({
@@ -1116,7 +1186,7 @@ export const useChatMessages = (
           break;
       }
     },
-    [messages, toast, triggerHooks, user?.user_id, sendMessage, setMessages]
+    [messages, toast, triggerHooks, resolvedUserId, sendMessage, setMessages]
   );
 
   // Clear messages

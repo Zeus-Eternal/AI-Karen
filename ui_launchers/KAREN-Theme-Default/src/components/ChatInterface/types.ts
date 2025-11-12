@@ -1,5 +1,42 @@
 import type { ComponentType } from "react";
 
+export type ChatMessageMetadata = {
+  confidence?: number;
+  latencyMs?: number;
+  model?: string;
+  sources?: string[];
+  reasoning?: string;
+  persona?: string;
+  mood?: string;
+  intent?: string;
+  tokens?: number;
+  cost?: number;
+  suggestions?: unknown[];
+  analysis?: unknown;
+  rating?: "up" | "down";
+  codeAnalysis?: {
+    issues: Array<{
+      type: string;
+      severity: "error" | "warning" | "info";
+      message: string;
+      line?: number;
+      suggestions?: string[];
+    }>;
+    metrics: {
+      complexity: number;
+      maintainability: number;
+      performance: number;
+    };
+    suggestions: string[];
+  };
+  origin?: string;
+  endpoint?: string;
+  kire?: unknown;
+  degraded?: boolean;
+  fallback?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -8,36 +45,7 @@ export interface ChatMessage {
   type?: "text" | "code" | "suggestion" | "analysis" | "documentation";
   language?: string;
   status?: "sending" | "sent" | "generating" | "completed" | "error";
-  metadata?: {
-    confidence?: number;
-    latencyMs?: number;
-    model?: string;
-    sources?: string[];
-    reasoning?: string;
-    persona?: string;
-    mood?: string;
-    intent?: string;
-    tokens?: number;
-    cost?: number;
-    suggestions?: unknown[];
-    analysis?: unknown;
-    rating?: "up" | "down";
-    codeAnalysis?: {
-      issues: Array<{
-        type: string;
-        severity: "error" | "warning" | "info";
-        message: string;
-        line?: number;
-        suggestions?: string[];
-      }>;
-      metrics: {
-        complexity: number;
-        maintainability: number;
-        performance: number;
-      };
-      suggestions: string[];
-    };
-  };
+  metadata?: ChatMessageMetadata;
 }
 
 export interface ChatSettings {
@@ -148,12 +156,14 @@ export interface ChatContext {
   };
 }
 
+export type CopilotActionCategory = "code" | "debug" | "docs" | "analysis" | "general";
+
 export interface CopilotAction {
   id: string;
   title: string;
   description: string;
   prompt: string;
-  category: string;
+  category: CopilotActionCategory | string;
   icon?: ComponentType<{ className?: string }> | string;
   shortcut?: string;
   requiresSelection?: boolean;
