@@ -180,13 +180,15 @@ export function EnhancedAdminDashboard({
   };
 
   const handleUserCreated = () => {
-    loadDashboardData();
+    markDashboardLoading();
+    void loadDashboardData();
     setCurrentView("users");
     announce("User created successfully, switching to user management view");
   };
 
   const handleBulkOperationComplete = () => {
-    loadDashboardData();
+    markDashboardLoading();
+    void loadDashboardData();
     setSelectedUsers([]);
     setCurrentView("users");
     announce("Bulk operation completed, returning to user management");
@@ -439,7 +441,10 @@ export function EnhancedAdminDashboard({
               <EnhancedUserManagementTable
                 selectedUsers={selectedUsers}
                 onSelectionChange={handleUserSelectionChange}
-                onUserUpdated={loadDashboardData}
+                onUserUpdated={() => {
+                  markDashboardLoading();
+                  void loadDashboardData();
+                }}
               />
             </ErrorBoundary>
           </div>
