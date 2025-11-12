@@ -17,7 +17,7 @@ export default function SignupPage() {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
-  const [isLoading] = useState(false);
+  const isLoading = false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

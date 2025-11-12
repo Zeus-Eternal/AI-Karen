@@ -453,6 +453,69 @@ export const useChatMessages = (
               ct.includes("text/stream") ||
               ct.includes("application/stream+json"));
 
+          const fallbackHeader = response.headers.get("x-fallback");
+          const fallbackReason = response.headers.get("x-fallback-reason");
+          const upstreamStatus = response.headers.get("x-proxy-upstream-status");
+
+          if (fallbackHeader) {
+            let fallbackBody: unknown = null;
+
+            if (!isStream) {
+              try {
+                const clone = response.clone();
+                fallbackBody = await clone.json();
+              } catch {
+                try {
+                  fallbackBody = await response.clone().text();
+                } catch {
+                  fallbackBody = null;
+                }
+              }
+            }
+
+            safeWarn("🔍 useChatMessages: Received fallback chat payload", {
+              header: fallbackHeader,
+              reason: fallbackReason,
+              upstreamStatus,
+              origin: responseOrigin,
+              endpoint: activeEndpoint,
+              isStream,
+            });
+
+            const fallbackMessage =
+              typeof fallbackBody === "object" && fallbackBody !== null
+                ? (() => {
+                    const recordBody = fallbackBody as Record<string, unknown>;
+                    if (typeof recordBody.response === "string") {
+                      return recordBody.response;
+                    }
+                    if (typeof recordBody.message === "string") {
+                      return recordBody.message;
+                    }
+                    return undefined;
+                  })()
+                : undefined;
+
+            const fallbackError = new Error(
+              fallbackMessage ||
+                "AI services returned a fallback payload instead of an LLM response."
+            );
+            fallbackError.name = "LLMFallbackResponseError";
+            (fallbackError as Error & {
+              details?: Record<string, unknown>;
+            }).details = {
+              header: fallbackHeader,
+              reason: fallbackReason,
+              upstreamStatus,
+              origin: responseOrigin,
+              endpoint: activeEndpoint,
+              body: fallbackBody,
+              isStream,
+            };
+
+            throw fallbackError;
+          }
+
           if (isStream) {
             // Handle streaming response
             const reader = response.body.getReader();
@@ -698,6 +761,58 @@ export const useChatMessages = (
             const ct2 = response.headers.get("content-type") || "";
             if (ct2.includes("application/json")) {
               const result = await response.json();
+
+              const degraded = Boolean(
+                (result?.ai_data &&
+                  typeof result.ai_data === "object" &&
+                  ((result.ai_data as Record<string, unknown>).degraded_mode ===
+                    true ||
+                    (result.ai_data as Record<string, unknown>).status ===
+                      "degraded")) ||
+                  (result?.metadata &&
+                    typeof result.metadata === "object" &&
+                    (result.metadata as Record<string, unknown>).degraded_mode ===
+                      true) ||
+                  (result as Record<string, unknown>)?.degraded_mode === true
+              );
+
+              if (degraded) {
+                safeWarn("🔍 useChatMessages: Received degraded AI response", {
+                  origin: responseOrigin,
+                  endpoint: activeEndpoint,
+                  upstreamStatus,
+                  reason:
+                    (result?.ai_data as Record<string, unknown>)?.reason ||
+                    fallbackReason,
+                });
+
+                const degradedMessage =
+                  (result?.response && typeof result.response === "string"
+                    ? result.response
+                    : result?.message && typeof result.message === "string"
+                    ? result.message
+                    : "The AI service is currently unavailable.") ??
+                  "The AI service is currently unavailable.";
+
+                const degradeError = new Error(degradedMessage);
+                degradeError.name = "LLMFallbackResponseError";
+                (degradeError as Error & {
+                  details?: Record<string, unknown>;
+                }).details = {
+                  header: fallbackHeader,
+                  reason:
+                    (result?.ai_data as Record<string, unknown>)?.reason ||
+                    fallbackReason,
+                  upstreamStatus,
+                  origin: responseOrigin,
+                  endpoint: activeEndpoint,
+                  body: result,
+                  degraded: true,
+                };
+
+                throw degradeError;
+              }
+
               fullText =
                 result.answer ||
                 result.content ||
@@ -854,12 +969,38 @@ export const useChatMessages = (
             useStructuredLogging: true,
           });
 
+          const isFallbackError =
+            (error as Error)?.name === "LLMFallbackResponseError";
+          const fallbackDetails = isFallbackError
+            ? ((error as Error & { details?: Record<string, unknown> }).details ??
+              null)
+            : null;
+          const fallbackDetailsRecord = fallbackDetails as
+            | Record<string, unknown>
+            | null;
+
           // Provide more specific error messages
           let errorContent =
             "I apologize, but I encountered an error processing your request. Please try again.";
           let errorTitle = "Chat Error";
 
-          if (
+          if (isFallbackError) {
+            const fallbackBody = fallbackDetailsRecord?.["body"];
+            const fallbackMessage =
+              fallbackBody &&
+              typeof fallbackBody === "object" &&
+              (fallbackBody as Record<string, unknown>).response
+                ? String(
+                    (fallbackBody as Record<string, unknown>).response as string
+                  )
+                : error instanceof Error && error.message
+                ? error.message
+                : null;
+            errorContent =
+              fallbackMessage ||
+              "The AI service is currently unavailable. Please try again once connectivity is restored.";
+            errorTitle = "AI Service Unavailable";
+          } else if (
             error instanceof TypeError &&
             error.message.includes("Failed to fetch")
           ) {
@@ -883,6 +1024,21 @@ export const useChatMessages = (
               });
           }
 
+          const errorMetadata = {
+            ...(isFallbackError
+              ? {
+                  degraded: true,
+                  fallback: {
+                    header: fallbackDetailsRecord?.["header"],
+                    reason: fallbackDetailsRecord?.["reason"],
+                    upstreamStatus: fallbackDetailsRecord?.["upstreamStatus"],
+                    origin: fallbackDetailsRecord?.["origin"],
+                    endpoint: fallbackDetailsRecord?.["endpoint"],
+                  },
+                }
+              : {}),
+          } as Record<string, unknown>;
+
           const errorMessage: ChatMessage = {
             id: assistantId,
             role: "assistant",
@@ -890,20 +1046,23 @@ export const useChatMessages = (
             timestamp: new Date(),
             type: "text",
             status: "error",
-            metadata: {},
+            metadata: errorMetadata,
           };
 
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? errorMessage : m))
           );
 
+          const toastDescription = isFallbackError
+            ? ((fallbackDetailsRecord?.["reason"] as string) || errorContent)
+            : error instanceof Error
+            ? error.message
+            : "Failed to get AI response";
+
           toast({
             variant: "destructive",
             title: errorTitle,
-            description:
-              error instanceof Error
-                ? error.message
-                : "Failed to get AI response",
+            description: toastDescription,
           });
         } finally {
           setIsTyping(false);

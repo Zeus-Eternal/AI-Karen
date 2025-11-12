@@ -38,7 +38,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   enableAnalytics = false,
   enableExport = false,
   enableSharing = false,
-  enableCollaboration: _enableCollaboration = false,
   maxMessages = 1000,
   placeholder = DEFAULT_PLACEHOLDER,
   welcomeMessage,
@@ -154,7 +153,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const { artifacts, approveArtifact, rejectArtifact, applyArtifact } = useArtifactManagement({
     artifacts: copilotArtifacts,
     updateArtifact: (artifactId: string, updates: Partial<CopilotArtifact>) => {
-      setCopilotArtifacts(prev => prev.map(artifact => 
+      setCopilotArtifacts(prev => prev.map(artifact =>
         artifact.id === artifactId ? { ...artifact, ...updates } : artifact
       ));
     },
@@ -164,30 +163,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   });
 
   // Chat context for CopilotActions
-  const chatContext: ChatContext = useMemo(
-    () => ({
-      selectedText,
-      currentFile: undefined,
-      language: settings.language,
-      recentMessages: messages.slice(-5).map((m) => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp,
-      })),
-      codeContext: {
-        hasCode: messages.some((m) => m.type === "code"),
-        language: messages.find((m) => m.language)?.language,
-        errorCount: messages.filter((m) => m.status === "error").length,
-      },
-      conversationContext: {
-        topic: messages.length > 0 ? "ongoing" : undefined,
-        intent: "chat",
-        complexity:
-          messages.length > 10 ? "complex" : messages.length > 3 ? "medium" : "simple",
-      },
-    }),
-    [messages, selectedText, settings.language]
-  );
+  const chatContext: ChatContext = useMemo(() => ({
+    selectedText,
+    currentFile: undefined,
+    language: settings.language,
+    recentMessages: messages.slice(-5).map((m) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+    })),
+    codeContext: {
+      hasCode: messages.some((m) => m.type === "code"),
+      language: messages.find((m) => m.language)?.language,
+      errorCount: messages.filter((m) => m.status === "error").length,
+    },
+    conversationContext: {
+      topic: messages.length > 0 ? "ongoing" : undefined,
+      intent: "chat",
+      complexity: messages.length > 10 ? "complex" : messages.length > 3 ? "medium" : "simple",
+    },
+  }), [messages, selectedText, settings.language]);
 
   // Form submission handler
   const handleSubmit = useCallback(
@@ -320,6 +315,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 onArtifactApprove={approveArtifact}
                 onArtifactReject={rejectArtifact}
                 onArtifactApply={applyArtifact}
+                messagesEndRef={messagesEndRef}
               />
             </TabsContent>
 
@@ -373,6 +369,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onArtifactApprove={approveArtifact}
             onArtifactReject={rejectArtifact}
             onArtifactApply={applyArtifact}
+            messagesEndRef={messagesEndRef}
           />
         )}
       </Card>

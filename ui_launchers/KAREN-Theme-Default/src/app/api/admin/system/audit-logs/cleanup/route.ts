@@ -11,6 +11,11 @@ import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAuditCleanupManager, auditCleanup } from '@/lib/audit/audit-cleanup';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
 import type { AdminApiResponse } from '@/types/admin';
+import type { CleanupResult, CleanupStats } from '@/lib/audit/audit-cleanup';
+
+type AuditCleanupManagerInstance = ReturnType<typeof getAuditCleanupManager>;
+type ArchiveStats = Awaited<ReturnType<AuditCleanupManagerInstance['getArchiveStats']>>;
+type OptimizationResult = Awaited<ReturnType<AuditCleanupManagerInstance['optimizeAuditTable']>>;
 
 /* ---------------- utilities ---------------- */
 
@@ -95,13 +100,15 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           cleanupManager.getCleanupStats(),
           cleanupManager.getArchiveStats(),
         ]);
-        return NextResponse.json(
-          {
-            success: true,
-            data: { cleanup_stats: stats, archive_stats: archiveStats },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          cleanup_stats: CleanupStats;
+          archive_stats: ArchiveStats;
+        }> = {
+          success: true,
+          data: { cleanup_stats: stats, archive_stats: archiveStats },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'cleanup': {
@@ -142,21 +149,25 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           }
         );
 
-        return NextResponse.json(
-          {
-            success: true,
-            data: {
-              cleanup_result: result,
-              dry_run,
-              warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
-            },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          cleanup_result: CleanupResult;
+          dry_run: boolean;
+          warning?: string;
+        }> = {
+          success: true,
+          data: {
+            cleanup_result: result,
+            dry_run,
+            warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
+          },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'cleanup_default_policies': {
         const results = await cleanupManager.cleanupWithDefaultPolicies(dry_run);
+        const totalDeleted = results.reduce((sum, entry) => sum + entry.deleted_count, 0);
 
         await auditLogger.log(
           context.user.user_id,
@@ -166,24 +177,28 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
             details: {
               dry_run,
               policy_results: results,
-              total_deleted: results.reduce((sum: number, r: unknown) => sum + (r.deleted_count || 0), 0),
+              total_deleted: totalDeleted,
             },
             request,
           }
         );
 
-        return NextResponse.json(
-          {
-            success: true,
-            data: {
-              policy_results: results,
-              dry_run,
-              total_deleted: results.reduce((sum: number, r: unknown) => sum + (r.deleted_count || 0), 0),
-              warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
-            },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          policy_results: CleanupResult[];
+          dry_run: boolean;
+          total_deleted: number;
+          warning?: string;
+        }> = {
+          success: true,
+          data: {
+            policy_results: results,
+            dry_run,
+            total_deleted: totalDeleted,
+            warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
+          },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'archive': {
@@ -203,13 +218,12 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
 
         const result = await cleanupManager.archiveLogs(retention_days, resource_types, actionFilter);
 
-        return NextResponse.json(
-          {
-            success: true,
-            data: { archive_result: result },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{ archive_result: CleanupResult }> = {
+          success: true,
+          data: { archive_result: result },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'optimize': {
@@ -220,13 +234,12 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
           request,
         });
 
-        return NextResponse.json(
-          {
-            success: true,
-            data: { optimization_result: result },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{ optimization_result: OptimizationResult }> = {
+          success: true,
+          data: { optimization_result: result },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'schedule_cleanup': {
@@ -242,32 +255,38 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
 
       case 'cleanup_auth_logs': {
         const result = await auditCleanup.cleanupAuthLogs(dry_run);
-        return NextResponse.json(
-          {
-            success: true,
-            data: {
-              cleanup_result: result,
-              dry_run,
-              warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
-            },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          cleanup_result: CleanupResult;
+          dry_run: boolean;
+          warning?: string;
+        }> = {
+          success: true,
+          data: {
+            cleanup_result: result,
+            dry_run,
+            warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
+          },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'cleanup_user_logs': {
         const result = await auditCleanup.cleanupUserLogs(dry_run);
-        return NextResponse.json(
-          {
-            success: true,
-            data: {
-              cleanup_result: result,
-              dry_run,
-              warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
-            },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          cleanup_result: CleanupResult;
+          dry_run: boolean;
+          warning?: string;
+        }> = {
+          success: true,
+          data: {
+            cleanup_result: result,
+            dry_run,
+            warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
+          },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       case 'cleanup_older_than': {
@@ -287,17 +306,20 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         }
 
         const result = await auditCleanup.cleanupOlderThan(days, dry_run);
-        return NextResponse.json(
-          {
-            success: true,
-            data: {
-              cleanup_result: result,
-              dry_run,
-              warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
-            },
-          } as AdminApiResponse<any>,
-          noStore()
-        );
+        const response: AdminApiResponse<{
+          cleanup_result: CleanupResult;
+          dry_run: boolean;
+          warning?: string;
+        }> = {
+          success: true,
+          data: {
+            cleanup_result: result,
+            dry_run,
+            warning: dry_run ? 'This was a dry run. No data was actually deleted.' : undefined,
+          },
+        };
+
+        return NextResponse.json(response, noStore());
       }
 
       default: {
@@ -410,28 +432,44 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
       });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          cleanup_stats: cleanupStats,
-          archive_stats: archiveStats,
-          recommendations,
-          retention_policies: {
-            security_events: '2 years (730 days)',
-            admin_actions: '1 year (365 days)',
-            user_management: '6 months (180 days)',
-            authentication: '90 days',
-            general: '30 days',
-          },
+    const response: AdminApiResponse<{
+      cleanup_stats: CleanupStats;
+      archive_stats: ArchiveStats;
+      recommendations: Array<{
+        type: 'cleanup' | 'archive' | 'optimize';
+        priority: 'low' | 'medium' | 'high';
+        message: string;
+        action: CleanupActions | 'archive';
+        parameters: Record<string, unknown>;
+      }>;
+      retention_policies: {
+        security_events: string;
+        admin_actions: string;
+        user_management: string;
+        authentication: string;
+        general: string;
+      };
+    }> = {
+      success: true,
+      data: {
+        cleanup_stats: cleanupStats,
+        archive_stats: archiveStats,
+        recommendations,
+        retention_policies: {
+          security_events: '2 years (730 days)',
+          admin_actions: '1 year (365 days)',
+          user_management: '6 months (180 days)',
+          authentication: '90 days',
+          general: '30 days',
         },
-        meta: {
-          message: 'Audit cleanup information retrieved successfully',
-          last_updated: new Date().toISOString(),
-        },
-      } as AdminApiResponse<any>,
-      noStore()
-    );
+      },
+      meta: {
+        message: 'Audit cleanup information retrieved successfully',
+        last_updated: new Date().toISOString(),
+      },
+    };
+
+    return NextResponse.json(response, noStore());
   } catch (error) {
     return NextResponse.json(
       {

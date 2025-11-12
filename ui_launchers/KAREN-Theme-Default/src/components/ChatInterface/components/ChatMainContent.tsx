@@ -32,6 +32,7 @@ interface ChatMainContentProps {
   onArtifactApprove: (artifactId: string) => void;
   onArtifactReject: (artifactId: string) => void;
   onArtifactApply: (artifactId: string) => void;
+  messagesEndRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const ChatMainContent: React.FC<ChatMainContentProps> = ({
@@ -58,6 +59,7 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
   onArtifactApprove,
   onArtifactReject,
   onArtifactApply,
+  messagesEndRef,
 }) => {
   return (
     <div className="flex-1 flex flex-col">
@@ -87,10 +89,7 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
         enableCodeAssistance={enableCodeAssistance}
         settings={settings}
         onMessageAction={onMessageAction}
-        onArtifactApprove={onArtifactApprove}
-        onArtifactReject={onArtifactReject}
-        onArtifactApply={onArtifactApply}
-        artifacts={artifacts}
+        messagesEndRef={messagesEndRef}
       />
 
       <ChatInput
