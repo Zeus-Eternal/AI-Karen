@@ -1,5 +1,6 @@
 import axe, {
   type AxeResults,
+  type ElementContext,
   type NodeResult,
   type Result,
   type RunOptions,
@@ -134,7 +135,9 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     };
   }
 
-  private resolveContainer(container: ElementContext): Document | Element {
+  private resolveContainer(
+    container: ElementContext | Document
+  ): Document | Element {
     if (typeof container === "string") {
       return document.querySelector(container) ?? document;
     }
@@ -148,7 +151,7 @@ export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
     }
 
     if (container instanceof NodeList) {
-      return container[0] ?? document;
+      return container.item(0) ?? document;
     }
 
     return document;
