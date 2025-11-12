@@ -709,6 +709,24 @@ class KarenBackendService {
           throw lastFetchError || new Error("Network error");
         }
         if (!response.ok) {
+          const isExpectedExtension404 =
+            this.isExtensionEndpoint(endpoint) &&
+            response.status === 404 &&
+            safeFallback !== undefined;
+
+          if (isExpectedExtension404) {
+            if (this.requestLogging || this.debugLogging) {
+              logger.info(
+                "KarenBackendService optional extension endpoint missing",
+                {
+                  status: response.status,
+                  endpoint,
+                }
+              );
+            }
+            return safeFallback as T;
+          }
+
           // Reduce noise for expected health and extension auth failures
           const isHealthCheck =
             endpoint.includes("/health") ||
