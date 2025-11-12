@@ -2,8 +2,6 @@
 
 import * as React from 'react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +11,13 @@ import { Brain, Loader2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
   });
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

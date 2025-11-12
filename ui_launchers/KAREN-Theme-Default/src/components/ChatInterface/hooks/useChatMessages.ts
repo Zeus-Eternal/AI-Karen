@@ -580,7 +580,7 @@ export const useChatMessages = (
                       );
                     }
                     }
-                  } catch (_error) {
+                  } catch {
                   // Handle non-JSON streaming data
                   if (!data.startsWith("{")) {
                     fullText += data;
@@ -952,6 +952,7 @@ export const useChatMessages = (
       configManager,
       setIsTyping,
       setMessages,
+      messages,
     ]
   );
 
@@ -980,7 +981,7 @@ export const useChatMessages = (
           break;
 
         case "rate_up":
-        case "rate_down":
+        case "rate_down": {
           const rating = action === "rate_up" ? "up" : "down";
           setMessages((prev) =>
             prev.map((m) =>
@@ -1005,6 +1006,7 @@ export const useChatMessages = (
             description: `Message rated ${rating}`,
           });
           break;
+        }
 
         case "regenerate": {
           if (message.role === "assistant") {
