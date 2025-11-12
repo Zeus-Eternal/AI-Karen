@@ -30,7 +30,7 @@ export const usePerformanceContext = (): PerformanceContextValue => {
   return context;
 };
 
-export function withPerformanceMeasurement<P>(
+export function withPerformanceMeasurement<P extends object>(
   Component: React.ComponentType<P>,
   measurementName?: string
 ): React.FC<P> {
