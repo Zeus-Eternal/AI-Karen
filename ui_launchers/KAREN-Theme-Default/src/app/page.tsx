@@ -59,15 +59,6 @@ function AuthenticatedHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const parseView = (
-    sp: ReturnType<typeof useSearchParams> | null
-  ): ActiveView => {
-    const v = sp?.get("view") ?? "";
-    const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
-    return (allowed as readonly string[]).includes(v)
-      ? (v as ActiveView)
-      : "dashboard";
-  };
 
   const activeMainView = useMemo(
     () => parseView(searchParams as unknown),

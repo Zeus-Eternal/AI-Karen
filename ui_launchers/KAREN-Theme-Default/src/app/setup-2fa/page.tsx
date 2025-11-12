@@ -6,13 +6,15 @@ import { useAuth } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
+const NOT_AVAILABLE_MESSAGE = 'Two-factor authentication setup is currently not available.';
+
 export default function Setup2FAPage() {
   const { user } = useAuth();
   const qrUrl = '';
   const [code, setCode] = useState('');
   const message = 'Two-factor authentication setup is currently not available.';
 
-  const handleConfirm = async (e: React.FormEvent) => {
+  const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     // The 2FA flow is intentionally disabled until the backend implementation is ready.
   };
@@ -26,7 +28,7 @@ export default function Setup2FAPage() {
         <Input value={code} onChange={e => setCode(e.target.value)} placeholder="Enter code" />
         <Button type="submit">Confirm</Button>
       </form>
-      {message && <p className="text-sm">{message}</p>}
+      <p className="text-sm">{NOT_AVAILABLE_MESSAGE}</p>
     </div>
   );
 }

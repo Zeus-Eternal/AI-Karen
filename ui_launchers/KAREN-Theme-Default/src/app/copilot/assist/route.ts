@@ -12,7 +12,7 @@ async function handleCopilotRequest(request: NextRequest) {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();
-      } catch (e) {
+      } catch {
         // Body might be empty
       }
     }
@@ -65,7 +65,7 @@ async function handleCopilotRequest(request: NextRequest) {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
@@ -129,7 +129,7 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   return handleCopilotRequest(request);
 }
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {

@@ -50,9 +50,11 @@ export default function ProfilePage() {
           {memoryCount !== null && <div>Total memories: {memoryCount}</div>}
           
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={logout}>Log Out</Button>
+            <Button type="button" variant="secondary" onClick={logout}>
+              Log Out
+            </Button>
           </div>
-          
+
           <div className="text-sm text-gray-600">
             Profile editing and two-factor authentication setup are currently not available.
           </div>

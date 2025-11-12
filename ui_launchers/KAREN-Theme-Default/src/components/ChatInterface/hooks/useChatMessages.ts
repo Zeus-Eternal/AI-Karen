@@ -1109,6 +1109,7 @@ export const useChatMessages = (
       maxMessages,
       toast,
       configManager,
+      messages,
       setIsTyping,
       setMessages,
       messages,
