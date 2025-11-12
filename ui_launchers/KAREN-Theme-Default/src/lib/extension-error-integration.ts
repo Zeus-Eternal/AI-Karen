@@ -8,7 +8,7 @@
 import { logger } from './logger';
 
 export interface ExtensionErrorResponse {
-  fallback_data?: any;
+  fallback_data?: unknown;
   retry?: boolean;
   delay?: number;
   requires_login?: boolean;
@@ -23,7 +23,7 @@ export function handleExtensionError(
   url: string,
   operation: string = 'extension_api'
 ): ExtensionErrorResponse {
-  logger.info(`Handling extension error: ${status} for ${url}`);
+  logger.info(`Handling extension error for ${operation}: ${status} for ${url}`);
 
   // Handle 403 Forbidden errors for extensions
   if (status === 403 && url.includes('/api/extensions')) {
@@ -199,7 +199,7 @@ export function shouldUseExtensionFallback(status: number, url: string): boolean
 /**
  * Get user-friendly message for extension errors
  */
-export function getExtensionErrorMessage(status: number, url: string): string {
+export function getExtensionErrorMessage(status: number, _url: string): string {
   if (status === 403) {
     return 'Extension features are running in read-only mode. Some functionality may be limited.';
   }

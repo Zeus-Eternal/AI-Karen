@@ -20,7 +20,7 @@ export interface ErrorInfo {
   retry_possible?: boolean;
   user_action_required?: boolean;
   error_code?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 export interface ApiErrorResponse {
   error: boolean;
@@ -33,7 +33,7 @@ export interface ApiErrorResponse {
   resolution_steps?: string[];
   retry_possible?: boolean;
   user_action_required?: boolean;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 // Extended Error interface to handle API errors with additional properties

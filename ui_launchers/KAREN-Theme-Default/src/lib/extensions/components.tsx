@@ -152,7 +152,7 @@ export function ExtensionStatusCard({ status }: { status: ExtensionStatus }) {
   const handleExecuteTask = useCallback(async (taskName: string) => {
     try {
       await executeTask(taskName);
-    } catch (_error) {
+    } catch {
       // Handle task execution error
     }
   }, [executeTask]);

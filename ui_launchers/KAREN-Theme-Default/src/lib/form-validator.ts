@@ -250,7 +250,7 @@ export class FormValidator {
   /**
    * Check if a field should be validated on blur
    */
-  shouldValidateOnBlur(field: FormFieldType): boolean {
+  shouldValidateOnBlur(_field: FormFieldType): boolean {
     // All fields should be validated on blur
     return true;
   }

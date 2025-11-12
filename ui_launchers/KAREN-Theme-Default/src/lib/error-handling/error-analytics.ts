@@ -344,18 +344,24 @@ export class ErrorAnalytics {
   }
 
   private sendToAnalyticsServices(metrics: ErrorMetrics) {
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', 'exception', {
-        description: `${metrics.section}: ${metrics.errorMessage}`,
-        fatal: metrics.severity === 'critical',
-        custom_map: {
-          error_id: metrics.errorId,
-          section: metrics.section,
-          category: metrics.category,
-          severity: metrics.severity,
-          recovery_attempts: metrics.recoveryAttempts,
-        },
-      });
+    if (typeof window !== 'undefined') {
+      const analyticsWindow = window as Window &
+        typeof globalThis & { gtag?: (...args: unknown[]) => void };
+      const gtag = analyticsWindow.gtag;
+
+      if (gtag) {
+        gtag('event', 'exception', {
+          description: `${metrics.section}: ${metrics.errorMessage}`,
+          fatal: metrics.severity === 'critical',
+          custom_map: {
+            error_id: metrics.errorId,
+            section: metrics.section,
+            category: metrics.category,
+            severity: metrics.severity,
+            recovery_attempts: metrics.recoveryAttempts,
+          },
+        });
+      }
     }
 
     if (typeof window === 'undefined') {

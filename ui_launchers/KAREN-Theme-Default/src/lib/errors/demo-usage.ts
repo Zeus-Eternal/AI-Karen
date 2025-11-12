@@ -191,6 +191,7 @@ export async function demonstrateErrorHandling() {
   const userService = new UserService();
   try {
     const user = await userService.getUser('123');
+    console.info('Retrieved user for demo', user);
   } catch (error) {
     console.error('Service method failed', error);
   }

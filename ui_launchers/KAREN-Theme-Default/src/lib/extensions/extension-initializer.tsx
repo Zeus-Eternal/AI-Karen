@@ -11,10 +11,6 @@ import { useEffect, useState } from 'react';
 import { extensionIntegration } from './extension-integration';
 import { safeLog, safeError } from '../safe-console';
 
-// Constants for extension initialization
-export const EXTENSION_INIT_TIMEOUT = 5000;
-export const EXTENSION_RETRY_DELAY = 1000;
-
 /**
  * Hook to initialize extension integration service
  */
@@ -86,9 +82,3 @@ export function useExtensionsAvailable() {
   const { initialized, error } = useExtensionInitialization();
   return initialized && !error;
 }
-
-// Utility functions for extension management
-export const extensionUtils = {
-  getInitializationStatus: () => extensionIntegration.initialize,
-  getService: () => extensionIntegration,
-};

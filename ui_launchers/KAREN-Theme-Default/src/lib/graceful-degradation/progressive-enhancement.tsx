@@ -36,24 +36,26 @@ export function withProgressiveEnhancement<P extends object>(
 ) {
   return function ProgressivelyEnhancedComponent(props: P) {
     const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
-    const [cachedData, setCachedData] = React.useState<any>(null);
-    const [retryCount, setRetryCount] = React.useState(0);
+    const [cachedData, setCachedData] = React.useState<unknown>(null);
+    const cacheKey = options.cacheKey;
+    const enableCaching = options.enableCaching ?? false;
+    const featureNameRef = React.useRef(featureName);
 
     // Load cached data if caching is enabled
     React.useEffect(() => {
-      if (options.enableCaching && options.cacheKey) {
-        const cached = extensionCache.get(options.cacheKey);
+      if (enableCaching && cacheKey) {
+        const cached = extensionCache.get(cacheKey);
         if (cached) {
           setCachedData(cached);
         }
       }
-    }, [options.cacheKey, options.enableCaching]);
+    }, [cacheKey, enableCaching]);
 
     const handleRetry = React.useCallback(() => {
-      setRetryCount(prev => prev + 1);
+      setCachedData(null);
       // Try to re-enable the feature flag
-      featureFlagManager.setFlag(featureName, true);
-    }, [featureName]);
+      featureFlagManager.setFlag(featureNameRef.current, true);
+    }, []);
 
     if (!isEnabled) {
       switch (fallbackBehavior) {
@@ -126,7 +128,7 @@ export function ProgressiveFeature({
   const { isEnabled, fallbackBehavior } = useFeatureFlag(featureName);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
-  const [cachedData, setCachedData] = React.useState<any>(null);
+  const [cachedData, setCachedData] = React.useState<unknown>(null);
 
   // Simulate feature loading/detection
   React.useEffect(() => {
