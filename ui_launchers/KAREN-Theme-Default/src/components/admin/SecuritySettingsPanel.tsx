@@ -124,6 +124,7 @@ export default function SecuritySettingsPanel() {
         setSettings({ ...defaultSettings, ...data });
       }
     } catch (error) {
+      console.error('Failed to load security settings', error);
       toast({
         title: 'Error',
         description: 'Failed to load security settings',
@@ -197,6 +198,7 @@ export default function SecuritySettingsPanel() {
         throw new Error(error.message || 'Failed to save settings');
       }
     } catch (error) {
+      console.error('Failed to save security settings', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save settings',

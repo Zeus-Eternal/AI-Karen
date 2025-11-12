@@ -123,9 +123,23 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
             <Button variant="outline" onClick={() => onQuickAction?.("optimize", `Optimize this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
               <Zap className="h-4 w-4 mr-2" />
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("docs", `Generate documentation for this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
-              <FileText className="h-4 w-4 mr-2" />
-            </Button>
+            {enableDocGeneration && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  onQuickAction?.(
+                    "docs",
+                    `Generate documentation for this ${settings?.language || "code"} code:\n\n\`\`\`${
+                      settings?.language || "code"
+                    }\n${codeValue}\n\`\`\``,
+                    "documentation"
+                  )
+                }
+                disabled={!codeValue.trim() || isTyping || !onQuickAction}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+              </Button>
+            )}
           </div>
         </div>
 

@@ -157,9 +157,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         artifact.id === artifactId ? { ...artifact, ...updates } : artifact
       ));
     },
-    removeArtifact: (artifactId: string) => {
-      setCopilotArtifacts(prev => prev.filter(artifact => artifact.id !== artifactId));
-    },
   });
 
   // Chat context for CopilotActions

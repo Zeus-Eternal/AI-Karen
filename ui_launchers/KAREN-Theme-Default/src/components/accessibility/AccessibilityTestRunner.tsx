@@ -191,12 +191,12 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
   const renderResults = () => {
     if (!testResults) return null;
 
-    if (testResults.error) {
+    if (testResults.error || testResults._error) {
       return (
         <Alert variant="destructive">
           <div className="flex items-start">
             <XCircle className="h-4 w-4 mt-0.5" />
-            <AlertDescription className="ml-2">{testResults.error}</AlertDescription>
+            <AlertDescription className="ml-2">{testResults.error || testResults._error}</AlertDescription>
           </div>
         </Alert>
       );
