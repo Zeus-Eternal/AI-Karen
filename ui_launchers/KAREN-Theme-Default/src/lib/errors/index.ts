@@ -83,7 +83,7 @@ export async function handleError(
 /**
  * Create an error-handled version of an async function
  */
-export function withErrorHandling<T extends any[], R>(
+export function withErrorHandling<T extends unknown[], R>(
   fn: (...args: T) => Promise<R>,
   options?: {
     maxRetryAttempts?: number;
