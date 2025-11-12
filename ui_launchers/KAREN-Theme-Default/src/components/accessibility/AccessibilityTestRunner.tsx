@@ -22,6 +22,32 @@ import {
 import { useAccessibilityTestRunner } from "../../hooks/use-accessibility-testing";
 import { cn } from "../../lib/utils";
 
+interface AccessibilityViolation {
+  impact?: string;
+  description?: string;
+  id?: string;
+  help?: string;
+  elements?: Array<unknown>;
+  nodes?: Array<unknown>;
+}
+
+interface AccessibilityTestSummary {
+  passes?: number;
+  violations?: number;
+  incomplete?: number;
+  inapplicable?: number;
+  [key: string]: unknown;
+}
+
+interface AccessibilityTestResult {
+  passed?: boolean;
+  score?: number;
+  violations?: AccessibilityViolation[];
+  summary?: AccessibilityTestSummary;
+  error?: string;
+  [key: string]: unknown;
+}
+
 type TestType = "basic" | "keyboard" | "screenReader" | "colorContrast";
 
 interface AxeViolation {
@@ -57,7 +83,7 @@ interface AccessibilityTestRunnerProps {
 export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerProps) {
   const [testType, setTestType] = useState<TestType>("basic");
   const [customHtml, setCustomHtml] = useState<string>("");
-  const [testResults, setTestResults] = useState<AccessibilityTestResult>(null);
+  const [testResults, setTestResults] = useState<AccessibilityTestResult | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"html" | "results">("html");
 
@@ -112,23 +138,23 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
       container.innerHTML = customHtml;
       document.body.appendChild(container);
 
-      let results: AccessibilityTestResult;
-      switch (testType) {
-        case "basic":
-          results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
-          break;
-        case "keyboard":
-          results = (await runKeyboardTest(container)) as AccessibilityTestResult;
-          break;
-        case "screenReader":
-          results = (await runScreenReaderTest(container)) as AccessibilityTestResult;
-          break;
-        case "colorContrast":
-          results = (await runColorContrastTest(container)) as AccessibilityTestResult;
-          break;
-        default:
-          results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
-      }
+    let results: AccessibilityTestResult | null = null;
+    switch (testType) {
+      case "basic":
+        results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
+        break;
+      case "keyboard":
+        results = (await runKeyboardTest(container)) as AccessibilityTestResult;
+        break;
+      case "screenReader":
+        results = (await runScreenReaderTest(container)) as AccessibilityTestResult;
+        break;
+      case "colorContrast":
+        results = (await runColorContrastTest(container)) as AccessibilityTestResult;
+        break;
+      default:
+        results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
+    }
       setTestResults(results);
       setActiveTab("results");
     } catch (error) {
@@ -235,7 +261,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {testResults.violations?.map((violation: AxeViolation, index: number) => (
+                  {testResults.violations.map((violation, index) => (
                     <div key={index} className="border-l-4 border-l-red-500 pl-4">
                       <div className="flex items-center space-x-2 mb-1">
                         <Badge variant="destructive">{violation.impact ?? "unknown"}</Badge>

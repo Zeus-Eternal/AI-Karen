@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
     const bases = CANDIDATE_BACKENDS;
-    let lastErr: unknown = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     const unauthorizedStatus = new Set([401, 403]);
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-ignore Node/undici hints
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           }),
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-ignore Node/undici hints
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           })
@@ -52,9 +51,8 @@ export async function GET(request: NextRequest) {
         if (healthResponse.status === 'fulfilled' || providersResponse.status === 'fulfilled') {
           break;
         }
-      } catch (err) {
+      } catch {
         clearTimeout(timeout);
-        lastErr = err;
         // try next base
         continue;
       }
@@ -141,7 +139,7 @@ export async function GET(request: NextRequest) {
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });
-  } catch (error) {
+  } catch (_error) {
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
       { 

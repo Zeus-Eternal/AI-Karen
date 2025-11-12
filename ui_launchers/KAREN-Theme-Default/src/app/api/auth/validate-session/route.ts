@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 //   checkBackendHealth,
 //   getConnectionStatus,
 // } from '@/app/api/_utils/backend';
-import { ConnectionError } from '@/lib/connection/connection-manager';
 
 interface DatabaseConnectivityResult {
   isConnected: boolean;
@@ -176,17 +175,6 @@ export async function GET(request: NextRequest) {
     const cookieHeader = request.headers.get('cookie');
     if (cookieHeader) headers['Cookie'] = cookieHeader;
 
-    const connectionOptions = {
-      timeout: timeoutConfig.sessionValidation,
-      retryAttempts: retryPolicy.maxAttempts,
-      retryDelay: retryPolicy.baseDelay,
-      exponentialBackoff: retryPolicy.jitterEnabled,
-      headers,
-      // extra retry guards for transient failures
-      shouldRetry: (status?: number, error?: unknown) =>
-        (typeof status === 'number' && isRetryableStatus(status)) || isRetryableError(error),
-    };
-
     let result: {
       data: unknown;
       statusCode?: number;
@@ -276,7 +264,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(payload, { status: 200 });
-  } catch (error) {
+  } catch (_error) {
     const totalResponseTime = Date.now() - startTime;
     const databaseConnectivity = await testDatabaseConnectivity();
 

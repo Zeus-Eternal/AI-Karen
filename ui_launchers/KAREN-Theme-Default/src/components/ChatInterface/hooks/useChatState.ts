@@ -7,13 +7,24 @@ import { useInputPreservation } from "@/hooks/use-input-preservation";
 import { safeDebug, safeError } from "@/lib/safe-console";
 
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (initialMessages.length > 0) {
-      return initialMessages;
-    }
+  const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-    if (welcomeMessage) {
-      return [
+  const sessionIdRef = useRef<string | null>(null);
+  if (!sessionIdRef.current) {
+    sessionIdRef.current = generateUUID();
+  }
+
+  const conversationIdRef = useRef<string | null>(null);
+  if (!conversationIdRef.current) {
+    conversationIdRef.current = generateUUID();
+  }
+
+  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  if (initialMessagesRef.current === null) {
+    if (initialMessages.length > 0) {
+      initialMessagesRef.current = initialMessages;
+    } else if (welcomeMessage) {
+      initialMessagesRef.current = [
         {
           id: `welcome-${Date.now()}`,
           role: "assistant",
@@ -23,61 +34,36 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
           metadata: { confidence: 1.0 },
         },
       ];
+    } else {
+      initialMessagesRef.current = [];
     }
+  }
 
-    return [];
-  });
+  const restoredInputRef = useRef<string | null>(null);
+  if (restoredInputRef.current === null) {
+    restoredInputRef.current = restoreInput();
+  }
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessagesRef.current ?? []);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [sessionId, setSessionId] = useState<string>(() => generateUUID());
-  const [conversationId, setConversationId] = useState<string>(() => generateUUID());
+  const [sessionId, setSessionId] = useState<string | null>(sessionIdRef.current);
+  const [conversationId, setConversationId] = useState<string | null>(conversationIdRef.current);
   const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRoutingHistory, setShowRoutingHistory] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(restoredInputRef.current ?? "");
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");
   const [sessionStartTime] = useState(() => Date.now());
-  
+
   // Refs for media recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Input preservation
-  const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
-
-  const hasInitializedRef = useRef(false);
-
-  // Restore preserved input and ensure welcome message for empty chats
-  useEffect(() => {
-    if (hasInitializedRef.current) {
-      return;
-    }
-
-    hasInitializedRef.current = true;
-
-    if (welcomeMessage && initialMessages.length === 0 && messages.length === 0) {
-      setMessages([
-        {
-          id: `welcome-${Date.now()}`,
-          role: "assistant",
-          content: welcomeMessage,
-          timestamp: new Date(),
-          type: "text",
-          metadata: { confidence: 1.0 },
-        },
-      ]);
-    }
-
-    const preserved = restoreInput();
-    if (preserved) {
-      setInputValue(preserved);
-    }
-  }, [initialMessages.length, welcomeMessage, messages.length, restoreInput]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

@@ -315,7 +315,6 @@ export function VirtualizedUserTable({
   itemHeight = 60,
   overscan = 6,
 }: VirtualizedUserTableProps) {
-  const { hasRole: _hasRole } = useRole(); // reserved for future column gating
   const columns = useMemo(() => buildColumns(), []);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);

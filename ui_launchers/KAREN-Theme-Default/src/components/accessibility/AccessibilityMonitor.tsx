@@ -38,7 +38,6 @@ export function AccessibilityMonitor({
   const {
     violations,
     warnings,
-    report: _report,
     hasIssues,
     runTest,
   } = useAccessibilityMonitor(containerRef, enabled);

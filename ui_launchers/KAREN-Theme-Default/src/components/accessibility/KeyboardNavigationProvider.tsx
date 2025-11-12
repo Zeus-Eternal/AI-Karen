@@ -1,30 +1,11 @@
 "use client";
 
-import React, { createContext, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useKeyboardNavigation } from '../../hooks/use-keyboard-navigation';
-
-interface KeyboardNavigationContextValue {
-  // Navigation state
-  currentFocusIndex: number;
-  totalItems: number;
-  
-  // Navigation methods
-  moveNext: () => void;
-  movePrevious: () => void;
-  moveFirst: () => void;
-  moveLast: () => void;
-  moveTo: (index: number) => void;
-  
-  // Registration methods
-  registerNavigationContainer: (element: HTMLElement) => (() => void) | void;
-  unregisterNavigationContainer: () => void;
-  
-  // Settings
-  enabled: boolean;
-  setEnabled: (enabled: boolean) => void;
-}
-
-export const KeyboardNavigationContext = createContext<KeyboardNavigationContextValue | undefined>(undefined);
+import {
+  KeyboardNavigationContext,
+  type KeyboardNavigationContextValue,
+} from './KeyboardNavigationContext';
 
 interface KeyboardNavigationProviderProps {
   children: React.ReactNode;

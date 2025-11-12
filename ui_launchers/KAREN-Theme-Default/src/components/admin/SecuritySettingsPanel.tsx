@@ -114,6 +114,7 @@ export default function SecuritySettingsPanel() {
   const [hasChanges, setHasChanges] = useState(false);
   const [showResolvedAlerts, setShowResolvedAlerts] = useState(false);
   const { toast } = useToast();
+  // Load security settings and data
   const loadSecuritySettings = useCallback(async () => {
     setLoading(true);
     try {
@@ -140,7 +141,7 @@ export default function SecuritySettingsPanel() {
         setAlerts(data);
       }
     } catch {
-      // Handle error silently
+      /* silent */
     }
   }, []);
   const loadBlockedIPs = useCallback(async () => {
@@ -151,14 +152,14 @@ export default function SecuritySettingsPanel() {
         setBlockedIPs(data);
       }
     } catch {
-      // Handle error silently
+      /* silent */
     }
   }, []);
-  // Load security settings and data
+
   useEffect(() => {
-    loadSecuritySettings();
-    loadSecurityAlerts();
-    loadBlockedIPs();
+    void loadSecuritySettings();
+    void loadSecurityAlerts();
+    void loadBlockedIPs();
   }, [loadSecuritySettings, loadSecurityAlerts, loadBlockedIPs]);
   const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
@@ -219,7 +220,7 @@ export default function SecuritySettingsPanel() {
           description: 'Alert resolved successfully'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to resolve alert',
@@ -239,7 +240,7 @@ export default function SecuritySettingsPanel() {
           description: 'IP address unblocked successfully'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to unblock IP address',
@@ -261,7 +262,7 @@ export default function SecuritySettingsPanel() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to export security report',

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,8 @@ function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('Password reset is currently not available. Please contact an administrator.');
-  const success = '';
-  const isLoading = false;
+  const [success] = useState('');
+  const [isLoading] = useState(false);
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();

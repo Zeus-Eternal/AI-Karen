@@ -71,10 +71,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               debounceMs: 500,
               maxRetries: 3,
             }}
-            onErrorAnalyzed={(_analysis) => {
-            }}
-            onAnalysisError={(_error) => {
-            }}
+            onErrorAnalyzed={() => {}}
+            onAnalysisError={() => {}}
             maxGlobalErrors={10}
           >
             <AuthProvider>
