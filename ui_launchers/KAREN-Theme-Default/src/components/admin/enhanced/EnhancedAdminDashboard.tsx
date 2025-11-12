@@ -129,7 +129,11 @@ export function EnhancedAdminDashboard({
 
   // Load data on mount
   useEffect(() => {
-    loadDashboardData();
+    const timeoutId = window.setTimeout(() => {
+      void loadDashboardData();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [loadDashboardData]);
 
   // Access control
