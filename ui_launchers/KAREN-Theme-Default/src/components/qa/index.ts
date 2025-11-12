@@ -12,6 +12,6 @@
 export { QualityAssuranceDashboard } from './QualityAssuranceDashboard';
 export type {
   QualityMetrics,
-  QualityTrend,
   QualityGate,
 } from './QualityAssuranceDashboard';
+export type { QualityTrend } from '@/lib/qa/quality-metrics-collector';
