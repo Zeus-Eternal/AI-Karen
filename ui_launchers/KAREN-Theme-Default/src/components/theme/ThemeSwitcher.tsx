@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { Monitor, Moon, Sun, Settings } from 'lucide-react';
 import { useTheme } from '@/providers/theme-hooks';
+import type { Density, Theme } from '@/providers/theme-context';
 import { EnhancedButton } from '../ui/enhanced/button';
 import { EnhancedSelect, EnhancedSelectContent, EnhancedSelectItem, EnhancedSelectTrigger, EnhancedSelectValue } from '../ui/enhanced/select';
 import { EnhancedCard, EnhancedCardContent, EnhancedCardHeader, EnhancedCardTitle } from '../ui/enhanced/card';
@@ -36,10 +37,23 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
       { value: 'spacious', label: 'Spacious' },
     ] as const;
 
+    const isThemeValue = (value: string): value is Theme =>
+      themeOptions.some((option) => option.value === value);
+
+    const isDensityValue = (value: string): value is Density =>
+      densityOptions.some((option) => option.value === value);
+
     if (variant === 'dropdown') {
       return (
         <div ref={ref} className={cn('flex items-center gap-[var(--space-sm)]', className)} {...props}>
-          <EnhancedSelect value={theme} onValueChange={(value) => setTheme(value as unknown)}>
+          <EnhancedSelect
+            value={theme}
+            onValueChange={(value) => {
+              if (isThemeValue(value)) {
+                setTheme(value);
+              }
+            }}
+          >
             <EnhancedSelectTrigger size={size} className="w-[140px]">
               <div className="flex items-center gap-2">
                 {isSystemTheme ? (
@@ -65,7 +79,14 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
           </EnhancedSelect>
 
           {showDensityControl && (
-            <EnhancedSelect value={density} onValueChange={(value) => setDensity(value as unknown)}>
+            <EnhancedSelect
+              value={density}
+              onValueChange={(value) => {
+                if (isDensityValue(value)) {
+                  setDensity(value);
+                }
+              }}
+            >
               <EnhancedSelectTrigger size={size} className="w-[140px]">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 " />
@@ -161,7 +182,14 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
 
         {showDensityControl && (
           <div className="ml-2 pl-2 border-l border-[var(--color-neutral-300)] dark:border-[var(--color-neutral-700)]">
-            <EnhancedSelect value={density} onValueChange={(value) => setDensity(value as unknown)}>
+            <EnhancedSelect
+              value={density}
+              onValueChange={(value) => {
+                if (isDensityValue(value)) {
+                  setDensity(value);
+                }
+              }}
+            >
               <EnhancedSelectTrigger size={size} variant="ghost" className="w-auto min-w-[100px]">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 " />
