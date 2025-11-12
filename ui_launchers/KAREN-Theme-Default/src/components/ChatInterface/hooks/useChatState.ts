@@ -9,24 +9,15 @@ import { safeDebug, safeError } from "@/lib/safe-console";
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  const sessionIdRef = useRef<string | null>(null);
-  if (!sessionIdRef.current) {
-    sessionIdRef.current = generateUUID();
-  }
-
-  const conversationIdRef = useRef<string | null>(null);
-  if (!conversationIdRef.current) {
-    conversationIdRef.current = generateUUID();
-  }
-
-  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
-  if (initialMessagesRef.current === null) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (initialMessages.length > 0) {
-      initialMessagesRef.current = initialMessages;
-    } else if (welcomeMessage) {
-      initialMessagesRef.current = [
+      return initialMessages;
+    }
+
+    if (welcomeMessage) {
+      return [
         {
-          id: `welcome-${Date.now()}`,
+          id: generateUUID(),
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(),
@@ -34,28 +25,21 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
           metadata: { confidence: 1.0 },
         },
       ];
-    } else {
-      initialMessagesRef.current = [];
     }
-  }
 
-  const restoredInputRef = useRef<string | null>(null);
-  if (restoredInputRef.current === null) {
-    restoredInputRef.current = restoreInput();
-  }
-
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessagesRef.current ?? []);
+    return [];
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(sessionIdRef.current);
-  const [conversationId, setConversationId] = useState<string | null>(conversationIdRef.current);
+  const [sessionId, setSessionId] = useState<string | null>(() => generateUUID());
+  const [conversationId, setConversationId] = useState<string | null>(() => generateUUID());
   const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRoutingHistory, setShowRoutingHistory] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [inputValue, setInputValue] = useState(restoredInputRef.current ?? "");
+  const [inputValue, setInputValue] = useState(() => restoreInput() ?? "");
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");

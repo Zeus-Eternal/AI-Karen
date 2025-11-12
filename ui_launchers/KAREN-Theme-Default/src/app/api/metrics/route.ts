@@ -161,20 +161,20 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // kari_http_request_duration_seconds (histogram with path)
     const httpBounds = [0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    requestDurationEntries.forEach(([path, d]) => {
+    requestDurationEntries.forEach(([path, durationMetrics]) => {
       emitHistogram(
         lines,
         'kari_http_request_duration_seconds',
         'HTTP request duration in seconds',
         { path: esc(path) },
         {
-          buckets: durationMetrics.buckets,
-          sum: n(durationMetrics.sum),
-          count: n(durationMetrics.count),
+          buckets: durationMetrics?.buckets,
+          sum: n(durationMetrics?.sum),
+          count: n(durationMetrics?.count),
         },
         httpBounds,
       );
-    }
+    });
 
     // kari_active_sessions_total (gauge)
     lines.push('# HELP kari_active_sessions_total Number of active user sessions');
@@ -206,9 +206,15 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
     lines.push('# TYPE kari_plugin_executions_total counter');
-    pluginExecutionEntries.forEach(([plugin, d]) => {
-      const successCount = typeof d.success === 'number' ? d.success : Number(d.success ?? 0);
-      const failureCount = typeof d.failure === 'number' ? d.failure : Number(d.failure ?? 0);
+    pluginExecutionEntries.forEach(([plugin, executionStats]) => {
+      const successCount =
+        typeof executionStats.success === 'number'
+          ? executionStats.success
+          : Number(executionStats.success ?? 0);
+      const failureCount =
+        typeof executionStats.failure === 'number'
+          ? executionStats.failure
+          : Number(executionStats.failure ?? 0);
       lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(successCount)}`);
       lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="failure"} ${n(failureCount)}`);
     });
@@ -223,20 +229,20 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // Model response time (histogram by model)
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
-    modelResponseTimeEntries.forEach(([model, d]) => {
+    modelResponseTimeEntries.forEach(([model, responseMetrics]) => {
       emitHistogram(
         lines,
         'kari_model_response_time_seconds',
         'Model response time in seconds',
         { model: esc(model) },
         {
-          buckets: responseMetrics.buckets,
-          sum: n(responseMetrics.sum),
-          count: n(responseMetrics.count),
+          buckets: responseMetrics?.buckets,
+          sum: n(responseMetrics?.sum),
+          count: n(responseMetrics?.count),
         },
         modelBounds,
       );
-    }
+    });
 
     // ----------------------
     // PERFORMANCE METRICS
@@ -313,20 +319,20 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // Database query duration (histogram by query label)
     const dbBounds = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    queryDurationEntries.forEach(([query, d]) => {
+    queryDurationEntries.forEach(([query, queryMetrics]) => {
       emitHistogram(
         lines,
         'kari_database_query_duration_seconds',
         'Database query duration in seconds',
-        { query: esc(query) },
+        { query: esc(String(query)) },
         {
-          buckets: queryMetrics.buckets,
-          sum: n(queryMetrics.sum),
-          count: n(queryMetrics.count),
+          buckets: queryMetrics?.buckets,
+          sum: n(queryMetrics?.sum),
+          count: n(queryMetrics?.count),
         },
         dbBounds,
       );
-    }
+    });
 
     // ----------------------
     // BUSINESS METRICS

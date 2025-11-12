@@ -123,11 +123,28 @@ export function HealthDashboard({
       return undefined;
     }
 
+    const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
+    const deferMonitoringSync = () => {
+      const runSync = () => scheduleMonitoringSync(healthMonitor);
+
+      if (typeof queueMicrotask === "function") {
+        queueMicrotask(runSync);
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        pendingTimeouts.delete(timeoutId);
+        runSync();
+      }, 0);
+
+      pendingTimeouts.add(timeoutId);
+    };
+
     const unsubscribeMetrics =
       healthMonitor.onMetricsUpdate?.((newMetrics) => {
         setMetrics(newMetrics);
         setLastUpdate(new Date().toLocaleTimeString());
-        scheduleMonitoringSync(healthMonitor);
+        deferMonitoringSync();
       }) ?? (() => {});
 
     const unsubscribeAlerts =
@@ -138,13 +155,19 @@ export function HealthDashboard({
     try {
       if (!healthMonitor.getStatus?.().isMonitoring) {
         healthMonitor.start?.();
-        scheduleMonitoringSync(healthMonitor);
+        deferMonitoringSync();
       }
     } catch {
       // noop
     }
 
+    deferMonitoringSync();
+
     return () => {
+      pendingTimeouts.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+
       try {
         unsubscribeMetrics();
       } catch {
