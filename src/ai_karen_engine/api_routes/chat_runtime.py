@@ -14,9 +14,14 @@ from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple, L
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 try:
-    from pydantic import BaseModel, Field, validator
+    from pydantic import BaseModel, Field, field_validator
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
+    # Fallback for field_validator if not available
+    try:
+        from pydantic import validator as field_validator
+    except ImportError:
+        field_validator = None
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.core.config_manager import get_config
@@ -30,8 +35,30 @@ from ai_karen_engine.services.tool_service import (
     get_tool_service as get_global_tool_service,
 )
 
+# Enhanced observability
+try:
+    from ai_karen_engine.services.structured_logging_service import StructuredLogger, LogLevel, LogCategory
+    from ai_karen_engine.services.metrics_service import MetricsService
+    OBSERVABILITY_AVAILABLE = True
+except ImportError:
+    StructuredLogger = None
+    MetricsService = None
+    OBSERVABILITY_AVAILABLE = False
+
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
+
+# Initialize observability services
+_structured_logger: Optional[StructuredLogger] = None
+_metrics_service: Optional[MetricsService] = None
+
+if OBSERVABILITY_AVAILABLE:
+    try:
+        _structured_logger = StructuredLogger(service="chat-runtime", component="api")
+        _metrics_service = MetricsService()
+        logger.info("✅ Observability services initialized (StructuredLogger + MetricsService)")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to initialize observability services: {e}")
 
 
 # Production Configuration
@@ -45,17 +72,6 @@ class ChatConfig:
     RATE_LIMIT_WINDOW = 60  # seconds
     CACHE_SIZE_USER_PREFS = 1000
     CACHE_SIZE_PROVIDER_ROUTING = 100
-    
-    @classmethod
-    def from_app_config(cls):
-        """Load from application configuration"""
-        config = get_config()
-        return cls(
-            max_message_length=getattr(config.chat, 'max_message_length', 10000),
-            max_tokens_default=getattr(config.llm, 'max_tokens', 4096),
-            stream_timeout=getattr(config.chat, 'stream_timeout', 30.0),
-            fallback_enabled=getattr(config.chat, 'fallback_enabled', True)
-        )
 
 
 # Custom Exceptions
@@ -86,14 +102,16 @@ class ChatMessage(BaseModel):
     content: str = Field(..., min_length=1, max_length=ChatConfig.MAX_MESSAGE_LENGTH, description="Message content")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
-    @validator('role')
+
+    @field_validator('role')
+    @classmethod
     def validate_role(cls, v):
         if v not in ['user', 'assistant', 'system']:
             raise ValueError('role must be user, assistant, or system')
         return v
-    
-    @validator('content')
+
+    @field_validator('content')
+    @classmethod
     def sanitize_content(cls, v):
         """Basic content sanitization"""
         import html
@@ -136,8 +154,9 @@ class SanitizedChatRuntimeRequest(BaseModel):
     provider: Optional[str] = Field(default=None, description="Explicit provider requested by the client")
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0, description="Requested sampling temperature")
     max_tokens: Optional[int] = Field(default=None, gt=0, description="Requested maximum tokens for the response")
-    
-    @validator('message')
+
+    @field_validator('message')
+    @classmethod
     def sanitize_message(cls, v):
         """Basic XSS prevention and validation"""
         import html
@@ -146,8 +165,9 @@ class SanitizedChatRuntimeRequest(BaseModel):
         if len(v) > ChatConfig.MAX_MESSAGE_LENGTH:
             raise ValidationError(f"Message exceeds maximum length of {ChatConfig.MAX_MESSAGE_LENGTH} characters")
         return html.escape(v.strip()) if isinstance(v, str) else str(v)
-    
-    @validator('tools')
+
+    @field_validator('tools')
+    @classmethod
     def validate_tools(cls, v):
         """Validate tool names to prevent injection"""
         if not v:
@@ -162,8 +182,9 @@ class SanitizedChatRuntimeRequest(BaseModel):
             # If tool service is unavailable, we'll validate later
             pass
         return v
-    
-    @validator('temperature')
+
+    @field_validator('temperature')
+    @classmethod
     def validate_temperature(cls, v):
         if v is not None and (v < 0.0 or v > 2.0):
             raise ValidationError("Temperature must be between 0.0 and 2.0")
@@ -351,7 +372,23 @@ async def get_chat_orchestrator():
             # Try to initialize memory processor (optional - will degrade gracefully if unavailable)
             memory_processor = None
             try:
-                memory_processor = MemoryProcessor()
+                # Get required services from registry
+                from ai_karen_engine.services.spacy_service import SpacyService
+                from ai_karen_engine.services.distilbert_service import DistilBertService
+                from ai_karen_engine.database.memory_manager import MemoryManager
+
+                service_registry = get_service_registry()
+
+                # Try to get services with graceful fallback
+                spacy_service = service_registry.get_service("spacy_service") or SpacyService()
+                distilbert_service = service_registry.get_service("distilbert_service") or DistilBertService()
+                memory_manager = service_registry.get_service("memory_manager")
+
+                memory_processor = MemoryProcessor(
+                    spacy_service=spacy_service,
+                    distilbert_service=distilbert_service,
+                    memory_manager=memory_manager
+                )
                 logger.info("✅ Memory processor initialized")
             except Exception as e:
                 logger.warning(f"Memory processor unavailable, will operate without memory: {e}")
@@ -383,7 +420,7 @@ async def get_chat_orchestrator():
 def log_chat_event(
     event_type: str,
     user_id: str,
-    correlation_id: str,
+    correlation_id: Optional[str] = None,
     level: str = "info",
     **extra
 ):
@@ -391,11 +428,11 @@ def log_chat_event(
     structured_extra = {
         "event_type": event_type,
         "user_id": user_id,
-        "correlation_id": correlation_id,
+        "correlation_id": correlation_id or "unknown",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         **extra
     }
-    
+
     getattr(logger, level)(f"Chat event: {event_type}", extra=structured_extra)
 
 
@@ -403,10 +440,11 @@ class ChatMetrics:
     """Production metrics collection"""
     
     @staticmethod
-    def record_request(latency: float, success: bool, platform: str, used_fallback: bool = False):
+    def record_request(latency: float, success: bool, platform: Optional[str], used_fallback: bool = False):
         """Record chat request metrics"""
         # In production, this would integrate with your metrics system
-        tags = [f"platform:{platform}", f"success:{success}", f"fallback:{used_fallback}"]
+        platform_tag = platform or "web"
+        tags = [f"platform:{platform_tag}", f"success:{success}", f"fallback:{used_fallback}"]
         logger.info(f"Chat metrics - latency: {latency:.2f}ms", extra={"tags": tags})
     
     @staticmethod
@@ -926,7 +964,7 @@ async def chat_runtime_health() -> Dict[str, Any]:
             if info:
                 services_status[service_name] = {
                     "status": info.status.value,
-                    "initialized": info.initialized,
+                    "initialized": info.instance is not None,
                     "error": info.error_message
                 }
 
