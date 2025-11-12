@@ -43,6 +43,11 @@ export interface AriaRelationshipProps {
   'aria-details'?: string;
 }
 
+export type AriaRelevantValue = NonNullable<AriaAttributes['aria-relevant']>;
+export type ExtendedAriaRelevantValue =
+  | AriaRelevantValue
+  | 'additions text removals';
+
 export interface AriaLiveProps {
   'aria-live'?: 'off' | 'polite' | 'assertive';
   'aria-atomic'?: boolean;
