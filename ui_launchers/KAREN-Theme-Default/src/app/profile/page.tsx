@@ -1,50 +1,40 @@
 "use client";
 
-import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getMemoryService } from '@/services/memoryService';
-
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-  const [memoryCount, setMemoryCount] = useState<number | null>(null);
-  const isClient = typeof window !== 'undefined';
+  const { user, logout, authState } = useAuth()
+  const router = useRouter()
+  const [memoryCount, setMemoryCount] = useState<number | null>(null)
+  const userId = user?.userId ?? null
 
   useEffect(() => {
-    if (!user?.userId) return;
+    if (!userId) {
+      return
+    }
 
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const stats = await getMemoryService().getMemoryStats(user.userId);
-        if (!cancelled) {
-          setMemoryCount(stats.totalMemories);
-        }
-      } catch {
-        if (!cancelled) {
-          setMemoryCount(null);
-        }
-      }
-    };
+    getMemoryService()
+      .getMemoryStats(userId)
+      .then(stats => setMemoryCount(stats.totalMemories))
+      .catch(() => setMemoryCount(null))
+  }, [userId])
 
-    void load();
+  useEffect(() => {
+    if (!authState.isLoading && !user) {
+      router.replace('/login')
+    }
+  }, [authState.isLoading, router, user])
 
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.userId]);
-
-  if (!isClient) {
-    return <div>Loading...</div>;
+  if (authState.isLoading) {
+    return <div>Loading...</div>
   }
 
   if (!user) {
-    router.push('/login');
-    return null;
+    return null
   }
 
   return (

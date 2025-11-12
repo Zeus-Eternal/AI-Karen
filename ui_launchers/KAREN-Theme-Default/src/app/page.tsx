@@ -1,6 +1,6 @@
 "use client";
 import * as React from 'react';
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
@@ -60,31 +60,18 @@ function AuthenticatedHomePage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  type SearchParamsType = ReturnType<typeof useSearchParams>;
-  const parseView = useCallback(
-    (sp: SearchParamsType | null): ActiveView => {
-      const view = sp?.get("view") ?? "";
-      const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
-      return (allowed as readonly string[]).includes(view)
-        ? (view as ActiveView)
-        : "dashboard";
-    },
-    [],
-  );
-
   const activeMainView = useMemo(
-    () => parseView(searchParams as SearchParamsType),
-    [parseView, searchParams],
+    () => parseView(searchParams as unknown),
+    [searchParams]
   );
 
-  const navigate = useCallback(
-    (view: ActiveView) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.set("view", view);
-      router.push(`/?${params.toString()}`);
-    },
-    [router, searchParams],
-  );
+  const navigate = (view: ActiveView) => {
+    const params = new URLSearchParams(
+      searchParams ? searchParams.toString() : ""
+    );
+    params.set("view", view);
+    router.push(`/?${params.toString()}`);
+  };
 
   return (
     <SidebarProvider>

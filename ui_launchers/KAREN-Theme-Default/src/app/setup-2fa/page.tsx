@@ -10,10 +10,13 @@ const NOT_AVAILABLE_MESSAGE = 'Two-factor authentication setup is currently not 
 
 export default function Setup2FAPage() {
   const { user } = useAuth();
+  const qrUrl = '';
   const [code, setCode] = useState('');
+  const message = 'Two-factor authentication setup is currently not available.';
 
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    // The 2FA flow is intentionally disabled until the backend implementation is ready.
   };
 
   if (!user) return null;

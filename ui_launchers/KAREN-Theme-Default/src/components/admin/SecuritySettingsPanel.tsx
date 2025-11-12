@@ -6,14 +6,12 @@
  * This component provides advanced security settings management including
  * MFA requirements, session timeouts, IP restrictions, and security monitoring.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
@@ -117,12 +115,7 @@ export default function SecuritySettingsPanel() {
   const [showResolvedAlerts, setShowResolvedAlerts] = useState(false);
   const { toast } = useToast();
   // Load security settings and data
-  useEffect(() => {
-    loadSecuritySettings();
-    loadSecurityAlerts();
-    loadBlockedIPs();
-  }, []);
-  const loadSecuritySettings = async () => {
+  const loadSecuritySettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/security/settings');
@@ -139,40 +132,47 @@ export default function SecuritySettingsPanel() {
     } finally {
       setLoading(false);
     }
-  };
-  const loadSecurityAlerts = async () => {
+  }, [toast]);
+  const loadSecurityAlerts = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/alerts');
       if (response.ok) {
         const data = await response.json();
         setAlerts(data);
       }
-    } catch (error) {
-    // Handle error silently
-  }
-  };
-  const loadBlockedIPs = async () => {
+    } catch {
+      /* silent */
+    }
+  }, []);
+  const loadBlockedIPs = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/security/blocked-ips');
       if (response.ok) {
         const data = await response.json();
         setBlockedIPs(data);
       }
-    } catch (error) {
-    // Handle error silently
-  }
-  };
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSecuritySettings();
+    void loadSecurityAlerts();
+    void loadBlockedIPs();
+  }, [loadSecuritySettings, loadSecurityAlerts, loadBlockedIPs]);
   const handleSettingsChange = (path: string, value: unknown) => {
     setSettings(prev => {
       const keys = path.split('.');
-      const updated = { ...prev };
-      let current: unknown = updated;
+      const updated: Record<string, unknown> = { ...prev };
+      let current: Record<string, unknown> = updated;
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
+        const key = keys[i];
+        current[key] = { ...(current[key] as Record<string, unknown>) };
+        current = current[key] as Record<string, unknown>;
       }
-      current[keys[keys.length - 1]] = value;
-      return updated;
+      current[keys[keys.length - 1]] = value as unknown;
+      return updated as SecuritySettings;
     });
     setHasChanges(true);
   };
@@ -220,10 +220,10 @@ export default function SecuritySettingsPanel() {
           description: 'Alert resolved successfully'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to resolve alert',
+        description: error instanceof Error ? error.message : 'Failed to resolve alert',
         variant: 'destructive'
       });
     }
@@ -240,10 +240,10 @@ export default function SecuritySettingsPanel() {
           description: 'IP address unblocked successfully'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to unblock IP address',
+        description: error instanceof Error ? error.message : 'Failed to unblock IP address',
         variant: 'destructive'
       });
     }
@@ -262,10 +262,10 @@ export default function SecuritySettingsPanel() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
-        description: 'Failed to export security report',
+        description: error instanceof Error ? error.message : 'Failed to export security report',
         variant: 'destructive'
       });
     }

@@ -2,14 +2,8 @@
 
 import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Code, Eye, EyeOff, AlertCircle, Zap, FileText, Send, Loader2 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { ChatSettings } from "../types";
-
-// Lazy-load Copilot features only when enabled
-const CopilotTextarea = dynamic(() => import("@/components/chat/copilot/CopilotTextarea").then(m => m.CopilotTextarea), { ssr: false });
 
 interface ChatCodeTabProps {
   codeValue: string;
@@ -38,7 +32,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
   onCodeSubmit,
   onQuickAction,
   useCopilotKit,
-  enableDocGeneration,
+  enableDocGeneration: _enableDocGeneration,
 }) => {
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
 

@@ -52,7 +52,7 @@ async function tryFetch(
     const resp = await fetch(url, {
       ...init,
       signal: controller.signal,
-      // @ts-expect-error keepalive is supported by undici in the Node runtime used by Next.js
+      // @ts-expect-error (Node/undici hint)
       keepalive: true,
       cache: 'no-store',
     });

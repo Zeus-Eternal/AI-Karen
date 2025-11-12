@@ -9,15 +9,22 @@ import { safeDebug, safeError } from "@/lib/safe-console";
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  const [sessionId, setSessionId] = useState<string | null>(() => generateUUID());
-  const [conversationId, setConversationId] = useState<string | null>(() => generateUUID());
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (initialMessages.length > 0) {
-      return [...initialMessages];
-    }
+  const sessionIdRef = useRef<string | null>(null);
+  if (!sessionIdRef.current) {
+    sessionIdRef.current = generateUUID();
+  }
 
-    if (welcomeMessage) {
-      return [
+  const conversationIdRef = useRef<string | null>(null);
+  if (!conversationIdRef.current) {
+    conversationIdRef.current = generateUUID();
+  }
+
+  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  if (initialMessagesRef.current === null) {
+    if (initialMessages.length > 0) {
+      initialMessagesRef.current = initialMessages;
+    } else if (welcomeMessage) {
+      initialMessagesRef.current = [
         {
           id: `welcome-${Date.now()}`,
           role: "assistant",
@@ -27,19 +34,28 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
           metadata: { confidence: 1.0 },
         },
       ];
+    } else {
+      initialMessagesRef.current = [];
     }
+  }
 
-    return [];
-  });
+  const restoredInputRef = useRef<string | null>(null);
+  if (restoredInputRef.current === null) {
+    restoredInputRef.current = restoreInput();
+  }
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessagesRef.current ?? []);
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(sessionIdRef.current);
+  const [conversationId, setConversationId] = useState<string | null>(conversationIdRef.current);
   const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRoutingHistory, setShowRoutingHistory] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [inputValue, setInputValue] = useState(() => restoreInput() ?? "");
+  const [inputValue, setInputValue] = useState(restoredInputRef.current ?? "");
   const [codeValue, setCodeValue] = useState("");
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
   const [selectedText, setSelectedText] = useState("");
@@ -157,8 +173,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   useEffect(() => {
     return () => {
       mediaRecorderRef.current?.stop();
-      setIsTyping(false);
-      setIsRecording(false);
     };
   }, []);
 

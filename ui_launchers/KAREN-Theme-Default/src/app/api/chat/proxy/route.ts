@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 
+type HeadersWithRaw = Headers & { raw?: () => Record<string, string[]> };
+
 /** ---------- Config ---------- */
 const BACKEND_BASES = getBackendCandidates();
 const CHAT_TIMEOUT_MS = Number(
@@ -65,9 +67,8 @@ function forwardResponse(origin: Response): Response {
     headers.set(key, value);
   });
 
-  const raw = (origin.headers as unknown as {
-    raw?: () => Record<string, string[]>;
-  }).raw?.();
+  const headersWithRaw = origin.headers as HeadersWithRaw;
+  const raw = headersWithRaw.raw?.();
   const setCookies = raw?.['set-cookie'] ?? [];
   if (setCookies.length > 0) {
     for (const cookie of setCookies) {

@@ -799,7 +799,15 @@ export class ExtensionIntegrationService {
   private async updateAllExtensionStatuses(): Promise<void> {
     try {
       const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic("/api/extensions/system/health");
+      const response = await backend.makeRequestPublic(
+        "/api/extensions/system/health",
+        {},
+        false,
+        webUIConfig.cacheTtl,
+        0,
+        webUIConfig.retryDelay,
+        null
+      );
 
       if (response) {
         for (const [extensionId, status] of this.extensionStatuses.entries()) {

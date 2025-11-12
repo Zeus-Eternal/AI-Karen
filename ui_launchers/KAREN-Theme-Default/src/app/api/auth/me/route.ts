@@ -3,10 +3,22 @@ import { withBackendPath } from "@/app/api/_utils/backend";
 
 const AUTH_TIMEOUT_MS = 10_000;
 
+type AbortSignalConstructor = typeof AbortSignal & { timeout?: (ms: number) => AbortSignal };
+type HeadersWithGetAll = Headers & { getAll?: (name: string) => string[] };
+
+function getErrorName(value: unknown): string {
+  if (typeof value === "object" && value !== null && "name" in value) {
+    const candidate = (value as { name: unknown }).name;
+    return typeof candidate === "string" ? candidate : "";
+  }
+  return "";
+}
+
 function buildTimeoutSignal(ms: number): AbortSignal {
   // Fallback if AbortSignal.timeout isn't available in the runtime
-  if (typeof (AbortSignal as any).timeout === "function") {
-    return (AbortSignal as any).timeout(ms);
+  const AbortSignalWithTimeout = AbortSignal as AbortSignalConstructor;
+  if (typeof AbortSignalWithTimeout.timeout === "function") {
+    return AbortSignalWithTimeout.timeout(ms);
   }
   const controller = new AbortController();
   setTimeout(() => controller.abort(), ms);
@@ -66,9 +78,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Append all Set-Cookie headers from backend
-    const getAll = (backendResp.headers as any).getAll?.bind(
-      backendResp.headers
-    );
+    const headersWithGetAll = backendResp.headers as HeadersWithGetAll;
+    const getAll = headersWithGetAll.getAll?.bind(backendResp.headers);
     const setCookies: string[] = getAll ? getAll("set-cookie") ?? [] : [];
     if (setCookies.length === 0) {
       const single = backendResp.headers.get("set-cookie");
@@ -86,8 +97,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const isTimeout =
-      (error as any)?.name === "AbortError" ||
-      String(message).toLowerCase().includes("timeout");
+      getErrorName(error) === "AbortError" ||
+      message.toLowerCase().includes("timeout");
 
     return NextResponse.json(
       {
