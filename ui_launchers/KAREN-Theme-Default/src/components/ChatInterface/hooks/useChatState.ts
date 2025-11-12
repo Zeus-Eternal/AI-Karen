@@ -7,12 +7,31 @@ import { useInputPreservation } from "@/hooks/use-input-preservation";
 import { safeDebug, safeError } from "@/lib/safe-console";
 
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (initialMessages.length > 0) {
+      return initialMessages;
+    }
+
+    if (welcomeMessage) {
+      return [
+        {
+          id: `welcome-${Date.now()}`,
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(),
+          type: "text",
+          metadata: { confidence: 1.0 },
+        },
+      ];
+    }
+
+    return [];
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>(() => generateUUID());
+  const [conversationId, setConversationId] = useState<string>(() => generateUUID());
   const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRoutingHistory, setShowRoutingHistory] = useState(false);
@@ -31,35 +50,34 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   // Input preservation
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  // Initialize session and conversation IDs with welcome message
-  useEffect(() => {
-    if (!sessionId) {
-      const newSessionId = generateUUID();
-      const newConversationId = generateUUID();
-      
-      setSessionId(newSessionId);
-      setConversationId(newConversationId);
+  const hasInitializedRef = useRef(false);
 
-      // Add welcome message if provided and no initial messages
-      if (welcomeMessage && messages.length === 0) {
-        const welcome: ChatMessage = {
+  // Restore preserved input and ensure welcome message for empty chats
+  useEffect(() => {
+    if (hasInitializedRef.current) {
+      return;
+    }
+
+    hasInitializedRef.current = true;
+
+    if (welcomeMessage && initialMessages.length === 0 && messages.length === 0) {
+      setMessages([
+        {
           id: `welcome-${Date.now()}`,
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(),
           type: "text",
           metadata: { confidence: 1.0 },
-        };
-        setMessages([welcome]);
-      }
-
-      // Restore preserved input
-      const preserved = restoreInput();
-      if (preserved) {
-        setInputValue(preserved);
-      }
+        },
+      ]);
     }
-  }, [sessionId, welcomeMessage, messages.length, restoreInput]);
+
+    const preserved = restoreInput();
+    if (preserved) {
+      setInputValue(preserved);
+    }
+  }, [initialMessages.length, welcomeMessage, messages.length, restoreInput]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -169,8 +187,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   useEffect(() => {
     return () => {
       mediaRecorderRef.current?.stop();
-      setIsTyping(false);
-      setIsRecording(false);
     };
   }, []);
 

@@ -129,7 +129,10 @@ export function EnhancedAdminDashboard({
 
   // Load data on mount
   useEffect(() => {
-    loadDashboardData();
+    const frameId = requestAnimationFrame(() => {
+      void loadDashboardData();
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [loadDashboardData]);
 
   // Access control

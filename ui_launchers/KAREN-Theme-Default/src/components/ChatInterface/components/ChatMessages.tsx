@@ -29,11 +29,11 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   enableCodeAssistance,
   settings,
   onMessageAction,
-  onArtifactApprove = () => {},
-  onArtifactReject = () => {},
-  onArtifactApply = () => {},
+  onArtifactApprove: _onArtifactApprove = () => {},
+  onArtifactReject: _onArtifactReject = () => {},
+  onArtifactApply: _onArtifactApply = () => {},
   messagesEndRef,
-  artifacts = [],
+  artifacts: _artifacts = [],
 }: ChatMessagesProps) => {
   return (
     <ScrollArea className="flex-1 px-4">

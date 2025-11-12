@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useRef, useState } from 'react';
 import { useKeyboardNavigation } from '../../hooks/use-keyboard-navigation';
 
 interface KeyboardNavigationContextValue {
@@ -24,7 +24,7 @@ interface KeyboardNavigationContextValue {
   setEnabled: (enabled: boolean) => void;
 }
 
-const KeyboardNavigationContext = createContext<KeyboardNavigationContextValue | undefined>(undefined);
+export const KeyboardNavigationContext = createContext<KeyboardNavigationContextValue | undefined>(undefined);
 
 interface KeyboardNavigationProviderProps {
   children: React.ReactNode;
@@ -131,54 +131,6 @@ export function KeyboardNavigationProvider({
       {children}
     </KeyboardNavigationContext.Provider>
   );
-}
-
-export function useKeyboardNavigationContext() {
-  const context = useContext(KeyboardNavigationContext);
-  if (context === undefined) {
-    throw new Error('useKeyboardNavigationContext must be used within a KeyboardNavigationProvider');
-  }
-  return context;
-}
-
-// Hook for registering navigation containers
-export function useNavigationContainer() {
-  const { registerNavigationContainer, unregisterNavigationContainer } = useKeyboardNavigationContext();
-  const containerRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (element) {
-      const cleanup = registerNavigationContainer(element);
-      return () => {
-        if (typeof cleanup === 'function') {
-          cleanup();
-        }
-        unregisterNavigationContainer();
-      };
-    }
-  }, [registerNavigationContainer, unregisterNavigationContainer]);
-
-  return containerRef;
-}
-
-// Hook for navigation items
-export function useNavigationItem(index: number) {
-  const { currentFocusIndex, moveTo } = useKeyboardNavigationContext();
-  const isActive = currentFocusIndex === index;
-
-  const itemProps = {
-    'data-keyboard-nav-item': true,
-    'data-nav-index': index,
-    tabIndex: isActive ? 0 : -1,
-    onClick: () => moveTo(index),
-    onFocus: () => moveTo(index),
-  };
-
-  return {
-    isActive,
-    itemProps,
-  };
 }
 
 export default KeyboardNavigationProvider;

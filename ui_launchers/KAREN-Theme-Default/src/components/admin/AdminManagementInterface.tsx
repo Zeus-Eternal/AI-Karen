@@ -139,8 +139,8 @@ export default function AdminManagementInterface() {
             : [];
 
       setAdmins(adminsData.map((a: unknown) => normalizeAdmin(a)));
-    } catch (_error: Error) {
-      if (error?.name !== "AbortError") {
+    } catch (error: unknown) {
+      if ((error as Error | undefined)?.name !== "AbortError") {
         toast({
           title: "Error",
           description: "Failed to load administrators",
@@ -204,10 +204,10 @@ export default function AdminManagementInterface() {
       setShowInviteDialog(false);
       setInviteForm({ email: "", message: "" });
       loadAdmins();
-    } catch (_error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to send invitation",
+        description: error instanceof Error ? error.message : "Failed to send invitation",
         variant: "destructive"
       });
     }
@@ -229,10 +229,10 @@ export default function AdminManagementInterface() {
       setSelectedUserId(null);
       loadAdmins();
       loadUsers();
-    } catch (_error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to promote user",
+        description: error instanceof Error ? error.message : "Failed to promote user",
         variant: "destructive"
       });
     }
@@ -257,10 +257,10 @@ export default function AdminManagementInterface() {
       toast({ title: "Success", description: "Administrator demoted." });
       loadAdmins();
       loadUsers();
-    } catch (_error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to demote administrator",
+        description: error instanceof Error ? error.message : "Failed to demote administrator",
         variant: "destructive"
       });
     }
@@ -284,10 +284,10 @@ export default function AdminManagementInterface() {
         description: `Administrator ${!isActive ? "activated" : "deactivated"}.`
       });
       loadAdmins();
-    } catch (_error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to update administrator status",
+        description: error instanceof Error ? error.message : "Failed to update administrator status",
         variant: "destructive"
       });
     }

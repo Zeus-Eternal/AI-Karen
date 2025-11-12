@@ -71,9 +71,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
               debounceMs: 500,
               maxRetries: 3,
             }}
-            onErrorAnalyzed={(analysis) => {
+            onErrorAnalyzed={(_analysis) => {
             }}
-            onAnalysisError={(error) => {
+            onAnalysisError={(_error) => {
             }}
             maxGlobalErrors={10}
           >

@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminApiResponse, BulkUserOperation } from "@/types/admin";
 import { Download, UploadCloud, AlertTriangle } from "lucide-react";
@@ -153,7 +152,7 @@ export function BulkUserOperations({
         body: JSON.stringify(payload)
       });
 
-      const data: AdminApiResponse<any> = await safeJson(res);
+      const data: AdminApiResponse<Record<string, unknown>> = await safeJson(res);
 
       if (!res.ok || !data?.success) {
         throw new Error(data?.error?.message || "Bulk operation failed");
@@ -180,8 +179,8 @@ export function BulkUserOperations({
 
       // Give the UX a beat, then notify parent
       setTimeout(() => onOperationComplete(), 600);
-    } catch (_err: Error) {
-      const msg = err?.message || "Operation failed";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Operation failed";
       failProgress(msg);
       toast({ title: "Bulk operation failed", description: msg, variant: "destructive" });
     } finally {
@@ -196,6 +195,7 @@ export function BulkUserOperations({
     failProgress,
     newRole,
     onOperationComplete,
+    handleImport,
     operations,
     selectedOperation,
     selectedUserIds,
@@ -224,7 +224,7 @@ export function BulkUserOperations({
       formData.append("default_role", "user");
 
       const res = await fetch("/api/admin/users/import", { method: "POST", body: formData });
-      const data: AdminApiResponse<any> = await safeJson(res);
+      const data: AdminApiResponse<Record<string, unknown>> = await safeJson(res);
 
       if (!res.ok || !data?.success) {
         throw new Error(data?.error?.message || "Import failed");
@@ -236,8 +236,8 @@ export function BulkUserOperations({
         description: `${data.data?.imported_count ?? 0} user(s) imported successfully.`
       });
       onOperationComplete();
-    } catch (_err: Error) {
-      const msg = err?.message || "Import failed";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Import failed";
       failProgress(msg);
       toast({ title: "Import failed", description: msg, variant: "destructive" });
     } finally {

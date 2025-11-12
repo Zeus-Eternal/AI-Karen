@@ -580,19 +580,19 @@ export const useChatMessages = (
                       );
                     }
                     }
-                  } catch (_error) {
-                  // Handle non-JSON streaming data
-                  if (!data.startsWith("{")) {
-                    fullText += data;
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId ? { ...m, content: fullText } : m
-                      )
-                    );
+                  } catch {
+                    // Handle non-JSON streaming data
+                    if (!data.startsWith("{")) {
+                      fullText += data;
+                      setMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === assistantId ? { ...m, content: fullText } : m
+                        )
+                      );
+                    }
                   }
                 }
               }
-            }
             // Flush any remaining buffered data after stream ends
             const tail = (buffer || "").trim();
             if (tail && tail !== "data: [DONE]") {
@@ -924,17 +924,18 @@ export const useChatMessages = (
           }
         );
 
-        setIsTyping(false);
+      setIsTyping(false);
 
-        toast({
-          variant: "destructive",
-          title: "Critical Error",
-          description:
-            "An unexpected error occurred. Please refresh the page and try again.",
-        });
-      }
-    },
-    [
+      toast({
+        variant: "destructive",
+        title: "Critical Error",
+        description:
+          "An unexpected error occurred. Please refresh the page and try again.",
+      });
+    }
+  },
+  [
+      messages,
       isTyping,
       settings,
       sessionId,
@@ -980,7 +981,7 @@ export const useChatMessages = (
           break;
 
         case "rate_up":
-        case "rate_down":
+        case "rate_down": {
           const rating = action === "rate_up" ? "up" : "down";
           setMessages((prev) =>
             prev.map((m) =>
@@ -1005,6 +1006,7 @@ export const useChatMessages = (
             description: `Message rated ${rating}`,
           });
           break;
+        }
 
         case "regenerate": {
           if (message.role === "assistant") {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChatHeader } from "./components/ChatHeader";
@@ -38,7 +38,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   enableAnalytics = false,
   enableExport = false,
   enableSharing = false,
-  enableCollaboration = false,
+  enableCollaboration: _enableCollaboration = false,
   maxMessages = 1000,
   placeholder = DEFAULT_PLACEHOLDER,
   welcomeMessage,
@@ -73,22 +73,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setShowCodePreview,
     sessionId,
     conversationId,
-    messagesEndRef,
+    messagesEndRef: _messagesEndRef,
     selectedText,
-    setSelectedText,
+    setSelectedText: _setSelectedText,
     sessionStartTime,
     copilotArtifacts,
     setCopilotArtifacts,
   } = useChatState(initialMessages, welcomeMessage);
 
   // Settings management
-  const { settings, updateSettings, resetSettings } = useChatSettings(
+  const { settings, updateSettings, resetSettings: _resetSettings } = useChatSettings(
     {},
     onSettingsChange
   );
 
   // Analytics management
-  const { analytics, resetAnalytics } = useChatAnalytics(
+  const { analytics, resetAnalytics: _resetAnalytics } = useChatAnalytics(
     messages,
     sessionStartTime,
     onAnalyticsUpdate
@@ -117,7 +117,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   );
 
   // CopilotKit integration
-  const { isCopilotReady, supportsCode, availableActions, lastAssistantMessage } = useCopilotIntegration({
+  const { isCopilotReady: _isCopilotReady, supportsCode: _supportsCode, availableActions, lastAssistantMessage: _lastAssistantMessage } = useCopilotIntegration({
     enabled: useCopilotKit,
     actions: [],
     messages,
@@ -145,7 +145,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   });
 
   // Voice input handling
-  const { isVoiceSupported, handleVoiceStart, handleVoiceStop } = useVoiceInput({
+  const { isVoiceSupported: _isVoiceSupported, handleVoiceStart, handleVoiceStop } = useVoiceInput({
     enabled: enableVoiceInput,
     isRecording,
     startRecording: async () => setIsRecording(true),
@@ -153,7 +153,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   });
 
   // Artifact management
-  const { artifacts, approveArtifact, rejectArtifact, applyArtifact, removeArtifact } = useArtifactManagement({
+  const { artifacts, approveArtifact, rejectArtifact, applyArtifact, removeArtifact: _removeArtifact } = useArtifactManagement({
     artifacts: copilotArtifacts,
     updateArtifact: (artifactId: string, updates: Partial<CopilotArtifact>) => {
       setCopilotArtifacts(prev => prev.map(artifact => 
@@ -166,26 +166,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   });
 
   // Chat context for CopilotActions
-  const chatContext: ChatContext = {
-    selectedText,
-    currentFile: undefined,
-    language: settings.language,
-    recentMessages: messages.slice(-5).map((m) => ({
-      role: m.role,
-      content: m.content,
-      timestamp: m.timestamp,
-    })),
-    codeContext: {
-      hasCode: messages.some((m) => m.type === "code"),
-      language: messages.find((m) => m.language)?.language,
-      errorCount: messages.filter((m) => m.status === "error").length,
-    },
-    conversationContext: {
-      topic: messages.length > 0 ? "ongoing" : undefined,
-      intent: "chat",
-      complexity: messages.length > 10 ? "complex" : messages.length > 3 ? "medium" : "simple",
-    },
-  };
+  const chatContext: ChatContext = useMemo(
+    () => ({
+      selectedText,
+      currentFile: undefined,
+      language: settings.language,
+      recentMessages: messages.slice(-5).map((m) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+      })),
+      codeContext: {
+        hasCode: messages.some((m) => m.type === "code"),
+        language: messages.find((m) => m.language)?.language,
+        errorCount: messages.filter((m) => m.status === "error").length,
+      },
+      conversationContext: {
+        topic: messages.length > 0 ? "ongoing" : undefined,
+        intent: "chat",
+        complexity: messages.length > 10 ? "complex" : messages.length > 3 ? "medium" : "simple",
+      },
+    }),
+    [messages, selectedText, settings.language]
+  );
 
   // Form submission handler
   const handleSubmit = useCallback(
@@ -381,5 +384,3 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 // Export for backward compatibility
 export default ChatInterface;
 
-// Export commonly used exports to prevent import errors
-export const DEFAULT_COPILOT_ACTIONS: CopilotAction[] = [];
