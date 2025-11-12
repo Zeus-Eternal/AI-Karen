@@ -13,9 +13,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { 
-  HardDrive, 
-  Lightbulb, 
+import {
+  HardDrive,
+  Lightbulb,
   Info, 
   AlertTriangle, 
   RotateCcw, 
@@ -24,9 +24,10 @@ import {
   Cpu, 
   Zap, 
   Server, 
-  Settings 
+  Settings
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
+import type { ConfigurationValidationResult } from './SystemModelConfig';
 
 export interface TransformerConfig {
   // Precision settings
@@ -108,7 +109,7 @@ export interface TransformerModelConfigProps {
   onSave: () => void;
   onReset: () => void;
   saving?: boolean;
-  validationResult?: unknown;
+  validationResult?: ConfigurationValidationResult | null;
 }
 
 export default function TransformerModelConfig({
@@ -126,6 +127,9 @@ export default function TransformerModelConfig({
   const [activeTab, setActiveTab] = useState("precision");
   const { toast } = useToast();
   const backend = React.useMemo(() => getKarenBackend(), []);
+  const hasValidationError = !!validationResult && !validationResult.valid;
+  const validationWarnings = validationResult?.warnings ?? [];
+  const validationError = validationResult?.error;
 
   const loadRecommendations = useCallback(async () => {
     try {
@@ -310,21 +314,21 @@ export default function TransformerModelConfig({
         </TabsContent>
       </Tabs>
 
-      {validationResult && !validationResult.valid && (
+      {hasValidationError && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Configuration Error</AlertTitle>
-          <AlertDescription>{validationResult.error}</AlertDescription>
+          <AlertDescription>{validationError}</AlertDescription>
         </Alert>
       )}
 
-      {validationResult?.warnings && validationResult.warnings.length > 0 && (
+      {validationWarnings.length > 0 && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertTitle>Configuration Warnings</AlertTitle>
           <AlertDescription>
             <ul className="list-disc list-inside space-y-1">
-              {validationResult.warnings.map((warning: string, index: number) => (
+              {validationWarnings.map((warning: string, index: number) => (
                 <li key={index}>{warning}</li>
               ))}
             </ul>
@@ -339,7 +343,7 @@ export default function TransformerModelConfig({
         </Button>
         <Button
           onClick={onSave}
-          disabled={saving || (validationResult && !validationResult.valid)}
+          disabled={saving || hasValidationError}
         >
           {saving ? (
             <>
