@@ -638,10 +638,11 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
 
       await installPlugin(request);
       setState((prev) => ({ ...prev, step: "complete" }));
-    } catch (err: Error) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Installation failed";
       setState((prev) => ({
         ...prev,
-        installationError: err?.message ?? "Installation failed",
+        installationError: message,
       }));
     }
   };
@@ -1036,18 +1037,34 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
 
     const renderField = (field: PluginConfigField) => {
       const value = state.configuration[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
+      const toStringValue = (input: unknown): string => {
+        if (input === null || input === undefined) return "";
+        if (typeof input === "string") return input;
+        if (typeof input === "number" || typeof input === "boolean") {
+          return String(input);
+        }
+        return JSON.stringify(input);
+      };
+      const getPlaceholder = () =>
+        typeof field.default === "string" ? field.default : undefined;
       const update = (v: unknown) =>
         setState((prev) => ({ ...prev, configuration: { ...prev.configuration, [field.key]: v } }));
 
       switch (field.type) {
         case "string":
-          return <Input value={value} onChange={(e) => update(e.target.value)} placeholder={field.default} />;
+          return (
+            <Input
+              value={toStringValue(value)}
+              onChange={(e) => update(e.target.value)}
+              placeholder={getPlaceholder()}
+            />
+          );
         case "password":
           return (
             <div className="relative">
               <Input
                 type={showConfigPassword[field.key] ? "text" : "password"}
-                value={value}
+                value={toStringValue(value)}
                 onChange={(e) => update(e.target.value)}
                 placeholder="Enter secret"
               />
@@ -1066,7 +1083,15 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           return (
             <Input
               type="number"
-              value={String(value)}
+              value={(() => {
+                const numericValue =
+                  typeof value === "number"
+                    ? value
+                    : typeof field.default === "number"
+                    ? field.default
+                    : Number(value);
+                return Number.isFinite(numericValue) ? String(numericValue) : "";
+              })()}
               onChange={(e) => update(Number(e.target.value))}
               min={field.validation?.min}
               max={field.validation?.max}
@@ -1118,7 +1143,12 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
             />
           );
         default:
-          return <Input value={value} onChange={(e) => update(e.target.value)} />;
+          return (
+            <Input
+              value={toStringValue(value)}
+              onChange={(e) => update(e.target.value)}
+            />
+          );
       }
     };
 
