@@ -45,28 +45,6 @@ type ButtonComponent = PolymorphicComponentWithDisplayName<
   ButtonBaseProps
 >;
 
-type PolymorphicForwardRef<
-  DefaultElement extends React.ElementType,
-  Props extends Record<string, unknown>
-> = <T extends React.ElementType = DefaultElement>(
-  props: PolymorphicComponentPropWithRef<T, Props>,
-  ref: PolymorphicRef<T>
-) => React.ReactElement | null;
-
-function forwardRefWithAs<
-  DefaultElement extends React.ElementType,
-  Props extends Record<string, unknown>
->(
-  component: PolymorphicForwardRef<DefaultElement, Props>
-) {
-  return React.forwardRef(
-    component as unknown as React.ForwardRefRenderFunction<any, any>
-  ) as unknown as PolymorphicComponentWithDisplayName<
-    DefaultElement,
-    Props
-  >;
-}
-
 const variantClasses: Record<ButtonVariant, string> = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90",
   destructive:
