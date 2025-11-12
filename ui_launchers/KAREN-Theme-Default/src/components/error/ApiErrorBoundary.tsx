@@ -455,20 +455,4 @@ export class ApiErrorBoundary extends Component<
   }
 }
 
-/**
- * Higher-order component to wrap components with API error boundary
- */
-export function withApiErrorBoundary<P extends object>(
-  Wrapped: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<ApiErrorBoundaryProps, "children">
-) {
-  return function WrappedComponent(props: P) {
-    return (
-      <ApiErrorBoundary {...errorBoundaryProps}>
-        <Wrapped {...props} />
-      </ApiErrorBoundary>
-    );
-  };
-}
-
 export default ApiErrorBoundary;

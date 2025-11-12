@@ -82,7 +82,7 @@ function hash01(s: string): number {
 export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProps> = ({
   data,
   onNodeClick,
-  onEdgeClick, // not used directly; kept for API parity
+  onEdgeClick: _onEdgeClick, // not used directly; kept for API parity
   onRefresh,
   className = "",
 }) => {
@@ -99,7 +99,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  const chartRef = useRef<any>(null);
+  const chartRef = useRef<unknown>(null);
 
   // --- Process network data based on filters
   const processedData = useMemo(() => {

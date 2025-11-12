@@ -5,7 +5,7 @@ import { useLocale } from "../../providers/i18n-hooks";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Globe, Calendar, DollarSign, Clock } from "lucide-react";
-import { isRTLLocale } from "./DirectionalContent";
+import { isRTLLocale } from "./directional-utils";
 
 export interface LocaleMetadataProps {
   /** Show as compact badge instead of card */

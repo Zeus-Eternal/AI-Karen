@@ -98,7 +98,6 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
 
   const user = useAppStore(selectUser);
   const globalTimeRange = useDashboardStore(selectGlobalTimeRange);
-  const globalFilters = useDashboardStore(selectGlobalFilters);
   const isEditing = useDashboardStore(selectIsEditing);
   const templates = useDashboardStore(
     selectTemplatesForUser(user?.roles || [])

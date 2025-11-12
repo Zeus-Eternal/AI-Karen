@@ -15,8 +15,15 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import {
+  appShellVariants,
+  appShellSidebarVariants,
+  appShellHeaderVariants,
+  appShellMainVariants,
+  appShellFooterVariants,
+} from "./app-shell-variants";
 
 // -------------------- Context --------------------
 
@@ -43,27 +50,6 @@ export function useAppShell() {
   if (!context) throw new Error("useAppShell must be used within an AppShell");
   return context;
 }
-
-// -------------------- Variants --------------------
-
-export const appShellVariants = cva(
-  [
-    "min-h-screen",
-    "bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-950)]",
-    "transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
-  ],
-  {
-    variants: {
-      layout: {
-        default: "flex",
-        grid: "grid grid-cols-[auto_1fr] grid-rows-[auto_1fr]",
-      },
-    },
-    defaultVariants: {
-      layout: "default",
-    },
-  }
-);
 
 export interface AppShellProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -318,37 +304,6 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
 
 AppShell.displayName = "AppShell";
 
-// -------------------- Sidebar --------------------
-
-export const appShellSidebarVariants = cva(
-  [
-    "flex flex-col",
-    "bg-[var(--color-neutral-100)] dark:bg-[var(--color-neutral-900)]",
-    "border-r border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]",
-    "transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
-    "z-50",
-    "focus:outline-none", // focusable when using a11y shortcuts
-  ],
-  {
-    variants: {
-      state: {
-        open: "translate-x-0",
-        closed: "-translate-x-full lg:translate-x-0",
-        collapsed: "w-16",
-        expanded: "w-64",
-      },
-      position: {
-        fixed: "fixed top-0 left-0 h-full",
-        relative: "relative",
-      },
-    },
-    defaultVariants: {
-      state: "open",
-      position: "relative",
-    },
-  }
-);
-
 export interface AppShellSidebarProps
   extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -388,19 +343,6 @@ export const AppShellSidebar = React.forwardRef<
 
 AppShellSidebar.displayName = "AppShellSidebar";
 
-// -------------------- Header --------------------
-
-export const appShellHeaderVariants = cva([
-  "sticky top-0 z-30",
-  "flex items-center",
-  "min-h-[var(--header-height)]",
-  "px-[var(--space-lg)]",
-  "bg-[var(--glass-background-strong)]",
-  "border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]",
-  "backdrop-blur-[var(--backdrop-blur-lg)]",
-  "transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
-]);
-
 export interface AppShellHeaderProps
   extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
@@ -422,17 +364,6 @@ export const AppShellHeader = React.forwardRef<HTMLElement, AppShellHeaderProps>
 
 AppShellHeader.displayName = "AppShellHeader";
 
-// -------------------- Main --------------------
-
-export const appShellMainVariants = cva([
-  "flex-1 min-h-0",
-  "p-[var(--space-lg)]",
-  "bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-950)]",
-  "transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]",
-]);
-
-export type AppShellMainVariants = VariantProps<typeof appShellMainVariants>;
-
 export interface AppShellMainProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
 }
@@ -452,16 +383,6 @@ export const AppShellMain = React.forwardRef<HTMLElement, AppShellMainProps>(
 );
 
 AppShellMain.displayName = "AppShellMain";
-
-// -------------------- Footer --------------------
-
-export const appShellFooterVariants = cva([
-  "flex items-center justify-between",
-  "px-[var(--space-lg)] py-[var(--space-md)]",
-  "bg-[var(--color-neutral-100)] dark:bg-[var(--color-neutral-900)]",
-  "border-t border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]",
-  "text-[var(--text-sm)] text-[var(--color-neutral-600)] dark:text-[var(--color-neutral-400)]",
-]);
 
 export interface AppShellFooterProps
   extends React.HTMLAttributes<HTMLElement> {

@@ -3,6 +3,7 @@
 import React from "react";
 import { useLocale } from "../../providers/i18n-hooks";
 import { cn } from "../../lib/utils";
+import { isRTLLocale } from "./directional-utils";
 
 export interface DirectionalContentProps {
   children: React.ReactNode;
@@ -11,30 +12,6 @@ export interface DirectionalContentProps {
   direction?: "ltr" | "rtl";
   /** Apply direction to document root */
   applyToDocument?: boolean;
-}
-
-// RTL languages
-const RTL_LOCALES = new Set([
-  "ar", // Arabic
-  "arc", // Aramaic
-  "dv", // Divehi
-  "fa", // Persian
-  "ha", // Hausa
-  "he", // Hebrew
-  "khw", // Khowar
-  "ks", // Kashmiri
-  "ku", // Kurdish
-  "ps", // Pashto
-  "ur", // Urdu
-  "yi", // Yiddish
-]);
-
-/**
- * Determines if a locale uses right-to-left text direction
- */
-export function isRTLLocale(locale: string): boolean {
-  const baseLocale = locale.split("-")[0].toLowerCase();
-  return RTL_LOCALES.has(baseLocale);
 }
 
 /**

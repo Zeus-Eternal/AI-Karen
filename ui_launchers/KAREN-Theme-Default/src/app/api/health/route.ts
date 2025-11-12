@@ -462,15 +462,15 @@ const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL ||
 /**
  * Main health check handler - proxies to backend
  */
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
+
   try {
     // Proxy the health check request to the backend
     const backendUrl = `${BACKEND_URL}/api/health`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
@@ -483,7 +483,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     clearTimeout(timeout);
 
-    let data;
+    const totalResponseTime = Date.now() - startTime;
+    updateRequestMetrics(totalResponseTime, response.ok);
+    
+    let data: BackendHealthData;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {
@@ -493,7 +496,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch (_error) {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
@@ -537,9 +540,56 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
         errorMessage = error.message;
       }
     }
+    
+    const totalResponseTime = Date.now() - startTime;
+    updateRequestMetrics(totalResponseTime, false);
+
+    const [database, redis, externalApis, filesystem] = await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      checkExternalAPIs(),
+      checkFilesystem(),
+    ]);
+    const memoryCheck = checkMemory();
+    const performanceCheck = checkPerformance();
+
+    const fallback: HealthCheckResult = {
+      status: status === 504 ? 'degraded' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.APP_VERSION || 'unknown',
+      uptime: process.uptime(),
+      checks: {
+        database,
+        redis,
+        external_apis: externalApis,
+        filesystem,
+        memory: memoryCheck,
+        performance: performanceCheck,
+      },
+      metrics: {
+        memory: getMemoryMetrics(),
+        performance: getPerformanceMetrics(),
+        requests: { ...requestMetrics },
+      },
+      environment: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        environment: process.env.NODE_ENV || 'development',
+      },
+    };
 
     return NextResponse.json(
       await buildFallbackHealthResponse(errorMessage, error),
+      {
+        ...fallback,
+        error: errorMessage,
+        details:
+          process.env.NODE_ENV === 'development'
+            ? error instanceof Error
+              ? error.message
+              : String(error)
+            : undefined,
+      },
       {
         status,
         headers: {

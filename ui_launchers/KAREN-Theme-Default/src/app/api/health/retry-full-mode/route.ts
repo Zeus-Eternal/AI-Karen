@@ -81,8 +81,7 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(response.status),
       },
     });
-  } catch (err) {
-    console.error('Retry full mode request failed', err);
+  } catch (_err) {
     // Timeout / network failure
     return NextResponse.json(
       {

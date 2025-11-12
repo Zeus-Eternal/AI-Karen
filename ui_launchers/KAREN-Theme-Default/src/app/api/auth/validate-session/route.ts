@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 //   checkBackendHealth,
 //   getConnectionStatus,
 // } from '@/app/api/_utils/backend';
+
 interface DatabaseConnectivityResult {
   isConnected: boolean;
   responseTime: number;
@@ -287,9 +288,9 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(payload, { status: 200 });
-    } catch (error) {
-      const totalResponseTime = Date.now() - startTime;
-      const databaseConnectivity = await testDatabaseConnectivity();
+  } catch (_error) {
+    const totalResponseTime = Date.now() - startTime;
+    const databaseConnectivity = await testDatabaseConnectivity();
 
       console.error('Session validation request failed', error);
 

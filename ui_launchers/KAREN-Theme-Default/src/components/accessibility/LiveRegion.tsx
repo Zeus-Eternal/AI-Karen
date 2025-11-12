@@ -65,40 +65,4 @@ export function LiveRegion({
   );
 }
 
-// Hook for managing live region announcements
-export function useLiveRegion(politeness: 'polite' | 'assertive' = 'polite') {
-  const regionRef = useRef<HTMLDivElement>(null);
-
-  const announce = React.useCallback((message: string) => {
-    if (regionRef.current) {
-      // Clear first
-      regionRef.current.textContent = '';
-      
-      // Then announce
-      setTimeout(() => {
-        if (regionRef.current) {
-          regionRef.current.textContent = message;
-        }
-      }, 100);
-    }
-  }, []);
-
-  const LiveRegionComponent = React.useCallback(
-    ({ className }: { className?: string }) => (
-      <div
-        ref={regionRef}
-        aria-live={politeness}
-        aria-atomic="true"
-        className={cn(
-          'sr-only absolute w-px h-px p-0 m-[-1px] overflow-hidden clip-[rect(0,0,0,0)] whitespace-nowrap border-0',
-          className
-        )}
-      />
-    ),
-    [politeness]
-  );
-
-  return { announce, LiveRegionComponent };
-}
-
 export default LiveRegion;

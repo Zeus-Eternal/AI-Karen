@@ -7,59 +7,63 @@ import { useInputPreservation } from "@/hooks/use-input-preservation";
 import { safeDebug, safeError } from "@/lib/safe-console";
 
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showRoutingHistory, setShowRoutingHistory] = useState(false);
-  const [showCodePreview, setShowCodePreview] = useState(false);
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [inputValue, setInputValue] = useState("");
-  const [codeValue, setCodeValue] = useState("");
-  const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
-  const [selectedText, setSelectedText] = useState("");
-  const [sessionStartTime] = useState(() => Date.now());
-  
-  // Refs for media recording
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Input preservation
   const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation("chat-interface");
 
-  // Initialize session and conversation IDs with welcome message
-  useEffect(() => {
-    if (!sessionId) {
-      const newSessionId = generateUUID();
-      const newConversationId = generateUUID();
-      
-      setSessionId(newSessionId);
-      setConversationId(newConversationId);
+  const sessionIdRef = useRef<string | null>(null);
+  if (!sessionIdRef.current) {
+    sessionIdRef.current = generateUUID();
+  }
 
-      // Add welcome message if provided and no initial messages
-      if (welcomeMessage && messages.length === 0) {
-        const welcome: ChatMessage = {
+  const conversationIdRef = useRef<string | null>(null);
+  if (!conversationIdRef.current) {
+    conversationIdRef.current = generateUUID();
+  }
+
+  const initialMessagesRef = useRef<ChatMessage[] | null>(null);
+  if (initialMessagesRef.current === null) {
+    if (initialMessages.length > 0) {
+      initialMessagesRef.current = initialMessages;
+    } else if (welcomeMessage) {
+      initialMessagesRef.current = [
+        {
           id: `welcome-${Date.now()}`,
           role: "assistant",
           content: welcomeMessage,
           timestamp: new Date(),
           type: "text",
           metadata: { confidence: 1.0 },
-        };
-        setMessages([welcome]);
-      }
-
-      // Restore preserved input
-      const preserved = restoreInput();
-      if (preserved) {
-        setInputValue(preserved);
-      }
+        },
+      ];
+    } else {
+      initialMessagesRef.current = [];
     }
-  }, [sessionId, welcomeMessage, messages.length, restoreInput]);
+  }
+
+  const restoredInputRef = useRef<string | null>(null);
+  if (restoredInputRef.current === null) {
+    restoredInputRef.current = restoreInput();
+  }
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessagesRef.current ?? []);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(sessionIdRef.current);
+  const [conversationId, setConversationId] = useState<string | null>(conversationIdRef.current);
+  const [activeTab, setActiveTab] = useState<"chat" | "code" | "analytics">("chat");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showRoutingHistory, setShowRoutingHistory] = useState(false);
+  const [showCodePreview, setShowCodePreview] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [inputValue, setInputValue] = useState(restoredInputRef.current ?? "");
+  const [codeValue, setCodeValue] = useState("");
+  const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>([]);
+  const [selectedText, setSelectedText] = useState("");
+  const [sessionStartTime] = useState(() => Date.now());
+
+  // Refs for media recording
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -169,8 +173,6 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
   useEffect(() => {
     return () => {
       mediaRecorderRef.current?.stop();
-      setIsTyping(false);
-      setIsRecording(false);
     };
   }, []);
 

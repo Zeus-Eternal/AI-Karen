@@ -54,19 +54,19 @@ interface AuditAnalyticsProps {
 
 type TimeframeKey = "7d" | "30d" | "90d";
 
+const TIMEFRAME_OPTIONS: Record<TimeframeKey, { days: number; label: string }> = {
+  "7d": { days: 7, label: "Last 7 days" },
+  "30d": { days: 30, label: "Last 30 days" },
+  "90d": { days: 90, label: "Last 90 days" },
+};
+
 export function AuditAnalytics({ className }: AuditAnalyticsProps) {
   const [timeframe, setTimeframe] = useState<TimeframeKey>("30d");
   const [selectedUser, setSelectedUser] = useState<string>("");
 
-  const timeframeOptions: Record<TimeframeKey, { days: number; label: string }> = {
-    "7d": { days: 7, label: "Last 7 days" },
-    "30d": { days: 30, label: "Last 30 days" },
-    "90d": { days: 90, label: "Last 90 days" },
-  };
-
   const dateRange = useMemo(
     () => ({
-      start: startOfDay(subDays(new Date(), timeframeOptions[timeframe].days)),
+      start: startOfDay(subDays(new Date(), TIMEFRAME_OPTIONS[timeframe].days)),
       end: endOfDay(new Date()),
     }),
     [timeframe]
@@ -76,7 +76,6 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
     data: statistics,
     isLoading: statsLoading,
     error: statsError,
-    refetch: refetchStats,
   } = useQuery({
     queryKey: ["audit", "statistics", dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => auditLogger.getStatistics(dateRange),
@@ -87,7 +86,6 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
     data: userBehavior = null,
     isLoading: behaviorLoading,
     error: behaviorError,
-    refetch: refetchBehavior,
   } = useQuery<UserBehaviorPattern | null>({
     queryKey: ["audit", "user-behavior", selectedUser, dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => (selectedUser ? getUserBehaviorPattern(selectedUser, dateRange) : null),
@@ -112,7 +110,7 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
                 <SelectValue placeholder="Timeframe" />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(timeframeOptions) as Array<[TimeframeKey, { label: string }]>) //
+                {(Object.entries(TIMEFRAME_OPTIONS) as Array<[TimeframeKey, { label: string }]>) //
                   .map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}

@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
     const bases = CANDIDATE_BACKENDS;
-    let lastErr: unknown = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     const unauthorizedStatus = new Set([401, 403]);
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-expect-error keepalive is supported by Node fetch but missing in the types
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           }),
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-expect-error keepalive is supported by Node fetch but missing in the types
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           })
@@ -52,9 +51,8 @@ export async function GET(request: NextRequest) {
         if (healthResponse.status === 'fulfilled' || providersResponse.status === 'fulfilled') {
           break;
         }
-      } catch (err) {
+      } catch {
         clearTimeout(timeout);
-        lastErr = err;
         // try next base
         continue;
       }
@@ -147,17 +145,15 @@ export async function GET(request: NextRequest) {
         failed_providers: remoteProviderOutages,
         providers,
         total_providers: providersData?.total_providers || providers.length,
-          models_available: totalModels,
-          timestamp: new Date().toISOString(),
-          compatibility_payload: healthData.payload || null,
-          ...(lastErrorMessage ? { last_error: lastErrorMessage } : {})
-        };
-        // Always respond 200; encode degraded state in body
-        return NextResponse.json(data, { status: 200 });
-    } catch (error) {
-      console.error('Degraded-mode health check failed', error);
-      // Normalize to 200 with degraded mode on unexpected errors
-      return NextResponse.json(
+        models_available: totalModels,
+        timestamp: new Date().toISOString(),
+        compatibility_payload: healthData.payload || null
+      };
+      // Always respond 200; encode degraded state in body
+      return NextResponse.json(data, { status: 200 });
+  } catch (_error) {
+    // Normalize to 200 with degraded mode on unexpected errors
+    return NextResponse.json(
       { 
         is_active: true,
         reason: 'Health check failed',

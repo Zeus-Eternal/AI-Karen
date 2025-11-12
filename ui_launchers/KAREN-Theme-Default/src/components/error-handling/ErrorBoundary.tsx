@@ -16,6 +16,8 @@ interface Props {
   enableRecovery?: boolean;
   enableReporting?: boolean;
 }
+
+export type ErrorBoundaryProps = Props;
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -91,7 +93,7 @@ export class ErrorBoundary extends Component<Props, State> {
         userId: this.getCurrentUserId(),
         sessionId: this.getSessionId(),
       });
-    } catch (error) {
+    } catch (_error) {
     // Handle error silently
   }
   }
@@ -117,7 +119,7 @@ export class ErrorBoundary extends Component<Props, State> {
         if (recoveryStrategy.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
-      } catch (error) {
+      } catch (_error) {
     // Handle error silently
   } finally {
         this.setState({ isRecovering: false });
@@ -261,16 +263,5 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
     </div>
   );
 };
-// Higher-order component for easy error boundary wrapping
-export function withErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
-) {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  return WrappedComponent;
-}
+
+export { withErrorBoundary } from "./withErrorBoundary";

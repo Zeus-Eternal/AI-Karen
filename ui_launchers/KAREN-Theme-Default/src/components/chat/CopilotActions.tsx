@@ -235,5 +235,4 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   );
 };
 
-export const DEFAULT_COPILOT_ACTIONS = defaultActions;
 export default CopilotActions;

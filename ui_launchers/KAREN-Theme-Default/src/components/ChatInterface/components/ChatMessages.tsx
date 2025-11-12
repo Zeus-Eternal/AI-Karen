@@ -6,7 +6,7 @@ import { Bot, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import MessageActions from "./MessageActions";
-import type { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
+import type { ChatMessage, ChatSettings } from "../types";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -15,11 +15,7 @@ interface ChatMessagesProps {
   enableCodeAssistance: boolean;
   settings: ChatSettings;
   onMessageAction: (messageId: string, action: string) => void;
-  onArtifactApprove?: (artifactId: string) => void;
-  onArtifactReject?: (artifactId: string) => void;
-  onArtifactApply?: (artifactId: string) => void;
   messagesEndRef?: React.RefObject<HTMLDivElement>;
-  artifacts?: CopilotArtifact[];
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -29,11 +25,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   enableCodeAssistance,
   settings,
   onMessageAction,
-  onArtifactApprove = () => {},
-  onArtifactReject = () => {},
-  onArtifactApply = () => {},
   messagesEndRef,
-  artifacts = [],
 }: ChatMessagesProps) => {
   return (
     <ScrollArea className="flex-1 px-4">
@@ -115,7 +107,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                   onMessageAction(message.id, "regenerate");
                 }}
                 showMetadata={true}
-                isDarkMode={settings.theme === "dark"}
               />
             </div>
           ))

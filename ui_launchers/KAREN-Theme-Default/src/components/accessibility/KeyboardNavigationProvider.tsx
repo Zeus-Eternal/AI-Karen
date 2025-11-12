@@ -1,30 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useKeyboardNavigation } from '../../hooks/use-keyboard-navigation';
-
-interface KeyboardNavigationContextValue {
-  // Navigation state
-  currentFocusIndex: number;
-  totalItems: number;
-  
-  // Navigation methods
-  moveNext: () => void;
-  movePrevious: () => void;
-  moveFirst: () => void;
-  moveLast: () => void;
-  moveTo: (index: number) => void;
-  
-  // Registration methods
-  registerNavigationContainer: (element: HTMLElement) => (() => void) | void;
-  unregisterNavigationContainer: () => void;
-  
-  // Settings
-  enabled: boolean;
-  setEnabled: (enabled: boolean) => void;
-}
-
-const KeyboardNavigationContext = createContext<KeyboardNavigationContextValue | undefined>(undefined);
+import {
+  KeyboardNavigationContext,
+  type KeyboardNavigationContextValue,
+} from './KeyboardNavigationContext';
 
 interface KeyboardNavigationProviderProps {
   children: React.ReactNode;
@@ -80,7 +61,7 @@ export function KeyboardNavigationProvider({
     }
   });
 
-  const registerNavigationContainer = React.useCallback((element: HTMLElement) => {
+  const registerNavigationContainer = useCallback((element: HTMLElement) => {
     containerRef.current = element;
     
     // Count navigable items
@@ -107,7 +88,7 @@ export function KeyboardNavigationProvider({
     };
   }, []);
 
-  const unregisterNavigationContainer = React.useCallback(() => {
+  const unregisterNavigationContainer = useCallback(() => {
     containerRef.current = null;
     setItemCount(0);
   }, []);
@@ -131,54 +112,6 @@ export function KeyboardNavigationProvider({
       {children}
     </KeyboardNavigationContext.Provider>
   );
-}
-
-export function useKeyboardNavigationContext() {
-  const context = useContext(KeyboardNavigationContext);
-  if (context === undefined) {
-    throw new Error('useKeyboardNavigationContext must be used within a KeyboardNavigationProvider');
-  }
-  return context;
-}
-
-// Hook for registering navigation containers
-export function useNavigationContainer() {
-  const { registerNavigationContainer, unregisterNavigationContainer } = useKeyboardNavigationContext();
-  const containerRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (element) {
-      const cleanup = registerNavigationContainer(element);
-      return () => {
-        if (typeof cleanup === 'function') {
-          cleanup();
-        }
-        unregisterNavigationContainer();
-      };
-    }
-  }, [registerNavigationContainer, unregisterNavigationContainer]);
-
-  return containerRef;
-}
-
-// Hook for navigation items
-export function useNavigationItem(index: number) {
-  const { currentFocusIndex, moveTo } = useKeyboardNavigationContext();
-  const isActive = currentFocusIndex === index;
-
-  const itemProps = {
-    'data-keyboard-nav-item': true,
-    'data-nav-index': index,
-    tabIndex: isActive ? 0 : -1,
-    onClick: () => moveTo(index),
-    onFocus: () => moveTo(index),
-  };
-
-  return {
-    isActive,
-    itemProps,
-  };
 }
 
 export default KeyboardNavigationProvider;
