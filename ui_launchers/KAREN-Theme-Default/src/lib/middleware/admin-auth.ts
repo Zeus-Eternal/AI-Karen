@@ -186,9 +186,9 @@ function getClientIP(request: NextRequest): string {
     }
     
     return realIP || remoteAddr || 'unknown';
-  } catch (error) {
-    return 'unknown';
-  }
+    } catch {
+      return 'unknown';
+    }
 }
 
 /**
@@ -283,7 +283,7 @@ async function logAdminAccess(
 /**
  * Admin authentication middleware
  */
-export async function withAdminAuth<T>(
+export async function withAdminAuth(
   request: NextRequest,
   handler: (request: NextRequest, context: AdminAuthContext) => Promise<NextResponse>,
   options: AdminAuthOptions = {}
