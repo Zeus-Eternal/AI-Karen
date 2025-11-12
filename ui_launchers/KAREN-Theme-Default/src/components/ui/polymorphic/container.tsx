@@ -773,7 +773,7 @@ function AspectRatioContainerInner<T extends React.ElementType = "div">(
       ref={ref}
     >
       {children}
-    </BaseContainer>
+    </Container>
   );
 }
 
