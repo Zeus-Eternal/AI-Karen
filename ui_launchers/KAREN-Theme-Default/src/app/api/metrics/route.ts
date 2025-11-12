@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MetricsCollector } from '../../../lib/monitoring/metrics-collector';
 import { PerformanceTracker } from '../../../lib/monitoring/performance-tracker';
 import { ErrorMetricsCollector } from '../../../lib/monitoring/error-metrics-collector';
+import type { ApplicationMetrics, SystemMetrics } from '../../../lib/monitoring/metrics-collector';
 
 // Initialize collectors once (process-lifetime singletons)
 const metricsCollector = new MetricsCollector();
@@ -108,8 +109,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // kari_http_requests_total (counter with path/method)
     lines.push('# HELP kari_http_requests_total Total number of HTTP requests');
     lines.push('# TYPE kari_http_requests_total counter');
-    const appHttp = applicationMetrics?.httpRequests ?? {};
-    Object.entries(appHttp).forEach(([path, data]: [string, any]) => {
+    const appHttp: ApplicationMetrics['httpRequests'] = applicationMetrics?.httpRequests ?? {};
+    Object.entries(appHttp).forEach(([path, data]) => {
       Object.entries(data?.methods ?? {}).forEach(([method, count]) => {
         const numericCount = typeof count === 'number' ? count : Number(count ?? 0);
         lines.push(`kari_http_requests_total{path="${esc(path)}",method="${esc(method)}"} ${n(numericCount)}`);
@@ -117,9 +118,9 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     });
 
     // kari_http_request_duration_seconds (histogram with path)
-    const reqDur = applicationMetrics?.requestDurations ?? {};
+    const reqDur: ApplicationMetrics['requestDurations'] = applicationMetrics?.requestDurations ?? {};
     const httpBounds = [0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    Object.entries(reqDur).forEach(([path, d]: [string, any]) => {
+    Object.entries(reqDur).forEach(([path, d]) => {
       emitHistogram(
         lines,
         'kari_http_request_duration_seconds',
@@ -159,7 +160,9 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     // Plugin executions (counter by plugin/status)
     lines.push('# HELP kari_plugin_executions_total Total number of plugin executions');
     lines.push('# TYPE kari_plugin_executions_total counter');
-    Object.entries(applicationMetrics?.pluginExecutions ?? {}).forEach(([plugin, d]: [string, any]) => {
+    const pluginExecutions: ApplicationMetrics['pluginExecutions'] =
+      applicationMetrics?.pluginExecutions ?? {};
+    Object.entries(pluginExecutions).forEach(([plugin, d]) => {
       const successCount = typeof d?.success === 'number' ? d.success : Number(d?.success ?? 0);
       const failureCount = typeof d?.failure === 'number' ? d.failure : Number(d?.failure ?? 0);
       lines.push(`kari_plugin_executions_total{plugin="${esc(plugin)}",status="success"} ${n(successCount)}`);
@@ -175,9 +178,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     });
 
     // Model response time (histogram by model)
-    const modelRT = applicationMetrics?.modelResponseTimes ?? {};
+    const modelRT: ApplicationMetrics['modelResponseTimes'] =
+      applicationMetrics?.modelResponseTimes ?? {};
     const modelBounds = [0.1, 0.5, 1, 2, 5, 10, 30, 60];
-    Object.entries(modelRT).forEach(([model, d]: [string, any]) => {
+    Object.entries(modelRT).forEach(([model, d]) => {
       emitHistogram(
         lines,
         'kari_model_response_time_seconds',
@@ -262,9 +266,10 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     lines.push(`kari_redis_connections_failed_total ${n(systemMetrics?.redis?.failedConnections)}`);
 
     // Database query duration (histogram by query label)
-    const qDur = systemMetrics?.database?.queryDurations ?? {};
+    const qDur: SystemMetrics['database']['queryDurations'] =
+      systemMetrics?.database?.queryDurations ?? ({} as SystemMetrics['database']['queryDurations']);
     const dbBounds = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
-    Object.entries(qDur).forEach(([query, d]: [string, any]) => {
+    Object.entries(qDur).forEach(([query, d]) => {
       emitHistogram(
         lines,
         'kari_database_query_duration_seconds',

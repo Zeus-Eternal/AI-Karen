@@ -49,7 +49,7 @@ function getPeriodAndRange(periodParam?: string): { period: Period; startDate: D
   return { period: ['today', 'week', 'month'].includes(normalized) ? normalized : 'week', startDate, endDate: now };
 }
 
-export const GET = requireAdmin(async (request: NextRequest, context) => {
+export const GET = requireAdmin(async (request: NextRequest, _context) => {
   try {
     const { searchParams } = new URL(request.url);
     const { period, startDate, endDate } = getPeriodAndRange(searchParams.get('period') || undefined);
