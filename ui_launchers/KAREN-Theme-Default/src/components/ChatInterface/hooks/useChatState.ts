@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage, CopilotArtifact } from "../types";
 import { generateUUID } from "@/lib/uuid";
 import { useInputPreservation } from "@/hooks/use-input-preservation";
