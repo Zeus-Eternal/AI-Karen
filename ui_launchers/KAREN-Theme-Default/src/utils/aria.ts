@@ -13,6 +13,8 @@ import type { AriaAttributes } from 'react';
 // Types
 // ---------------------------------------------------------------------------
 
+export type AriaRelevant = NonNullable<AriaAttributes['aria-relevant']>;
+
 export interface AriaLabelProps {
   'aria-label'?: string;
   'aria-labelledby'?: string;
@@ -49,7 +51,7 @@ export type ExtendedAriaRelevantValue =
 export interface AriaLiveProps {
   'aria-live'?: 'off' | 'polite' | 'assertive';
   'aria-atomic'?: boolean;
-  'aria-relevant'?: AriaRelevantValue;
+  'aria-relevant'?: AriaRelevant;
 }
 
 export interface AriaGridProps {
@@ -110,17 +112,12 @@ export const createAriaLabel = (
 export const createAriaLive = (
   level: 'off' | 'polite' | 'assertive' = 'polite',
   atomic: boolean = false,
-  relevant: ExtendedAriaRelevantValue = 'additions text'
-): AriaLiveProps => {
-  const normalizedRelevant: AriaRelevantValue =
-    relevant === 'additions text removals' ? 'all' : relevant;
-
-  return {
-    'aria-live': level,
-    'aria-atomic': atomic,
-    'aria-relevant': normalizedRelevant,
-  };
-};
+  relevant: AriaRelevant = 'additions text'
+): AriaLiveProps => ({
+  'aria-live': level,
+  'aria-atomic': atomic,
+  'aria-relevant': relevant,
+});
 
 /** Create ARIA attributes for interactive elements */
 export const createInteractiveAria = (

@@ -4,11 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  createAriaLive,
-  generateAriaId,
-  type ExtendedAriaRelevantValue,
-} from '@/utils/aria';
+import { createAriaLive, generateAriaId, type AriaRelevant } from '@/utils/aria';
 import { cn } from '@/lib/utils';
 import { useAriaAnnouncements } from './aria-live-announcements';
 
@@ -19,7 +15,7 @@ export interface AriaLiveRegionProps {
   /** Whether the entire region should be announced when any part changes */
   atomic?: boolean;
   /** What types of changes should be announced */
-  relevant?: ExtendedAriaRelevantValue;
+  relevant?: AriaRelevant;
   /** Custom className for styling */
   className?: string;
   /** Children to render in the live region */

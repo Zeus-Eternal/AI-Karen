@@ -910,6 +910,7 @@ export class AdminDatabaseUtils {
 
       // Transform results to include user information
       const data: AuditLog[] = dataResult.map((row: AuditLogRow) => {
+        const timestamp = row.timestamp instanceof Date ? row.timestamp : new Date(row.timestamp);
         const rawDetails = row.details as Record<string, unknown> | string | null | undefined;
         let details: Record<string, unknown> = {};
         if (typeof rawDetails === 'string') {
@@ -934,7 +935,7 @@ export class AdminDatabaseUtils {
           details,
           ip_address: typeof row.ip_address === 'string' ? row.ip_address : undefined,
           user_agent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
-          timestamp: row.timestamp,
+          timestamp,
           user: row.user_email
             ? {
               user_id: row.user_id,
@@ -1001,6 +1002,8 @@ export class AdminDatabaseUtils {
       return result.map((row: SystemConfigRow) => {
         const valueType = toSystemConfigValueType(row.value_type);
         const categoryValue = toSystemConfigCategory(row.category);
+        const updatedAt = row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at);
+        const createdAt = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
 
         return {
           id: row.id,
@@ -1010,8 +1013,8 @@ export class AdminDatabaseUtils {
           category: categoryValue,
           description: row.description ?? undefined,
           updated_by: row.updated_by,
-          updated_at: row.updated_at,
-          created_at: row.created_at,
+          updated_at: updatedAt,
+          created_at: createdAt,
           updated_by_user: row.updated_by_email
             ? {
               user_id: row.updated_by,

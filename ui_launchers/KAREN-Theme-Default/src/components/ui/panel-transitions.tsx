@@ -1,6 +1,6 @@
 "use client";
 
-import { Variants } from "framer-motion";
+import { TargetAndTransition, Transition, Variant, Variants } from "framer-motion";
 
 // ============================================================================
 // TRANSITION TYPES
@@ -279,24 +279,31 @@ export function getTransitionVariants(
   }
 }
 
+const isTargetAndTransition = (
+  variant: Variant | undefined
+): variant is TargetAndTransition =>
+  typeof variant === "object" && variant !== null && !Array.isArray(variant);
+
 /**
  * Apply transition configuration to variants
  */
 export function applyTransitionConfig(
   variants: Variants,
-  transitionConfig: unknown
+  transitionConfig?: Transition
 ): Variants {
   const enhancedVariants: Variants = {};
-  
+
   Object.keys(variants).forEach((key) => {
     const variant = variants[key];
-    if (typeof variant === 'object' && variant !== null) {
+    if (isTargetAndTransition(variant)) {
+      const mergedTransition =
+        transitionConfig || variant.transition
+          ? (Object.assign({}, variant.transition ?? {}, transitionConfig ?? {}) as Transition)
+          : undefined;
+
       enhancedVariants[key] = {
         ...variant,
-        transition: {
-          ...transitionConfig,
-          ...(variant as unknown).transition,
-        },
+        ...(mergedTransition ? { transition: mergedTransition } : {}),
       };
     } else {
       enhancedVariants[key] = variant;
@@ -314,9 +321,11 @@ export function createReducedMotionVariants(variants: Variants): Variants {
 
   Object.keys(variants).forEach((key) => {
     const variant = variants[key];
-    if (typeof variant === 'object' && variant !== null) {
+    if (isTargetAndTransition(variant)) {
+      const opacityValue = typeof variant.opacity === "number" ? variant.opacity : 1;
+
       reducedVariants[key] = {
-        opacity: (variant as unknown).opacity ?? 1,
+        opacity: opacityValue ?? 1,
         transition: reducedMotionTransition,
       };
     } else {
