@@ -14,15 +14,21 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    // Forward cookies to backend
     const cookieHeader = request.headers.get('cookie');
+    const sessionToken = request.cookies.get('kari_session')?.value;
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(cookieHeader && { 'Cookie': cookieHeader }),
+    };
+
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
 
     const response = await fetch(`${BACKEND_URL}/api/auth/validate-session`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(cookieHeader && { 'Cookie': cookieHeader }),
-      },
+      headers,
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: 'no-store',
     });

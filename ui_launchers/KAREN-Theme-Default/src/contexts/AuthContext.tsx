@@ -43,6 +43,7 @@ interface AuthApiResponse {
   success?: boolean;
   user?: AuthResponseUserData;
   user_data?: AuthResponseUserData;
+  access_token?: string;
   [key: string]: unknown;
 }
 
@@ -459,6 +460,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Handle successful login response
       const data = result.data;
+      if (data?.access_token) {
+        localStorage.setItem("karen_access_token", data.access_token);
+      }
       const userData = extractUserData(data);
       if (!userData) {
         throw new ConnectionError(
