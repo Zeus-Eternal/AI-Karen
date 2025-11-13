@@ -802,9 +802,9 @@ const AdvancedTrainingConfig: React.FC = () => {
                 <Label htmlFor="compliance_framework">Compliance Framework</Label>
                 <Select
                   value={config.security.compliance_framework}
-                  onValueChange={(value: unknown) => setConfig(prev => ({
+                  onValueChange={(value: string) => setConfig(prev => ({
                     ...prev,
-                    security: { ...prev.security, compliance_framework: value }
+                    security: { ...prev.security, compliance_framework: value as SecurityConfig['compliance_framework'] }
                   }))}
                 >
                   <SelectTrigger>
@@ -866,11 +866,11 @@ const AdvancedTrainingConfig: React.FC = () => {
                       <Label htmlFor="fl_strategy">Federation Strategy</Label>
                       <Select
                         value={config.federated_learning.strategy}
-                        onValueChange={(value) => setConfig(prev => ({
+                        onValueChange={(value: string) => setConfig(prev => ({
                           ...prev,
-                          federated_learning: { 
+                          federated_learning: {
                             ...prev.federated_learning!,
-                            strategy: value as unknown
+                            strategy: value as FederatedLearningConfig['strategy']
                           }
                         }))}
                       >
