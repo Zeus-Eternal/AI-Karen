@@ -6,13 +6,15 @@
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  */
+import { getHighestRole, ROLE_PERMISSIONS, type UserRole } from "@/components/security/rbac-shared";
+
 // Simplified types for session management
 export interface SessionData {
   userId: string;
   email: string;
   roles: string[];
   tenantId: string;
-  role?: 'super_admin' | 'admin' | 'user';
+  role?: UserRole;
   permissions?: string[];
 }
 // Simple in-memory session storage
@@ -77,7 +79,7 @@ export async function validateSession(): Promise<boolean> {
           email: userData.email,
           roles: userData.roles || [],
           tenantId: userData.tenant_id,
-          role: userData.role || determineUserRole(userData.roles || []),
+          role: userData.role || getHighestRole(userData.roles || []),
           permissions: userData.permissions,
         };
         setSession(sessionData);
@@ -119,9 +121,10 @@ export function hasPermission(permission: string): boolean {
   if (currentSession.permissions) {
     return currentSession.permissions.includes(permission);
   }
-  // Default permissions based on role
-  const rolePermissions = getRolePermissions(currentSession.role || (currentSession.roles[0] as 'super_admin' | 'admin' | 'user'));
-  return rolePermissions.includes(permission);
+  // Default permissions based on role (use unified rbac-shared)
+  const role = currentSession.role || getHighestRole(currentSession.roles);
+  const rolePermissions = ROLE_PERMISSIONS[role] || [];
+  return rolePermissions.includes(permission as any);
 }
 /**
  * Check if user is admin (admin or super_admin)
@@ -134,45 +137,6 @@ export function isAdmin(): boolean {
  */
 export function isSuperAdmin(): boolean {
   return hasRole('super_admin');
-}
-/**
- * Helper function to determine primary role from roles array
- */
-function determineUserRole(roles: string[]): 'super_admin' | 'admin' | 'user' {
-  if (roles.includes('super_admin')) return 'super_admin';
-  if (roles.includes('admin')) return 'admin';
-  return 'user';
-}
-/**
- * Helper function to get default permissions for a role
- */
-function getRolePermissions(role: 'super_admin' | 'admin' | 'user'): string[] {
-  switch (role) {
-    case 'super_admin':
-      return [
-        'user_management',
-        'admin_management', 
-        'system_config',
-        'audit_logs',
-        'security_settings',
-        'user_create',
-        'user_edit',
-        'user_delete',
-        'admin_create',
-        'admin_edit',
-        'admin_delete'
-      ];
-    case 'admin':
-      return [
-        'user_management',
-        'user_create',
-        'user_edit',
-        'user_delete'
-      ];
-    case 'user':
-    default:
-      return [];
-  }
 }
 /**
  * Check if user is authenticated (simple boolean check)
@@ -219,7 +183,7 @@ export async function login(
       email: userData.email,
       roles: userData.roles || [],
       tenantId: userData.tenant_id,
-      role: userData.role || determineUserRole(userData.roles || []),
+      role: userData.role || getHighestRole(userData.roles || []),
       permissions: userData.permissions,
     };
     setSession(sessionData);

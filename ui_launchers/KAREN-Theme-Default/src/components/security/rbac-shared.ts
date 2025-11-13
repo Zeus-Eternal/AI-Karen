@@ -1,4 +1,11 @@
-export type UserRole = "admin" | "user" | "guest" | "moderator" | "developer";
+/**
+ * Unified Role-Based Access Control (RBAC) System
+ *
+ * Single source of truth for all role and permission logic.
+ * Matches backend role system: super_admin, admin, user
+ */
+
+export type UserRole = "super_admin" | "admin" | "user";
 
 export type Permission =
   | "chat.send"
@@ -12,19 +19,24 @@ export type Permission =
   | "attachments.download"
   | "admin.settings"
   | "admin.users"
-  | "developer.debug"
-  | "moderator.content";
+  | "admin.create"
+  | "admin.edit"
+  | "admin.delete"
+  | "user.create"
+  | "user.edit"
+  | "user.delete"
+  | "user.view"
+  | "system.config"
+  | "system.audit"
+  | "system.security";
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  guest: 0,
   user: 1,
-  moderator: 2,
-  developer: 3,
-  admin: 4,
+  admin: 2,
+  super_admin: 3,
 } as const;
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  guest: ["chat.send"],
   user: [
     "chat.send",
     "chat.code_assistance",
@@ -36,30 +48,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "attachments.upload",
     "attachments.download",
   ],
-  moderator: [
-    "chat.send",
-    "chat.code_assistance",
-    "chat.explanations",
-    "chat.documentation",
-    "chat.analysis",
-    "voice.input",
-    "voice.output",
-    "attachments.upload",
-    "attachments.download",
-    "moderator.content",
-  ],
-  developer: [
-    "chat.send",
-    "chat.code_assistance",
-    "chat.explanations",
-    "chat.documentation",
-    "chat.analysis",
-    "voice.input",
-    "voice.output",
-    "attachments.upload",
-    "attachments.download",
-    "developer.debug",
-  ],
   admin: [
     "chat.send",
     "chat.code_assistance",
@@ -70,24 +58,92 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "voice.output",
     "attachments.upload",
     "attachments.download",
-    "moderator.content",
-    "developer.debug",
     "admin.settings",
     "admin.users",
+    "user.create",
+    "user.edit",
+    "user.delete",
+    "user.view",
+  ],
+  super_admin: [
+    "chat.send",
+    "chat.code_assistance",
+    "chat.explanations",
+    "chat.documentation",
+    "chat.analysis",
+    "voice.input",
+    "voice.output",
+    "attachments.upload",
+    "attachments.download",
+    "admin.settings",
+    "admin.users",
+    "admin.create",
+    "admin.edit",
+    "admin.delete",
+    "user.create",
+    "user.edit",
+    "user.delete",
+    "user.view",
+    "system.config",
+    "system.audit",
+    "system.security",
   ],
 } as const;
 
+/**
+ * Determine highest role from roles array (matches backend logic)
+ * Used by: AuthContext, session.ts, test-utils, RBACGuard
+ */
 export function getHighestRole(roles: readonly string[] | undefined | null): UserRole {
-  if (!roles || roles.length === 0) return "guest";
-  let best: UserRole = "guest";
-  let bestLevel = ROLE_HIERARCHY[best];
-  for (const r of roles) {
-    const role = (r as UserRole) || "guest";
-    const lvl = ROLE_HIERARCHY[role] ?? 0;
-    if (lvl > bestLevel) {
-      best = role;
-      bestLevel = lvl;
-    }
+  if (!roles || roles.length === 0) return "user";
+  if (roles.includes("super_admin")) return "super_admin";
+  if (roles.includes("admin")) return "admin";
+  return "user";
+}
+
+/**
+ * Get role display name
+ */
+export function getRoleDisplayName(role: UserRole | string): string {
+  switch (role) {
+    case "super_admin":
+      return "Super Admin";
+    case "admin":
+      return "Admin";
+    case "user":
+      return "User";
+    default:
+      return role || "Unknown";
   }
-  return best;
+}
+
+/**
+ * Check if a role has a specific permission
+ */
+export function roleHasPermission(role: UserRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+/**
+ * Check if a role is higher or equal to another role
+ */
+export function roleHierarchy(userRole: UserRole, requiredRole: UserRole): boolean {
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+}
+
+/**
+ * Check if role can manage another role
+ * Super admins can manage everyone, admins can manage users
+ */
+export function canManageRole(managerRole: UserRole, targetRole: UserRole): boolean {
+  if (managerRole === "super_admin") return true;
+  if (managerRole === "admin") return targetRole === "user";
+  return false;
+}
+
+/**
+ * Validate role string
+ */
+export function isValidRole(role: string): role is UserRole {
+  return ["super_admin", "admin", "user"].includes(role);
 }

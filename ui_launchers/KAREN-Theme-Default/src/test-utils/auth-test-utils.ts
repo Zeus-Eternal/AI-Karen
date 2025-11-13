@@ -16,6 +16,7 @@ import {
   getConnectionManager,
 } from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
+import { getHighestRole } from '@/components/security/rbac-shared';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,7 +193,7 @@ export async function testDatabaseAuthentication(
         email: String(userData.email),
         roles: Array.isArray(userData.roles) ? userData.roles : [],
         tenant_id: String(userData.tenant_id ?? ''),
-        role: String(userData.role ?? determineUserRole(Array.isArray(userData.roles) ? userData.roles : [])),
+        role: String(userData.role ?? getHighestRole(Array.isArray(userData.roles) ? userData.roles : [])),
       },
       responseTime,
       retryCount: result.retryCount ?? 0,
@@ -256,12 +257,6 @@ function getDatabaseAuthErrorMessage(originalError: string, category: string): s
     default:
       return `Authentication failed: ${originalError}`;
   }
-}
-
-function determineUserRole(roles: string[]): string {
-  if (roles.includes('super_admin')) return 'super_admin';
-  if (roles.includes('admin')) return 'admin';
-  return 'user';
 }
 
 function hasProperty<Key extends PropertyKey>(
