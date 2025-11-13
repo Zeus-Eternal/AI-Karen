@@ -34,7 +34,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
-    const backendUrl = `${backendUrl}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
+    const fullBackendUrl = `${backendUrl}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
     // Log the request for debugging
     // Get request body if it exists
     let body: string | undefined;
@@ -93,7 +93,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     let lastError: unknown = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        response = await fetch(backendUrl, {
+        response = await fetch(fullBackendUrl, {
           method: request.method,
           headers: { ...headers, Connection: 'keep-alive' },
           body: body || undefined,
@@ -125,7 +125,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     // If upstream returned 404 for /api/auth/*, try simple-auth fallback /auth/*
     if (response.status === 404 && Array.isArray(resolvedParams.path) && resolvedParams.path[0] === 'auth') {
-      const fallbackUrl = `${BACKEND_URL}/auth/${resolvedParams.path.slice(1).join('/')}${searchParams ? `?${searchParams}` : ''}`;
+      const fallbackUrl = `${backendUrl}/auth/${resolvedParams.path.slice(1).join('/')}${searchParams ? `?${searchParams}` : ''}`;
       try {
         const fallbackResp = await fetch(fallbackUrl, {
           method: request.method,
