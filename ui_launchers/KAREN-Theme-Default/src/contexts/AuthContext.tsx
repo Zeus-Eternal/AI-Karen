@@ -19,7 +19,7 @@ export interface User {
   email: string;
   roles: string[];
   tenantId?: string;
-  role?: "super_admin" | "admin" | "user";
+  role?: UserRole;
   permissions?: string[];
 }
 
@@ -34,7 +34,7 @@ interface AuthResponseUserData {
   email: string;
   roles?: string[];
   tenant_id: string;
-  role?: "super_admin" | "admin" | "user";
+  role?: UserRole;
   permissions?: string[];
 }
 
@@ -71,7 +71,7 @@ export interface AuthContextType {
   checkAuth: () => Promise<boolean>;
   refreshSession: () => Promise<boolean>;
   clearError: () => void;
-  hasRole: (role: "super_admin" | "admin" | "user") => boolean;
+  hasRole: (role: UserRole) => boolean;
   hasPermission: (permission: string) => boolean;
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
@@ -220,7 +220,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   // Helper function to get default permissions for a role
   const getRolePermissions = (
-    role: "super_admin" | "admin" | "user"
+    role: UserRole
   ): string[] => {
     switch (role) {
       case "super_admin":
@@ -567,7 +567,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   // Role and permission checking functions
   const hasRole = useCallback(
-    (role: "super_admin" | "admin" | "user"): boolean => {
+    (role: UserRole): boolean => {
       if (!user) return false;
 
       // Check the new role field first, then fall back to roles array
@@ -592,7 +592,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Default permissions based on role
       const rolePermissions = getRolePermissions(
-        user.role || (user.roles[0] as "super_admin" | "admin" | "user")
+        user.role || (user.roles[0] as UserRole)
       );
       return rolePermissions.includes(permission);
     },

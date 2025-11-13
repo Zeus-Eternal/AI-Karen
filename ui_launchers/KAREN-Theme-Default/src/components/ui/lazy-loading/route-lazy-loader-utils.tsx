@@ -9,10 +9,10 @@ type RouteLoaderOptions = Pick<RouteLazyLoaderProps, "fallback" | "errorFallback
   preload?: boolean;
 };
 
-export function createLazyRoute<P extends object>(
-  importFn: () => Promise<{ default: ComponentType<P> }>,
+export function createLazyRoute<Props extends object>(
+  importFn: () => Promise<{ default: ComponentType<Props> }>,
   options: RouteLoaderOptions = {}
-): ComponentType<P> {
+): ComponentType<Props> {
   const load = async () => importFn();
 
   if (options.preload) {
@@ -21,7 +21,7 @@ export function createLazyRoute<P extends object>(
 
   const LazyComponent = lazy(load);
 
-  const Wrapped = (props: P): React.ReactElement => (
+  const Wrapped: React.FC<Props> = (props) => (
     <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
       <LazyComponent {...props} />
     </RouteLazyLoader>
@@ -40,7 +40,7 @@ export function createLazyRoute<P extends object>(
 
 export function useRoutePreloader() {
   const preloadRoute = useCallback(
-    (importFn: () => Promise<{ default: ComponentType<Record<string, unknown>> }>) => {
+    (importFn: () => Promise<{ default: ComponentType<object> }>) => {
       void importFn().catch(() => undefined);
     },
     []
