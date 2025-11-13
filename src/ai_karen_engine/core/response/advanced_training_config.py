@@ -149,6 +149,13 @@ class AdvancedTrainingConfig:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the configuration with JSON-friendly timestamps."""
+        data = asdict(self)
+        data["created_at"] = self.created_at.isoformat()
+        data["updated_at"] = self.updated_at.isoformat()
+        return data
+
 
 class TrainingMetrics:
     """Container for training metrics and monitoring data."""
@@ -619,8 +626,14 @@ class ABTestManager:
         # Fallback to control
         return "control", config.control_config
     
-    def record_result(self, test_id: str, user_id: str, treatment: str, 
-                     metric_value: float, additional_metrics: Dict[str, Any] = None):
+    def record_result(
+        self,
+        test_id: str,
+        user_id: str,
+        treatment: str,
+        metric_value: float,
+        additional_metrics: Optional[Dict[str, Any]] = None,
+    ):
         """Record a result for an A/B test."""
         if test_id not in self.active_tests:
             raise ValueError(f"Test {test_id} not found")
@@ -743,6 +756,23 @@ class ABTestManager:
         return archived_test
 
 
+METADATA_FILENAME = "config_metadata.json"
+
+
+@dataclass
+class AdvancedTrainingConfigRecord:
+    """Lightweight wrapper carrying configuration and metadata for API responses."""
+    config_id: str
+    config: AdvancedTrainingConfig
+    metadata: Dict[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        record = self.config.to_dict()
+        record["config_id"] = self.config_id
+        record["metadata"] = dict(self.metadata)
+        return record
+
+
 class AdvancedTrainingConfigManager:
     """Main manager for advanced training configuration system."""
     
@@ -754,6 +784,29 @@ class AdvancedTrainingConfigManager:
         self.ab_test_manager = ABTestManager()
         self.active_sweeps: Dict[str, HyperparameterOptimizer] = {}
         self.training_metrics: Dict[str, TrainingMetrics] = {}
+        self.metadata_index: Dict[str, Dict[str, Any]] = self._load_metadata_index()
+
+    def _metadata_path(self) -> Path:
+        return self.config_dir / METADATA_FILENAME
+
+    def _load_metadata_index(self) -> Dict[str, Dict[str, Any]]:
+        path = self._metadata_path()
+        if not path.exists():
+            return {}
+        try:
+            with open(path, "r") as f:
+                raw = json.load(f)
+            if isinstance(raw, dict):
+                return raw
+            logger.warning("Metadata index corrupted, resetting")
+        except (json.JSONDecodeError, OSError) as exc:  # pragma: no cover - resilience
+            logger.warning(f"Failed to load metadata index: {exc}")
+        return {}
+
+    def _persist_metadata_index(self) -> None:
+        path = self._metadata_path()
+        with open(path, "w") as f:
+            json.dump(self.metadata_index, f, indent=2)
     
     def create_advanced_config(self, base_config: Dict[str, Any]) -> AdvancedTrainingConfig:
         """Create an advanced training configuration."""
@@ -761,9 +814,12 @@ class AdvancedTrainingConfigManager:
         config.updated_at = datetime.now()
         return config
     
-    def save_config(self, config: AdvancedTrainingConfig) -> str:
+    def save_config(
+        self, config: AdvancedTrainingConfig, config_id: Optional[str] = None
+    ) -> str:
         """Save training configuration to disk."""
-        config_id = f"config_{config.model_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        if not config_id:
+            config_id = f"config_{config.model_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         config_path = self.config_dir / f"{config_id}.json"
         
         config_dict = asdict(config)
@@ -828,12 +884,98 @@ class AdvancedTrainingConfigManager:
         
         return AdvancedTrainingConfig(**config_dict)
     
+    async def list_configs(self, user_id: str, tenant_id: str) -> List[AdvancedTrainingConfigRecord]:
+        """List saved configurations, filtering by tenant/user metadata when available."""
+        records: List[AdvancedTrainingConfigRecord] = []
+        for config_file in sorted(self.config_dir.glob("config_*.json")):
+            if config_file.name == METADATA_FILENAME:
+                continue
+            config_id = config_file.stem
+            metadata = self.metadata_index.get(config_id, {})
+            if metadata:
+                tenant_match = metadata.get("tenant_id") == tenant_id
+                user_match = metadata.get("created_by") == user_id
+                if metadata.get("tenant_id") and not tenant_match:
+                    continue
+                if metadata.get("created_by") and not user_match:
+                    continue
+            config = self.load_config(config_id)
+            records.append(AdvancedTrainingConfigRecord(config_id, config, metadata))
+        return records
+
+    async def create_config(
+        self, config_data: Dict[str, Any], created_by: str, tenant_id: str
+    ) -> str:
+        """Create and persist an advanced training configuration."""
+        config = self.create_advanced_config(config_data)
+        config_id = self.save_config(config)
+        metadata = {
+            "config_id": config_id,
+            "created_by": created_by,
+            "tenant_id": tenant_id,
+            "model_id": config.model_id,
+            "dataset_id": config.dataset_id,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": config.updated_at.isoformat(),
+        }
+        self.metadata_index[config_id] = metadata
+        self._persist_metadata_index()
+        return config_id
+
+    async def update_config(
+        self, config_id: str, config_data: Dict[str, Any], updated_by: str
+    ) -> bool:
+        """Update an existing advanced training configuration."""
+        config_path = self.config_dir / f"{config_id}.json"
+        if not config_path.exists():
+            return False
+
+        existing = self.load_config(config_id)
+        now = datetime.now()
+        merged = asdict(existing)
+        merged.update(config_data)
+        merged["created_at"] = existing.created_at
+        merged["updated_at"] = now
+
+        updated_config = AdvancedTrainingConfig(**merged)
+        updated_config.created_at = existing.created_at
+        updated_config.updated_at = now
+
+        self.save_config(updated_config, config_id=config_id)
+
+        metadata = self.metadata_index.get(config_id, {})
+        metadata.setdefault("created_by", updated_by)
+        metadata.setdefault("created_at", existing.created_at.isoformat())
+        metadata.update(
+            {
+                "updated_by": updated_by,
+                "updated_at": now.isoformat(),
+                "model_id": updated_config.model_id,
+                "dataset_id": updated_config.dataset_id,
+            }
+        )
+        self.metadata_index[config_id] = metadata
+        self._persist_metadata_index()
+        return True
+
+    async def delete_config(self, config_id: str, deleted_by: str) -> bool:
+        """Delete a saved advanced training configuration."""
+        config_path = self.config_dir / f"{config_id}.json"
+        if not config_path.exists():
+            return False
+
+        config_path.unlink()
+        existed = self.metadata_index.pop(config_id, None) is not None
+        if existed:
+            self._persist_metadata_index()
+        return True
+    
     def get_ai_suggestions(self, model_type: str, dataset_size: int, 
                           hardware_specs: Dict[str, Any]) -> Dict[str, Any]:
         """Get AI-assisted training suggestions."""
         return self.ai_assistant.suggest_training_strategy(model_type, dataset_size, hardware_specs)
     
-    def start_hyperparameter_sweep(self, config: AdvancedTrainingConfig) -> str:
+    async def start_hyperparameter_sweep(self, config: AdvancedTrainingConfig) -> str:
         """Start a hyperparameter sweep."""
         if not config.hyperparameter_sweep:
             raise ValueError("No hyperparameter sweep configuration provided")
@@ -886,8 +1028,14 @@ class AdvancedTrainingConfigManager:
         """Get A/B test treatment assignment."""
         return self.ab_test_manager.assign_treatment(test_id, user_id)
     
-    def record_ab_test_result(self, test_id: str, user_id: str, treatment: str, 
-                             metric_value: float, additional_metrics: Dict[str, Any] = None):
+    def record_ab_test_result(
+        self,
+        test_id: str,
+        user_id: str,
+        treatment: str,
+        metric_value: float,
+        additional_metrics: Optional[Dict[str, Any]] = None,
+    ):
         """Record A/B test result."""
         self.ab_test_manager.record_result(test_id, user_id, treatment, metric_value, additional_metrics)
     

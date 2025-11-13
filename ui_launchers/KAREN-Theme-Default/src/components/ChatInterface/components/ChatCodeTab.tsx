@@ -2,14 +2,8 @@
 
 import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Code, Eye, EyeOff, AlertCircle, Zap, FileText, Send, Loader2 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { ChatSettings } from "../types";
-
-// Lazy-load Copilot features only when enabled
-const CopilotTextarea = dynamic(() => import("@/components/chat/copilot/CopilotTextarea").then(m => m.CopilotTextarea), { ssr: false });
 
 interface ChatCodeTabProps {
   codeValue: string;
@@ -38,7 +32,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
   onCodeSubmit,
   onQuickAction,
   useCopilotKit,
-  enableDocGeneration,
+  enableDocGeneration: _enableDocGeneration,
 }) => {
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -129,9 +123,23 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
             <Button variant="outline" onClick={() => onQuickAction?.("optimize", `Optimize this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
               <Zap className="h-4 w-4 mr-2" />
             </Button>
-            <Button variant="outline" onClick={() => onQuickAction?.("docs", `Generate documentation for this ${settings?.language || 'code'} code:\n\n\`\`\`${settings?.language || 'code'}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping || !onQuickAction}>
-              <FileText className="h-4 w-4 mr-2" />
-            </Button>
+            {enableDocGeneration && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  onQuickAction?.(
+                    "docs",
+                    `Generate documentation for this ${settings?.language || "code"} code:\n\n\`\`\`${
+                      settings?.language || "code"
+                    }\n${codeValue}\n\`\`\``,
+                    "documentation"
+                  )
+                }
+                disabled={!codeValue.trim() || isTyping || !onQuickAction}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+              </Button>
+            )}
           </div>
         </div>
 

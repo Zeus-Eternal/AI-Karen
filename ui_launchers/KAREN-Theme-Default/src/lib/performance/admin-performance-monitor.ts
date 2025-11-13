@@ -358,7 +358,7 @@ export class AdminPerformanceMonitor {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report)
       });
-    } catch (error) {
+    } catch {
       // Silently fail - don't block on reporting errors
     }
   }

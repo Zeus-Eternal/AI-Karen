@@ -51,7 +51,7 @@ export interface AppToasterProps {
 }
 
 function buildToastClassName(
-  variant: ToastProps["variant"],
+  variant: UiToastProps["variant"],
   className: string | undefined,
   richColors?: boolean,
 ) {
@@ -101,6 +101,7 @@ export function Toaster({ position = "bottom-right", richColors = false }: AppTo
             const { id, title, description, action, ...props } = toast as ToasterToast;
             const toastProps = props as UiToastProps;
             const { className, variant, ...rest } = toastProps;
+            const typedVariant = (variant ?? "default") as UiToastProps["variant"];
 
             return (
               <ToastComponent

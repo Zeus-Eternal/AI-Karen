@@ -5,10 +5,12 @@ import { Slot } from "@radix-ui/react-slot";
 
 import { cn } from "@/lib/utils";
 
-import type {
-  PolymorphicComponentPropWithRef,
-  PolymorphicComponentWithDisplayName,
-  PolymorphicRef,
+import {
+  forwardRefWithAs,
+  type PolymorphicComponentProp,
+  type PolymorphicComponentPropWithRef,
+  type PolymorphicComponentWithDisplayName,
+  type PolymorphicRef,
 } from "../compound/types";
 
 export type ButtonVariant =
@@ -31,6 +33,9 @@ type ButtonBaseProps = {
   children?: React.ReactNode;
   className?: string;
 };
+
+type ButtonRenderProps<T extends React.ElementType = "button"> =
+  PolymorphicComponentProp<T, ButtonBaseProps>;
 
 export type ButtonProps<T extends React.ElementType = "button"> =
   PolymorphicComponentPropWithRef<T, ButtonBaseProps>;
@@ -67,11 +72,6 @@ const iconSizeClasses: Record<ButtonSize, string> = {
   xl: "h-12 w-12",
 };
 
-type ButtonForwardRef = <T extends React.ElementType = "button">(
-  props: ButtonProps<T>,
-  ref: PolymorphicRef<T>
-) => React.ReactElement | null;
-
 function ButtonInner<T extends React.ElementType = "button">(
   {
     as,
@@ -84,7 +84,7 @@ function ButtonInner<T extends React.ElementType = "button">(
     fullWidth = false,
     children,
     ...props
-  }: ButtonProps<T>,
+  }: ButtonRenderProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
   const Component = asChild ? Slot : (as ?? "button");
@@ -110,7 +110,7 @@ function ButtonInner<T extends React.ElementType = "button">(
       disabled={isButtonElement ? isDisabled : undefined}
       data-variant={variant}
       data-size={size}
-      {...(props as ButtonProps<T>)}
+      {...props}
     >
       {loading && (
         <svg
@@ -141,9 +141,10 @@ function ButtonInner<T extends React.ElementType = "button">(
   );
 }
 
-const Button = React.forwardRef(
-  ButtonInner as ButtonForwardRef
-) as ButtonComponent;
+const Button: ButtonComponent = forwardRefWithAs<
+  "button",
+  ButtonBaseProps
+>(ButtonInner);
 
 Button.displayName = "Button";
 
@@ -168,45 +169,40 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 
 IconButton.displayName = "IconButton";
 
-type LinkButtonProps<T extends React.ElementType = "a"> = ButtonProps<T> & {
-  href?: string;
-};
+type LinkButtonRenderProps<T extends React.ElementType = "a"> =
+  PolymorphicComponentProp<T, ButtonBaseProps & { href?: string }>;
+
+export type LinkButtonProps<T extends React.ElementType = "a"> =
+  PolymorphicComponentPropWithRef<T, ButtonBaseProps & { href?: string }>;
 
 type LinkButtonComponent = PolymorphicComponentWithDisplayName<
   "a",
   ButtonBaseProps & { href?: string }
 >;
 
-type LinkButtonForwardRef = <T extends React.ElementType = "a">(
-  props: LinkButtonProps<T>,
-  ref: PolymorphicRef<T>
-) => React.ReactElement | null;
-
 function LinkButtonInner<T extends React.ElementType = "a">(
-  {
-    as,
-    variant = "link",
-    children,
-    ...props
-  }: LinkButtonProps<T>,
+  props: LinkButtonRenderProps<T>,
   ref: PolymorphicRef<T>
 ): React.ReactElement | null {
-  const BaseButton: ButtonComponent = Button;
+  const { as, variant = "link", ...rest } = props;
+  const resolvedProps = {
+    ...rest,
+    as: as ?? ("a" as T),
+    variant,
+  };
+
   return (
-    <BaseButton
-      as={as ?? ("a" as T)}
-      ref={ref as React.Ref<unknown>}
-      variant={variant}
-      {...(props as ButtonProps<T>)}
-    >
-      {children}
-    </BaseButton>
+    <Button
+      {...(resolvedProps as React.ComponentProps<typeof Button>)}
+      ref={ref}
+    />
   );
 }
 
-const LinkButton = React.forwardRef(
-  LinkButtonInner as LinkButtonForwardRef
-) as LinkButtonComponent;
+const LinkButton: LinkButtonComponent = forwardRefWithAs<
+  "a",
+  ButtonBaseProps & { href?: string }
+>(LinkButtonInner);
 
 LinkButton.displayName = "LinkButton";
 

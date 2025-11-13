@@ -375,17 +375,21 @@ export default function ModelLibrary() {
     // For non-destructive actions, execute directly
     await executeModelAction(modelId, action, modelName);
   };
+  interface DownloadTaskResponse {
+    task_id?: string;
+  }
+
   const executeModelAction = async (modelId: string, action: ModelAction, modelName: string) => {
     setModelActionLoading(modelId, action, true);
     try {
       switch (action) {
         case 'download': {
-          const response = await backend.makeRequestPublic(`/api/models/download`, {
+          const response = await backend.makeRequestPublic<DownloadTaskResponse>(`/api/models/download`, {
             method: 'POST',
             body: JSON.stringify({ model_id: modelId })
           });
 
-          if (response && (response as unknown).task_id) {
+          if (response?.task_id) {
             // The download status hook will automatically pick up this task
             showSuccess(
               "Download Started",

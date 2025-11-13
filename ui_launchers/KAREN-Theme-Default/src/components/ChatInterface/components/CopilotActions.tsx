@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Brain, Code, Bug, RefreshCw, FileText, Lightbulb, Zap, Search, TestTube, Shield, Cpu, GitBranch, MessageSquare, Sparkles, ChevronDown } from "lucide-react";
+import { Brain, Code, Bug, RefreshCw, FileText, Lightbulb, Zap, Search, TestTube, Shield, Cpu, GitBranch, Sparkles, ChevronDown } from "lucide-react";
 import type { CopilotAction, ChatContext } from "../types";
 
 
@@ -17,8 +17,7 @@ interface CopilotActionsProps {
   showShortcuts?: boolean;
 }
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-};
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {};
 
 const defaultActions: CopilotAction[] = [
   {
@@ -207,6 +206,5 @@ const CopilotActions: React.FC<CopilotActionsProps> = ({
   );
 };
 
-export const DEFAULT_COPILOT_ACTIONS = defaultActions;
 export type { CopilotAction, ChatContext };
 export default CopilotActions;

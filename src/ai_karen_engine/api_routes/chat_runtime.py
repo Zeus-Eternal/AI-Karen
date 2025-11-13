@@ -9,21 +9,35 @@ import time
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple, Literal
+from typing import Any, AsyncGenerator, Dict, Iterable, List, Optional, Tuple, Literal, TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 try:
     from pydantic import BaseModel, Field, field_validator
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
-    # Fallback for field_validator if not available
     try:
         from pydantic import validator as field_validator
     except ImportError:
         field_validator = None
 
-from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
+from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest, ChatResponse
+
+if TYPE_CHECKING:
+    from ai_karen_engine.services.structured_logging_service import StructuredLogger as StructuredLoggerType
+    from ai_karen_engine.services.metrics_service import MetricsService as MetricsServiceType
+else:
+    StructuredLoggerType = Any
+    MetricsServiceType = Any
+
+if field_validator is None:
+    def _noop_field_validator(*args, **kwargs):
+        def decorator(fn):
+            return fn
+        return decorator
+
+    field_validator = _noop_field_validator
 from ai_karen_engine.core.config_manager import get_config
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
@@ -49,12 +63,12 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
 
 # Initialize observability services
-_structured_logger: Optional[StructuredLogger] = None
-_metrics_service: Optional[MetricsService] = None
+_structured_logger: Optional[StructuredLoggerType] = None
+_metrics_service: Optional[MetricsServiceType] = None
 
-if OBSERVABILITY_AVAILABLE:
+if OBSERVABILITY_AVAILABLE and StructuredLogger is not None and MetricsService is not None:
     try:
-        _structured_logger = StructuredLogger(service="chat-runtime", component="api")
+        _structured_logger = StructuredLogger("chat-runtime", "api")
         _metrics_service = MetricsService()
         logger.info("✅ Observability services initialized (StructuredLogger + MetricsService)")
     except Exception as e:
@@ -211,6 +225,12 @@ class ChatError(BaseModel):
     suggestion: Optional[str] = Field(None, description="Suggested resolution")
 
 
+class StopChatRequest(BaseModel):
+    """Request payload for stopping chat generation"""
+    conversation_id: str = Field(..., min_length=1, description="Conversation ID to stop")
+    correlation_id: Optional[str] = Field(None, description="Specific correlation ID to stop")
+
+
 # Production Dependency Functions
 async def get_request_metadata(request: Request) -> Dict[str, Any]:
     """Enhanced request metadata extraction"""
@@ -363,26 +383,34 @@ async def get_chat_orchestrator():
         try:
             logger.info("Initializing production ChatOrchestrator with full capabilities")
 
-            # Import real orchestrator
-            from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator as RealChatOrchestrator
+            # Import real orchestrator (fallback to already imported class to avoid circular issues)
+            RealChatOrchestrator = ChatOrchestrator
+            try:
+                from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator as LoadedChatOrchestrator
+
+                RealChatOrchestrator = LoadedChatOrchestrator
+            except ImportError:
+                logger.warning("Using cached ChatOrchestrator reference during initialization")
+
             from ai_karen_engine.chat.memory_processor import MemoryProcessor
             from ai_karen_engine.chat.instruction_processor import InstructionProcessor
             from ai_karen_engine.chat.context_integrator import ContextIntegrator
 
-            # Try to initialize memory processor (optional - will degrade gracefully if unavailable)
             memory_processor = None
             try:
-                # Get required services from registry
                 from ai_karen_engine.services.spacy_service import SpacyService
                 from ai_karen_engine.services.distilbert_service import DistilBertService
-                from ai_karen_engine.database.memory_manager import MemoryManager
-
                 service_registry = get_service_registry()
 
-                # Try to get services with graceful fallback
-                spacy_service = service_registry.get_service("spacy_service") or SpacyService()
-                distilbert_service = service_registry.get_service("distilbert_service") or DistilBertService()
-                memory_manager = service_registry.get_service("memory_manager")
+                spacy_service = await service_registry.get_service("spacy_service")
+                if spacy_service is None:
+                    spacy_service = SpacyService()
+
+                distilbert_service = await service_registry.get_service("distilbert_service")
+                if distilbert_service is None:
+                    distilbert_service = DistilBertService()
+
+                memory_manager = await service_registry.get_service("memory_manager")
 
                 memory_processor = MemoryProcessor(
                     spacy_service=spacy_service,
@@ -390,14 +418,12 @@ async def get_chat_orchestrator():
                     memory_manager=memory_manager
                 )
                 logger.info("✅ Memory processor initialized")
-            except Exception as e:
-                logger.warning(f"Memory processor unavailable, will operate without memory: {e}")
+            except Exception as mem_exc:
+                logger.warning(f"Memory processor unavailable, will operate without memory: {mem_exc}")
 
-            # Initialize instruction processor and context integrator
             instruction_processor = InstructionProcessor()
             context_integrator = ContextIntegrator()
 
-            # Create the real orchestrator with all services
             _chat_orchestrator_instance = RealChatOrchestrator(
                 memory_processor=memory_processor,
                 instruction_processor=instruction_processor,
@@ -410,9 +436,8 @@ async def get_chat_orchestrator():
 
         except Exception as e:
             logger.error(f"Failed to initialize ChatOrchestrator: {e}")
-            # Create a minimal fallback orchestrator
             logger.warning("Using minimal fallback orchestrator")
-            _chat_orchestrator_instance = RealChatOrchestrator()
+            _chat_orchestrator_instance = ChatOrchestrator()
             return _chat_orchestrator_instance
 
 
@@ -429,11 +454,11 @@ def log_chat_event(
         "event_type": event_type,
         "user_id": user_id,
         "correlation_id": correlation_id or "unknown",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
         **extra
     }
 
-    getattr(logger, level)(f"Chat event: {event_type}", extra=structured_extra)
+    log_fn = getattr(logger, level, logger.info)
+    log_fn(f"Chat event: {event_type}", **structured_extra)
 
 
 class ChatMetrics:
@@ -445,7 +470,7 @@ class ChatMetrics:
         # In production, this would integrate with your metrics system
         platform_tag = platform or "web"
         tags = [f"platform:{platform_tag}", f"success:{success}", f"fallback:{used_fallback}"]
-        logger.info(f"Chat metrics - latency: {latency:.2f}ms", extra={"tags": tags})
+        logger.info(f"Chat metrics - latency: {latency:.2f}ms", tags=tags)
     
     @staticmethod
     def record_fallback_used(reason: str):
@@ -457,11 +482,9 @@ class ChatMetrics:
         """Record streaming-specific metrics"""
         logger.info(
             "Streaming metrics",
-            extra={
-                "total_tokens": total_tokens,
-                "first_token_latency_ms": first_token_latency,
-                "total_latency_ms": total_latency
-            }
+            total_tokens=total_tokens,
+            first_token_latency_ms=first_token_latency,
+            total_latency_ms=total_latency,
         )
 
 
@@ -545,6 +568,10 @@ async def chat_runtime(
         )
 
         orchestrator_response = await chat_orchestrator.process_message(chat_request)
+        if not isinstance(orchestrator_response, ChatResponse):
+            raise ChatRuntimeError(
+                "Expected synchronous ChatResponse but received streaming generator"
+            )
 
         latency_ms = (time.time() - start_time) * 1000
         used_fallback = getattr(orchestrator_response, 'used_fallback', False)
@@ -871,8 +898,7 @@ async def chat_runtime_stream(
 # Enhanced stop endpoint with better validation
 @router.post("/chat/runtime/stop")
 async def stop_chat_generation(
-    conversation_id: str = Field(..., min_length=1, description="Conversation ID to stop"),
-    correlation_id: Optional[str] = Field(None, description="Specific correlation ID to stop"),
+    stop_request: StopChatRequest = Body(...),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
 ) -> Dict[str, Any]:
@@ -881,6 +907,9 @@ async def stop_chat_generation(
     """
     # Get orchestrator instance
     chat_orchestrator = await get_chat_orchestrator()
+
+    conversation_id = stop_request.conversation_id
+    correlation_id = stop_request.correlation_id
 
     try:
         correlation = correlation_id or request_metadata.get("correlation_id")
@@ -1151,8 +1180,7 @@ async def get_chat_config(
             tools_section["metrics"] = tool_service.get_service_stats()
         except Exception as tool_error:
             logger.warning(
-                "Tool service unavailable during chat config retrieval: %s",
-                tool_error,
+                f"Tool service unavailable during chat config retrieval: {tool_error}"
             )
             tools_section["error"] = str(tool_error)
             tools_section["available"] = []
@@ -1186,8 +1214,7 @@ async def get_chat_config(
                 )
         except Exception as registry_error:
             logger.warning(
-                "LLM registry unavailable during chat config retrieval: %s",
-                registry_error,
+                f"LLM registry unavailable during chat config retrieval: {registry_error}"
             )
 
         # Enhanced routing preferences
@@ -1250,8 +1277,7 @@ async def get_chat_config(
                 )
         except Exception as service_error:
             logger.warning(
-                "Service registry introspection failed during chat config retrieval: %s",
-                service_error,
+                f"Service registry introspection failed during chat config retrieval: {service_error}"
             )
 
         ready_services = sum(
@@ -1334,10 +1360,8 @@ async def get_chat_config(
     except Exception as e:
         logger.error(
             "Failed to get chat config",
-            extra={
-                "user_id": user_context.get("user_id"),
-                "error": str(e),
-            },
+            user_id=user_context.get("user_id"),
+            error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

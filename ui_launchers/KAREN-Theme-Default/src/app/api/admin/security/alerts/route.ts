@@ -1,7 +1,7 @@
 // ui_launchers/web_ui/src/app/api/admin/security/alerts/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
-import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
+import { getAdminDatabaseUtils, type SecurityAlert } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
 
 export const dynamic = 'force-dynamic';
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch alerts (implementation detail lives in admin-utils)
     // Expectation: returns { data: Alert[], total?: number }
-    const alerts: AlertsResult<any> = await adminUtils.getSecurityAlerts({
+    const alerts: AlertsResult<SecurityAlert> = await adminUtils.getSecurityAlerts({
       limit,
       offset,
       severity,
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     const hasMore = nextOffset < total;
 
     const response: AdminApiResponse<{
-      items: unknown[];
+      items: SecurityAlert[];
       pagination: {
         total: number;
         limit: number;

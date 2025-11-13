@@ -28,19 +28,19 @@ function safeParse<T>(raw: string | null): Partial<T> | null {
 }
 
 function mergeSettings(base: KarenSettings, partial?: Partial<KarenSettings>): KarenSettings {
-  const p = partial ?? {};
+  const p: Partial<KarenSettings> = partial ?? {};
   return {
     ...base,
     ...p,
-    notifications: { ...base.notifications, ...(p as unknown).notifications },
-    personalFacts: Array.isArray((p as unknown).personalFacts) ? (p as unknown).personalFacts : base.personalFacts,
-    ttsVoiceURI: (p as unknown).ttsVoiceURI === undefined ? base.ttsVoiceURI : (p as unknown).ttsVoiceURI,
-    memoryDepth: (p as unknown).memoryDepth ?? base.memoryDepth,
-    personalityTone: (p as unknown).personalityTone ?? base.personalityTone,
-    personalityVerbosity: (p as unknown).personalityVerbosity ?? base.personalityVerbosity,
+    notifications: { ...base.notifications, ...(p.notifications ?? {}) },
+    personalFacts: Array.isArray(p.personalFacts) ? p.personalFacts : base.personalFacts,
+    ttsVoiceURI: p.ttsVoiceURI === undefined ? base.ttsVoiceURI : p.ttsVoiceURI,
+    memoryDepth: p.memoryDepth ?? base.memoryDepth,
+    personalityTone: p.personalityTone ?? base.personalityTone,
+    personalityVerbosity: p.personalityVerbosity ?? base.personalityVerbosity,
     customPersonaInstructions:
-      typeof (p as unknown).customPersonaInstructions === "string"
-        ? (p as unknown).customPersonaInstructions
+      typeof p.customPersonaInstructions === "string"
+        ? p.customPersonaInstructions
         : base.customPersonaInstructions,
   };
 }

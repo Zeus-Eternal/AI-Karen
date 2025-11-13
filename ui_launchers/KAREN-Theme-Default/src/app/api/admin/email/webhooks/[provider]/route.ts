@@ -103,10 +103,14 @@ export async function POST(
 
     // Idempotency: let delivery tracker dedupe per event_id/provider
     for (const evt of events) {
+      const normalizedBody =
+        typeof evt.body === "object" && evt.body !== null
+          ? evt.body
+          : {};
       await webhookHandler.processIncomingWebhook(
         provider,
         evt.event_type,
-        { ...evt.body, event_id: evt.event_id }, // Include event_id in body for idempotency
+        { ...normalizedBody, event_id: evt.event_id },
         headers
       );
     }
@@ -253,10 +257,20 @@ async function verifySignature(
       // Mailgun: signature is usually in the JSON body: signature: { timestamp, token, signature }
       // Verifies HMAC-SHA256 using API key (MAILGUN_SIGNING_KEY)
       const signingKey = process.env.MAILGUN_SIGNING_KEY;
-      const sig = bodyAsRecord?.signature;
-      const timestamp = sig?.timestamp || bodyAsRecord?.timestamp;
-      const token = sig?.token || bodyAsRecord?.token;
-      const signature = sig?.signature || bodyAsRecord?.signature;
+      const payload =
+        body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+      const sig =
+        payload.signature && typeof payload.signature === "object"
+          ? (payload.signature as Record<string, unknown>)
+          : {};
+      const timestampValue = sig.timestamp ?? payload.timestamp;
+      const tokenValue = sig.token ?? payload.token;
+      const signatureValue = sig.signature ?? payload.signature;
+      const asString = (value: unknown): string | undefined =>
+        typeof value === "string" ? value : typeof value === "number" ? value.toString() : undefined;
+      const timestamp = asString(timestampValue);
+      const token = asString(tokenValue);
+      const signature = asString(signatureValue);
       if (!signingKey || !timestamp || !token || !signature) {
         console.info('Mailgun signature verification skipped (missing fields/env)');
         return;

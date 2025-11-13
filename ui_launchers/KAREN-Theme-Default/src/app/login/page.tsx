@@ -1,19 +1,24 @@
 "use client";
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/components/auth/LoginForm';
+
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const handleLoginSuccess = async () => {
-    // Redirect to main UI after successful login
-    // Longer delay to ensure session is fully established and AuthContext is updated
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Check if there's a stored redirect path
-    const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/';
+    const redirectFromQuery = searchParams.get('redirectPath');
+    const redirectFromStorage = sessionStorage.getItem('redirectAfterLogin');
+    const redirectPath = redirectFromQuery ?? redirectFromStorage ?? '/';
+
     sessionStorage.removeItem('redirectAfterLogin');
-    // Use router.replace for better Next.js integration
+    // Wait briefly to ensure authentication state has settled
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     router.replace(redirectPath);
-  }
-  return <LoginForm onSuccess={handleLoginSuccess} />
+  };
+
+  return <LoginForm onSuccess={handleLoginSuccess} />;
 }

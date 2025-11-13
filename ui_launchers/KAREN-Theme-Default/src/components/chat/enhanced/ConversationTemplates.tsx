@@ -268,8 +268,6 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
   >("all");
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingTemplate, setEditingTemplate] =
-    useState<ConversationTemplate | null>(null);
 
   const [newTemplate, setNewTemplate] = useState<{
     name: string;

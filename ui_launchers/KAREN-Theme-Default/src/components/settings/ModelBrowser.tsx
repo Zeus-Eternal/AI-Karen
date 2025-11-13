@@ -31,7 +31,7 @@ interface DownloadJob {
   job_id: string;
   status: string;
   progress: number;
-  path: string;
+  path?: string;
   error?: string;
 }
 
@@ -116,7 +116,7 @@ export default function ModelBrowser({ models, setModels, providers: _providers 
               {Object.values(jobs).map((job) => (
                 <li key={job.job_id} className="flex items-center justify-between gap-2 border rounded p-2 sm:p-4 md:p-6">
                   <div className="flex-1 min-w-0 ">
-                    <div className="text-xs text-muted-foreground break-all sm:text-sm md:text-base">{job.path}</div>
+                    <div className="text-xs text-muted-foreground break-all sm:text-sm md:text-base">{job.path ?? 'Pending download...'}</div>
                     <div className="h-2 bg-muted rounded mt-1 overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${Math.round((job.progress || 0) * 100)}%` }} />
                     </div>

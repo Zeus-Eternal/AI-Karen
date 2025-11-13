@@ -29,16 +29,16 @@ import {
 const SECRET_KEYS = new Set(['smtp_password', 'api_key', 'api_secret', 'token', 'webhook_secret']);
 const MASK = '***';
 
-function redactSecrets<T extends Record<string, unknown>>(obj: T): T {
-  const clone: unknown = {};
-  for (const [k, v] of Object.entries(obj || {})) {
+function redactSecrets<T>(obj: T): T {
+  const clone = { ...(obj as Record<string, unknown>) } as Record<string, unknown>;
+  for (const [k, v] of Object.entries((obj ?? {}) as Record<string, unknown>)) {
     if (SECRET_KEYS.has(k)) {
       clone[k] = v ? MASK : '';
     } else {
       clone[k] = v;
     }
   }
-  return clone;
+  return clone as T;
 }
 
 function summarizeChanges(body: Record<string, unknown>) {

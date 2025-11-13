@@ -647,12 +647,12 @@ export class AutoScaler {
     // In production, use a library like 'cron-parser'
     try {
       const parts = schedule.split(' ');
-      if (parts.length >= 5) {
-        const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
-        
-        // Check hour and day of week (simplified)
-        const hourMatch = hour === '*' || parseInt(hour) === currentHour;
-        const dayMatch = dayOfWeek === '*' || parseInt(dayOfWeek) === currentDay;
+        if (parts.length >= 5) {
+          const [, hour, , , dayOfWeek] = parts;
+
+          // Check hour and day of week (simplified)
+          const hourMatch = hour === '*' || parseInt(hour) === currentHour;
+          const dayMatch = dayOfWeek === '*' || parseInt(dayOfWeek) === currentDay;
         
         return hourMatch && dayMatch;
       }
@@ -774,21 +774,21 @@ export class AutoScaler {
   private async notifyScalingEvent(decision: ScalingDecision): Promise<void> {
     try {
       // In real implementation, send to monitoring systems, Slack, etc.
-      const event = {
-        type: 'scaling_event',
-        action: decision.action,
-        instances: {
-          before: decision.currentInstances,
-          after: decision.targetInstances
-        },
-        reason: decision.reason,
-        confidence: decision.confidence,
-        timestamp: decision.timestamp,
-        metrics: decision.metrics
-      };
-      
-      // Simulate async notification
-      await Promise.resolve();
+        const event = {
+          type: 'scaling_event',
+          action: decision.action,
+          instances: {
+            before: decision.currentInstances,
+            after: decision.targetInstances
+          },
+          reason: decision.reason,
+          confidence: decision.confidence,
+          timestamp: decision.timestamp,
+          metrics: decision.metrics
+        };
+
+        // Simulate async notification
+        await Promise.resolve(event);
     } catch (error) {
       console.error('Failed to notify scaling event:', error);
       // Don't fail scaling if notification fails

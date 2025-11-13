@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Send, Inbox, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
@@ -197,4 +199,3 @@ export default function GmailPluginPage() {
     </div>
   );
 }
-

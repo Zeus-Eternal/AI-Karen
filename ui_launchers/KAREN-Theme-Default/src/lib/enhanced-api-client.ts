@@ -34,12 +34,19 @@ export interface ApiErrorInterface extends Error {
   requestId?: string;
 }
 
-interface ApiErrorPayload {
+interface ErrorResponseData {
   message?: string;
   code?: string;
   details?: unknown;
   [key: string]: unknown;
 }
+
+interface ParsedErrorResponse {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
+
 // Enhanced Request configuration
 export interface EnhancedRequestConfig extends RequestInit {
   timeout?: number;
@@ -67,11 +74,6 @@ export type ErrorInterceptor = (
   config: EnhancedRequestConfig
 ) => ApiError | Promise<ApiError>;
 
-interface ErrorResponseData extends Record<string, unknown> {
-  message?: string;
-  code?: string;
-  details?: unknown;
-}
 // Request/Response logging
 export interface RequestLog {
   id: string;
@@ -83,11 +85,6 @@ export interface RequestLog {
   error?: string;
 }
 
-interface ParsedErrorResponse {
-  message?: string;
-  code?: string;
-  details?: unknown;
-}
 // Enhanced API Client class
 export class EnhancedApiClient {
   private baseURL: string;
@@ -116,18 +113,38 @@ export class EnhancedApiClient {
     return "data" in candidate && typeof candidate.status === "string";
   }
 
-  private isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+  private isErrorResponseData(value: unknown): value is ErrorResponseData {
     if (!value || typeof value !== "object") {
       return false;
     }
 
-    const candidate = value as ApiErrorPayload;
+    const candidate = value as ErrorResponseData;
     const hasValidMessage =
       !("message" in candidate) || typeof candidate.message === "string";
     const hasValidCode =
       !("code" in candidate) || typeof candidate.code === "string";
 
     return hasValidMessage && hasValidCode;
+  }
+
+  private normalizeErrorResponse(
+    payload: ErrorResponseData
+  ): ParsedErrorResponse {
+    const normalized: ParsedErrorResponse = {};
+
+    if (typeof payload.message === "string") {
+      normalized.message = payload.message;
+    }
+
+    if (typeof payload.code === "string") {
+      normalized.code = payload.code;
+    }
+
+    if ("details" in payload) {
+      normalized.details = payload.details;
+    }
+
+    return normalized;
   }
 
   private createSuccessResponse<T>(data: T): ApiResponse<T> {
@@ -651,19 +668,22 @@ export class EnhancedApiClient {
       return false;
     }
     const record = value as Record<string, unknown>;
-    return record.hasOwnProperty("data") && record.hasOwnProperty("status");
+    return (
+      Object.prototype.hasOwnProperty.call(record, "data") &&
+      Object.prototype.hasOwnProperty.call(record, "status")
+    );
   }
 
   // Parse error response
   private async parseErrorResponse(
     response: Response
-  ): Promise<ApiErrorPayload> {
+  ): Promise<ParsedErrorResponse> {
     try {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         const json = (await response.json()) as unknown;
-        if (this.isApiErrorPayload(json)) {
-          return json;
+        if (this.isErrorResponseData(json)) {
+          return this.normalizeErrorResponse(json);
         }
 
         if (typeof json === "string") {
@@ -678,9 +698,6 @@ export class EnhancedApiClient {
         const text = await response.text();
         return { message: text || response.statusText };
       }
-
-      const text = await response.text();
-      return { message: text || response.statusText };
     } catch {
       return { message: response.statusText || "Unknown error" };
     }

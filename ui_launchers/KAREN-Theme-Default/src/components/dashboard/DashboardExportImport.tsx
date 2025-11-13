@@ -32,7 +32,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-import { cn } from "@/lib/utils";
 import { useDashboardStore } from "@/store/dashboard-store";
 import type { DashboardConfig } from "@/types/dashboard";
 

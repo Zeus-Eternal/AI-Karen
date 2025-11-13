@@ -82,7 +82,7 @@ export interface SystemModelInfo {
   memory_usage?: number;
   load_time?: number;
   inference_time?: number;
-  configuration: Record<string, unknown>;
+  configuration: ModelConfiguration;
   is_system_model: boolean;
 }
 
@@ -112,6 +112,8 @@ export interface ConfigurationValidationResult {
   warnings?: string[];
 }
 
+type ModelConfiguration = Partial<TransformerConfig> & Record<string, unknown>;
+
 interface ModelHealthResponse {
   status?: string;
   last_health_check?: number;
@@ -125,7 +127,7 @@ export interface SystemModelConfigProps {
 
 export default function SystemModelConfig({ selectedModel, onClose }: SystemModelConfigProps) {
   const [model, setModel] = useState<SystemModelInfo | null>(selectedModel);
-  const [configuration, setConfiguration] = useState<Record<string, unknown>>({});
+  const [configuration, setConfiguration] = useState<ModelConfiguration>({});
   const [transformerConfiguration, setTransformerConfiguration] = useState<TransformerConfig>({
     precision: 'fp16',
     torch_dtype: 'auto',
@@ -161,6 +163,26 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   const [validationResult, setValidationResult] = useState<ConfigurationValidationResult | null>(null);
   const { toast } = useToast();
   const backend = React.useMemo(() => getKarenBackend(), []);
+
+  const toStringRecord = (value: unknown): Record<string, string> | undefined => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const entries = Object.entries(value);
+      if (entries.every(([, entryValue]) => typeof entryValue === 'string')) {
+        return value as Record<string, string>;
+      }
+    }
+    return undefined;
+  };
+
+  const getStringConfigValue = (key: string, defaultValue: string): string => {
+    const value = configuration[key];
+    return typeof value === 'string' ? value : defaultValue;
+  };
+
+  const getNumberConfigValue = (key: string, defaultValue: number): number => {
+    const value = configuration[key];
+    return typeof value === 'number' ? value : defaultValue;
+  };
 
   const loadRecommendations = useCallback(async () => {
     if (!selectedModel) return;
@@ -209,40 +231,63 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   useEffect(() => {
     if (selectedModel) {
       setModel(selectedModel);
-      setConfiguration(selectedModel.configuration || {});
-      
+      const modelConfig = (selectedModel.configuration ?? {}) as ModelConfiguration;
+      setConfiguration(modelConfig);
+
       // Initialize transformer configuration with defaults merged with existing config
       if (selectedModel.id === 'distilbert-base-uncased') {
+        const transformerConfig = modelConfig as Partial<TransformerConfig>;
         setTransformerConfiguration({
-          precision: selectedModel.configuration?.precision || 'fp16',
-          torch_dtype: selectedModel.configuration?.torch_dtype || 'auto',
-          load_in_8bit: selectedModel.configuration?.load_in_8bit || false,
-          load_in_4bit: selectedModel.configuration?.load_in_4bit || false,
-          device: selectedModel.configuration?.device || 'auto',
-          device_map: selectedModel.configuration?.device_map || 'auto',
-          low_cpu_mem_usage: selectedModel.configuration?.low_cpu_mem_usage !== false,
-          batch_size: selectedModel.configuration?.batch_size || 1,
-          max_length: selectedModel.configuration?.max_length || 512,
-          dynamic_batch_size: selectedModel.configuration?.dynamic_batch_size || false,
-          use_cache: selectedModel.configuration?.use_cache !== false,
-          attention_implementation: selectedModel.configuration?.attention_implementation || 'eager',
-          use_flash_attention: selectedModel.configuration?.use_flash_attention || false,
-          gradient_checkpointing: selectedModel.configuration?.gradient_checkpointing || false,
-          mixed_precision: selectedModel.configuration?.mixed_precision || false,
-          compile_model: selectedModel.configuration?.compile_model || false,
-          multi_gpu_strategy: selectedModel.configuration?.multi_gpu_strategy || 'auto',
-          gpu_memory_fraction: selectedModel.configuration?.gpu_memory_fraction || 0.9,
-          enable_cpu_offload: selectedModel.configuration?.enable_cpu_offload || false,
-          bnb_4bit_compute_dtype: selectedModel.configuration?.bnb_4bit_compute_dtype || 'float16',
-          bnb_4bit_use_double_quant: selectedModel.configuration?.bnb_4bit_use_double_quant || false,
-          bnb_4bit_quant_type: selectedModel.configuration?.bnb_4bit_quant_type || 'nf4',
-          use_bettertransformer: selectedModel.configuration?.use_bettertransformer || false,
-          optimize_for_inference: selectedModel.configuration?.optimize_for_inference || false,
-          enable_xformers: selectedModel.configuration?.enable_xformers || false,
-          max_memory: selectedModel.configuration?.max_memory
+          precision: typeof transformerConfig.precision === 'string' ? transformerConfig.precision : 'fp16',
+          torch_dtype: typeof transformerConfig.torch_dtype === 'string' ? transformerConfig.torch_dtype : 'auto',
+          load_in_8bit: typeof transformerConfig.load_in_8bit === 'boolean' ? transformerConfig.load_in_8bit : false,
+          load_in_4bit: typeof transformerConfig.load_in_4bit === 'boolean' ? transformerConfig.load_in_4bit : false,
+          device: typeof transformerConfig.device === 'string' ? transformerConfig.device : 'auto',
+          device_map: typeof transformerConfig.device_map === 'string' ? transformerConfig.device_map : 'auto',
+          low_cpu_mem_usage: transformerConfig.low_cpu_mem_usage !== false,
+          batch_size: typeof transformerConfig.batch_size === 'number' ? transformerConfig.batch_size : 1,
+          max_length: typeof transformerConfig.max_length === 'number' ? transformerConfig.max_length : 512,
+          dynamic_batch_size: typeof transformerConfig.dynamic_batch_size === 'boolean' ? transformerConfig.dynamic_batch_size : false,
+          use_cache: transformerConfig.use_cache !== false,
+          attention_implementation:
+            typeof transformerConfig.attention_implementation === 'string'
+              ? transformerConfig.attention_implementation
+              : 'eager',
+          use_flash_attention:
+            typeof transformerConfig.use_flash_attention === 'boolean' ? transformerConfig.use_flash_attention : false,
+          gradient_checkpointing:
+            typeof transformerConfig.gradient_checkpointing === 'boolean' ? transformerConfig.gradient_checkpointing : false,
+          mixed_precision: typeof transformerConfig.mixed_precision === 'boolean' ? transformerConfig.mixed_precision : false,
+          compile_model: typeof transformerConfig.compile_model === 'boolean' ? transformerConfig.compile_model : false,
+          multi_gpu_strategy:
+            typeof transformerConfig.multi_gpu_strategy === 'string' ? transformerConfig.multi_gpu_strategy : 'auto',
+          gpu_memory_fraction:
+            typeof transformerConfig.gpu_memory_fraction === 'number' ? transformerConfig.gpu_memory_fraction : 0.9,
+          enable_cpu_offload:
+            typeof transformerConfig.enable_cpu_offload === 'boolean' ? transformerConfig.enable_cpu_offload : false,
+          bnb_4bit_compute_dtype:
+            typeof transformerConfig.bnb_4bit_compute_dtype === 'string'
+              ? transformerConfig.bnb_4bit_compute_dtype
+              : 'float16',
+          bnb_4bit_use_double_quant:
+            typeof transformerConfig.bnb_4bit_use_double_quant === 'boolean'
+              ? transformerConfig.bnb_4bit_use_double_quant
+              : false,
+          bnb_4bit_quant_type:
+            typeof transformerConfig.bnb_4bit_quant_type === 'string' ? transformerConfig.bnb_4bit_quant_type : 'nf4',
+          use_bettertransformer:
+            typeof transformerConfig.use_bettertransformer === 'boolean'
+              ? transformerConfig.use_bettertransformer
+              : false,
+          optimize_for_inference:
+            typeof transformerConfig.optimize_for_inference === 'boolean'
+              ? transformerConfig.optimize_for_inference
+              : false,
+          enable_xformers: typeof transformerConfig.enable_xformers === 'boolean' ? transformerConfig.enable_xformers : false,
+          max_memory: toStringRecord(transformerConfig.max_memory)
         });
       }
-      
+
       void loadRecommendations();
       void loadMetrics();
     }
@@ -306,7 +351,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         `/api/models/system/${selectedModel.id}`
       );
       setModel(updatedModel);
-      setConfiguration(updatedModel.configuration || {});
+      setConfiguration((updatedModel.configuration ?? {}) as ModelConfiguration);
       toast({
         title: "Configuration Reset",
         description: "Model configuration reset to defaults",
@@ -335,7 +380,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       if (model) {
         setModel({
           ...model,
-          status: response.status,
+          status: response.status ?? model.status,
           last_health_check: response.last_health_check,
           error_message: response.error_message
         });
@@ -357,7 +402,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   };
 
   const updateConfigValue = (key: string, value: unknown) => {
-    const newConfig = { ...configuration, [key]: value };
+    const newConfig: ModelConfiguration = { ...configuration, [key]: value };
     setConfiguration(newConfig);
     // Validate in real-time
     void validateConfiguration(newConfig);
@@ -511,7 +556,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
       <div className="flex justify-end gap-2">
         <Button
           onClick={saveConfiguration}
-          disabled={saving || (validationResult && !validationResult.valid)}
+          disabled={saving || (!!validationResult && !validationResult.valid)}
         >
           {saving ? (
             <>
@@ -548,6 +593,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   }
 
   function renderLlamaCppConfig() {
+    const quantization = getStringConfigValue('quantization', 'Q4_K_M');
+    const contextLength = getNumberConfigValue('context_length', 2048);
+    const gpuLayers = getNumberConfigValue('gpu_layers', 0);
+    const threads = getNumberConfigValue('threads', 4);
+    const temperature = getNumberConfigValue('temperature', 0.7);
+
     return (
       <Card>
         <CardHeader>
@@ -565,7 +616,7 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
               <div>
                 <Label htmlFor="quantization">Quantization Format</Label>
                 <Select
-                  value={configuration.quantization || 'Q4_K_M'}
+                  value={quantization}
                   onValueChange={(value) => updateConfigValue('quantization', value)}
                 >
                   <SelectTrigger>
@@ -582,9 +633,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 </Select>
               </div>
               <div>
-                <Label htmlFor="context_length">Context Length: {configuration.context_length || 2048}</Label>
+                <Label htmlFor="context_length">Context Length: {contextLength}</Label>
                 <Slider
-                  value={[configuration.context_length || 2048]}
+                  value={[contextLength]}
                   onValueChange={([value]) => updateConfigValue('context_length', value)}
                   max={16384}
                   min={512}
@@ -597,9 +648,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 </div>
               </div>
               <div>
-                <Label htmlFor="gpu_layers">GPU Layers: {configuration.gpu_layers || 0}</Label>
+                <Label htmlFor="gpu_layers">GPU Layers: {gpuLayers}</Label>
                 <Slider
-                  value={[configuration.gpu_layers || 0]}
+                  value={[gpuLayers]}
                   onValueChange={([value]) => updateConfigValue('gpu_layers', value)}
                   max={64}
                   min={0}
@@ -614,9 +665,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="threads">CPU Threads: {configuration.threads || 4}</Label>
+                <Label htmlFor="threads">CPU Threads: {threads}</Label>
                 <Slider
-                  value={[configuration.threads || 4]}
+                  value={[threads]}
                   onValueChange={([value]) => updateConfigValue('threads', value)}
                   max={16}
                   min={1}
@@ -625,9 +676,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 />
               </div>
               <div>
-                <Label htmlFor="temperature">Temperature: {configuration.temperature || 0.7}</Label>
+                <Label htmlFor="temperature">Temperature: {temperature}</Label>
                 <Slider
-                  value={[configuration.temperature || 0.7]}
+                  value={[temperature]}
                   onValueChange={([value]) => updateConfigValue('temperature', value)}
                   max={2.0}
                   min={0.1}
@@ -659,11 +710,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   function renderTransformerConfig() {
     // Import the enhanced transformer config component
     const TransformerModelConfig = React.lazy(() => import('./TransformerModelConfig'));
-    
+
     const handleTransformerConfigChange = (newConfig: TransformerConfig) => {
       setTransformerConfiguration(newConfig);
       // Also update the generic configuration for consistency
-      setConfiguration(newConfig as Record<string, unknown>);
+      const configRecord: ModelConfiguration = { ...newConfig };
+      setConfiguration(configRecord);
     };
 
     return (
@@ -690,6 +742,11 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
   }
 
   function renderBasicClsConfig() {
+    const threshold = getNumberConfigValue('threshold', 0.5);
+    const maxFeatures = getNumberConfigValue('max_features', 10000);
+    const minDf = getNumberConfigValue('min_df', 2);
+    const maxDf = getNumberConfigValue('max_df', 0.95);
+
     return (
       <Card>
         <CardHeader>
@@ -705,9 +762,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="threshold">Classification Threshold: {configuration.threshold || 0.5}</Label>
+                <Label htmlFor="threshold">Classification Threshold: {threshold}</Label>
                 <Slider
-                  value={[configuration.threshold || 0.5]}
+                  value={[threshold]}
                   onValueChange={([value]) => updateConfigValue('threshold', value)}
                   max={1.0}
                   min={0.0}
@@ -716,9 +773,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 />
               </div>
               <div>
-                <Label htmlFor="max_features">Max Features: {configuration.max_features || 10000}</Label>
+                <Label htmlFor="max_features">Max Features: {maxFeatures}</Label>
                 <Slider
-                  value={[configuration.max_features || 10000]}
+                  value={[maxFeatures]}
                   onValueChange={([value]) => updateConfigValue('max_features', value)}
                   max={100000}
                   min={1000}
@@ -727,9 +784,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
                 />
               </div>
               <div>
-                <Label htmlFor="min_df">Min Document Frequency: {configuration.min_df || 2}</Label>
+                <Label htmlFor="min_df">Min Document Frequency: {minDf}</Label>
                 <Slider
-                  value={[configuration.min_df || 2]}
+                  value={[minDf]}
                   onValueChange={([value]) => updateConfigValue('min_df', value)}
                   max={10}
                   min={1}
@@ -740,9 +797,9 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
             </div>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="max_df">Max Document Frequency: {configuration.max_df || 0.95}</Label>
+                <Label htmlFor="max_df">Max Document Frequency: {maxDf}</Label>
                 <Slider
-                  value={[configuration.max_df || 0.95]}
+                  value={[maxDf]}
                   onValueChange={([value]) => updateConfigValue('max_df', value)}
                   max={1.0}
                   min={0.5}

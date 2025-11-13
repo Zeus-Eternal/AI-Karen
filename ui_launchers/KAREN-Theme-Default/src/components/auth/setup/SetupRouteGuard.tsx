@@ -15,9 +15,9 @@ export interface SetupRouteGuardProps {
  * Route guard that protects setup routes from being accessed when setup is already completed
  * Redirects to login if super admin already exists
  */
-export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({ 
-  children, 
-  fallback 
+export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
+  children,
+  fallback
 }) => {
   const router = useRouter();
   const { isFirstRun, setupCompleted, isLoading, error } = useFirstRunSetup();
@@ -85,39 +85,6 @@ export const SetupRouteGuard: React.FC<SetupRouteGuardProps> = ({
   // Render children if this is first run and setup is not completed
   return <>{children}</>;
 };
-
-/**
- * Hook to check if current route should allow setup access
- */
-export function useSetupRouteAccess() {
-  const { isFirstRun, setupCompleted, isLoading } = useFirstRunSetup();
-  
-  return {
-    canAccessSetup: !isLoading && isFirstRun && !setupCompleted,
-    shouldRedirectToLogin: !isLoading && (!isFirstRun || setupCompleted),
-    isCheckingAccess: isLoading
-  };
-}
-
-/**
- * Higher-order component for setup route protection
- */
-export function withSetupRouteGuard<P extends object>(
-  Component: React.ComponentType<P>
-) {
-  const WrappedComponent = (props: P) => {
-    return (
-      <SetupRouteGuard>
-        <Component {...props} />
-      </SetupRouteGuard>
-    );
-  };
-
-  WrappedComponent.displayName = `withSetupRouteGuard(${Component.displayName || Component.name})`;
-  
-  return WrappedComponent;
-}
-
 /**
  * Component that redirects to setup if first run is detected
  */

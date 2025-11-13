@@ -92,7 +92,7 @@ export const ResourceMonitoringDashboard: React.FC<ResourceMonitoringDashboardPr
   const [recommendations, setRecommendations] = useState<ScalingRecommendation[]>([]);
   const [capacityPlans, setCapacityPlans] = useState<CapacityPlan[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h");
-  const [timeWindowAnchor, setTimeWindowAnchor] = useState<number>(Date.now());
+  const [timeWindowAnchor, setTimeWindowAnchor] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const updateData = () => {

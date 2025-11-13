@@ -8,57 +8,19 @@ import {
   getConnectionManager,
   ConnectionError,
   ErrorCategory,
-  type ConnectionResponse,
 } from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 import { AuthContext } from "./auth-context-instance";
+import { getHighestRole, type UserRole } from "@/components/security/rbac-shared";
 
-
-interface ApiUserResponse {
-  user_id: string;
-  email: string;
-  roles?: string[];
-  tenant_id: string;
-  permissions?: string[];
-}
-
-interface SessionValidationResponse {
-  valid: boolean;
-  user?: ApiUserResponse;
-  user_data?: ApiUserResponse;
-}
-
-interface LoginResponse {
-  user?: ApiUserResponse;
-  user_data?: ApiUserResponse;
-}
 
 export interface User {
   userId: string;
   email: string;
   roles: string[];
   tenantId?: string;
-  role?: "super_admin" | "admin" | "user";
+  role?: UserRole;
   permissions?: string[];
-}
-
-interface UserApiResponse {
-  user_id: string;
-  email: string;
-  roles?: string[];
-  tenant_id: string;
-  permissions?: string[];
-}
-
-interface SessionValidationResponse {
-  valid: boolean;
-  user?: UserApiResponse | null;
-  user_data?: UserApiResponse | null;
-}
-
-interface LoginResponse {
-  user?: UserApiResponse | null;
-  user_data?: UserApiResponse | null;
 }
 
 export interface LoginCredentials {
@@ -72,7 +34,7 @@ interface AuthResponseUserData {
   email: string;
   roles?: string[];
   tenant_id: string;
-  role?: "super_admin" | "admin" | "user";
+  role?: UserRole;
   permissions?: string[];
 }
 
@@ -81,6 +43,7 @@ interface AuthApiResponse {
   success?: boolean;
   user?: AuthResponseUserData;
   user_data?: AuthResponseUserData;
+  access_token?: string;
   [key: string]: unknown;
 }
 
@@ -108,7 +71,7 @@ export interface AuthContextType {
   checkAuth: () => Promise<boolean>;
   refreshSession: () => Promise<boolean>;
   clearError: () => void;
-  hasRole: (role: "super_admin" | "admin" | "user") => boolean;
+  hasRole: (role: UserRole) => boolean;
   hasPermission: (permission: string) => boolean;
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
@@ -144,7 +107,13 @@ function isApiUserData(value: unknown): value is ApiUserData {
   );
 }
 
-function extractUserData(response: AuthApiResponseRaw): ApiUserData | null {
+function extractUserData(
+  response: AuthApiResponse | AuthApiResponseRaw | null | undefined
+): ApiUserData | null {
+  if (!response) {
+    return null;
+  }
+
   if (response.user && isApiUserData(response.user)) {
     return response.user;
   }
@@ -180,25 +149,17 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Flag to prevent multiple simultaneous auth checks
   const isCheckingAuth = useRef<boolean>(false);
 
-  // Helper functions - declare these first
-  const determineUserRole = useCallback((
-    roles: string[]
-  ): "super_admin" | "admin" | "user" => {
-    if (roles.includes("super_admin")) return "super_admin";
-    if (roles.includes("admin")) return "admin";
-    return "user";
-  }, []);
-
+  // Helper functions - use unified rbac-shared for role logic
   const createUserFromApiData = useCallback(
     (apiUser: ApiUserData): User => ({
       userId: apiUser.user_id,
       email: apiUser.email,
       roles: apiUser.roles ?? [],
       tenantId: apiUser.tenant_id ?? "default",
-      role: determineUserRole(apiUser.roles ?? []),
+      role: getHighestRole(apiUser.roles ?? []),
       permissions: apiUser.permissions,
     }),
-    [determineUserRole]
+    []
   );
 
   // Convert technical errors to user-friendly messages
@@ -259,7 +220,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   // Helper function to get default permissions for a role
   const getRolePermissions = (
-    role: "super_admin" | "admin" | "user"
+    role: UserRole
   ): string[] => {
     switch (role) {
       case "super_admin":
@@ -391,17 +352,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      const userData = extractUserData(data);
 
       if (data?.valid && userData) {
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id || "default",
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+        const user = createUserFromApiData(userData);
 
         setUser(user);
         setIsAuthenticated(true);
@@ -506,7 +460,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Handle successful login response
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      if (data?.access_token) {
+        localStorage.setItem("karen_access_token", data.access_token);
+      }
+      const userData = extractUserData(data);
       if (!userData) {
         throw new ConnectionError(
           "No user data in login response",
@@ -555,8 +512,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      // Small delay to ensure state is fully updated before callback
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      
     } catch (err) {
       // Enhanced error handling with categorization
       const authError = createAuthError(err);
@@ -611,7 +567,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   // Role and permission checking functions
   const hasRole = useCallback(
-    (role: "super_admin" | "admin" | "user"): boolean => {
+    (role: UserRole): boolean => {
       if (!user) return false;
 
       // Check the new role field first, then fall back to roles array
@@ -636,7 +592,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Default permissions based on role
       const rolePermissions = getRolePermissions(
-        user.role || (user.roles[0] as "super_admin" | "admin" | "user")
+        user.role || (user.roles[0] as UserRole)
       );
       return rolePermissions.includes(permission);
     },
@@ -747,17 +703,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       );
 
       const data = result.data;
-      const userData = data?.user ?? data?.user_data;
+      const userData = extractUserData(data);
 
       if (data?.valid && userData) {
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id || "default",
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
+        const user = createUserFromApiData(userData);
 
         setUser(user);
         setIsAuthenticated(true);

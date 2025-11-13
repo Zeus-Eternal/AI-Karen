@@ -6,7 +6,7 @@ import ProfileSelector from "@/components/chat/ProfileSelector";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import CopilotArtifacts from "./CopilotArtifacts";
-import type { ChatMessage, ChatSettings, ChatContext, CopilotArtifact, CopilotAction } from "../types";
+import type { ChatMessage, ChatContext, CopilotArtifact, CopilotAction } from "../types";
 
 interface ChatMainContentProps {
   messages: ChatMessage[];
@@ -18,7 +18,6 @@ interface ChatMainContentProps {
   enableCodeAssistance: boolean;
   enableVoiceInput: boolean;
   enableFileUpload: boolean;
-  settings: ChatSettings;
   chatContext: ChatContext;
   artifacts: CopilotArtifact[];
   copilotActions?: CopilotAction[];
@@ -32,6 +31,7 @@ interface ChatMainContentProps {
   onArtifactApprove: (artifactId: string) => void;
   onArtifactReject: (artifactId: string) => void;
   onArtifactApply: (artifactId: string) => void;
+  messagesEndRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const ChatMainContent: React.FC<ChatMainContentProps> = ({
@@ -44,7 +44,6 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
   enableCodeAssistance,
   enableVoiceInput,
   enableFileUpload,
-  settings,
   chatContext,
   artifacts,
   copilotActions,
@@ -58,6 +57,7 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
   onArtifactApprove,
   onArtifactReject,
   onArtifactApply,
+  messagesEndRef,
 }) => {
   return (
     <div className="flex-1 flex flex-col">
@@ -85,12 +85,8 @@ export const ChatMainContent: React.FC<ChatMainContentProps> = ({
         isTyping={isTyping}
         useCopilotKit={useCopilotKit}
         enableCodeAssistance={enableCodeAssistance}
-        settings={settings}
         onMessageAction={onMessageAction}
-        onArtifactApprove={onArtifactApprove}
-        onArtifactReject={onArtifactReject}
-        onArtifactApply={onArtifactApply}
-        artifacts={artifacts}
+        messagesEndRef={messagesEndRef}
       />
 
       <ChatInput

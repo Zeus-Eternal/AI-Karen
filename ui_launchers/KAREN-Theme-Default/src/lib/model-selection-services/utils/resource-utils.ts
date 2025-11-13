@@ -97,31 +97,38 @@ export function checkResourceFeasibility(
   const canLoadInMemory = memoryAvailable >= requirements.memory;
   
   // Check GPU memory if available
-  let canLoadInGPU = false;
   let gpuMemoryAvailable = 0;
   if (systemResources.gpu.length > 0 && requirements.gpu_memory) {
     gpuMemoryAvailable = Math.max(...systemResources.gpu.map(gpu => gpu.memory_available));
-    canLoadInGPU = gpuMemoryAvailable >= requirements.gpu_memory;
   }
   
   // Check disk space
   const diskAvailable = systemResources.disk.available;
   const hasEnoughDiskSpace = diskAvailable >= requirements.disk_space;
+  const canLoadInGPU =
+    requirements.gpu_memory !== undefined
+      ? gpuMemoryAvailable >= requirements.gpu_memory
+      : true;
   
   // Determine if model can be loaded
-  const canLoad = canLoadInMemory && hasEnoughDiskSpace;
+  const canLoad = canLoadInMemory && hasEnoughDiskSpace && canLoadInGPU;
   
   let reason: string | undefined;
-  if (!canLoad) {
-    const reasons: string[] = [];
-    if (!canLoadInMemory) {
-      reasons.push(`Insufficient memory: need ${formatMemorySize(requirements.memory)}, have ${formatMemorySize(memoryAvailable)}`);
+    if (!canLoad) {
+      const reasons: string[] = [];
+      if (!canLoadInMemory) {
+        reasons.push(`Insufficient memory: need ${formatMemorySize(requirements.memory)}, have ${formatMemorySize(memoryAvailable)}`);
+      }
+      if (!hasEnoughDiskSpace) {
+        reasons.push(`Insufficient disk space: need ${formatMemorySize(requirements.disk_space)}, have ${formatMemorySize(diskAvailable)}`);
+      }
+      if (requirements.gpu_memory && !canLoadInGPU) {
+        reasons.push(
+          `Insufficient GPU memory: need ${formatMemorySize(requirements.gpu_memory)}, have ${formatMemorySize(gpuMemoryAvailable)}`
+        );
+      }
+      reason = reasons.join('; ');
     }
-    if (!hasEnoughDiskSpace) {
-      reasons.push(`Insufficient disk space: need ${formatMemorySize(requirements.disk_space)}, have ${formatMemorySize(diskAvailable)}`);
-    }
-    reason = reasons.join('; ');
-  }
   
   return {
     canLoad,

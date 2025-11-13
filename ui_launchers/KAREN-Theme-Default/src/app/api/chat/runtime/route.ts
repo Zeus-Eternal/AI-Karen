@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   let body: ChatBody;
   try {
     body = (await request.json()) as ChatBody;
-  } catch (e) {
+  } catch {
     // Even if the payload is bad, reply with a gentle degraded response
     const fallback = createFallbackResponse(
       "I'm experiencing technical difficulties and am running in emergency fallback mode."

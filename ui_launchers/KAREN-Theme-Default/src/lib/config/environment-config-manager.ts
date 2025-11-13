@@ -167,22 +167,8 @@ export class EnvironmentConfigManager {
       this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', ''),
       this.getEnvVar('KAREN_BACKEND_URL', ''),
     ].filter(Boolean);
-    // Legacy environment variables for backward compatibility (deprecated)
-    const legacyUrls = [
-      this.getEnvVar('API_BASE_URL', ''),
-      this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', ''),
-    ].filter(Boolean);
-    // Log deprecation warnings for legacy variables
-    if (legacyUrls.length > 0) {
-      if (this.getEnvVar('API_BASE_URL', '')) {
-        console.warn('API_BASE_URL is deprecated. Use KAREN_BACKEND_URL instead.');
-      }
-      if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
-        console.warn('NEXT_PUBLIC_API_BASE_URL is deprecated. Use KAREN_BACKEND_URL instead.');
-      }
-    }
     // Use standardized variables first, then fall back to legacy
-    const allUrls = [...standardizedUrls, ...legacyUrls];
+    const allUrls = [...standardizedUrls];
     if (allUrls.length > 0) {
       return this.normalizeUrl(allUrls[0]);
     }
@@ -356,25 +342,6 @@ export class EnvironmentConfigManager {
     if (this.environment.networkMode === 'external' && !this.getEnvVar('KAREN_EXTERNAL_HOST', '')) {
       warnings.push('External network mode detected but no external host configured');
     }
-    // Validate environment variable consistency
-    const karenBackendUrl = this.getEnvVar('KAREN_BACKEND_URL', '');
-    const nextPublicKarenBackendUrl = this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', '');
-    const legacyApiBaseUrl = this.getEnvVar('API_BASE_URL', '');
-    const legacyNextPublicApiBaseUrl = this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '');
-    // Check for conflicting environment variables
-    if (karenBackendUrl && legacyApiBaseUrl && karenBackendUrl !== legacyApiBaseUrl) {
-      warnings.push('Conflicting backend URLs: KAREN_BACKEND_URL and API_BASE_URL have different values');
-    }
-    if (nextPublicKarenBackendUrl && legacyNextPublicApiBaseUrl && nextPublicKarenBackendUrl !== legacyNextPublicApiBaseUrl) {
-      warnings.push('Conflicting public backend URLs: NEXT_PUBLIC_KAREN_BACKEND_URL and NEXT_PUBLIC_API_BASE_URL have different values');
-    }
-    // Check for missing standardized variables when legacy ones are present
-    if (legacyApiBaseUrl && !karenBackendUrl) {
-      warnings.push('Using deprecated API_BASE_URL. Please migrate to KAREN_BACKEND_URL');
-    }
-    if (legacyNextPublicApiBaseUrl && !nextPublicKarenBackendUrl) {
-      warnings.push('Using deprecated NEXT_PUBLIC_API_BASE_URL. Please migrate to NEXT_PUBLIC_KAREN_BACKEND_URL');
-    }
     // Validate fallback URL configuration
     const fallbackUrls = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
     if (fallbackUrls) {
@@ -459,17 +426,15 @@ export class EnvironmentConfigManager {
   /**
    * Get standardized environment variable mapping
    */
-  public getEnvironmentVariableMapping(): Record<string, { current: string; standardized: string; deprecated?: string }> {
+  public getEnvironmentVariableMapping(): Record<string, { current: string; standardized: string; }> {
     return {
       'Backend URL (Server-side)': {
-        current: this.getEnvVar('KAREN_BACKEND_URL', '') || this.getEnvVar('API_BASE_URL', ''),
+        current: this.getEnvVar('KAREN_BACKEND_URL', ''),
         standardized: 'KAREN_BACKEND_URL',
-        deprecated: this.getEnvVar('API_BASE_URL', '') ? 'API_BASE_URL' : undefined,
       },
       'Backend URL (Client-side)': {
-        current: this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', '') || this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', ''),
+        current: this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', ''),
         standardized: 'NEXT_PUBLIC_KAREN_BACKEND_URL',
-        deprecated: this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '') ? 'NEXT_PUBLIC_API_BASE_URL' : undefined,
       },
       'Fallback URLs': {
         current: this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', ''),
@@ -497,34 +462,7 @@ export class EnvironmentConfigManager {
       },
     };
   }
-  /**
-   * Get migration recommendations for deprecated environment variables
-   */
-  public getMigrationRecommendations(): Array<{ from: string; to: string; action: string }> {
-    const recommendations: Array<{ from: string; to: string; action: string }> = [];
-    if (this.getEnvVar('API_BASE_URL', '')) {
-      recommendations.push({
-        from: 'API_BASE_URL',
-        to: 'KAREN_BACKEND_URL',
-        action: 'Rename environment variable for server-side backend URL',
-      });
-    }
-    if (this.getEnvVar('NEXT_PUBLIC_API_BASE_URL', '')) {
-      recommendations.push({
-        from: 'NEXT_PUBLIC_API_BASE_URL',
-        to: 'NEXT_PUBLIC_KAREN_BACKEND_URL',
-        action: 'Rename environment variable for client-side backend URL',
-      });
-    }
-    if (this.getEnvVar('BACKEND_PORT', '')) {
-      recommendations.push({
-        from: 'BACKEND_PORT',
-        to: 'KAREN_BACKEND_PORT',
-        action: 'Rename environment variable for backend port (optional, defaults to 8000)',
-      });
-    }
-    return recommendations;
-  }
+
   /**
    * Log configuration information for debugging
    */
@@ -534,11 +472,6 @@ export class EnvironmentConfigManager {
     console.group('🔧 Environment Configuration Manager');
     // Log environment variable mapping
     console.log('Environment Variable Mapping:', this.getEnvironmentVariableMapping());
-    // Log migration recommendations
-    const migrations = this.getMigrationRecommendations();
-    if (migrations.length > 0) {
-      console.log('Migration Recommendations:', migrations);
-    }
     console.groupEnd();
     // Validate and show warnings/errors
     const validation = this.validateConfiguration();

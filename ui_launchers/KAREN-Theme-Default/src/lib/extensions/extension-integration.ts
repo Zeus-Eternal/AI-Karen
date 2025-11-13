@@ -12,7 +12,9 @@
 
 import React from "react";
 import { getKarenBackend, APIError } from "../karen-backend";
+import { webUIConfig } from "../config";
 import { safeError, safeLog } from "../safe-console";
+import { getSampleExtensions } from "./sample-data";
 import type {
   ExtensionTaskHistoryEntry,
   HealthStatus,
@@ -263,91 +265,11 @@ export class ExtensionIntegrationService {
   }
 
   private async loadSampleExtensions(): Promise<void> {
-    const sampleExtensions = [
-      {
-        id: "analytics-dashboard",
-        display_name: "Analytics Dashboard",
-        name: "analytics-dashboard",
-        description: "Advanced analytics and reporting dashboard with real-time metrics",
-        version: "1.2.0",
-        author: "Kari Team",
-        category: "analytics",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-      {
-        id: "automation-engine",
-        display_name: "Automation Engine",
-        name: "automation-engine",
-        description: "Intelligent workflow automation with AI-powered task orchestration",
-        version: "2.1.0",
-        author: "Kari Team",
-        category: "automation",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: true,
-        },
-      },
-      {
-        id: "communication-hub",
-        display_name: "Communication Hub",
-        name: "communication-hub",
-        description: "Unified communication platform with multi-channel support",
-        version: "1.0.5",
-        author: "Community",
-        category: "communication",
-        status: "active",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: false,
-          provides_webhooks: true,
-        },
-      },
-      {
-        id: "security-monitor",
-        display_name: "Security Monitor",
-        name: "security-monitor",
-        description: "Real-time security monitoring and threat detection system",
-        version: "3.0.1",
-        author: "Security Team",
-        category: "security",
-        status: "error",
-        capabilities: {
-          provides_ui: true,
-          provides_api: true,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-      {
-        id: "experimental-ai",
-        display_name: "Experimental AI Features",
-        name: "experimental-ai",
-        description: "Cutting-edge AI features and experimental capabilities",
-        version: "0.8.0-beta",
-        author: "Research Team",
-        category: "experimental",
-        status: "inactive",
-        capabilities: {
-          provides_ui: true,
-          provides_api: false,
-          provides_background_tasks: true,
-          provides_webhooks: false,
-        },
-      },
-    ];
+    const sampleExtensions = getSampleExtensions();
 
     for (const ext of sampleExtensions) {
-      await this.processExtension(ext.id, ext);
+      const extensionData = ext as unknown as Record<string, unknown>;
+      await this.processExtension(ext.id, extensionData);
     }
     safeLog("ExtensionIntegrationService: Loaded sample extensions for demonstration");
   }
@@ -481,17 +403,84 @@ export class ExtensionIntegrationService {
   private async registerBackgroundTaskMonitoring(extensionId: string): Promise<void> {
     try {
       const backend = getKarenBackend();
-      const tasksResponse = await backend.makeRequestPublic(
-        `/api/extensions/background-tasks/?extension_name=${extensionId}`
+      const tasksResponse = await backend.makeRequestPublic<unknown[]>(
+        `/api/extensions/background-tasks/?extension_name=${extensionId}`,
+        {},
+        false,
+        webUIConfig.cacheTtl,
+        Math.max(1, webUIConfig.maxRetries),
+        webUIConfig.retryDelay,
+        []
       );
 
-      if (tasksResponse && Array.isArray(tasksResponse)) {
+      const normalizedTasks = Array.isArray(tasksResponse)
+        ? tasksResponse
+        : tasksResponse &&
+            typeof tasksResponse === "object" &&
+            "tasks" in tasksResponse &&
+            Array.isArray((tasksResponse as { tasks?: unknown[] }).tasks)
+        ? ((tasksResponse as { tasks: unknown[] }).tasks)
+        : [];
+
+      if (normalizedTasks.length > 0 || tasksResponse !== undefined) {
         const status = this.extensionStatuses.get(extensionId);
         if (status) {
+          const activeTaskCount = normalizedTasks.reduce<number>((count, task) => {
+            if (task && typeof task === "object") {
+              const rawStatus =
+                "status" in task
+                  ? String((task as { status?: unknown }).status ?? "")
+                  : "";
+              const normalizedStatus = rawStatus.toLowerCase();
+              if (
+                normalizedStatus === "running" ||
+                normalizedStatus === "active" ||
+                normalizedStatus === "in_progress" ||
+                normalizedStatus === "in-progress"
+              ) {
+                return count + 1;
+              }
+            }
+            return count;
+          }, 0);
+
+          const lastExecutionTimestamp = normalizedTasks.reduce<
+            string | undefined
+          >((latest, task) => {
+            if (task && typeof task === "object") {
+              const taskRecord = task as Record<string, unknown>;
+              const timestampKeys = [
+                "last_run",
+                "last_execution",
+                "last_executed_at",
+                "lastRun",
+                "completed_at",
+                "updated_at",
+                "timestamp",
+                "executed_at",
+              ];
+              for (const key of timestampKeys) {
+                if (key in taskRecord) {
+                  const value = taskRecord[key];
+                  if (typeof value === "string" && value.trim().length > 0) {
+                    const parsed = new Date(value);
+                    if (!Number.isNaN(parsed.getTime())) {
+                      const isoString = parsed.toISOString();
+                      if (!latest || parsed.getTime() > new Date(latest).getTime()) {
+                        latest = isoString;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return latest;
+          }, undefined);
+
           status.backgroundTasks = {
-            active: 0,
-            total: tasksResponse.length,
-            lastExecution: undefined,
+            active: activeTaskCount,
+            total: normalizedTasks.length,
+            lastExecution: lastExecutionTimestamp,
           };
           this.updateExtensionStatus(extensionId, status);
         }
@@ -808,9 +797,22 @@ export class ExtensionIntegrationService {
   }
 
   private async updateAllExtensionStatuses(): Promise<void> {
+    // Skip if extensions access is denied (e.g., due to auth failure)
+    if (this.extensionsAccessDenied) {
+      return;
+    }
+
     try {
       const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic("/api/extensions/system/health");
+      const response = await backend.makeRequestPublic(
+        "/api/extensions/system/health",
+        {},
+        false,
+        webUIConfig.cacheTtl,
+        0,
+        webUIConfig.retryDelay,
+        null
+      );
 
       if (response) {
         for (const [extensionId, status] of this.extensionStatuses.entries()) {

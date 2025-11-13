@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type ComponentType,
   type LazyExoticComponent,
 } from 'react';
@@ -13,11 +14,8 @@ import React, {
 import LazyComponent from './lazy-component';
 import type { LazyLoadOptions } from './lazy-component.types';
 
-type ComponentProps<T extends ComponentType<unknown>> = T extends ComponentType<infer P>
-  ? P
-  : never;
-
-export function createLazyComponent<T extends ComponentType<unknown>>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: LazyLoadOptions = {}
 ): LazyExoticComponent<T> {
@@ -33,9 +31,10 @@ export function createLazyComponent<T extends ComponentType<unknown>>(
     const module = await importFn();
     const LoadedComponent = module.default;
 
-    const WrappedComponent = (props: ComponentProps<T>) => (
+    const WrappedComponent = (props: ComponentPropsWithoutRef<T>) => (
       <LazyComponent fallback={fallback} errorFallback={errorFallback}>
-        <LoadedComponent {...props} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <LoadedComponent {...(props as any)} />
       </LazyComponent>
     );
 

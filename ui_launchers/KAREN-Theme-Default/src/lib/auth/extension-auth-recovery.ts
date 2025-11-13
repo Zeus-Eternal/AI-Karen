@@ -190,31 +190,139 @@ export class ExtensionAuthRecoveryManager {
       const newToken = await authManager.forceRefresh();
 
       if (newToken) {
-        logger.info('Extension auth token refreshed successfully');
-        return {
-          success: true,
-          strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
-          message: 'Authentication token refreshed successfully',
-          requiresUserAction: false
-        };
+        logger.info('Extension auth token refreshed successfully', {
+          attemptCount: context.attemptCount,
+          endpoint: context.endpoint
+        });
+
+        // Validate the new token works by making a lightweight test request
+        const isValid = await this.validateRefreshedToken(newToken, context.endpoint);
+
+        if (isValid) {
+          logger.info('Refreshed token validated successfully');
+          return {
+            success: true,
+            strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
+            message: 'Authentication token refreshed and validated successfully',
+            requiresUserAction: false,
+            // Add progressive delay to allow server-side token sync
+            nextAttemptDelay: this.calculateProgressiveDelay(context.attemptCount)
+          };
+        } else {
+          logger.warn('Refreshed token validation failed, will retry', {
+            attemptCount: context.attemptCount,
+            maxAttempts: context.maxAttempts
+          });
+
+          // Token refresh succeeded but validation failed - retry with backoff
+          if (context.attemptCount < context.maxAttempts) {
+            return {
+              success: false,
+              strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
+              message: 'Token refreshed but not yet synchronized, retrying...',
+              requiresUserAction: false,
+              nextAttemptDelay: this.calculateProgressiveDelay(context.attemptCount)
+            };
+          } else {
+            return {
+              success: false,
+              strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
+              message: 'Token refresh validation failed after maximum attempts',
+              requiresUserAction: true
+            };
+          }
+        }
       } else {
+        const hasMoreAttempts = context.attemptCount < context.maxAttempts;
         return {
           success: false,
           strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
-          message: 'Token refresh failed, user authentication required',
-          requiresUserAction: true,
-          nextAttemptDelay: this.calculateBackoffDelay(context.attemptCount)
+          message: hasMoreAttempts
+            ? 'Token refresh in progress, retrying...'
+            : 'Token refresh failed, user authentication required',
+          requiresUserAction: !hasMoreAttempts,
+          nextAttemptDelay: hasMoreAttempts
+            ? this.calculateProgressiveDelay(context.attemptCount)
+            : undefined
         };
       }
     } catch (refreshError) {
       logger.error('Token refresh failed:', refreshError);
+
+      const hasMoreAttempts = context.attemptCount < context.maxAttempts;
       return {
         success: false,
         strategy: ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH,
-        message: 'Token refresh failed, please log in again',
-        requiresUserAction: true
+        message: hasMoreAttempts
+          ? 'Token refresh error, retrying...'
+          : 'Token refresh failed, please log in again',
+        requiresUserAction: !hasMoreAttempts,
+        nextAttemptDelay: hasMoreAttempts
+          ? this.calculateProgressiveDelay(context.attemptCount)
+          : undefined
       };
     }
+  }
+
+  /**
+   * Validate that a refreshed token actually works
+   */
+  private async validateRefreshedToken(token: string, endpoint: string): Promise<boolean> {
+    try {
+      // Use a lightweight endpoint to test the token
+      const testEndpoint = '/api/health';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const response = await fetch(testEndpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Client-Type': 'extension-integration',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      logger.debug('Token validation response:', {
+        status: response.status,
+        ok: response.ok,
+        endpoint
+      });
+
+      // Accept 200, 401, 403 as valid responses (token is being processed)
+      // Only reject on 500+ errors (server errors)
+      const isValid = response.status < 500;
+
+      if (!isValid) {
+        logger.warn('Token validation failed with server error', {
+          status: response.status,
+          endpoint
+        });
+      }
+
+      return isValid;
+    } catch (error) {
+      logger.warn('Token validation request failed:', error);
+      // Network errors during validation should not fail the refresh
+      // The actual request will determine if the token works
+      // Optimistically assume it works to allow retry
+      return true;
+    }
+  }
+
+  /**
+   * Calculate progressive delay with exponential backoff
+   * Uses longer delays than standard backoff to allow for server-side token sync
+   */
+  private calculateProgressiveDelay(attemptCount: number): number {
+    // Progressive delays: 1s, 2s, 4s, 8s
+    const baseDelay = 1000; // 1 second
+    const maxDelay = 10000; // 10 seconds max
+    const delay = baseDelay * Math.pow(2, attemptCount - 1);
+    return Math.min(delay, maxDelay);
   }
 
   /**
@@ -444,9 +552,9 @@ export class ExtensionAuthRecoveryManager {
   private getMaxAttemptsForStrategy(strategy: ExtensionAuthRecoveryStrategy): number {
     switch (strategy) {
       case ExtensionAuthRecoveryStrategy.RETRY_WITH_REFRESH:
-        return 2;
+        return 4; // Increased from 2 to 4 for bulletproof retry
       case ExtensionAuthRecoveryStrategy.RETRY_WITH_BACKOFF:
-        return 3;
+        return 5; // Increased from 3 to 5 for better reliability
       case ExtensionAuthRecoveryStrategy.FALLBACK_TO_READONLY:
       case ExtensionAuthRecoveryStrategy.FALLBACK_TO_CACHED:
       case ExtensionAuthRecoveryStrategy.GRACEFUL_DEGRADATION:

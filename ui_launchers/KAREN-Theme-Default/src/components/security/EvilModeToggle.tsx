@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useReducer } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRBAC } from "@/providers/rbac-hooks";
 import { auditLogger } from "@/services/audit-logger";
-import type { EvilModeSession } from "@/types/rbac";
+import type { EvilModeConfig, EvilModeSession } from "@/types/rbac";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -331,7 +331,7 @@ export function EvilModeToggle({ className }: EvilModeToggleProps) {
 
 export interface EvilModeStatusProps {
   session: EvilModeSession | null;
-  config: Record<string, unknown>;
+  config: EvilModeConfig | null;
 }
 
 function EvilModeStatus({ session, config }: EvilModeStatusProps) {
@@ -358,17 +358,20 @@ function EvilModeStatus({ session, config }: EvilModeStatusProps) {
 
   const elapsedMs = now.getTime() - startTime.getTime();
   const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));
-
-  const timeLimit = config?.timeLimit || 60;
+  const hasTimeLimit = typeof config?.timeLimit === "number" && config.timeLimit > 0;
+  const timeLimit = hasTimeLimit ? config!.timeLimit : 60;
   const remainingMinutes = Math.max(0, timeLimit - elapsedMinutes);
-  const progress = Math.min(100, Math.max(0, (elapsedMinutes / timeLimit) * 100));
+  const progress = Math.min(
+    100,
+    Math.max(0, (elapsedMinutes / Math.max(1, timeLimit)) * 100)
+  );
 
   return (
     <div className="flex items-center space-x-3">
       <Badge variant="destructive" className="animate-pulse">
         Active
       </Badge>
-      {config?.timeLimit ? (
+      {hasTimeLimit ? (
         <div className="flex items-center space-x-2 text-sm">
           <Timer className="h-4 w-4" aria-hidden />
           <span>{remainingMinutes}m left</span>

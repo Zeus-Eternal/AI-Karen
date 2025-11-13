@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
     const bases = CANDIDATE_BACKENDS;
-    let lastErr: unknown = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     const unauthorizedStatus = new Set([401, 403]);
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-ignore Node/undici hints
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           }),
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-ignore Node/undici hints
+            // @ts-expect-error Node/undici hints
             keepalive: true,
             cache: 'no-store',
           })
@@ -52,9 +51,8 @@ export async function GET(request: NextRequest) {
         if (healthResponse.status === 'fulfilled' || providersResponse.status === 'fulfilled') {
           break;
         }
-      } catch (err) {
+      } catch {
         clearTimeout(timeout);
-        lastErr = err;
         // try next base
         continue;
       }
@@ -120,11 +118,23 @@ export async function GET(request: NextRequest) {
         ? 'degraded'
         : (healthData.ai_status || normalizedStatus);
       const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
-      const data = {
-        degraded_mode: isActive,
-        is_active: isActive,
-        status: normalizedStatus,
-        reason: normalizedStatus === 'healthy' ? '' : 'System experiencing issues',
+        const lastErrorMessage =
+          lastErr instanceof Error
+            ? lastErr.message
+            : typeof lastErr === 'string'
+              ? lastErr
+              : undefined;
+        const degradedReason = normalizedStatus === 'healthy'
+          ? ''
+          : lastErrorMessage
+              ? `System experiencing issues: ${lastErrorMessage}`
+              : 'System experiencing issues';
+
+        const data = {
+          degraded_mode: isActive,
+          is_active: isActive,
+          status: normalizedStatus,
+          reason: degradedReason,
         infrastructure_issues: healthData.infrastructure_issues || [],
         core_helpers_available: {
           fallback_responses: true,
@@ -141,10 +151,10 @@ export async function GET(request: NextRequest) {
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });
-  } catch (error) {
+  } catch {
     // Normalize to 200 with degraded mode on unexpected errors
     return NextResponse.json(
-      { 
+      {
         is_active: true,
         reason: 'Health check failed',
         infrastructure_issues: ['Health check system'],

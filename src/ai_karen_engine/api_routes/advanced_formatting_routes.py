@@ -149,7 +149,7 @@ async def analyze_content(request: AnalysisRequest) -> AnalysisResponse:
 
 
 @router.post("/format/optimal-type")
-async def get_optimal_format_type(request: FormatRequest) -> Dict[str, str]:
+async def get_optimal_format_type(request: FormatRequest) -> Dict[str, Any]:
     """
     Determine the optimal format type for given content and context.
     
@@ -223,7 +223,7 @@ async def organize_content_hierarchically(request: AnalysisRequest) -> Dict[str,
 async def apply_syntax_highlighting(
     code: str,
     language: str = "text"
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """
     Apply syntax highlighting to code blocks.
     

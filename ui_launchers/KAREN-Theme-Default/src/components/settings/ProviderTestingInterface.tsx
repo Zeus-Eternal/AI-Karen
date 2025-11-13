@@ -47,6 +47,39 @@ export interface ValidationResult {
   recommendations: string[];
 }
 
+type IndividualTestType =
+  | 'connectivity'
+  | 'authentication'
+  | 'model_discovery'
+  | 'capability_check'
+  | 'performance_test';
+
+const getNumberDetail = (
+  details: Record<string, unknown> | undefined,
+  key: string,
+  fallback = 0
+): number => {
+  if (!details) {
+    return fallback;
+  }
+  const value = details[key];
+  return typeof value === 'number' ? value : fallback;
+};
+
+const getRecordDetailLength = (
+  details: Record<string, unknown> | undefined,
+  key: string
+): number => {
+  if (!details) {
+    return 0;
+  }
+  const value = details[key];
+  if (typeof value === 'object' && value !== null) {
+    return Object.keys(value as Record<string, unknown>).length;
+  }
+  return 0;
+};
+
 export interface ProviderTestingInterfaceProps {
   providerName: string;
   providerType: 'remote' | 'local' | 'hybrid';
@@ -99,7 +132,7 @@ export function ProviderTestingInterface({
     }
   };
 
-  const runIndividualTest = async (testType: string) => {
+  const runIndividualTest = async (testType: IndividualTestType) => {
     setActiveTest(testType);
     try {
       const response = await backend.makeRequestPublic<TestResult>('/api/providers/test-individual', {
@@ -113,11 +146,15 @@ export function ProviderTestingInterface({
       });
 
       // Update test results
-      if (testResults) {
-        const updatedResults = { ...testResults };
-        (updatedResults as unknown)[testType] = response;
-        setTestResults(updatedResults);
-      }
+      setTestResults(prev => {
+        if (!prev) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [testType]: response
+        };
+      });
       toast({
         title: `${testType} Test Complete`,
         description: response.success ? 'Test passed' : `Test failed: ${response.message}`,
@@ -149,6 +186,14 @@ export function ProviderTestingInterface({
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
+  };
+
+  const getPerformanceDetailNumber = (
+    details: TestResult['details'],
+    key: 'tokens_per_second' | 'total_tokens'
+  ) => {
+    const value = details?.[key];
+    return typeof value === 'number' ? value : undefined;
   };
 
   return (
@@ -354,7 +399,9 @@ export function ProviderTestingInterface({
                   {testResults?.model_discovery && (
                     <div className="mt-2 text-xs text-muted-foreground">
                       <div>Duration: {formatDuration(testResults.model_discovery.duration_ms)}</div>
-                      <div>Models: {testResults.model_discovery.details?.model_count || 0}</div>
+                      <div>
+                        Models: {getNumberDetail(testResults.model_discovery.details, 'model_count')}
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -388,7 +435,9 @@ export function ProviderTestingInterface({
                   {testResults?.capability_check && (
                     <div className="mt-2 text-xs text-muted-foreground">
                       <div>Duration: {formatDuration(testResults.capability_check.duration_ms)}</div>
-                      <div>Features: {Object.keys(testResults.capability_check.details?.capabilities || {}).length}</div>
+                      <div>
+                        Features: {getRecordDetailLength(testResults.capability_check.details, 'capabilities')}
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -414,13 +463,19 @@ export function ProviderTestingInterface({
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold">
-                        {testResults.performance_test.details?.tokens_per_second || 0}
+                        {getPerformanceDetailNumber(
+                          testResults.performance_test.details,
+                          'tokens_per_second'
+                        ) ?? 0}
                       </div>
                       <div className="text-xs text-muted-foreground">Tokens/sec</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold">
-                        {testResults.performance_test.details?.total_tokens || 0}
+                        {getPerformanceDetailNumber(
+                          testResults.performance_test.details,
+                          'total_tokens'
+                        ) ?? 0}
                       </div>
                       <div className="text-xs text-muted-foreground">Total Tokens</div>
                     </div>

@@ -11,22 +11,24 @@ import { getConnectionManager, ConnectionOptions, RequestResult, ConnectionError
 
 // Legacy implementation for backward compatibility
 const DEFAULT_PORT = process.env.KAREN_BACKEND_PORT || process.env.BACKEND_PORT || '8000';
-// Standardized environment variables with legacy fallbacks
+const KAREN_BACKEND_URL = process.env.KAREN_BACKEND_URL;
+const NEXT_PUBLIC_KAREN_BACKEND_URL = process.env.NEXT_PUBLIC_KAREN_BACKEND_URL;
 const ENV_CANDIDATES = [
-  // Standardized variables (preferred)
-  process.env.KAREN_BACKEND_URL,
-  process.env.NEXT_PUBLIC_KAREN_BACKEND_URL,
-  // Legacy variables (deprecated but supported for backward compatibility)
+  KAREN_BACKEND_URL,
+  NEXT_PUBLIC_KAREN_BACKEND_URL,
   process.env.API_BASE_URL,
   process.env.NEXT_PUBLIC_API_BASE_URL,
 ];
-// Log deprecation warnings for legacy environment variables
-if (process.env.API_BASE_URL && !process.env.KAREN_BACKEND_URL) {
-  console.warn('API_BASE_URL is deprecated. Please use KAREN_BACKEND_URL instead.');
+
+// Log the final resolved URL for debugging purposes
+if (KAREN_BACKEND_URL) {
+  console.log(`[API Proxy] Backend URL (server-side): ${KAREN_BACKEND_URL}`);
 }
-if (process.env.NEXT_PUBLIC_API_BASE_URL && !process.env.NEXT_PUBLIC_KAREN_BACKEND_URL) {
-  console.warn('NEXT_PUBLIC_API_BASE_URL is deprecated. Please use NEXT_PUBLIC_KAREN_BACKEND_URL instead.');
+if (NEXT_PUBLIC_KAREN_BACKEND_URL) {
+  console.log(`[API Proxy] Backend URL (client-side): ${NEXT_PUBLIC_KAREN_BACKEND_URL}`);
 }
+
+export const backendUrl = KAREN_BACKEND_URL || NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
 const DEFAULT_HOST_CANDIDATES = [
   `http://localhost:${DEFAULT_PORT}`,
   `http://127.0.0.1:${DEFAULT_PORT}`,

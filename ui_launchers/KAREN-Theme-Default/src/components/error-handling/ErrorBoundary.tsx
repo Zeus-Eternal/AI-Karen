@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components */
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,8 @@ interface Props {
   enableRecovery?: boolean;
   enableReporting?: boolean;
 }
+
+export type ErrorBoundaryProps = Props;
 interface State {
   hasError: boolean;
   error: Error | null;
@@ -92,8 +96,8 @@ export class ErrorBoundary extends Component<Props, State> {
         sessionId: this.getSessionId(),
       });
     } catch (error) {
-    // Handle error silently
-  }
+      console.error('Error reporting failed', error);
+    }
   }
   private getCurrentUserId(): string | null {
     // Get from auth context or local storage
@@ -118,8 +122,8 @@ export class ErrorBoundary extends Component<Props, State> {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
       } catch (error) {
-    // Handle error silently
-  } finally {
+        console.error('Error recovery strategy failed', error);
+      } finally {
         this.setState({ isRecovering: false });
       }
     }
@@ -261,16 +265,4 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
     </div>
   );
 };
-// Higher-order component for easy error boundary wrapping
-export function withErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
-) {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  return WrappedComponent;
-}
+

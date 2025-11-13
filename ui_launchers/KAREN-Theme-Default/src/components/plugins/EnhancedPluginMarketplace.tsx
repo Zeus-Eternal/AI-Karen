@@ -51,6 +51,8 @@ import {
 
 import type { PluginMarketplaceEntry } from "@/types/plugins";
 
+type SortOption = "popular" | "rating" | "recent" | "name" | "price";
+
 export interface PluginReview {
   id: string;
   pluginId: string;
@@ -239,9 +241,7 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlugin, setSelectedPlugin] = useState<PluginMarketplaceEntry | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = useState<"popular" | "rating" | "recent" | "name" | "price">(
-    "popular"
-  );
+  const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [bookmarkedPlugins, setBookmarkedPlugins] = useState<Set<string>>(new Set());
@@ -317,8 +317,8 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
 
     // Sort
     filtered.sort((a, b) => {
-      let aVal: unknown;
-      let bVal: unknown;
+      let aVal: number | string;
+      let bVal: number | string;
       switch (sortBy) {
         case "popular":
           aVal = a.downloads;
@@ -753,7 +753,7 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Sort</Label>
                   <div className="space-y-2">
-                    <Select value={sortBy} onValueChange={(v: unknown) => setSortBy(v)}>
+                    <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>

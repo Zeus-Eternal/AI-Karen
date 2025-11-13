@@ -400,7 +400,7 @@ async def get_ai_suggestions(request: AIAssistanceRequest):
 
 
 @router.post("/hyperparameter-sweep/start")
-async def start_hyperparameter_sweep(config_data: AdvancedTrainingConfigModel):
+async def start_configured_hyperparameter_sweep(config_data: AdvancedTrainingConfigModel):
     """Start a hyperparameter sweep."""
     try:
         if not config_data.hyperparameter_sweep:
@@ -411,7 +411,7 @@ async def start_hyperparameter_sweep(config_data: AdvancedTrainingConfigModel):
         config = training_manager.create_advanced_config(config_dict)
         
         # Start sweep
-        sweep_id = training_manager.start_hyperparameter_sweep(config)
+        sweep_id = await training_manager.start_hyperparameter_sweep(config)
         
         return {
             "sweep_id": sweep_id,

@@ -22,7 +22,8 @@ import {
 import type {
   KarenSettings,
   HandleUserMessageResult,
-  ChatMessage
+  ChatMessage,
+  MessageRole
 } from '@/lib/types';
 
 import { DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
@@ -87,9 +88,10 @@ function parseConversationHistory(raw: string): ChatMessage[] {
  * If the first message is already a system prompt, we respect it and prepend ours.
  */
 function withSystemPrompt(messages: ChatMessage[]): ChatMessage[] {
+  const systemRole: MessageRole = 'system';
   const sys: ChatMessage = {
     id: 'sys_kro',
-    role: 'system' as unknown, // keep compatibility with your ChatMessage typing if role union is limited
+    role: systemRole,
     content: getKROSystemPrompt(),
     timestamp: new Date()
   };

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 
+type HeadersWithRaw = Headers & { raw?: () => Record<string, string[]> };
+
 /** ---------- Config ---------- */
 const BACKEND_BASES = getBackendCandidates();
 const CHAT_TIMEOUT_MS = Number(
@@ -55,37 +57,41 @@ const HOP_BY_HOP = new Set([
   'upgrade',
 ]);
 
-function buildNextResponse(origin: Response): NextResponse {
-  const nextResponse = new NextResponse(origin.body, {
-    status: origin.status,
-    statusText: origin.statusText,
-  });
+function forwardResponse(origin: Response): Response {
+  const headers = new Headers();
 
-  // Clone headers, skipping hop-by-hop
   origin.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
     if (HOP_BY_HOP.has(lower)) return;
-    // Avoid duplicating Set-Cookie here; we’ll handle multi-value explicitly below
     if (lower === 'set-cookie') return;
-    nextResponse.headers.set(key, value);
+    headers.set(key, value);
   });
 
-  // Preserve multiple Set-Cookie headers
-  const getAll = (origin.headers as unknown).getAll?.bind(origin.headers);
-  const setCookieHeaders: string[] = getAll ? getAll('set-cookie') ?? [] : [];
-  if (setCookieHeaders.length === 0) {
-    const single = origin.headers.get('set-cookie');
-    if (single) setCookieHeaders.push(single);
-  }
-  for (const cookie of setCookieHeaders) {
-    try {
-      nextResponse.headers.append('Set-Cookie', cookie);
-    } catch {
-      // ignore malformed cookies
+  const headersWithRaw = origin.headers as HeadersWithRaw;
+  const raw = headersWithRaw.raw?.();
+  const setCookies = raw?.['set-cookie'] ?? [];
+  if (setCookies.length > 0) {
+    for (const cookie of setCookies) {
+      headers.append('set-cookie', cookie);
     }
+  } else {
+    const single = origin.headers.get('set-cookie');
+    if (single) headers.append('set-cookie', single);
   }
 
-  return nextResponse;
+  const contentType = headers.get('content-type') ?? '';
+  if (contentType.includes('text/event-stream')) {
+    if (!headers.has('cache-control')) {
+      headers.set('cache-control', 'no-cache, no-transform');
+    }
+    headers.set('connection', 'keep-alive');
+  }
+
+  return new Response(origin.body, {
+    status: origin.status,
+    statusText: origin.statusText,
+    headers,
+  });
 }
 
 /** ---------- Next.js Route flags ---------- */
@@ -129,8 +135,6 @@ export async function POST(request: NextRequest) {
           headers,
           body: bodyText,
           signal: controller.signal,
-          // @ts-ignore Node/undici hint
-          keepalive: true,
           cache: 'no-store',
         });
 
@@ -173,5 +177,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return buildNextResponse(response);
+  return forwardResponse(response);
 }

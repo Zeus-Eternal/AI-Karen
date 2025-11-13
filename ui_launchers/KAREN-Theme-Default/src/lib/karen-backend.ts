@@ -264,7 +264,21 @@ class KarenBackendService {
     return (
       endpoint.startsWith("/api/extensions") ||
       endpoint.includes("/background-tasks") ||
-      endpoint.includes("extension")
+      endpoint.includes("extension") ||
+      endpoint.includes("/copilot/") || // LLM copilot endpoints
+      endpoint.includes("/api/chat") // Chat API endpoints
+    );
+  }
+
+  private isOptionalExtensionEndpoint(endpoint: string): boolean {
+    if (!this.isExtensionEndpoint(endpoint)) {
+      return false;
+    }
+
+    return (
+      endpoint.includes("/extensions/background-tasks") ||
+      endpoint.includes("/background-tasks") ||
+      endpoint.includes("/extensions/system/health")
     );
   }
   /**
@@ -312,13 +326,14 @@ class KarenBackendService {
   }
   /**
    * Handle authentication failures with comprehensive extension error handling
+   * Returns object with shouldRetry flag and optional delay
    */
   private async handleAuthFailure(
     endpoint: string,
     response: Response,
     attempt: number,
     maxRetries: number
-  ): Promise<boolean> {
+  ): Promise<{ shouldRetry: boolean; delay?: number }> {
     // Handle extension endpoint authentication failures with comprehensive error handling
     if (
       this.isExtensionEndpoint(endpoint) &&
@@ -349,8 +364,25 @@ class KarenBackendService {
             endpoint,
             this.getOperationFromEndpoint(endpoint)
           );
-        // Return true if recovery was successful and we should retry
-        return recoveryResult.success && attempt < maxRetries;
+
+        // If recovery succeeded or we should retry, use the delay from recovery result
+        const shouldRetry = (recoveryResult.success || !recoveryResult.requiresUserAction) && attempt < maxRetries;
+        const delay = recoveryResult.nextAttemptDelay || 1000; // Default to 1s if no delay specified
+
+        if (shouldRetry) {
+          logger.info('Extension auth recovery suggests retry', {
+            endpoint,
+            attempt: attempt + 1,
+            delay,
+            success: recoveryResult.success,
+            message: recoveryResult.message
+          });
+        }
+
+        return {
+          shouldRetry,
+          delay: shouldRetry ? delay : undefined
+        };
       } catch (recoveryError) {
         logger.error("Extension auth recovery failed:", recoveryError);
         // Create a recovery failure error
@@ -364,6 +396,14 @@ class KarenBackendService {
 
         // Handle the recovery failure
         extensionAuthErrorHandler.handleError(recoveryFailureError);
+
+        // Retry with backoff even on recovery failure (up to maxRetries)
+        if (attempt < maxRetries) {
+          return {
+            shouldRetry: true,
+            delay: 2000 * Math.pow(2, attempt) // Exponential backoff: 2s, 4s, 8s
+          };
+        }
       }
     }
     // Standard authentication failure handling
@@ -380,12 +420,18 @@ class KarenBackendService {
         // ignore secondary auth errors
       }
     }
-    return false; // No retry
+    return { shouldRetry: false }; // No retry
   }
   /**
    * Extract operation name from endpoint for error context
    */
   private getOperationFromEndpoint(endpoint: string): string {
+    if (endpoint.includes("/copilot/")) {
+      return "llm_copilot";
+    }
+    if (endpoint.includes("/api/chat")) {
+      return "llm_chat";
+    }
     if (endpoint.includes("/extensions/")) {
       if (endpoint.includes("/background-tasks")) {
         return "background_tasks";
@@ -594,33 +640,9 @@ class KarenBackendService {
       }
       this.cache.delete(cacheKey);
     }
-    // Use request interceptor for automatic token injection and preprocessing
-    const interceptedOptions = await this.interceptRequest(endpoint, options);
-    const headers = interceptedOptions.headers as Record<string, string>;
-    const correlationId = headers["X-Correlation-ID"];
     let lastError: Error | null = null;
-    // Log request if enabled
-    if (this.requestLogging) {
-      let bodyLog: unknown;
-      if (options.body) {
-        try {
-          bodyLog = JSON.parse(options.body as string);
-        } catch {
-          bodyLog = "[non-JSON body]";
-        }
-      }
-      logger.info(`[REQUEST] ${options.method || "GET"} ${primaryUrl}`, {
-        headers: this.debugLogging
-          ? headers
-          : {
-              "Content-Type": headers["Content-Type"],
-              Authorization: headers["Authorization"] ? "[REDACTED]" : "none",
-            },
-        body: bodyLog,
-        correlationId,
-        timeoutMs: perRequestTimeout,
-      });
-    }
+    // Note: request interception and logging now run per attempt to ensure
+    // refreshed authentication headers are applied
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
     // Candidate base URLs (primary + configured fallbacks)
     let candidateBases: string[] = [];
@@ -646,6 +668,33 @@ class KarenBackendService {
     }
     // Retry logic for transient failures
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const interceptedOptions = await this.interceptRequest(endpoint, options);
+      const headers = interceptedOptions.headers as Record<string, string>;
+      const correlationId = headers["X-Correlation-ID"];
+
+      if (this.requestLogging) {
+        let bodyLog: unknown;
+        if (interceptedOptions.body) {
+          try {
+            bodyLog = JSON.parse(interceptedOptions.body as string);
+          } catch {
+            bodyLog = "[non-JSON body]";
+          }
+        }
+        const method = interceptedOptions.method || options.method || "GET";
+        logger.info(`[REQUEST] ${method} ${primaryUrl} (attempt ${attempt + 1}/${maxRetries + 1})`, {
+          headers: this.debugLogging
+            ? headers
+            : {
+                "Content-Type": headers["Content-Type"],
+                Authorization: headers["Authorization"] ? "[REDACTED]" : "none",
+              },
+          body: bodyLog,
+          correlationId,
+          timeoutMs: perRequestTimeout,
+        });
+      }
+
       try {
         let response: Response | null = null;
         let lastFetchError: unknown = null;
@@ -709,6 +758,38 @@ class KarenBackendService {
           throw lastFetchError || new Error("Network error");
         }
         if (!response.ok) {
+          const isExpectedExtension404 =
+            this.isExtensionEndpoint(endpoint) &&
+            response.status === 404 &&
+            safeFallback !== undefined;
+
+          if (isExpectedExtension404) {
+            if (this.requestLogging || this.debugLogging) {
+              logger.info(
+                "KarenBackendService optional extension endpoint missing",
+                {
+                  status: response.status,
+                  endpoint,
+                }
+              );
+            }
+            return safeFallback as T;
+          }
+
+          const isOptionalExtensionFailure =
+            safeFallback !== undefined &&
+            this.isOptionalExtensionEndpoint(endpoint) &&
+            response.status >= 500;
+
+          if (isOptionalExtensionFailure) {
+            logger.warn("KarenBackendService optional extension endpoint unavailable", {
+              status: response.status,
+              url: response.url,
+              endpoint,
+            });
+            return safeFallback as T;
+          }
+
           // Reduce noise for expected health and extension auth failures
           const isHealthCheck =
             endpoint.includes("/health") ||
@@ -833,15 +914,17 @@ class KarenBackendService {
             }
           }
           // Handle authentication failures with extension-specific retry logic
-          const shouldRetryAuth = await this.handleAuthFailure(
+          const authRetryResult = await this.handleAuthFailure(
             endpoint,
             response,
             attempt,
             maxRetries
           );
-          if (shouldRetryAuth) {
-            // Wait a bit before retrying with fresh auth
-            await this.sleep(500);
+          if (authRetryResult.shouldRetry) {
+            // Wait with progressive delay before retrying with fresh auth
+            const retryDelay = authRetryResult.delay || 1000;
+            logger.info(`Retrying ${endpoint} after auth recovery in ${retryDelay}ms`);
+            await this.sleep(retryDelay);
             continue;
           }
           // Don't retry non-retryable errors
@@ -1048,6 +1131,21 @@ class KarenBackendService {
               );
             }
           }
+
+          const shouldUseOptionalFallback =
+            safeFallback !== undefined &&
+            this.isOptionalExtensionEndpoint(endpoint) &&
+            lastError instanceof APIError &&
+            (lastError.status >= 500 || lastError.status === 0);
+
+          if (shouldUseOptionalFallback) {
+            logger.warn(
+              `KarenBackendService optional extension request failed for ${endpoint}:`,
+              lastError
+            );
+            return safeFallback;
+          }
+
           logger.error(
             `Backend request failed for ${endpoint} after ${
               attempt + 1
@@ -1676,6 +1774,47 @@ class KarenBackendService {
           },
         }),
       });
+
+      const aiData =
+        aiResponse && typeof aiResponse === "object"
+          ? (aiResponse.ai_data as Record<string, unknown> | undefined)
+          : undefined;
+      const isDegradedResponse = Boolean(
+        (aiData &&
+          (aiData["degraded_mode"] === true || aiData["status"] === "degraded")) ||
+          (aiResponse as Record<string, unknown>)?.["degraded_mode"] === true
+      );
+
+      if (isDegradedResponse) {
+        const degradeMessage =
+          (typeof aiResponse.response === "string" &&
+            aiResponse.response) ||
+          "AI services returned a degraded response";
+        const degradeReason =
+          (aiData?.["reason"] as string | undefined) ||
+          (aiData?.["status"] as string | undefined);
+
+        logger.warn(`[${requestId}] Received degraded AI response`, {
+          reason: degradeReason,
+          aiData,
+        });
+
+        throw new APIError(
+          degradeMessage,
+          503,
+          {
+            error: "AI_SERVICE_DEGRADED",
+            message: degradeMessage,
+            type: "SERVICE_UNAVAILABLE",
+            timestamp: new Date().toISOString(),
+            details: {
+              reason: degradeReason,
+              endpoint: "/api/ai/conversation-processing",
+            },
+          },
+          true
+        );
+      }
 
       // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
       const response: HandleUserMessageResult = {

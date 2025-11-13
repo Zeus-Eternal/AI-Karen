@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_URL =
-  process.env.KAREN_BACKEND_URL ||
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'http://localhost:8000';
+  process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 async function handleCopilotRequest(request: NextRequest) {
   try {
-    const backendUrl = `${BACKEND_URL}/copilot/assist`;
+    const fullBackendUrl = `${BACKEND_URL}/copilot/assist`;
     // Get request body
     let body: string | undefined = undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();
-      } catch (e) {
+      } catch {
         // Body might be empty
       }
     }
@@ -21,10 +18,13 @@ async function handleCopilotRequest(request: NextRequest) {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
-    // Copy important headers
+    // Copy authorization header if present, else use auth_token cookie
     const authHeader = request.headers.get('authorization');
+    const authCookie = request.cookies.get('auth_token')?.value;
     if (authHeader) {
       headers['Authorization'] = authHeader;
+    } else if (authCookie) {
+      headers['Authorization'] = `Bearer ${authCookie}`;
     }
     const sessionHeader = request.headers.get('x-session-id');
     if (sessionHeader) {
@@ -45,12 +45,12 @@ async function handleCopilotRequest(request: NextRequest) {
     // Use longer timeout for copilot requests
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
-    const response = await fetch(backendUrl, {
+    const response = await fetch(fullBackendUrl, {
       method: request.method,
       headers: { ...headers, Connection: 'keep-alive' },
       body: body || undefined,
       signal: controller.signal,
-      // @ts-ignore undici option in Node runtime
+      // @ts-expect-error undici option in Node runtime
       keepalive: true,
       cache: 'no-store',
     });
@@ -65,7 +65,7 @@ async function handleCopilotRequest(request: NextRequest) {
         } else {
           data = JSON.parse(text);
         }
-      } catch (error) {
+      } catch {
         data = { error: 'Invalid JSON response from server' };
       }
     } else {
@@ -129,7 +129,7 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   return handleCopilotRequest(request);
 }
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {

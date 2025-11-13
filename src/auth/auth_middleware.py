@@ -27,6 +27,7 @@ _PUBLIC_PREFIXES: Iterable[str] = (
     "/static/",
     "/public/",
     "/api/public/",
+    "/api/health/",
 )
 
 

@@ -53,10 +53,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       if (currentPath !== '/login' && currentPath !== '/unauthorized' && !currentPath.startsWith('/login')) {
         sessionStorage.setItem('redirectAfterLogin', currentPath);
         hasRedirectedRef.current = true;
-        // Use a small delay to prevent race conditions
-        setTimeout(() => {
-          router.replace('/login');
-        }, 100);
+        router.replace('/login');
       }
       return;
     }

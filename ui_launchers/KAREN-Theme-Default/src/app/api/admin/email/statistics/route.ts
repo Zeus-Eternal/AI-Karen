@@ -43,6 +43,16 @@ function sanitizeTemplateId(raw: string | null): string | undefined {
  *  - end_date?: ISO-8601 date/time
  *  - template_id?: string (UUID/slug/id)
  */
+type AdminAuthFailureResult = {
+  success?: boolean;
+  status?: number;
+  error?: unknown;
+};
+
+function isAdminAuthFailure(result: unknown): result is AdminAuthFailureResult {
+  return typeof result === "object" && result !== null && "success" in result;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // AuthZ: allow admin and super_admin
@@ -52,15 +62,25 @@ export async function GET(request: NextRequest) {
       return authResult;
     }
     // Else assume an object with { success, status, error, user }
-    if (!('success' in authResult) || !authResult.success) {
-      const status = 'status' in authResult ? (authResult as unknown).status ?? 401 : 401;
+    if (!isAdminAuthFailure(authResult) || !authResult.success) {
+      const status = isAdminAuthFailure(authResult)
+        ? authResult.status ?? 401
+        : 401;
+      const failureReason = isAdminAuthFailure(authResult)
+        ? authResult.error
+        : undefined;
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'UNAUTHORIZED',
-            message: 'Unauthorized',
-            details: { reason: ('error' in authResult && (authResult as unknown).error) || 'RBAC check failed' },
+            code: "UNAUTHORIZED",
+            message: "Unauthorized",
+            details: {
+              reason:
+                (typeof failureReason === "string"
+                  ? failureReason
+                  : undefined) ?? "RBAC check failed",
+            },
           },
         } satisfies AdminApiResponse<never>,
         { status },

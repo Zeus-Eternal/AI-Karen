@@ -50,7 +50,6 @@ export interface EnhancedMessageBubbleProps {
   onRate?: (messageId: string, rating: 'positive' | 'negative') => void;
   showMetadata?: boolean;
   className?: string;
-  isDarkMode?: boolean;
 }
 
 export default function EnhancedMessageBubble({
@@ -60,7 +59,6 @@ export default function EnhancedMessageBubble({
   onRate,
   showMetadata = true,
   className,
-  isDarkMode = false,
 }: EnhancedMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 

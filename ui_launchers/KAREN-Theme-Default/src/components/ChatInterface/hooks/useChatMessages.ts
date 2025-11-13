@@ -6,7 +6,59 @@ import { useHooks } from "@/hooks/use-hooks";
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
-import { ChatMessage, ChatSettings } from "../types";
+import {
+  ChatMessage,
+  ChatSettings,
+  ChatMessageMetadata,
+} from "../types";
+type MessageMetadata = ChatMessageMetadata;
+
+type MinimalUser = {
+  userId?: string | null;
+  user_id?: string | null;
+};
+
+type DegradationMetadata = {
+  degraded_mode?: boolean;
+  status?: string;
+  reason?: string;
+  [key: string]: unknown;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const extractUserId = (user: unknown): string | undefined => {
+  if (!isRecord(user)) {
+    return undefined;
+  }
+
+  const record = user as MinimalUser & Record<string, unknown>;
+  if (typeof record.user_id === "string" && record.user_id.length > 0) {
+    return record.user_id;
+  }
+
+  if (typeof record.userId === "string" && record.userId.length > 0) {
+    return record.userId;
+  }
+
+  return undefined;
+};
+
+const parseDegradationMetadata = (
+  value: string | null
+): DegradationMetadata | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? (parsed as DegradationMetadata) : null;
+  } catch {
+    return null;
+  }
+};
 
 interface BackendChatRuntimeRequest {
   message: string;
@@ -51,6 +103,7 @@ export const useChatMessages = (
   const { toast } = useToast();
   const configManager = getConfigManager();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const resolvedUserId = extractUserId(user);
 
   // Core message sending logic with full streaming support
   const sendMessage = useCallback(
@@ -75,6 +128,7 @@ export const useChatMessages = (
       // Wrap the entire function in a try-catch to prevent unhandled errors
       try {
         const sanitizedContent = sanitizeInput(content.trim());
+        const userId = resolvedUserId;
         const userMessage: ChatMessage = {
           id: `msg_${Date.now()}_user`,
           role: "user",
@@ -109,11 +163,11 @@ export const useChatMessages = (
               (sanitizedContent.length > 100 ? "..." : ""),
             type,
             language: options.language,
-            userId: user?.user_id,
+            userId,
             sessionId,
             conversationId,
           },
-          { userId: user?.user_id }
+          { userId }
         );
 
         if (onMessageSent) {
@@ -150,8 +204,11 @@ export const useChatMessages = (
           : "/api/ai/conversation-processing";
 
         // Force proxy usage in browser environment for better reliability
-        const useProxy = typeof window !== 'undefined' ? true : 
-          (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
+        const useProxy =
+          typeof window !== "undefined"
+            ? true
+            : (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !==
+              "false";
         
         const proxyUrlFor = (path: string) =>
           `/api/chat/proxy?path=${encodeURIComponent(path)}`;
@@ -174,7 +231,7 @@ export const useChatMessages = (
         });
         let activeEndpoint = chatRuntimeUrl;
 
-        try {
+        const processResponseBody = async () => {
           const controller = new AbortController();
           abortControllerRef.current = controller;
           const startTime = performance.now();
@@ -194,8 +251,11 @@ export const useChatMessages = (
           }
 
           const originalContext = options.context;
+          const contextRecord = isRecord(originalContext)
+            ? (originalContext as Record<string, unknown>)
+            : undefined;
           const { tools: contextTools, ...contextWithoutTools } =
-            originalContext || {};
+            contextRecord ?? {};
           const normalizedTools = Array.isArray(contextTools)
             ? contextTools.filter(
                 (tool): tool is string => typeof tool === "string"
@@ -212,7 +272,7 @@ export const useChatMessages = (
             language: options.language || settings.language,
             session_id: sessionId,
             conversation_id: conversationId,
-            user_id: user?.user_id,
+            user_id: userId,
             platform: "web",
             enable_analysis: options.enableAnalysis || enableCodeAssistance,
             conversation_history: messages.map((m) => ({
@@ -268,8 +328,8 @@ export const useChatMessages = (
                 max_tokens: settings.maxTokens,
                 type,
                 language: options.language || settings.language,
-                context: originalContext,
-                user_id: user?.user_id,
+                context: contextRecord ?? null,
+                user_id: userId,
                 enable_analysis: options.enableAnalysis || enableCodeAssistance,
                 enable_suggestions: settings.enableSuggestions,
                 copilot_features: {
@@ -298,11 +358,11 @@ export const useChatMessages = (
                   language: options.language || settings.language,
                   session_id: sessionId,
                   conversation_id: conversationId,
-                  user_id: user?.user_id,
+                  user_id: userId,
                   platform: "web",
                   enable_analysis:
                     options.enableAnalysis || enableCodeAssistance,
-                  ...originalContext,
+                  ...(contextRecord ?? {}),
                 },
                 session_id: sessionId,
                 include_memories: true,
@@ -320,7 +380,7 @@ export const useChatMessages = (
               ? "text/event-stream, application/json"
               : "application/json",
             ...(authToken && { Authorization: `Bearer ${authToken}` }),
-            ...(user?.user_id && { "X-User-ID": user.user_id }),
+            ...(userId && { "X-User-ID": userId }),
             "X-Session-ID": sessionId || "",
             "X-Conversation-ID": conversationId || "",
           };
@@ -339,11 +399,14 @@ export const useChatMessages = (
             stream: chatRuntimePayload.stream,
           });
 
-          const executeRequest = async (url: string, body: unknown) => {
+          const executeRequest = async <T extends object>(
+            url: string,
+            body: T
+          ) => {
             safeDebug("🔍 useChatMessages: Executing request", {
               url,
               method: "POST",
-              bodyKeys: Object.keys(body),
+              bodyKeys: Object.keys(body as object),
               headersKeys: Object.keys(headers),
             });
 
@@ -353,8 +416,8 @@ export const useChatMessages = (
               body: JSON.stringify(body),
               signal: controller.signal,
               // Add additional fetch options for better reliability
-              cache: 'no-cache',
-              credentials: 'same-origin',
+              cache: "no-cache",
+              credentials: "same-origin",
             });
           };
 
@@ -444,7 +507,7 @@ export const useChatMessages = (
 
           // Handle streaming or complete response
           let fullText = "";
-          let metadata: Record<string, unknown> = {};
+          let metadata: MessageMetadata = {};
 
           const ct = response.headers.get("content-type") || "";
           const isStream =
@@ -453,183 +516,243 @@ export const useChatMessages = (
               ct.includes("text/stream") ||
               ct.includes("application/stream+json"));
 
-          if (isStream) {
-            // Handle streaming response
-            const reader = response.body.getReader();
-              const decoder = new TextDecoder();
-              let buffer = "";
+          const fallbackHeader = response.headers.get("x-fallback");
+          const fallbackReason = response.headers.get("x-fallback-reason");
+          const upstreamStatus = response.headers.get("x-proxy-upstream-status");
+          const aiData = parseDegradationMetadata(
+            response.headers.get("x-ai-data")
+          );
+          const resultMetadata = parseDegradationMetadata(
+            response.headers.get("x-result-metadata")
+          );
 
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) break;
+          if (fallbackHeader) {
+            let fallbackBody: unknown = null;
 
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
-
-              for (const rawLine of lines) {
-                const line = rawLine.replace(/\r$/, "");
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                  if (trimmed === "data: [DONE]" || trimmed === "[DONE]") {
-                    continue;
-                  }
-
-                let data = trimmed;
-                if (trimmed.startsWith("data:")) {
-                  data = trimmed.replace(/^data:\s*/, "");
-                }
-
+            if (!isStream) {
+              try {
+                const clone = response.clone();
+                fallbackBody = await clone.json();
+              } catch {
                 try {
-                  const json = JSON.parse(data);
-
-                  // Merge metadata
-                  const jsonType = (json as unknown)?.type;
-
-                  if (
-                    jsonType !== "token" &&
-                    jsonType !== "delta" &&
-                    (json.event === "meta" ||
-                      jsonType === "meta" ||
-                      json.kind === "metadata" ||
-                      json.metadata ||
-                      json.meta ||
-                      json.data ||
-                      json.usage ||
-                      json.model)
-                  ) {
-                    const usage = json.usage || json.token_usage || {};
-                    const baseMeta =
-                      json.metadata || json.meta || json.data || {};
-                    const metaUpdate: unknown = { ...(baseMeta as unknown) };
-                    // If KIRE metadata present under 'kire' or 'kire_metadata', keep it nested
-                    if ((json as unknown).kire_metadata && !metaUpdate.kire)
-                      metaUpdate.kire = (json as unknown).kire_metadata;
-                    if (json.model && !metaUpdate.model)
-                      metaUpdate.model = json.model;
-                    if (typeof json.confidence === "number")
-                      metaUpdate.confidence = json.confidence;
-                    if (
-                      usage.total_tokens ||
-                      (usage.prompt_tokens && usage.completion_tokens)
-                    ) {
-                      metaUpdate.tokens =
-                        usage.total_tokens ||
-                        usage.prompt_tokens + usage.completion_tokens;
-                    }
-                    if (
-                      typeof metaUpdate.total_tokens === "number" &&
-                      metaUpdate.tokens === undefined
-                    ) {
-                      metaUpdate.tokens = metaUpdate.total_tokens;
-                    }
-                    if (
-                      typeof (metaUpdate as unknown).totalTokens === "number" &&
-                      metaUpdate.tokens === undefined
-                    ) {
-                      metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
-                    }
-                    if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                    if (metaUpdate.origin === undefined)
-                      metaUpdate.origin = responseOrigin;
-                    if (metaUpdate.endpoint === undefined)
-                      metaUpdate.endpoint = activeEndpoint;
-                    metadata = { ...metadata, ...metaUpdate };
-                  }
-
-                  // Content deltas
-                  if (
-                    typeof json === "string" ||
-                    json.delta ||
-                    json.content ||
-                    json.text ||
-                    json.answer ||
-                    (jsonType === "token" && json.data)
-                  ) {
-                    const tokenData =
-                      jsonType === "token" && typeof json.data === "object"
-                        ? typeof json.data.token === "string"
-                          ? json.data.token
-                          : typeof json.data.delta === "string"
-                          ? json.data.delta
-                          : typeof json.data.content === "string"
-                          ? json.data.content
-                          : typeof json.data.text === "string"
-                          ? json.data.text
-                          : typeof json.data.answer === "string"
-                          ? json.data.answer
-                          : ""
-                        : "";
-
-                    const newContent =
-                      (typeof json === "string" && json) ||
-                      (typeof json.delta === "string" && json.delta) ||
-                      (json.content as string | undefined) ||
-                      (json.text as string | undefined) ||
-                      (json.answer as string | undefined) ||
-                      tokenData ||
-                      "";
-                    if (newContent) {
-                      fullText += newContent;
-
-                      // Update message in real-time
-                      setMessages((prev) =>
-                        prev.map((m) =>
-                          m.id === assistantId ? { ...m, content: fullText } : m
-                        )
-                      );
-                    }
-                    }
-                  } catch (_error) {
-                  // Handle non-JSON streaming data
-                  if (!data.startsWith("{")) {
-                    fullText += data;
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantId ? { ...m, content: fullText } : m
-                      )
-                    );
-                  }
+                  fallbackBody = await response.clone().text();
+                } catch {
+                  fallbackBody = null;
                 }
               }
             }
-            // Flush any remaining buffered data after stream ends
-            const tail = (buffer || "").trim();
-            if (tail && tail !== "data: [DONE]") {
-              const data = tail.startsWith("data:")
-                ? tail.replace(/^data:\s*/, "")
-                : tail;
+
+            safeWarn("🔍 useChatMessages: Received fallback chat payload", {
+              header: fallbackHeader,
+              reason: fallbackReason,
+              upstreamStatus,
+              origin: responseOrigin,
+              endpoint: activeEndpoint,
+              isStream,
+            });
+
+            const fallbackMessage =
+              typeof fallbackBody === "object" && fallbackBody !== null
+                ? (() => {
+                    const recordBody = fallbackBody as Record<string, unknown>;
+                    if (typeof recordBody.response === "string") {
+                      return recordBody.response;
+                    }
+                    if (typeof recordBody.message === "string") {
+                      return recordBody.message;
+                    }
+                    return undefined;
+                  })()
+                : undefined;
+
+            const fallbackError = new Error(
+              fallbackMessage ||
+                "AI services returned a fallback payload instead of an LLM response."
+            );
+            fallbackError.name = "LLMFallbackResponseError";
+            (fallbackError as Error & {
+              details?: Record<string, unknown>;
+            }).details = {
+              header: fallbackHeader,
+              reason: fallbackReason,
+              upstreamStatus,
+              origin: responseOrigin,
+              endpoint: activeEndpoint,
+              body: fallbackBody,
+              isStream,
+            };
+
+            throw fallbackError;
+          }
+
+          if (isStream) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            const processStreamChunk = (chunk: string) => {
+              const trimmedChunk = chunk.trim();
+              if (
+                !trimmedChunk ||
+                trimmedChunk === "data: [DONE]" ||
+                trimmedChunk === "[DONE]"
+              ) {
+                return;
+              }
+
+              let payload = trimmedChunk;
+              if (trimmedChunk.startsWith("data:")) {
+                payload = trimmedChunk.replace(/^data:\s*/, "");
+              }
+
               try {
-                const json = JSON.parse(data);
-                const jsonTypeTail = (json as unknown)?.type;
+                const json = JSON.parse(payload);
+                const recordJson = isRecord(json) ? json : undefined;
+                const jsonType =
+                  recordJson && typeof recordJson.type === "string"
+                    ? recordJson.type
+                    : undefined;
+                const eventType =
+                  recordJson && typeof recordJson.event === "string"
+                    ? recordJson.event
+                    : undefined;
+                const kindType =
+                  recordJson && typeof recordJson.kind === "string"
+                    ? recordJson.kind
+                    : undefined;
+
+                const hasMetadataCandidate =
+                  (recordJson?.metadata &&
+                    typeof recordJson.metadata === "object") ||
+                  (recordJson?.meta && typeof recordJson.meta === "object") ||
+                  (recordJson?.data && typeof recordJson.data === "object") ||
+                  (recordJson?.usage && typeof recordJson.usage === "object");
+
                 if (
-                  typeof json === "string" ||
-                  json.content ||
-                  json.text ||
-                  json.answer ||
-                  (jsonTypeTail === "token" && json.data)
+                  recordJson &&
+                  jsonType !== "token" &&
+                  jsonType !== "delta" &&
+                  (eventType === "meta" ||
+                    jsonType === "meta" ||
+                    kindType === "metadata" ||
+                    hasMetadataCandidate ||
+                    typeof recordJson.model === "string")
                 ) {
-                  const tokenDataTail =
-                    jsonTypeTail === "token" && typeof json.data === "object"
-                      ? typeof json.data.token === "string"
-                        ? json.data.token
-                        : typeof json.data.delta === "string"
-                        ? json.data.delta
-                        : typeof json.data.content === "string"
-                        ? json.data.content
-                        : typeof json.data.text === "string"
-                        ? json.data.text
-                        : typeof json.data.answer === "string"
-                        ? json.data.answer
+                  const usageRecord: Record<string, unknown> =
+                    isRecord(recordJson.usage)
+                      ? recordJson.usage
+                      : isRecord(recordJson.token_usage)
+                      ? recordJson.token_usage
+                      : {};
+                  const baseMeta = (
+                    isRecord(recordJson.metadata)
+                      ? recordJson.metadata
+                      : isRecord(recordJson.meta)
+                      ? recordJson.meta
+                      : isRecord(recordJson.data)
+                      ? recordJson.data
+                      : {}
+                  ) as Partial<MessageMetadata>;
+                  const metaUpdate: Partial<MessageMetadata> = { ...baseMeta };
+                  if (
+                    !metaUpdate.kire &&
+                    typeof recordJson.kire_metadata === "string"
+                  ) {
+                    metaUpdate.kire = recordJson.kire_metadata;
+                  }
+                  if (
+                    typeof recordJson.model === "string" &&
+                    !metaUpdate.model
+                  ) {
+                    metaUpdate.model = recordJson.model;
+                  }
+                  if (typeof recordJson.confidence === "number") {
+                    metaUpdate.confidence = recordJson.confidence;
+                  }
+                  if (
+                    typeof usageRecord.total_tokens === "number" ||
+                    (typeof usageRecord.prompt_tokens === "number" &&
+                      typeof usageRecord.completion_tokens === "number")
+                  ) {
+                    metaUpdate.tokens =
+                      typeof usageRecord.total_tokens === "number"
+                        ? usageRecord.total_tokens
+                        : (usageRecord.prompt_tokens as number) +
+                          (usageRecord.completion_tokens as number);
+                  }
+                  const metaTotalTokens =
+                    typeof (metaUpdate as Record<string, unknown>)
+                      .total_tokens === "number"
+                      ? (metaUpdate as Record<string, unknown>).total_tokens
+                      : undefined;
+                  if (
+                    metaUpdate.tokens === undefined &&
+                    typeof metaTotalTokens === "number"
+                  ) {
+                    metaUpdate.tokens = metaTotalTokens;
+                  }
+                  const metaTotalTokensAlternate =
+                    typeof (metaUpdate as Record<string, unknown>)
+                      .totalTokens === "number"
+                      ? (metaUpdate as Record<string, unknown>).totalTokens
+                      : undefined;
+                  if (
+                    metaUpdate.tokens === undefined &&
+                    typeof metaTotalTokensAlternate === "number"
+                  ) {
+                    metaUpdate.tokens = metaTotalTokensAlternate;
+                  }
+                  if (typeof recordJson.cost === "number") {
+                    metaUpdate.cost = recordJson.cost;
+                  }
+                  if (metaUpdate.origin === undefined)
+                    metaUpdate.origin = responseOrigin;
+                  if (metaUpdate.endpoint === undefined)
+                    metaUpdate.endpoint = activeEndpoint;
+                  metadata = { ...metadata, ...metaUpdate };
+                }
+
+                const hasRelevantToken =
+                  typeof json === "string" ||
+                  (recordJson !== undefined &&
+                    (recordJson.delta ||
+                      recordJson.content ||
+                      recordJson.text ||
+                      recordJson.answer ||
+                      (jsonType === "token" && recordJson.data)));
+                if (hasRelevantToken) {
+                  const tokenSource =
+                    jsonType === "token" &&
+                    recordJson &&
+                    isRecord(recordJson.data)
+                      ? typeof recordJson.data.token === "string"
+                        ? recordJson.data.token
+                        : typeof recordJson.data.delta === "string"
+                        ? recordJson.data.delta
+                        : typeof recordJson.data.content === "string"
+                        ? recordJson.data.content
+                        : typeof recordJson.data.text === "string"
+                        ? recordJson.data.text
+                        : typeof recordJson.data.answer === "string"
+                        ? recordJson.data.answer
                         : ""
                       : "";
 
                   const newContent =
                     (typeof json === "string" && json) ||
-                    (json.content as string | undefined) ||
-                    (json.text as string | undefined) ||
-                    (json.answer as string | undefined) ||
-                    tokenDataTail ||
+                    (recordJson &&
+                      typeof recordJson.delta === "string" &&
+                      recordJson.delta) ||
+                    (recordJson &&
+                      typeof recordJson.content === "string" &&
+                      recordJson.content) ||
+                    (recordJson &&
+                      typeof recordJson.text === "string" &&
+                      recordJson.text) ||
+                    (recordJson &&
+                      typeof recordJson.answer === "string" &&
+                      recordJson.answer) ||
+                    tokenSource ||
                     "";
                   if (newContent) {
                     fullText += newContent;
@@ -640,177 +763,222 @@ export const useChatMessages = (
                     );
                   }
                 }
-                if (
-                  jsonTypeTail !== "token" &&
-                  jsonTypeTail !== "delta" &&
-                  (json.metadata ||
-                    json.meta ||
-                    json.data ||
-                    json.usage ||
-                    json.model)
-                ) {
-                  const usage = json.usage || json.token_usage || {};
-                  const baseMeta =
-                    json.metadata || json.meta || json.data || {};
-                  const metaUpdate: unknown = { ...(baseMeta as unknown) };
-                  if ((json as unknown).kire_metadata && !metaUpdate.kire)
-                    metaUpdate.kire = (json as unknown).kire_metadata;
-                  if (json.model && !metaUpdate.model)
-                    metaUpdate.model = json.model;
-                  if (
-                    usage.total_tokens ||
-                    (usage.prompt_tokens && usage.completion_tokens)
-                  ) {
-                    metaUpdate.tokens =
-                      usage.total_tokens ||
-                      usage.prompt_tokens + usage.completion_tokens;
-                  }
-                  if (
-                    typeof metaUpdate.total_tokens === "number" &&
-                    metaUpdate.tokens === undefined
-                  ) {
-                    metaUpdate.tokens = metaUpdate.total_tokens;
-                  }
-                  if (
-                    typeof (metaUpdate as unknown).totalTokens === "number" &&
-                    metaUpdate.tokens === undefined
-                  ) {
-                    metaUpdate.tokens = (metaUpdate as unknown).totalTokens;
-                  }
-                  if (json.cost !== undefined) metaUpdate.cost = json.cost;
-                  if (metaUpdate.origin === undefined)
-                    metaUpdate.origin = responseOrigin;
-                  if (metaUpdate.endpoint === undefined)
-                    metaUpdate.endpoint = activeEndpoint;
-                  metadata = { ...metadata, ...metaUpdate };
-                }
               } catch {
-                fullText += data;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantId ? { ...m, content: fullText } : m
-                  )
-                );
+                if (!payload.startsWith("{")) {
+                  fullText += payload;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId ? { ...m, content: fullText } : m
+                    )
+                  );
+                }
+              }
+            };
+
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value || new Uint8Array(), { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const rawLine of lines) {
+                processStreamChunk(rawLine);
               }
             }
+
+            const tail = (buffer || "").trim();
+            if (tail && tail !== "data: [DONE]") {
+              processStreamChunk(tail);
+            }
           } else {
-            // Handle non-streaming response (JSON or text)
             const ct2 = response.headers.get("content-type") || "";
             if (ct2.includes("application/json")) {
               const result = await response.json();
+
+              const degraded = Boolean(
+                (aiData &&
+                  (aiData.degraded_mode === true || aiData.status === "degraded")) ||
+                  (resultMetadata && resultMetadata.degraded_mode === true) ||
+                  result.degraded_mode === true
+              );
+
+              if (degraded) {
+                safeWarn("🔍 useChatMessages: Received degraded AI response", {
+                  origin: responseOrigin,
+                  endpoint: activeEndpoint,
+                  upstreamStatus,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
+                });
+
+                const degradedMessage =
+                  (typeof result.response === "string"
+                    ? result.response
+                    : typeof result.message === "string"
+                    ? result.message
+                    : "The AI service is currently unavailable.") ??
+                  "The AI service is currently unavailable.";
+
+                const degradeError = new Error(degradedMessage);
+                degradeError.name = "LLMFallbackResponseError";
+                (degradeError as Error & { details?: Record<string, unknown> }).details = {
+                  header: fallbackHeader,
+                  reason: (aiData?.reason as string | undefined) || fallbackReason,
+                  upstreamStatus,
+                  origin: responseOrigin,
+                  endpoint: activeEndpoint,
+                  body: result,
+                  degraded: true,
+                };
+
+                throw degradeError;
+              }
+
+              type UsageSummary = {
+                total_tokens?: number;
+                prompt_tokens?: number;
+                completion_tokens?: number;
+                [key: string]: unknown;
+              };
+
+              const usageSummary = (result.usage || result.token_usage) as
+                | UsageSummary
+                | undefined;
+
+              const totalTokens =
+                typeof usageSummary?.total_tokens === "number"
+                  ? usageSummary.total_tokens
+                  : typeof usageSummary?.prompt_tokens === "number" &&
+                    typeof usageSummary?.completion_tokens === "number"
+                  ? usageSummary.prompt_tokens + usageSummary.completion_tokens
+                  : undefined;
+
               fullText =
-                result.answer ||
-                result.content ||
-                result.text ||
-                result.message ||
-                result.response ||
+                (result.answer as string | undefined) ||
+                (result.content as string | undefined) ||
+                (result.text as string | undefined) ||
+                (result.message as string | undefined) ||
+                (result.response as string | undefined) ||
                 "";
-              const usage = result.usage || result.token_usage || {};
+
+              const baseMetadata =
+                (result.metadata || result.meta || {}) as Partial<MessageMetadata>;
               metadata = {
-                ...(result.metadata || result.meta || {}),
+                ...metadata,
+                ...baseMetadata,
                 ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
                 model:
-                  result.model ||
-                  (result.metadata?.model ?? result.meta?.model),
+                  typeof result.model === "string" && result.model.length > 0
+                    ? result.model
+                    : baseMetadata.model,
                 tokens:
-                  usage.total_tokens ||
-                  (usage.prompt_tokens && usage.completion_tokens
-                    ? usage.prompt_tokens + usage.completion_tokens
-                    : undefined),
-                cost: result.cost,
+                  typeof totalTokens === "number"
+                    ? totalTokens
+                    : baseMetadata.tokens,
+                cost:
+                  typeof result.cost === "number"
+                    ? result.cost
+                    : baseMetadata.cost,
                 confidence:
                   typeof result.confidence === "number"
                     ? result.confidence
-                    : result.metadata?.confidence ?? result.meta?.confidence,
-              } as unknown;
+                    : baseMetadata.confidence,
+              } as MessageMetadata;
             } else {
               fullText = await response.text();
             }
           }
 
-          metadata = {
-            ...metadata,
-            origin: metadata?.origin ?? responseOrigin,
-            endpoint: metadata?.endpoint ?? activeEndpoint,
-          };
+        metadata = {
+          ...metadata,
+          origin: metadata.origin ?? responseOrigin,
+          endpoint: metadata.endpoint ?? activeEndpoint,
+        };
 
-          // Calculate final metrics
-          const latency = Math.round(performance.now() - startTime);
+        // Calculate final metrics
+        const latency = Math.round(performance.now() - startTime);
 
-          safeDebug("🔍 useChatMessages: Response processing completed:", {
-            fullTextLength: fullText.length,
-            fullTextPreview:
-              fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
+        safeDebug("🔍 useChatMessages: Response processing completed:", {
+          fullTextLength: fullText.length,
+          fullTextPreview:
+            fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
+          latencyMs: latency,
+          metadata,
+          hasMetadata: !!metadata,
+          metadataKeys: metadata ? Object.keys(metadata) : [],
+          modelFromMetadata: metadata.model,
+          modelFromSettings: settings.model,
+          finalModel:
+            typeof metadata.model === "string" && metadata.model.length > 0
+              ? metadata.model
+              : settings.model,
+        });
+
+        // Create final message
+        const finalMetadata: MessageMetadata = {
+          ...metadata,
+          latencyMs: latency,
+          model:
+            typeof metadata.model === "string" && metadata.model.length > 0
+              ? metadata.model
+              : settings.model,
+          tokens:
+            typeof metadata.tokens === "number"
+              ? metadata.tokens
+              : Math.ceil(fullText.length / 4),
+          cost: typeof metadata.cost === "number" ? metadata.cost : 0,
+          origin: metadata.origin ?? responseOrigin,
+          endpoint: metadata.endpoint ?? activeEndpoint,
+        };
+
+        const finalMessage: ChatMessage = {
+          ...placeholder,
+          content: fullText.trim(),
+          status: "completed",
+          metadata: finalMetadata,
+        };
+
+        safeDebug("🔍 useChatMessages: Final message created:", {
+          messageId: finalMessage.id,
+          contentLength: finalMessage.content.length,
+          status: finalMessage.status,
+          model: finalMessage.metadata?.model,
+          latencyMs: finalMessage.metadata?.latencyMs,
+          tokens: finalMessage.metadata?.tokens,
+        });
+
+        // Update message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId ? finalMessage : m))
+        );
+
+        // Trigger hooks
+        await triggerHooks(
+          "chat_message_received",
+          {
+            messageId: assistantId,
+            confidence: finalMessage.metadata?.confidence,
+            type: finalMessage.type,
             latencyMs: latency,
-            metadata: metadata,
-            hasMetadata: !!metadata,
-            metadataKeys: metadata ? Object.keys(metadata) : [],
-            modelFromMetadata: metadata?.model,
-            modelFromSettings: settings.model,
-            finalModel: (metadata && (metadata as unknown).model) || settings.model,
-          });
+            model: settings.model,
+            userId,
+            sessionId,
+            conversationId,
+          },
+          { userId }
+        );
 
-          // Create final message
-          const finalMessage: ChatMessage = {
-            ...placeholder,
-            content: fullText.trim(),
-            status: "completed",
-            metadata: {
-              ...metadata,
-              latencyMs: latency,
-              model: (metadata && (metadata as unknown).model) || settings.model,
-              tokens:
-                (metadata && (metadata as unknown).tokens) ||
-                Math.ceil(fullText.length / 4),
-              cost: metadata.cost || 0,
-              origin: metadata.origin ?? responseOrigin,
-              endpoint: metadata.endpoint ?? activeEndpoint,
-            },
-          };
+        if (onMessageReceived) {
+          onMessageReceived(finalMessage);
+        }
 
-          safeDebug("🔍 useChatMessages: Final message created:", {
-            messageId: finalMessage.id,
-            contentLength: finalMessage.content.length,
-            status: finalMessage.status,
-            model: finalMessage.metadata?.model,
-            latencyMs: finalMessage.metadata?.latencyMs,
-            tokens: finalMessage.metadata?.tokens,
-          });
-
-          // Update message
-          setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? finalMessage : m))
-          );
-
-          // Trigger hooks
-          await triggerHooks(
-            "chat_message_received",
-            {
-              messageId: assistantId,
-              confidence: finalMessage.metadata?.confidence,
-              type: finalMessage.type,
-              latencyMs: latency,
-              model: settings.model,
-              userId: user?.user_id,
-              sessionId,
-              conversationId,
-            },
-            { userId: user?.user_id }
-          );
-
-          if (onMessageReceived) {
-            onMessageReceived(finalMessage);
-          }
-
-          safeInfo(
-            "🔍 useChatMessages: Message successfully processed and stored:",
-            {
-              messageId: assistantId,
-              totalMessages: messages.length + 1,
-              success: true,
-              timestamp: new Date().toISOString(),
-            }
-          );
+        safeInfo("🔍 useChatMessages: Message successfully processed and stored:", {
+          messageId: assistantId,
+          totalMessages: messages.length + 1,
+          success: true,
+          timestamp: new Date().toISOString(),
+        });
 
           // Generate artifacts for certain message types
           if (
@@ -824,23 +992,36 @@ export const useChatMessages = (
               finalMessage.id
             );
           }
+        };
+
+        try {
+          await processResponseBody();
         } catch (error) {
-          if ((error as unknown)?.name === "AbortError") {
+          const isAbortError =
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error instanceof Error && error.name === "AbortError");
+          if (isAbortError) {
             setIsTyping(false);
             return;
           }
 
           // Prevent console error interceptor issues by using structured logging
+          const normalizedError =
+            error instanceof Error ? error : new Error(String(error));
           const errorDetails = {
-            name: (error as unknown)?.name || "UnknownError",
-            message: (error as unknown)?.message || "Unknown error occurred",
-            stack: (error as unknown)?.stack,
-            cause: (error as unknown)?.cause,
+            name: normalizedError.name || "UnknownError",
+            message:
+              normalizedError.message || "Unknown error occurred",
+            stack: normalizedError.stack,
+            cause:
+              "cause" in normalizedError
+                ? (normalizedError as { cause?: unknown }).cause
+                : undefined,
             timestamp: new Date().toISOString(),
             context: {
               sessionId,
               conversationId,
-              userId: user?.user_id,
+              userId,
               endpoint: activeEndpoint,
               primaryEndpoint: chatRuntimeUrl,
               fallbackEndpoint: fallbackUrl,
@@ -854,14 +1035,39 @@ export const useChatMessages = (
             useStructuredLogging: true,
           });
 
+          const isFallbackError =
+            normalizedError.name === "LLMFallbackResponseError";
+          const fallbackDetails = isFallbackError
+            ? ((normalizedError as Error & {
+                details?: Record<string, unknown>;
+              }).details ?? null)
+            : null;
+          const fallbackDetailsRecord = fallbackDetails as
+            | Record<string, unknown>
+            | null;
+
           // Provide more specific error messages
           let errorContent =
             "I apologize, but I encountered an error processing your request. Please try again.";
           let errorTitle = "Chat Error";
 
-          if (
-            error instanceof TypeError &&
-            error.message.includes("Failed to fetch")
+            if (isFallbackError) {
+              const fallbackBody = fallbackDetailsRecord?.["body"];
+              const fallbackMessage =
+                fallbackBody &&
+                typeof fallbackBody === "object" &&
+                (fallbackBody as Record<string, unknown>).response
+                  ? String(
+                      (fallbackBody as Record<string, unknown>).response as string
+                    )
+                  : normalizedError.message || null;
+            errorContent =
+              fallbackMessage ||
+              "The AI service is currently unavailable. Please try again once connectivity is restored.";
+            errorTitle = "AI Service Unavailable";
+          } else if (
+            normalizedError instanceof TypeError &&
+            normalizedError.message.includes("Failed to fetch")
           ) {
             errorContent =
               "Unable to connect to the AI service. Please check if the backend is running and try again.";
@@ -883,6 +1089,21 @@ export const useChatMessages = (
               });
           }
 
+          const errorMetadata: MessageMetadata = {
+            ...(isFallbackError
+              ? {
+                  degraded: true,
+                  fallback: {
+                    header: fallbackDetailsRecord?.["header"],
+                    reason: fallbackDetailsRecord?.["reason"],
+                    upstreamStatus: fallbackDetailsRecord?.["upstreamStatus"],
+                    origin: fallbackDetailsRecord?.["origin"],
+                    endpoint: fallbackDetailsRecord?.["endpoint"],
+                  },
+                }
+              : {}),
+          };
+
           const errorMessage: ChatMessage = {
             id: assistantId,
             role: "assistant",
@@ -890,32 +1111,37 @@ export const useChatMessages = (
             timestamp: new Date(),
             type: "text",
             status: "error",
-            metadata: {},
+            metadata: errorMetadata,
           };
 
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? errorMessage : m))
           );
 
+          const toastDescription = isFallbackError
+            ? ((fallbackDetailsRecord?.["reason"] as string) || errorContent)
+            : normalizedError.message || "Failed to get AI response";
+
           toast({
             variant: "destructive",
             title: errorTitle,
-            description:
-              error instanceof Error
-                ? error.message
-                : "Failed to get AI response",
+            description: toastDescription,
           });
         } finally {
           setIsTyping(false);
         }
       } catch (outerError) {
         // Catch any unhandled errors in the sendMessage function
+        const normalizedOuterError =
+          outerError instanceof Error
+            ? outerError
+            : new Error(String(outerError));
         safeError(
           "Critical error in sendMessage",
           {
-            error: outerError,
-            message: (outerError as unknown)?.message,
-            stack: (outerError as unknown)?.stack,
+            error: normalizedOuterError,
+            message: normalizedOuterError.message,
+            stack: normalizedOuterError.stack,
             timestamp: new Date().toISOString(),
           },
           {
@@ -935,11 +1161,12 @@ export const useChatMessages = (
       }
     },
     [
+      messages,
       isTyping,
       settings,
       sessionId,
       conversationId,
-      user?.user_id,
+      resolvedUserId,
       triggerHooks,
       onMessageSent,
       onMessageReceived,
@@ -980,7 +1207,7 @@ export const useChatMessages = (
           break;
 
         case "rate_up":
-        case "rate_down":
+        case "rate_down": {
           const rating = action === "rate_up" ? "up" : "down";
           setMessages((prev) =>
             prev.map((m) =>
@@ -995,9 +1222,9 @@ export const useChatMessages = (
             {
               messageId,
               rating,
-              userId: user?.user_id,
+              userId: resolvedUserId,
             },
-            { userId: user?.user_id }
+            { userId: resolvedUserId }
           );
 
           toast({
@@ -1005,6 +1232,7 @@ export const useChatMessages = (
             description: `Message rated ${rating}`,
           });
           break;
+        }
 
         case "regenerate": {
           if (message.role === "assistant") {
@@ -1023,7 +1251,7 @@ export const useChatMessages = (
           break;
       }
     },
-    [messages, toast, triggerHooks, user?.user_id, sendMessage, setMessages]
+    [messages, toast, triggerHooks, resolvedUserId, sendMessage, setMessages]
   );
 
   // Clear messages

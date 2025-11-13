@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic
 export const dynamic = 'force-dynamic';
 // IMPORTANT: Do not default to the web UI port; that creates a proxy loop.
-const BACKEND_URL =
-  process.env.KAREN_BACKEND_URL ||
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  'http://localhost:8000';
+const backendUrl = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     // Safely resolve params with error handling
@@ -38,7 +34,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
-    const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
+    const fullBackendUrl = `${backendUrl}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
     // Log the request for debugging
     // Get request body if it exists
     let body: string | undefined;
@@ -97,7 +93,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     let lastError: unknown = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        response = await fetch(backendUrl, {
+        response = await fetch(fullBackendUrl, {
           method: request.method,
           headers: { ...headers, Connection: 'keep-alive' },
           body: body || undefined,
@@ -129,7 +125,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     // If upstream returned 404 for /api/auth/*, try simple-auth fallback /auth/*
     if (response.status === 404 && Array.isArray(resolvedParams.path) && resolvedParams.path[0] === 'auth') {
-      const fallbackUrl = `${BACKEND_URL}/auth/${resolvedParams.path.slice(1).join('/')}${searchParams ? `?${searchParams}` : ''}`;
+      const fallbackUrl = `${backendUrl}/auth/${resolvedParams.path.slice(1).join('/')}${searchParams ? `?${searchParams}` : ''}`;
       try {
         const fallbackResp = await fetch(fallbackUrl, {
           method: request.method,
@@ -147,7 +143,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         // ignore, will continue with original response
       }
     }
-    let data: any;
+    let data: unknown;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {

@@ -36,5 +36,6 @@
       "auto_cleanup_enabled": true,
       "backup_registry": true
     }
-  }
+  },
+  "last_selected_model": "test-model"
 }
