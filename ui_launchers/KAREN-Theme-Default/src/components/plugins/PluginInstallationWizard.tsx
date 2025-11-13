@@ -515,10 +515,11 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
   useEffect(() => {
     if (state.step === "validation" && state.manifest) {
       const t = setTimeout(() => {
+        const dependencies = state.manifest?.dependencies || [];
         setState((prev) => ({
           ...prev,
-          step: "dependencies",
-          dependencies: state.manifest?.dependencies || [],
+          step: (dependencies?.length || 0) === 0 ? "permissions" : "dependencies",
+          dependencies,
           permissions: state.manifest?.permissions || [],
         }));
       }, 1200);
@@ -528,10 +529,6 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
 
   useEffect(() => {
     if (state.step === "dependencies") {
-      if ((state.dependencies?.length || 0) === 0) {
-        setState((prev) => ({ ...prev, step: "permissions" }));
-        return;
-      }
       const t = setTimeout(() => {
         const resolved = (state.dependencies || []).map((dep) => ({
           ...dep,

@@ -13,6 +13,12 @@ export interface PerformanceMetrics {
   jsHeapSizeLimit?: number;
 }
 
+interface PerformanceMemory {
+  usedJSHeapSize?: number;
+  totalJSHeapSize?: number;
+  jsHeapSizeLimit?: number;
+}
+
 export interface PerformanceMonitorProps {
   showOverlay?: boolean;
   logMetrics?: boolean;

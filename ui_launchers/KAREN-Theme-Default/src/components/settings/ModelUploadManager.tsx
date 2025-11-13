@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
+import type { ApiErrorResponse } from '@/lib/error-handler';
 
 export interface UploadFile {
   file: File;
@@ -81,6 +82,21 @@ const QUANTIZATION_FORMATS = [
 const MODEL_ARCHITECTURES = [
   'llama', 'mistral', 'qwen', 'phi', 'gemma', 'codellama', 'vicuna', 'alpaca', 'auto'
 ];
+
+type ExtendedErrorLike = Error & {
+  detail?: ApiErrorResponse;
+  response?: { status?: number; data?: ApiErrorResponse };
+  code?: string;
+  status?: number;
+};
+
+const toExtendedError = (error: unknown): ExtendedErrorLike => {
+  if (error instanceof Error) {
+    return error as ExtendedErrorLike;
+  }
+  const err = new Error(String(error));
+  return err as ExtendedErrorLike;
+};
 
 export default function ModelUploadManager({ 
   onModelUploaded, 
@@ -254,7 +270,7 @@ export default function ModelUploadManager({
       setSelectedArchitecture('auto');
       setVocabOnly(false);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'convertToGGUF');
+      const info = handleApiError(toExtendedError(error), 'convertToGGUF');
       toast({
         variant: 'destructive',
         title: info.title || "Conversion Failed",
@@ -300,7 +316,7 @@ export default function ModelUploadManager({
       setQuantizationFormat('Q4_K_M');
       setAllowRequantize(false);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'quantizeModel');
+      const info = handleApiError(toExtendedError(error), 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title || "Quantization Failed",
@@ -346,7 +362,7 @@ export default function ModelUploadManager({
       setLoraOutputPath('');
       setLoraAlpha('1.0');
     } catch (error) {
-      const info = handleApiError(error as unknown, 'mergeLoRA');
+      const info = handleApiError(toExtendedError(error), 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title || "LoRA Merge Failed",
@@ -373,7 +389,7 @@ export default function ModelUploadManager({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as unknown)}>
+        <Tabs value={activeTab} onValueChange={(value: 'upload' | 'convert' | 'quantize' | 'lora') => setActiveTab(value)}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />

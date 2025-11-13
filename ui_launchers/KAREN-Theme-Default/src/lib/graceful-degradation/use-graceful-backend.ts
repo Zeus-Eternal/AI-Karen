@@ -208,9 +208,11 @@ export function useGracefulDegradation(featureName: string) {
   };
 }
 
+import { ModelProvider } from '@/types/models';
+
 // Hook for model providers with graceful degradation
 export function useModelProviders(options: UseGracefulBackendOptions = {}) {
-  return useGracefulBackend<unknown[]>('/api/models/providers', {
+  return useGracefulBackend<ModelProvider[]>('/api/models/providers', {
     ...options,
     cacheKey: 'model-providers',
     fallbackData: [],

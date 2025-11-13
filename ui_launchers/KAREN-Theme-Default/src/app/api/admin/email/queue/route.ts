@@ -123,9 +123,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200, headers: SECURITY_HEADERS }
     );
-  } catch (error: Error) {
+  } catch (error: unknown) {
     await safeAudit(request, "unknown", "email_queue_error", "email_queue", {
-      error: String(error?.message || error),
+      error:
+        error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
       { success: false, error: "Failed to get email queue information" },
@@ -212,9 +213,9 @@ export async function POST(request: NextRequest) {
       },
       { status: 400, headers: SECURITY_HEADERS }
     );
-  } catch (error: Error) {
+  } catch (error: unknown) {
     await safeAudit(request, "unknown", "email_queue_error", "email_queue", {
-      error: String(error?.message || error),
+      error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
       { success: false, error: "Failed to manage email queue" },

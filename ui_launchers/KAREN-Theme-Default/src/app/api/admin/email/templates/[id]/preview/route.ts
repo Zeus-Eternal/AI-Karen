@@ -114,6 +114,17 @@ function isVariablesRecord(v: unknown): v is EmailTemplateVariables {
   return v !== null && typeof v === 'object';
 }
 
+type AdminAuthFailure = {
+  success?: boolean;
+  status?: number;
+  error?: string;
+  user?: { user_id?: string };
+};
+
+function isAdminAuthResult(value: unknown): value is AdminAuthFailure {
+  return typeof value === "object" && value !== null && "success" in value;
+}
+
 /**
  * POST /api/admin/email/templates/[id]/preview
  */
@@ -139,8 +150,11 @@ export async function POST(
       authResult.headers.set('x-correlation-id', correlationId);
       return authResult;
     }
-    if (!authResult?.success) {
-      return authError(authResult?.status || 401, authResult?.error || 'Unauthorized', correlationId);
+    if (!isAdminAuthResult(authResult)) {
+      return authError(401, 'Unauthorized', correlationId);
+    }
+    if (!authResult.success) {
+      return authError(authResult.status ?? 401, authResult.error || 'Unauthorized', correlationId);
     }
     const currentUserId: string = authResult.user?.user_id || 'unknown';
 
@@ -175,6 +189,7 @@ export async function POST(
       // Generate preview + validate
       const preview = EmailTemplateManager.generatePreview(template, customVariables);
       const validation = TemplateEngine.validateTemplate(template, customVariables);
+      const templateInfo = template as EmailTemplate;
 
     // Audit (PII-safe; never attach raw request)
     await auditLogger.log(currentUserId, 'email_template_previewed', 'email_template', {
@@ -202,11 +217,11 @@ export async function POST(
             unused_variables: validation.unused_variables,
           },
           template_info: {
-            id: template.id,
-            name: template.name,
-            template_type: template.template_type,
-            variables: template.variables,
-            updated_at: (template as unknown)?.updated_at ?? undefined,
+            id: templateInfo.id,
+            name: templateInfo.name,
+            template_type: templateInfo.template_type,
+            variables: templateInfo.variables,
+            updated_at: templateInfo.updated_at,
           },
           meta: {
             correlation_id: correlationId,
@@ -222,12 +237,13 @@ export async function POST(
     res.headers.set('cache-control', 'no-store');
 
     return res;
-  } catch (err: Error) {
+  } catch (err: unknown) {
     // Best-effort audit for failures
     try {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       await auditLogger.log('system', 'email_template_preview_failed', 'email_template', {
         details: {
-          error: err?.message || String(err),
+          error: errorMessage,
           correlation_id: correlationId,
         },
       });

@@ -640,33 +640,9 @@ class KarenBackendService {
       }
       this.cache.delete(cacheKey);
     }
-    // Use request interceptor for automatic token injection and preprocessing
-    const interceptedOptions = await this.interceptRequest(endpoint, options);
-    const headers = interceptedOptions.headers as Record<string, string>;
-    const correlationId = headers["X-Correlation-ID"];
     let lastError: Error | null = null;
-    // Log request if enabled
-    if (this.requestLogging) {
-      let bodyLog: unknown;
-      if (options.body) {
-        try {
-          bodyLog = JSON.parse(options.body as string);
-        } catch {
-          bodyLog = "[non-JSON body]";
-        }
-      }
-      logger.info(`[REQUEST] ${options.method || "GET"} ${primaryUrl}`, {
-        headers: this.debugLogging
-          ? headers
-          : {
-              "Content-Type": headers["Content-Type"],
-              Authorization: headers["Authorization"] ? "[REDACTED]" : "none",
-            },
-        body: bodyLog,
-        correlationId,
-        timeoutMs: perRequestTimeout,
-      });
-    }
+    // Note: request interception and logging now run per attempt to ensure
+    // refreshed authentication headers are applied
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
     // Candidate base URLs (primary + configured fallbacks)
     let candidateBases: string[] = [];
@@ -692,6 +668,33 @@ class KarenBackendService {
     }
     // Retry logic for transient failures
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const interceptedOptions = await this.interceptRequest(endpoint, options);
+      const headers = interceptedOptions.headers as Record<string, string>;
+      const correlationId = headers["X-Correlation-ID"];
+
+      if (this.requestLogging) {
+        let bodyLog: unknown;
+        if (interceptedOptions.body) {
+          try {
+            bodyLog = JSON.parse(interceptedOptions.body as string);
+          } catch {
+            bodyLog = "[non-JSON body]";
+          }
+        }
+        const method = interceptedOptions.method || options.method || "GET";
+        logger.info(`[REQUEST] ${method} ${primaryUrl} (attempt ${attempt + 1}/${maxRetries + 1})`, {
+          headers: this.debugLogging
+            ? headers
+            : {
+                "Content-Type": headers["Content-Type"],
+                Authorization: headers["Authorization"] ? "[REDACTED]" : "none",
+              },
+          body: bodyLog,
+          correlationId,
+          timeoutMs: perRequestTimeout,
+        });
+      }
+
       try {
         let response: Response | null = null;
         let lastFetchError: unknown = null;

@@ -165,9 +165,7 @@ export class EndpointValidationService {
     return normalized;
   }
 
-  private parseHealthServiceStatus(
-    value: HealthServiceDetail | undefined
-  ): HealthServiceStatus {
+  private parseHealthServiceStatus(value: unknown): HealthServiceStatus {
     if (!value || typeof value !== "object") {
       return {};
     }

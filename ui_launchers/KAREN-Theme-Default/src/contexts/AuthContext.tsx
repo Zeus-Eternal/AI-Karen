@@ -512,8 +512,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      // Small delay to ensure state is fully updated before callback
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      
     } catch (err) {
       // Enhanced error handling with categorization
       const authError = createAuthError(err);

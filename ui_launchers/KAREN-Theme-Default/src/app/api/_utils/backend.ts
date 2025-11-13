@@ -11,9 +11,14 @@ import { getConnectionManager, ConnectionOptions, RequestResult, ConnectionError
 
 // Legacy implementation for backward compatibility
 const DEFAULT_PORT = process.env.KAREN_BACKEND_PORT || process.env.BACKEND_PORT || '8000';
-// Standardized environment variables with legacy fallbacks
 const KAREN_BACKEND_URL = process.env.KAREN_BACKEND_URL;
 const NEXT_PUBLIC_KAREN_BACKEND_URL = process.env.NEXT_PUBLIC_KAREN_BACKEND_URL;
+const ENV_CANDIDATES = [
+  KAREN_BACKEND_URL,
+  NEXT_PUBLIC_KAREN_BACKEND_URL,
+  process.env.API_BASE_URL,
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+];
 
 // Log the final resolved URL for debugging purposes
 if (KAREN_BACKEND_URL) {

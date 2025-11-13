@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { handleApiError } from '@/lib/error-handler';
+import type { ApiErrorResponse } from '@/lib/error-handler';
 
 export interface UploadJob {
   id: string;
@@ -91,6 +92,21 @@ const MODEL_ARCHITECTURES = [
   { value: 'phi3', label: 'Phi-3', description: 'Microsoft Phi-3 architecture' },
   { value: 'gemma', label: 'Gemma', description: 'Google Gemma architecture' }
 ];
+
+type ExtendedErrorLike = Error & {
+  detail?: ApiErrorResponse;
+  response?: { status?: number; data?: ApiErrorResponse };
+  code?: string;
+  status?: number;
+};
+
+const toExtendedError = (error: unknown): ExtendedErrorLike => {
+  if (error instanceof Error) {
+    return error as ExtendedErrorLike;
+  }
+  const err = new Error(String(error));
+  return err as ExtendedErrorLike;
+};
 
 export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded, onJobCreated }: ModelUploadInterfaceProps) {
   const [activeTab, setActiveTab] = useState<'upload' | 'convert' | 'quantize' | 'lora'>('upload');
@@ -208,7 +224,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
         setUploadJobs(prev => [...prev, uploadJob]);
 
         try {
-          const response = await backend.makeRequestPublic('/api/models/local/upload', {
+          const response = await backend.makeRequestPublic<{ job_id?: string }>('/api/models/local/upload', {
             method: 'POST',
             body: formData
           });
@@ -219,18 +235,21 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
               ? { ...job, status: 'completed', progress: 100 }
               : job
           ));
-          onJobCreated?.((response as unknown).job_id);
+          if (response?.job_id) {
+            onJobCreated?.(response.job_id);
+          }
           toast({
             title: 'Upload Started',
             description: `${file.name} upload initiated successfully.`,
           });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           setUploadJobs(prev => prev.map(job => 
             job.id === jobId 
-              ? { ...job, status: 'error', error: (error as unknown).message }
+              ? { ...job, status: 'error', error: errorMessage }
               : job
           ));
-          const info = handleApiError(error as unknown, 'uploadModel');
+          const info = handleApiError(toExtendedError(error), 'uploadModel');
           toast({
             variant: 'destructive',
             title: info.title,
@@ -261,7 +280,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
 
     setLoading(true);
     try {
-      const response = await backend.makeRequestPublic('/api/models/local/convert-to-gguf', {
+      const response = await backend.makeRequestPublic<{ job_id?: string }>('/api/models/local/convert-to-gguf', {
         method: 'POST',
         body: JSON.stringify({
           source_path: conversionSource,
@@ -271,7 +290,9 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
         })
       });
 
-      onJobCreated?.((response as unknown).job_id);
+      if (response?.job_id) {
+        onJobCreated?.(response.job_id);
+      }
       toast({
         title: 'Conversion Started',
         description: 'Model conversion job has been queued. Check the job center for progress.',
@@ -283,7 +304,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
       setConversionArchitecture('auto');
       setVocabOnly(false);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'convertModel');
+      const info = handleApiError(toExtendedError(error), 'convertModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -306,7 +327,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
 
     setLoading(true);
     try {
-      const response = await backend.makeRequestPublic('/api/models/local/quantize', {
+      const response = await backend.makeRequestPublic<{ job_id?: string }>('/api/models/local/quantize', {
         method: 'POST',
         body: JSON.stringify({
           source_path: quantizationSource,
@@ -316,7 +337,9 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
         })
       });
 
-      onJobCreated?.((response as unknown).job_id);
+      if (response?.job_id) {
+        onJobCreated?.(response.job_id);
+      }
       toast({
         title: 'Quantization Started',
         description: 'Model quantization job has been queued. Check the job center for progress.',
@@ -328,7 +351,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
       setQuantizationFormat('Q4_K_M');
       setAllowRequantize(false);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'quantizeModel');
+      const info = handleApiError(toExtendedError(error), 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -351,7 +374,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
 
     setLoading(true);
     try {
-      const response = await backend.makeRequestPublic('/api/models/local/merge-lora', {
+      const response = await backend.makeRequestPublic<{ job_id?: string }>('/api/models/local/merge-lora', {
         method: 'POST',
         body: JSON.stringify({
           base_model: loraBaseModel,
@@ -361,7 +384,9 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
         })
       });
 
-      onJobCreated?.((response as unknown).job_id);
+      if (response?.job_id) {
+        onJobCreated?.(response.job_id);
+      }
       toast({
         title: 'LoRA Merge Started',
         description: 'LoRA merge job has been queued. Check the job center for progress.',
@@ -373,7 +398,7 @@ export default function ModelUploadInterface({ onModelUploaded: _onModelUploaded
       setLoraOutputPath('');
       setLoraAlpha(1.0);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'mergeLoRA');
+      const info = handleApiError(toExtendedError(error), 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title,

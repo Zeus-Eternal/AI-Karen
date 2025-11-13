@@ -61,6 +61,13 @@ interface ModelRecommendationsResponse {
   error?: string;
 }
 
+// Define interface for health check results
+interface ProviderHealthCheckResult {
+  status: 'healthy' | 'unhealthy' | 'degraded' | 'unknown';
+  message?: string;
+  models_count?: number;
+}
+
 function ModelRecommendations({ provider }: ModelRecommendationsProps) {
   const [recommendations, setRecommendations] = useState<ModelRecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,7 +84,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
       );
       setRecommendations(response);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'fetchRecommendations');
+      const info = handleApiError(error as ExtendedError, 'fetchRecommendations');
       toast({
         title: info.title,
         description: info.message,
@@ -344,7 +351,7 @@ export default function ProviderManagement({
     // Validate API key with debouncing
     if (apiKey.trim()) {
       const timeout = setTimeout(() => {
-        validateApiKey(providerName, apiKey);
+        void validateApiKey(providerName, apiKey);
       }, 1000); // 1 second debounce
       validationTimeouts.set(providerName, timeout);
     }
@@ -400,7 +407,7 @@ export default function ProviderManagement({
         notifyError(providerName, response.message, 'API_KEY_INVALID');
       }
     } catch (error) {
-      const errorMessage = (error as unknown)?.message || 'Validation failed - check network connection';
+      const errorMessage = (error instanceof Error ? error.message : String(error)) || 'Validation failed - check network connection';
       setKeyValidationResults(prev => ({
         ...prev,
         [providerName]: {
@@ -441,7 +448,7 @@ export default function ProviderManagement({
   const runHealthCheck = async () => {
     try {
       setHealthChecking(true);
-      const response = await backend.makeRequestPublic<Record<string, unknown>>('/api/providers/health-check-all', {
+      const response = await backend.makeRequestPublic<Record<string, ProviderHealthCheckResult>>('/api/providers/health-check-all', {
         method: 'POST'
       }) || {};
 
@@ -478,7 +485,7 @@ export default function ProviderManagement({
         description: `${healthyCount}/${providers.length} providers are healthy.`,
       });
     } catch (error) {
-      const info = (error as unknown)?.errorInfo || handleApiError(error as unknown, 'runHealthCheck');
+      const info = handleApiError(error as ExtendedError, 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
@@ -509,7 +516,7 @@ export default function ProviderManagement({
         description: `Found ${models.length} models for ${providerName}.`,
       });
     } catch (error) {
-      const info = handleApiError(error as unknown, 'discoverProviderModels');
+      const info = handleApiError(error as ExtendedError, 'discoverProviderModels');
       toast({
         title: info.title || "Discovery Failed",
         description: info.message || `Could not discover models for ${providerName}.`,
@@ -532,7 +539,7 @@ export default function ProviderManagement({
       // Default/fallback path for providers without a specific ping yet
       await checkProviderHealth(providerName);
     } catch (error) {
-      const info = handleApiError(error as unknown, 'testProvider');
+      const info = handleApiError(error as ExtendedError, 'testProvider');
       toast({
         title: info.title || 'Test Failed',
         description: info.message || `Could not connect to ${providerName}.`,
@@ -571,7 +578,7 @@ export default function ProviderManagement({
   // Convert LLMProvider to ProviderStatus for the new components
   const convertToProviderStatus = (provider: LLMProvider): ProviderStatus => ({
     name: provider.name,
-    status: provider.health_status as unknown,
+    status: provider.health_status,
     health_score: provider.health_status === 'healthy' ? 85 : provider.health_status === 'unhealthy' ? 25 : 50,
     last_successful_request: provider.last_health_check ? new Date(provider.last_health_check).toISOString() : undefined,
     error_count: 0,
@@ -700,7 +707,7 @@ export default function ProviderManagement({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => checkProviderHealth(provider.name)}
+                    onClick={() => void checkProviderHealth(provider.name)}
                   >
                     <Activity className="h-4 w-4" />
                     Health
@@ -807,7 +814,7 @@ export default function ProviderManagement({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => discoverProviderModels(provider.name, true)}
+                      onClick={() => void discoverProviderModels(provider.name, true)}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Discover Models
@@ -883,7 +890,7 @@ export default function ProviderManagement({
                         }}
                         onConfigurationComplete={() => {
                           // Refresh provider status after configuration
-                          checkProviderHealth(provider.name);
+                          void checkProviderHealth(provider.name);
                           setShowConfigGuide(null);
                         }}
                       />
@@ -909,7 +916,7 @@ export default function ProviderManagement({
                           provider: provider.name,
                           timestamp: provider.last_health_check ? new Date(provider.last_health_check).toISOString() : new Date().toISOString()
                         }}
-                        onRetry={() => checkProviderHealth(provider.name)}
+                        onRetry={() => void checkProviderHealth(provider.name)}
                         showTechnicalDetails={false}
                         showSolutions={true}
                       />

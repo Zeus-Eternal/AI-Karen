@@ -5,6 +5,20 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Activity, Zap, X } from "lucide-react";
 
+interface PerformanceMemory {
+  usedJSHeapSize?: number;
+  totalJSHeapSize?: number;
+  jsHeapSizeLimit?: number;
+}
+
+type PerformanceEntryWithTiming = PerformanceEntry & {
+  startTime?: number;
+  processingStart?: number;
+  hadRecentInput?: boolean;
+  value?: number;
+  name?: string;
+};
+
 export interface PerformanceMetrics {
   // Core Web Vitals / key timings (milliseconds unless noted)
   lcp?: number; // Largest Contentful Paint (ms)
@@ -47,7 +61,7 @@ function readNavigationTimings(): { ttfb?: number; loadTime?: number } {
     };
   }
   // Legacy fallback
-  const t = (performance as unknown).timing;
+  const t = (performance as Performance & { timing?: PerformanceTiming }).timing;
   if (t) {
     return {
       ttfb: t.responseStart - t.navigationStart,
@@ -96,13 +110,13 @@ export function PerformanceMonitor({
     try {
       if ("PerformanceObserver" in window) {
         const lcpObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries();
-          const last = entries[entries.length - 1] as unknown;
-          if (last) {
-            setMetrics((prev) => ({ ...prev, lcp: last.startTime })); // ms
+          const entries = list.getEntries() as PerformanceEntryWithTiming[];
+          const last = entries[entries.length - 1];
+          if (last?.startTime) {
+            setMetrics((prev) => ({ ...prev, lcp: last.startTime }));
           }
         });
-        lcpObs.observe({ type: "largest-contentful-paint", buffered: true } as unknown);
+        lcpObs.observe({ type: "largest-contentful-paint", buffered: true });
         lcpObserverRef.current = lcpObs;
       }
     } catch {
@@ -113,15 +127,18 @@ export function PerformanceMonitor({
     try {
       if ("PerformanceObserver" in window) {
         const fidObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as unknown[];
+          const entries = list.getEntries() as PerformanceEntryWithTiming[];
           for (const entry of entries) {
-            if (entry.processingStart && entry.startTime) {
-              const fid = entry.processingStart - entry.startTime; // ms
+            if (
+              typeof entry.processingStart === "number" &&
+              typeof entry.startTime === "number"
+            ) {
+              const fid = entry.processingStart - entry.startTime;
               setMetrics((prev) => ({ ...prev, fid }));
             }
           }
         });
-        fidObs.observe({ type: "first-input", buffered: true } as unknown);
+        fidObs.observe({ type: "first-input", buffered: true });
         fidObserverRef.current = fidObs;
       }
     } catch {
@@ -133,13 +150,15 @@ export function PerformanceMonitor({
       if ("PerformanceObserver" in window) {
         let clsValue = 0;
         const clsObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as unknown[];
+          const entries = list.getEntries() as PerformanceEntryWithTiming[];
           for (const e of entries) {
-            if (!e.hadRecentInput) clsValue += e.value;
+            if (!e.hadRecentInput && typeof e.value === "number") {
+              clsValue += e.value;
+            }
           }
           setMetrics((prev) => ({ ...prev, cls: clsValue }));
         });
-        clsObs.observe({ type: "layout-shift", buffered: true } as unknown);
+        clsObs.observe({ type: "layout-shift", buffered: true });
         clsObserverRef.current = clsObs;
       }
     } catch {
@@ -150,14 +169,14 @@ export function PerformanceMonitor({
     try {
       if ("PerformanceObserver" in window) {
         const paintObs = new PerformanceObserver((list) => {
-          const entries = list.getEntries() as unknown[];
+          const entries = list.getEntries() as PerformanceEntryWithTiming[];
           for (const e of entries) {
-            if (e.name === "first-contentful-paint") {
-              setMetrics((prev) => ({ ...prev, fcp: e.startTime })); // ms
+            if (e.name === "first-contentful-paint" && typeof e.startTime === "number") {
+              setMetrics((prev) => ({ ...prev, fcp: e.startTime }));
             }
           }
         });
-        paintObs.observe({ type: "paint", buffered: true } as unknown);
+        paintObs.observe({ type: "paint", buffered: true });
         paintObserverRef.current = paintObs;
       }
     } catch {
@@ -171,7 +190,7 @@ export function PerformanceMonitor({
     // ----- Memory usage -----
     try {
       if ("memory" in performance) {
-        const memory = (performance as unknown).memory;
+        const memory = (performance as Performance & { memory?: PerformanceMemory }).memory;
         setMetrics((prev) => ({
           ...prev,
           usedJSHeapSize: memory?.usedJSHeapSize,

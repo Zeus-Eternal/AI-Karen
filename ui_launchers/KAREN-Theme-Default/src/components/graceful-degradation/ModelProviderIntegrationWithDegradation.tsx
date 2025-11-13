@@ -11,6 +11,7 @@ import {
   useGracefulDegradation,
 } from "@/lib/graceful-degradation/use-graceful-backend";
 import { Button } from "@/components/ui/button";
+import { ModelProvider } from "@/types/models";
 import { withGracefulDegradation } from "./graceful-utils";
 
 /**
@@ -113,7 +114,7 @@ export function FixedModelProviderIntegration() {
           </div>
 
           <div className="grid gap-4">
-            {providers.map((provider: unknown) => (
+            {providers.map((provider: ModelProvider) => (
               <div
                 key={provider.id ?? provider.name}
                 className="p-4 border rounded-lg hover:border-gray-300"

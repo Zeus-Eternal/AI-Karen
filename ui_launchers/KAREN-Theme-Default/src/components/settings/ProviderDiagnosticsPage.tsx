@@ -144,12 +144,12 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       ]);
       setDiagnostics(diagnosticsResponse || null);
       setRepairActions(Array.isArray(repairActionsResponse) ? repairActionsResponse : []);
-    } catch (error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Diagnostics Failed",
         description:
           `Could not load diagnostics for ${providerName}: ` +
-          (error?.message || "Unknown error"),
+          (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive",
       });
       setDiagnostics(null);
@@ -198,7 +198,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
     } catch (error: Error) {
       toast({
         title: "Repair Failed",
-        description: `Could not execute repair: ${error?.message || "Unknown error"}`,
+        description: `Could not execute repair: ${error instanceof Error ? error.message : "Unknown error"}`,
         variant: "destructive",
       });
     } finally {

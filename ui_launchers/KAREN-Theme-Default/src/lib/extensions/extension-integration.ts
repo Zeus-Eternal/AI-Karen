@@ -408,7 +408,7 @@ export class ExtensionIntegrationService {
         {},
         false,
         webUIConfig.cacheTtl,
-        0,
+        Math.max(1, webUIConfig.maxRetries),
         webUIConfig.retryDelay,
         []
       );

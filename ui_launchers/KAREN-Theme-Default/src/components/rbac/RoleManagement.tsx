@@ -3,7 +3,13 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Role, User, Permission } from "@/types/rbac";
+import {
+  Role,
+  User,
+  Permission,
+  RoleHierarchy,
+  RoleConflict,
+} from "@/types/rbac";
 import { useRBAC } from "@/providers/rbac-hooks";
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 
@@ -435,15 +441,31 @@ function UserRoleTable({ users, roles, removeRole }: UserRoleTableProps) {
 // Role Hierarchy View
 // --------------------------------------------------------
 
+type RoleHierarchyItem = RoleHierarchy & { roleName?: string };
+type RoleHierarchyResponse =
+  | RoleHierarchyItem[]
+  | { data?: RoleHierarchyItem[] | undefined };
+
 function RoleHierarchyView() {
-  const { data: hierarchyData } = useQuery({
+  const { data: hierarchyData } = useQuery<RoleHierarchyResponse>({
     queryKey: ["rbac", "role-hierarchy"],
     queryFn: () => enhancedApiClient.get("/api/rbac/role-hierarchy"),
   });
 
-  const hierarchy = Array.isArray(hierarchyData)
-    ? hierarchyData
-    : hierarchyData?.data || [];
+  const hierarchy = React.useMemo<RoleHierarchyItem[]>(() => {
+    if (Array.isArray(hierarchyData)) {
+      return hierarchyData;
+    }
+    if (
+      hierarchyData &&
+      typeof hierarchyData === "object" &&
+      "data" in hierarchyData &&
+      Array.isArray(hierarchyData.data)
+    ) {
+      return hierarchyData.data;
+    }
+    return [];
+  }, [hierarchyData]);
 
   return (
     <div className="space-y-4">
@@ -456,38 +478,35 @@ function RoleHierarchyView() {
         </AlertDescription>
       </Alert>
 
-      {hierarchy.map((item: unknown) => (
+      {hierarchy.map((item) => (
         <Card key={item.roleId}>
           <CardHeader>
-            <CardTitle>{item.roleName}</CardTitle>
+            <CardTitle>{item.roleName ?? item.roleId}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {item.parentRoles?.length > 0 && (
+            {item.parentRoles?.length ? (
               <div>
                 <Label className="text-sm font-medium">
                   Inherits from:
                 </Label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {item.parentRoles.map((parentRole: string) => (
-                    <Badge
-                      key={parentRole}
-                      variant="secondary"
-                    >
+                    <Badge key={parentRole} variant="secondary">
                       {parentRole}
                     </Badge>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {item.conflicts?.length > 0 && (
+            {item.conflicts?.length ? (
               <div>
                 <Label className="text-sm font-medium text-destructive">
                   Conflicts:
                 </Label>
                 <div className="space-y-2 mt-1">
                   {item.conflicts.map(
-                    (conflict: unknown, index: number) => (
+                    (conflict: RoleConflict, index: number) => (
                       <Alert key={index} variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
@@ -502,7 +521,7 @@ function RoleHierarchyView() {
                   )}
                 </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       ))}
