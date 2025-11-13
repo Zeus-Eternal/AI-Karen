@@ -11,7 +11,7 @@ const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 export async function POST(request: NextRequest) {
   try {
     // Call backend logout
-    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+    await fetch(`${BACKEND_URL}/api/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

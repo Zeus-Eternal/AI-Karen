@@ -14,6 +14,7 @@ import React, {
 import LazyComponent from './lazy-component';
 import type { LazyLoadOptions } from './lazy-component.types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: LazyLoadOptions = {}
@@ -32,6 +33,7 @@ export function createLazyComponent<T extends ComponentType<any>>(
 
     const WrappedComponent = (props: ComponentPropsWithoutRef<T>) => (
       <LazyComponent fallback={fallback} errorFallback={errorFallback}>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <LoadedComponent {...(props as any)} />
       </LazyComponent>
     );

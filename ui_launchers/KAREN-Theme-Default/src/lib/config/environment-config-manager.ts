@@ -342,9 +342,6 @@ export class EnvironmentConfigManager {
     if (this.environment.networkMode === 'external' && !this.getEnvVar('KAREN_EXTERNAL_HOST', '')) {
       warnings.push('External network mode detected but no external host configured');
     }
-    // Validate environment variable consistency
-    const karenBackendUrl = this.getEnvVar('KAREN_BACKEND_URL', '');
-    const nextPublicKarenBackendUrl = this.getEnvVar('NEXT_PUBLIC_KAREN_BACKEND_URL', '');
     // Validate fallback URL configuration
     const fallbackUrls = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
     if (fallbackUrls) {

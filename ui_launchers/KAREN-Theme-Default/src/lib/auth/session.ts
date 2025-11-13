@@ -6,7 +6,7 @@
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  */
-import { getHighestRole, ROLE_PERMISSIONS, type UserRole } from "@/components/security/rbac-shared";
+import { getHighestRole, ROLE_PERMISSIONS, type UserRole, type Permission } from "@/components/security/rbac-shared";
 
 // Simplified types for session management
 export interface SessionData {
@@ -124,7 +124,7 @@ export function hasPermission(permission: string): boolean {
   // Default permissions based on role (use unified rbac-shared)
   const role = currentSession.role || getHighestRole(currentSession.roles);
   const rolePermissions = ROLE_PERMISSIONS[role] || [];
-  return rolePermissions.includes(permission as any);
+  return rolePermissions.includes(permission as Permission);
 }
 /**
  * Check if user is admin (admin or super_admin)
