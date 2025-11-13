@@ -11,6 +11,7 @@ import {
 } from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
 import { AuthContext } from "./auth-context-instance";
+import { getHighestRole, type UserRole } from "@/components/security/rbac-shared";
 
 
 export interface User {
@@ -147,25 +148,17 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Flag to prevent multiple simultaneous auth checks
   const isCheckingAuth = useRef<boolean>(false);
 
-  // Helper functions - declare these first
-  const determineUserRole = useCallback((
-    roles: string[]
-  ): "super_admin" | "admin" | "user" => {
-    if (roles.includes("super_admin")) return "super_admin";
-    if (roles.includes("admin")) return "admin";
-    return "user";
-  }, []);
-
+  // Helper functions - use unified rbac-shared for role logic
   const createUserFromApiData = useCallback(
     (apiUser: ApiUserData): User => ({
       userId: apiUser.user_id,
       email: apiUser.email,
       roles: apiUser.roles ?? [],
       tenantId: apiUser.tenant_id ?? "default",
-      role: determineUserRole(apiUser.roles ?? []),
+      role: getHighestRole(apiUser.roles ?? []),
       permissions: apiUser.permissions,
     }),
-    [determineUserRole]
+    []
   );
 
   // Convert technical errors to user-friendly messages
