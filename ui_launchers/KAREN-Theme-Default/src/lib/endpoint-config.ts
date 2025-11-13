@@ -56,8 +56,7 @@ export class ConfigManager {
     } else {
       // Server-side or proxy disabled - use direct backend URL
       backendUrl = this.getEnvVar(
-        'API_BASE_URL',
-        this.getEnvVar('KAREN_BACKEND_URL', 'http://localhost:8000')
+        'KAREN_BACKEND_URL', 'http://localhost:8000'
       );
     }
     const environment = this.getEnvVar('KAREN_ENVIRONMENT', 'local') as Environment;
@@ -97,7 +96,7 @@ export class ConfigManager {
       // Debug logging for environment variable resolution
       if (
         typeof console !== 'undefined' &&
-        (key === 'KAREN_BACKEND_URL' || key === 'API_BASE_URL')
+        (key === 'KAREN_BACKEND_URL')
       ) {
         // Environment variable logging would go here in development
       }
@@ -149,14 +148,12 @@ export class ConfigManager {
   private detectEnvironment(): void {
     // Skip environment detection if explicit configuration is provided
     const hasExplicitConfig =
-      this.getEnvVar('API_BASE_URL', '') !== '' ||
       this.getEnvVar('KAREN_BACKEND_URL', '') !== '' ||
       this.getEnvVar('KAREN_ENVIRONMENT', '') !== '' ||
       this.getEnvVar('KAREN_NETWORK_MODE', '') !== '';
     if (hasExplicitConfig) {
       // Use explicit configuration, don't override with auto-detection
       console.log('🔒 Using explicit configuration, skipping environment detection', {
-        API_BASE_URL: this.getEnvVar('API_BASE_URL', ''),
         KAREN_BACKEND_URL: this.getEnvVar('KAREN_BACKEND_URL', ''),
         KAREN_ENVIRONMENT: this.getEnvVar('KAREN_ENVIRONMENT', ''),
         KAREN_NETWORK_MODE: this.getEnvVar('KAREN_NETWORK_MODE', '')

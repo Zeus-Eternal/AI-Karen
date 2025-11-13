@@ -457,12 +457,48 @@ async function buildFallbackHealthResponse(errorMessage: string, error: unknown)
 }
 
 // Backend URL configuration
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL || 'http://localhost:8000';
+const BACKEND_URL =
+    process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
+
+function buildForwardHeaders(request: NextRequest): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  const authHeader = request.headers.get('authorization');
+  const authCookie = request.cookies.get('auth_token')?.value;
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  } else if (authCookie) {
+    headers['Authorization'] = `Bearer ${authCookie}`;
+  }
+
+  const cookieHeader = request.headers.get('cookie');
+  if (cookieHeader) {
+    headers['Cookie'] = cookieHeader;
+  }
+
+  const csrf =
+    request.headers.get('x-csrf-token') ||
+    request.headers.get('x-xsrf-token');
+  if (csrf) {
+    headers['X-CSRF-Token'] = csrf;
+    headers['X-XSRF-Token'] = csrf;
+  }
+
+  const userAgent = request.headers.get('user-agent');
+  if (userAgent) {
+    headers['User-Agent'] = userAgent;
+  }
+
+  return headers;
+}
 
 /**
  * Main health check handler - proxies to backend
  */
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
 
   try {
@@ -473,10 +509,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: buildForwardHeaders(request),
       signal: controller.signal,
       cache: 'no-store',
     });
