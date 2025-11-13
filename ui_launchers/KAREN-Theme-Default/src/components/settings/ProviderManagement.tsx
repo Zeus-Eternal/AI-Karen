@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { openaiPing } from '@/lib/providers-api';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError, type ApiErrorResponse } from '@/lib/error-handler';
 import ProviderStatusIndicator, { type ProviderStatus } from './ProviderStatusIndicator';
 import ProviderTestingInterface from './ProviderTestingInterface';
 import ProviderConfigurationGuide from './ProviderConfigurationGuide';
@@ -49,6 +49,21 @@ interface ModelRecommendationCategory {
   good?: string[];
   acceptable?: string[];
 }
+
+type ExtendedErrorLike = Error & {
+  detail?: ApiErrorResponse;
+  response?: { status?: number; data?: ApiErrorResponse };
+  code?: string;
+  status?: number;
+};
+
+const toExtendedError = (error: unknown): ExtendedErrorLike => {
+  if (error instanceof Error) {
+    return error as ExtendedErrorLike;
+  }
+  const err = new Error(String(error));
+  return err as ExtendedErrorLike;
+};
 
 interface ModelRecommendationsResponse {
   validation?: {
@@ -84,7 +99,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
       );
       setRecommendations(response);
     } catch (error) {
-      const info = handleApiError(error as ExtendedError, 'fetchRecommendations');
+      const info = handleApiError(toExtendedError(error), 'fetchRecommendations');
       toast({
         title: info.title,
         description: info.message,
@@ -485,7 +500,7 @@ export default function ProviderManagement({
         description: `${healthyCount}/${providers.length} providers are healthy.`,
       });
     } catch (error) {
-      const info = handleApiError(error as ExtendedError, 'runHealthCheck');
+      const info = handleApiError(toExtendedError(error), 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
@@ -516,7 +531,7 @@ export default function ProviderManagement({
         description: `Found ${models.length} models for ${providerName}.`,
       });
     } catch (error) {
-      const info = handleApiError(error as ExtendedError, 'discoverProviderModels');
+      const info = handleApiError(toExtendedError(error), 'discoverProviderModels');
       toast({
         title: info.title || "Discovery Failed",
         description: info.message || `Could not discover models for ${providerName}.`,
@@ -539,7 +554,7 @@ export default function ProviderManagement({
       // Default/fallback path for providers without a specific ping yet
       await checkProviderHealth(providerName);
     } catch (error) {
-      const info = handleApiError(error as ExtendedError, 'testProvider');
+      const info = handleApiError(toExtendedError(error), 'testProvider');
       toast({
         title: info.title || 'Test Failed',
         description: info.message || `Could not connect to ${providerName}.`,

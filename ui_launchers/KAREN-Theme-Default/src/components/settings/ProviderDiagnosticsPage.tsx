@@ -195,7 +195,7 @@ export function ProviderDiagnosticsPage({ providerName, onClose }: ProviderDiagn
       } else {
         throw new Error(response?.message || "Repair action failed");
       }
-    } catch (error: Error) {
+    } catch (error: unknown) {
       toast({
         title: "Repair Failed",
         description: `Could not execute repair: ${error instanceof Error ? error.message : "Unknown error"}`,

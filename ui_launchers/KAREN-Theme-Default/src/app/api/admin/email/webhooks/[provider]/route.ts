@@ -314,29 +314,44 @@ function normalizeEvents(
       }));
     }
     case 'mailgun': {
-      // Mailgun may send JSON with "event-data" or form style with keys like 'event'
-      if (body['event-data']) {
-        const ed = body['event-data'];
+      const payload = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+      if (payload["event-data"] && typeof payload["event-data"] === "object") {
+        const ed = payload["event-data"] as Record<string, unknown>;
+        const msgHeaders = ed["message"] && typeof ed["message"] === "object" ? (ed["message"] as Record<string, unknown>).headers : undefined;
         return [{
-          event_id: ed?.id || ed?.['message']?.headers?.['message-id'],
-          event_type: ed?.event || 'unknown',
-          body,
+          event_id: ed?.id || msgHeaders?.["message-id"],
+          event_type: (ed?.event as string) ?? "unknown",
+          body: ed,
         }];
       }
-      // form style
+      const messageIdValue =
+        payload["Message-Id"] ||
+        payload["message-id"] ||
+        payload["signature"];
+      const eventType =
+        (payload.event as string) ||
+        (payload["event"] as string) ||
+        "unknown";
+      const messageId =
+        typeof messageIdValue === "string" ? messageIdValue : undefined;
       return [{
-        event_id: body['Message-Id'] || body['message-id'] || body['signature'] || undefined,
-        event_type: body.event || body['event'] || 'unknown',
-        body,
+        event_id: messageId,
+        event_type: eventType,
+        body: payload,
       }];
     }
     case 'postmark': {
       // Postmark sends a single JSON event
       // Type: Bounce, SpamComplaint, Delivery, Open, Click, SubscriptionChange, etc.
-      const type = body?.Type || body?.RecordType || 'unknown';
-      // Attempt an id
-      const id = body?.ID || body?.MessageID || body?.MessageId || body?.MessageIDString;
-      return [{ event_id: id, event_type: String(type).toLowerCase(), body }];
+      const payload = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+      const type = payload?.Type ?? payload?.RecordType ?? 'unknown';
+      const id =
+        payload?.ID ??
+        payload?.MessageID ??
+        payload?.MessageId ??
+        payload?.MessageIDString ??
+        undefined;
+      return [{ event_id: id, event_type: String(type).toLowerCase(), body: payload }];
     }
     case 'ses': {
       // SES via SNS: body may be SNS wrapper; unwrap if necessary

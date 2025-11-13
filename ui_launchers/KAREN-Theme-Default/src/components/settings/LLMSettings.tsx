@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 
 import { getKarenBackend } from "@/lib/karen-backend";
 import { useAuth } from "@/hooks/use-auth";
-import { handleApiError } from "@/lib/error-handler";
+import { handleApiError, type ApiErrorResponse } from "@/lib/error-handler";
 
 import ProviderManagement from "./ProviderManagement";
 import ModelBrowser from "./ModelBrowser";
@@ -53,6 +53,21 @@ import {
   RefreshCw,
   Users,
 } from "lucide-react";
+
+type ExtendedErrorLike = Error & {
+  detail?: ApiErrorResponse;
+  response?: { status?: number; data?: ApiErrorResponse };
+  code?: string;
+  status?: number;
+};
+
+const toExtendedError = (error: unknown): ExtendedErrorLike => {
+  if (error instanceof Error) {
+    return error as ExtendedErrorLike;
+  }
+  const err = new Error(String(error));
+  return err as ExtendedErrorLike;
+};
 
 export interface LLMProvider {
   name: string;
@@ -227,7 +242,8 @@ export default function LLMSettings() {
         checkDegradedMode(),
       ]);
     } catch (error) {
-      if ((error as unknown)?.status === 401 || (error as unknown)?.message?.includes("401")) {
+      const errInfo = toExtendedError(error);
+      if (errInfo.status === 401 || errInfo.message?.includes("401")) {
         if (process.env.NODE_ENV !== "development") {
           toast({
             title: "Authentication Required",
@@ -236,7 +252,7 @@ export default function LLMSettings() {
           });
         }
       } else {
-        const info = (error as unknown)?.errorInfo || handleApiError(error as unknown, "loadSettings");
+        const info = handleApiError(errInfo, "loadSettings");
         toast({
           title: info.title || "Error Loading Settings",
           description: info.message || "Could not load LLM provider settings. Using defaults.",
@@ -718,16 +734,16 @@ export default function LLMSettings() {
             />
 
             {/* Existing Model Browser */}
-            <ModelBrowser models={allModels as unknown} setModels={setAllModels as unknown} providers={providers} />
+            <ModelBrowser models={allModels} setModels={setAllModels} providers={providers} />
           </div>
         </TabsContent>
 
         <TabsContent value="profiles" className="space-y-6">
           <ProfileManager
-            profiles={profiles as unknown}
-            setProfiles={setProfiles as unknown}
+            profiles={profiles}
+            setProfiles={setProfiles}
             activeProfile={activeProfile}
-            setActiveProfile={setActiveProfile as unknown}
+            setActiveProfile={setActiveProfile}
             providers={providers}
           />
         </TabsContent>
