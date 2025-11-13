@@ -209,6 +209,9 @@ async function verifySignature(
   rawBody: string,
   body: unknown
 ) {
+  // Helper to safely access properties on unknown body
+  const bodyAsRecord = body as Record<string, any>;
+
   switch (provider) {
     case 'sendgrid': {
       // SendGrid Event Webhook uses ed25519 with a public key:
@@ -303,6 +306,9 @@ function normalizeEvents(
   body: unknown,
   _headers: Record<string, string>
 ): Array<{ event_id?: string; event_type: string; body: unknown }> {
+  // Helper to safely access properties on unknown body
+  const bodyAsRecord = body as Record<string, any>;
+
   switch (provider) {
     case 'sendgrid': {
       // SendGrid posts an array of events
@@ -315,8 +321,8 @@ function normalizeEvents(
     }
     case 'mailgun': {
       // Mailgun may send JSON with "event-data" or form style with keys like 'event'
-      if (body['event-data']) {
-        const ed = body['event-data'];
+      if (bodyAsRecord && bodyAsRecord['event-data']) {
+        const ed = bodyAsRecord['event-data'];
         return [{
           event_id: ed?.id || ed?.['message']?.headers?.['message-id'],
           event_type: ed?.event || 'unknown',
@@ -325,42 +331,43 @@ function normalizeEvents(
       }
       // form style
       return [{
-        event_id: body['Message-Id'] || body['message-id'] || body['signature'] || undefined,
-        event_type: body.event || body['event'] || 'unknown',
+        event_id: bodyAsRecord?.['Message-Id'] || bodyAsRecord?.['message-id'] || bodyAsRecord?.['signature'] || undefined,
+        event_type: bodyAsRecord?.event || bodyAsRecord?.['event'] || 'unknown',
         body,
       }];
     }
     case 'postmark': {
       // Postmark sends a single JSON event
       // Type: Bounce, SpamComplaint, Delivery, Open, Click, SubscriptionChange, etc.
-      const type = body?.Type || body?.RecordType || 'unknown';
+      const type = bodyAsRecord?.Type || bodyAsRecord?.RecordType || 'unknown';
       // Attempt an id
-      const id = body?.ID || body?.MessageID || body?.MessageId || body?.MessageIDString;
+      const id = bodyAsRecord?.ID || bodyAsRecord?.MessageID || bodyAsRecord?.MessageId || bodyAsRecord?.MessageIDString;
       return [{ event_id: id, event_type: String(type).toLowerCase(), body }];
     }
     case 'ses': {
       // SES via SNS: body may be SNS wrapper; unwrap if necessary
-      if (body?.Type && body?.Message) {
+      if (bodyAsRecord?.Type && bodyAsRecord?.Message) {
         // SNS envelope
         let msg: unknown = {};
-        try { msg = JSON.parse(body.Message); } catch { msg = body.Message; }
-        const notificationType = msg?.notificationType || msg?.eventType || 'unknown';
+        try { msg = JSON.parse(bodyAsRecord.Message); } catch { msg = bodyAsRecord.Message; }
+        const msgAsRecord = msg as Record<string, any>;
+        const notificationType = msgAsRecord?.notificationType || msgAsRecord?.eventType || 'unknown';
         const id =
-          msg?.mail?.messageId ||
-          msg?.bounce?.feedbackId ||
-          msg?.complaint?.feedbackId ||
+          msgAsRecord?.mail?.messageId ||
+          msgAsRecord?.bounce?.feedbackId ||
+          msgAsRecord?.complaint?.feedbackId ||
           undefined;
         return [{ event_id: id, event_type: notificationType, body: msg }];
       }
       // Direct SES notification (rare for webhooks)
-      const eventType = body?.eventType || body?.notificationType || 'unknown';
-      const id = body?.mail?.messageId || undefined;
+      const eventType = bodyAsRecord?.eventType || bodyAsRecord?.notificationType || 'unknown';
+      const id = bodyAsRecord?.mail?.messageId || undefined;
       return [{ event_id: id, event_type: eventType, body }];
     }
     case 'smtp': {
       // Generic: accept payloads from a relay/proxy
-      const eventType = body?.event_type || body?.type || body?.status || 'unknown';
-      const id = body?.event_id || body?.message_id || body?.MessageId;
+      const eventType = bodyAsRecord?.event_type || bodyAsRecord?.type || bodyAsRecord?.status || 'unknown';
+      const id = bodyAsRecord?.event_id || bodyAsRecord?.message_id || bodyAsRecord?.MessageId;
       return [{ event_id: id, event_type: eventType, body }];
     }
   }

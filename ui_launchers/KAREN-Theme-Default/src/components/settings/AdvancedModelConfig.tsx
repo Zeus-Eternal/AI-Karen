@@ -21,7 +21,7 @@ import {
   Brain, Shield, Cog, Rocket, TestTube, RefreshCw
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError, type ExtendedError } from '@/lib/error-handler';
 
 // Enhanced Type Definitions
 export interface ModelConfig {
@@ -715,7 +715,7 @@ export default function AdvancedModelConfig({
       await loadModelConfig();
       
     } catch (error) {
-      const info = handleApiError(error as unknown, 'saveConfig');
+      const info = handleApiError(error as ExtendedError, 'saveConfig');
       toast({
         variant: 'destructive',
         title: info.title || "Save Failed",
@@ -1040,7 +1040,7 @@ export default function AdvancedModelConfig({
       </Card>
 
       {/* Enhanced Tabs with More Categories */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as unknown)}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="config" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />
