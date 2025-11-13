@@ -181,8 +181,9 @@ const BasicTrainingMode: React.FC = () => {
       setTimeout(() => {
         void loadProgress(jobData.job_id);
       }, 1000);
-    } catch (err: Error) {
-      setError(err.message || 'Failed to start training');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to start training');
     } finally {
       setLoading(false);
     }
@@ -197,8 +198,9 @@ const BasicTrainingMode: React.FC = () => {
 
       setCurrentJob(null);
       setProgress(null);
-    } catch (err: Error) {
-      setError(err.message || 'Failed to cancel training');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to cancel training');
     }
   };
 
@@ -212,8 +214,9 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       void loadBackups();
-    } catch (err: Error) {
-      setError(err.message || 'Failed to create backup');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to create backup');
     }
   };
 
@@ -229,8 +232,9 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       alert('System restored successfully');
-    } catch (err: Error) {
-      setError(err.message || 'Failed to restore backup');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to restore backup');
     }
   };
 
@@ -247,8 +251,9 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       alert('System reset to factory defaults');
-    } catch (err: Error) {
-      setError(err.message || 'Failed to reset system');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to reset system');
     }
   };
 
@@ -262,8 +267,9 @@ const BasicTrainingMode: React.FC = () => {
       });
 
       void loadBackups();
-    } catch (err: Error) {
-      setError(err.message || 'Failed to delete backup');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Failed to delete backup');
     }
   };
 
