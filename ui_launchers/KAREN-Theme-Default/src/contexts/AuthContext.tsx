@@ -346,7 +346,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 1,
+          retryAttempts: 0, // No retries - keep refresh fast and simple
           exponentialBackoff: false,
         }
       );
@@ -461,8 +461,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 2, // Limited retries for authentication
-          exponentialBackoff: true,
+          retryAttempts: 0, // No retries - API route handles retries
+          exponentialBackoff: false,
         }
       );
 
@@ -729,7 +729,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 1, // Single retry for validation
+          retryAttempts: 0, // No retries - keep session validation fast and simple
           exponentialBackoff: false,
         }
       );
