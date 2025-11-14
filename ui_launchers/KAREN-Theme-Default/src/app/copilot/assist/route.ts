@@ -50,7 +50,6 @@ async function handleCopilotRequest(request: NextRequest) {
       headers: { ...headers, Connection: 'keep-alive' },
       body: body || undefined,
       signal: controller.signal,
-      // @ts-expect-error undici option in Node runtime
       keepalive: true,
       cache: 'no-store',
     });

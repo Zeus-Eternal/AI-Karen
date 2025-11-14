@@ -32,7 +32,7 @@ interface ReadinessCheckResult {
 interface ReadinessCheck {
   status: 'ready' | 'not_ready';
   message: string;
-  details?: Record<string, unknown>;
+  details?: Record<string, any>;
 }
 
 interface BackendHealthResult {
@@ -101,7 +101,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
 
     const responseTime = Date.now() - startTime;
 
-    let parsed: unknown = null;
+    let parsed: any = null;
     try {
       parsed = await response.json();
     } catch (parseError) {
@@ -123,7 +123,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
       };
     }
 
-    const backendStatus = parsed?.status ?? 'unknown';
+    const backendStatus = parsed?.status ?? 'any';
     const isHealthy = backendStatus === 'healthy' || backendStatus === 'ready';
 
     return {
@@ -146,7 +146,7 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
       url,
       status: 'unreachable',
       responseTime,
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: error instanceof Error ? error.message : 'any error',
     };
   } finally {
     clearTimeout(timeoutId);
@@ -340,8 +340,8 @@ function checkConfiguration(): ReadinessCheck {
   } catch (error) {
     return {
       status: 'not_ready',
-      message: `Configuration check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      message: `Configuration check failed: ${error instanceof Error ? error.message : 'any error'}`,
+      details: { error: error instanceof Error ? error.message : 'any error' },
     };
   }
 }
@@ -434,8 +434,8 @@ function checkResources(): ReadinessCheck {
   } catch (error) {
     return {
       status: 'not_ready',
-      message: `Resource check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      message: `Resource check failed: ${error instanceof Error ? error.message : 'any error'}`,
+      details: { error: error instanceof Error ? error.message : 'any error' },
     };
   }
 }
@@ -489,7 +489,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     safeWarn('Readiness endpoint failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : 'any error',
     });
 
     const readinessState = getReadinessState();
