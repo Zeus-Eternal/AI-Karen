@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
+import { adminAuthMiddleware, type AdminAuthResult } from '@/lib/middleware/admin-auth';
 import { EmailTemplate, EmailTemplateVariables } from '@/lib/email/types';
 import { EmailTemplateManager, TemplateEngine } from '@/lib/email/template-engine';
 import { auditLogger } from '@/lib/audit/audit-logger';
@@ -132,7 +132,7 @@ export async function POST(
     }
 
     // Auth
-    const authResult: unknown = await adminAuthMiddleware(request, ['admin', 'super_admin']);
+    const authResult: AdminAuthResult = await adminAuthMiddleware(request, ['admin', 'super_admin']);
     // Middleware in your codebase can return either a NextResponse or a structured object
     if (authResult instanceof NextResponse) {
       // Pass through but ensure correlation header
@@ -140,7 +140,11 @@ export async function POST(
       return authResult;
     }
     if (!authResult?.success) {
-      return authError(authResult?.status || 401, authResult?.error || 'Unauthorized', correlationId);
+      const authMessage =
+        typeof authResult?.error === 'string'
+          ? authResult.error
+          : authResult?.error?.message;
+      return authError(authResult?.status || 401, authMessage || 'Unauthorized', correlationId);
     }
     const currentUserId: string = authResult.user?.user_id || 'unknown';
 
@@ -208,8 +212,8 @@ export async function POST(
             id: template.id,
             name: template.name,
             template_type: template.template_type,
-            variables: template.variables,
-            updated_at: (template as unknown)?.updated_at ?? undefined,
+          variables: template.variables,
+          updated_at: template.updated_at,
           },
           meta: {
             correlation_id: correlationId,
@@ -225,12 +229,13 @@ export async function POST(
     res.headers.set('cache-control', 'no-store');
 
     return res;
-  } catch (err: Error) {
+  } catch (err: unknown) {
     // Best-effort audit for failures
     try {
+      const error = err instanceof Error ? err : new Error(String(err));
       await auditLogger.log('system', 'email_template_preview_failed', 'email_template', {
         details: {
-          error: err?.message || String(err),
+          error: error.message,
           correlation_id: correlationId,
         },
       });

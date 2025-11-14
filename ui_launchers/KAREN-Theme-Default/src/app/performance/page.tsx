@@ -8,7 +8,6 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { Sparkline } from '@/components/ui/sparkline';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AnimatedNumber } from '@/components/ui/animated-number';
 import {
   Activity,
   Cpu,
@@ -49,7 +48,7 @@ export default function PerformancePage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="CPU Usage"
-              value={<AnimatedNumber value={45} />}
+              value={45}
               subtitle="Percentage"
               icon={Cpu}
               variant="success"
@@ -70,7 +69,7 @@ export default function PerformancePage() {
             />
             <MetricCard
               title="Active Connections"
-              value={<AnimatedNumber value={234} />}
+              value={234}
               subtitle="Current connections"
               icon={Zap}
               variant="default"

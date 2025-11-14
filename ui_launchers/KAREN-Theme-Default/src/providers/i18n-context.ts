@@ -1,6 +1,8 @@
 import { createContext } from 'react';
 import { type FormatOptions, type InterpolationOptions, type PluralOptions } from '../lib/i18n';
 
+type TranslationOptions = InterpolationOptions & Partial<PluralOptions> & { ns?: string };
+
 export interface I18nContextValue {
   // Current locale
   locale: string;
@@ -14,7 +16,7 @@ export interface I18nContextValue {
     direction: 'ltr' | 'rtl';
   };
   // Translation function
-  t: (key: string, options?: InterpolationOptions & PluralOptions & { ns?: string }) => string;
+  t: (key: string, options?: TranslationOptions) => string;
   // Formatting functions
   formatNumber: (value: number, options?: FormatOptions) => string;
   formatDate: (date: Date | string | number, options?: FormatOptions) => string;

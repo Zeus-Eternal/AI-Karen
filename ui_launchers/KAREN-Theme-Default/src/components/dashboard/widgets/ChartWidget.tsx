@@ -3,7 +3,12 @@
 
 import React, { useMemo, useCallback } from "react";
 import { AgCharts } from "ag-charts-react";
-import type { AgChartOptions } from "ag-charts-community";
+import type {
+  AgChartOptions,
+  AgCategoryAxisOptions,
+  AgNumberAxisOptions,
+  AgTimeAxisOptions,
+} from "ag-charts-community";
 import { WidgetBase } from "../WidgetBase";
 import { Button } from "@/components/ui/button";
 
@@ -27,15 +32,8 @@ import {
 
 import type { WidgetProps, ChartData } from "@/types/dashboard";
 
-interface ChartWidgetProps extends WidgetProps {
-  data?: {
-    id: string;
-    data: ChartData;
-    loading: boolean;
-    error?: string;
-    lastUpdated: Date;
-  };
-}
+const isChartData = (value: unknown): value is ChartData =>
+  !!value && typeof value === "object" && "series" in value && Array.isArray((value as ChartData).series);
 
 const getChartTypeIcon = (type: string) => {
   switch (type) {
@@ -50,16 +48,16 @@ const getChartTypeIcon = (type: string) => {
   }
 };
 
-export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
+export const ChartWidget: React.FC<WidgetProps> = (props) => {
   const { data: widgetData } = props;
 
+  const chartPayload = widgetData?.data;
   const chartOptions = useMemo<AgChartOptions>(() => {
-    if (!widgetData?.data) {
-      const opts: AgChartOptions = { data: [], series: [] };
-      return opts;
+    if (!chartPayload || !isChartData(chartPayload)) {
+      return { data: [], series: [] };
     }
 
-    const chartData = widgetData.data;
+    const chartData = chartPayload;
 
     // Build a unified data table where each row contains x and each series' y value
     const baseSeries = chartData.series?.[0];
@@ -115,34 +113,46 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       }
     });
 
-    const xAxisType =
+    type XAxisType = "number" | "category" | "time";
+    const xAxisType: XAxisType =
       chartData.xAxis?.type === "time"
         ? "time"
         : chartData.xAxis?.type === "number"
         ? "number"
         : "category";
 
+    const bottomAxis =
+      xAxisType === "time"
+        ? ({
+            type: "time",
+            position: "bottom",
+            title: { text: chartData.xAxis?.label || "" },
+            label: { format: "%H:%M" },
+          } satisfies AgTimeAxisOptions)
+        : xAxisType === "number"
+        ? ({
+            type: "number",
+            position: "bottom",
+            title: { text: chartData.xAxis?.label || "" },
+          } satisfies AgNumberAxisOptions)
+        : ({
+            type: "category",
+            position: "bottom",
+            title: { text: chartData.xAxis?.label || "" },
+          } satisfies AgCategoryAxisOptions);
+
+    const leftAxis: AgNumberAxisOptions = {
+      type: "number",
+      position: "left",
+      title: { text: chartData.yAxis?.label || "" },
+      ...(chartData.yAxis?.min !== undefined && { min: chartData.yAxis.min }),
+      ...(chartData.yAxis?.max !== undefined && { max: chartData.yAxis.max }),
+    };
+
     const opts: AgChartOptions = {
       data: transformedData,
       series,
-      axes: [
-        {
-          type: xAxisType as unknown,
-          position: "bottom",
-          title: { text: chartData.xAxis?.label || "" },
-          ...(xAxisType === "time" && {
-            tick: { count: 10 },
-            label: { format: "%H:%M" },
-          }),
-        } as unknown,
-        {
-          type: "number",
-          position: "left",
-          title: { text: chartData.yAxis?.label || "" },
-          ...(chartData.yAxis?.min !== undefined && { min: chartData.yAxis.min }),
-          ...(chartData.yAxis?.max !== undefined && { max: chartData.yAxis.max }),
-        },
-      ],
+      axes: [bottomAxis, leftAxis],
       legend: {
         enabled: (chartData.series?.length || 0) > 1,
         position: "bottom",
@@ -159,7 +169,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       },
     };
     return opts;
-  }, [widgetData?.data]);
+  }, [chartPayload]);
 
   /* ---------- Controls (graceful fallbacks) ---------- */
   const handleExport = useCallback((format: "png" | "svg" | "pdf") => {
@@ -192,7 +202,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
   }, []);
 
   /* ---------- Empty / Error / Loading states ---------- */
-  if (!widgetData?.data) {
+  if (!chartPayload || !isChartData(chartPayload)) {
     return (
       <WidgetBase {...props}>
         <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -236,7 +246,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
               aria-label="Change chart type"
               className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
             >
-              {getChartTypeIcon(widgetData.data.series[0]?.type || "line")}
+              {getChartTypeIcon(chartPayload.series[0]?.type || "line")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-36">
@@ -317,15 +327,15 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
       </div>
 
       {/* Chart Summary */}
-      {widgetData.data.series.length > 0 && (
+      {chartPayload.series.length > 0 && (
         <div className="absolute bottom-2 left-2 right-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground sm:text-sm md:text-base">
             <span>
-              {widgetData.data.series.length} series,{" "}
-              {widgetData.data.series[0]?.data.length || 0} points
+              {chartPayload.series.length} series,{" "}
+              {chartPayload.series[0]?.data.length || 0} points
             </span>
             <span>
-              {widgetData.data.xAxis?.type === "time" ? "Time Series" : "Data Series"}
+              {chartPayload.xAxis?.type === "time" ? "Time Series" : "Data Series"}
             </span>
           </div>
         </div>

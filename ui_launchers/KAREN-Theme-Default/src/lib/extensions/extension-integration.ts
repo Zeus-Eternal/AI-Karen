@@ -401,6 +401,12 @@ export class ExtensionIntegrationService {
   }
 
   private async registerBackgroundTaskMonitoring(extensionId: string): Promise<void> {
+    if (this.extensionsAccessDenied) {
+      safeLog(
+        `ExtensionIntegrationService: Skipping background task monitoring for ${extensionId} because access was denied`
+      );
+      return;
+    }
     try {
       const backend = getKarenBackend();
       const tasksResponse = await backend.makeRequestPublic<unknown[]>(
@@ -486,6 +492,9 @@ export class ExtensionIntegrationService {
         }
       }
     } catch (error) {
+      if (this.handleAuthorizationFailure("background task monitoring", error)) {
+        return;
+      }
       safeError(
         `ExtensionIntegrationService: Failed to register background task monitoring for ${extensionId}:`,
         error

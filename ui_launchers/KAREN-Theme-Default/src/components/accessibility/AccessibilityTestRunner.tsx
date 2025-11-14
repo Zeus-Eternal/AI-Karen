@@ -21,61 +21,42 @@ import {
 } from "lucide-react";
 import { useAccessibilityTestRunner } from "../../hooks/use-accessibility-testing";
 import { cn } from "../../lib/utils";
-
-interface AccessibilityViolation {
-  impact?: string;
-  description?: string;
-  id?: string;
-  help?: string;
-  elements?: Array<unknown>;
-  nodes?: Array<unknown>;
-}
-
-interface AccessibilityTestSummary {
-  passes?: number;
-  violations?: number;
-  incomplete?: number;
-  inapplicable?: number;
-  [key: string]: unknown;
-}
-
-interface AccessibilityTestResult {
-  passed?: boolean;
-  score?: number;
-  violations?: AccessibilityViolation[];
-  summary?: AccessibilityTestSummary;
-  error?: string;
-  [key: string]: unknown;
-}
+import type {
+  AccessibilityReport,
+  KeyboardAccessibilityReport,
+  ScreenReaderReport,
+  ColorContrastReport,
+} from "../../lib/accessibility/accessibility-testing";
 
 type TestType = "basic" | "keyboard" | "screenReader" | "colorContrast";
 
-interface AxeViolation {
-  id?: string;
-  impact?: string;
-  description?: string;
-  help?: string;
-  helpUrl?: string;
-  nodes?: Array<Record<string, unknown>>;
-  elements?: Array<unknown>;
-}
+type AccessibilityTestResult =
+  | AccessibilityReport
+  | KeyboardAccessibilityReport
+  | ScreenReaderReport
+  | ColorContrastReport
+  | { error?: string; _error?: string };
 
-interface AxeSummary {
-  passes?: number;
-  violations?: number;
-  incomplete?: number;
-  inapplicable?: number;
-}
+const isAccessibilityReport = (value: AccessibilityTestResult): value is AccessibilityReport =>
+  typeof value === "object" &&
+  value !== null &&
+  "violations" in value &&
+  "summary" in value;
 
-type AccessibilityTestResult = {
-  passed?: boolean;
-  score?: number;
-  violations?: AxeViolation[];
-  summary?: AxeSummary;
-  error?: string;
-  [key: string]: unknown;
-} | null;
+const hasPassedFlag = (value: AccessibilityTestResult): value is AccessibilityReport | KeyboardAccessibilityReport | ScreenReaderReport | ColorContrastReport =>
+  typeof value === "object" &&
+  value !== null &&
+  "passed" in value;
 
+const isErrorResult = (value: AccessibilityTestResult): value is { error?: string; _error?: string } =>
+  typeof value === "object" &&
+  value !== null &&
+  ("error" in value || "_error" in value);
+
+const getTestErrorMessage = (value: AccessibilityTestResult): string | undefined => {
+  if (!isErrorResult(value)) return undefined;
+  return value.error ?? value._error;
+};
 interface AccessibilityTestRunnerProps {
   className?: string;
 }
@@ -138,23 +119,40 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
       container.innerHTML = customHtml;
       document.body.appendChild(container);
 
-    let results: AccessibilityTestResult | null = null;
+      let results: AccessibilityTestResult = { error: "Accessibility test did not produce a result." };
     switch (testType) {
-      case "basic":
-        results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
+      case "basic": {
+        const basicResult = await runAccessibilityTest(container);
+        results =
+          basicResult ?? { error: "Accessibility test did not return any data." };
         break;
-      case "keyboard":
-        results = (await runKeyboardTest(container)) as AccessibilityTestResult;
+      }
+      case "keyboard": {
+        const keyboardResult = await runKeyboardTest(container);
+        results =
+          keyboardResult ?? { error: "Keyboard accessibility test returned no data." };
         break;
-      case "screenReader":
-        results = (await runScreenReaderTest(container)) as AccessibilityTestResult;
+      }
+      case "screenReader": {
+        const screenReaderResult = await runScreenReaderTest(container);
+        results =
+          screenReaderResult ?? { error: "Screen reader test returned no data." };
         break;
-      case "colorContrast":
-        results = (await runColorContrastTest(container)) as AccessibilityTestResult;
+      }
+      case "colorContrast": {
+        const contrastResult = await runColorContrastTest(container);
+        results =
+          contrastResult ?? { error: "Color contrast test returned no data." };
         break;
-      default:
-        results = (await runAccessibilityTest(container)) as AccessibilityTestResult;
+      }
+      default: {
+        const fallbackResult = await runAccessibilityTest(container);
+        results =
+          fallbackResult ?? { error: "Accessibility test did not return any data." };
+        break;
+      }
     }
+
       setTestResults(results);
       setActiveTab("results");
     } catch (error) {
@@ -191,18 +189,19 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
   const renderResults = () => {
     if (!testResults) return null;
 
-    if (testResults.error || testResults._error) {
+    const errorMessage = getTestErrorMessage(testResults);
+    if (errorMessage) {
       return (
         <Alert variant="destructive">
           <div className="flex items-start">
             <XCircle className="h-4 w-4 mt-0.5" />
-            <AlertDescription className="ml-2">{testResults.error || testResults._error}</AlertDescription>
+            <AlertDescription className="ml-2">{errorMessage}</AlertDescription>
           </div>
         </Alert>
       );
     }
 
-    if (testType === "basic") {
+    if (testType === "basic" && isAccessibilityReport(testResults)) {
       return (
         <div className="space-y-4">
           {/* Summary */}
@@ -243,13 +242,16 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
             <Card>
               <CardContent className="p-4 md:p-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {testResults.summary?.passes || 0}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Passes</div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="text-2xl font-bold text-green-600">
+            {Object.values(testResults.summary ?? {}).reduce(
+              (acc, value) => acc + (typeof value === "number" ? value : 0),
+              0
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">Severity Total</div>
+        </div>
+      </CardContent>
+    </Card>
           </div>
 
           {/* Violations */}
@@ -271,7 +273,7 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
                         <p className="text-sm text-muted-foreground mb-2">{violation.help}</p>
                       )}
                       <div className="text-xs text-muted-foreground">
-                        {violation.elements?.length || violation.nodes?.length || 0} element(s) affected
+                        {violation.elements?.length || 0} element(s) affected
                       </div>
                     </div>
                   ))}
@@ -292,13 +294,21 @@ export function AccessibilityTestRunner({ className }: AccessibilityTestRunnerPr
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
-            {testResults.passed ? (
-              <CheckCircle className="h-5 w-5 text-green-600" />
+            {hasPassedFlag(testResults) ? (
+              testResults.passed ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600" />
+              )
             ) : (
-              <XCircle className="h-5 w-5 text-red-600" />
+              <Badge variant="outline">N/A</Badge>
             )}
             <span className="font-medium">
-              {testResults.passed ? "Test Passed" : "Test Failed"}
+              {hasPassedFlag(testResults)
+                ? testResults.passed
+                  ? "Test Passed"
+                  : "Test Failed"
+                : "Result unavailable"}
             </span>
           </div>
           <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-96">

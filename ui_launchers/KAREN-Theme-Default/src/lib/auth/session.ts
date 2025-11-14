@@ -8,6 +8,52 @@
  */
 import { getHighestRole, ROLE_PERMISSIONS, type UserRole, type Permission } from "@/components/security/rbac-shared";
 
+const ACCESS_TOKEN_STORAGE_KEY = "karen_access_token";
+
+const tokenStorageAvailable = (): boolean =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+function getStoredAccessToken(): string | null {
+  if (!tokenStorageAvailable()) {
+    return null;
+  }
+  try {
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredAccessToken(token: string): void {
+  if (!tokenStorageAvailable()) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function persistAccessToken(token: string): void {
+  setStoredAccessToken(token);
+}
+
+export function clearPersistedAccessToken(): void {
+  clearStoredAccessToken();
+}
+
+function clearStoredAccessToken(): void {
+  if (!tokenStorageAvailable()) {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 // Simplified types for session management
 export interface SessionData {
   userId: string;
@@ -36,6 +82,7 @@ export function getSession(): SessionData | null {
  */
 export function clearSession(): void {
   currentSession = null;
+  clearStoredAccessToken();
 }
 /**
  * Check if current session exists (simple boolean check)
@@ -51,7 +98,13 @@ export function hasSessionCookie(): boolean {
     return false;
   }
   // Check for auth token cookie (backend sets 'auth_token' cookie)
-  return document.cookie.includes('auth_token=');
+  const cookieString = document.cookie || "";
+  const cookieNames = ["auth_token", "kari_session", "session_token"];
+  if (cookieNames.some((name) => cookieString.includes(`${name}=`))) {
+    return true;
+  }
+
+  return Boolean(getStoredAccessToken());
 }
 /**
  * Simple session validation that makes single API call
@@ -177,6 +230,9 @@ export async function login(
     const userData = data.user || data.user_data;
     if (!userData) {
       throw new Error('No user data in login response');
+    }
+    if (data.access_token) {
+      setStoredAccessToken(data.access_token);
     }
     const sessionData: SessionData = {
       userId: userData.user_id,

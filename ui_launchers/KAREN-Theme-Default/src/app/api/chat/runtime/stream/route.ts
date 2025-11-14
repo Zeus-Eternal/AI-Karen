@@ -32,6 +32,23 @@ interface CapabilitiesResponse {
   };
 }
 
+type ParameterType = 'float' | 'integer' | 'boolean' | 'array';
+
+interface ParameterDefinition {
+  type: ParameterType;
+  min?: number;
+  max?: number;
+  default?: number | boolean | string | string[];
+  step?: number;
+  items?: string;
+}
+
+interface ParameterSchema {
+  text_generation?: Record<string, ParameterDefinition>;
+  image_generation?: Record<string, ParameterDefinition>;
+  embedding?: Record<string, ParameterDefinition>;
+}
+
 /** ---------------- Utilities ---------------- */
 
 function arr(val: unknown): unknown[] {
@@ -190,8 +207,8 @@ function getSupportedModes(model: unknown): string[] {
 }
 
 /** Build parameter specifications for different model types */
-function buildParameterSpecs(model: unknown): Record<string, any> {
-  const params: Record<string, any> = {};
+function buildParameterSpecs(model: unknown): ParameterSchema {
+  const params: ParameterSchema = {};
   const t = normType(model);
 
   if (t === 'text' || t === 'text_generation' || hasCap(model, 'text-generation') || hasCap(model, 'chat')) {

@@ -22,7 +22,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-interface ModernErrorBoundaryProps {
+  interface WindowWithGtag extends Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+
+  interface ModernErrorBoundaryProps {
   children: ReactNode;
   /** Custom fallback renderer; if provided, this takes precedence. */
   fallback?: (error: Error, errorInfo: ErrorInfo, retry: () => void) => ReactNode;
@@ -164,7 +168,7 @@ export class ModernErrorBoundary extends Component<
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
-        section: this.props.section ?? "unknown",
+        section: this.props.section ?? "any",
         timestamp: new Date().toISOString(),
         url: typeof window !== "undefined" ? window.location.href : undefined,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
@@ -173,13 +177,16 @@ export class ModernErrorBoundary extends Component<
       };
 
       // Example GA bridge (non-blocking, guarded)
-      if (typeof window !== "undefined" && (window as unknown).gtag) {
-        (window as unknown).gtag("event", "exception", {
-          description: `${payload.section}: ${payload.message}`,
-          fatal: false,
-          error_id: payload.errorId,
-          retry_count: payload.retryCount,
-        });
+      if (typeof window !== "undefined") {
+        const win = window as WindowWithGtag;
+        if (typeof win.gtag === "function") {
+          win.gtag("event", "exception", {
+            description: `${payload.section}: ${payload.message}`,
+            fatal: false,
+            error_id: payload.errorId,
+            retry_count: payload.retryCount,
+          });
+        }
       }
 
       // Hook for Sentry or custom service
@@ -241,12 +248,12 @@ export class ModernErrorBoundary extends Component<
   private handleReportBug = () => {
     const { error, errorInfo, errorId, retryCount } = this.state;
     const section = this.props.section ?? "App";
-    const subject = encodeURIComponent(`Bug Report: ${section} - ${error?.message ?? "Unknown Error"}`);
+    const subject = encodeURIComponent(`Bug Report: ${section} - ${error?.message ?? "any Error"}`);
     const body = encodeURIComponent(
       [
         "Error Details:",
         `- Section: ${section}`,
-        `- Message: ${error?.message ?? "Unknown"}`,
+        `- Message: ${error?.message ?? "any"}`,
         `- Stack: ${error?.stack ?? "N/A"}`,
         `- Component Stack: ${errorInfo?.componentStack ?? "N/A"}`,
         `- Error ID: ${errorId ?? "N/A"}`,
@@ -327,7 +334,7 @@ export class ModernErrorBoundary extends Component<
               <AlertTitle>Error Details</AlertTitle>
               <AlertDescription className="mt-2">
                 <p className="font-medium text-sm md:text-base">
-                  {error?.message || "Unknown error occurred"}
+                  {error?.message || "any error occurred"}
                 </p>
                 {retryCount > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">

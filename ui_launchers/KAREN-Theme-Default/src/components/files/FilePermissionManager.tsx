@@ -5,7 +5,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { ErrorBoundary, type ErrorFallbackProps } from "@/components/error-handling/ErrorBoundary";
 
 import { AgGridReact } from "ag-grid-react";
-import { ColDef, SelectionChangedEvent } from "ag-grid-community";
+import { ColDef, ICellRendererParams, SelectionChangedEvent } from "ag-grid-community";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,7 @@ import {
   Unlock,
   Lock,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -203,7 +204,10 @@ const PermissionTypeRenderer: React.FC<{ value: PermissionType }> = ({
   );
 };
 
-const UserRenderer: React.FC<{ data: FilePermission }> = ({ data }) => {
+const UserRenderer: React.FC<{ data?: FilePermission | null }> = ({ data }) => {
+  if (!data) {
+    return <span>-</span>;
+  }
   if (data.user_id) {
     const label = data.user_id;
     return (
@@ -224,7 +228,10 @@ const UserRenderer: React.FC<{ data: FilePermission }> = ({ data }) => {
   return <span>-</span>;
 };
 
-const StatusRenderer: React.FC<{ data: FilePermission }> = ({ data }) => {
+const StatusRenderer: React.FC<{ data?: FilePermission | null }> = ({ data }) => {
+  if (!data) {
+    return null;
+  }
   const isExpired = !!(data.expires_at && new Date(data.expires_at) < new Date());
   const isActive = data.is_active && !isExpired;
   return (
@@ -245,12 +252,12 @@ const StatusRenderer: React.FC<{ data: FilePermission }> = ({ data }) => {
 };
 
 const ActionsRenderer: React.FC<{
-  data: FilePermission;
+  data?: FilePermission | null;
   onEdit: (permission: FilePermission) => void;
   onDelete: (permissionId: string) => void;
   readOnly: boolean;
 }> = ({ data, onEdit, onDelete, readOnly }) => {
-  if (readOnly) return null;
+  if (readOnly || !data) return null;
   return (
     <div className="flex items-center gap-1">
       <Button
@@ -326,28 +333,32 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
     setSelectedPermissions(selectedRows);
   }, []);
 
-  const permissionColumns = useMemo<ColDef[]>(
+  const permissionColumns = useMemo<ColDef<FilePermission>[]>(
     () => [
       {
         headerName: "User/Role",
-        field: "user_role",
         flex: 1,
         minWidth: 150,
-        cellRenderer: UserRenderer as unknown,
+        cellRenderer: (params: ICellRendererParams<FilePermission>) => (
+          <UserRenderer data={params.data ?? null} />
+        ),
         filter: "agTextColumnFilter",
       },
       {
         headerName: "Permission",
         field: "permission_type",
         width: 140,
-        cellRenderer: PermissionTypeRenderer as unknown,
+        cellRenderer: (params: ICellRendererParams<FilePermission>) => (
+          <PermissionTypeRenderer value={params.data?.permission_type ?? "read"} />
+        ),
         filter: "agSetColumnFilter",
       },
       {
         headerName: "Status",
-        field: "status",
         width: 130,
-        cellRenderer: StatusRenderer as unknown,
+        cellRenderer: (params: ICellRendererParams<FilePermission>) => (
+          <StatusRenderer data={params.data ?? null} />
+        ),
         filter: "agSetColumnFilter",
       },
       {
@@ -375,14 +386,14 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
       },
       {
         headerName: "Actions",
-        field: "actions",
+        field: undefined,
         width: 110,
         sortable: false,
         filter: false,
         pinned: "right",
-        cellRenderer: (params: Record<string, unknown>) => (
+        cellRenderer: (params: ICellRendererParams<FilePermission>) => (
           <ActionsRenderer
-            data={params.data}
+            data={params.data ?? null}
             onEdit={handleEditPermission}
             onDelete={handleDeletePermission}
             readOnly={readOnly}
@@ -781,7 +792,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
           </CardHeader>
           <CardContent className="p-0 md:p-6">
             <div className="ag-theme-alpine w-full" style={{ height: 420 }}>
-              <AgGridReact
+              <AgGridReact<FilePermission>
                 rowData={currentPermissions}
                 columnDefs={permissionColumns}
                 defaultColDef={defaultColDef}
@@ -791,15 +802,15 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                 enableCellTextSelection
                 suppressRowClickSelection
                 rowMultiSelectWithClick
-                getRowStyle={(params) => {
-                  const p = params.data as FilePermission;
-                  const expired = !!(p.expires_at && new Date(p.expires_at) < new Date());
-                  if (!p.is_active || expired) {
+                getRowStyle={({ data }) => {
+                  if (!data) return undefined;
+                  const expired = !!(data.expires_at && new Date(data.expires_at) < new Date());
+                  if (!data.is_active || expired) {
                     return { backgroundColor: "#fef2f2", opacity: 0.75 };
                   }
                   return undefined;
                 }}
-                noRowsOverlayComponent={NoRowsOverlay as unknown}
+                noRowsOverlayComponent={NoRowsOverlay}
               />
             </div>
           </CardContent>

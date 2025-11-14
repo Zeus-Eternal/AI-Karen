@@ -66,6 +66,7 @@ interface MetricData {
   requests: number;
   errors: number;
   responseTime: number;
+  name?: string;
 }
 interface PerformanceProfile {
   function: string;
@@ -153,7 +154,7 @@ export function ExtensionDebugger({
         },
       ];
       // Sample metrics data
-      const sampleMetrics = Array.from({ length: 30 }, (_, i) => ({
+      const sampleMetrics: MetricData[] = Array.from({ length: 30 }, (_, i) => ({
         timestamp: new Date(Date.now() - (29 - i) * 60000).toISOString(),
         cpu: Math.random() * 50 + 10,
         memory: Math.random() * 200 + 100,
@@ -161,6 +162,7 @@ export function ExtensionDebugger({
         requests: Math.floor(Math.random() * 50 + 10),
         errors: Math.floor(Math.random() * 5),
         responseTime: Math.random() * 500 + 100,
+        name: undefined,
       }));
       // Sample performance profile
       const sampleProfile: PerformanceProfile[] = [

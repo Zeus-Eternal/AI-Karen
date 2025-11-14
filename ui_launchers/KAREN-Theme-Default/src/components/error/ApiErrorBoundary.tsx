@@ -26,7 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-interface ApiErrorBoundaryProps {
+export interface ApiErrorBoundaryProps {
   children: ReactNode;
   fallback?: (
     error: ApiError,
@@ -142,8 +142,8 @@ export class ApiErrorBoundary extends Component<
       msg.includes("network") ||
       msg.includes("cors") ||
       msg.includes("timeout") ||
-      (e as unknown).status !== undefined ||
-      (e as unknown).endpoint !== undefined
+      typeof e.status !== "undefined" ||
+      typeof e.endpoint !== "undefined"
     );
   }
 

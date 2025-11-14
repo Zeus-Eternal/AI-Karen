@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /** ---------------- Types ---------------- */
 
+type NumericParam = {
+  type: 'float' | 'integer';
+  min: number;
+  max: number;
+  default: number;
+  step?: number;
+};
+
+type BooleanParam = {
+  type: 'boolean';
+  default: boolean;
+};
+
+type ArrayParam = {
+  type: 'array';
+  items: string;
+  default: unknown[];
+};
+
+type ParameterDefinition = NumericParam | BooleanParam | ArrayParam;
+
+interface ImageGenerationParams {
+  width: NumericParam;
+  height: NumericParam;
+  steps: NumericParam;
+  guidance_scale: NumericParam;
+  seed: NumericParam;
+  batch_size: NumericParam;
+  strength?: NumericParam;
+}
+
+interface ParameterSpecs {
+  text_generation?: Record<string, ParameterDefinition>;
+  image_generation?: ImageGenerationParams;
+  embedding?: Record<string, ParameterDefinition>;
+}
+
 interface ModelCapability {
   name: string;
   description: string;
@@ -20,11 +57,7 @@ interface CapabilitiesResponse {
   type: string;
   capabilities: ModelCapability[];
   supported_modes: string[];
-  parameters: {
-    text_generation?: Record<string, unknown>;
-    image_generation?: Record<string, unknown>;
-    embedding?: Record<string, unknown>;
-  };
+  parameters: ParameterSpecs;
   compatibility: {
     multimodal: boolean;
     streaming: boolean;
@@ -190,8 +223,8 @@ function getSupportedModes(model: unknown): string[] {
 }
 
 /** Build parameter specifications for different model types */
-function buildParameterSpecs(model: unknown): Record<string, any> {
-  const params: Record<string, any> = {};
+function buildParameterSpecs(model: unknown): ParameterSpecs {
+  const params: ParameterSpecs = {};
   const t = normType(model);
 
   if (t === 'text' || t === 'text_generation' || hasCap(model, 'text-generation') || hasCap(model, 'chat')) {
@@ -214,8 +247,9 @@ function buildParameterSpecs(model: unknown): Record<string, any> {
       seed: { type: 'integer', min: -1, max: 2147483647, default: -1 },
       batch_size: { type: 'integer', min: 1, max: 4, default: 1 },
     };
+    const imageParams = params.image_generation;
     if (hasCap(model, 'img2img')) {
-      params.image_generation.strength = { type: 'float', min: 0.0, max: 1.0, default: 0.8 };
+      imageParams.strength = { type: 'float', min: 0.0, max: 1.0, default: 0.8 };
     }
 
     // Provider-aware tuning examples
@@ -227,16 +261,16 @@ function buildParameterSpecs(model: unknown): Record<string, any> {
     ).toUpperCase();
 
     if (provider === 'flux') {
-      params.image_generation.guidance_scale.min = 0.0;
-      params.image_generation.guidance_scale.max = 10.0;
-      params.image_generation.guidance_scale.default = 3.5;
-      params.image_generation.width.max = 2048;
-      params.image_generation.height.max = 2048;
+      imageParams.guidance_scale.min = 0.0;
+      imageParams.guidance_scale.max = 10.0;
+      imageParams.guidance_scale.default = 3.5;
+      imageParams.width.max = 2048;
+      imageParams.height.max = 2048;
     } else if (provider === 'stable-diffusion' && baseModel === 'SDXL') {
-      params.image_generation.width.max = 1536;
-      params.image_generation.height.max = 1536;
-      params.image_generation.width.default = 1024;
-      params.image_generation.height.default = 1024;
+      imageParams.width.max = 1536;
+      imageParams.height.max = 1536;
+      imageParams.width.default = 1024;
+      imageParams.height.default = 1024;
     }
   }
 

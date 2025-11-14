@@ -33,11 +33,13 @@ function getArrayField(data: unknown, field: string): unknown[] {
   const value = record[field];
   return Array.isArray(value) ? value : [];
 }
+
 const CANDIDATE_BACKENDS = getBackendCandidates();
 const HEALTH_TIMEOUT_MS = 2000;
 export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
+    type HealthRecord = Record<string, unknown>;
     const bases = CANDIDATE_BACKENDS;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
@@ -60,7 +62,6 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // keepalive is supported in Node/undici runtimes
             keepalive: true,
             cache: 'no-store',
           }),
@@ -74,7 +75,6 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // keepalive is supported in Node/undici runtimes
             keepalive: true,
             cache: 'no-store',
           })
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       }
     }
       // Process health response
-      let healthData: unknown = { status: 'unknown' };
+      let healthData: HealthRecord = { status: 'unknown' };
       if (healthResponse && healthResponse.status === 'fulfilled') {
         const response = healthResponse.value;
         if (response.ok) {
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         }
       }
       // Process providers response
-      let providersData: unknown = null;
+      let providersData: HealthRecord | null = null;
       if (providersResponse && providersResponse.status === 'fulfilled') {
         if (providersResponse.value.ok) {
           try {
@@ -137,7 +137,8 @@ export async function GET(request: NextRequest) {
         getStringField(healthData, 'state')
       ).toLowerCase();
       const normalizedStatus = ['ok', 'healthy', 'up'].includes(statusValue) ? 'healthy' : 'degraded';
-      const providersRaw = (providersData as { providers?: unknown })?.providers;
+      const providersRecord = providersData ?? {};
+      const providersRaw = providersRecord.providers;
       const providers = Array.isArray(providersRaw) ? (providersRaw as unknown[]) : [];
       const typedProviders = providers.map(asRecord);
       const totalModels = typedProviders.reduce((total, provider) => {
@@ -169,20 +170,17 @@ export async function GET(request: NextRequest) {
         : (getStringField(healthData, 'ai_status') || normalizedStatus);
       const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
       const lastErrorMessage =
-        getStringField(healthData, 'reason') ||
-        getStringField(healthData, 'message') ||
-        getStringField(providersData, 'message');
-        const degradedReason = normalizedStatus === 'healthy'
-          ? ''
-          : lastErrorMessage
-              ? `System experiencing issues: ${lastErrorMessage}`
-              : 'System experiencing issues';
+        getStringField(healthData, 'reason') || getStringField(healthData, 'message');
+      const degradedReason = normalizedStatus === 'healthy'
+        ? ''
+        : lastErrorMessage
+            ? `System experiencing issues: ${lastErrorMessage}`
+            : 'System experiencing issues';
 
-      const compatibilityPayload = asRecord(healthData).payload ?? null;
-      const data = {
-        degraded_mode: isActive,
-        is_active: isActive,
-        status: normalizedStatus,
+        const data = {
+          degraded_mode: isActive,
+          is_active: isActive,
+          status: normalizedStatus,
           reason: degradedReason,
         infrastructure_issues: getArrayField(healthData, 'infrastructure_issues'),
         core_helpers_available: {
@@ -194,10 +192,10 @@ export async function GET(request: NextRequest) {
         failed_providers: remoteProviderOutages,
         providers,
         total_providers:
-          getNumericField(asRecord(providersData), 'total_providers') || providers.length,
+          getNumericField(providersRecord, 'total_providers') || providers.length,
         models_available: totalModels,
         timestamp: new Date().toISOString(),
-        compatibility_payload: compatibilityPayload
+        compatibility_payload: asRecord(healthData).payload ?? null
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });

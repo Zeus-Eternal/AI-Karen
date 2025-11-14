@@ -23,7 +23,7 @@ import {
   type HealthEvent,
   type BackendEndpoint,
 } from "../../lib/connection/health-monitor";
-import type { BackendHealthData, ServiceHealth } from "@/types/health";
+import type { BackendHealthData } from "@/types/health";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";

@@ -9,7 +9,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
 
   const handleLoginSuccess = async () => {
-    const redirectFromQuery = searchParams.get('redirectPath');
+    const redirectFromQuery = searchParams?.get('redirectPath');
     const redirectFromStorage = sessionStorage.getItem('redirectAfterLogin');
     const redirectPath = redirectFromQuery ?? redirectFromStorage ?? '/';
 

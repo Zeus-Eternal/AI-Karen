@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import ErrorBoundary, { type ErrorBoundaryProps } from "./ErrorBoundary";
+import { ErrorBoundary, type ErrorBoundaryProps } from "./ErrorBoundary";
 
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,

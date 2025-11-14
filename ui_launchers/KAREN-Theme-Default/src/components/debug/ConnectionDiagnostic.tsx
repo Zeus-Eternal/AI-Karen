@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { getConfigManager } from '@/lib/endpoint-config';
 
 interface ConnectionTest {
   endpoint: string;
@@ -55,7 +56,7 @@ export function ConnectionDiagnostic() {
         }
       } catch (error) {
         test.status = 'error';
-        test.error = error instanceof Error ? error.message : 'Unknown error';
+        test.error = error instanceof Error ? error.message : 'any error';
       }
 
       setTests([...testResults]);

@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { BarChart3, MessageSquare, Clock, Target, Activity, Brain, TrendingUp, Code } from 'lucide-react';
 
-import type { ChatMessage } from '@/components/ChatInterface';
+import type { ChatMessage, ChatAnalytics } from '@/components/ChatInterface';
 
 interface AnalyticsTabProps {
-  analytics: unknown;
+  analytics: ChatAnalytics;
   messages: ChatMessage[];
 }
 

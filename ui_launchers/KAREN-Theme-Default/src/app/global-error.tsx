@@ -7,7 +7,7 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  console.error('Global application error boundary triggered', error);
+  console.error('Global application error boundary triggered', _error);
   return (
     <html>
       <body>

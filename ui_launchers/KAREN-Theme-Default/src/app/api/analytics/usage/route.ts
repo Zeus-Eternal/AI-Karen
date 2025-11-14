@@ -48,6 +48,9 @@ export async function GET(request: NextRequest) {
     if (authHeader) fwdHeaders.Authorization = authHeader;
     if (cookieHeader) fwdHeaders.Cookie = cookieHeader;
 
+    const getErrorMessage = (err: unknown) =>
+      err instanceof Error ? err.message : String(err ?? "");
+
     let upstreamResponse: Response | null = null;
     let upstreamBaseUsed: string | null = null;
     let lastErr: unknown = null;
@@ -64,7 +67,6 @@ export async function GET(request: NextRequest) {
             method: 'GET',
             headers: fwdHeaders,
             signal: controller.signal,
-            // keepalive is supported in Node/undici and Edge runtimes
             keepalive: true,
             cache: 'no-store',
           });
@@ -74,16 +76,12 @@ export async function GET(request: NextRequest) {
           upstreamBaseUsed = base;
           lastErr = null;
           break; // success for this base
-        } catch (err) {
+        } catch (err: unknown) {
           clearTimeout(t);
           lastErr = err;
 
-          const msg = err instanceof Error ? err.message : String(err ?? 'Unknown error');
-          const errName =
-            typeof err === 'object' && err !== null && 'name' in err
-              ? String((err as { name?: unknown }).name ?? '')
-              : '';
-          const isAbort = errName === 'AbortError';
+          const msg = getErrorMessage(err);
+          const isAbort = (err as { name?: string })?.name === 'AbortError';
           const isSocket =
             msg.includes('UND_ERR_SOCKET') ||
             msg.includes('other side closed') ||
@@ -102,15 +100,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!upstreamResponse) {
-      const lastErrorDetail =
-        lastErr instanceof Error
-          ? lastErr.message
-          : typeof lastErr === 'string'
-            ? lastErr
-            : 'unavailable';
       // Nothing succeeded; surface a clean 502 with no-store
       return NextResponse.json(
-        { error: 'Analytics request failed', detail: lastErrorDetail },
+        {
+          error: 'Analytics request failed',
+          detail: lastErr ? getErrorMessage(lastErr) : 'unavailable',
+        },
         noStore({ status: 502 })
       );
     }
@@ -137,18 +132,17 @@ export async function GET(request: NextRequest) {
 
     // Mirror upstream status on errors; enrich on success
     if (!upstreamResponse.ok) {
-      const payload: Record<string, unknown> =
-        typeof data === 'string'
-          ? { error: data }
-          : typeof data === 'object' && data !== null
-            ? (data as Record<string, unknown>)
-            : { error: 'Invalid upstream payload' };
+      const payload = typeof data === 'string' ? { error: data } : data;
+      const payloadRecord =
+        typeof payload === 'object' && payload !== null
+          ? (payload as Record<string, unknown>)
+          : { error: String(payload ?? 'error') };
       return NextResponse.json(
         {
           proxy: 'analytics-gateway',
           upstream_status: upstreamResponse.status,
           base: upstreamBaseUsed,
-          ...payload,
+          ...payloadRecord,
         },
         noStore({ status: upstreamResponse.status })
       );
@@ -166,36 +160,29 @@ export async function GET(request: NextRequest) {
     // Forward Set-Cookie (array or single) if upstream set any session context
     try {
       const cookies: string[] = [];
-      upstreamResponse.headers.forEach((value, key) => {
-        if (key.toLowerCase() === 'set-cookie' && value) {
-          cookies.push(value);
-        }
-      });
+      for (const [k, v] of upstreamResponse.headers.entries()) {
+        if (String(k).toLowerCase() === 'set-cookie' && v) cookies.push(String(v));
+      }
       const single = upstreamResponse.headers.get('set-cookie');
       if (single && !cookies.includes(single)) cookies.push(single);
-      for (const raw of cookies) {
-        res.headers.append('Set-Cookie', raw);
-      }
+      for (const raw of cookies) res.headers.append('Set-Cookie', raw);
     } catch {
       const single = upstreamResponse.headers.get('set-cookie');
       if (single) res.headers.set('Set-Cookie', single);
     }
 
     // Trace headers (optional, safe to expose)
-    res.headers.set('X-Upstream-Base', String(upstreamBaseUsed || 'unknown'));
+    res.headers.set('X-Upstream-Base', String(upstreamBaseUsed || 'any'));
     res.headers.set('X-Proxy-Cache', 'no-store');
 
     return res;
-  } catch (error: unknown) {
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : String(error ?? 'Internal server error');
     return NextResponse.json(
       {
         error: 'Internal server error',
-        detail:
-          error instanceof Error
-            ? error.message
-            : typeof error === 'string'
-              ? error
-              : 'unknown',
+        detail,
       },
       noStore({ status: 500 })
     );

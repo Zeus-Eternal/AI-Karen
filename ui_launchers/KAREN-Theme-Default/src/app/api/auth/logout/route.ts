@@ -43,6 +43,14 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    result.cookies.set('kari_session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
     result.cookies.set('session_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -63,6 +71,7 @@ export async function POST(request: NextRequest) {
 
     result.cookies.set('auth_token', '', { maxAge: 0, path: '/' });
     result.cookies.set('refresh_token', '', { maxAge: 0, path: '/' });
+    result.cookies.set('kari_session', '', { maxAge: 0, path: '/' });
     result.cookies.set('session_token', '', { maxAge: 0, path: '/' });
 
     return result;

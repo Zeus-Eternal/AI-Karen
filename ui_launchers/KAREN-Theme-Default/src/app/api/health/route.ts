@@ -475,10 +475,15 @@ function buildForwardHeaders(request: NextRequest): Record<string, string> {
 
   const authHeader = request.headers.get('authorization');
   const authCookie = request.cookies.get('auth_token')?.value;
+  const sessionCookie =
+    request.cookies.get('kari_session')?.value ||
+    request.cookies.get('session_token')?.value;
   if (authHeader) {
     headers['Authorization'] = authHeader;
   } else if (authCookie) {
     headers['Authorization'] = `Bearer ${authCookie}`;
+  } else if (sessionCookie) {
+    headers['Authorization'] = `Bearer ${sessionCookie}`;
   }
 
   const cookieHeader = request.headers.get('cookie');
@@ -525,7 +530,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const totalResponseTime = Date.now() - startTime;
     updateRequestMetrics(totalResponseTime, response.ok);
-    
+
+    // Handle backend authentication failures by returning a graceful fallback
+    if (response.status === 401 || response.status === 403) {
+      const fallbackResponse = await buildFallbackHealthResponse(
+        'Health endpoint authentication required',
+        new Error('Backend health check requires authentication')
+      );
+      return NextResponse.json(
+        {
+          ...fallbackResponse,
+          status: 'degraded',
+          error: 'Authentication required',
+          details: 'Health checks require a valid session token',
+        },
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }
+      );
+    }
+
     let data: HealthResponsePayload;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {

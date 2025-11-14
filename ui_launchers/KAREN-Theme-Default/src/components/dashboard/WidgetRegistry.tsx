@@ -9,7 +9,8 @@ import {
   FileText,
   type LucideIcon,
 } from "lucide-react";
-import type { WidgetRegistry as WidgetRegistryType, WidgetConfig } from "@/types/dashboard";
+import type { ComponentType } from "react";
+import type { WidgetRegistry as WidgetRegistryType, WidgetConfig, WidgetProps } from "@/types/dashboard";
 
 // Actual widget components
 import MetricWidget from "./widgets/MetricWidget";
@@ -156,9 +157,9 @@ export const widgetRegistry = {
  * ---------------------------------------------------------------------------*/
 export type WidgetTypeKey = keyof typeof widgetRegistry;
 
-export const getWidgetComponent = (type: string) => {
-  const widget = (widgetRegistry as Record<string, (typeof widgetRegistry)[WidgetTypeKey]>)[type];
-  return widget?.component ?? null;
+export const getWidgetComponent = (type: string): ComponentType<WidgetProps> | null => {
+  const widget = widgetRegistry[type as WidgetTypeKey];
+  return (widget?.component as ComponentType<WidgetProps>) ?? null;
 };
 
 export const getWidgetDefaultConfig = (type: string): Partial<WidgetConfig> => {

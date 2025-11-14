@@ -97,11 +97,6 @@ export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
     return <span className={className}>{formattedValue}</span>;
   });
 
-type RelativeTimeParts = {
-  value: number;
-  unit: Intl.RelativeTimeFormatUnit;
-};
-
 const useCurrentTimestamp = (intervalMs = 60_000) => {
   return React.useSyncExternalStore(
     React.useCallback((onStoreChange) => {

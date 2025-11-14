@@ -1,7 +1,7 @@
 // ui_launchers/KAREN-Theme-Default/src/components/chat/enhanced/ConversationThreading.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { ChangeEvent, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,8 +56,10 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
   className = "",
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "archived">("all");
-  const [sortBy, setSortBy] = useState<"updated" | "created" | "messages">("updated");
+  type FilterStatus = "all" | "active" | "archived";
+  type SortBy = "updated" | "created" | "messages";
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("updated");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newThreadTopic, setNewThreadTopic] = useState("");
 
@@ -86,8 +88,8 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "created": {
-          const aTime = new Date(a.createdAt as unknown).getTime();
-          const bTime = new Date(b.createdAt as unknown).getTime();
+          const aTime = new Date(a.createdAt).getTime();
+          const bTime = new Date(b.createdAt).getTime();
           return bTime - aTime;
         }
         case "messages": {
@@ -97,8 +99,8 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
         }
         case "updated":
         default: {
-          const aTime = new Date(a.updatedAt as unknown).getTime();
-          const bTime = new Date(b.updatedAt as unknown).getTime();
+          const aTime = new Date(a.updatedAt ?? a.createdAt).getTime();
+          const bTime = new Date(b.updatedAt ?? b.createdAt).getTime();
           return bTime - aTime;
         }
       }
@@ -253,7 +255,7 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {formatDistanceToNow(new Date(thread.updatedAt as unknown), { addSuffix: true })}
+              {formatDistanceToNow(new Date(thread.updatedAt ?? thread.createdAt), { addSuffix: true })}
             </span>
 
             <span className="flex items-center gap-1">
@@ -351,7 +353,12 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <select
               id="filter-status"
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as unknown)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                const value = e.target.value;
+                if (value === "all" || value === "active" || value === "archived") {
+                  setFilterStatus(value);
+                }
+              }}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base"
               aria-label="Filter by status"
             >
@@ -366,7 +373,12 @@ export const ConversationThreading: React.FC<ConversationThreadingProps> = ({
             <select
               id="sort-by"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as unknown)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                const value = e.target.value;
+                if (value === "updated" || value === "created" || value === "messages") {
+                  setSortBy(value);
+                }
+              }}
               className="text-sm border rounded px-2 py-1 bg-background md:text-base"
               aria-label="Sort threads"
             >

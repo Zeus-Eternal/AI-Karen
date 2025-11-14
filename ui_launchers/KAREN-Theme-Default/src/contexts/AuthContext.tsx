@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, ReactNode } from "react";
 import { connectivityLogger } from "@/lib/logging";
-import { logout as sessionLogout, getCurrentUser, hasSessionCookie } from "@/lib/auth/session";
+import { logout as sessionLogout, getCurrentUser, hasSessionCookie, persistAccessToken, setSession } from "@/lib/auth/session";
 import {
   getConnectionManager,
   ConnectionError,
@@ -365,6 +365,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           lastActivity: new Date(),
           isRefreshing: false,
         }));
+        setSession({
+          userId: user.userId,
+          email: user.email,
+          roles: user.roles,
+          tenantId: user.tenantId ?? "default",
+          role: user.role,
+          permissions: user.permissions,
+        });
 
         return true;
       }
@@ -461,7 +469,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       // Handle successful login response
       const data = result.data;
       if (data?.access_token) {
-        localStorage.setItem("karen_access_token", data.access_token);
+        persistAccessToken(data.access_token);
       }
       const userData = extractUserData(data);
       if (!userData) {
@@ -475,6 +483,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Create user object
       const user = createUserFromApiData(userData);
+      const sessionData = {
+        userId: user.userId,
+        email: user.email,
+        roles: user.roles,
+        tenantId: user.tenantId ?? "default",
+        role: user.role,
+        permissions: user.permissions,
+      };
+      setSession(sessionData);
 
       // Update authentication state
       setUser(user);
@@ -715,6 +732,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           error: null,
           lastActivity: new Date(),
         }));
+        setSession({
+          userId: user.userId,
+          email: user.email,
+          roles: user.roles,
+          tenantId: user.tenantId ?? "default",
+          role: user.role,
+          permissions: user.permissions,
+        });
 
         // Start session refresh timer if not already running
         if (!sessionRefreshTimer.current) {

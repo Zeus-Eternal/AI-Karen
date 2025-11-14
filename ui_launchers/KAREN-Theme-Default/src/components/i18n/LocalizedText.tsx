@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useI18n } from '../../providers/i18n-hooks';
-import type { InterpolationOptions } from '../../lib/i18n';
+import type { InterpolationOptions, PluralOptions } from '../../lib/i18n';
 
 export interface LocalizedTextProps {
   /** Translation key */
@@ -39,7 +39,10 @@ export function LocalizedText({
   const { t } = useI18n();
   
   // Build translation options dynamically to match the expected type
-  const translationOptions: InterpolationOptions & { ns?: string; count?: number } = {
+  const translationOptions: InterpolationOptions &
+    Partial<PluralOptions> & {
+      ns?: string;
+    } = {
     ...values,
   };
   

@@ -30,6 +30,12 @@ import { getServiceErrorHandler } from "@/services/errorHandler";
 // Icons
 import { AlertCircle, Network, ShieldX, RefreshCw, CheckCircle2, Info, Bug, Trash2, KeyRound } from "lucide-react";
 
+interface ExtendedError extends Error {
+  status?: number;
+  endpoint?: string;
+  isNetworkError?: boolean;
+}
+
 // Example component that throws different error shapes
 const ComponentThatThrows = ({ errorType }: { errorType: string }) => {
   switch (errorType) {
@@ -37,19 +43,19 @@ const ComponentThatThrows = ({ errorType }: { errorType: string }) => {
       throw new Error("Generic component error");
     }
     case "api": {
-      const apiError = new Error("API request failed") as unknown;
+      const apiError = new Error("API request failed") as ExtendedError;
       apiError.name = "ApiError";
       apiError.status = 500;
       apiError.endpoint = "/api/example";
       throw apiError;
     }
     case "network": {
-      const networkError = new Error("Network connection failed") as unknown;
+      const networkError = new Error("Network connection failed") as ExtendedError;
       networkError.isNetworkError = true;
       throw networkError;
     }
     case "auth": {
-      const authError = new Error("Unauthorized access") as unknown;
+      const authError = new Error("Unauthorized access") as ExtendedError;
       authError.status = 401;
       throw authError;
     }
@@ -91,13 +97,13 @@ const ErrorHandlingExample: React.FC = () => {
     });
   const showWarning = (message: string, options?: Partial<ErrorToastProps>) =>
     pushToast({ message, type: "warning", ...options });
-  const showInfo = (message: string, options?: Partial<ErrorToastProps>) =>
-    pushToast({ message, type: "info", ...options });
-  const showSuccess = (
-    message: string,
-    options?: Partial<ErrorToastProps>
-  ) =>
-    pushToast({ message, type: "success", ...options });
+const showInfo = (message: string, options?: Partial<ErrorToastProps>) =>
+  pushToast({ message, type: "info", ...options });
+const showSuccess = (
+  message: string,
+  options?: Partial<ErrorToastProps>
+) =>
+  pushToast({ message, type: "success", ...options });
 
   // -------------------------------------------------------------------------
   const apiClient = enhancedApiClient; // ensure import is used for lint; not strictly required here

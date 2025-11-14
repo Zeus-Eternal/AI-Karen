@@ -66,12 +66,13 @@ export async function GET(_request: NextRequest) {
       },
       200
     );
-  } catch (error: Error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return json(
       {
         success: false,
         error: 'Failed to generate quality gates',
-        detail: error?.message ?? String(error),
+        detail: message,
       },
       500
     );
@@ -148,12 +149,13 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action. Use "override" or "recalculate".' },
       400
     );
-  } catch (error: Error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return json(
       {
         success: false,
         error: 'Failed to process quality gate action',
-        detail: error?.message ?? String(error),
+        detail: message,
       },
       500
     );

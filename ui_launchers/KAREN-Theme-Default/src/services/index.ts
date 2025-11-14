@@ -82,7 +82,13 @@ export type {
   WebSocketEventType as EnhancedWebSocketEventType,
 } from './enhanced-websocket-service';
 
-export { useWebSocket, useWebSocketSubscription, WebSocketService, websocketService } from './websocket-service';
+export {
+  useWebSocket,
+  useWebSocketSubscription,
+  WebSocketService,
+  getWebSocketService,
+  websocketService,
+} from './websocket-service';
 export type {
   ConnectionState as LegacyWebSocketConnectionState,
   WebSocketEventType as LegacyWebSocketEventType,
@@ -138,4 +144,3 @@ export type { ReasoningResponse, ReasoningRequest, FetchOptions } from './reason
 
 export { resourceMonitor, ResourceMonitor } from './resource-monitor';
 export type { ScalingRecommendation, CapacityPlan, ResourceThresholds, ResourceMetrics, ResourceAlert } from './resource-monitor';
-

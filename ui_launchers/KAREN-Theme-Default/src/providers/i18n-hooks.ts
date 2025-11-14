@@ -15,11 +15,13 @@ export function useI18n(): I18nContextValue {
 // Convenience hooks
 export function useTranslation(namespace?: string) {
   const { t } = useI18n();
-  const translate = (key: string, options?: InterpolationOptions & PluralOptions) => {
+  const translate = (key: string, options?: InterpolationOptions & Partial<PluralOptions>) => {
     const enrichedOptions =
       namespace !== undefined
-        ? ({ ...(options ?? {}), ns: namespace } as InterpolationOptions &
-            PluralOptions & { ns: string })
+        ? ({
+            ...(options ?? {}),
+            ns: namespace,
+          } as InterpolationOptions & Partial<PluralOptions> & { ns: string })
         : options;
     return t(key, enrichedOptions);
   };

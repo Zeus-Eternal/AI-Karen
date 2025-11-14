@@ -25,6 +25,13 @@ interface RoutingHistoryProps {
   limit?: number;
 }
 
+type RoutingHistoryResponse = {
+  status: string;
+  output?: {
+    events?: RoutingEvent[];
+  };
+};
+
 export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit = 50 }) => {
   const backend = getKarenBackend();
   const { toast } = useToast();
@@ -34,12 +41,12 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await backend.makeRequestPublic<{ status: string; output: unknown }>("/api/copilot/start", {
+      const res = await backend.makeRequestPublic<RoutingHistoryResponse>("/api/copilot/start", {
         method: "POST",
         body: JSON.stringify({ action: "routing.audit", payload: { limit } }),
       });
-      const out = (res as unknown)?.output || {};
-      setEvents(out.events || []);
+      const out = res.output ?? {};
+      setEvents(out.events ?? []);
     } catch (error) {
       console.error("Failed to load routing history", error);
       toast({ variant: "destructive", title: "Failed to load routing history" });
@@ -92,7 +99,7 @@ export const RoutingHistory: React.FC<RoutingHistoryProps> = ({ onClose, limit =
                       <span className="text-muted-foreground">corr: {e.correlation_id}</span>
                     )}
                     {e.timestamp && (
-                      <span className="text-muted-foreground">{new Date(e.timestamp as unknown).toLocaleString()}</span>
+                      <span className="text-muted-foreground">{new Date(e.timestamp).toLocaleString()}</span>
                     )}
                   </div>
                   {e.reason && (

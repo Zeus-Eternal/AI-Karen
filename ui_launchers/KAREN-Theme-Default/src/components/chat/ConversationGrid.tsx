@@ -72,6 +72,14 @@ const ParticipantsRenderer = (
   return participants.join(', ');
 };
 
+const titleCellStyle = { fontWeight: 500 };
+const messageCellStyle = {
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+const messageCountCellStyle = { textAlign: 'center' };
+
 export const ConversationGrid: React.FC<ConversationGridProps> = ({
   conversations = [],
   onConversationSelect,
@@ -92,7 +100,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       flex: 2,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellStyle: { fontWeight: '500' } as unknown
+      cellStyle: titleCellStyle
     },
     {
       field: 'lastMessage',
@@ -100,11 +108,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       flex: 3,
       sortable: false,
       filter: 'agTextColumnFilter',
-      cellStyle: { 
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
-      } as unknown
+      cellStyle: messageCellStyle
     },
     {
       field: 'lastActivity',
@@ -121,7 +125,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       width: 100,
       sortable: true,
       filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'center' } as unknown
+      cellStyle: messageCountCellStyle
     },
     {
       field: 'participants',
@@ -179,13 +183,14 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
     }));
 
     // Register row selection hook
-    hookIds.push(registerGridHook('conversations', 'rowSelected', async (params) => {
-      safeDebug('Conversation row selected:', params);
-      if (onConversationSelect && params.data) {
-        onConversationSelect(params.data);
-      }
-      return { success: true, selectedRow: params.data };
-    }));
+      hookIds.push(registerGridHook('conversations', 'rowSelected', async (params) => {
+        safeDebug('Conversation row selected:', params);
+        const selected = params.data as ConversationSummaryRow | undefined;
+        if (onConversationSelect && selected) {
+          onConversationSelect(selected);
+        }
+        return { success: true, selectedRow: selected };
+      }));
 
     return () => {
       // Cleanup hooks on unmount

@@ -4,11 +4,13 @@
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import type {
+  CellClickedEvent,
   ColDef,
   GridReadyEvent,
-  SelectionChangedEvent,
-  CellClickedEvent,
   ICellRendererParams,
+  RowClassParams,
+  RowStyle,
+  SelectionChangedEvent,
 } from 'ag-grid-community';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -399,7 +401,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     }
   }, [onFileSelect]);
 
-  const getRowStyle = useCallback((params: Record<string, unknown>) => {
+  const getRowStyle = useCallback((params: RowClassParams<FileMetadata>): RowStyle | undefined => {
     const file = params.data as FileMetadata;
     if (!file) return undefined;
     if (file.security_scan_result === 'malicious' || file.processing_status === 'quarantined') {

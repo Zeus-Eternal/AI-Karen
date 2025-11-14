@@ -48,6 +48,8 @@ interface SourceAttributionProps {
   showFilters?: boolean;
 }
 
+type SourceSortOption = "relevance" | "reliability" | "title";
+
 export const SourceAttribution: React.FC<SourceAttributionProps> = ({
   sources,
   onSourceClick,
@@ -58,7 +60,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"relevance" | "reliability" | "title">(
+  const [sortBy, setSortBy] = useState<SourceSortOption>(
     "relevance"
   );
 
@@ -253,7 +255,7 @@ export const SourceAttribution: React.FC<SourceAttributionProps> = ({
                 </SelectContent>
               </Select>
 
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as unknown)}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SourceSortOption)}>
                 <SelectTrigger className="w-44 h-8 text-xs" aria-label="Sort by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>

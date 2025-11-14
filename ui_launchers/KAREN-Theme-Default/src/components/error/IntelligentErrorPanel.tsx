@@ -166,8 +166,9 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
       );
 
       setAnalysis(response.data);
-    } catch (err: Error) {
-      setFetchError(err?.message || "Failed to analyze error");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to analyze error");
+      setFetchError(error.message || "Failed to analyze error");
 
       // Fallback analysis (minimal, but valid)
       setAnalysis({

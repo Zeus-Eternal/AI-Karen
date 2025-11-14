@@ -11,17 +11,46 @@ export interface MessageBubbleProps {
     role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp?: Date;
-    metadata?: Record<string, unknown>;
+    metadata?: MessageMetadata;
   };
+}
+
+export interface MessageMetadata {
+  provider?: string;
+  model?: string;
+  confidence?: number;
+  kire?: {
+    provider?: string;
+    model?: string;
+    confidence?: number;
+  };
+  kire_metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 const MessageBubbleComponent = ({ message }: MessageBubbleProps) => {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
-  const kire = (message.metadata && (message.metadata.kire || message.metadata.kire_metadata)) || undefined;
-  const provider = kire?.provider || (message.metadata && message.metadata.provider);
-  const model = kire?.model || (message.metadata && message.metadata.model);
-  const confidence = kire?.confidence ?? (message.metadata && message.metadata.confidence);
+  const metadata = message.metadata;
+  const kireMeta = metadata?.kire;
+  const provider =
+    typeof kireMeta?.provider === 'string'
+      ? kireMeta.provider
+      : typeof metadata?.provider === 'string'
+      ? metadata.provider
+      : undefined;
+  const model =
+    typeof kireMeta?.model === 'string'
+      ? kireMeta.model
+      : typeof metadata?.model === 'string'
+      ? metadata.model
+      : undefined;
+  const confidence =
+    typeof kireMeta?.confidence === 'number'
+      ? kireMeta.confidence
+      : typeof metadata?.confidence === 'number'
+      ? metadata.confidence
+      : undefined;
 
   return (
     <div className={`flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -39,7 +68,7 @@ const MessageBubbleComponent = ({ message }: MessageBubbleProps) => {
             <div className="mt-2 text-[11px] md:text-xs text-muted-foreground flex items-center gap-2">
               <span className="inline-flex items-center gap-1">
                 <span className="opacity-70">Model:</span>
-                <span className="font-medium">{provider ? `${provider}/` : ''}{model || 'unknown'}</span>
+                <span className="font-medium">{provider ? `${provider}/` : ''}{model || 'any'}</span>
               </span>
               {typeof confidence === 'number' && (
                 <span className="inline-flex items-center gap-1">

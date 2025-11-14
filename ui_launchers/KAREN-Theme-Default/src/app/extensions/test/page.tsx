@@ -12,7 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  * Test page to verify extension integration is working
  */
 
-import { useExtensionStatuses } from '@/lib/extensions/hooks';
+import {
+  useExtensionStatuses,
+  useExtensionRoutes,
+  useExtensionNavigation,
+  useExtensionHealth,
+  useExtensionPerformance,
+  useExtensionTaskMonitoring,
+} from '@/lib/extensions/hooks';
 
 // Dynamically import extension components to avoid SSR issues with WebSocket
 const ExtensionMarketplace = dynamic(() => import('@/components/extensions').then(mod => ({ default: mod.ExtensionMarketplace })), { ssr: false });
@@ -25,11 +32,11 @@ export default function ExtensionTestPage() {
   const [activeTab, setActiveTab] = useState('statuses');
   const { statuses, loading: statusesLoading, error: statusesError } = useExtensionStatuses();
   // Hook subscriptions ensure these extension APIs remain healthy during manual testing
-  useExtensionRoutes();
-  useExtensionNavigation();
-  useExtensionHealth();
-  useExtensionPerformance();
-  useExtensionTaskMonitoring();
+  const routes = useExtensionRoutes();
+  const navItems = useExtensionNavigation();
+  const healthData = useExtensionHealth();
+  const performanceData = useExtensionPerformance();
+  const taskData = useExtensionTaskMonitoring();
 
   const renderJson = (label: string, data: unknown) => (
     <Card>

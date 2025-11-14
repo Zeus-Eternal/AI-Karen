@@ -37,6 +37,18 @@ export async function GET(request: NextRequest) {
       "Content-Type": "application/json",
     };
     if (authorization) headers["Authorization"] = authorization;
+    if (!authorization) {
+      const extractCookie = (name: string): string | undefined =>
+        request.cookies.get(name)?.value;
+      const authToken = extractCookie("auth_token");
+      const fallbackSession =
+        extractCookie("kari_session") || extractCookie("session_token");
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      } else if (fallbackSession) {
+        headers["Authorization"] = `Bearer ${fallbackSession}`;
+      }
+    }
     if (cookie) headers["Cookie"] = cookie;
 
     const backendResp = await fetch(backendUrl, {

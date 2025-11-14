@@ -48,7 +48,7 @@ export interface MetricCardProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof metricCardVariants> {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   subtitle?: string;
   icon?: LucideIcon;
   trend?: {

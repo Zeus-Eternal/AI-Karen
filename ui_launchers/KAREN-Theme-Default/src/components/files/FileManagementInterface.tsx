@@ -69,6 +69,12 @@ interface FileStats {
   typeDistribution: Record<string, number>;
 }
 
+interface FileStatsPayload {
+  total_count?: number;
+  total_size_formatted?: string;
+  type_distribution?: Record<string, number>;
+}
+
 const API_ROUTES = {
   list: "/api/files/enhanced/",
   upload: "/api/files/enhanced/upload",
@@ -84,7 +90,7 @@ const DEFAULT_STATS: FileStats = {
   typeDistribution: {},
 };
 
-const computeStats = (files: FileMetadata[], apiStats?: unknown): FileStats => {
+const computeStats = (files: FileMetadata[], apiStats?: FileStatsPayload): FileStats => {
   return {
     totalFiles: apiStats?.total_count ?? files.length,
     totalSize: apiStats?.total_size_formatted ?? "0 B",

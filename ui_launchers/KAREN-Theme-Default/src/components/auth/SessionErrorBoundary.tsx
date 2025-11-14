@@ -112,16 +112,25 @@ export class SessionErrorBoundary extends Component<
     }
 
     // Shapes from fetch/axios-like errors
-    const anyErr = error as unknown;
-    const status = anyErr?.status ?? anyErr?.response?.status ?? anyErr?.cause?.status;
+    const anyErr = error as unknown as Record<string, unknown>;
+    const responseStatus = (anyErr?.response as Record<string, unknown>)?.status;
+    const causeStatus = (anyErr?.cause as Record<string, unknown>)?.status;
+    const status = anyErr?.status ?? responseStatus ?? causeStatus;
     if (status === 401 || status === 403) return true;
 
     // Custom error codes
-    const code = (anyErr?.code || anyErr?.response?.data?.code || "").toString().toLowerCase();
-    if (code.includes("auth") || code.includes("token") || code.includes("unauthorized")) return true;
+    const responseData = (anyErr?.response as Record<string, unknown>)?.data as
+      | Record<string, unknown>
+      | undefined;
+    const code =
+      anyErr?.code || responseData?.code || "";
+    const normalizedCode = String(code).toLowerCase();
+    if (normalizedCode.includes("auth") || normalizedCode.includes("token") || normalizedCode.includes("unauthorized")) {
+      return true;
+    }
 
     return false;
-    }
+  }
 
   private handleRetry = () => {
     this.setState({ hasError: false, error: null });

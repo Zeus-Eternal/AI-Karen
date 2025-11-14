@@ -47,8 +47,10 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
   const fetchJSON = useCallback(async <T,>(url: string, signal: AbortSignal): Promise<T> => {
     const res = await fetch(url, { signal, headers: { "Cache-Control": "no-store" } });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} while fetching ${url}`);
-    const data = (await res.json()) as unknown;
-    return (data?.data ?? data) as T;
+    const payload = (await res.json()) as unknown;
+    const envelope = payload as { data?: unknown };
+    const normalized = envelope.data !== undefined ? envelope.data : payload;
+    return normalized as T;
   }, []);
 
   const loadDashboardData = useCallback(async () => {

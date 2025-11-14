@@ -4,6 +4,13 @@ import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetryService } from "@/lib/telemetry";
 
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    effectiveType?: string;
+    type?: string;
+  };
+};
+
 interface Props {
   children: ReactNode;
   onStreamingError?: (error: Error, errorInfo: ErrorInfo) => void;
@@ -118,7 +125,7 @@ export class StreamingErrorBoundary extends Component<Props, State> {
             handlerError:
               handlerError instanceof Error
                 ? handlerError.message
-                : "Unknown",
+                : "unknown",
             errorId,
             correlationId,
             streamId,
@@ -169,8 +176,8 @@ export class StreamingErrorBoundary extends Component<Props, State> {
   }
 
   private getConnectionType(): string {
-    if (typeof navigator !== "undefined" && "connection" in navigator) {
-      const connection = (navigator as unknown).connection;
+    if (typeof navigator !== "undefined") {
+      const connection = (navigator as NavigatorWithConnection).connection;
       return connection?.effectiveType || connection?.type || "unknown";
     }
     return "unknown";

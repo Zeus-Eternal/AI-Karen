@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, Loader2 } from "lucide-react";
@@ -18,7 +18,7 @@ interface VoiceInputHandlerProps {
   showConfidenceBadge?: boolean;
 }
 
-interface SpeechRecognitionEvent {
+interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
 }
@@ -61,7 +61,16 @@ interface SpeechRecognition extends EventTarget {
   onresult: SpeechRecognitionEventHandler<SpeechRecognitionEvent> | null;
 }
 
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
 
+
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
 
 const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   isRecording,
@@ -73,14 +82,11 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   className = "",
   showConfidenceBadge = true,
 }) => {
-  const speechRecognitionCtor = useMemo(() => {
+  const speechRecognitionCtor = useMemo<SpeechRecognitionConstructor | undefined>(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
-    const win = window as Window & {
-      SpeechRecognition?: typeof window.SpeechRecognition;
-      webkitSpeechRecognition?: typeof window.SpeechRecognition;
-    };
+    const win = window as SpeechRecognitionWindow;
     return win.SpeechRecognition || win.webkitSpeechRecognition;
   }, []);
   const isSupported = Boolean(speechRecognitionCtor);
@@ -91,8 +97,7 @@ const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    const SpeechRecognition = speechRecognitionCtor;
-    if (!SpeechRecognition) {
+    if (!speechRecognitionCtor) {
       return;
     }
 

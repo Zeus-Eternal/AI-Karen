@@ -52,6 +52,26 @@ interface AuditAnalyticsProps {
   className?: string;
 }
 
+interface AuditUser {
+  userId?: string;
+  username?: string;
+  eventCount?: number;
+}
+
+interface RiskTrend {
+  date: string;
+  averageRiskScore?: number;
+}
+
+interface AuditStatistics {
+  totalEvents?: number;
+  topUsers?: AuditUser[];
+  eventsByType?: Record<string, number>;
+  eventsByOutcome?: Record<string, number>;
+  eventsBySeverity?: Record<string, number>;
+  riskTrends?: RiskTrend[];
+}
+
 type TimeframeKey = "7d" | "30d" | "90d";
 
 const TIMEFRAME_OPTIONS: Record<TimeframeKey, { days: number; label: string }> = {
@@ -76,7 +96,7 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
     data: statistics,
     isLoading: statsLoading,
     error: statsError,
-  } = useQuery({
+  } = useQuery<AuditStatistics | null>({
     queryKey: ["audit", "statistics", dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => auditLogger.getStatistics(dateRange),
     staleTime: 60_000,
@@ -175,7 +195,13 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
 
 /* -------------------------------- OVERVIEW -------------------------------- */
 
-function OverviewDashboard({ statistics, loading }: { statistics: unknown; loading: boolean }) {
+function OverviewDashboard({
+  statistics,
+  loading,
+}: {
+  statistics: AuditStatistics | null | undefined;
+  loading: boolean;
+}) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 
@@ -183,7 +209,8 @@ function OverviewDashboard({ statistics, loading }: { statistics: unknown; loadi
     .filter(([type]) => String(type).startsWith("security:"))
     .reduce((sum, [, count]) => sum + Number(count || 0), 0);
 
-  const failed = Number(statistics?.eventsByOutcome?.failure || 0);
+  const failed = Number(statistics.eventsByOutcome?.failure ?? 0);
+  const topUsers = statistics.topUsers ?? [];
 
   const metrics = [
     {
@@ -195,7 +222,7 @@ function OverviewDashboard({ statistics, loading }: { statistics: unknown; loadi
     },
     {
       title: "Active Users",
-      value: Number((statistics.topUsers || []).length || 0).toString(),
+      value: Number(topUsers.length || 0).toString(),
       icon: Users,
       trend: "+5%",
       trendUp: true,
@@ -266,15 +293,18 @@ function OverviewDashboard({ statistics, loading }: { statistics: unknown; loadi
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(statistics.topUsers || []).slice(0, 5).map((user: unknown, index: number) => (
-                <div key={user.userId ?? index} className="flex items-center justify-between">
+              {topUsers.slice(0, 5).map((user, index) => (
+                <div
+                  key={user.userId ?? user.username ?? `user-${index}`}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center space-x-2">
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">
                       {index + 1}
                     </div>
                     <span className="font-medium">{user.username ?? user.userId}</span>
                   </div>
-                  <Badge variant="secondary">{Number(user.eventCount || 0)} events</Badge>
+                  <Badge variant="secondary">{Number(user.eventCount ?? 0)} events</Badge>
                 </div>
               ))}
             </div>
@@ -287,7 +317,13 @@ function OverviewDashboard({ statistics, loading }: { statistics: unknown; loadi
 
 /* ------------------------------ EVENT ANALYSIS ----------------------------- */
 
-function EventAnalysis({ statistics, loading }: { statistics: unknown; loading: boolean }) {
+function EventAnalysis({
+  statistics,
+  loading,
+}: {
+  statistics: AuditStatistics | null | undefined;
+  loading: boolean;
+}) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 
@@ -390,7 +426,7 @@ function UserBehaviorAnalysis({
   behaviorLoading,
   behaviorError,
 }: {
-  statistics: unknown;
+  statistics: AuditStatistics | null | undefined;
   loading: boolean;
   selectedUser: string;
   onUserSelect: (userId: string) => void;
@@ -400,6 +436,9 @@ function UserBehaviorAnalysis({
 }) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
+
+  const userOptions = statistics.topUsers ?? [];
+  const validUsers = userOptions.filter((user) => Boolean(user.userId ?? user.username));
 
   return (
     <div className="space-y-6">
@@ -414,17 +453,20 @@ function UserBehaviorAnalysis({
               <SelectValue placeholder="Select a user to analyze" />
             </SelectTrigger>
             <SelectContent>
-              {(statistics.topUsers || []).map((user: unknown) => (
-                <SelectItem key={user.userId} value={String(user.userId)}>
-                  {user.username ?? user.userId} ({Number(user.eventCount || 0)} events)
+            {validUsers.map((user) => {
+              const userIdValue = user.userId ?? user.username ?? "";
+              return (
+                <SelectItem key={userIdValue} value={String(userIdValue)}>
+                  {user.username ?? user.userId} ({Number(user.eventCount ?? 0)} events)
                 </SelectItem>
-              ))}
+              );
+            })}
             </SelectContent>
           </Select>
         </CardContent>
       </Card>
 
-      {behaviorError && (
+      {Boolean(behaviorError) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>Could not load user behavior.</AlertDescription>
@@ -548,7 +590,13 @@ function UserBehaviorAnalysis({
 
 /* ------------------------------ SECURITY TRENDS ---------------------------- */
 
-function SecurityTrends({ statistics, loading }: { statistics: unknown; loading: boolean }) {
+function SecurityTrends({
+  statistics,
+  loading,
+}: {
+  statistics: AuditStatistics | null | undefined;
+  loading: boolean;
+}) {
   if (loading) return <div>Loading...</div>;
   if (!statistics) return <div>No data.</div>;
 

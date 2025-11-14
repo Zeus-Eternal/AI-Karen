@@ -32,7 +32,7 @@ export const ChatCodeTab: React.FC<ChatCodeTabProps> = ({
   onCodeSubmit,
   onQuickAction,
   useCopilotKit,
-  enableDocGeneration: _enableDocGeneration,
+  enableDocGeneration,
 }) => {
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
 

@@ -129,14 +129,14 @@ export interface DashboardFilter {
 /**
  * Union type for all possible widget data shapes
  */
-export type WidgetDataValue = MetricData | ChartData | TableData | StatusData | LogData | unknown;
+export type WidgetDataValue = MetricData | ChartData | TableData | StatusData | LogData;
 
 /**
  * Container for widget data with loading and error states
  */
 export interface WidgetData {
   id: string;
-  data: WidgetDataValue;
+  data: WidgetDataValue | null;
   loading: boolean;
   error?: string;
   lastUpdated: Date;

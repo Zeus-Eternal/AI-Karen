@@ -65,6 +65,35 @@ export interface InviteAdminForm {
   message: string;
 }
 
+interface RawAdminPayload {
+  user_id?: string;
+  email?: string;
+  full_name?: string;
+  role?: string;
+  roles?: string[];
+  tenant_id?: string;
+  preferences?: Record<string, unknown>;
+  is_verified?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  last_login_at?: string;
+  invited_at?: string;
+  invited_by?: string;
+  failed_login_attempts?: number;
+  locked_until?: string;
+  two_factor_enabled?: boolean;
+  created_by?: string;
+}
+
+const isAdminRole = (
+  role?: string
+): role is AdminUser["role"] =>
+  role === "super_admin" || role === "admin" || role === "user";
+
+const normalizeRole = (role?: string): AdminUser["role"] =>
+  isAdminRole(role) ? role : "admin";
+
 export default function AdminManagementInterface() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -88,17 +117,17 @@ export default function AdminManagementInterface() {
 
   /* ----------------------------- Data Loaders ----------------------------- */
 
-  const normalizeAdmin = (admin: unknown): AdminUser => {
+  const normalizeAdmin = useCallback((admin: RawAdminPayload): AdminUser => {
     const createdAt = admin.created_at ? new Date(admin.created_at) : new Date();
     const updatedAt = admin.updated_at ? new Date(admin.updated_at) : createdAt;
     const lastLogin = admin.last_login_at ? new Date(admin.last_login_at) : undefined;
     const invitedAt = admin.invited_at ? new Date(admin.invited_at) : createdAt;
     return {
-      user_id: admin.user_id,
-      email: admin.email,
+      user_id: admin.user_id ?? '',
+      email: admin.email ?? '',
       full_name: admin.full_name ?? "",
-      role: admin.role ?? "admin",
-      roles: Array.isArray(admin.roles) && admin.roles.length ? admin.roles : [admin.role ?? "admin"],
+      role: normalizeRole(admin.role),
+      roles: Array.isArray(admin.roles) && admin.roles.length ? admin.roles : [normalizeRole(admin.role)],
       tenant_id: admin.tenant_id ?? "default",
       preferences: admin.preferences ?? {},
       is_verified: Boolean(admin.is_verified),
@@ -114,7 +143,7 @@ export default function AdminManagementInterface() {
       invitedAt,
       invitedBy: admin.invited_by ?? admin.created_by ?? undefined
     };
-  };
+  }, []);
 
   const loadAdmins = useCallback(async () => {
     setLoading(true);
@@ -130,7 +159,7 @@ export default function AdminManagementInterface() {
       if (!response.ok) throw new Error("Failed to load administrators");
       const payload = await response.json();
 
-      const adminsData = Array.isArray(payload?.data?.admins)
+      const adminsData: RawAdminPayload[] = Array.isArray(payload?.data?.admins)
         ? payload.data.admins
         : Array.isArray(payload?.admins)
           ? payload.admins
@@ -138,7 +167,7 @@ export default function AdminManagementInterface() {
             ? payload
             : [];
 
-      setAdmins(adminsData.map((a: unknown) => normalizeAdmin(a)));
+      setAdmins(adminsData.map(normalizeAdmin));
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -151,7 +180,7 @@ export default function AdminManagementInterface() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [toast]);
+  }, [toast, normalizeAdmin]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -327,7 +356,7 @@ export default function AdminManagementInterface() {
     try {
       return new Date(date).toLocaleDateString();
     } catch {
-      return "Unknown";
+      return "any";
     }
   };
 

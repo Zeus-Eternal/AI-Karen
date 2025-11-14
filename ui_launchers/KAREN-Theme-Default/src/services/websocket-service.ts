@@ -380,21 +380,28 @@ export class WebSocketService {
   }
 }
 
-// Create singleton instance
-export const websocketService = new WebSocketService();
+export let websocketService: WebSocketService | null = null;
+
+const getWebSocketService = (): WebSocketService | null => {
+  if (typeof window === 'undefined') return null;
+  if (!websocketService) {
+    websocketService = new WebSocketService();
+  }
+  return websocketService;
+};
 
 // React hook for using WebSocket
 export function useWebSocket() {
-  const connectionState = websocketService.getConnectionState();
-  const isConnected = websocketService.isConnected();
+  const service = getWebSocketService();
+  const connectionState = service?.getConnectionState() ?? 'disconnected';
+  const isConnected = service?.isConnected() ?? false;
 
   return {
-    connect: () => websocketService.connect(),
-    disconnect: () => websocketService.disconnect(),
-    send: (type: string, data: unknown, channel?: string) =>
-      websocketService.send(type, data, channel),
+    connect: () => service?.connect(),
+    disconnect: () => service?.disconnect(),
+    send: (type: string, data: unknown, channel?: string) => service?.send(type, data, channel),
     subscribe: (eventType: WebSocketEventType, callback: (data: unknown) => void) =>
-      websocketService.subscribe(eventType, callback),
+      service?.subscribe(eventType, callback),
     connectionState,
     isConnected,
   };
@@ -407,8 +414,12 @@ export function useWebSocketSubscription(
   deps: React.DependencyList = []
 ) {
   React.useEffect(() => {
-    const unsubscribe = websocketService.subscribe(eventType, callback);
+    const service = getWebSocketService();
+    if (!service) return undefined;
+    const unsubscribe = service.subscribe(eventType, callback);
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
+
+export { getWebSocketService };

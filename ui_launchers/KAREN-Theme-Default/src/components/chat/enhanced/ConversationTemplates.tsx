@@ -283,6 +283,9 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
     tags: [],
   });
 
+  const [, setEditingTemplate] =
+    useState<ConversationTemplate | null>(null);
+
   /* ---------------------- Derived, Filters, Memos ---------------------- */
 
   const filteredTemplates = useMemo(() => {

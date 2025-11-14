@@ -66,6 +66,10 @@ export function EnhancedAdminDashboard({
     loading: true,
   });
 
+  const markDashboardLoading = useCallback(() => {
+    setDashboardData((prev) => ({ ...prev, loading: true }));
+  }, []);
+
   // Keyboard navigation setup
   useKeyboardNavigation(dashboardRef, {
     enableArrowKeys: true,

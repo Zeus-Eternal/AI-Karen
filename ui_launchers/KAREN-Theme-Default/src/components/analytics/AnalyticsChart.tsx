@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useId } from "react";
 import { AgCharts } from "ag-charts-react";
-import type { AgChartOptions } from "ag-charts-community";
+import type {
+  AgCartesianChartOptions,
+  AgChartCallbackParams,
+  AgChartOptions,
+  AgPieSeriesOptions,
+  AgPolarChartOptions,
+} from "ag-charts-community";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +33,7 @@ import {
   TrendingDown,
   LineChart,
   PieChart,
+  type LucideIcon,
 } from "lucide-react";
 
 import { useHooks } from "@/hooks/use-hooks";
@@ -78,6 +85,21 @@ type MetricType =
   | "providers";
 type ViewMode = "overview" | "detailed" | "comparison";
 
+interface EnhancedAnalyticsDatum extends EnhancedAnalyticsData {
+  timestampDate: Date;
+  formattedTime: string;
+}
+
+type CartesianSeriesOption = NonNullable<AgCartesianChartOptions["series"]>[number];
+type ChartAxisOption = NonNullable<AgCartesianChartOptions["axes"]>[number];
+type CartesianSeriesType = "line" | "bar" | "area" | "scatter";
+
+interface ProviderDistributionDatum {
+  provider: string;
+  count: number;
+  percentage: string;
+}
+
 /* ---------------------------- Component Start ---------------------------- */
 
 export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
@@ -102,7 +124,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
 
   /* ------------------------------ Data Shaping ------------------------------ */
 
-  const processedData = useMemo(() => {
+  const processedData = useMemo<EnhancedAnalyticsDatum[]>(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
     const sorted = data
@@ -124,178 +146,176 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     return sorted;
   }, [data, timeframe, selectedProviders]);
 
+  const resolvedSeriesType = useMemo<CartesianSeriesType>(
+    () => ((chartType === "pie" ? "line" : chartType) as CartesianSeriesType),
+    [chartType]
+  );
+  const showMarkers = useMemo(
+    () => resolvedSeriesType === "line" && processedData.length <= 50,
+    [resolvedSeriesType, processedData.length]
+  );
+
+  const buildAxes = useCallback(
+    (title: string, range?: { min?: number; max?: number }): ChartAxisOption[] => {
+      const categoryAxis = {
+        type: "category",
+        position: "bottom",
+        title: { text: "Time" },
+      } satisfies ChartAxisOption;
+
+      const numberAxis = {
+        type: "number",
+        position: "left",
+        title: { text: title },
+        ...range,
+      } satisfies ChartAxisOption;
+
+      return [categoryAxis, numberAxis];
+    },
+    []
+  );
+
+  const createTimeSeries = useCallback(
+    (yKey: keyof EnhancedAnalyticsDatum, yName: string, color: string): CartesianSeriesOption => {
+      const fillColor = chartType === "area" ? `${color}80` : color;
+      const marker = showMarkers ? { enabled: true } : undefined;
+
+      return {
+        type: resolvedSeriesType,
+        xKey: "formattedTime",
+        yKey,
+        yName,
+        stroke: color,
+        fill: fillColor,
+        ...(marker ? { marker } : {}),
+      } satisfies CartesianSeriesOption;
+    },
+    [chartType, resolvedSeriesType, showMarkers]
+  );
+
   /* ------------------------------ Chart Options ----------------------------- */
 
   const chartOptions: AgChartOptions = useMemo(() => {
-    if (processedData.length === 0) {
-      return {
-        data: [],
-        title: { text: "No data available" },
-        background: { fill: "transparent" },
-      };
-    }
-
-    const base: AgChartOptions = {
-      data: processedData as unknown,
+    const baseCartesianOptions: Omit<AgCartesianChartOptions, "series" | "axes"> = {
+      data: processedData,
       theme: "ag-default",
       background: { fill: "transparent" },
       padding: { top: 20, right: 20, bottom: 40, left: 60 },
       legend: { enabled: true, position: "bottom" },
     };
 
+    const basePolarOptions: Omit<AgPolarChartOptions, "series" | "data"> = {
+      theme: "ag-default",
+      background: { fill: "transparent" },
+      padding: { top: 20, right: 20, bottom: 40, left: 60 },
+      legend: { enabled: true, position: "bottom" },
+    };
+
+    const emptyCartesian: AgCartesianChartOptions = {
+      ...baseCartesianOptions,
+      data: [],
+      title: { text: "No data available" },
+    };
+
+    if (processedData.length === 0) {
+      return emptyCartesian;
+    }
+
     switch (selectedMetric) {
-      case "messages":
+      case "messages": {
         if (chartType === "pie") {
+          const messagePieSeries: AgPieSeriesOptions = {
+            type: "pie",
+            angleKey: "messageCount",
+            calloutLabelKey: "formattedTime",
+          };
           return {
-            ...base,
+            ...basePolarOptions,
             title: { text: "Message Volume Distribution" },
-            series: [
-              {
-                type: "pie",
-                angleKey: "messageCount",
-                labelKey: "formattedTime",
-              } as unknown,
-            ],
-          } as AgChartOptions;
+            data: processedData,
+            series: [messagePieSeries],
+          };
         }
         return {
-          ...base,
+          ...baseCartesianOptions,
           title: { text: "Message Volume Over Time" },
-          series: [
-            {
-              type: chartType as unknown,
-              xKey: "formattedTime",
-              yKey: "messageCount",
-              yName: "Messages",
-              stroke: "#3b82f6",
-              fill: chartType === "area" ? "#3b82f680" : "#3b82f6",
-            } as unknown,
-          ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Time" } },
-            { type: "number", position: "left", title: { text: "Message Count" } },
-          ],
+          series: [createTimeSeries("messageCount", "Messages", "#3b82f6")],
+          axes: buildAxes("Message Count"),
         };
+      }
 
       case "responseTime":
         return {
-          ...base,
+          ...baseCartesianOptions,
           title: { text: "Response Time Trends" },
           series: [
-            {
-              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
-              xKey: "formattedTime",
-              yKey: "responseTime",
-              yName: "Response Time (ms)",
-              stroke: "#f59e0b",
-              fill: chartType === "area" ? "#f59e0b80" : "#f59e0b",
-            } as unknown,
+            createTimeSeries("responseTime", "Response Time (ms)", "#f59e0b"),
           ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Time" } },
-            { type: "number", position: "left", title: { text: "Response Time (ms)" } },
-          ],
+          axes: buildAxes("Response Time (ms)"),
         };
 
       case "satisfaction":
         return {
-          ...base,
+          ...baseCartesianOptions,
           title: { text: "User Satisfaction Scores" },
           series: [
-            {
-              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
-              xKey: "formattedTime",
-              yKey: "userSatisfaction",
-              yName: "Satisfaction (1-5)",
-              stroke: "#10b981",
-              fill: chartType === "area" ? "#10b98180" : "#10b981",
-            } as unknown,
+            createTimeSeries("userSatisfaction", "Satisfaction (1-5)", "#10b981"),
           ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Time" } },
-            {
-              type: "number",
-              position: "left",
-              title: { text: "Satisfaction Score" },
-              min: 0,
-              max: 5,
-            },
-          ],
+          axes: buildAxes("Satisfaction Score", { min: 0, max: 5 }),
         };
 
       case "providers": {
-        const byProvider = processedData.reduce((acc: Record<string, number>, item) => {
-          acc[item.llmProvider] = (acc[item.llmProvider] || 0) + 1;
-          return acc;
-        }, {});
-        const providerData = Object.entries(byProvider).map(([provider, count]) => ({
-          provider,
-          count,
-          percentage: ((count / processedData.length) * 100).toFixed(1),
-        }));
-
+        const byProvider = processedData.reduce<Record<string, number>>(
+          (acc, item) => {
+            acc[item.llmProvider] = (acc[item.llmProvider] || 0) + 1;
+            return acc;
+          },
+          {}
+        );
+        const providerData = Object.entries(byProvider).map(
+          ([provider, count]) => ({
+            provider,
+            count,
+            percentage: ((count / processedData.length) * 100).toFixed(1),
+          })
+        );
+        const providerSeries: AgPieSeriesOptions = {
+          type: "pie",
+          angleKey: "count",
+          calloutLabelKey: "provider",
+          calloutLabel: {
+            formatter: ({ datum }: AgChartCallbackParams<ProviderDistributionDatum>) =>
+              `${datum.provider}: ${datum.percentage}%`,
+          },
+        };
         return {
-          ...base,
-          data: providerData as unknown,
+          ...basePolarOptions,
+          data: providerData,
           title: { text: "LLM Provider Usage Distribution" },
-          series: [
-            {
-              type: "pie",
-              angleKey: "count",
-              labelKey: "provider",
-              label: {
-                enabled: true,
-                formatter: ({ datum }: unknown) => `${datum.provider}: ${datum.percentage}%`,
-              },
-            } as unknown,
-          ],
+          series: [providerSeries],
         };
       }
 
       case "tokens":
         return {
-          ...base,
+          ...baseCartesianOptions,
           title: { text: "Token Usage Over Time" },
-          series: [
-            {
-              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
-              xKey: "formattedTime",
-              yKey: "tokenUsage",
-              yName: "Token Usage",
-              stroke: "#ef4444",
-              fill: chartType === "area" ? "#ef444480" : "#ef4444",
-            } as unknown,
-          ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Time" } },
-            { type: "number", position: "left", title: { text: "Tokens Used" } },
-          ],
+          series: [createTimeSeries("tokenUsage", "Token Usage", "#ef4444")],
+          axes: buildAxes("Tokens Used"),
         };
 
       case "insights":
         return {
-          ...base,
+          ...baseCartesianOptions,
           title: { text: "AI Insights Over Time" },
-          series: [
-            {
-              type: chartType === "pie" ? ("line" as unknown) : (chartType as unknown),
-              xKey: "formattedTime",
-              yKey: "aiInsights",
-              yName: "AI Insights",
-              stroke: "#8b5cf6",
-              fill: chartType === "area" ? "#8b5cf680" : "#8b5cf6",
-            } as unknown,
-          ],
-          axes: [
-            { type: "category", position: "bottom", title: { text: "Time" } },
-            { type: "number", position: "left", title: { text: "Count" } },
-          ],
+          series: [createTimeSeries("aiInsights", "AI Insights", "#8b5cf6")],
+          axes: buildAxes("Count"),
         };
 
       default:
-        return base;
+        return baseCartesianOptions;
     }
-  }, [processedData, chartType, selectedMetric]);
+  }, [processedData, chartType, selectedMetric, buildAxes, createTimeSeries]);
 
   /* ------------------------------ Hook Wiring ------------------------------ */
 
@@ -376,6 +396,27 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     };
   }, [processedData]);
 
+  const secondaryAnalysisOptions: AgChartOptions = {
+    data: processedData,
+    theme: "ag-default",
+    background: { fill: "transparent" },
+    title: { text: "Secondary Analysis" },
+    series: [createTimeSeries("userSatisfaction", "Satisfaction", "#10b981")],
+    axes: buildAxes("Satisfaction Score", { min: 0, max: 5 }),
+  };
+
+  const comparisonChartOptions: AgChartOptions = {
+    data: processedData,
+    theme: "ag-default",
+    background: { fill: "transparent" },
+    title: { text: "Multi-Metric Comparison" },
+    series: [
+      createTimeSeries("messageCount", "Messages", "#3b82f6"),
+      createTimeSeries("aiInsights", "AI Insights", "#8b5cf6"),
+    ],
+    axes: buildAxes("Value"),
+  };
+
   const StatCard = ({
     icon: Icon,
     title,
@@ -383,7 +424,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
     change,
     suffix = "",
   }: {
-    icon: unknown;
+    icon: LucideIcon;
     title: string;
     value: number | string;
     change?: number;
@@ -559,29 +600,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
                   />
                 </div>
                 <div className="h-[400px]">
-                  <AgCharts
-                    options={
-                      {
-                        data: processedData as unknown,
-                        theme: "ag-default",
-                        background: { fill: "transparent" },
-                        title: { text: "Secondary Analysis" },
-                        series: [
-                          {
-                            type: "line",
-                            xKey: "formattedTime",
-                            yKey: "userSatisfaction",
-                            yName: "Satisfaction",
-                            stroke: "#10b981",
-                          } as unknown,
-                        ],
-                        axes: [
-                          { type: "category", position: "bottom", title: { text: "Time" } },
-                          { type: "number", position: "left", title: { text: "Satisfaction" } },
-                        ],
-                      } as AgChartOptions
-                    }
-                  />
+                  <AgCharts options={secondaryAnalysisOptions} />
                 </div>
               </div>
             </div>
@@ -589,36 +608,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
 
           <TabsContent value="comparison" className="mt-0">
             <div className="h-[500px] w-full p-6 sm:p-4 md:p-6">
-              <AgCharts
-                options={
-                  {
-                    data: processedData as unknown,
-                    theme: "ag-default",
-                    background: { fill: "transparent" },
-                    title: { text: "Multi-Metric Comparison" },
-                    series: [
-                      {
-                        type: "line",
-                        xKey: "formattedTime",
-                        yKey: "messageCount",
-                        yName: "Messages",
-                        stroke: "#3b82f6",
-                      } as unknown,
-                      {
-                        type: "line",
-                        xKey: "formattedTime",
-                        yKey: "aiInsights",
-                        yName: "AI Insights",
-                        stroke: "#8b5cf6",
-                      } as unknown,
-                    ],
-                    axes: [
-                      { type: "category", position: "bottom", title: { text: "Time" } },
-                      { type: "number", position: "left", title: { text: "Value" } },
-                    ],
-                  } as AgChartOptions
-                }
-              />
+              <AgCharts options={comparisonChartOptions} />
             </div>
           </TabsContent>
         </Tabs>

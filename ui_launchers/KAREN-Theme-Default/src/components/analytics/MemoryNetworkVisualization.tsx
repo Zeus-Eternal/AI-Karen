@@ -3,7 +3,10 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AgCharts } from "ag-charts-react";
-import type { AgChartOptions } from "ag-charts-community";
+import type {
+  AgCartesianChartOptions,
+  AgChartCallbackParams,
+} from "ag-charts-community";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +58,29 @@ export interface MemoryNetworkData {
   totalMemories: number;
 }
 
+type PositionedMemoryNode = MemoryNode & {
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  confidence: number;
+};
+
+type ChartSeriesOption = NonNullable<AgCartesianChartOptions["series"]>[number];
+type ChartSeriesOptionWithMarker<TDatum = unknown> = ChartSeriesOption & {
+  marker?: {
+    enabled?: boolean;
+    shape?: string;
+    strokeWidth?: number;
+    stroke?: string;
+    fillOpacity?: number;
+    formatter?: (params: AgChartCallbackParams<TDatum>) => {
+      fill?: string;
+      size?: number;
+    };
+  };
+};
+
 interface MemoryNetworkVisualizationProps {
   data?: MemoryNetworkData;
   onNodeClick?: (node: MemoryNode) => void;
@@ -99,7 +125,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  const chartRef = useRef<unknown>(null);
+  const chartRef = useRef<React.ComponentRef<typeof AgCharts> | null>(null);
 
   // --- Process network data based on filters
   const processedData = useMemo(() => {
@@ -219,8 +245,81 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   }, [processedData.edges, laidOutNodes, showEdges]);
 
   // --- Chart options
-  const chartOptions: AgChartOptions = useMemo(() => {
-    const base: AgChartOptions = {
+  const chartOptions: AgCartesianChartOptions = useMemo(() => {
+    const edgeSeries: ChartSeriesOptionWithMarker = {
+      type: "line",
+      data: edgesPathData,
+      xKey: "x",
+      yKey: "y",
+      strokeWidth: 1,
+      strokeOpacity: 0.25,
+      marker: { enabled: false },
+      tooltip: { enabled: false },
+      };
+
+      const nodeSeries: ChartSeriesOptionWithMarker<PositionedMemoryNode> = {
+        type: "scatter",
+        data: laidOutNodes,
+        xKey: "x",
+        yKey: "y",
+        labelKey: showLabels ? "label" : undefined,
+        label: {
+          enabled: showLabels,
+          fontSize: 10,
+          color: "#374151",
+        },
+        marker: {
+          shape: "circle",
+          strokeWidth: 2,
+          stroke: "#ffffff",
+          fillOpacity: 0.95,
+          formatter: ({ datum }: AgChartCallbackParams<PositionedMemoryNode>) => ({
+            fill: datum.color,
+            size: datum.size,
+          }),
+        },
+        tooltip: {
+          renderer: ({ datum }: AgChartCallbackParams<PositionedMemoryNode>) =>
+          `
+            <div class="p-2">
+              <div class="font-semibold">${datum.label}</div>
+              <div class="text-sm text-gray-600">Type: ${datum.type}</div>
+              ${
+                typeof datum.confidence === "number"
+                  ? `<div class="text-sm">Confidence: ${(datum.confidence * 100).toFixed(1)}%</div>`
+                  : ""
+              }
+              ${datum.cluster ? `<div class="text-sm">Cluster: ${datum.cluster}</div>` : ""}
+            </div>
+          `,
+      },
+      listeners: {
+        nodeClick: (event: AgChartCallbackParams<PositionedMemoryNode>) => {
+          const d = event.datum;
+          if (!d) return;
+          const node: MemoryNode = {
+            id: d.id,
+            label: d.label,
+            type: d.type,
+            confidence: d.confidence,
+            cluster: d.cluster,
+          };
+          onNodeClick?.(node);
+          triggerHooks(
+            "chart_memoryNetwork_nodeClick",
+            { chartId: "memoryNetwork", node: d },
+            { userId: user?.userId }
+          );
+        },
+      },
+    };
+
+    const series: ChartSeriesOption[] = [
+      ...(showEdges && edgesPathData.length ? [edgeSeries] : []),
+      nodeSeries,
+    ];
+
+    const base: AgCartesianChartOptions = {
       theme: "ag-default",
       background: { fill: "transparent" },
       padding: { top: 12, right: 12, bottom: 12, left: 12 },
@@ -247,84 +346,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         },
       ],
       legend: { enabled: false },
-      series: [
-        // edges (single NaN-broken polyline)
-        ...(showEdges && edgesPathData.length
-          ? ([
-              {
-                type: "line",
-                data: edgesPathData,
-                xKey: "x",
-                yKey: "y",
-                strokeWidth: 1,
-                strokeOpacity: 0.25,
-                marker: { enabled: false },
-                tooltip: { enabled: false },
-              } as unknown,
-            ] as unknown[])
-          : []),
-        // nodes
-        {
-          type: "scatter",
-          data: laidOutNodes,
-          xKey: "x",
-          yKey: "y",
-          sizeKey: "size",
-          labelKey: showLabels ? "label" : undefined,
-          label: {
-            enabled: showLabels,
-            fontSize: 10,
-            color: "#374151",
-          },
-          marker: {
-            shape: "circle",
-            strokeWidth: 2,
-            stroke: "#ffffff",
-            fillOpacity: 0.95,
-            formatter: ({ datum }: unknown) => {
-              return {
-                fill: datum.color,
-                size: datum.size,
-              };
-            },
-          },
-          tooltip: {
-            renderer: ({ datum }: unknown) => ({
-              content: `
-                <div class="p-2">
-                  <div class="font-semibold">${datum.label}</div>
-                  <div class="text-sm text-gray-600">Type: ${datum.type}</div>
-                  ${
-                    typeof datum.confidence === "number"
-                      ? `<div class="text-sm">Confidence: ${(datum.confidence * 100).toFixed(1)}%</div>`
-                      : ""
-                  }
-                  ${datum.cluster ? `<div class="text-sm">Cluster: ${datum.cluster}</div>` : ""}
-                </div>
-              `,
-            }),
-          },
-          listeners: {
-            nodeClick: (event: Event) => {
-              const d = event.datum;
-              if (!d) return;
-              const node: MemoryNode = {
-                id: d.id,
-                label: d.label,
-                type: d.type,
-                confidence: d.confidence,
-                cluster: d.cluster,
-              };
-              onNodeClick?.(node);
-              triggerHooks(
-                "chart_memoryNetwork_nodeClick",
-                { chartId: "memoryNetwork", node: d },
-                { userId: user?.userId },
-              );
-            },
-          },
-        } as unknown,
-      ],
+      series,
     };
 
     return base;
@@ -390,11 +412,12 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         description: "Memory network data has been updated successfully.",
       });
       await handleChartReady();
-    } catch (error: Error) {
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error("Failed to refresh network data");
       toast({
         variant: "destructive",
         title: "Refresh Failed",
-        description: error?.message || "Failed to refresh network data. Please try again.",
+        description: err.message,
       });
     }
   }, [onRefresh, toast, handleChartReady]);

@@ -26,6 +26,14 @@ import {
 /* Types                                                              */
 /* ------------------------------------------------------------------ */
 
+interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
 interface Props {
   children: ReactNode;
   fallbackComponent?: React.ComponentType<ErrorFallbackProps>;
@@ -272,8 +280,13 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   private async reportToMonitoringServices(errorReport: ErrorReport) {
     // Sentry (if injected on window)
     try {
-      if (typeof window !== "undefined" && (window as unknown)?.Sentry) {
-        (window as unknown).Sentry.captureException(this.state.error, {
+      if (typeof window !== "undefined") {
+        const windowWithSentry = window as Window & {
+          Sentry?: {
+            captureException: (error: unknown, context?: unknown) => void;
+          };
+        };
+        windowWithSentry.Sentry?.captureException(this.state.error, {
           tags: {
             section: errorReport.section,
             severity: errorReport.severity,
@@ -336,7 +349,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         category: ErrorCategory.UNKNOWN,
         severity: ErrorSeverity.MEDIUM,
         code: "UI_RECOVERY_ATTEMPT",
-        message: this.state.error?.message || "Unknown UI error",
+        message: this.state.error?.message || "unknown UI error",
         userMessage: "Attempting automatic recovery",
         retryable: true,
         maxRetries: this.maxRecoveryAttempts,
@@ -361,8 +374,18 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     }
   };
 
+  private getStrategyDelay(strategy: unknown): number {
+    if (typeof strategy === "object" && strategy !== null) {
+      const delayValue = (strategy as { delay?: unknown }).delay;
+      if (typeof delayValue === "number") {
+        return delayValue;
+      }
+    }
+    return 1000;
+  }
+
   private async executeRecoveryStrategy(strategy: unknown) {
-    const delay = typeof strategy?.delay === "number" ? strategy.delay : 1000;
+    const delay = this.getStrategyDelay(strategy);
 
     this.recoveryTimeout = setTimeout(() => {
       this.setState((prev) => ({
@@ -422,22 +445,21 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     return sessionId;
   }
 
-  private getMemoryInfo(): Record<string, unknown> {
+  private getMemoryInfo(): Record<string, unknown> | undefined {
     try {
-      if (typeof performance !== "undefined" && (performance as unknown)?.memory) {
-        return {
-          usedJSHeapSize: (performance as unknown).memory.usedJSHeapSize,
-          totalJSHeapSize: (performance as unknown).memory.totalJSHeapSize,
-          jsHeapSizeLimit: (performance as unknown).memory.jsHeapSizeLimit,
-        };
+      if (typeof performance === "undefined") return undefined;
+      const perf = performance as PerformanceWithMemory;
+      if (perf.memory) {
+        const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = perf.memory;
+        return { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit };
       }
     } catch {
       // no-op
     }
-    return null;
+    return undefined;
   }
 
-  private getPerformanceInfo(): Record<string, unknown> {
+  private getPerformanceInfo(): Record<string, unknown> | undefined {
     try {
       if (
         typeof performance !== "undefined" &&
@@ -465,7 +487,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     } catch {
       // no-op
     }
-    return null;
+    return undefined;
   }
 
   componentWillUnmount() {
@@ -505,4 +527,3 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 /* ------------------------------------------------------------------ */
 
 export default GlobalErrorBoundary;
-

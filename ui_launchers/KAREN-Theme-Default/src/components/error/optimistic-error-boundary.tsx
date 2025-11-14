@@ -2,6 +2,10 @@
 "use client";
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
+type WindowWithAnalytics = Window & {
+  gtag?: (...args: unknown[]) => void;
+  dataLayer?: Array<Record<string, unknown>>;
+};
 import { Button } from "@/components/ui/button";
 // Keep the project’s UI store path as provided by you
 import { useUIStore } from "../../store";
@@ -40,7 +44,7 @@ export interface OptimisticErrorBoundaryProps {
   onReset?: () => void;
 
   /**
-   * When any value in this array changes (shallow equality), the boundary resets.
+   * When unknown value in this array changes (shallow equality), the boundary resets.
    * Mirrors react-error-boundary semantics to reduce surprises.
    */
   resetKeys?: Array<string | number | boolean | null | undefined>;
@@ -108,15 +112,15 @@ class OptimisticErrorBoundaryClass extends Component<
 
     // Best-effort telemetry
     try {
-      const anyWindow = window as unknown;
-      if (typeof anyWindow?.gtag === "function") {
-        anyWindow.gtag("event", "exception", {
+      const analyticsWindow = window as WindowWithAnalytics;
+      if (typeof analyticsWindow.gtag === "function") {
+        analyticsWindow.gtag("event", "exception", {
           description: error?.message ?? String(error),
           fatal: false,
           boundary: this.props.boundaryName ?? "OptimisticBoundary",
         });
-      } else if (Array.isArray(anyWindow?.dataLayer)) {
-        anyWindow.dataLayer.push({
+      } else if (Array.isArray(analyticsWindow.dataLayer)) {
+        analyticsWindow.dataLayer.push({
           event: "exception",
           description: error?.message ?? String(error),
           fatal: false,

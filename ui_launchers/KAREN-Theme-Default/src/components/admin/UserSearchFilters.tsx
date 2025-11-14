@@ -75,7 +75,7 @@ export function UserSearchFilters({
     return Object.values(localFilters).some((v) => v !== undefined && v !== null && v !== "");
   }, [localFilters]);
 
-  const formatDateForInput = (date?: Date) => {
+  const formatDateForInput = (date?: Date | string) => {
     if (!date) return "";
     const d = typeof date === "string" ? new Date(date) : date;
     return new Date(d).toISOString().split("T")[0];
@@ -248,7 +248,7 @@ export function UserSearchFilters({
               <Input
                 id="created_after"
                 type="date"
-                value={formatDateForInput(localFilters.created_after as unknown)}
+                value={formatDateForInput(localFilters.created_after)}
                 onChange={(e) =>
                   handleFilterChange("created_after", parseDateFromInput(e.target.value))
                 }
@@ -261,7 +261,7 @@ export function UserSearchFilters({
               <Input
                 id="created_before"
                 type="date"
-                value={formatDateForInput(localFilters.created_before as unknown)}
+                value={formatDateForInput(localFilters.created_before)}
                 onChange={(e) =>
                   handleFilterChange("created_before", parseDateFromInput(e.target.value))
                 }
@@ -274,7 +274,7 @@ export function UserSearchFilters({
               <Input
                 id="last_login_after"
                 type="date"
-                value={formatDateForInput(localFilters.last_login_after as unknown)}
+                value={formatDateForInput(localFilters.last_login_after)}
                 onChange={(e) =>
                   handleFilterChange("last_login_after", parseDateFromInput(e.target.value))
                 }
@@ -287,7 +287,7 @@ export function UserSearchFilters({
               <Input
                 id="last_login_before"
                 type="date"
-                value={formatDateForInput(localFilters.last_login_before as unknown)}
+                value={formatDateForInput(localFilters.last_login_before)}
                 onChange={(e) =>
                   handleFilterChange("last_login_before", parseDateFromInput(e.target.value))
                 }
@@ -378,8 +378,8 @@ export function UserSearchFilters({
           )}
           {(localFilters.created_after || localFilters.created_before) && (
             <Badge variant="secondary" className="px-3 py-1">
-              Created: {formatDateForInput(localFilters.created_after as unknown)} →{" "}
-              {formatDateForInput(localFilters.created_before as unknown)}
+              Created: {formatDateForInput(localFilters.created_after)} →{" "}
+              {formatDateForInput(localFilters.created_before)}
               <Button
                 variant="ghost"
                 className="h-6 px-1 ml-2"
@@ -396,8 +396,8 @@ export function UserSearchFilters({
           )}
           {(localFilters.last_login_after || localFilters.last_login_before) && (
             <Badge variant="secondary" className="px-3 py-1">
-              Last Login: {formatDateForInput(localFilters.last_login_after as unknown)} →{" "}
-              {formatDateForInput(localFilters.last_login_before as unknown)}
+              Last Login: {formatDateForInput(localFilters.last_login_after)} →{" "}
+              {formatDateForInput(localFilters.last_login_before)}
               <Button
                 variant="ghost"
                 className="h-6 px-1 ml-2"

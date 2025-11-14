@@ -3,7 +3,11 @@
 
 import React, { useState, useMemo } from "react";
 import { AgCharts } from "ag-charts-react";
-import type { AgChartOptions } from "ag-charts-community";
+import type {
+  AgCartesianAxisOptions,
+  AgCartesianSeriesOptions,
+  AgChartOptions,
+} from "ag-charts-community";
 
 import {
   Image as ImageIcon,
@@ -149,29 +153,33 @@ const ImagePreview: React.FC<{
       category: key.replace(/_/g, " ").toUpperCase(),
       confidence: Math.round((value ?? 0) * 100),
     }));
+    const series: AgCartesianSeriesOptions[] = [
+      {
+        type: "bar",
+        xKey: "category",
+        yKey: "confidence",
+      },
+    ];
+
+    const axes: AgCartesianAxisOptions[] = [
+      {
+        type: "category",
+        position: "bottom",
+        title: { text: "Analysis Type" },
+      },
+      {
+        type: "number",
+        position: "left",
+        title: { text: "Confidence (%)" },
+        min: 0,
+        max: 100,
+      },
+    ];
+
     const opts: AgChartOptions = {
       data,
-      series: [
-        {
-          type: "bar",
-          xKey: "category",
-          yKey: "confidence",
-        } as unknown,
-      ],
-      axes: [
-        {
-          type: "category",
-          position: "bottom",
-          title: { text: "Analysis Type" },
-        } as unknown,
-        {
-          type: "number",
-          position: "left",
-          title: { text: "Confidence (%)" },
-          min: 0,
-          max: 100,
-        } as unknown,
-      ],
+      series,
+      axes,
       title: { text: "Analysis Confidence Scores" },
       height: 300,
     };

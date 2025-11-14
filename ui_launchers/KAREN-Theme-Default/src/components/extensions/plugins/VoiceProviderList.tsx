@@ -1,4 +1,5 @@
 "use client";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
@@ -14,6 +15,7 @@ const DEFAULT_VOICE_PROVIDERS: VoiceProvider[] = [
 ];
 
 export default function VoiceProviderList() {
+  const [previewing, setPreviewing] = useState<string | null>(null);
   const providers = DEFAULT_VOICE_PROVIDERS;
 
   const handlePreview = (text?: string) => {

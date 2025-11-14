@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type {
+  CellStyle,
   ColDef,
   GridReadyEvent,
   ICellRendererParams,
+  SelectionChangedEvent,
 } from "ag-grid-community";
 import {
   Card,
@@ -73,6 +75,16 @@ interface UserEngagementGridProps {
 type FilterType = "all" | "success" | "error" | "recent" | "component";
 type TimeRange = "1h" | "24h" | "7d" | "30d";
 
+const monospaceCellStyle: CellStyle = {
+  fontSize: "12px",
+  fontFamily: "monospace",
+};
+
+const errorCellStyle: CellStyle = {
+  color: "#ef4444",
+  fontSize: "12px",
+};
+
 /* ------------------------- Cell Renderers (AG Grid) ------------------------- */
 
 const ComponentTypeRenderer = (params: ICellRendererParams<UserEngagementRow>) => {
@@ -91,7 +103,7 @@ const ComponentTypeRenderer = (params: ICellRendererParams<UserEngagementRow>) =
     <div className="flex items-center gap-2">
       <span>{icons[type] ?? "🔧"}</span>
       <Badge variant="outline" className="text-xs sm:text-sm md:text-base">
-        {type || "unknown"}
+        {type || "any"}
       </Badge>
     </div>
   );
@@ -119,13 +131,16 @@ const InteractionTypeRenderer = (params: ICellRendererParams<UserEngagementRow>)
     error: <AlertCircle className="h-3 w-3" />,
   };
 
+  const variant =
+    variants[type as keyof typeof variants] ?? "outline";
+
   return (
     <Badge
-      variant={(variants as unknown)[type] ?? "outline"}
+      variant={variant}
       className="text-xs flex items-center gap-1 sm:text-sm md:text-base"
     >
       {iconMap[type]}
-      {type || "unknown"}
+      {type || "any"}
     </Badge>
   );
 };
@@ -280,7 +295,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         width: 160,
         sortable: true,
         filter: "agTextColumnFilter",
-        cellStyle: { fontSize: "12px", fontFamily: "monospace" } as unknown,
+        cellStyle: monospaceCellStyle,
       },
       {
         field: "interactionType",
@@ -312,7 +327,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         width: 220,
         sortable: false,
         filter: "agTextColumnFilter",
-        cellStyle: { color: "#ef4444", fontSize: "12px" } as unknown,
+        cellStyle: errorCellStyle,
         valueFormatter: (p) => p.value ?? "-",
       },
       {
@@ -410,9 +425,11 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
   );
 
   const onSelectionChanged = useCallback(
-    async (event: Event) => {
+    async (event: SelectionChangedEvent) => {
       const selectedNodes = event.api.getSelectedNodes();
-      const selectedData = selectedNodes.map((n: unknown) => n.data as UserEngagementRow);
+      const selectedData = selectedNodes
+        .map((node) => node.data)
+        .filter((datum): datum is UserEngagementRow => Boolean(datum));
       setSelectedRows(selectedData);
 
       if (selectedData.length > 0 && onRowSelect) {
@@ -629,7 +646,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             onGridReady={onGridReady}
-            onSelectionChanged={(e) => onSelectionChanged(e as unknown)}
+            onSelectionChanged={onSelectionChanged}
             rowSelection="multiple"
             animateRows
             getRowId={(params) => params.data.id}

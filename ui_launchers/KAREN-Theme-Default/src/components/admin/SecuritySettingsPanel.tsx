@@ -163,17 +163,18 @@ export default function SecuritySettingsPanel() {
     void loadBlockedIPs();
   }, [loadSecuritySettings, loadSecurityAlerts, loadBlockedIPs]);
   const handleSettingsChange = (path: string, value: unknown) => {
-    setSettings(prev => {
+    setSettings((prev) => {
       const keys = path.split('.');
-      const updated: Record<string, unknown> = { ...prev };
-      let current: Record<string, unknown> = updated;
+      const updated = { ...prev };
+      const mutable = updated as SecuritySettings & Record<string, unknown>;
+      let current: Record<string, unknown> = mutable;
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         current[key] = { ...(current[key] as Record<string, unknown>) };
         current = current[key] as Record<string, unknown>;
       }
       current[keys[keys.length - 1]] = value as unknown;
-      return updated as SecuritySettings;
+      return mutable;
     });
     setHasChanges(true);
   };

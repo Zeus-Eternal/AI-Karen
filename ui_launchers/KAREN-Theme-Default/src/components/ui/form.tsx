@@ -9,6 +9,7 @@ import {
   type ControllerProps,
   type FieldPath,
   type FieldValues,
+  type FormProviderProps as RHFFormProviderProps,
 } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
@@ -19,12 +20,12 @@ import {
   useFormField,
 } from "@/components/ui/form-context";
 
-type FormProviderProps = React.ComponentProps<typeof FormProvider>;
-
-export const Form: React.FC<FormProviderProps> = ({ children, ...props }) => {
+export const Form = <TFieldValues extends FieldValues = FieldValues>({
+  children,
+  ...props
+}: RHFFormProviderProps<TFieldValues>) => {
   return <FormProvider {...props}>{children}</FormProvider>;
 };
-
 Form.displayName = "Form";
 
 export const FormField = <
@@ -133,4 +134,3 @@ export const FormMessage = React.forwardRef<
   )
 })
 FormMessage.displayName = "FormMessage"
-

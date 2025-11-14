@@ -5,6 +5,14 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetryService } from "@/lib/telemetry";
 
+type ChatPerformanceWithMemory = Performance & {
+  memory?: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+};
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -65,6 +73,10 @@ export class ChatErrorBoundary extends Component<Props, State> {
     // Store error info
     this.setState({ errorInfo });
 
+    const performanceWithMemory =
+      typeof performance !== "undefined" ? (performance as ChatPerformanceWithMemory) : undefined;
+    const memoryUsage = performanceWithMemory?.memory;
+
     // Telemetry
     if (this.errorReportingEnabled && this.telemetryService?.track) {
       this.telemetryService.track(
@@ -84,20 +96,19 @@ export class ChatErrorBoundary extends Component<Props, State> {
           retryCount,
           timestamp: new Date().toISOString(),
           userAgent:
-            typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-          url: typeof window !== "undefined" ? window.location.href : "unknown",
+            typeof navigator !== "undefined" ? navigator.userAgent : "any",
+          url: typeof window !== "undefined" ? window.location.href : "any",
           viewport:
             typeof window !== "undefined"
               ? { width: window.innerWidth, height: window.innerHeight }
               : null,
-          memory:
-            typeof (performance as unknown)?.memory !== "undefined"
-              ? {
-                  usedJSHeapSize: (performance as unknown).memory.usedJSHeapSize,
-                  totalJSHeapSize: (performance as unknown).memory.totalJSHeapSize,
-                  jsHeapSizeLimit: (performance as unknown).memory.jsHeapSizeLimit,
-                }
-              : null,
+          memory: memoryUsage
+            ? {
+                usedJSHeapSize: memoryUsage.usedJSHeapSize,
+                totalJSHeapSize: memoryUsage.totalJSHeapSize,
+                jsHeapSizeLimit: memoryUsage.jsHeapSizeLimit,
+              }
+            : null,
         },
         correlationId
       );
@@ -119,7 +130,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
               handlerError:
                 handlerError instanceof Error
                   ? handlerError.message
-                  : "Unknown",
+                  : "any",
               errorId,
               correlationId,
             },
@@ -169,9 +180,9 @@ export class ChatErrorBoundary extends Component<Props, State> {
         },
         context: {
           timestamp: new Date().toISOString(),
-          url: typeof window !== "undefined" ? window.location.href : "unknown",
+          url: typeof window !== "undefined" ? window.location.href : "any",
           userAgent:
-            typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+            typeof navigator !== "undefined" ? navigator.userAgent : "any",
           retryCount: this.state.retryCount,
         },
       };
@@ -281,7 +292,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
     const issueUrl = `mailto:support@example.com?subject=Error Report&body=Error ID: ${
       this.state.errorId ?? "n/a"
     }%0AError: ${encodeURIComponent(
-      this.state.error?.message || "Unknown error"
+      this.state.error?.message || "any error"
     )}`;
     window.open(issueUrl, "_blank");
   };

@@ -30,6 +30,11 @@ interface State {
   error?: Error;
 }
 
+type AnalyticsWindow = Window & {
+  gtag?: (...args: unknown[]) => void;
+  dataLayer?: unknown[];
+};
+
 function arraysAreEqual(a?: unknown[], b?: unknown[]) {
   if (a === b) return true;
   if (!a || !b) return false;
@@ -58,15 +63,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Lightweight browser telemetry (gtag or dataLayer if present)
     try {
-      const anyWindow = window as unknown;
-      if (typeof anyWindow?.gtag === "function") {
-        anyWindow.gtag("event", "exception", {
+      const analyticsWindow =
+        typeof window !== "undefined" ? (window as AnalyticsWindow) : undefined;
+      if (typeof analyticsWindow?.gtag === "function") {
+        analyticsWindow.gtag("event", "exception", {
           description: error?.message ?? String(error),
           fatal: true,
           boundary: this.props.boundaryName ?? "UnnamedBoundary",
         });
-      } else if (Array.isArray(anyWindow?.dataLayer)) {
-        anyWindow.dataLayer.push({
+      } else if (Array.isArray(analyticsWindow?.dataLayer)) {
+        analyticsWindow.dataLayer.push({
           event: "exception",
           description: error?.message ?? String(error),
           fatal: true,
@@ -74,15 +80,17 @@ export class ErrorBoundary extends Component<Props, State> {
         });
       }
       // Custom DOM event hook for your audit/Prometheus bridges
-      window.dispatchEvent(
-        new CustomEvent("kari:error", {
-          detail: {
-            boundary: this.props.boundaryName ?? "UnnamedBoundary",
-            message: error?.message ?? String(error),
-            stack: error?.stack ?? "",
-          },
-        })
-      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("kari:error", {
+            detail: {
+              boundary: this.props.boundaryName ?? "UnnamedBoundary",
+              message: error?.message ?? String(error),
+              stack: error?.stack ?? "",
+            },
+          })
+        );
+      }
     } catch {
       // best-effort only
     }

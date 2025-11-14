@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 const TIMEOUT_MS = 15000; // 15 seconds
 const MAX_RETRIES = 2;
+const SESSION_COOKIE_NAME = 'kari_session';
 
 interface LoginRequest {
   email: string;
@@ -101,10 +102,24 @@ export async function POST(request: NextRequest) {
 
       const result = NextResponse.json(data as LoginResponse, { status: 200 });
 
-      // Set auth cookie if token provided
+      // Set auth cookie(s) if token provided
       if (data.access_token) {
         const maxAge = body.remember_me ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days or 1 day
         result.cookies.set('auth_token', data.access_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge,
+          path: '/',
+        });
+        result.cookies.set(SESSION_COOKIE_NAME, data.access_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge,
+          path: '/',
+        });
+        result.cookies.set('session_token', data.access_token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',

@@ -37,6 +37,11 @@ export interface ErrorFallbackProps {
   level: string;
   featureName?: string;
 }
+
+interface RecoveryStrategy {
+  canRecover?: boolean;
+  retryDelay?: number;
+}
 export class ErrorBoundary extends Component<Props, State> {
   private errorReporting: ErrorReportingService;
   private errorRecovery: ErrorRecoveryService;
@@ -112,13 +117,13 @@ export class ErrorBoundary extends Component<Props, State> {
     if (retryCount < maxRetries) {
       this.setState({ isRecovering: true });
       try {
-        const recoveryStrategy = await this.errorRecovery.getRecoveryStrategy(error, {
+        const recoveryStrategy = (await this.errorRecovery.getRecoveryStrategy(error, {
           level: this.props.level || 'component',
           featureName: this.props.featureName,
           retryCount,
-        });
+        })) as { canRecover?: boolean; retryDelay?: number };
 
-        if (recoveryStrategy.canRecover) {
+        if (recoveryStrategy?.canRecover) {
           await this.executeRecoveryStrategy(recoveryStrategy);
         }
       } catch (error) {
@@ -139,7 +144,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return 3;
     }
   }
-  private async executeRecoveryStrategy(strategy: unknown) {
+  private async executeRecoveryStrategy(strategy: RecoveryStrategy) {
     const delay = strategy.retryDelay || 1000;
     this.retryTimeout = setTimeout(() => {
       this.setState(prevState => ({
@@ -201,7 +206,7 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
   const canRetry = retryCount < 3;
   const handleReportBug = () => {
     const bugReportUrl = `mailto:support@kari.ai?subject=Error Report - ${errorId}&body=${encodeURIComponent(
-      `Error ID: ${errorId}\nFeature: ${featureName || 'Unknown'}\nError: ${error.message}\nStack: ${error.stack}`
+      `Error ID: ${errorId}\nFeature: ${featureName || 'unknown'}\nError: ${error.message}\nStack: ${error.stack}`
     )}`;
     window.open(bugReportUrl);
   };
@@ -265,4 +270,3 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
     </div>
   );
 };
-

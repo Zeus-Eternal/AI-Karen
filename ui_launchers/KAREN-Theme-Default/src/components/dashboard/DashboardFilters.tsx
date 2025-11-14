@@ -58,6 +58,8 @@ interface FilterTypeConfig {
   options?: Array<{ value: string; label: string }>;
 }
 
+type FilterInputValue = DashboardFilter["value"];
+
 const defaultFilterTypes: FilterTypeConfig[] = [
   {
     type: "category",
@@ -80,7 +82,7 @@ const defaultFilterTypes: FilterTypeConfig[] = [
       { value: "healthy", label: "Healthy" },
       { value: "warning", label: "Warning" },
       { value: "critical", label: "Critical" },
-      { value: "unknown", label: "Unknown" },
+      { value: "any", label: "any" },
     ],
   },
   {
@@ -180,8 +182,8 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   };
 
   const renderFilterInput = (
-    value: unknown,
-    onChange: (val: unknown) => void,
+    value: FilterInputValue,
+    onChange: (val: FilterInputValue) => void,
     config: FilterTypeConfig
   ) => {
     switch (config.valueType) {
@@ -233,7 +235,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 ? value
                 : value
                 ? Number(value)
-                : ("" as unknown)
+                : ""
             }
             onChange={(e) => {
               const v = e.target.value;
@@ -368,7 +370,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                   <div className="space-y-2">
                     <Label htmlFor="filter-value">Filter Value</Label>
                     {renderFilterInput(
-                      newFilter.value,
+                      (newFilter.value ?? "") as FilterInputValue,
                       (value) => setNewFilter((prev) => ({ ...prev, value: value as DashboardFilter['value'] })),
                       getFilterTypeConfig(newFilter.type)!
                     )}

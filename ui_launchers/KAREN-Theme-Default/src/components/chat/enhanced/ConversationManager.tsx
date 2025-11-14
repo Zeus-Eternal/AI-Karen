@@ -92,6 +92,9 @@ export interface ConversationAnalytics {
   activityByDay: Array<{ date: string; count: number }>;
 }
 
+type StatusFilterValue = "all" | "active" | "archived";
+type SortByOption = "updated" | "created" | "messages" | "title";
+
 interface ConversationManagerProps {
   conversations: ConversationThread[];
   analytics?: ConversationAnalytics;
@@ -216,13 +219,9 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
 
   // State
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "archived">(
-    "all"
-  );
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [topicFilter, setTopicFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"updated" | "created" | "messages" | "title">(
-    "updated"
-  );
+  const [sortBy, setSortBy] = useState<SortByOption>("updated");
   const [selectedConversations, setSelectedConversations] = useState<Set<string>>(
     new Set()
   );
@@ -532,7 +531,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
               <FilterIcon className="h-4 w-4 text-muted-foreground" />
 
               {/* Status */}
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as unknown)}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}>
                 <SelectTrigger className="w-40 h-8 text-xs" aria-label="Status filter">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -559,7 +558,7 @@ export const ConversationManager: React.FC<ConversationManagerProps> = ({
               </Select>
 
               {/* Sort */}
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as unknown)}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortByOption)}>
                 <SelectTrigger className="w-48 h-8 text-xs" aria-label="Sort by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>

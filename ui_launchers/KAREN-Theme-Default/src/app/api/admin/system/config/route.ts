@@ -45,14 +45,15 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
     };
     return NextResponse.json(response);
   } catch (error) {
-    return NextResponse.json({
+    const errorResponse: AdminApiResponse<never> = {
       success: false,
       error: {
         code: 'SYSTEM_CONFIG_RETRIEVAL_FAILED',
         message: 'Failed to retrieve system configuration',
         details: { error: error instanceof Error ? error.message : 'Unknown error' }
       }
-    } as AdminApiResponse<never>, { status: 500 });
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 });
 
@@ -63,14 +64,15 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const body: Record<string, SystemConfigUpdate> = await request.json();
     if (!body || Object.keys(body).length === 0) {
-      return NextResponse.json({
+      const validationResponse: AdminApiResponse<never> = {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Configuration updates are required',
           details: { provided_keys: Object.keys(body) }
         }
-      } as AdminApiResponse<never>, { status: 400 });
+      };
+      return NextResponse.json(validationResponse, { status: 400 });
     }
     const adminUtils = getAdminDatabaseUtils();
     const updatedConfigs: string[] = [];
@@ -127,14 +129,15 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
     }
     // Check if any updates were successful
     if (updatedConfigs.length === 0 && Object.keys(errors).length > 0) {
-      return NextResponse.json({
+      const failureResponse: AdminApiResponse<never> = {
         success: false,
         error: {
           code: 'SYSTEM_CONFIG_UPDATE_FAILED',
           message: 'No configurations were updated successfully',
           details: { errors, attempted_keys: Object.keys(body) }
         }
-      } as AdminApiResponse<never>, { status: 400 });
+      };
+      return NextResponse.json(failureResponse, { status: 400 });
     }
     // Get updated configurations for response
     const updatedSystemConfigs = await adminUtils.getSystemConfig();
@@ -162,13 +165,14 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
     };
     return NextResponse.json(response);
   } catch (error) {
-    return NextResponse.json({
+    const updateErrorResponse: AdminApiResponse<never> = {
       success: false,
       error: {
         code: 'SYSTEM_CONFIG_UPDATE_FAILED',
         message: 'Failed to update system configuration',
         details: { error: error instanceof Error ? error.message : 'Unknown error' }
       }
-    } as AdminApiResponse<never>, { status: 500 });
+    };
+    return NextResponse.json(updateErrorResponse, { status: 500 });
   }
 });

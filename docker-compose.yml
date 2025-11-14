@@ -219,7 +219,8 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
-      - ./monitoring/model_orchestrator_dashboard.json:/etc/grafana/provisioning/dashboards/model_orchestrator_dashboard.json
+      - ./monitoring/dashboards/model-orchestrator:/etc/grafana/provisioning/dashboards/model-orchestrator
+      - ./monitoring/dashboards/llamacpp-runtime:/etc/grafana/provisioning/dashboards/llamacpp-runtime
       - ./monitoring/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
     depends_on:
       - prometheus

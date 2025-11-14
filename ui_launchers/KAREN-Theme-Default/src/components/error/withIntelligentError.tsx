@@ -69,7 +69,7 @@ function normalizeError(e: Error | string | null | undefined) {
   try {
     return String(e).trim();
   } catch {
-    return "Unknown error";
+    return "unknown error";
   }
 }
 
@@ -113,7 +113,7 @@ export function withIntelligentError<P extends object>(
 
     // Memoize component label for context
     const componentLabel = useMemo(
-      () => WrappedComponent.displayName || (WrappedComponent as unknown).name || "AnonymousComponent",
+      () => WrappedComponent.displayName || WrappedComponent.name || "AnonymousComponent",
       []
     );
 
@@ -149,6 +149,7 @@ export function withIntelligentError<P extends object>(
 
     /* -------------------------- Error Detection -------------------------- */
     useEffect(() => {
+      const propsRecord = props as Record<string, unknown>;
       let errorToAnalyze: Error | string | null = null;
 
       // 1) Direct error prop takes precedence
@@ -157,12 +158,12 @@ export function withIntelligentError<P extends object>(
       }
       // 2) Custom detector (optional, receives prev props)
       else if (typeof detectError === "function") {
-        errorToAnalyze = detectError(props, prevPropsRef.current);
+        errorToAnalyze = detectError(propsRecord, prevPropsRef.current);
       }
       // 3) Scan known error-ish props
       else if (monitorProps && errorProps.length > 0) {
         for (const key of errorProps) {
-          const val = (props as unknown)[key];
+          const val = propsRecord[key];
           if (!val) continue;
 
           if (typeof val === "string" || val instanceof Error) {
@@ -172,14 +173,14 @@ export function withIntelligentError<P extends object>(
 
           if (typeof val === "boolean" && val === true) {
             // Try <propName>Message or derived message key
-            const msgKeyCandidates = [
-              `${key}Message`,
-              key.replace(/^(has|is)/i, "").replace(/^\w/, (c) => c.toLowerCase()) + "Message",
-              "message",
-            ];
-            const msg = msgKeyCandidates
-              .map((k) => (props as unknown)[k])
-              .find((m) => typeof m === "string" && m.trim().length > 0);
+              const msgKeyCandidates = [
+                `${key}Message`,
+                key.replace(/^(has|is)/i, "").replace(/^\w/, (c) => c.toLowerCase()) + "Message",
+                "message",
+              ];
+              const msg = msgKeyCandidates
+                .map((k) => propsRecord[k])
+                .find((m) => typeof m === "string" && m.trim().length > 0);
             errorToAnalyze = (msg as string) || `Error detected in ${key}`;
             break;
           }
@@ -254,7 +255,7 @@ export function withIntelligentError<P extends object>(
 
     const panel = shouldShowPanel ? (
       <IntelligentErrorPanel
-        error={detectedError || "Unknown error"}
+        error={detectedError || "unknown error"}
         onDismiss={handleDismiss}
         onRetry={handleRetry}
         autoFetch={false} // analysis is orchestrated here

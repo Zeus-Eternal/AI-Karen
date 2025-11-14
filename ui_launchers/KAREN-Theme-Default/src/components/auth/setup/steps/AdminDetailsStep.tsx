@@ -143,8 +143,9 @@ export function AdminDetailsStep({
 
       // Proceed to next step
       onNext();
-    } catch (err: Error) {
-      setErrors({ general: err?.message ?? "Failed to proceed. Please try again." });
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to proceed. Please try again.");
+      setErrors({ general: error.message });
     } finally {
       setSubmitting(false);
     }

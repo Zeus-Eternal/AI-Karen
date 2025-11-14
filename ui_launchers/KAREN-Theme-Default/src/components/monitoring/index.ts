@@ -49,9 +49,8 @@ export type {
 export { default as HealthDashboard } from "./HealthDashboard";
 export type {
   HealthDashboardProps,
-  ServiceHealth,
-  BackendHealthData,
 } from "./HealthDashboard";
+export type { ServiceHealth, BackendHealthData } from "@/types/health";
 
 // Endpoint Status Dashboard
 export { EndpointStatusDashboard, default as EndpointStatusDashboardDefault } from "./endpoint-status-dashboard";

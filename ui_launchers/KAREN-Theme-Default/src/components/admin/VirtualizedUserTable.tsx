@@ -20,7 +20,21 @@ import React, {
 import { FixedSizeList as List, ListOnScrollProps } from "react-window";
 // TODO: Install react-virtualized-auto-sizer package
 // import AutoSizer from "react-virtualized-auto-sizer";
-const AutoSizer: unknown = ({ children }: unknown) => children({ height: 600, width: 800 });
+type AutoSizerChildrenArgs = {
+  height: number;
+  width: number;
+};
+interface AutoSizerProps {
+  children: (dimensions: AutoSizerChildrenArgs) => React.ReactNode;
+  disableWidth?: boolean;
+}
+const AutoSizer: React.FC<AutoSizerProps> = ({ children, disableWidth }) => {
+  const fallbackDimensions = {
+    height: 600,
+    width: disableWidth ? 0 : 1000,
+  };
+  return <>{children(fallbackDimensions)}</>;
+};
 import { Button } from "@/components/ui/button";
 import {
   UserListCache,
@@ -78,14 +92,24 @@ function getRoleColor(role: string): string {
   }
 }
 
-function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "Never";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d?.getTime?.())) return "-";
+function formatDate(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "Never";
+  }
+  let date: Date | null = null;
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      date = parsed;
+    }
+  }
+  if (!date) return "-";
   return (
-    d.toLocaleDateString() +
+    date.toLocaleDateString() +
     " " +
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   );
 }
 
@@ -295,7 +319,7 @@ const Row: React.FC<RowProps> = ({ index, style, data }) => {
                   onEdit: onEditUser,
                   onToggleStatus,
                 })
-              : value?.toString() ?? "-"}
+              : String(value ?? "-")}
           </div>
         );
       })}
@@ -436,9 +460,13 @@ export function VirtualizedUserTable({
         setUsers((prev) => (append ? [...prev, ...newRows] : newRows));
         setTotalUsers(payload.data.pagination.total ?? 0);
         setHasNextPage(Boolean(payload.data.pagination.has_next));
-      } catch (err: Error) {
-        if (err?.name !== "AbortError") {
-          setError(err instanceof Error ? err.message : "Failed to load users");
+      } catch (err) {
+        if (err instanceof Error) {
+          if (err.name !== "AbortError") {
+            setError(err.message);
+          }
+        } else {
+          setError("Failed to load users");
         }
       } finally {
         setLoading(false);
@@ -514,10 +542,10 @@ export function VirtualizedUserTable({
       setPagination((p) => ({ ...p, page: 1 }));
       await loadUsers();
       onUserUpdated();
-    } catch (err: Error) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update user status"
-      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update user status";
+      setError(message);
     }
   }
 

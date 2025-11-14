@@ -175,15 +175,16 @@ export const DashboardExportImport: React.FC<DashboardExportImportProps> = ({
       }
       if (parsed.type === "dashboard-collection") {
         const { dashboards, templates } = parsed.data ?? {};
-        const dashboardCount = Object.keys(dashboards || {}).length;
+        const dashboardsMap = (dashboards ?? {}) as Record<string, DashboardConfig>;
+        const dashboardCount = Object.keys(dashboardsMap).length;
         const templateCount = templates?.length || 0;
         return {
           type: "Dashboard Collection",
           name: `${dashboardCount} dashboard(s)${
             templateCount > 0 ? `, ${templateCount} template(s)` : ""
           }`,
-          widgets: Object.values(dashboards || {}).reduce(
-            (total: number, d: unknown) => total + (d.widgets?.length || 0),
+          widgets: Object.values(dashboardsMap).reduce(
+            (total, d) => total + (d?.widgets?.length || 0),
             0
           ),
           description: "Multiple dashboards and templates",

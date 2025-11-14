@@ -58,10 +58,12 @@ import {
   selectIsEditing,
   selectTemplatesForUser,
 } from "@/store/dashboard-store";
+import type { TimeRange } from "@/store/dashboard-store";
 
 // Types
 import type {
   DashboardContainerProps,
+  DashboardFilter,
   WidgetConfig,
   WidgetData,
 } from "@/types/dashboard";
@@ -229,7 +231,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         ...prev,
         [widgetId]: {
           id: widgetId,
-          data: { value: Math.random() * 100 },
+          data: { value: Math.random() * 100, label: "Random Value" },
           loading: false,
           lastUpdated: new Date(),
         },
@@ -267,14 +269,14 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   );
 
   const handleTimeRangeChange = useCallback(
-    (timeRange: unknown) => {
+    (timeRange: TimeRange) => {
       setGlobalTimeRange(timeRange);
     },
     [setGlobalTimeRange]
   );
 
   const handleFiltersChange = useCallback(
-    (filters: unknown[]) => {
+    (filters: DashboardFilter[]) => {
       if (config.id) {
         // Remove existing then upsert new
         (config.filters || []).forEach((f) => {
@@ -319,11 +321,11 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         <WidgetBase
           key={widget.id}
           config={widget}
-          error={`Unknown widget type: ${widget.type}`}
+          error={`any widget type: ${widget.type}`}
           onRemove={() => handleRemoveWidget(widget.id)}
           isEditing={isEditing}
         >
-          <div>Unknown widget type</div>
+          <div>any widget type</div>
         </WidgetBase>
       );
     }
@@ -334,7 +336,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       <WidgetBase
         key={widget.id}
         config={widget}
-        data={data as unknown}
+        data={data}
         loading={data?.loading}
         error={data?.error}
         onConfigChange={(newConfig) =>
@@ -346,7 +348,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
       >
         <WidgetComponent
           config={widget}
-          data={data as unknown}
+          data={data}
           onConfigChange={(newConfig: WidgetConfig) =>
             handleWidgetConfigChange(widget.id, newConfig)
           }

@@ -82,6 +82,12 @@ interface BackendChatRuntimeRequest {
   max_tokens: number;
 }
 
+interface EnhancedRuntimeError extends Error {
+  status?: number;
+  statusText?: string;
+  endpoint?: string;
+}
+
 export const useChatMessages = (
   messages: ChatMessage[],
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
@@ -138,7 +144,7 @@ export const useChatMessages = (
           language: options.language || settings.language,
         };
 
-        // Abort any ongoing requests
+        // Abort unknown ongoing requests
         abortControllerRef.current?.abort();
         setIsTyping(false);
 
@@ -433,10 +439,10 @@ export const useChatMessages = (
                 `Chat runtime HTTP ${response.status}: ${response.statusText}${
                   errorText ? ` - ${errorText}` : ""
                 }`
-              );
-              (error as unknown).status = response.status;
-              (error as unknown).statusText = response.statusText;
-              (error as unknown).endpoint = chatRuntimeUrl;
+              ) as EnhancedRuntimeError;
+              error.status = response.status;
+              error.statusText = response.statusText;
+              error.endpoint = chatRuntimeUrl;
               throw error;
             }
             responseOrigin = "chat-runtime";
@@ -449,7 +455,7 @@ export const useChatMessages = (
                   primaryError instanceof Error
                     ? primaryError.message
                     : String(primaryError),
-                errorType: primaryError instanceof Error ? primaryError.name : 'Unknown',
+                errorType: primaryError instanceof Error ? primaryError.name : 'unknown',
                 stack: primaryError instanceof Error ? primaryError.stack : undefined,
               }
             );
@@ -461,7 +467,7 @@ export const useChatMessages = (
               safeError("🔍 useChatMessages: Fallback network request failed", {
                 endpoint: fallbackUrl,
                 error: fallbackNetworkError instanceof Error ? fallbackNetworkError.message : String(fallbackNetworkError),
-                errorType: fallbackNetworkError instanceof Error ? fallbackNetworkError.name : 'Unknown',
+                errorType: fallbackNetworkError instanceof Error ? fallbackNetworkError.name : 'unknown',
               });
               throw fallbackNetworkError;
             }
@@ -1009,9 +1015,9 @@ export const useChatMessages = (
           const normalizedError =
             error instanceof Error ? error : new Error(String(error));
           const errorDetails = {
-            name: normalizedError.name || "UnknownError",
+            name: normalizedError.name || "unknownError",
             message:
-              normalizedError.message || "Unknown error occurred",
+              normalizedError.message || "unknown error occurred",
             stack: normalizedError.stack,
             cause:
               "cause" in normalizedError
@@ -1131,7 +1137,7 @@ export const useChatMessages = (
           setIsTyping(false);
         }
       } catch (outerError) {
-        // Catch any unhandled errors in the sendMessage function
+        // Catch unknown unhandled errors in the sendMessage function
         const normalizedOuterError =
           outerError instanceof Error
             ? outerError

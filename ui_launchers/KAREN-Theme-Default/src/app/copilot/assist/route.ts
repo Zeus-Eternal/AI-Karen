@@ -21,10 +21,15 @@ async function handleCopilotRequest(request: NextRequest) {
     // Copy authorization header if present, else use auth_token cookie
     const authHeader = request.headers.get('authorization');
     const authCookie = request.cookies.get('auth_token')?.value;
+    const sessionCookie =
+      request.cookies.get('kari_session')?.value ||
+      request.cookies.get('session_token')?.value;
     if (authHeader) {
       headers['Authorization'] = authHeader;
     } else if (authCookie) {
       headers['Authorization'] = `Bearer ${authCookie}`;
+    } else if (sessionCookie) {
+      headers['Authorization'] = `Bearer ${sessionCookie}`;
     }
     const sessionHeader = request.headers.get('x-session-id');
     if (sessionHeader) {

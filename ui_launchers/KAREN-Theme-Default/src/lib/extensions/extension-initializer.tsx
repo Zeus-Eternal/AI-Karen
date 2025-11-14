@@ -4,10 +4,14 @@
  * Ensures the extension integration service is properly initialized
  */
 
-"use client";
+ "use client";
 
-import * as React from 'react';
-import { useExtensionInitialization } from './use-extension-initialization';
+import { ReactNode, useContext, useMemo } from 'react';
+import { AuthContext } from '@/contexts/auth-context-instance';
+import {
+  ExtensionIntegrationContext,
+  useExtensionInitialization,
+} from './use-extension-initialization';
 import { safeError } from '../safe-console';
 
 /**
@@ -15,19 +19,36 @@ import { safeError } from '../safe-console';
  * 
  * Wraps children with extension integration initialization
  */
-export function ExtensionIntegrationProvider({ children }: { children: React.ReactNode }) {
-  const { initialized, error } = useExtensionInitialization();
+export function ExtensionIntegrationProvider({ children }: { children: ReactNode }) {
+  const authContext = useContext(AuthContext);
+  const shouldInitializeExtensions = authContext
+    ? authContext.authState.isLoading
+      ? false
+      : authContext.isAuthenticated
+    : true;
+
+  const { initialized, error } = useExtensionInitialization(
+    shouldInitializeExtensions
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      initialized,
+      error,
+    }),
+    [initialized, error]
+  );
 
   if (error) {
-    safeError('ExtensionIntegrationProvider: Extension integration failed to initialize:', error);
-    // Still render children even if extension integration fails
-    return <>{children}</>;
+    safeError(
+      'ExtensionIntegrationProvider: Extension integration failed to initialize:',
+      error
+    );
   }
 
-  if (!initialized) {
-    // Extension integration is loading, but don't block the UI
-    return <>{children}</>;
-  }
-
-  return <>{children}</>;
+  return (
+    <ExtensionIntegrationContext.Provider value={contextValue}>
+      {children}
+    </ExtensionIntegrationContext.Provider>
+  );
 }

@@ -22,6 +22,8 @@ _PUBLIC_PATHS = {
     "/api/auth/register",
     "/api/auth/reset-password",
     "/api/auth/validate-session",
+    "/copilot/assist",
+    "/copilot/health",
 }
 _PUBLIC_PREFIXES: Iterable[str] = (
     "/static/",

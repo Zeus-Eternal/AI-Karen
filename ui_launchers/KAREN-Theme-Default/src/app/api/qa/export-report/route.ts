@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QualityMetricsCollector } from '@/lib/qa/quality-metrics-collector';
+import type * as PDFKit from 'pdfkit';
 
 // Force Node runtime because we use Buffer/streams for PDF
 export const runtime = 'nodejs';
@@ -11,9 +12,85 @@ type PostBody = {
   includeCharts?: boolean;
 };
 
+interface QualityGate {
+  status?: string;
+  name?: string;
+  actual?: number;
+  threshold?: number;
+  [key: string]: unknown;
+}
+
+interface QualityReportMetrics {
+  testCoverage?: {
+    unit?: number;
+    integration?: number;
+    e2e?: number;
+    visual?: number;
+    overall?: number;
+    [key: string]: unknown;
+  };
+  testResults?: {
+    total?: number;
+    passed?: number;
+    failed?: number;
+    skipped?: number;
+    flaky?: number;
+    [key: string]: unknown;
+  };
+  performance?: {
+    loadTime?: number;
+    interactionTime?: number;
+    memoryUsage?: number;
+    errorRate?: number;
+    [key: string]: unknown;
+  };
+  accessibility?: {
+    score?: number;
+    violations?: number;
+    warnings?: number;
+    passes?: number;
+    [key: string]: unknown;
+  };
+  security?: {
+    score?: number;
+    vulnerabilities?: {
+      critical?: number;
+      high?: number;
+      medium?: number;
+      low?: number;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  codeQuality?: {
+    maintainabilityIndex?: number;
+    technicalDebt?: number;
+    duplicateCode?: number;
+    complexity?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface QualityReportSummary {
+  overallScore: number;
+  passedGates: number;
+  totalGates: number;
+  criticalIssues: number;
+}
+
+interface QualityReportData {
+  timestamp: string;
+  includeCharts: boolean;
+  metrics: QualityReportMetrics;
+  qualityGates: QualityGate[];
+  trends: unknown;
+  summary: QualityReportSummary;
+}
+
 const collector = new QualityMetricsCollector();
 
-function json(data: any, status = 200, headers: Record<string, string> = {}) {
+function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return NextResponse.json(data, {
     status,
     headers: {
@@ -41,14 +118,14 @@ function ensurePercent(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function asRecord(value: any): Record<string, any> {
+function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value === 'object' && value !== null) {
-    return value as Record<string, any>;
+    return value as Record<string, unknown>;
   }
   return {};
 }
 
-function computeOverallScore(metrics: any) {
+function computeOverallScore(metrics: unknown) {
   // Defensive guards to avoid NaN/ZeroDiv
   const metricsRecord = asRecord(metrics);
   const coverageOverall = Number(
@@ -70,7 +147,12 @@ function computeOverallScore(metrics: any) {
   return ensurePercent(avg);
 }
 
-function buildReportData(metrics: any, qualityGates: any[], trends: any, includeCharts: boolean) {
+function buildReportData(
+  metrics: QualityReportMetrics,
+  qualityGates: unknown[],
+  trends: unknown,
+  includeCharts: boolean,
+): QualityReportData {
   const metricsRecord = asRecord(metrics);
   const securityVulnerabilities = Number(
     asRecord(asRecord(metricsRecord.security).vulnerabilities).critical ?? 0,
@@ -79,8 +161,8 @@ function buildReportData(metrics: any, qualityGates: any[], trends: any, include
     asRecord(metricsRecord.accessibility).violations ?? 0,
   );
   const criticalIssues = securityVulnerabilities + accessibilityViolations;
-  const gateRecords = Array.isArray(qualityGates)
-    ? qualityGates.map((entry) => asRecord(entry))
+  const gateRecords: QualityGate[] = Array.isArray(qualityGates)
+    ? qualityGates.map((entry) => asRecord(entry) as QualityGate)
     : [];
   const passedGates = gateRecords.filter(
     (entry) => String(entry.status ?? '').toLowerCase() === 'passed',
@@ -91,7 +173,7 @@ function buildReportData(metrics: any, qualityGates: any[], trends: any, include
     timestamp: new Date().toISOString(),
     includeCharts: !!includeCharts,
     metrics,
-    qualityGates,
+    qualityGates: gateRecords,
     trends,
     summary: {
       overallScore: computeOverallScore(metrics),
@@ -121,11 +203,13 @@ export async function POST(request: NextRequest) {
 
     // Collect data
     const metricsPromise = collector.collectAllMetrics();
-    const [metrics, qualityGates, trends] = await Promise.all([
+    const [rawMetrics, qualityGates, trends] = await Promise.all([
       metricsPromise,
       metricsPromise.then((data) => collector.generateQualityGates(data)),
       collector.generateTrends(30),
     ]);
+
+    const metrics = rawMetrics as QualityReportMetrics;
 
     const reportData = buildReportData(metrics, qualityGates, trends, includeCharts);
     const filenameBase = 'qa-report';
@@ -165,7 +249,7 @@ export async function POST(request: NextRequest) {
         Expires: '0',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return json(
       {
@@ -183,21 +267,18 @@ export async function POST(request: NextRequest) {
  *
  * Dependency: `pdfkit`
  */
-async function generatePdfReport(reportData: any): Promise<Buffer> {
+async function generatePdfReport(reportData: QualityReportData): Promise<Buffer> {
   // Dynamic import to keep route cold-start smaller if PDF not used
   const { default: PDFDocument } = await import('pdfkit');
 
-  const reportRecord = asRecord(reportData);
-  const timestamp = reportRecord.timestamp
-    ? String(reportRecord.timestamp)
-    : new Date().toISOString();
+  const timestamp = reportData.timestamp ?? new Date().toISOString();
 
   return await new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
       margins: { top: 50, left: 50, right: 50, bottom: 50 },
       info: { Title: 'Quality Assurance Report' },
-    });
+    }) as PDFKit.PDFDocument;
 
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -306,12 +387,12 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
     doc.moveDown(1);
 
     sectionHeader(doc, 'Quality Gates');
-    const gates: any[] = reportData.qualityGates ?? [];
+    const gates: QualityGate[] = reportData.qualityGates ?? [];
     if (gates.length === 0) {
       doc.fontSize(10).fillColor('#666').text('No quality gates available.').fillColor('#000');
     } else {
       gates.forEach((gate) => {
-        const status = String(gate?.status ?? 'any').toUpperCase();
+        const status = String(gate?.status ?? 'unknown').toUpperCase();
         doc
           .fontSize(10)
           .text(`• ${gate?.name ?? 'Unnamed'} — ${status} (${gate?.actual ?? 0}% vs ${gate?.threshold ?? 0}% threshold)`);
@@ -321,25 +402,25 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
     doc.end();
 
     // Helpers
-    function sectionHeader(d: any, title: string) {
+    function sectionHeader(d: PDFKit.PDFDocument, title: string) {
       d.fontSize(13).text(title, { underline: true }).moveDown(0.3);
     }
 
-    function drawKV(d: any, rows: Array<[string, string]>) {
+    function drawKV(d: PDFKit.PDFDocument, rows: Array<[string, string]>) {
       d.fontSize(10);
       rows.forEach(([k, v]) => {
         d.text(`${k}: ${v}`);
       });
     }
 
-    function drawKeyValueTable(d: any, rows: Array<[string, string]>) {
+    function drawKeyValueTable(d: PDFKit.PDFDocument, rows: Array<[string, string]>) {
       d.fontSize(10);
       rows.forEach(([k, v]) => {
         d.text(`${k}: ${v}`);
       });
     }
 
-    function drawBar(d: any, label: string, percent: number) {
+    function drawBar(d: PDFKit.PDFDocument, label: string, percent: number) {
       const pct = Math.max(0, Math.min(100, percent));
       const width = 400;
       const height = 10;
@@ -357,7 +438,7 @@ async function generatePdfReport(reportData: any): Promise<Buffer> {
   });
 }
 
-function generateHtmlReport(reportData: any): string {
+function generateHtmlReport(reportData: QualityReportData): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -461,23 +542,29 @@ function generateHtmlReport(reportData: any): string {
 
     <div class="quality-gates">
       <h2>Quality Gates</h2>
-      ${(reportData.qualityGates ?? [])
-        .map((gate: any) => {
-          const status = String(gate.status ?? 'failed').toLowerCase();
-          const cls = status === 'passed' ? 'gate-passed status-passed'
-                   : status === 'warning' ? 'gate-warning status-warning'
-                   : 'gate-failed status-failed';
-          return `
-            <div class="gate gate-${status}">
-              <div>
-                <strong>${gate.name ?? 'Unnamed'}</strong>
-                <div style="font-size:0.9em; color:#6c757d">${gate.actual ?? 0}% (threshold: ${gate.threshold ?? 0}%)</div>
+      ${(() => {
+        const gates = reportData.qualityGates ?? [];
+        return gates
+          .map((gate) => {
+            const status = String(gate.status ?? 'failed').toLowerCase();
+            const variant =
+              status === 'passed'
+                ? 'passed'
+                : status === 'failed'
+                  ? 'failed'
+                  : 'warning';
+            return `
+              <div class="gate gate-${status}">
+                <div>
+                  <strong>${gate.name ?? 'Unnamed'}</strong>
+                  <div style="font-size:0.9em; color:#6c757d">${gate.actual ?? 0}% (threshold: ${gate.threshold ?? 0}%)</div>
+                </div>
+                <span class="status-badge status-${variant}">${String(gate.status ?? 'unknown')}</span>
               </div>
-              <div class="status-badge ${cls.split(' ').pop()}">${status}</div>
-            </div>
-          `;
-        })
-        .join('')}
+            `;
+          })
+          .join('');
+      })()}
     </div>
   </div>
 </body>

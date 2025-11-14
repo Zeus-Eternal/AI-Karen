@@ -32,7 +32,7 @@ interface ReadinessCheckResult {
 interface ReadinessCheck {
   status: 'ready' | 'not_ready';
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface BackendHealthResult {
@@ -42,6 +42,12 @@ interface BackendHealthResult {
   statusCode?: number;
   message?: string;
   rawStatus?: string;
+}
+
+interface BackendHealthPayload {
+  status?: string;
+  summary?: string;
+  message?: string;
 }
 
 interface GlobalReadinessState {
@@ -101,9 +107,12 @@ async function checkBackendHealth(url: string, timeoutMs: number): Promise<Backe
 
     const responseTime = Date.now() - startTime;
 
-    let parsed: any = null;
+    let parsed: BackendHealthPayload | null = null;
     try {
-      parsed = await response.json();
+      const json = await response.json();
+      if (typeof json === 'object' && json !== null) {
+        parsed = json as BackendHealthPayload;
+      }
     } catch (parseError) {
       safeWarn('Readiness check received non-JSON response from backend health endpoint', {
         url: healthUrl,

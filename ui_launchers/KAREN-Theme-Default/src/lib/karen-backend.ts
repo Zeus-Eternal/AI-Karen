@@ -281,6 +281,20 @@ class KarenBackendService {
       endpoint.includes("/extensions/system/health")
     );
   }
+
+  /**
+   * Determine if we should run extension-specific auth flows for this endpoint.
+   * Browser requests routed through Next.js API routes rely on cookies, so skip the
+   * bespoke extension auth manager when the baseUrl is empty in the browser.
+   */
+  private shouldUseExtensionAuthFlow(endpoint: string): boolean {
+    if (!this.isExtensionEndpoint(endpoint)) {
+      return false;
+    }
+    const isBrowserProxy =
+      typeof window !== "undefined" && this.config.baseUrl === "";
+    return !isBrowserProxy;
+  }
   /**
    * Get authentication headers with extension-specific handling
    */
@@ -288,8 +302,8 @@ class KarenBackendService {
     endpoint: string
   ): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
-    // For extension endpoints, try to use extension auth manager
-    if (this.isExtensionEndpoint(endpoint)) {
+    // For extension endpoints, try to use extension auth manager when appropriate
+    if (this.shouldUseExtensionAuthFlow(endpoint)) {
       try {
         const extensionAuthManager = getExtensionAuthManager();
         const extensionHeaders = await extensionAuthManager.getAuthHeaders();
@@ -336,7 +350,7 @@ class KarenBackendService {
   ): Promise<{ shouldRetry: boolean; delay?: number }> {
     // Handle extension endpoint authentication failures with comprehensive error handling
     if (
-      this.isExtensionEndpoint(endpoint) &&
+      this.shouldUseExtensionAuthFlow(endpoint) &&
       (response.status === 401 || response.status === 403)
     ) {
       try {
@@ -858,7 +872,7 @@ class KarenBackendService {
           const apiError = APIError.fromResponse(response, errorDetails);
           // Handle extension endpoint errors with comprehensive error handling
           if (
-            this.isExtensionEndpoint(endpoint) &&
+            this.shouldUseExtensionAuthFlow(endpoint) &&
             (response.status === 401 ||
               response.status === 403 ||
               response.status === 503)
@@ -949,7 +963,8 @@ class KarenBackendService {
             baseDelay = retryDelay * 2; // Service unavailable
           }
           // Apply exponential backoff for extension endpoints
-          const backoffMultiplier = this.isExtensionEndpoint(endpoint)
+          const extensionBackoff = this.shouldUseExtensionAuthFlow(endpoint);
+          const backoffMultiplier = extensionBackoff
             ? Math.pow(2, attempt)
             : Math.pow(1.5, attempt);
           const delay = baseDelay * backoffMultiplier;

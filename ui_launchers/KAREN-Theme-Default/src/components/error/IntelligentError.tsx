@@ -170,8 +170,8 @@ export const HookUsageExample: React.FC = () => {
       // Optional: toast/log
       console.debug("Analysis complete:", analysis);
     },
-    onAnalysisError: (e: Event) => {
-      console.warn("Analysis failed:", e);
+    onAnalysisError: (error: Error) => {
+      console.warn("Analysis failed:", error);
     },
   });
 
@@ -287,20 +287,27 @@ export const HookUsageExample: React.FC = () => {
 
 /* --------------------------- API Error Example ------------------------ */
 
+interface MockApiError extends Error {
+  status: number;
+  isNetworkError: boolean;
+  isCorsError: boolean;
+  isTimeoutError: boolean;
+  responseTime: number;
+}
+
 export const ApiErrorExample: React.FC = () => {
   const apiError = useIntelligentApiError();
 
   const simulateApiError = () => {
-    const mockApiError = {
-      message: "Request failed with status 500",
-      status: 500,
+    const mockApiError: MockApiError = Object.assign(new Error("Request failed with status 500"), {
       name: "ApiError",
+      status: 500,
       isNetworkError: false,
       isCorsError: false,
       isTimeoutError: false,
       responseTime: 2500,
-    };
-    apiError.handleApiError(mockApiError as unknown, {
+    });
+    apiError.handleApiError(mockApiError, {
       endpoint: "/api/chat/completions",
       method: "POST",
       provider: "openai",

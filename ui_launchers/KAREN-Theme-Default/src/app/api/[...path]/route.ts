@@ -53,10 +53,15 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     // Copy authorization header if present, else use auth_token cookie (set by our login route)
     const authHeader = request.headers.get('authorization');
     const authCookie = request.cookies.get('auth_token')?.value;
+    const sessionCookie =
+      request.cookies.get('kari_session')?.value ||
+      request.cookies.get('session_token')?.value;
     if (authHeader) {
       headers['Authorization'] = authHeader;
     } else if (authCookie) {
       headers['Authorization'] = `Bearer ${authCookie}`;
+    } else if (sessionCookie) {
+      headers['Authorization'] = `Bearer ${sessionCookie}`;
     }
     // Forward cookies for HttpOnly session/refresh flows
     const cookieHeader = request.headers.get('cookie');

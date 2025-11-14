@@ -44,16 +44,13 @@ const ExtensionSidebar = dynamic(
 );
 
 type ActiveView = "settings" | "dashboard" | "commsCenter";
+type PageSearchParams = ReturnType<typeof useSearchParams>;
 
 // Helper function to parse view from URL params
-const parseView = (
-  sp: ReturnType<typeof useSearchParams> | null
-): ActiveView => {
+const parseView = (sp: PageSearchParams | null): ActiveView => {
   const v = sp?.get("view") ?? "";
   const allowed: ActiveView[] = ["settings", "dashboard", "commsCenter"];
-  return (allowed as readonly string[]).includes(v)
-    ? (v as ActiveView)
-    : "dashboard";
+  return (allowed as readonly string[]).includes(v) ? (v as ActiveView) : "dashboard";
 };
 
 export default function HomePage() {
@@ -72,7 +69,7 @@ function AuthenticatedHomePage() {
   const pathname = usePathname();
 
   const activeMainView = useMemo(
-    () => parseView(searchParams as unknown),
+    () => parseView(searchParams),
     [searchParams]
   );
 
