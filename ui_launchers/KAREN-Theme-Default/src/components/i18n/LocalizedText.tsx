@@ -39,7 +39,7 @@ export function LocalizedText({
   const { t } = useI18n();
   
   // Build translation options dynamically to match the expected type
-  const translationOptions: unknown = {
+  const translationOptions: InterpolationOptions & { ns?: string; count?: number } = {
     ...values,
   };
   
@@ -59,7 +59,7 @@ export function LocalizedText({
 
 // Convenience components for common use cases
 export function T({ children, ...props }: Omit<LocalizedTextProps, 'i18nKey'> & { children: string }) {
-  return <LocalizedText i18nKey={children} {...props} />;
+  return <LocalizedText i18nKey={children as string} {...props} />;
 }
 
 export function Plural({
@@ -67,7 +67,6 @@ export function Plural({
   count,
   ...props
 }: Omit<LocalizedTextProps, 'count'> & { count: number }) {
-  return <LocalizedText i18nKey={i18nKey} count={count} {...props} />;
+  return <LocalizedText i18nKey={i18nKey as string} count={count} {...props} />;
 }
-
 export default LocalizedText;

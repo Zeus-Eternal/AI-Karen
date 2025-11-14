@@ -232,9 +232,20 @@ export async function POST(request: NextRequest) {
   try {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const models = await modelSelectionService.getAvailableModels();
-    const imageModels = (models || []).filter(
-      (m: unknown) => m?.type === 'image' || m?.capabilities?.includes?.('text2img') || m?.capabilities?.includes?.('image-generation')
-    );
+    const imageModels = (models || []).filter((item) => {
+      const candidate = item as {
+        type?: string;
+        capabilities?: unknown;
+      };
+      const caps = Array.isArray(candidate.capabilities)
+        ? (candidate.capabilities as string[])
+        : [];
+      return (
+        candidate.type === 'image' ||
+        caps.includes('text2img') ||
+        caps.includes('image-generation')
+      );
+    });
     if (!imageModels.length) {
       return NextResponse.json(
         {

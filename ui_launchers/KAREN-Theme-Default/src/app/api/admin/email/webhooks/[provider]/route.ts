@@ -254,20 +254,14 @@ async function verifySignature(
       // Mailgun: signature is usually in the JSON body: signature: { timestamp, token, signature }
       // Verifies HMAC-SHA256 using API key (MAILGUN_SIGNING_KEY)
       const signingKey = process.env.MAILGUN_SIGNING_KEY;
-      const payload =
-        body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+      const payload = asRecord(body);
       const sig =
-        payload.signature && typeof payload.signature === "object"
+        typeof payload.signature === "object" && payload.signature !== null
           ? (payload.signature as Record<string, unknown>)
           : {};
-      const timestampValue = sig.timestamp ?? payload.timestamp;
-      const tokenValue = sig.token ?? payload.token;
-      const signatureValue = sig.signature ?? payload.signature;
-      const asString = (value: unknown): string | undefined =>
-        typeof value === "string" ? value : typeof value === "number" ? value.toString() : undefined;
-      const timestamp = asString(timestampValue);
-      const token = asString(tokenValue);
-      const signature = asString(signatureValue);
+      const timestamp = toStringOrUndefined(sig.timestamp ?? payload.timestamp);
+      const token = toStringOrUndefined(sig.token ?? payload.token);
+      const signature = toStringOrUndefined(sig.signature ?? payload.signature);
       if (!signingKey || !timestamp || !token || !signature) {
         console.info('Mailgun signature verification skipped (missing fields/env)');
         return;
@@ -307,75 +301,92 @@ function normalizeEvents(
     case 'sendgrid': {
       // SendGrid posts an array of events
       const arr = Array.isArray(body) ? body : [body];
-      return arr.map((e) => ({
-        event_id: e?.sg_event_id || e?._id || e?.event_id,
-        event_type: e?.event || 'unknown',
-        body: e,
-      }));
+      return arr.map((raw) => {
+        const e = asRecord(raw);
+        return {
+          event_id: toStringOrUndefined(e.sg_event_id ?? e._id ?? e.event_id),
+          event_type: toStringOrUndefined(e.event) ?? 'unknown',
+          body: raw,
+        };
+      });
     }
     case 'mailgun': {
-      const payload = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
-      if (payload["event-data"] && typeof payload["event-data"] === "object") {
-        const ed = payload["event-data"] as Record<string, unknown>;
-        const msgHeaders = ed["message"] && typeof ed["message"] === "object" ? (ed["message"] as Record<string, unknown>).headers : undefined;
-        return [{
-          event_id: ed?.id || msgHeaders?.["message-id"],
-          event_type: (ed?.event as string) ?? "unknown",
-          body: ed,
-        }];
+      const payload = asRecord(body);
+      const eventDataRaw = payload["event-data"];
+      if (typeof eventDataRaw === "object" && eventDataRaw !== null) {
+        const ed = eventDataRaw as Record<string, unknown>;
+        const msgHeaders =
+          typeof ed["message"] === "object" && ed["message"] !== null
+            ? (ed["message"] as Record<string, unknown>).headers
+            : undefined;
+        return [
+          {
+            event_id: ed.id ?? msgHeaders?.["message-id"],
+            event_type: toStringOrUndefined(ed.event) ?? "unknown",
+            body: ed,
+          },
+        ];
       }
       const messageIdValue =
         payload["Message-Id"] ||
         payload["message-id"] ||
         payload["signature"];
       const eventType =
-        (payload.event as string) ||
-        (payload["event"] as string) ||
+        toStringOrUndefined(payload.event) ||
+        toStringOrUndefined(payload["event"]) ||
         "unknown";
-      const messageId =
-        typeof messageIdValue === "string" ? messageIdValue : undefined;
-      return [{
-        event_id: messageId,
-        event_type: eventType,
-        body: payload,
-      }];
+      const messageId = toStringOrUndefined(messageIdValue);
+      return [
+        {
+          event_id: messageId,
+          event_type: eventType,
+          body: payload,
+        },
+      ];
     }
     case 'postmark': {
       // Postmark sends a single JSON event
       // Type: Bounce, SpamComplaint, Delivery, Open, Click, SubscriptionChange, etc.
-      const payload = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
-      const type = payload?.Type ?? payload?.RecordType ?? 'unknown';
+      const payload = asRecord(body);
+      const type = toStringOrUndefined(payload.Type ?? payload.RecordType) ?? 'unknown';
       const id =
-        payload?.ID ??
-        payload?.MessageID ??
-        payload?.MessageId ??
-        payload?.MessageIDString ??
-        undefined;
-      return [{ event_id: id, event_type: String(type).toLowerCase(), body: payload }];
+        toStringOrUndefined(payload.ID) ??
+        toStringOrUndefined(payload.MessageID) ??
+        toStringOrUndefined(payload.MessageId) ??
+        toStringOrUndefined(payload.MessageIDString);
+      return [{ event_id: id, event_type: type.toLowerCase(), body: payload }];
     }
     case 'ses': {
       // SES via SNS: body may be SNS wrapper; unwrap if necessary
-      if (body?.Type && body?.Message) {
+      const payload = asRecord(body);
+      if (payload.Type && payload.Message) {
         // SNS envelope
         let msg: unknown = {};
-        try { msg = JSON.parse(body.Message); } catch { msg = body.Message; }
-        const notificationType = msg?.notificationType || msg?.eventType || 'unknown';
+        try {
+          msg = JSON.parse(String(payload.Message));
+        } catch {
+          msg = payload.Message;
+        }
+        const msgRecord = asRecord(msg);
+        const notificationType =
+          toStringOrUndefined(msgRecord.notificationType ?? msgRecord.eventType) ?? 'unknown';
         const id =
-          msg?.mail?.messageId ||
-          msg?.bounce?.feedbackId ||
-          msg?.complaint?.feedbackId ||
-          undefined;
+          toStringOrUndefined(asRecord(msgRecord.mail).messageId) ??
+          toStringOrUndefined(asRecord(msgRecord.bounce).feedbackId) ??
+          toStringOrUndefined(asRecord(msgRecord.complaint).feedbackId);
         return [{ event_id: id, event_type: notificationType, body: msg }];
       }
       // Direct SES notification (rare for webhooks)
-      const eventType = body?.eventType || body?.notificationType || 'unknown';
-      const id = body?.mail?.messageId || undefined;
+      const eventType = toStringOrUndefined(payload.eventType ?? payload.notificationType) ?? 'unknown';
+      const id = toStringOrUndefined(asRecord(payload.mail).messageId);
       return [{ event_id: id, event_type: eventType, body }];
     }
     case 'smtp': {
       // Generic: accept payloads from a relay/proxy
-      const eventType = body?.event_type || body?.type || body?.status || 'unknown';
-      const id = body?.event_id || body?.message_id || body?.MessageId;
+      const payload = asRecord(body);
+      const eventType =
+        toStringOrUndefined(payload.event_type ?? payload.type ?? payload.status) ?? 'unknown';
+      const id = toStringOrUndefined(payload.event_id ?? payload.message_id ?? payload.MessageId);
       return [{ event_id: id, event_type: eventType, body }];
     }
   }
@@ -434,6 +445,16 @@ function timingSafeEqualAny(input: string, candidates: string[]): boolean {
     // Fallback if lengths differ wildly
     return candidates.includes(input);
   }
+}
+
+function toStringOrUndefined(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return value.toString();
+  return undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 /* -------------------------------------------------------------------------- */

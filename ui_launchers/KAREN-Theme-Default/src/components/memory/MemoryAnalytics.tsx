@@ -80,7 +80,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
 export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
   userId,
-  tenantId: _tenantId,
+  tenantId,
   refreshInterval = 30000, // 30 seconds
   height = 800,
   onError

@@ -100,7 +100,7 @@ export default function CopilotKitSettings() {
     setConfig((prev) => {
       const next = structuredClone(prev);
       const keys = path.split(".");
-      let cursor = next as Record<string, unknown>;
+      let cursor = next as unknown as Record<string, unknown>;
 
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];

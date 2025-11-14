@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     acceptHeader.includes('text/event-stream') ||
     headers['Accept']?.includes('text/event-stream');
 
-  let lastError: unknown = null;
+  let lastError: Error | null = null;
   let response: Response | null = null;
 
   const bases = BACKEND_BASES;
@@ -150,12 +150,14 @@ export async function POST(request: NextRequest) {
 
         // Success (or client error we should propagate)
         break;
-      } catch (err: Error) {
+      } catch (err) {
         if (timeout) clearTimeout(timeout);
-        lastError = err;
+        const normalizedError =
+          err instanceof Error ? err : new Error(String(err ?? 'Unknown error'));
+        lastError = normalizedError;
 
-        const msg = String(err?.message || err);
-        const isAbort = err?.name === 'AbortError';
+        const msg = normalizedError.message;
+        const isAbort = normalizedError.name === 'AbortError';
         const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
 
         if (attempt < maxAttempts && (isAbort || isSocket)) {
@@ -168,10 +170,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (!response) {
+    const fallbackMessage = 'All backends unreachable or timed out';
+    const errorMessage = lastError instanceof Error ? lastError.message : fallbackMessage;
+
     return NextResponse.json(
       {
         error: 'Chat request failed',
-        message: lastError?.message || 'All backends unreachable or timed out',
+        message: errorMessage || fallbackMessage,
       },
       { status: 502 }
     );

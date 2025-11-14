@@ -10,12 +10,13 @@ import { Badge } from '../ui/badge';
 export interface PerformanceMetricsDisplayProps {
   metrics: PerformanceMetrics;
   className?: string;
+  showTrends?: boolean;
 }
 
 export const PerformanceMetricsDisplay: React.FC<PerformanceMetricsDisplayProps> = ({
   metrics,
   className = '',
-  showTrends: _showTrends = false
+  showTrends = false
 }) => {
   const formatTime = (time: number) => {
     if (time < 1000) {

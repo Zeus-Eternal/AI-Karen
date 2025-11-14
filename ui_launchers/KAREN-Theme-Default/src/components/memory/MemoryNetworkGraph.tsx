@@ -41,6 +41,19 @@ import type {
 
 // Extend the base node type to be compatible with D3 simulation
 export type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
+type SimulationEdgeDatum = d3.SimulationLinkDatum<MemoryNetworkNode> &
+  Omit<MemoryNetworkEdge, "source" | "target"> & {
+    source: string | MemoryNetworkNode;
+    target: string | MemoryNetworkNode;
+  };
+
+type InternalNetworkData = Omit<MemoryNetworkData, "nodes" | "edges"> & {
+  nodes: MemoryNetworkNode[];
+  edges: SimulationEdgeDatum[];
+};
+
+const resolveLinkId = (value: string | MemoryNetworkNode): string =>
+  typeof value === "string" ? value : value.id;
 
 export interface NetworkConfig {
   nodeSize: [number, number]; // [min, max]
@@ -80,9 +93,10 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef =
-    useRef<d3.Simulation<MemoryNetworkNode, MemoryNetworkEdge> | null>(null);
+    useRef<d3.Simulation<MemoryNetworkNode, SimulationEdgeDatum> | null>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
-  const [networkData, setNetworkData] = useState<MemoryNetworkData | null>(
+  const [networkData, setNetworkData] = useState<InternalNetworkData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
@@ -142,7 +156,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       const stats = await memoryService.getMemoryStats(userId);
 
       const nodes: MemoryNetworkNode[] = [];
-      const edges: MemoryNetworkEdge[] = [];
+      const edges: SimulationEdgeDatum[] = [];
       const clusters: MemoryCluster[] = [];
 
       // create nodes
@@ -191,13 +205,16 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         if (seen.has(key)) continue;
         seen.add(key);
 
-        const e: MemoryNetworkEdge = {
+        const e: SimulationEdgeDatum = {
           id: key,
           source: nodes[a].id,
           target: nodes[b].id,
           weight: Math.random(),
           type: edgeTypes[Math.floor(Math.random() * edgeTypes.length)],
           confidence: 0.3 + Math.random() * 0.7,
+          metadata: {
+            relation: edgeTypes[Math.floor(Math.random() * edgeTypes.length)],
+          },
         };
         edges.push(e);
       }
@@ -242,7 +259,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   }, [userId, memoryService, colorScales, config.nodeSize]);
 
   /** Filter data for rendering */
-  const filteredData = useMemo(() => {
+  const filteredData = useMemo<InternalNetworkData | null>(() => {
     if (!networkData) return null;
 
     let nodes = networkData.nodes.filter((node) => {
@@ -280,16 +297,17 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     });
 
     const nodeIds = new Set(nodes.map((n) => n.id));
-    let edges = networkData.edges.filter(
-      (e) =>
-        nodeIds.has(e.source as string) && nodeIds.has(e.target as string)
-    );
+    let edges = networkData.edges.filter((e) => {
+      const sourceId = resolveLinkId(e.source);
+      const targetId = resolveLinkId(e.target);
+      return nodeIds.has(sourceId) && nodeIds.has(targetId);
+    });
 
     if (filters.minConnections > 0) {
       const counts = new Map<string, number>();
       edges.forEach((e) => {
-        const s = e.source as string;
-        const t = e.target as string;
+        const s = resolveLinkId(e.source);
+        const t = resolveLinkId(e.target);
         counts.set(s, (counts.get(s) || 0) + 1);
         counts.set(t, (counts.get(t) || 0) + 1);
       });
@@ -299,9 +317,11 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
 
       // recompute edges using reduced nodes set
       const reduced = new Set(nodes.map((n) => n.id));
-      edges = edges.filter(
-        (e) => reduced.has(e.source as string) && reduced.has(e.target as string)
-      );
+      edges = edges.filter((e) => {
+        const sourceId = resolveLinkId(e.source);
+        const targetId = resolveLinkId(e.target);
+        return reduced.has(sourceId) && reduced.has(targetId);
+      });
     }
 
     // pass through clusters unchanged (optional: recalc)
@@ -324,7 +344,8 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         container.attr("transform", event.transform.toString());
       });
 
-    svg.call(zoomBehavior as unknown);
+    zoomBehaviorRef.current = zoomBehavior;
+    svg.call(zoomBehavior);
 
     // Simulation
     const sim = d3
@@ -332,7 +353,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       .force(
         "link",
         d3
-          .forceLink<MemoryNetworkNode, MemoryNetworkEdge>(filteredData.edges)
+          .forceLink<MemoryNetworkNode, SimulationEdgeDatum>(filteredData.edges)
           .id((d) => d.id)
           .distance(config.linkDistance)
           .strength(config.linkStrength)
@@ -369,9 +390,10 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     }
 
     // Links
+    const linkData = filteredData.edges as SimulationEdgeDatum[];
     const links = container
-      .selectAll<SVGLineElement, MemoryNetworkEdge>(".link")
-      .data(filteredData.edges)
+      .selectAll<SVGLineElement, SimulationEdgeDatum>(".link")
+      .data(linkData)
       .enter()
       .append("line")
       .attr("class", "link")
@@ -442,11 +464,11 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           const sid =
             typeof edge.source === "string"
               ? edge.source
-              : (edge.source as MemoryNetworkNode).id;
+              : edge.source.id;
           const tid =
             typeof edge.target === "string"
               ? edge.target
-              : (edge.target as MemoryNetworkNode).id;
+              : edge.target.id;
           if (sid === d.id || tid === d.id) {
             connected.add(sid);
             connected.add(tid);
@@ -493,28 +515,25 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         d.fy = null;
       });
 
-    nodeGroups.call(drag as unknown);
+    nodeGroups.call(drag);
 
     // Tick
     sim.on("tick", () => {
       links
         .attr("x1", (d) =>
-          typeof d.source === "object" ? (d.source as unknown).x ?? 0 : 0
+          typeof d.source === "object" ? d.source.x ?? 0 : 0
         )
         .attr("y1", (d) =>
-          typeof d.source === "object" ? (d.source as unknown).y ?? 0 : 0
+          typeof d.source === "object" ? d.source.y ?? 0 : 0
         )
         .attr("x2", (d) =>
-          typeof d.target === "object" ? (d.target as unknown).x ?? 0 : 0
+          typeof d.target === "object" ? d.target.x ?? 0 : 0
         )
         .attr("y2", (d) =>
-          typeof d.target === "object" ? (d.target as unknown).y ?? 0 : 0
+          typeof d.target === "object" ? d.target.y ?? 0 : 0
         );
 
-      nodeGroups.attr(
-        "transform",
-        (d) => `translate(${(d as unknown).x || 0}, ${(d as unknown).y || 0})`
-      );
+      nodeGroups.attr("transform", (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
 
       // cluster centroids
       if (config.showClusters && filteredData.clusters) {
@@ -524,9 +543,9 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
           );
           if (cNodes.length > 0) {
             cluster.centroid.x =
-              d3.mean(cNodes, (n: unknown) => n.x || 0) ?? cluster.centroid.x;
+              d3.mean(cNodes, (n: MemoryNetworkNode) => n.x ?? 0) ?? cluster.centroid.x;
             cluster.centroid.y =
-              d3.mean(cNodes, (n: unknown) => n.y || 0) ?? cluster.centroid.y;
+              d3.mean(cNodes, (n: MemoryNetworkNode) => n.y ?? 0) ?? cluster.centroid.y;
           }
         });
 
@@ -569,30 +588,24 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
   }, []);
 
   // Controls
-  const handleZoomIn = useCallback(() => {
-    if (svgRef.current) {
-      d3.select(svgRef.current)
-        .transition()
-        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as unknown), 1.5);
-    }
+  const applyZoomScale = useCallback((factor: number) => {
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    const selection = d3.select(svgRef.current).transition();
+    zoomBehaviorRef.current.scaleBy(selection, factor);
   }, []);
+
+  const handleZoomIn = useCallback(() => {
+    applyZoomScale(1.5);
+  }, [applyZoomScale]);
 
   const handleZoomOut = useCallback(() => {
-    if (svgRef.current) {
-      d3.select(svgRef.current)
-        .transition()
-        .call((d3.zoom<SVGSVGElement, unknown>().scaleBy as unknown), 1 / 1.5);
-    }
-  }, []);
+    applyZoomScale(1 / 1.5);
+  }, [applyZoomScale]);
 
   const handleReset = useCallback(() => {
-    if (svgRef.current) {
-      d3.select(svgRef.current)
-        .transition()
-        .call(
-          (d3.zoom<SVGSVGElement, unknown>().transform as unknown),
-          d3.zoomIdentity
-        );
+    if (svgRef.current && zoomBehaviorRef.current) {
+      const selection = d3.select(svgRef.current).transition();
+      zoomBehaviorRef.current.transform(selection, d3.zoomIdentity);
     }
     simulationRef.current?.alpha(1).restart();
   }, []);

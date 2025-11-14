@@ -102,8 +102,11 @@ async function auditLogSafe(
 ): Promise<void> {
   try {
     const mod = await import('@/lib/audit/audit-logger');
-    if ((mod as unknown)?.auditLogger?.log) {
-      await (mod as unknown).auditLogger.log(userId || 'unknown', action, resource, {
+    const auditLogger = (
+      mod as unknown as { auditLogger?: { log?: (...args: unknown[]) => Promise<unknown> } }
+    ).auditLogger;
+    if (auditLogger?.log) {
+      await auditLogger.log(userId || 'unknown', action, resource, {
         resourceId: details?.to_model_id ?? details?.from_model_id,
         details,
         request: req,
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
 
     // Gather available models (validation + capability diff)
-    const models: AvailableModel[] = await modelSelectionService.getAvailableModels();
+    const models = (await modelSelectionService.getAvailableModels()) as unknown as AvailableModel[];
     const targetModel = models.find((m) => m.id === to_model_id);
 
     if (!targetModel) {
@@ -298,8 +301,8 @@ export async function POST(request: NextRequest) {
         }),
       },
     );
-  } catch (err: Error) {
-    const msg = err?.message ?? 'Request processing failed';
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Request processing failed';
 
     // Distinguish 4xx from 5xx based on common validation errors
     const isBadRequest =

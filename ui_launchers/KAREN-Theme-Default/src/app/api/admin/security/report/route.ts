@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
+import type { BlockedIpEntry, SecurityAlert } from '@/lib/database/admin-utils';
+import type { AuditLogger } from '@/lib/audit/audit-logger';
+import type { AdminDatabaseUtils } from '@/lib/database/admin-utils';
+import type { User, UserStatistics, AuditLog } from '@/types/admin';
 
 /**
  * Security Report API
@@ -47,10 +51,10 @@ interface ReportData {
   generatedAt: string;
   summary: ReportSummary;
   details: {
-    securityAlerts: unknown[];
+    securityAlerts: SecurityAlert[];
     alertsByType: Record<string, number>;
-    topBlockedIPs: unknown[];
-    recentAdminActions: unknown[];
+    topBlockedIPs: BlockedIpEntry[];
+    recentAdminActions: AuditLog[];
     failedLoginTrends: Array<{ date: string; count: number; uniqueIPs: number }>;
   };
   recommendations: Array<{
@@ -139,16 +143,18 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
-  } catch (error: Error) {
+  } catch (error: unknown) {
     // Audit log (error)
     try {
       const auditLogger = getAuditLogger();
+      const errorMessage =
+        error instanceof Error ? error.message : String(error ?? 'Unknown error');
       await safeAudit(auditLogger, {
         userId: 'unknown',
         event: 'security.report.error',
         entityType: 'security_report',
         details: {
-          error: String(error?.message || error),
+          error: errorMessage,
         },
         ip: 'unknown',
         request,
@@ -175,7 +181,7 @@ function byteLengthOf(obj: unknown): number {
 }
 
 async function safeAudit(
-  auditLogger: unknown,
+  auditLogger: AuditLogger,
   args: {
     userId: string;
     event: string;
@@ -199,26 +205,53 @@ async function safeAudit(
 /**
  * Generate comprehensive security report data
  */
-async function generateSecurityReport(adminUtils: unknown, days: number): Promise<ReportData> {
+async function generateSecurityReport(adminUtils: AdminDatabaseUtils, days: number): Promise<ReportData> {
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
   const [
-    securityAlerts,
-    blockedIPs,
-    failedLogins,
-    adminActions,
-    userStats,
-    systemHealth,
+    securityAlertsResult,
+    blockedIPsResult,
+    auditLogsResult,
   ] = await Promise.all([
-    adminUtils.getSecurityAlerts({ startDate, endDate, limit: 1000 }),
-    adminUtils.getBlockedIPs({ limit: 1000 }),
-    adminUtils.getFailedLoginAttempts({ startDate, endDate }),
-    adminUtils.getAdminActions({ startDate, endDate }),
-    adminUtils.getUserStatistics({ startDate, endDate }),
-    adminUtils.getSystemHealthMetrics(),
+    adminUtils.getSecurityAlerts({ limit: 1000, offset: 0 }),
+    adminUtils.getBlockedIPs({ limit: 1000, offset: 0 }),
+    adminUtils.getAuditLogs(
+      { start_date: startDate, end_date: endDate },
+      { page: 1, limit: 1000, sort_by: 'timestamp', sort_order: 'desc' }
+    ),
   ]);
+
+  const securityAlerts = securityAlertsResult.data;
+  const blockedIPs = blockedIPsResult.data;
+  const auditLogs: AuditLog[] = Array.isArray(auditLogsResult?.data)
+    ? (auditLogsResult.data as AuditLog[])
+    : [];
+
+  const failedLoginEntries = auditLogs
+    .filter((log) => {
+      const action = String(log.action || '').toLowerCase();
+      if (action === 'user.login_failed') return true;
+      if (action === 'user.login' && log.details?.success === false) return true;
+      return false;
+    })
+    .map((log) => ({
+      timestamp: log.timestamp instanceof Date ? log.timestamp.toISOString() : String(log.timestamp),
+      ipAddress: log.ip_address ?? undefined,
+    }));
+
+  const failedLogins = failedLoginEntries.length;
+
+  const recentAdminActions = auditLogs
+    .filter((log) => {
+      const action = String(log.action || '').toLowerCase();
+      return action.startsWith('admin.') || action.startsWith('user.') || action.startsWith('system.');
+    })
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 50);
+
+  const userStats = await collectUserStatistics(adminUtils);
 
   const summary: ReportSummary = {
     reportPeriod: {
@@ -228,57 +261,117 @@ async function generateSecurityReport(adminUtils: unknown, days: number): Promis
     },
     securityOverview: {
       totalAlerts: securityAlerts.length,
-      criticalAlerts: securityAlerts.filter((a: unknown) => a.severity === 'critical').length,
-      highAlerts: securityAlerts.filter((a: unknown) => a.severity === 'high').length,
-      resolvedAlerts: securityAlerts.filter((a: unknown) => a.resolved).length,
+      criticalAlerts: securityAlerts.filter((a) => a.severity === 'critical').length,
+      highAlerts: securityAlerts.filter((a) => a.severity === 'high').length,
+      resolvedAlerts: securityAlerts.filter((a) => a.resolved).length,
       blockedIPs: blockedIPs.length,
-      failedLogins: failedLogins.length,
+      failedLogins,
     },
     userActivity: {
-      totalUsers: userStats.totalUsers ?? 0,
-      activeUsers: userStats.activeUsers ?? 0,
-      newUsers: userStats.newUsers ?? 0,
-      adminUsers: userStats.adminUsers ?? 0,
+      totalUsers: userStats.total_users,
+      activeUsers: userStats.active_users,
+      newUsers: userStats.users_created_today,
+      adminUsers: userStats.admin_users,
     },
     systemHealth: {
-      overallStatus: systemHealth.status ?? 'unknown',
-      uptime: systemHealth.uptime ?? 'unknown',
-      lastIncident: systemHealth.lastIncident ?? null,
+      overallStatus: 'nominal',
+      uptime: 'unknown',
+      lastIncident: deriveLastSecurityIncident(auditLogs),
     },
   };
 
-  const alertsByType: Record<string, number> = securityAlerts.reduce(
-    (acc: Record<string, number>, alert: unknown) => {
-      const key = String(alert.type ?? 'unknown');
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    },
-    {}
-  );
+  const alertsByType: Record<string, number> = securityAlerts.reduce((acc, alert) => {
+    const key = String(alert.type ?? 'unknown');
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   const topBlockedIPs = [...blockedIPs]
-    .sort((a: unknown, b: unknown) => (b.failedAttempts ?? 0) - (a.failedAttempts ?? 0))
+    .sort((a, b) => (b.failedAttempts ?? 0) - (a.failedAttempts ?? 0))
     .slice(0, 10);
-
-  const recentAdminActions = [...adminActions]
-    .sort(
-      (a: unknown, b: unknown) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    )
-    .slice(0, 50);
 
   return {
     generatedAt: new Date().toISOString(),
     summary,
     details: {
-      securityAlerts: securityAlerts.slice(0, 100), // cap payload
+      securityAlerts: securityAlerts.slice(0, 100),
       alertsByType,
       topBlockedIPs,
       recentAdminActions,
-      failedLoginTrends: generateFailedLoginTrends(failedLogins, days),
+      failedLoginTrends: generateFailedLoginTrends(failedLoginEntries, days),
     },
     recommendations: generateSecurityRecommendations(summary, alertsByType, blockedIPs),
   };
+}
+
+async function collectUserStatistics(adminUtils: AdminDatabaseUtils): Promise<UserStatistics> {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+  const monthAgo = new Date(today);
+  monthAgo.setDate(today.getDate() - 30);
+
+  const [
+    totalUsersResult,
+    activeUsersResult,
+    verifiedUsersResult,
+    adminUsersResult,
+    superAdminUsersResult,
+    usersCreatedTodayResult,
+    usersCreatedThisWeekResult,
+    usersCreatedThisMonthResult,
+    lastLoginTodayResult,
+    usersFor2FA,
+  ] = await Promise.all([
+    adminUtils.getUsersWithRoleFilter({}),
+    adminUtils.getUsersWithRoleFilter({ is_active: true }),
+    adminUtils.getUsersWithRoleFilter({ is_verified: true }),
+    adminUtils.getUsersWithRoleFilter({ role: 'admin' }),
+    adminUtils.getUsersWithRoleFilter({ role: 'super_admin' }),
+    adminUtils.getUsersWithRoleFilter({ created_after: today }),
+    adminUtils.getUsersWithRoleFilter({ created_after: weekAgo }),
+    adminUtils.getUsersWithRoleFilter({ created_after: monthAgo }),
+    adminUtils.getUsersWithRoleFilter({ last_login_after: today }),
+    adminUtils.getUsersWithRoleFilter({}),
+  ]);
+
+  const twoFactorEnabled = Array.isArray(usersFor2FA.data)
+    ? (usersFor2FA.data as User[]).filter((u) => u.two_factor_enabled).length
+    : 0;
+
+  return {
+    total_users: totalUsersResult.pagination.total,
+    active_users: activeUsersResult.pagination.total,
+    verified_users: verifiedUsersResult.pagination.total,
+    admin_users: adminUsersResult.pagination.total,
+    super_admin_users: superAdminUsersResult.pagination.total,
+    users_created_today: usersCreatedTodayResult.pagination.total,
+    users_created_this_week: usersCreatedThisWeekResult.pagination.total,
+    users_created_this_month: usersCreatedThisMonthResult.pagination.total,
+    last_login_today: lastLoginTodayResult.pagination.total,
+    two_factor_enabled: twoFactorEnabled,
+  };
+}
+
+function deriveLastSecurityIncident(auditLogs: AuditLog[]): string | null {
+  const incident = auditLogs.find((log) => {
+    const action = String(log.action || '').toLowerCase();
+    return (
+      action.includes('security') ||
+      action.includes('alert') ||
+      action.includes('threat') ||
+      action.includes('incident') ||
+      action.includes('breach')
+    );
+  });
+  if (!incident) {
+    return null;
+  }
+  if (incident.timestamp instanceof Date) {
+    return incident.timestamp.toISOString();
+  }
+  return incident.timestamp ? String(incident.timestamp) : null;
 }
 
 /**
@@ -326,7 +419,7 @@ function generateFailedLoginTrends(
 function generateSecurityRecommendations(
   summary: ReportSummary,
   alertsByType: Record<string, number>,
-  blockedIPs: unknown[]
+  blockedIPs: BlockedIpEntry[]
 ) {
   const recs: ReportData['recommendations'] = [];
 

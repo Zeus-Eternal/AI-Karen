@@ -6,6 +6,7 @@
 import { getKarenBackend } from '@/lib/karen-backend';
 import { safeError } from '@/lib/safe-console';
 import type { MemoryEntry, MemoryQuery } from '@/lib/karen-backend';
+import type { MemoryBatchOperation } from '@/types/memory';
 
 export interface MemorySearchOptions {
   topK?: number;
@@ -277,6 +278,20 @@ export class MemoryService {
     } catch (error) {
       safeError('MemoryService: Failed to get memories by tags:', error);
       return [];
+    }
+  }
+
+  /**
+   * Placeholder for batch operations (delete/tag/cluster updates, etc.).
+   * Replace with an actual backend call when available.
+   */
+  async batchOperation(operation: MemoryBatchOperation): Promise<void> {
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('MemoryService.batchOperation invoked', operation);
+      }
+    } catch (error) {
+      safeError('MemoryService: Failed to execute batch operation:', error);
     }
   }
 

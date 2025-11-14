@@ -41,25 +41,51 @@ function ensurePercent(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
 function computeOverallScore(metrics: unknown) {
   // Defensive guards to avoid NaN/ZeroDiv
-  const coverageOverall = Number(metrics?.testCoverage?.overall ?? 0);
-  const passed = Number(metrics?.testResults?.passed ?? 0);
-  const total = Math.max(1, Number(metrics?.testResults?.total ?? 1));
+  const metricsRecord = asRecord(metrics);
+  const coverageOverall = Number(
+    asRecord(metricsRecord.testCoverage).overall ?? 0,
+  );
+  const testResults = asRecord(metricsRecord.testResults);
+  const passed = Number(testResults.passed ?? 0);
+  const total = Math.max(1, Number(testResults.total ?? 1));
   const passPct = (passed / total) * 100;
 
-  const accessibility = Number(metrics?.accessibility?.score ?? 0);
-  const security = Number(metrics?.security?.score ?? 0);
-  const maintIdx = Number(metrics?.codeQuality?.maintainabilityIndex ?? 0);
+  const accessibility = Number(asRecord(metricsRecord.accessibility).score ?? 0);
+  const security = Number(asRecord(metricsRecord.security).score ?? 0);
+  const maintIdx = Number(
+    asRecord(metricsRecord.codeQuality).maintainabilityIndex ?? 0,
+  );
 
-  const avg = (coverageOverall + passPct + accessibility + security + maintIdx) / 5;
+  const avg =
+    (coverageOverall + passPct + accessibility + security + maintIdx) / 5;
   return ensurePercent(avg);
 }
 
 function buildReportData(metrics: unknown, qualityGates: unknown[], trends: unknown, includeCharts: boolean) {
-  const criticalIssues =
-    Number(metrics?.security?.vulnerabilities?.critical ?? 0) +
-    Number(metrics?.accessibility?.violations ?? 0);
+  const metricsRecord = asRecord(metrics);
+  const securityVulnerabilities = Number(
+    asRecord(asRecord(metricsRecord.security).vulnerabilities).critical ?? 0,
+  );
+  const accessibilityViolations = Number(
+    asRecord(metricsRecord.accessibility).violations ?? 0,
+  );
+  const criticalIssues = securityVulnerabilities + accessibilityViolations;
+  const gateRecords = Array.isArray(qualityGates)
+    ? qualityGates.map((entry) => asRecord(entry))
+    : [];
+  const passedGates = gateRecords.filter(
+    (entry) => String(entry.status ?? '').toLowerCase() === 'passed',
+  ).length;
+  const totalGates = gateRecords.length;
 
   return {
     timestamp: new Date().toISOString(),
@@ -69,8 +95,8 @@ function buildReportData(metrics: unknown, qualityGates: unknown[], trends: unkn
     trends,
     summary: {
       overallScore: computeOverallScore(metrics),
-      passedGates: Array.isArray(qualityGates) ? qualityGates.filter((g) => g.status === 'passed').length : 0,
-      totalGates: Array.isArray(qualityGates) ? qualityGates.length : 0,
+      passedGates,
+      totalGates,
       criticalIssues,
     },
   };
@@ -139,11 +165,12 @@ export async function POST(request: NextRequest) {
         Expires: '0',
       },
     });
-  } catch (error: Error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return json(
       {
         error: 'Failed to export quality report',
-        detail: error?.message ?? String(error),
+        detail: message,
       },
       500,
     );
@@ -159,6 +186,11 @@ export async function POST(request: NextRequest) {
 async function generatePdfReport(reportData: unknown): Promise<Buffer> {
   // Dynamic import to keep route cold-start smaller if PDF not used
   const { default: PDFDocument } = await import('pdfkit');
+
+  const reportRecord = asRecord(reportData);
+  const timestamp = reportRecord.timestamp
+    ? String(reportRecord.timestamp)
+    : new Date().toISOString();
 
   return await new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({
@@ -180,7 +212,7 @@ async function generatePdfReport(reportData: unknown): Promise<Buffer> {
     doc
       .fontSize(10)
       .fillColor('#666')
-      .text(`Generated: ${new Date(reportData.timestamp).toLocaleString()}`, { align: 'center' })
+      .text(`Generated: ${new Date(timestamp).toLocaleString()}`, { align: 'center' })
       .moveDown(1);
     doc.fillColor('#000');
 

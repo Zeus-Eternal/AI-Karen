@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
-import type { AdminApiResponse, ActivitySummary } from '@/types/admin';
+import type { AdminApiResponse, ActivitySummary, AuditLog } from '@/types/admin';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -66,40 +66,42 @@ export const GET = requireAdmin(async (request: NextRequest, _context) => {
       { page: 1, limit, sort_by: 'timestamp', sort_order: 'desc' }
     );
 
-    const auditLogs = Array.isArray(auditLogsResult?.data) ? auditLogsResult.data : [];
+    const auditLogs: AuditLog[] = Array.isArray(auditLogsResult?.data)
+      ? (auditLogsResult.data as AuditLog[])
+      : [];
 
     // --- Metrics -------------------------------------------------------------
 
     // 1) User registrations
-    const userRegistrations = auditLogs.filter((log: unknown) => log?.action === 'user.create').length;
+    const userRegistrations = auditLogs.filter((log) => log.action === 'user.create').length;
 
     // 2) Admin actions (broad: admin.*, user.*, system.*)
-    const adminActions = auditLogs.filter((log: unknown) => {
-      const a = String(log?.action || '');
-      return a.startsWith('admin.') || a.startsWith('user.') || a.startsWith('system.');
+    const adminActions = auditLogs.filter((log) => {
+      const action = String(log.action || '');
+      return action.startsWith('admin.') || action.startsWith('user.') || action.startsWith('system.');
     }).length;
 
     // 3) Logins
     const successfulLogins = auditLogs.filter(
-      (log: unknown) => log?.action === 'user.login' && Boolean(log?.details?.success) === true
+      (log) => log.action === 'user.login' && Boolean(log.details?.success) === true
     ).length;
 
-    const failedLogins = auditLogs.filter((log: unknown) => {
-      const a = String(log?.action || '');
-      return a === 'user.login_failed' || (a === 'user.login' && Boolean(log?.details?.success) === false);
+    const failedLogins = auditLogs.filter((log) => {
+      const action = String(log.action || '');
+      return action === 'user.login_failed' || (action === 'user.login' && Boolean(log.details?.success) === false);
     }).length;
 
     // 4) Security-ish events (approx)
-    const securityEvents = auditLogs.filter((log: unknown) => {
-      const a = String(log?.action || '').toLowerCase();
-      return a.includes('security') || a.includes('failed') || a.includes('locked');
+    const securityEvents = auditLogs.filter((log) => {
+      const action = String(log.action || '').toLowerCase();
+      return action.includes('security') || action.includes('failed') || action.includes('locked');
     }).length;
 
     // 5) Top actions
     const actionCounts: Record<string, number> = {};
     for (const log of auditLogs) {
-      const a = String(log?.action || 'unknown');
-      actionCounts[a] = (actionCounts[a] || 0) + 1;
+      const action = String(log.action || 'unknown');
+      actionCounts[action] = (actionCounts[action] || 0) + 1;
     }
     const topActions = Object.entries(actionCounts)
       .sort(([, A], [, B]) => (B as number) - (A as number))
@@ -112,8 +114,8 @@ export const GET = requireAdmin(async (request: NextRequest, _context) => {
       { email: string; count: number }
     > = {};
     for (const log of auditLogs) {
-      const userId = String(log?.user_id || '');
-      const email = String(log?.user?.email || '') || 'unknown';
+      const userId = String(log.user_id || '');
+      const email = String(log.user?.email || '') || 'unknown';
       if (!userId) continue;
       if (!userCounts[userId]) userCounts[userId] = { email, count: 0 };
       userCounts[userId].count++;

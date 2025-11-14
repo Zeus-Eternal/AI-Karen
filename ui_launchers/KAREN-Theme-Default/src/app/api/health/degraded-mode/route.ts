@@ -1,5 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+function getStringField(data: unknown, field: string): string {
+  if (typeof data !== 'object' || data === null) return '';
+  const value = (data as Record<string, unknown>)[field];
+  if (typeof value === 'string') return value;
+  if (value === undefined || value === null) return '';
+  return String(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function getNumericField(data: Record<string, unknown>, field: string): number {
+  const value = data[field];
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+function getArrayField(data: unknown, field: string): unknown[] {
+  const record = asRecord(data);
+  const value = record[field];
+  return Array.isArray(value) ? value : [];
+}
 const CANDIDATE_BACKENDS = getBackendCandidates();
 const HEALTH_TIMEOUT_MS = 2000;
 export async function GET(request: NextRequest) {
@@ -27,7 +60,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-expect-error Node/undici hints
+            // keepalive is supported in Node/undici runtimes
             keepalive: true,
             cache: 'no-store',
           }),
@@ -41,7 +74,7 @@ export async function GET(request: NextRequest) {
               }),
             },
             signal: controller.signal,
-            // @ts-expect-error Node/undici hints
+            // keepalive is supported in Node/undici runtimes
             keepalive: true,
             cache: 'no-store',
           })
@@ -99,43 +132,59 @@ export async function GET(request: NextRequest) {
           providersData = { providers: [], total_providers: 0, auth_required: true };
         }
       }
-      const statusValue = (healthData.status || healthData.state || '').toString().toLowerCase();
+      const statusValue = (
+        getStringField(healthData, 'status') ||
+        getStringField(healthData, 'state')
+      ).toLowerCase();
       const normalizedStatus = ['ok', 'healthy', 'up'].includes(statusValue) ? 'healthy' : 'degraded';
-      const providers = providersData?.providers || [];
-      const totalModels = providers.reduce((total: number, provider: unknown) =>
-        total + (provider.total_models || provider.cached_models_count || 0), 0);
-      const localFallbackReady = providers.some((provider: unknown) =>
-        provider.provider_type === 'local' &&
-        ['healthy', 'degraded', 'unknown'].includes((provider.health_status || '').toLowerCase())
-      );
-      const remoteProviderOutages = providers
-        .filter((provider: unknown) =>
-          provider.provider_type !== 'local' &&
-          ['degraded', 'unhealthy', 'unknown'].includes((provider.health_status || '').toLowerCase())
-        )
-        .map((provider: unknown) => provider.name);
+      const providersRaw = (providersData as { providers?: unknown })?.providers;
+      const providers = Array.isArray(providersRaw) ? (providersRaw as unknown[]) : [];
+      const typedProviders = providers.map(asRecord);
+      const totalModels = typedProviders.reduce((total, provider) => {
+        const count =
+          getNumericField(provider, 'total_models') ||
+          getNumericField(provider, 'cached_models_count');
+        return total + count;
+      }, 0);
+      const localFallbackReady = typedProviders.some((provider) => {
+        const providerType = getStringField(provider, 'provider_type');
+        const healthStatus = getStringField(provider, 'health_status').toLowerCase();
+        return (
+          providerType === 'local' &&
+          ['healthy', 'degraded', 'unknown'].includes(healthStatus)
+        );
+      });
+      const remoteProviderOutages = typedProviders
+        .filter((provider) => {
+          const providerType = getStringField(provider, 'provider_type');
+          const healthStatus = getStringField(provider, 'health_status').toLowerCase();
+          return (
+            providerType !== 'local' &&
+            ['degraded', 'unhealthy', 'unknown'].includes(healthStatus)
+          );
+        })
+        .map((provider) => getStringField(provider, 'name'));
       const aiStatus = remoteProviderOutages.length > 0 && !localFallbackReady
         ? 'degraded'
-        : (healthData.ai_status || normalizedStatus);
+        : (getStringField(healthData, 'ai_status') || normalizedStatus);
       const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
-        const lastErrorMessage =
-          lastErr instanceof Error
-            ? lastErr.message
-            : typeof lastErr === 'string'
-              ? lastErr
-              : undefined;
+      const lastErrorMessage =
+        getStringField(healthData, 'reason') ||
+        getStringField(healthData, 'message') ||
+        getStringField(providersData, 'message');
         const degradedReason = normalizedStatus === 'healthy'
           ? ''
           : lastErrorMessage
               ? `System experiencing issues: ${lastErrorMessage}`
               : 'System experiencing issues';
 
-        const data = {
-          degraded_mode: isActive,
-          is_active: isActive,
-          status: normalizedStatus,
+      const compatibilityPayload = asRecord(healthData).payload ?? null;
+      const data = {
+        degraded_mode: isActive,
+        is_active: isActive,
+        status: normalizedStatus,
           reason: degradedReason,
-        infrastructure_issues: healthData.infrastructure_issues || [],
+        infrastructure_issues: getArrayField(healthData, 'infrastructure_issues'),
         core_helpers_available: {
           fallback_responses: true,
           local_fallback_ready: localFallbackReady,
@@ -144,10 +193,11 @@ export async function GET(request: NextRequest) {
         ai_status: aiStatus,
         failed_providers: remoteProviderOutages,
         providers,
-        total_providers: providersData?.total_providers || providers.length,
+        total_providers:
+          getNumericField(asRecord(providersData), 'total_providers') || providers.length,
         models_available: totalModels,
         timestamp: new Date().toISOString(),
-        compatibility_payload: healthData.payload || null
+        compatibility_payload: compatibilityPayload
       };
       // Always respond 200; encode degraded state in body
       return NextResponse.json(data, { status: 200 });

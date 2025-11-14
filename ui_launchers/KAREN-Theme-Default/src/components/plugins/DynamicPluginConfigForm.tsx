@@ -314,6 +314,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
   const renderField = (field: PluginConfigField) => {
     const value = config[field.key] ?? field.default ?? '';
     const error = validationErrors.find(e => e.field === field.key);
+    const options = field.options ?? [];
     const isPassword = field.type === 'password';
     const showPassword = showPasswords[field.key];
     const FieldIcon = getFieldIcon(field);
@@ -392,11 +393,11 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
             </Label>
           </div>
         )}
-        {field.type === 'select' && field.options && (
+        {field.type === 'select' && options.length > 0 && (
           <Select
             value={typeof value === 'string' ? value : value === undefined || value === null ? '' : String(value)}
             onValueChange={(newValue) => {
-              const selectedOption = field.options.find((option) => String(option.value) === newValue);
+              const selectedOption = options.find((option) => String(option.value) === newValue);
               handleFieldChange(field.key, selectedOption ? selectedOption.value : newValue);
             }}
             disabled={readOnly}
@@ -405,17 +406,17 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
-              {field.options.map((option) => (
-                <SelectItem key={String(option.value)} value={String(option.value)}>
-                  {option.label}
-                </SelectItem>
-              ))}
+            {options.map((option) => (
+              <SelectItem key={String(option.value)} value={String(option.value)}>
+                {option.label}
+              </SelectItem>
+            ))}
             </SelectContent>
           </Select>
         )}
-        {field.type === 'multiselect' && field.options && (
+        {field.type === 'multiselect' && options.length > 0 && (
           <div className="space-y-2 max-h-32 overflow-y-auto">
-            {field.options.map((option) => (
+            {options.map((option) => (
               <div key={String(option.value)} className="flex items-center space-x-2">
                 <Checkbox
                   id={`${fieldId}-${String(option.value)}`}

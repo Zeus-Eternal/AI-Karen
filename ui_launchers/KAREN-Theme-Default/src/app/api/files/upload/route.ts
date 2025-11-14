@@ -89,8 +89,12 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(upstreamResp.status),
       },
     });
-  } catch (err: Error) {
-    const isAbort = err?.name === 'AbortError';
+  } catch (err: unknown) {
+    const errName =
+      err && typeof err === 'object' && 'name' in err && typeof err.name === 'string'
+        ? err.name
+        : undefined;
+    const isAbort = errName === 'AbortError';
     return NextResponse.json(
       {
         error: isAbort ? 'Upload timeout' : 'File upload service unavailable',

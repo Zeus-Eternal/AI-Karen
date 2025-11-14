@@ -34,7 +34,7 @@ import {
 // - getDiagnosticLogger(): returns an object with:
 //   - getLogs(limit?: number, category?: string): Array<{ level: string; category: string; timestamp: string }>
 //   - onLog(cb: (log: { level: string; category: string; timestamp: string }) => void): () => void
-import { getHealthMonitor, type HealthMetrics } from "@/lib/health-monitor";
+import { getHealthMonitor, type HealthCheckResult, type HealthMetrics } from "@/lib/health-monitor";
 import { getDiagnosticLogger } from "@/lib/diagnostics";
 
 type MonitorSnapshot = {
@@ -156,7 +156,6 @@ export function EndpointStatusIndicator({
         scheduleMonitoringSync(monitor);
       }) ?? (() => {});
 
-    const timers = new Set<ReturnType<typeof setTimeout>>();
 
     const unsubscribeLogs =
       logger.onLog?.((newLog: { level?: string; category?: string } | null) => {
@@ -164,7 +163,6 @@ export function EndpointStatusIndicator({
           setRecentErrors((prev) => prev + 1);
           const timeoutId = window.setTimeout(() => {
             setRecentErrors((prev) => Math.max(0, prev - 1));
-            timers.delete(timeoutId);
           }, 5 * 60 * 1000);
           errorTimers.push(timeoutId);
         }
@@ -191,9 +189,9 @@ export function EndpointStatusIndicator({
   const getOverallStatus = (): "healthy" | "degraded" | "error" | "unknown" => {
     if (!metrics) return "unknown";
 
-    const endpoints = metrics.endpoints ?? {};
-    const hasErrors = Object.values(endpoints).some(
-      (e: Event) => e?.status === "error"
+    const endpointMap: Record<string, HealthCheckResult> = metrics.endpoints ?? {};
+    const hasErrors = Object.values(endpointMap).some(
+      (endpoint) => endpoint?.status === "error"
     );
     if (hasErrors) return "error";
 
@@ -259,14 +257,11 @@ export function EndpointStatusIndicator({
   };
 
   const overallStatus = getOverallStatus();
-  const healthyEndpoints = metrics
-    ? Object.values(metrics.endpoints ?? {}).filter(
-        (e: Event) => e?.status === "healthy"
-      ).length
-    : 0;
-  const totalEndpoints = metrics
-    ? Object.keys(metrics.endpoints ?? {}).length
-    : 0;
+  const endpointMap: Record<string, HealthCheckResult> = metrics?.endpoints ?? {};
+  const healthyEndpoints = Object.values(endpointMap).filter(
+    (result) => result.status === "healthy"
+  ).length;
+  const totalEndpoints = Object.keys(endpointMap).length;
 
   // Compact pill (icon + optional error count)
   if (compact) {
@@ -382,8 +377,9 @@ export function EndpointStatusIndicator({
 
               {/* Individual Endpoints */}
               <div className="space-y-2 max-h-32 overflow-y-auto">
-                {Object.entries(metrics.endpoints ?? {}).map(
-                  ([endpoint, result]: unknown) => (
+                {(
+                  Object.entries(endpointMap) as [string, HealthCheckResult][]
+                ).map(([endpoint, result]) => (
                     <div
                       key={endpoint}
                       className="flex items-center justify-between text-xs"

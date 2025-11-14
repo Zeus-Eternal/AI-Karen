@@ -38,6 +38,7 @@ import ProviderConfigurationGuide from './ProviderConfigurationGuide';
 import ProviderDiagnosticsPage from './ProviderDiagnosticsPage';
 import ErrorMessageDisplay from './ErrorMessageDisplay';
 import { useProviderNotifications } from '@/hooks/useProviderNotifications';
+import type { LLMProvider, ProviderStats } from "./types";
 
 // Model Recommendations Component
 export interface ModelRecommendationsProps {
@@ -248,37 +249,6 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
       )}
     </div>
   );
-}
-
-export interface LLMProvider {
-  name: string;
-  description: string;
-  category: string;
-  requires_api_key: boolean;
-  capabilities: string[];
-  is_llm_provider: boolean;
-  provider_type: 'remote' | 'local' | 'hybrid';
-  health_status: 'healthy' | 'unhealthy' | 'unknown';
-  error_message?: string;
-  last_health_check?: number;
-  cached_models_count: number;
-  last_discovery?: number;
-  api_base_url?: string;
-  icon?: string;
-  documentation_url?: string;
-  pricing_info?: {
-    input_cost_per_1k?: number;
-    output_cost_per_1k?: number;
-    currency?: string;
-  };
-}
-
-export interface ProviderStats {
-  total_models: number;
-  healthy_providers: number;
-  total_providers: number;
-  last_sync: number;
-  degraded_mode: boolean;
 }
 
 export interface ApiKeyValidationResult {

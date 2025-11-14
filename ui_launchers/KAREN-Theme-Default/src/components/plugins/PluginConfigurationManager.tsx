@@ -176,8 +176,9 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
 
   const validateConfig = (): ValidationError[] => {
     const errors: ValidationError[] = [];
+    const configRecord = config as Record<string, unknown>;
     for (const field of plugin.manifest.configSchema || []) {
-      const value = (config as unknown)[field.key];
+      const value = configRecord[field.key];
       const error = validateField(field, value);
       if (error) errors.push({ field: field.key, message: error });
     }
@@ -236,7 +237,9 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
   };
 
   const renderField = (field: PluginConfigField) => {
-    const value = (config as unknown)[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
+    const configRecord = config as Record<string, unknown>;
+    const value = configRecord[field.key] ?? field.default ?? (field.type === "boolean" ? false : "");
+    const options = field.options ?? [];
     const error = validationErrors.find((e) => e.field === field.key);
     const isPassword = field.type === "password";
     const showPassword = !!showPasswords[field.key];
@@ -314,18 +317,24 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           </div>
         )}
 
-        {field.type === "select" && field.options && (
+        {field.type === "select" && options.length > 0 && (
           <Select
             value={(value as string) ?? ""}
-            onValueChange={(newValue) => handleFieldChange(field.key, newValue)}
+            onValueChange={(newValue) => {
+              const selected = options.find((opt) => String(opt.value) === newValue);
+              handleFieldChange(field.key, selected ? selected.value : newValue);
+            }}
             disabled={readOnly}
           >
             <SelectTrigger className={error ? "border-destructive" : ""}>
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
-              {field.options.map((opt) => (
-                <SelectItem key={opt.value.toString()} value={opt.value.toString()}>
+              {options.map((opt) => (
+                <SelectItem
+                  key={String(opt.value ?? "")}
+                  value={String(opt.value ?? "")}
+                >
                   {opt.label}
                 </SelectItem>
               ))}
@@ -333,15 +342,16 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
           </Select>
         )}
 
-        {field.type === "multiselect" && field.options && (
+        {field.type === "multiselect" && options.length > 0 && (
           <div className="space-y-2">
-            {field.options.map((opt) => {
+            {options.map((opt) => {
               const selectedValues: unknown[] = Array.isArray(value) ? [...value] : [];
               const checked = selectedValues.includes(opt.value);
+              const optionKey = String(opt.value ?? "");
               return (
-                <div key={opt.value.toString()} className="flex items-center space-x-2">
+                <div key={optionKey} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`${fieldId}-${opt.value}`}
+                    id={`${fieldId}-${optionKey}`}
                     checked={checked}
                     onCheckedChange={(checkedState) => {
                       const current: unknown[] = Array.isArray(value) ? [...value] : [];
@@ -353,7 +363,7 @@ export const PluginConfigurationManager: React.FC<PluginConfigurationManagerProp
                     }}
                     disabled={readOnly}
                   />
-                  <Label htmlFor={`${fieldId}-${opt.value}`} className="text-sm md:text-base lg:text-lg">
+                  <Label htmlFor={`${fieldId}-${optionKey}`} className="text-sm md:text-base lg:text-lg">
                     {opt.label}
                   </Label>
                 </div>

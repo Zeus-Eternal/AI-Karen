@@ -89,7 +89,7 @@ export function HealthDashboard({
 
   const [lastUpdate, setLastUpdate] = useState<string>(() => {
     try {
-      const currentMetrics = healthMonitor.getMetrics?.();
+      const currentMetrics = healthMonitor?.getMetrics?.();
       if (currentMetrics?.lastHealthCheck) {
         return new Date(currentMetrics.lastHealthCheck).toLocaleTimeString();
       }
@@ -176,7 +176,7 @@ export function HealthDashboard({
       // noop
     }
 
-    deferMonitoringSync();
+    enqueueSync(healthMonitor);
 
     return () => {
       cancelInitialSync?.();

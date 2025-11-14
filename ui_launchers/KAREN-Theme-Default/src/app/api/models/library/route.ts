@@ -76,6 +76,13 @@ function sanitizeParam(value: string | null, allowList?: string[]): string | und
   return v;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
 async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus> {
   try {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -87,7 +94,7 @@ async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus
     };
     void modelSelectionService; // keep import for future wiring
     if (typeof logger.debug === 'function') {
-      logger.debug('Model health status stub returning healthy result', { modelId });
+      logger.debug('Model health status stub returning healthy result', { modelId: _modelId });
     }
     return status;
   } catch (error) {
@@ -95,7 +102,7 @@ async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus
       is_healthy: false,
       last_check: new Date().toISOString(),
       issues: [
-        `Health check failed for ${modelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Health check failed for ${_modelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       ],
     };
   }
@@ -143,11 +150,14 @@ export async function GET(request: NextRequest) {
       const modelsRaw = await modelSelectionService.getAvailableModels(forceRefresh);
 
       // Optional narrow by type/provider (client-side filter)
-      let models = (modelsRaw || []).map((m: unknown) => ({
-        ...m,
-        type: m.type || 'unknown',
-        last_scanned: new Date().toISOString(),
-      })) as EnhancedModelInfo[];
+      let models = (modelsRaw || []).map((m: unknown) => {
+        const record = typeof m === 'object' && m !== null ? (m as Record<string, unknown>) : {};
+        return {
+          ...record,
+          type: (record.type || 'unknown') as string,
+          last_scanned: new Date().toISOString(),
+        };
+      }) as EnhancedModelInfo[];
 
       if (modelType) models = models.filter((m) => (m.type || '').includes(modelType));
       if (providerFilter) models = models.filter((m) => (m.provider || '') === providerFilter);
@@ -173,7 +183,7 @@ export async function GET(request: NextRequest) {
         available_count: models.filter((m) => m.status === 'available').length,
         healthy_count: healthyCount,
         scan_metadata: {
-          ...(stats?.scanStats || {}),
+          ...(asRecord(asRecord(stats).scanStats)),
           scan_timestamp: new Date().toISOString(),
           include_health: includeHealth,
           filters_applied: { type: modelType, provider: providerFilter },
@@ -273,20 +283,24 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (parseErr: unknown) {
+      const parseMessage =
+        parseErr instanceof Error ? parseErr.message : String(parseErr);
       logger.error('Failed to parse backend payload', {
         requestId,
         usedUrl,
-        error: parseErr?.message || String(parseErr),
+        error: parseMessage,
       });
-      data = { models: [] };
-    }
+     data = { models: [] };
+   }
 
+    const dataRecord = asRecord(data);
+    const modelCount = Array.isArray(dataRecord.models) ? dataRecord.models.length : undefined;
     logger.info('Models library backend response forwarded', {
       requestId,
       usedUrl,
       status: resp.status,
       ok: resp.ok,
-      modelCount: Array.isArray(data?.models) ? data.models.length : undefined,
+      modelCount,
     });
 
     // If backend returns a plain array or different shape, normalize minimally
@@ -313,11 +327,14 @@ export async function GET(request: NextRequest) {
       includeHealth: false,
     });
 
-    const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: unknown) => ({
-      ...m,
-      type: m.type || 'unknown',
-      last_scanned: new Date().toISOString(),
-    }));
+    const normalizedModels: EnhancedModelInfo[] = (fallbackModels || []).map((m: unknown) => {
+      const record = asRecord(m);
+      return {
+        ...record,
+        type: (record.type || 'unknown') as string,
+        last_scanned: new Date().toISOString(),
+      } as EnhancedModelInfo;
+    });
 
     const filteredModels = normalizedModels.filter((model) => {
       const matchesType = modelType ? (model.type || '').includes(modelType) : true;
@@ -340,12 +357,14 @@ export async function GET(request: NextRequest) {
     });
 
     return okJson(response, 200, { 'X-Models-Count': String(response.total_count) });
-  } catch (fallbackErr: unknown) {
-    logger.error('Fallback local scan failed', {
-      requestId,
-      error: fallbackErr?.message || String(fallbackErr),
-      lastBackendError: lastError,
-    });
+    } catch (fallbackErr: unknown) {
+      const fallbackMessage =
+        fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      logger.error('Fallback local scan failed', {
+        requestId,
+        error: fallbackMessage,
+        lastBackendError: lastError,
+      });
 
     const minimal: LibraryResponse = {
       models: [],

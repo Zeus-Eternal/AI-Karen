@@ -458,6 +458,12 @@ export interface ComponentRenderMetric extends PerformanceMetric {
   };
 }
 
+export interface DatabaseAnalysis {
+  query_performance?: Record<string, unknown>[];
+  table_statistics?: Record<string, unknown>[];
+  error?: string;
+}
+
 export interface PerformanceReport {
   timestamp: string;
   summary: {
@@ -465,6 +471,7 @@ export interface PerformanceReport {
     timeRange: { start: string; end: string };
     avgResponseTime: number;
   };
+  database_analysis?: DatabaseAnalysis;
   database: {
     queryCount: number;
     avgQueryTime: number;

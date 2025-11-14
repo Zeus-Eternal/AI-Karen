@@ -110,7 +110,16 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const showError = hasError && isInView;
   const showImage = isInView && !hasError;
 
-  const motionCompatibleProps = restProps as MotionSafeImageProps;
+  const {
+    onAnimationStart: _onAnimationStart,
+    onAnimationEnd: _onAnimationEnd,
+    onAnimationIteration: _onAnimationIteration,
+    ...motionCompatibleProps
+  } = restProps as MotionSafeImageProps;
+
+  void _onAnimationStart;
+  void _onAnimationEnd;
+  void _onAnimationIteration;
 
   const resolvedPlaceholder =
     fallback ??

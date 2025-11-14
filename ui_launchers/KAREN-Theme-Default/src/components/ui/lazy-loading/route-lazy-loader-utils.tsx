@@ -1,6 +1,6 @@
 "use client";
 
-import React, { lazy, useCallback, type ComponentType } from "react";
+import React, { lazy, useCallback, type ComponentProps, type ComponentType } from "react";
 
 import RouteLazyLoader from "./route-lazy-loader";
 import type { RouteLazyLoaderProps } from "./route-lazy-loader.types";
@@ -13,15 +13,14 @@ export function createLazyRoute<Props extends object>(
   importFn: () => Promise<{ default: ComponentType<Props> }>,
   options: RouteLoaderOptions = {}
 ): ComponentType<Props> {
-  const load = async () => importFn();
-
   if (options.preload) {
     void importFn().catch(() => undefined);
   }
 
-  const LazyComponent = lazy(load);
+  const LazyComponent = lazy(() => importFn()) as React.LazyExoticComponent<ComponentType<Props>>;
+  type LazyComponentProps = ComponentProps<typeof LazyComponent>;
 
-  const Wrapped: React.FC<Props> = (props) => (
+  const Wrapped = (props: LazyComponentProps) => (
     <RouteLazyLoader fallback={options.fallback} errorFallback={options.errorFallback}>
       <LazyComponent {...props} />
     </RouteLazyLoader>
@@ -35,7 +34,7 @@ export function createLazyRoute<Props extends object>(
   Wrapped.displayName = `LazyRouteWrapper(${
     lazyComponentMeta.displayName ?? lazyComponentMeta.name ?? "Component"
   })`;
-  return Wrapped;
+  return Wrapped as ComponentType<Props>;
 }
 
 export function useRoutePreloader() {

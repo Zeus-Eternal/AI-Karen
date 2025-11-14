@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 import { getKarenBackend } from "@/lib/karen-backend";
-import { handleApiError } from "@/lib/error-handler";
+import { handleApiError, toExtendedError } from "@/lib/error-handler";
 
 export interface Job {
   id: string;
@@ -102,6 +102,10 @@ export default function JobCenter({
 
   const { toast } = useToast();
   const backend = getKarenBackend();
+  const formatResultValue = (value: unknown) => {
+    if (value === undefined || value === null) return "N/A";
+    return String(value);
+  };
 
   const loadJobs = useCallback(async () => {
     try {
@@ -115,7 +119,7 @@ export default function JobCenter({
     } catch (error) {
       // Only show error toast if we have no jobs cached (prevents noise during polling)
       if (!jobs.length) {
-        const info = handleApiError(error as unknown, "loadJobs");
+        const info = handleApiError(toExtendedError(error), "loadJobs");
         toast({
           variant: "destructive",
           title: info.title,
@@ -154,7 +158,7 @@ export default function JobCenter({
 
       loadJobs();
     } catch (error) {
-      const info = handleApiError(error as unknown, `${action}Job`);
+      const info = handleApiError(toExtendedError(error), `${action}Job`);
       toast({
         variant: "destructive",
         title: info.title,
@@ -177,7 +181,7 @@ export default function JobCenter({
       setJobs((prev) => prev.filter((job) => job.id !== jobId));
       if (selectedJob?.id === jobId) setSelectedJob(null);
     } catch (error) {
-      const info = handleApiError(error as unknown, "deleteJob");
+      const info = handleApiError(toExtendedError(error), "deleteJob");
       toast({
         variant: "destructive",
         title: info.title,
@@ -200,7 +204,7 @@ export default function JobCenter({
       });
       loadJobs();
     } catch (error) {
-      const info = handleApiError(error as unknown, "clearJobs");
+      const info = handleApiError(toExtendedError(error), "clearJobs");
       toast({
         variant: "destructive",
         title: info.title,
@@ -546,12 +550,12 @@ export default function JobCenter({
                         </div>
                         {"model_id" in job.result && (
                           <div className="text-sm text-green-700 dark:text-green-300 md:text-base lg:text-lg">
-                            Model ID: {job.result.model_id}
+                            Model ID: {formatResultValue(job.result.model_id)}
                           </div>
                         )}
                         {"output_path" in job.result && (
                           <div className="text-sm text-green-700 dark:text-green-300 md:text-base lg:text-lg">
-                            Output: {job.result.output_path}
+                            Output: {formatResultValue(job.result.output_path)}
                           </div>
                         )}
                       </div>

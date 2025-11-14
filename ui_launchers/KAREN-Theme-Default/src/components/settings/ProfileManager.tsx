@@ -5,21 +5,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { ErrorBoundary, type ErrorFallbackProps } from "@/components/ui/error-boundary";
+import type { LLMProvider, LLMProfile } from "./types";
 
 const ProfileManagerErrorFallback: React.FC<ErrorFallbackProps> = ({ error }) => (
   <div>Something went wrong in ProfileManager: {error?.message}</div>
 );
-
-export interface LLMProvider {
-  name: string;
-  description: string;
-}
-
-export interface LLMProfile {
-  id: string;
-  name: string;
-  description: string;
-}
 
 export interface ProfileManagerProps {
   profiles: LLMProfile[];
@@ -53,6 +43,13 @@ export default function ProfileManager({
       id: `profile-${Date.now()}`,
       name: `Profile ${safeProfiles.length + 1}`,
       description: "User created profile",
+      router_policy: "balanced",
+      providers: {},
+      fallback_provider: "local",
+      is_valid: true,
+      validation_errors: [],
+      created_at: Date.now(),
+      updated_at: Date.now(),
     };
     setProfiles([...safeProfiles, newProfile]);
     setActiveProfile(newProfile);

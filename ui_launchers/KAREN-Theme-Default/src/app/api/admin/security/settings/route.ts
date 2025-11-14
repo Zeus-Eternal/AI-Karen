@@ -226,9 +226,9 @@ function isValidIpOrCidr(input: string): boolean {
 /**
  * Deep diff for audit (objects & arrays). Only reports keys present in `updated`.
  */
-function getSettingsChanges(
-  oldSettings: Record<string, unknown>,
-  updatedSettings: Record<string, unknown>,
+function getSettingsChanges<T>(
+  oldSettings: T,
+  updatedSettings: Partial<T>
 ): Array<{ setting: string; oldValue: unknown; newValue: unknown }> {
   const changes: Array<{ setting: string; oldValue: unknown; newValue: unknown }> = [];
 
@@ -237,14 +237,15 @@ function getSettingsChanges(
     const newType = getType(newVal);
 
     if (newType === 'object' && oldType === 'object') {
-      const keys = Object.keys(newVal);
+      const oldRecord = toRecord(oldVal);
+      const newRecord = toRecord(newVal);
+      const keys = Object.keys(newRecord);
       for (const k of keys) {
-        walk(oldVal?.[k], newVal[k], path ? `${path}.${k}` : k);
+        walk(oldRecord[k], newRecord[k], path ? `${path}.${k}` : k);
       }
       return;
     }
 
-    // For arrays and primitives, do a value compare
     const changed = !areValuesEqual(oldVal, newVal);
     if (changed) {
       changes.push({
@@ -257,6 +258,17 @@ function getSettingsChanges(
 
   walk(oldSettings, updatedSettings, '');
   return changes;
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (isPlainObject(value)) {
+    return value;
+  }
+  return {};
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function getType(v: unknown): 'array' | 'object' | 'null' | 'primitive' {

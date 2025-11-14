@@ -358,8 +358,9 @@ function EvilModeStatus({ session, config }: EvilModeStatusProps) {
 
   const elapsedMs = now.getTime() - startTime.getTime();
   const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));
-  const hasTimeLimit = typeof config?.timeLimit === "number" && config.timeLimit > 0;
-  const timeLimit = hasTimeLimit ? config!.timeLimit : 60;
+  const timeLimitValue = config?.timeLimit;
+  const hasTimeLimit = typeof timeLimitValue === "number" && timeLimitValue > 0;
+  const timeLimit = hasTimeLimit ? timeLimitValue ?? 60 : 60;
   const remainingMinutes = Math.max(0, timeLimit - elapsedMinutes);
   const progress = Math.min(
     100,

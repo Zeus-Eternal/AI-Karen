@@ -102,6 +102,14 @@ const PerformanceAnalyticsFallback: React.FC<ErrorFallbackProps> = ({
   </div>
 );
 
+type ScatterClickEvent = {
+  payload?: Array<{
+    payload?: {
+      index?: number;
+    };
+  }>;
+};
+
 export const PerformanceAnalyticsDashboard: React.FC<
   PerformanceAnalyticsDashboardProps
 > = ({ refreshInterval = 10000, showAdvancedFeatures = true }) => {
@@ -403,9 +411,8 @@ export const PerformanceAnalyticsDashboard: React.FC<
                         <Scatter
                           dataKey="duration"
                           fill="#8884d8"
-                          onClick={(e: Event) => {
-                            // e.payload.index maps to original array index
-                            const idx = e?.payload?.index ?? null;
+                          onClick={(e: ScatterClickEvent) => {
+                            const idx = e?.payload?.[0]?.payload?.index ?? null;
                             if (idx != null && profiles[idx]) {
                               setSelectedProfile(profiles[idx]);
                             }

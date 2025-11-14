@@ -59,12 +59,14 @@ export async function GET(_request: NextRequest) {
     };
 
     return NextResponse.json(transformed);
-  } catch (err: Error) {
+  } catch (err: unknown) {
     // Optionally log for observability without leaking details to clients
-    if (err?.name === 'AbortError') {
+    const errName = err instanceof Error ? err.name : undefined;
+    if (errName === 'AbortError') {
       console.warn('[GET /api/plugins] Backend request aborted (timeout).');
     } else {
-      console.error('[GET /api/plugins] Error:', err?.message || err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[GET /api/plugins] Error:', msg);
     }
     return NextResponse.json(DEFAULT_RESPONSE);
   } finally {

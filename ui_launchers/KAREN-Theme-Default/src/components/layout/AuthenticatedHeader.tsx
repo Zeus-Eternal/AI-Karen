@@ -50,6 +50,12 @@ export const AuthenticatedHeader: React.FC = () => {
   const userInitials =
     initialsFrom(user?.email) || initialsFrom(user?.userId) || "?";
 
+  const rolesText = Array.isArray(user.roles)
+    ? user.roles.join(", ")
+    : typeof user.roles === "string"
+    ? user.roles
+    : "";
+
   return (
     <>
       <div className="flex items-center gap-3">
@@ -77,9 +83,7 @@ export const AuthenticatedHeader: React.FC = () => {
                   {user?.email ?? user?.userId ?? ""}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {Array.isArray(user?.roles)
-                    ? user.roles.join(", ")
-                    : (user?.roles as unknown) ?? ""}
+                  {rolesText}
                 </p>
               </div>
             </DropdownMenuLabel>

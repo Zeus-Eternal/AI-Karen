@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import * as os from 'os';
+import type { BackendHealthData } from '@/types/health';
 
 interface HealthCheckResult {
   status: 'healthy' | 'unhealthy' | 'degraded';
@@ -66,6 +67,12 @@ type FallbackHealthResponse = HealthCheckResult & {
   error: string;
   details?: string;
 };
+
+type HealthResponsePayload =
+  | BackendHealthData
+  | { error: string }
+  | string
+  | Record<string, unknown>;
 
 // Global metrics tracking
 const requestMetrics: RequestMetrics = {
@@ -519,7 +526,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const totalResponseTime = Date.now() - startTime;
     updateRequestMetrics(totalResponseTime, response.ok);
     
-    let data: BackendHealthData;
+    let data: HealthResponsePayload;
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       try {
@@ -611,26 +618,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     };
 
-    return NextResponse.json(
-      await buildFallbackHealthResponse(errorMessage, error),
-      {
-        ...fallback,
-        error: errorMessage,
-        details:
-          process.env.NODE_ENV === 'development'
-            ? error instanceof Error
-              ? error.message
-              : String(error)
-            : undefined,
+    const fallbackResponse = await buildFallbackHealthResponse(errorMessage, error);
+    const detailMessage =
+      process.env.NODE_ENV === 'development'
+        ? error instanceof Error
+          ? error.message
+          : String(error)
+        : undefined;
+    const responseBody = {
+      ...fallbackResponse,
+      ...fallback,
+      error: errorMessage,
+      details: detailMessage,
+    };
+
+    return NextResponse.json(responseBody, {
+      status,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
-      {
-        status,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      },
-    );
+    });
   }
 }

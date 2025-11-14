@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 import { getKarenBackend } from "@/lib/karen-backend";
-import { handleApiError } from "@/lib/error-handler";
+import { handleApiError, toExtendedError } from "@/lib/error-handler";
 
 export interface Job {
   id: string;
@@ -245,7 +245,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      const info = handleApiError(error as unknown, `${action}Job`);
+      const info = handleApiError(toExtendedError(error), `${action}Job`);
       toast({
         variant: "destructive",
         title: info.title || `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`,
@@ -264,7 +264,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await loadJobs();
       await loadJobStats();
     } catch (error) {
-      const info = handleApiError(error as unknown, "deleteJob");
+      const info = handleApiError(toExtendedError(error), "deleteJob");
       toast({
         variant: "destructive",
         title: info.title || "Delete Failed",
@@ -285,7 +285,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       });
       await loadStorageInfo();
     } catch (error) {
-      const info = handleApiError(error as unknown, "cleanupStorage");
+      const info = handleApiError(toExtendedError(error), "cleanupStorage");
       toast({
         variant: "destructive",
         title: info.title || "Cleanup Failed",
@@ -458,7 +458,10 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
         </Card>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as unknown)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v: "active" | "completed" | "storage") => setActiveTab(v)}
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />

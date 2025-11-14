@@ -158,9 +158,10 @@ export async function GET(request: NextRequest) {
         }),
       });
     }
-  } catch (error: Error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Internal server error', detail: error?.message ?? String(error) },
+      { error: 'Internal server error', detail: message },
       { status: 500, headers: noCacheHeaders({ 'Content-Type': JSON_CT }) },
     );
   }

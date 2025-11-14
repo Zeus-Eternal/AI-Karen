@@ -36,8 +36,7 @@ export interface ApiErrorResponse {
   context?: Record<string, unknown>;
 }
 
-// Extended Error interface to handle API errors with additional properties
-interface ExtendedError extends Error {
+export interface ExtendedError extends Error {
   detail?: ApiErrorResponse;
   response?: {
     status?: number;
@@ -46,6 +45,13 @@ interface ExtendedError extends Error {
   code?: string;
   status?: number;
 }
+export const toExtendedError = (error: unknown): ExtendedError => {
+  if (error instanceof Error) {
+    return error as ExtendedError;
+  }
+  const err = new Error(String(error));
+  return err as ExtendedError;
+};
 export class ErrorHandler {
   private static instance: ErrorHandler;
   public static getInstance(): ErrorHandler {

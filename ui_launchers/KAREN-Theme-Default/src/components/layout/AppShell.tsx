@@ -25,6 +25,8 @@ import {
   appShellFooterVariants,
 } from "./app-shell-variants";
 
+type AppShellSidebarVariantProps = VariantProps<typeof appShellSidebarVariants>;
+
 // -------------------- Context --------------------
 
 export interface AppShellContextType {
@@ -316,29 +318,31 @@ export const AppShellSidebar = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const { sidebarOpen, sidebarCollapsed, isMobile } = useAppShell();
 
-  const state = sidebarOpen
+  const state: AppShellSidebarVariantProps["state"] = sidebarOpen
     ? sidebarCollapsed
       ? "collapsed"
       : "expanded"
     : "closed";
-  const position = isMobile ? "fixed" : "relative";
+  const position: AppShellSidebarVariantProps["position"] = isMobile
+    ? "fixed"
+    : "relative";
 
   return (
-    <aside
-      ref={ref}
-      role="navigation"
-      tabIndex={-1}
-      className={cn(
-        // Base width when visible; ensure width is defined for expanded/collapsed
-        "will-change-transform",
-        appShellSidebarVariants({ state: state as unknown, position: position as unknown }),
-        className
-      )}
-      aria-label="Main navigation"
-      {...props}
-    >
-      {children}
-    </aside>
+        <aside
+          ref={ref}
+          role="navigation"
+          tabIndex={-1}
+          className={cn(
+            // Base width when visible; ensure width is defined for expanded/collapsed
+            "will-change-transform",
+            appShellSidebarVariants({ state, position }),
+            className
+          )}
+          aria-label="Main navigation"
+          {...props}
+        >
+          {children}
+        </aside>
   );
 });
 

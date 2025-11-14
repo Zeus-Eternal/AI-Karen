@@ -99,6 +99,21 @@ function parseQuery(request: NextRequest) {
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function getStringField(value: unknown, field: string): string {
+  const record = asRecord(value);
+  const candidate = record[field];
+  if (typeof candidate === 'string') return candidate;
+  if (candidate === undefined || candidate === null) return '';
+  return String(candidate);
+}
+
 // ------------------------- GGUF Filename Metadata ---------------------------
 
 /**
@@ -267,13 +282,16 @@ export async function GET(request: NextRequest) {
         const metadata = extractGGUFMetadataFromFilename(file.name);
 
         // filter by arch, quant, minCtx if provided
-        if (opts.filters.arch && (metadata.architecture || '').toLowerCase() !== opts.filters.arch) {
+        const archValue = getStringField(metadata, 'architecture').toLowerCase();
+        if (opts.filters.arch && archValue !== opts.filters.arch) {
           continue;
         }
-        if (opts.filters.quant && (metadata.quantization || '').toUpperCase() !== opts.filters.quant) {
+        const quantValue = getStringField(metadata, 'quantization').toUpperCase();
+        if (opts.filters.quant && quantValue !== opts.filters.quant) {
           continue;
         }
-        if (opts.filters.minCtx && Number(metadata.context_length || 0) < opts.filters.minCtx) {
+        const contextLength = Number(getStringField(metadata, 'context_length') || 0);
+        if (opts.filters.minCtx && contextLength < opts.filters.minCtx) {
           continue;
         }
 
@@ -348,12 +366,13 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: Error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         models: [],
         directory: opts.directory,
-        error: error?.message || 'Unknown error',
+        error: message,
         scan_time: new Date().toISOString(),
       },
       { status: 500 }

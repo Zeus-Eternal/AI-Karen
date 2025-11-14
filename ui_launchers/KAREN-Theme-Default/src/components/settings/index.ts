@@ -116,13 +116,15 @@ export type {
   ModelInfo,
   LLMProfile,
   ProviderStats,
-} from './LLMSettings';
+} from './types';
 
 // ModelBrowser
 export { default as ModelBrowser } from './ModelBrowser';
 export type {
   ModelInfo as ModelBrowserModelInfo,
   LLMProvider as ModelBrowserProvider,
+} from './types';
+export type {
   ModelBrowserProps,
 } from './ModelBrowser';
 
@@ -197,6 +199,8 @@ export { default as ProfileManager } from './ProfileManager';
 export type {
   LLMProvider as ProfileManagerLLMProvider,
   LLMProfile as ProfileManagerLLMProfile,
+} from './types';
+export type {
   ProfileManagerProps,
 } from './ProfileManager';
 
@@ -220,11 +224,13 @@ export type {
 export { default as ProviderManagement } from './ProviderManagement';
 export type {
   ModelRecommendationsProps,
-  LLMProvider as ProviderManagementLLMProvider,
-  ProviderStats as ProviderManagementStats,
   ApiKeyValidationResult,
   ProviderManagementProps,
 } from './ProviderManagement';
+export type {
+  LLMProvider as ProviderManagementLLMProvider,
+  ProviderStats as ProviderManagementStats,
+} from './types';
 
 // ProviderNotificationSystem
 export { default as ProviderNotificationSystem } from './ProviderNotificationSystem';

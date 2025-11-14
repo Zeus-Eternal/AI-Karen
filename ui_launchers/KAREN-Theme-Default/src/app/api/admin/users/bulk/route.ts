@@ -150,9 +150,9 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
     }
 
     // Execute operation
-    let result: unknown = {};
+    let result: Record<string, unknown> = {};
     let auditAction = '';
-    let auditDetails: unknown = {};
+    let auditDetails: Record<string, unknown> = {};
 
     switch (body.operation as AllowedOperation) {
       case 'activate': {
@@ -178,8 +178,12 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         break;
       }
       case 'role_change': {
-        const newRole = body.parameters?.new_role as 'admin' | 'user' | undefined;
-        if (!newRole || !['admin', 'user'].includes(newRole)) {
+        const candidateRole = body.parameters?.new_role;
+        const newRole =
+          typeof candidateRole === 'string' && (candidateRole === 'admin' || candidateRole === 'user')
+            ? candidateRole
+            : undefined;
+        if (!newRole) {
           return NextResponse.json(
             {
               success: false,

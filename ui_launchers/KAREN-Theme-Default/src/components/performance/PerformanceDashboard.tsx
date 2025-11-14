@@ -58,6 +58,23 @@ export interface PerformanceMetrics {
   error?: string;
 }
 
+const formatDuration = (ms: number) => {
+  if (ms < 1000) return `${ms.toFixed(1)}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+};
+
+const formatBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes.toFixed(1)} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(2)} ${units[unitIndex]}`;
+};
+
 export function PerformanceDashboard() {
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [recommendations, setRecommendations] = useState<string[]>([]);

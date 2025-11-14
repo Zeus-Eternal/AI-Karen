@@ -86,7 +86,11 @@ export async function POST(request: NextRequest) {
         'X-Proxy-Upstream-Status': String(response.status),
       },
     });
-  } catch (err: Error) {
+  } catch (err: unknown) {
+    const errName =
+      err && typeof err === "object" && "name" in err && typeof err.name === "string"
+        ? err.name
+        : undefined;
     // Graceful “ghost-start” fallback (explicitly marked)
     const fallback = {
       status: 'started',
@@ -103,7 +107,7 @@ export async function POST(request: NextRequest) {
         'Cache-Control': 'no-store',
         'X-Fallback': 'true',
         'X-Fallback-Reason':
-          err?.name === 'AbortError'
+          errName === 'AbortError'
             ? `timeout_${Math.round(TIMEOUT_MS / 1000)}s`
             : 'upstream_unreachable',
       },

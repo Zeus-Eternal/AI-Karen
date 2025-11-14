@@ -38,18 +38,30 @@ function arr(val: unknown): unknown[] {
   return Array.isArray(val) ? val : [];
 }
 
+function getCapabilities(model: unknown): string[] {
+  if (typeof model === 'object' && model !== null && 'capabilities' in model) {
+    return arr((model as { capabilities?: unknown }).capabilities).filter(
+      (item): item is string => typeof item === 'string'
+    );
+  }
+  return [];
+}
+
 function hasCap(model: unknown, cap: string): boolean {
-  return arr(model?.capabilities).includes(cap);
+  return getCapabilities(model).includes(cap);
 }
 
 function normType(model: unknown): string {
-  return (model?.type || 'unknown').toString();
+  if (typeof model === 'object' && model !== null && 'type' in model) {
+    return String((model as { type?: unknown }).type ?? 'unknown');
+  }
+  return 'unknown';
 }
 
 /** Build detailed capabilities for a model based on its type and metadata */
 function buildModelCapabilities(model: unknown): ModelCapability[] {
   const capabilities: ModelCapability[] = [];
-  const caps = arr(model?.capabilities);
+  const caps = getCapabilities(model);
 
   for (const cap of caps) {
     switch (cap) {
@@ -178,8 +190,8 @@ function getSupportedModes(model: unknown): string[] {
 }
 
 /** Build parameter specifications for different model types */
-function buildParameterSpecs(model: unknown): Record<string, unknown> {
-  const params: Record<string, unknown> = {};
+function buildParameterSpecs(model: unknown): Record<string, any> {
+  const params: Record<string, any> = {};
   const t = normType(model);
 
   if (t === 'text' || t === 'text_generation' || hasCap(model, 'text-generation') || hasCap(model, 'chat')) {
@@ -207,8 +219,12 @@ function buildParameterSpecs(model: unknown): Record<string, unknown> {
     }
 
     // Provider-aware tuning examples
-    const provider = (model?.provider || '').toLowerCase();
-    const baseModel = (model?.metadata?.base_model || '').toUpperCase();
+    const provider = String(
+      (model as { provider?: unknown })?.provider ?? ''
+    ).toLowerCase();
+    const baseModel = String(
+      (model as { metadata?: { base_model?: unknown } })?.metadata?.base_model ?? ''
+    ).toUpperCase();
 
     if (provider === 'flux') {
       params.image_generation.guidance_scale.min = 0.0;
@@ -240,7 +256,9 @@ function buildCompatibilityInfo(model: unknown): {
   streaming: boolean;
   batch_processing: boolean;
 } {
-  const provider = (model?.provider || '').toLowerCase();
+  const provider = String(
+    (model as { provider?: unknown })?.provider ?? ''
+  ).toLowerCase();
   const t = normType(model);
 
   // Heuristics: many image backends don’t stream tokens; text often can.
@@ -273,7 +291,9 @@ export async function GET(request: NextRequest) {
 
     // Fetch available models and locate target
     const models = await modelSelectionService.getAvailableModels();
-    const targetModel = (models || []).find((m: unknown) => m.id === modelId);
+    const targetModel = (models || []).find(
+      (m) => (m as { id?: string }).id === modelId
+    );
 
     if (!targetModel) {
       return NextResponse.json(
@@ -310,10 +330,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (capabilityError: unknown) {
+    const capabilityMessage =
+      capabilityError instanceof Error ? capabilityError.message : 'Unknown error';
     return NextResponse.json(
       {
         error: 'Failed to fetch model capabilities',
-        message: capabilityError?.message || 'Unknown error',
+        message: capabilityMessage,
       },
       { status: 500 },
     );

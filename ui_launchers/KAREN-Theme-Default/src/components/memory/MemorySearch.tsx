@@ -98,6 +98,14 @@ const isSortOrder = (value: unknown): SearchFilters["sortOrder"] | undefined => 
   return undefined;
 };
 
+const resolveClusterName = (metadata?: Record<string, unknown>): string => {
+  const candidate = metadata?.cluster;
+  if (typeof candidate === "string" && candidate.trim().length > 0) {
+    return candidate;
+  }
+  return "general";
+};
+
 const normalizeMemorySearchOptions = (raw: unknown): MemorySearchOptions => {
   if (!raw || typeof raw !== "object") {
     return {};
@@ -278,7 +286,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
         tags[tag] = (tags[tag] || 0) + 1;
       });
 
-      const cluster = m.metadata?.cluster || "general";
+      const cluster = resolveClusterName(m.metadata);
       clusters[cluster] = (clusters[cluster] || 0) + 1;
     });
 

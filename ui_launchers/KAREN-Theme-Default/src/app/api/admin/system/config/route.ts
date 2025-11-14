@@ -59,7 +59,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
 /**
  * PUT /api/admin/system/config - Update system configuration (super admin only)
  */
-export const PUT = requireSuperAdmin(async (request: NextRequest, _context) => {
+export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const body: Record<string, SystemConfigUpdate> = await request.json();
     if (!body || Object.keys(body).length === 0) {

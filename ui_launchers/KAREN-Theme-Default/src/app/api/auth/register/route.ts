@@ -5,8 +5,11 @@ const REG_TIMEOUT_MS = 15_000;
 
 function buildTimeoutSignal(ms: number): AbortSignal {
   // Fallback for environments without AbortSignal.timeout
-  if (typeof (AbortSignal as unknown).timeout === 'function') {
-    return (AbortSignal as unknown).timeout(ms);
+  const AbortSignalWithTimeout = AbortSignal as typeof AbortSignal & {
+    timeout?: (ms: number) => AbortSignal;
+  };
+  if (typeof AbortSignalWithTimeout.timeout === 'function') {
+    return AbortSignalWithTimeout.timeout(ms);
   }
   const controller = new AbortController();
   setTimeout(() => controller.abort(), ms);
@@ -62,11 +65,14 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    const errorName =
+      typeof error === 'object' && error !== null && 'name' in error
+        ? String((error as { name?: unknown }).name ?? '')
+        : '';
 
     // Distinguish timeouts for clearer UX
     const isTimeout =
-      (error as unknown)?.name === 'AbortError' ||
-      String(message).toLowerCase().includes('timeout');
+      errorName === 'AbortError' || String(message).toLowerCase().includes('timeout');
 
     return NextResponse.json(
       {

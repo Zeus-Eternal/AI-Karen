@@ -39,11 +39,11 @@ export type {
 export type { BreadcrumbItemProps } from './BreadcrumbNavigation';
 
 // Sidebar Navigation
+export { SidebarNavigation } from './SidebarNavigation';
 export {
-  SidebarNavigation,
   defaultNavigationItems,
   sidebarNavigationVariants,
-} from './SidebarNavigation';
+} from './SidebarNavigation.config';
 export type {
   NavigationItem,
   SidebarNavigationProps,

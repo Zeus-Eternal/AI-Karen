@@ -23,6 +23,7 @@ import {
   type HealthEvent,
   type BackendEndpoint,
 } from "../../lib/connection/health-monitor";
+import type { BackendHealthData, ServiceHealth } from "@/types/health";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -39,33 +40,6 @@ export interface HealthDashboardProps {
   className?: string;
   autoRefresh?: boolean;
   refreshInterval?: number;
-}
-
-export interface ServiceHealth {
-  status: "healthy" | "degraded" | "unhealthy" | "unknown" | string;
-  response_time_ms: number;
-  last_check: string;
-  error?: string;
-}
-
-export interface BackendHealthData {
-  status: "healthy" | "degraded" | "unhealthy" | "unknown" | string;
-  timestamp: string;
-  response_time_ms: number;
-  services: {
-    database: ServiceHealth;
-    redis: ServiceHealth;
-    ai_providers: ServiceHealth;
-    system_resources: ServiceHealth;
-    // Any additional services still render safely
-    [key: string]: ServiceHealth;
-  };
-  summary: {
-    healthy_services: number;
-    degraded_services: number;
-    unhealthy_services: number;
-    total_services: number;
-  };
 }
 
 const HealthDashboard: React.FC<HealthDashboardProps> = ({

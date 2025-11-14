@@ -14,6 +14,14 @@ type ChatBody = {
   [k: string]: unknown;
 };
 
+type DegradedModeResponse = {
+  is_active?: boolean;
+  degraded_mode?: boolean;
+};
+
+const isDegradedModeResponse = (value: unknown): value is DegradedModeResponse =>
+  typeof value === 'object' && value !== null;
+
 // --- Fallback, degraded-mode friendly replies ---
 function createFallbackResponse(userMessage: string) {
   const msg = (userMessage || '').toLowerCase();
@@ -63,7 +71,8 @@ async function checkDegradedMode(): Promise<boolean> {
     if (!ct.includes('application/json')) return false;
 
     const data: unknown = await resp.json();
-    return Boolean(data?.is_active || data?.degraded_mode);
+    if (!isDegradedModeResponse(data)) return false;
+    return Boolean(data.is_active || data.degraded_mode);
   } catch {
     // If probe fails, do NOT assume degraded; keep normal behavior
     return false;
@@ -119,9 +128,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (VERBOSE) {
-    const preview = JSON.stringify(body);
+    const bodyForLog = body ?? {};
+    const preview = JSON.stringify(bodyForLog);
     console.log('🔍 ChatRuntime API: Request body parsed', {
-      bodyKeys: Object.keys(body || {}),
+      bodyKeys: Object.keys(bodyForLog),
       model: body?.model,
       messageCount: Array.isArray(body?.messages) ? body!.messages!.length : 0,
       hasStream: body?.stream !== undefined,
@@ -176,13 +186,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const responsePayload: Record<string, unknown> = (() => {
+      if (typeof data === 'object' && data !== null) {
+        return data as Record<string, unknown>;
+      }
+      return {};
+    })();
     if (VERBOSE) {
-      const str = JSON.stringify(data ?? {});
+      const str = JSON.stringify(responsePayload);
       console.log('🔍 ChatRuntime API: Backend response data', {
-        dataKeys: typeof data === 'object' && data ? Object.keys(data as unknown) : [],
-        hasContent: (data as unknown)?.content != null,
-        contentLength: ((data as unknown)?.content ?? '').length ?? 0,
-        hasError: (data as unknown)?.error != null,
+        dataKeys: Object.keys(responsePayload),
+        hasContent: typeof responsePayload.content === 'string' && responsePayload.content.length > 0,
+        contentLength: typeof responsePayload.content === 'string' ? responsePayload.content.length : 0,
+        hasError: responsePayload.error != null,
         dataPreview: str.length > 500 ? str.slice(0, 500) + '...' : str,
       });
     }
@@ -197,18 +213,21 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (backendError) {
+    const normalizedBackendError =
+      backendError instanceof Error ? backendError : new Error(String(backendError ?? 'Unknown error'));
     // Backend unreachable/timeout → produce graceful fallback
+    const availableMessageFromBody = (body as ChatBody & { message?: string }).message;
     const lastUserMsg =
       (Array.isArray(body?.messages) && body!.messages!.length
         ? body!.messages![body!.messages!.length - 1]?.content
-        : (body as unknown)?.message) || '';
+        : availableMessageFromBody) || '';
     const fallback = createFallbackResponse(String(lastUserMsg ?? ''));
     if (VERBOSE) {
       console.log('🔍 ChatRuntime API: Backend error; returning fallback', {
         reason:
-          (backendError as unknown)?.name === 'AbortError'
+          normalizedBackendError.name === 'AbortError'
             ? 'timeout'
-            : (backendError as Error)?.message || 'unknown',
+            : normalizedBackendError.message || 'unknown',
         degraded: isDegraded,
       });
     }
@@ -220,7 +239,7 @@ export async function POST(request: NextRequest) {
         Expires: '0',
         'X-Fallback': 'true',
         'X-Fallback-Reason':
-          (backendError as unknown)?.name === 'AbortError'
+          normalizedBackendError.name === 'AbortError'
             ? `timeout_${isDegraded ? TIMEOUT_DEGRADED_MS : TIMEOUT_NORMAL_MS}ms`
             : 'upstream_unreachable',
       },

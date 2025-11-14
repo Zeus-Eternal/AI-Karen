@@ -57,13 +57,32 @@ interface ImageModelParameters {
 
 /** ---------- Helpers ---------- */
 
+function arr(val: unknown): unknown[] {
+  return Array.isArray(val) ? val : [];
+}
+
+function getCapabilities(model: unknown): string[] {
+  if (typeof model === 'object' && model !== null && 'capabilities' in model) {
+    return arr((model as { capabilities?: unknown }).capabilities).filter(
+      (item): item is string => typeof item === 'string'
+    );
+  }
+  return [];
+}
+
+function getModelType(model: unknown): string {
+  if (typeof model === 'object' && model !== null && 'type' in model) {
+    return String((model as { type?: unknown }).type ?? '').toLowerCase();
+  }
+  return '';
+}
+
 function hasCap(model: unknown, cap: string): boolean {
-  const caps = Array.isArray(model?.capabilities) ? model.capabilities : [];
-  return caps.includes(cap);
+  return getCapabilities(model).includes(cap);
 }
 
 function isImageModel(model: unknown): boolean {
-  const t = (model?.type || '').toString().toLowerCase();
+  const t = getModelType(model);
   return (
     t === 'image' ||
     t === 'image_generation' ||
@@ -149,7 +168,9 @@ function buildImageModelParameters(model: unknown): ImageModelParameters['parame
   }
 
   // Provider & base-model tuning
-  const provider = (model?.provider || '').toLowerCase();
+  const provider = String(
+    (model as { provider?: unknown })?.provider ?? ''
+  ).toLowerCase();
 
   if (provider === 'flux') {
     params.width.max = 2048;
@@ -158,7 +179,9 @@ function buildImageModelParameters(model: unknown): ImageModelParameters['parame
     params.guidance_scale.max = 10.0;
     params.guidance_scale.default = 3.5;
   } else if (provider === 'stable-diffusion') {
-    const baseModel = (model?.metadata?.base_model || '').toUpperCase();
+    const baseModel = String(
+      (model as { metadata?: { base_model?: unknown } })?.metadata?.base_model ?? ''
+    ).toUpperCase();
     if (baseModel === 'SDXL') {
       params.width.max = 1536;
       params.height.max = 1536;
@@ -205,7 +228,9 @@ function buildImageModelPresets(
     },
   ];
 
-  const provider = (model?.provider || '').toLowerCase();
+  const provider = String(
+    (model as { provider?: unknown })?.provider ?? ''
+  ).toLowerCase();
   if (provider === 'flux') {
     presets.push({
       name: 'Flux High-Res',
@@ -218,8 +243,12 @@ function buildImageModelPresets(
 }
 
 function buildImageModelLimitations(model: unknown): ImageModelParameters['limitations'] {
-  const provider = (model?.provider || '').toLowerCase();
-  const baseModel = (model?.metadata?.base_model || '').toUpperCase();
+  const provider = String(
+    (model as { provider?: unknown })?.provider ?? ''
+  ).toLowerCase();
+  const baseModel = String(
+    (model as { metadata?: { base_model?: unknown } })?.metadata?.base_model ?? ''
+  ).toUpperCase();
 
   const limitations: ImageModelParameters['limitations'] = {
     max_batch_size: 4,
@@ -258,7 +287,9 @@ export async function GET(
 
     // pull available models from the orchestrator
     const models = await modelSelectionService.getAvailableModels();
-    const target = (models || []).find((m: unknown) => m.id === modelId);
+    const target = (models || []).find(
+      (m) => (m as { id?: string }).id === modelId
+    );
 
     if (!target) {
       return NextResponse.json(
@@ -302,11 +333,12 @@ export async function GET(
         'X-Model-Type': (target.type || 'unknown').toString(),
       },
     });
-  } catch (err: Error) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json(
       {
         error: 'Failed to fetch model parameters',
-        message: err?.message || 'Unknown error',
+        message,
       },
       { status: 500 },
     );

@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
             method: 'GET',
             headers: fwdHeaders,
             signal: controller.signal,
-            // @ts-expect-error keepalive is supported in Node/undici and Edge runtimes
+            // keepalive is supported in Node/undici and Edge runtimes
             keepalive: true,
             cache: 'no-store',
           });
@@ -78,8 +78,12 @@ export async function GET(request: NextRequest) {
           clearTimeout(t);
           lastErr = err;
 
-          const msg = String((err as Error)?.message ?? err);
-          const isAbort = (err as unknown)?.name === 'AbortError';
+          const msg = err instanceof Error ? err.message : String(err ?? 'Unknown error');
+          const errName =
+            typeof err === 'object' && err !== null && 'name' in err
+              ? String((err as { name?: unknown }).name ?? '')
+              : '';
+          const isAbort = errName === 'AbortError';
           const isSocket =
             msg.includes('UND_ERR_SOCKET') ||
             msg.includes('other side closed') ||
@@ -98,9 +102,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (!upstreamResponse) {
+      const lastErrorDetail =
+        lastErr instanceof Error
+          ? lastErr.message
+          : typeof lastErr === 'string'
+            ? lastErr
+            : 'unavailable';
       // Nothing succeeded; surface a clean 502 with no-store
       return NextResponse.json(
-        { error: 'Analytics request failed', detail: String((lastErr as Error)?.message || 'unavailable') },
+        { error: 'Analytics request failed', detail: lastErrorDetail },
         noStore({ status: 502 })
       );
     }
@@ -127,7 +137,12 @@ export async function GET(request: NextRequest) {
 
     // Mirror upstream status on errors; enrich on success
     if (!upstreamResponse.ok) {
-      const payload = typeof data === 'string' ? { error: data } : data;
+      const payload: Record<string, unknown> =
+        typeof data === 'string'
+          ? { error: data }
+          : typeof data === 'object' && data !== null
+            ? (data as Record<string, unknown>)
+            : { error: 'Invalid upstream payload' };
       return NextResponse.json(
         {
           proxy: 'analytics-gateway',
@@ -151,15 +166,16 @@ export async function GET(request: NextRequest) {
     // Forward Set-Cookie (array or single) if upstream set any session context
     try {
       const cookies: string[] = [];
-      const hdrsAny = upstreamResponse.headers as unknown;
-      if (typeof hdrsAny.entries === 'function') {
-        for (const [k, v] of hdrsAny.entries()) {
-          if (String(k).toLowerCase() === 'set-cookie' && v) cookies.push(String(v));
+      upstreamResponse.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie' && value) {
+          cookies.push(value);
         }
-      }
+      });
       const single = upstreamResponse.headers.get('set-cookie');
       if (single && !cookies.includes(single)) cookies.push(single);
-      for (const raw of cookies) res.headers.append('Set-Cookie', raw);
+      for (const raw of cookies) {
+        res.headers.append('Set-Cookie', raw);
+      }
     } catch {
       const single = upstreamResponse.headers.get('set-cookie');
       if (single) res.headers.set('Set-Cookie', single);
@@ -170,11 +186,16 @@ export async function GET(request: NextRequest) {
     res.headers.set('X-Proxy-Cache', 'no-store');
 
     return res;
-  } catch (error: Error) {
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Internal server error',
-        detail: error?.message || 'unknown',
+        detail:
+          error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : 'unknown',
       },
       noStore({ status: 500 })
     );

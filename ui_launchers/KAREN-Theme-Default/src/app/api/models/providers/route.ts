@@ -52,7 +52,7 @@ async function tryFetch(
     const resp = await fetch(url, {
       ...init,
       signal: controller.signal,
-      // @ts-expect-error (Node/undici hint)
+      // keepalive is supported in Node/undici runtimes
       keepalive: true,
       cache: 'no-store',
     });
@@ -90,14 +90,16 @@ async function forwardToBackends(
           }
           attempts.push({ url: publicUrl, status: pubRes.status });
           lastResponse = { response: pubRes, url: publicUrl };
-        } catch (e: Event) {
-          attempts.push({ url: publicUrl, error: e?.message || String(e) });
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          attempts.push({ url: publicUrl, error: message });
         }
       } else {
         return { response: res, url: primaryUrl };
       }
-    } catch (e: Event) {
-      attempts.push({ url: primaryUrl, error: e?.message || String(e) });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      attempts.push({ url: primaryUrl, error: message });
     }
   }
 
@@ -147,8 +149,8 @@ export async function GET(request: NextRequest) {
         },
       },
     );
-  } catch (error: Error) {
-    const message = error?.message || 'Unknown error';
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         error: 'Models service unavailable',

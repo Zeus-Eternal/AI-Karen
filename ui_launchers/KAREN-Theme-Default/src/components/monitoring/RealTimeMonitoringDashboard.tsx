@@ -21,7 +21,7 @@ import { ErrorRateDisplay } from "./ErrorRateDisplay";
 import { AuthenticationMetricsDisplay } from "./AuthenticationMetricsDisplay";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { connectivityLogger, performanceTracker } from "@/lib/logging";
@@ -226,7 +226,7 @@ export const RealTimeMonitoringDashboard: React.FC<
     return;
   }, [fetchSystemHealth, autoRefresh, defaultConfig.enableRealTimeUpdates, defaultConfig.refreshInterval]);
 
-  const getOverallStatusBadge = (status: SystemHealth["overall"]) => {
+  const getOverallStatusBadge = (status: SystemHealth["overall"]): BadgeProps["variant"] => {
     switch (status) {
       case "healthy":
         return "default";
@@ -288,7 +288,7 @@ export const RealTimeMonitoringDashboard: React.FC<
                 <span className="text-xl font-bold">System Health Dashboard</span>
                 <div className="flex items-center space-x-3">
                   <Badge
-                    variant={getOverallStatusBadge(systemHealth.overall) as unknown}
+                    variant={getOverallStatusBadge(systemHealth.overall)}
                     className="text-sm md:text-base lg:text-lg"
                   >
                     {systemHealth.overall.toUpperCase()}

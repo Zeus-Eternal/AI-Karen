@@ -46,6 +46,23 @@ function byteLengthOf(obj: unknown): number {
   }
 }
 
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+  return 'Unknown error';
+}
+
 async function auditSuccess(
   request: NextRequest,
   event: string,
@@ -261,13 +278,13 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
           queryOptimizer.getQueryPerformanceAnalysis(),
           queryOptimizer.getTableStatistics(),
         ]);
-        (report as unknown).database_analysis = {
+        report.database_analysis = {
           query_performance: queryPerformance,
           table_statistics: tableStats,
         };
       } catch {
         // If DB analysis fails, we still return base report
-        (report as unknown).database_analysis = { error: 'db_analysis_failed' };
+        report.database_analysis = { error: 'db_analysis_failed' };
       }
     }
 
@@ -275,10 +292,10 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
 
     // CSV path
     if (format === 'csv') {
-      const csvData =
-        typeof (PerformanceReporter as unknown).exportMetrics === 'function'
-          ? (PerformanceReporter as unknown).exportMetrics('csv')
-          : exportCSV(report, recommendations);
+        const csvData =
+          typeof PerformanceReporter.exportMetrics === 'function'
+            ? PerformanceReporter.exportMetrics('csv')
+            : exportCSV(report, recommendations);
 
       const filename = `admin-performance-report-${new Date().toISOString().split('T')[0]}.csv`;
       await auditSuccess(request, 'admin.performance.report.generate', {
@@ -311,8 +328,8 @@ async function handleGET(request: NextRequest, context: AdminAuthContext) {
     }, userId);
 
     return NextResponse.json(payload, { headers: SECURITY_HEADERS });
-  } catch (error: Error) {
-    await auditError(request, String(error?.message || error), userId);
+  } catch (error: unknown) {
+    await auditError(request, formatErrorMessage(error), userId);
     return NextResponse.json(
       {
         success: false,
@@ -349,8 +366,8 @@ async function handlePOST(request: NextRequest, context: AdminAuthContext) {
       },
       { headers: SECURITY_HEADERS }
     );
-  } catch (error: Error) {
-    await auditError(request, String(error?.message || error), userId);
+  } catch (error: unknown) {
+    await auditError(request, formatErrorMessage(error), userId);
     return NextResponse.json(
       {
         success: false,
@@ -379,8 +396,8 @@ async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
       },
       { headers: SECURITY_HEADERS }
     );
-  } catch (error: Error) {
-    await auditError(request, String(error?.message || error), userId);
+  } catch (error: unknown) {
+    await auditError(request, formatErrorMessage(error), userId);
     return NextResponse.json(
       {
         success: false,

@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
-import type { AdminApiResponse, UserStatistics } from '@/types/admin';
+import type { AdminApiResponse, User, UserStatistics, PaginatedResponse } from '@/types/admin';
 
 function noStore(init?: ResponseInit): ResponseInit {
   return {
@@ -29,6 +29,17 @@ function noStore(init?: ResponseInit): ResponseInit {
 export const GET = requireAdmin(async (request: NextRequest, context) => {
   try {
     const adminUtils = getAdminDatabaseUtils();
+    const emptySuperAdminResponse: PaginatedResponse<User> = {
+      data: [],
+      pagination: {
+        page: 1,
+        limit: 0,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false,
+      },
+    };
 
     // Period anchors (UTC-normalized start-of-day)
     const now = new Date();
@@ -58,7 +69,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
           return adminUtils.getUsersWithRoleFilter({ role: 'super_admin' });
         }
         // For non-super admins, never reveal super_admin counts
-        return { pagination: { total: 0 } } as unknown;
+        return emptySuperAdminResponse;
       })(),
       adminUtils.getUsersWithRoleFilter({ created_after: today }),
       adminUtils.getUsersWithRoleFilter({ created_after: weekAgo }),
@@ -73,8 +84,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     const adminUsers = adminUsersResult.pagination.total;
 
     // Respect RBAC: non-super admins get 0 here by design above
-    const superAdminUsers =
-      (superAdminUsersResultOrZero as unknown).pagination?.total ?? 0;
+    const superAdminUsers = superAdminUsersResultOrZero.pagination.total ?? 0;
 
     const usersCreatedToday = usersCreatedTodayResult.pagination.total;
     const usersCreatedThisWeek = usersCreatedThisWeekResult.pagination.total;
@@ -85,7 +95,7 @@ export const GET = requireAdmin(async (request: NextRequest, context) => {
     // If your backend supports filtering by two_factor_enabled, switch to:
     // const twoFactorEnabled = (await adminUtils.getUsersWithRoleFilter({ two_factor_enabled: true })).pagination.total;
     const twoFactorEnabled = Array.isArray(usersFor2FA.data)
-      ? usersFor2FA.data.filter((u: unknown) => u.two_factor_enabled).length
+      ? usersFor2FA.data.filter((u) => u.two_factor_enabled).length
       : 0;
 
     const statistics: UserStatistics = {

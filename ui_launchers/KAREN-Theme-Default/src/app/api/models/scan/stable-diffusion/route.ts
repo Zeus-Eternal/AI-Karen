@@ -299,12 +299,16 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'private, max-age=15',
       },
     });
-  } catch (error: Error) {
-    return NextResponse.json({
-      models: [],
-      directory: opts.directory,
-      error: error?.message || 'Unknown error',
-      scan_time: new Date().toISOString(),
-    }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      {
+        models: [],
+        directory: opts.directory,
+        error: message,
+        scan_time: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }

@@ -53,6 +53,11 @@ function assertNonEmpty(text: string, message: string) {
   }
 }
 
+function ensureStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -119,12 +124,14 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
   /* --------------------------------------------- */
   useEffect(() => {
     if (memory) {
+      const metadataCluster = memory.metadata?.cluster;
       setEditForm({
         content: memory.content || "",
         type: (memory.type as "fact" | "preference" | "context") || "context",
         confidence: memory.confidence ?? 0.8,
         tags: memory.tags || [],
-        cluster: memory.metadata?.cluster || "general",
+        cluster:
+          typeof metadataCluster === "string" ? metadataCluster : "general",
       });
     } else {
       setEditForm({
@@ -363,7 +370,7 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
             setMemories((prev) => prev.filter((m) => !selectedMemories.has(m.id)));
             break;
           case "tag": {
-            const newTags: string[] = operation.parameters.tags || [];
+            const newTags = ensureStringArray(operation.parameters.tags);
             setMemories((prev) =>
               prev.map((m) =>
                 selectedMemories.has(m.id)
@@ -374,11 +381,16 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
             break;
           }
           case "cluster": {
-            const newCluster = operation.parameters.cluster;
+            const rawCluster = operation.parameters.cluster;
+            const resolvedCluster =
+              typeof rawCluster === "string" && rawCluster.trim().length > 0
+                ? rawCluster
+                : null;
+            if (!resolvedCluster) break;
             setMemories((prev) =>
               prev.map((m) =>
                 selectedMemories.has(m.id)
-                  ? { ...m, metadata: { ...(m.metadata || {}), cluster: newCluster } }
+                  ? { ...m, metadata: { ...(m.metadata || {}), cluster: resolvedCluster } }
                   : m
               )
             );

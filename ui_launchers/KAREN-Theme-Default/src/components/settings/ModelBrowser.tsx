@@ -6,20 +6,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { useToast } from "@/hooks/use-toast";
-
-export interface ModelInfo {
-  id: string;
-  name: string;
-  provider: string;
-  description?: string;
-  local_path?: string;
-  format?: string;
-}
-
-export interface LLMProvider {
-  name: string;
-  description: string;
-}
+import type { ModelInfo, LLMProvider } from "./types";
 
 export interface ModelBrowserProps {
   models: ModelInfo[];

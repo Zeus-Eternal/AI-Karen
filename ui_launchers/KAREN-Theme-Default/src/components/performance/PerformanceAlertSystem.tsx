@@ -64,6 +64,8 @@ export interface PerformanceAlertSystemProps {
   onAlert?: (alert: PerformanceAlert) => void;
 }
 
+type AlertRuleDraft = Partial<AlertRule>;
+
 // ---- Monitor Service (typed import) ----------------------------------------
 // Expected API:
 //  - performanceMonitor.getAlerts(limit?: number): PerformanceAlert[]
@@ -101,15 +103,61 @@ const formatTimestamp = (ts: number) =>
 
 // ---- Component -------------------------------------------------------------
 
+const defaultRules: AlertRule[] = [
+    {
+      id: "rule-lcp-critical",
+      name: "LCP Critical",
+      metric: "lcp",
+      threshold: 4000,
+      type: "critical",
+      enabled: true,
+      notifications: { email: true, push: true, slack: false },
+      escalation: { enabled: true, delay: 5, recipients: ["admin@example.com"] },
+    },
+    {
+      id: "rule-mem-high",
+      name: "Memory Usage High",
+      metric: "memory-usage",
+      threshold: 85,
+      type: "warning",
+      enabled: true,
+      notifications: { email: false, push: true, slack: true },
+      escalation: { enabled: false, delay: 15, recipients: [] },
+    },
+    {
+      id: "rule-fid-critical",
+      name: "FID Poor",
+      metric: "fid",
+      threshold: 300,
+      type: "critical",
+      enabled: true,
+      notifications: { email: true, push: true, slack: true },
+      escalation: { enabled: true, delay: 10, recipients: ["dev-team@example.com"] },
+    },
+  ];
+
 export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
   onAlert,
 }) => {
+  const [alertRules, setAlertRules] = useState<AlertRule[]>(() => {
+    if (typeof window === "undefined") {
+      return defaultRules;
+    }
+    try {
+      const stored = localStorage.getItem("kari_perf_alert_rules");
+      if (stored) {
+        return JSON.parse(stored) as AlertRule[];
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return defaultRules;
+  });
   const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
-  const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const rulesRef = useRef<AlertRule[]>([]);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
-  const [newRule, setNewRule] = useState<Partial<AlertRule>>({
+  const [newRule, setNewRule] = useState<AlertRuleDraft>({
     name: "",
     metric: "lcp",
     threshold: 2500,
@@ -125,88 +173,6 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
   }, [alertRules]);
 
   // --- Notifications & Escalation ------------------------------------------
-
-  const handleAlertNotification = useCallback(
-    async (alert: PerformanceAlert, rule: AlertRule) => {
-      // Push notifications
-      if (rule.notifications.push && "Notification" in window) {
-        try {
-          if (Notification.permission === "granted") {
-            new Notification(`Performance ${alert.type.toUpperCase()}`, {
-              body: `${getMetricDisplayName(alert.metric)}: ${alert.value} — ${alert.message}`,
-              icon: "/favicon.ico",
-            });
-          }
-        } catch {
-          // Notifications may be blocked; ignore
-        }
-      }
-
-      // Email & Slack hooks would call your integrations here.
-      // e.g., fetch("/api/notify/email", { method: "POST", body: JSON.stringify({...}) })
-      // e.g., fetch("/api/notify/slack", { method: "POST", body: JSON.stringify({...}) })
-
-      // Escalation timer
-      if (rule.escalation.enabled && rule.escalation.recipients.length > 0) {
-        window.setTimeout(() => {
-          // Replace with your escalation webhook
-          // navigator.sendBeacon("/api/escalate", JSON.stringify({ alert, rule }));
-          // For now, log (observable in dev tools)
-          // eslint-disable-next-line no-console
-          console.log(
-            `[ESCALATE] -> ${rule.escalation.recipients.join(", ")} | ${rule.name} | ${getMetricDisplayName(alert.metric)}=${alert.value}`
-          );
-        }, rule.escalation.delay * 60 * 1000);
-      }
-    },
-    []
-  );
-
-  // Load initial rules (from localStorage if present), and seed defaults
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("kari_perf_alert_rules");
-      if (stored) {
-        const parsed: AlertRule[] = JSON.parse(stored);
-        setAlertRules(parsed);
-        return;
-      }
-    } catch {
-      // ignore parse errors, fall back to defaults
-    }
-    setAlertRules([
-      {
-        id: "rule-lcp-critical",
-        name: "LCP Critical",
-        metric: "lcp",
-        threshold: 4000,
-        type: "critical",
-        enabled: true,
-        notifications: { email: true, push: true, slack: false },
-        escalation: { enabled: true, delay: 5, recipients: ["admin@example.com"] },
-      },
-      {
-        id: "rule-mem-high",
-        name: "Memory Usage High",
-        metric: "memory-usage",
-        threshold: 85,
-        type: "warning",
-        enabled: true,
-        notifications: { email: false, push: true, slack: true },
-        escalation: { enabled: false, delay: 15, recipients: [] },
-      },
-      {
-        id: "rule-fid-critical",
-        name: "FID Poor",
-        metric: "fid",
-        threshold: 300,
-        type: "critical",
-        enabled: true,
-        notifications: { email: true, push: true, slack: true },
-        escalation: { enabled: true, delay: 10, recipients: ["dev-team@example.com"] },
-      },
-    ]);
-  }, []);
 
   // Persist rules
   useEffect(() => {
@@ -250,9 +216,9 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
             )} | ${rule.name} | ${getMetricDisplayName(alert.metric)}=${alert.value}`
           );
         }, rule.escalation.delay * 60 * 1000);
-    }
-  },
-  []
+      }
+    },
+    []
   );
 
   // Load alerts & subscribe
@@ -273,157 +239,6 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
         setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
 
         // Threshold-aware rule matching
-        const match = rulesRef.current.find(
-          (rule) =>
-            rule.enabled &&
-            rule.metric === alert.metric &&
-            rule.type === alert.type &&
-            alert.value >= rule.threshold
-        );
-
-        if (match) {
-          void handleAlertNotification(alert, match);
-        }
-        onAlert?.(alert);
-      }) ?? (() => {});
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [handleAlertNotification, onAlert]);
-
-  // Load alerts & subscribe
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        setAlerts(performanceMonitor.getAlerts(50));
-      } catch {
-        // If service not yet ready, keep calm.
-      }
-    };
-
-    loadData();
-    const interval = window.setInterval(loadData, 5000);
-
-    const unsubscribe =
-      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
-
-        // Threshold-aware rule matching
-        const match = rulesRef.current.find(
-          (rule) =>
-            rule.enabled &&
-            rule.metric === alert.metric &&
-            rule.type === alert.type &&
-            alert.value >= rule.threshold
-        );
-
-        if (match) {
-          void handleAlertNotification(alert, match);
-        }
-        onAlert?.(alert);
-      }) ?? (() => {});
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [handleAlertNotification, onAlert]);
-
-  // Load alerts & subscribe
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        setAlerts(performanceMonitor.getAlerts(50));
-      } catch {
-        // If service not yet ready, keep calm.
-      }
-    };
-
-    loadData();
-    const interval = window.setInterval(loadData, 5000);
-
-    const unsubscribe =
-      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
-
-        // Threshold-aware rule matching
-        const match = rulesRef.current.find(
-          (rule) =>
-            rule.enabled &&
-            rule.metric === alert.metric &&
-            rule.type === alert.type &&
-            alert.value >= rule.threshold
-        );
-
-        if (match) {
-          void handleAlertNotification(alert, match);
-        }
-        onAlert?.(alert);
-      }) ?? (() => {});
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [onAlert, handleAlertNotification]);
-
-  // Load alerts & subscribe
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        setAlerts(performanceMonitor.getAlerts(50));
-      } catch {
-        // If service not yet ready, keep calm.
-      }
-    };
-
-    loadData();
-    const interval = window.setInterval(loadData, 5000);
-
-    const unsubscribe =
-      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
-
-        // Threshold-aware rule matching
-        const match = rulesRef.current.find(
-          (rule) =>
-            rule.enabled &&
-            rule.metric === alert.metric &&
-            rule.type === alert.type &&
-            alert.value >= rule.threshold
-        );
-
-        if (match) {
-          void handleAlertNotification(alert, match);
-        }
-        onAlert?.(alert);
-      }) ?? (() => {});
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [handleAlertNotification, onAlert]);
-
-  // Load alerts & subscribe
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        setAlerts(performanceMonitor.getAlerts(50));
-      } catch {
-        // If service not yet ready, keep calm.
-      }
-    };
-
-    loadData();
-    const interval = window.setInterval(loadData, 5000);
-
-    const unsubscribe =
-      performanceMonitor.onAlert?.((alert: PerformanceAlert) => {
-        setAlerts((prev) => [alert, ...prev.slice(0, 49)]);
-
         const match = rulesRef.current.find(
           (rule) =>
             rule.enabled &&

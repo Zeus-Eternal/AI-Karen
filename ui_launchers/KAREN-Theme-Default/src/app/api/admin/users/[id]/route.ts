@@ -239,8 +239,8 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
     }
 
     // Optional email update with validation (if your schema allows it)
-    if (typeof (body as unknown).email === 'string') {
-      const newEmail = String((body as unknown).email).trim();
+    if (typeof body.email === 'string') {
+      const newEmail = String(body.email).trim();
       if (!validateEmail(newEmail)) {
         return NextResponse.json(
           {
@@ -277,9 +277,9 @@ export const PUT = requireAdmin(async (request: NextRequest, context) => {
     const updateValues: unknown[] = [];
     let paramIndex = 1;
 
-    if ((body as unknown).email !== undefined) {
+    if (body.email !== undefined) {
       updateFields.push(`email = $${paramIndex++}`);
-      updateValues.push((body as unknown).email);
+      updateValues.push(body.email);
     }
     if (body.full_name !== undefined) {
       updateFields.push(`full_name = $${paramIndex++}`);

@@ -135,6 +135,13 @@ function sanitizePayload(body: unknown): LoadModelRequest | null {
   return { model_id, provider, options };
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
 async function withTimeout<T>(
   p: Promise<T>,
   ms = LOAD_TIMEOUT_MS,
@@ -168,7 +175,9 @@ async function loadViaService(
 
   // 1) Validate target model
   const models = await modelSelectionService.getAvailableModels();
-  const target = models.find((m: unknown) => m.id === model_id);
+  const target = models.find(
+    (m) => (m as { id?: string }).id === model_id
+  );
   if (!target) {
     return {
       exists: false,
@@ -179,11 +188,20 @@ async function loadViaService(
   }
 
   // 2) If service exposes a real loader, use it; else pretend-success
-  const canLoad = typeof (modelSelectionService as unknown).loadModel === 'function';
+  const loader =
+    (modelSelectionService as { loadModel?: unknown }).loadModel as
+      | ((modelId: string, opts: {
+          provider?: string;
+          preserveContext?: boolean;
+          forceReload?: boolean;
+          memoryLimit?: number | null;
+        }) => Promise<LoadModelResult>)
+      | undefined;
+  const canLoad = typeof loader === 'function';
 
   if (canLoad) {
     const res = await withTimeout<LoadModelResult>(
-      (modelSelectionService as unknown).loadModel(model_id, {
+      loader(model_id, {
         provider: provider || target.provider,
         preserveContext: options.preserve_context,
         forceReload: options.force_reload,
@@ -250,12 +268,12 @@ export async function POST(request: NextRequest) {
     const t0 = Date.now();
 
     try {
-      const result = await loadViaService(model_id, provider, options);
+      const result = (await loadViaService(model_id, provider, options)) as LoadModelResult;
 
       const loadTime = Date.now() - t0;
       st.lastLoadTimeMs = loadTime;
       st.lastModelId = model_id;
-      st.lastProvider = result.provider || provider || 'unknown';
+      st.lastProvider = String(result.provider ?? provider ?? 'unknown');
       st.finishedAt = Date.now();
 
       if (!result.exists) {
@@ -267,18 +285,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const success = Boolean((result as unknown).success ?? true);
+      const success = Boolean(result.success ?? true);
       st.lastSuccess = success;
 
+      const capabilitiesList = Array.isArray(result.capabilities)
+        ? (result.capabilities as string[])
+        : [];
       const response: LoadModelResponse = {
         success,
         model_id,
         provider: st.lastProvider!,
         load_time: loadTime,
-        capabilities: result.capabilities || [],
+        capabilities: capabilitiesList,
         ...(result.memory_usage ? { memory_usage: result.memory_usage } : {}),
         message:
-          (result as unknown).message ||
+          result.message ||
           (success ? 'Model loaded successfully' : 'Model load failed'),
       };
 
@@ -303,9 +324,10 @@ export async function POST(request: NextRequest) {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (e: Event) {
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown loading error';
       st.lastSuccess = false;
-      st.lastError = e?.message || 'Unknown loading error';
+      st.lastError = errorMessage;
       st.finishedAt = Date.now();
       st.inFlight = false;
 
@@ -313,12 +335,9 @@ export async function POST(request: NextRequest) {
         model_id,
       });
     }
-  } catch (error: Error) {
-    return err(
-      400,
-      'INVALID_REQUEST',
-      error?.message || 'Request processing failed',
-    );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Request processing failed';
+    return err(400, 'INVALID_REQUEST', errorMessage);
   }
 }
 
@@ -339,8 +358,9 @@ export async function GET(_request: NextRequest) {
     }
 
     const st = state();
+    const statsRecord = asRecord(stats);
     const payload = {
-      currently_loaded: stats.lastSelectedModel ?? st.lastModelId ?? null,
+      currently_loaded: statsRecord.lastSelectedModel ?? st.lastModelId ?? null,
       loading_status: st.inFlight,
       last_load_time: st.lastLoadTimeMs ?? null,
       last_result: st.lastSuccess,
@@ -365,7 +385,8 @@ export async function GET(_request: NextRequest) {
     };
 
     return ok(payload);
-  } catch (error: Error) {
-    return err(500, 'STATUS_CHECK_FAILED', error?.message || 'Unknown error');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return err(500, 'STATUS_CHECK_FAILED', errorMessage);
   }
 }

@@ -732,6 +732,45 @@ export class AdminDatabaseUtils {
     }
   }
 
+  async getUsersByIds(userIds: string[]): Promise<User[]> {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    const placeholders = userIds.map((_, index) => `$${index + 1}`).join(',');
+    const query = `
+      SELECT 
+        user_id,
+        email,
+        full_name,
+        role,
+        roles,
+        tenant_id,
+        preferences,
+        is_verified,
+        is_active,
+        created_at,
+        updated_at,
+        last_login_at,
+        failed_login_attempts,
+        locked_until,
+        two_factor_enabled
+      FROM auth_users
+      WHERE user_id IN (${placeholders})
+    `;
+
+    try {
+      return await this.executeQuery<User>('getUsersByIds', query, userIds);
+    } catch (error) {
+      if (error instanceof AdminDatabaseError) throw error;
+      throw new AdminDatabaseError(
+        'Failed to fetch users by ids',
+        'getUsersByIds',
+        error
+      );
+    }
+  }
+
   /**
    * Check if user has specific permission
    */

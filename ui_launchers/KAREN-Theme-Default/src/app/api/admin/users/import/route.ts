@@ -159,10 +159,15 @@ async function parseJSONUsers(
     throw new Error('JSON must be an array of user objects');
   }
   const users = (json as unknown[]).slice(0, MAX_ROWS).map((item) => {
-    const email = sanitizeString(item?.email);
+    const record =
+      typeof item === 'object' && item !== null
+        ? (item as Record<string, unknown>)
+        : {};
+    const email = sanitizeString(record.email);
     const full_name =
-      sanitizeString(item?.full_name) || sanitizeString(item?.name);
-    const role = pickRole(item?.role, defaultRole);
+      sanitizeString(record.full_name) || sanitizeString(record.name);
+    const rawRole = sanitizeString(record.role);
+    const role = pickRole(rawRole || undefined, defaultRole);
     return { email, full_name, role };
   });
   return users;
@@ -375,7 +380,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         result.errors.push({
           row: rowNumber,
           email: user.email,
-          error: e instanceof Error ? e.message : 'Unknown error',
+          error: e instanceof Error ? e.message : 'unknown error',
         });
         result.error_count++;
       }
@@ -422,7 +427,7 @@ export const POST = requireAdmin(async (request: NextRequest, context) => {
         error: {
           code: 'IMPORT_FAILED',
           message: 'Failed to import users',
-          details: { error: error instanceof Error ? error.message : 'Unknown error' },
+          details: { error: error instanceof Error ? error.message : 'unknown error' },
         },
       } as AdminApiResponse<never>,
       noStore({ status: 500 })

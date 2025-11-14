@@ -19,15 +19,16 @@ import { z } from 'zod';
 
 import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware';
 import { securityManager } from '@/lib/security/security-manager';
-import { sessionTimeoutManager } from '@/lib/security/session-timeout-manager';
+import { sessionTimeoutManager, type ConcurrentSessionSummary } from '@/lib/security/session-timeout-manager';
 import { ipSecurityManager } from '@/lib/security/ip-security-manager';
 import { getAdminDatabaseUtils, type BlockedIpEntry, type IpWhitelistEntry } from '@/lib/database/admin-utils';
-import type { AdminApiResponse } from '@/types/admin';
+import type { AdminApiResponse, AuditLog, SecurityEvent, User } from '@/types/admin';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 25;
 
 type Severity = 'low' | 'medium' | 'high' | 'critical';
+type AdminUtils = ReturnType<typeof getAdminDatabaseUtils>;
 
 interface SecurityDashboardData {
   overview: {
@@ -191,7 +192,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 /* ---------------------------- SUPPORTING GETTERS ---------------------------- */
 
-async function getSecurityOverview(adminUtils: unknown, todayStart: Date, hourAgo: Date) {
+async function getSecurityOverview(adminUtils: AdminUtils, todayStart: Date, hourAgo: Date) {
   const sessionStats = safe(() => sessionTimeoutManager.getSessionStatistics(), {
     totalActiveSessions: 0,
     sessionsByRole: {},
@@ -205,19 +206,24 @@ async function getSecurityOverview(adminUtils: unknown, todayStart: Date, hourAg
   } catch {
     blockedIps = [];
   }
-  const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
-  const todayEvents = securityEvents.filter((e: Event) => toDate(e.created_at) >= todayStart);
+  const securityEvents = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
+  const todayEvents = securityEvents.filter((e) => toDate(e.created_at) >= todayStart);
 
   // Failed attempts in the last hour (audit logs)
   const recentAuditLogs = await adminUtils
-    .getAuditLogs({ action: 'ip.failed_attempt', start_date: hourAgo })
-    .catch(() => ({ data: [] }));
-
-  // Users & MFA
-  const allUsers = await adminUtils.getUsers({}).catch(() => ({ data: [] }));
-  const mfaEnabledCount = allUsers.data.filter((u: unknown) => u.two_factor_enabled).length;
-  const lockedAccounts = allUsers.data.filter(
-    (u: unknown) => u.locked_until && toDate(u.locked_until) > new Date(),
+    .getAuditLogs(
+      { action: 'ip.failed_attempt', start_date: hourAgo },
+      { page: 1, limit: DEFAULT_LIMIT },
+    )
+    .catch(() => ({ data: [] as AuditLog[] }));
+  // Users & MFA (fallback to 1k users)
+  const userResponse = await adminUtils
+    .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
+    .catch(() => ({ data: [] as User[] }));
+  const allUsers = userResponse.data || [];
+  const mfaEnabledCount = allUsers.filter((u) => !!u.two_factor_enabled).length;
+  const lockedAccounts = allUsers.filter(
+    (u) => u.locked_until && toDate(u.locked_until) > new Date(),
   ).length;
 
   return {
@@ -238,32 +244,33 @@ function getSessionStatistics() {
     expiringSoon: 0,
   });
 
-  const concurrentSessions = safe(
-    () =>
-      sessionTimeoutManager.getConcurrentSessionsByUser(25).map((summary: unknown) => ({
-        user_id: summary.user_id,
-        email: summary.email,
-        session_count: summary.session_count,
-        role: summary.role,
-        last_activity: toDate(summary.last_activity).toISOString(),
-        sessions: (summary.active_sessions || []).map((s: unknown) => ({
-          session_token: s.session_token,
-          ip_address: s.ip_address,
-          user_agent: s.user_agent,
-          created_at: toDate(s.created_at).toISOString(),
-          last_accessed: toDate(s.last_accessed).toISOString(),
-          expires_at: toDate(s.expires_at).toISOString(),
-        })),
-      })),
+  const concurrentSessions = safe<ConcurrentSessionSummary[]>(
+    () => sessionTimeoutManager.getConcurrentSessionsByUser(25),
     [],
   );
+
+  const formattedConcurrentSessions = concurrentSessions.map((summary) => ({
+    user_id: summary.user_id,
+    email: summary.email,
+    session_count: summary.session_count,
+    role: summary.role,
+    last_activity: toDate(summary.last_activity).toISOString(),
+    sessions: (summary.active_sessions || []).map((s) => ({
+      session_token: s.session_token,
+      ip_address: s.ip_address,
+      user_agent: s.user_agent,
+      created_at: toDate(s.created_at).toISOString(),
+      last_accessed: toDate(s.last_accessed).toISOString(),
+      expires_at: toDate(s.expires_at).toISOString(),
+    })),
+  }));
 
   return {
     total_sessions: stats.totalActiveSessions,
     sessions_by_role: stats.sessionsByRole,
     average_session_duration: stats.averageSessionDuration,
     expiring_soon: stats.expiringSoon,
-    concurrent_sessions_by_user: concurrentSessions,
+    concurrent_sessions_by_user: formattedConcurrentSessions,
   };
 }
 
@@ -275,12 +282,12 @@ async function getIpSecurityData() {
   const whitelistEntries = await ipSecurityManager
     .getWhitelistEntries()
     .catch(() => [] as IpWhitelistEntry[]);
-  const securityEvents = safe(() => securityManager.getSecurityEvents('system'), []);
+  const securityEvents = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
 
   const suspiciousActivities = securityEvents
-    .filter((e: Event) => e.event_type === 'suspicious_activity')
+    .filter((event) => event.event_type === 'suspicious_activity')
     .slice(0, 10)
-    .map((event: Event) => ({
+    .map((event) => ({
       ip: event.ip_address || 'unknown',
       user_id: event.user_id,
       event_type: event.event_type,
@@ -308,25 +315,28 @@ async function getIpSecurityData() {
   };
 }
 
-async function getMfaStatistics(adminUtils: unknown) {
+async function getMfaStatistics(adminUtils: AdminUtils) {
   // Optionally ask mfaManager for authoritative counts if available
-  const allUsers = await adminUtils.getUsers({}).catch(() => ({ data: [] }));
-  const totalUsers = allUsers.data.length;
-  const mfaEnabledUsers = allUsers.data.filter((u: unknown) => !!u.two_factor_enabled);
+  const userResponse = await adminUtils
+    .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
+    .catch(() => ({ data: [] as User[] }));
+  const allUsers = userResponse.data || [];
+  const totalUsers = allUsers.length;
+  const mfaEnabledUsers = allUsers.filter((u) => !!u.two_factor_enabled);
   const mfaEnabledCount = mfaEnabledUsers.length;
 
-  const adminUsers = allUsers.data.filter(
-    (u: unknown) => u.role === 'admin' || u.role === 'super_admin',
+  const adminUsers = allUsers.filter(
+    (u) => u.role === 'admin' || u.role === 'super_admin',
   );
   const mfaRequiredCount = adminUsers.length;
   const complianceRate =
     mfaRequiredCount > 0
       ? Math.round(
-          (adminUsers.filter((u: unknown) => !!u.two_factor_enabled).length / mfaRequiredCount) * 100,
+          (adminUsers.filter((u) => !!u.two_factor_enabled).length / mfaRequiredCount) * 100,
         )
       : 100;
 
-  const recentSetups = mfaEnabledUsers.slice(0, 5).map((u: unknown) => ({
+  const recentSetups = mfaEnabledUsers.slice(0, 5).map((u) => ({
     user_id: u.user_id,
     email: u.email,
     enabled_at: (u.updated_at && toDate(u.updated_at).toISOString()) || new Date().toISOString(),
@@ -341,22 +351,24 @@ async function getMfaStatistics(adminUtils: unknown) {
   };
 }
 
-async function getRecentSecurityEvents(adminUtils: unknown, limit = DEFAULT_LIMIT, offset = 0) {
-  const events = safe(() => securityManager.getSecurityEvents('system'), []) as unknown[];
+async function getRecentSecurityEvents(adminUtils: AdminUtils, limit = DEFAULT_LIMIT, offset = 0) {
+  const events = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
   const page = events
     .sort((a, b) => toDate(b.created_at).getTime() - toDate(a.created_at).getTime())
     .slice(offset, offset + limit);
 
   // Optionally hydrate user emails
   const userIds = Array.from(
-    new Set(page.map((e) => e.user_id).filter((x: string | undefined) => !!x)),
+    new Set(page.map((e) => e.user_id).filter((x): x is string => Boolean(x))),
   );
 
-  const usersById: Record<string, unknown> = {};
+  const usersById: Record<string, User> = {};
   if (userIds.length) {
     try {
-      const res = await adminUtils.getUsers({ user_ids: userIds });
-      for (const u of res.data || []) usersById[u.user_id] = u;
+      const users = await adminUtils.getUsersByIds(userIds);
+      for (const u of users) {
+        usersById[u.user_id] = u;
+      }
     } catch {
       // swallow — email stays undefined
     }
@@ -376,7 +388,7 @@ async function getRecentSecurityEvents(adminUtils: unknown, limit = DEFAULT_LIMI
 }
 
 async function getRecentSecurityActivities(
-  adminUtils: unknown,
+  adminUtils: AdminUtils,
   startFrom: Date,
   limit = DEFAULT_LIMIT,
   offset = 0,
@@ -393,22 +405,26 @@ async function getRecentSecurityActivities(
     'ip.unblocked',
   ];
 
-  const activities: Array<{
+  type ActivityLog = {
     timestamp: string;
     action: string;
     user_id: string;
     user_email: string;
     ip_address?: string;
     details: unknown;
-  }> = [];
+  };
+
+  const activities: ActivityLog[] = [];
 
   for (const action of securityActions) {
     try {
-      const logs = await adminUtils.getAuditLogs({
-        action,
-        start_date: startFrom,
-        limit: limit, // pull enough; we’ll sort/dedupe below
-      });
+      const logs = await adminUtils.getAuditLogs(
+        {
+          action,
+          start_date: startFrom,
+        },
+        { page: 1, limit }, // pull enough; we’ll sort/dedupe below
+      );
       for (const log of logs.data || []) {
         activities.push({
           timestamp: toDate(log.timestamp).toISOString(),
@@ -426,7 +442,7 @@ async function getRecentSecurityActivities(
   }
 
   // Sort, dedupe by (timestamp+user_id+action), paginate
-  const key = (a: unknown) => `${a.timestamp}|${a.user_id}|${a.action}`;
+  const key = (a: ActivityLog) => `${a.timestamp}|${a.user_id}|${a.action}`;
   const deduped = Array.from(new Map(activities.map((a) => [key(a), a])).values()).sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
@@ -546,7 +562,7 @@ function deriveTimeRange(period: string) {
 function toDate(d: unknown): Date {
   if (!d) return new Date(0);
   if (d instanceof Date) return d;
-  const t = new Date(d);
+  const t = new Date(d as string | number | Date);
   return Number.isNaN(t.getTime()) ? new Date(0) : t;
 }
 
