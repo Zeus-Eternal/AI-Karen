@@ -680,7 +680,7 @@ export class EnhancedWebSocketService {
   private getAuthToken(): string | null {
     if (!isBrowser) return null;
     try {
-      return localStorage.getItem('auth-token');
+      return localStorage.getItem('karen_access_token');
     } catch (error) {
       console.warn('Unable to read auth token', error);
       return null;

@@ -295,8 +295,26 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "expires_in": auth_service.access_token_expire_minutes * 60,
         "user": user_data
     }
-    
-    return JSONResponse(content=response_data)
+
+    # Create response and set HttpOnly cookie for enhanced security
+    response = JSONResponse(content=response_data)
+
+    # Determine if we should use secure cookies (HTTPS only)
+    is_secure = http_request.url.scheme == "https"
+
+    # Set the kari_session cookie with the access token
+    # This allows the auth middleware to authenticate requests via cookie
+    response.set_cookie(
+        key="kari_session",
+        value=access_token,
+        max_age=auth_service.access_token_expire_minutes * 60,  # Convert to seconds
+        httponly=True,  # Prevent JavaScript access (XSS protection)
+        secure=is_secure,  # Only send over HTTPS in production
+        samesite="lax",  # CSRF protection while allowing navigation
+        path="/",  # Available for all routes
+    )
+
+    return response
 
 
 @router.post("/refresh")
