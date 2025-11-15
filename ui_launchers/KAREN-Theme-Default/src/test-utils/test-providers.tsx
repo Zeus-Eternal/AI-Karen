@@ -9,6 +9,11 @@ import React, { ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import { AuthContext } from '@/contexts/auth-context-instance';
+import {
+  normalizePermission,
+  normalizePermissionList,
+  ROLE_PERMISSIONS,
+} from '@/components/security/rbac-shared';
 
 // Vitest mocking utilities (vi) are provided globally via tsconfig types.
 
@@ -21,17 +26,11 @@ export const mockSuperAdminUser: User = {
   tenantId: 'test-tenant-001',
   role: 'super_admin',
   permissions: [
-    'user_management',
-    'admin_management', 
-    'system_config',
-    'audit_logs',
-    'security_settings',
-    'user_create',
-    'user_edit',
-    'user_delete',
-    'admin_create',
-    'admin_edit',
-    'admin_delete'
+    'admin:read',
+    'admin:write',
+    'admin:system',
+    'audit:read',
+    'security:write'
   ]
 };
 export const mockAdminUser: User = {
@@ -41,10 +40,8 @@ export const mockAdminUser: User = {
   tenantId: 'test-tenant-001',
   role: 'admin',
   permissions: [
-    'user_management',
-    'user_create',
-    'user_edit',
-    'user_delete'
+    'admin:read',
+    'admin:write'
   ]
 };
 export const mockRegularUser: User = {
@@ -64,10 +61,8 @@ export const mockUserWithMultipleRoles: User = {
   tenantId: 'test-tenant-001',
   role: 'admin', // Primary role
   permissions: [
-    'user_management',
-    'user_create',
-    'user_edit',
-    'user_delete'
+    'admin:read',
+    'admin:write'
   ]
 };
 export const mockInactiveUser: User = {
@@ -93,34 +88,7 @@ export const createMockAuthContext = (
   overrides: Partial<AuthContextType> = {}
 ): AuthContextType => {
   // Helper function to get default permissions for a role (matches actual implementation)
-  const getRolePermissions = (role: AuthRole): string[] => {
-    switch (role) {
-      case 'super_admin':
-        return [
-          'user_management',
-          'admin_management', 
-          'system_config',
-          'audit_logs',
-          'security_settings',
-          'user_create',
-          'user_edit',
-          'user_delete',
-          'admin_create',
-          'admin_edit',
-          'admin_delete'
-        ];
-      case 'admin':
-        return [
-          'user_management',
-          'user_create',
-          'user_edit',
-          'user_delete'
-        ];
-      case 'user':
-      default:
-        return [];
-    }
-  };
+  const getRolePermissions = (role: AuthRole): string[] => ROLE_PERMISSIONS[role] ?? [];
   // Create realistic mock functions that behave like the actual implementation
   const hasRole = vi.fn((role: AuthRole): boolean => {
     if (!user) return false;
@@ -136,11 +104,14 @@ export const createMockAuthContext = (
     if (!user) return false;
     // Check permissions array if available
     if (user.permissions) {
-      return user.permissions.includes(permission);
+      const normalizedPermissions = normalizePermissionList(user.permissions);
+      const canonical = normalizePermission(permission);
+      return canonical ? normalizedPermissions.includes(canonical) : false;
     }
     // Default permissions based on role (matches actual implementation)
     const rolePermissions = getRolePermissions(user.role || (user.roles[0] as AuthRole));
-    return rolePermissions.includes(permission);
+    const canonical = normalizePermission(permission);
+    return canonical ? rolePermissions.includes(canonical) : false;
   });
 
   const isAdmin = vi.fn((): boolean => {
@@ -646,12 +617,16 @@ export const runAuthScenarioTests = (
 };
 // Permission testing utilities
 export const createPermissionTestMatrix = (permissions: string[]) => {
-  return permissions.map(permission => ({
-    permission,
-    superAdminShouldHave: true,
-    adminShouldHave: ['user_management', 'user_create', 'user_edit', 'user_delete'].includes(permission),
-    userShouldHave: false
-  }));
+  const adminBaseline = new Set(ROLE_PERMISSIONS['admin'] ?? []);
+  return permissions.map((permission) => {
+    const canonical = normalizePermission(permission) ?? permission;
+    return {
+      permission: canonical,
+      superAdminShouldHave: true,
+      adminShouldHave: adminBaseline.has(canonical),
+      userShouldHave: false,
+    };
+  });
 };
 export const testPermissionMatrix = (
   authContext: AuthContextType,
@@ -700,17 +675,11 @@ export const createTestSuperAdmin = (overrides: Partial<User> = {}): User => {
     roles: ['super_admin'],
     role: 'super_admin',
     permissions: [
-      'user_management',
-      'admin_management',
-      'system_config',
-      'audit_logs',
-      'security_settings',
-      'user_create',
-      'user_edit',
-      'user_delete',
-      'admin_create',
-      'admin_edit',
-      'admin_delete'
+      'admin:read',
+      'admin:write',
+      'admin:system',
+      'audit:read',
+      'security:write'
     ],
     ...overrides
   });
@@ -722,10 +691,8 @@ export const createTestAdmin = (overrides: Partial<User> = {}): User => {
     roles: ['admin'],
     role: 'admin',
     permissions: [
-      'user_management',
-      'user_create',
-      'user_edit',
-      'user_delete'
+      'admin:read',
+      'admin:write'
     ],
     ...overrides
   });

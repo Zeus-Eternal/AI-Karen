@@ -35,6 +35,7 @@ const nextConfig = {
     reactCompiler: false, // Set to true if using React 19+
     // Reduce bundle size
     optimizePackageImports: ['lucide-react', 'date-fns', 'lodash'],
+    externalDir: true,
   },
 
   // Add turbopack config to silence the warning

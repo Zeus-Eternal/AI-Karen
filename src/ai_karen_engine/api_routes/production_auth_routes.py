@@ -6,7 +6,7 @@ and first-run setup flow.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
@@ -16,6 +16,8 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from ..auth.models import UserData
+from ..auth.rbac_middleware import get_rbac_manager
 from ..services.production_auth_service import ProductionAuthService
 from ..core.services.base import ServiceConfig
 
@@ -42,6 +44,7 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: Dict[str, Any]
+    permissions: List[str]
 
 
 class RefreshTokenRequest(BaseModel):
@@ -116,6 +119,18 @@ def get_client_ip(request: Request) -> str:
 def get_user_agent(request: Request) -> str:
     """Get user agent from request."""
     return request.headers.get("User-Agent", "unknown")
+
+
+def _serialize_permissions(user_payload: Dict[str, Any]) -> List[str]:
+    """Resolve canonical permission strings for the authenticated user."""
+
+    rbac_manager = get_rbac_manager()
+    user = UserData.from_dict(user_payload)
+    permissions = {
+        permission.value if hasattr(permission, "value") else str(permission)
+        for permission in rbac_manager.get_user_permissions(user)
+    }
+    return sorted(permissions)
 
 
 @router.on_event("startup")
@@ -229,12 +244,16 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "preferences": user.preferences
         }
         
+        permissions = _serialize_permissions(user_data)
+        user_data["permissions"] = permissions
+
         response_data = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
             "expires_in": auth_service.access_token_expire_minutes * 60,
             "user": user_data,
+            "permissions": permissions,
             "message": "First admin user created and authenticated successfully"
         }
         
@@ -288,12 +307,16 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "last_login": user.last_login.isoformat() if user.last_login else None
     }
     
+    permissions = _serialize_permissions(user_data)
+    user_data["permissions"] = permissions
+
     response_data = {
         "access_token": access_token,
         "refresh_token": refresh_token_or_error,  # This is refresh_token on success
         "token_type": "bearer",
         "expires_in": auth_service.access_token_expire_minutes * 60,
-        "user": user_data
+        "user": user_data,
+        "permissions": permissions
     }
 
     # Create response and set HttpOnly cookie for enhanced security
@@ -349,17 +372,21 @@ async def logout(request: RefreshTokenRequest, current_user=Depends(get_current_
 @router.get("/validate-session")
 async def validate_session(current_user=Depends(get_current_user)) -> Dict[str, Any]:
     """Validate current session and return user information."""
+    user_payload = {
+        "user_id": current_user.user_id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "roles": current_user.roles,
+        "is_active": current_user.is_active,
+        "tenant_id": current_user.tenant_id,
+        "preferences": current_user.preferences,
+    }
+    permissions = _serialize_permissions(user_payload)
+    user_payload["permissions"] = permissions
     return {
         "valid": True,
-        "user": {
-            "user_id": current_user.user_id,
-            "email": current_user.email,
-            "full_name": current_user.full_name,
-            "roles": current_user.roles,
-            "is_active": current_user.is_active,
-            "tenant_id": current_user.tenant_id,
-            "preferences": current_user.preferences,
-        },
+        "user": user_payload,
+        "permissions": permissions,
         "authenticated": True,
         "session_valid": True,
         "timestamp": datetime.now(timezone.utc).isoformat()

@@ -413,13 +413,13 @@ async function handleDELETE(request: NextRequest, context: AdminAuthContext) {
 
 // Export route handlers with admin authentication guards
 export async function GET(request: NextRequest) {
-  return withAdminAuth(request, handleGET, { requiredPermission: 'system.config.read' });
+  return withAdminAuth(request, handleGET, { requiredPermission: 'admin:system' });
 }
 
 export async function POST(request: NextRequest) {
-  return withAdminAuth(request, handlePOST, { requiredPermission: 'system.config.read' });
+  return withAdminAuth(request, handlePOST, { requiredPermission: 'admin:system' });
 }
 
 export async function DELETE(request: NextRequest) {
-  return withAdminAuth(request, handleDELETE, { requiredPermission: 'system.config.update' });
+  return withAdminAuth(request, handleDELETE, { requiredPermission: 'admin:system' });
 }

@@ -8,6 +8,8 @@ import {
   ROLE_HIERARCHY,
   ROLE_PERMISSIONS,
   getHighestRole,
+  normalizePermission,
+  normalizePermissionList,
   type Permission,
   type UserRole,
 } from "./rbac-shared";
@@ -100,12 +102,16 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
 
   // Permission check
   if (requiredPermission) {
-    const userPermissions = ROLE_PERMISSIONS[userRole] ?? [];
-    if (!userPermissions.includes(requiredPermission)) {
+    const canonical = normalizePermission(requiredPermission);
+    const explicitPermissions = normalizePermissionList(user.permissions);
+    const userPermissions = explicitPermissions.length
+      ? explicitPermissions
+      : ROLE_PERMISSIONS[userRole] ?? [];
+    if (!canonical || !userPermissions.includes(canonical)) {
       safeTrack(track, "rbac_access_denied", {
         reason: "insufficient_permission",
         userRole,
-        requiredPermission,
+        requiredPermission: canonical ?? requiredPermission,
         userPermissions,
         userId: user.userId,
       });

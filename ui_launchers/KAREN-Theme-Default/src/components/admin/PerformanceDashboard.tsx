@@ -155,7 +155,7 @@ export function PerformanceDashboard({ className = "" }: PerformanceDashboardPro
   }, []);
 
   // RBAC Gate (render a friendly block but keep component stable)
-  if (!hasPermission("system.config.read")) {
+  if (!hasPermission("admin:system")) {
     return (
       <ErrorBoundary>
         <div className={cn("bg-red-50 border border-red-200 rounded-lg p-6", className)}>

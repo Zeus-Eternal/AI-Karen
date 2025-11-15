@@ -13,7 +13,14 @@ import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manag
 import { markAuthSuccess as markAuthSuccessInterceptor } from "@/lib/auth-interceptor";
 import { markAuthSuccess as markAuthSuccessApiClient } from "@/lib/api-client-integrated";
 import { AuthContext } from "./auth-context-instance";
-import { getHighestRole, ROLE_HIERARCHY, type UserRole } from "@/components/security/rbac-shared";
+import {
+  getHighestRole,
+  normalizePermission,
+  normalizePermissionList,
+  ROLE_HIERARCHY,
+  ROLE_PERMISSIONS,
+  type UserRole,
+} from "@/components/security/rbac-shared";
 
 
 export interface User {
@@ -163,7 +170,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       roles: apiUser.roles ?? [],
       tenantId: apiUser.tenant_id ?? "default",
       role: getHighestRole(apiUser.roles ?? []),
-      permissions: apiUser.permissions,
+      permissions: normalizePermissionList(apiUser.permissions),
     }),
     []
   );
@@ -225,31 +232,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [getUserFriendlyErrorMessage]);
 
   // Helper function to get default permissions for a role
-  const getRolePermissions = (
-    role: UserRole
-  ): string[] => {
-    switch (role) {
-      case "super_admin":
-        return [
-          "user_management",
-          "admin_management",
-          "system_config",
-          "audit_logs",
-          "security_settings",
-          "user_create",
-          "user_edit",
-          "user_delete",
-          "admin_create",
-          "admin_edit",
-          "admin_delete",
-        ];
-      case "admin":
-        return ["user_management", "user_create", "user_edit", "user_delete"];
-      case "user":
-      default:
-        return [];
-    }
-  };
+  const getRolePermissions = (role: UserRole): string[] => ROLE_PERMISSIONS[role] ?? [];
 
   const stopSessionRefreshTimer = useCallback((): void => {
     if (sessionRefreshTimer.current) {
@@ -627,15 +610,20 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       if (!user) return false;
 
       // Check permissions array if available
+      const canonicalPermission = normalizePermission(permission);
+      if (!canonicalPermission) {
+        return false;
+      }
+
       if (user.permissions) {
-        return user.permissions.includes(permission);
+        return normalizePermissionList(user.permissions).includes(canonicalPermission);
       }
 
       // Default permissions based on role
       const rolePermissions = getRolePermissions(
         user.role || (user.roles[0] as UserRole)
       );
-      return rolePermissions.includes(permission);
+      return rolePermissions.includes(canonicalPermission);
     },
     [user]
   );

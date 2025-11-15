@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, Set, Union
 
 from fastapi import Depends, HTTPException, Request, status
@@ -83,6 +85,7 @@ class Permission(str, Enum):
     AUDIT_READ = "audit:read"
     SECURITY_READ = "security:read"
     SECURITY_WRITE = "security:write"
+    SECURITY_EVIL_MODE = "security:evil_mode"
 
     # Routing / orchestration
     ROUTING_SELECT = "routing:select"
@@ -121,139 +124,68 @@ def _all_permissions() -> Set[Permission]:
     return {permission for permission in Permission}
 
 
-ROLE_PERMISSIONS: Dict[Role, RolePermissions] = {
-    Role.SUPER_ADMIN: RolePermissions(
-        role=Role.SUPER_ADMIN,
-        permissions=_all_permissions(),
-        description="Highest privilege role with unrestricted access",
-    ),
-    Role.ADMIN: RolePermissions(
-        role=Role.ADMIN,
-        permissions=_all_permissions(),
-        description="Platform administrator",
-        inherits_from=Role.SUPER_ADMIN,
-    ),
-    Role.TRAINER: RolePermissions(
-        role=Role.TRAINER,
-        permissions={
-            Permission.TRAINING_READ,
-            Permission.TRAINING_WRITE,
-            Permission.TRAINING_EXECUTE,
-            Permission.TRAINING_DATA_READ,
-            Permission.TRAINING_DATA_WRITE,
-            Permission.MODEL_READ,
-            Permission.MODEL_WRITE,
-            Permission.MODEL_DOWNLOAD,
-            Permission.MODEL_ENSURE,
-            Permission.MODEL_DEPLOY,
-            Permission.MODEL_INFO,
-            Permission.DATA_READ,
-            Permission.DATA_WRITE,
-            Permission.DATA_EXPORT,
-            Permission.SCHEDULER_READ,
-            Permission.SCHEDULER_WRITE,
-        },
-        description="Training specialist with model and data management access",
-    ),
-    Role.ANALYST: RolePermissions(
-        role=Role.ANALYST,
-        permissions={
-            Permission.TRAINING_READ,
-            Permission.TRAINING_DATA_READ,
-            Permission.MODEL_READ,
-            Permission.MODEL_INFO,
-            Permission.DATA_READ,
-            Permission.DATA_EXPORT,
-            Permission.SCHEDULER_READ,
-            Permission.AUDIT_READ,
-        },
-        description="Read focused analyst role",
-    ),
-    Role.USER: RolePermissions(
-        role=Role.USER,
-        permissions={
-            Permission.TRAINING_READ,
-            Permission.TRAINING_DATA_READ,
-            Permission.MODEL_READ,
-            Permission.MODEL_INFO,
-            Permission.DATA_READ,
-        },
-        description="Standard platform user",
-    ),
-    Role.READONLY: RolePermissions(
-        role=Role.READONLY,
-        permissions={
-            Permission.TRAINING_READ,
-            Permission.MODEL_READ,
-            Permission.MODEL_INFO,
-        },
-        description="Read only visibility",
-    ),
-    Role.MODEL_MANAGER: RolePermissions(
-        role=Role.MODEL_MANAGER,
-        permissions={
-            Permission.MODEL_LIST,
-            Permission.MODEL_INFO,
-            Permission.MODEL_DOWNLOAD,
-            Permission.MODEL_REMOVE,
-            Permission.MODEL_ENSURE,
-            Permission.MODEL_GC,
-            Permission.MODEL_HEALTH_CHECK,
-            Permission.MODEL_COMPATIBILITY_CHECK,
-            Permission.MODEL_LICENSE_VIEW,
-            Permission.MODEL_LICENSE_ACCEPT,
-            Permission.MODEL_PIN,
-            Permission.MODEL_UNPIN,
-            Permission.MODEL_READ,
-            Permission.MODEL_WRITE,
-        },
-        description="Operational model management",
-    ),
-    Role.DATA_STEWARD: RolePermissions(
-        role=Role.DATA_STEWARD,
-        permissions={
-            Permission.DATA_READ,
-            Permission.DATA_WRITE,
-            Permission.DATA_DELETE,
-            Permission.DATA_EXPORT,
-            Permission.TRAINING_DATA_READ,
-            Permission.TRAINING_DATA_WRITE,
-            Permission.TRAINING_DATA_DELETE,
-        },
-        description="Manage datasets and training corpora",
-    ),
-    Role.ROUTING_ADMIN: RolePermissions(
-        role=Role.ROUTING_ADMIN,
-        permissions={
-            Permission.ROUTING_SELECT,
-            Permission.ROUTING_PROFILE_MANAGE,
-            Permission.ROUTING_PROFILE_VIEW,
-            Permission.ROUTING_HEALTH,
-            Permission.ROUTING_AUDIT,
-            Permission.ROUTING_DRY_RUN,
-        },
-        description="Full routing administration",
-    ),
-    Role.ROUTING_OPERATOR: RolePermissions(
-        role=Role.ROUTING_OPERATOR,
-        permissions={
-            Permission.ROUTING_SELECT,
-            Permission.ROUTING_PROFILE_VIEW,
-            Permission.ROUTING_HEALTH,
-            Permission.ROUTING_DRY_RUN,
-        },
-        description="Operational routing control",
-    ),
-    Role.ROUTING_AUDITOR: RolePermissions(
-        role=Role.ROUTING_AUDITOR,
-        permissions={
-            Permission.ROUTING_PROFILE_VIEW,
-            Permission.ROUTING_HEALTH,
-            Permission.ROUTING_AUDIT,
-        },
-        description="Read only routing insights",
-    ),
-}
+@lru_cache()
+def _load_permissions_config() -> Dict[str, Any]:
+    """Load the canonical permission map shared with the frontend."""
+
+    config_path = Path(__file__).resolve().parents[2] / "config" / "permissions.json"
+    try:
+        with config_path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except FileNotFoundError as exc:  # pragma: no cover - configuration error
+        raise RuntimeError(f"Missing permissions configuration at {config_path}") from exc
+
+
+def _resolve_permission_names(raw_permissions: Iterable[str]) -> Set[Permission]:
+    resolved: Set[Permission] = set()
+    for value in raw_permissions:
+        try:
+            resolved.add(Permission(value))
+        except ValueError:
+            logger.warning("Unknown permission '%s' in permissions.json", value)
+    return resolved
+
+
+def _build_role_permissions() -> Dict[Role, RolePermissions]:
+    config = _load_permissions_config()
+    role_config: Dict[str, Any] = config.get("roles", {})
+    role_permissions: Dict[Role, RolePermissions] = {}
+
+    for role in Role:
+        entry = role_config.get(role.value)
+        if entry is None:
+            logger.debug("No permission configuration found for role '%s'", role.value)
+            continue
+
+        inherits_from = entry.get("inherits_from")
+        inherited_role: Optional[Role] = None
+        if inherits_from:
+            try:
+                inherited_role = Role(inherits_from)
+            except ValueError:
+                logger.warning(
+                    "Invalid role inheritance '%s' configured for role '%s'",
+                    inherits_from,
+                    role.value,
+                )
+
+        raw_permissions = entry.get("permissions", [])
+        if isinstance(raw_permissions, list) and raw_permissions == ["*"]:
+            permissions = _all_permissions()
+        else:
+            permissions = _resolve_permission_names(raw_permissions)
+
+        role_permissions[role] = RolePermissions(
+            role=role,
+            permissions=permissions,
+            description=str(entry.get("description", role.value)),
+            inherits_from=inherited_role,
+        )
+
+    return role_permissions
+
+
+ROLE_PERMISSIONS: Dict[Role, RolePermissions] = _build_role_permissions()
 
 
 class RBACManager:

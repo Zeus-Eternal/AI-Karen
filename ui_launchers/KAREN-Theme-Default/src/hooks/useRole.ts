@@ -30,10 +30,10 @@ export const useRole = (): UseRoleReturn => {
   const isUser = hasRole('user');
   
   // Derived permissions based on role
-  const canManageUsers = hasPermission('user_management');
-  const canManageAdmins = hasPermission('admin_management');
-  const canManageSystem = hasPermission('system_config');
-  const canViewAuditLogs = hasPermission('audit_logs');
+  const canManageUsers = hasPermission('admin:read');
+  const canManageAdmins = hasPermission('admin:write');
+  const canManageSystem = hasPermission('admin:system');
+  const canViewAuditLogs = hasPermission('audit:read');
 
   return {
     role,

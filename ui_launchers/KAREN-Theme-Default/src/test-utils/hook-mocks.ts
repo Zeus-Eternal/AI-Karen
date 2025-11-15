@@ -13,6 +13,11 @@
 import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import type { UseRoleReturn } from '@/hooks/useRole';
 import { mockSuperAdminUser, mockAdminUser, mockRegularUser, createMockAuthContext } from './test-providers';
+import {
+  normalizePermission,
+  normalizePermissionList,
+  ROLE_PERMISSIONS,
+} from '@/components/security/rbac-shared';
 
 type AuthRole = Parameters<AuthContextType['hasRole']>[0];
 
@@ -119,10 +124,10 @@ export const createUseRoleReturnFromAuth = (authContext: AuthContextType): UseRo
     isAdmin: authContext.isAdmin(),
     isSuperAdmin: authContext.isSuperAdmin(),
     isUser: authContext.hasRole('user'),
-    canManageUsers: authContext.hasPermission('user_management'),
-    canManageAdmins: authContext.hasPermission('admin_management'),
-    canManageSystem: authContext.hasPermission('system_config'),
-    canViewAuditLogs: authContext.hasPermission('audit_logs'),
+    canManageUsers: authContext.hasPermission('admin:read'),
+    canManageAdmins: authContext.hasPermission('admin:write'),
+    canManageSystem: authContext.hasPermission('admin:system'),
+    canViewAuditLogs: authContext.hasPermission('audit:read'),
   };
 };
 
@@ -200,14 +205,18 @@ export const createMockUseRole = (
       if (user.role) return user.role === requiredRole;
       return user.roles?.includes(requiredRole) ?? false;
     }),
-    hasPermission: vi.fn((permission: string) => !!user?.permissions?.includes(permission)),
+    hasPermission: vi.fn((permission: string) => {
+      const canonical = normalizePermission(permission);
+      if (!canonical) return false;
+      return !!user && normalizePermissionList(user.permissions).includes(canonical);
+    }),
     isAdmin: !!(user && (user.role === 'admin' || user.role === 'super_admin')),
     isSuperAdmin: !!(user && user.role === 'super_admin'),
     isUser: !!(user && user.role === 'user'),
-    canManageUsers: !!user?.permissions?.includes('user_management'),
-    canManageAdmins: !!user?.permissions?.includes('admin_management'),
-    canManageSystem: !!user?.permissions?.includes('system_config'),
-    canViewAuditLogs: !!user?.permissions?.includes('audit_logs'),
+    canManageUsers: !!user && normalizePermissionList(user.permissions).includes('admin:read'),
+    canManageAdmins: !!user && normalizePermissionList(user.permissions).includes('admin:write'),
+    canManageSystem: !!user && normalizePermissionList(user.permissions).includes('admin:system'),
+    canViewAuditLogs: !!user && normalizePermissionList(user.permissions).includes('audit:read'),
   };
   return { ...base, ...overrides };
 };
@@ -224,10 +233,15 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
 
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
-    if (user.permissions) return user.permissions.includes(permission);
+    const canonical = normalizePermission(permission);
+    if (!canonical) return false;
+    const directPermissions = normalizePermissionList(user.permissions);
+    if (directPermissions.length) {
+      return directPermissions.includes(canonical);
+    }
     const fallbackRole = (user.role || user.roles?.[0] || 'user') as AuthRole;
     const rolePerms = getRolePermissions(fallbackRole);
-    return rolePerms.includes(permission);
+    return rolePerms.includes(canonical);
   });
 
   const isAdmin = vi.fn(() => hasRole('admin') || hasRole('super_admin'));
@@ -255,29 +269,7 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
   };
 };
 
-const getRolePermissions = (role: AuthRole): string[] => {
-  switch (role) {
-    case 'super_admin':
-      return [
-        'user_management',
-        'admin_management',
-        'system_config',
-        'audit_logs',
-        'security_settings',
-        'user_create',
-        'user_edit',
-        'user_delete',
-        'admin_create',
-        'admin_edit',
-        'admin_delete',
-      ];
-    case 'admin':
-      return ['user_management', 'user_create', 'user_edit', 'user_delete'];
-    case 'user':
-    default:
-      return [];
-  }
-};
+const getRolePermissions = (role: AuthRole): string[] => ROLE_PERMISSIONS[role] ?? [];
 
 // ---------------------------------------------------------------------------
 // Isolation & cleanup
