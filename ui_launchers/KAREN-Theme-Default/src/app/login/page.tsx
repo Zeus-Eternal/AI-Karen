@@ -8,15 +8,14 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const handleLoginSuccess = async () => {
+  const handleLoginSuccess = () => {
     const redirectFromQuery = searchParams?.get('redirectPath');
     const redirectFromStorage = sessionStorage.getItem('redirectAfterLogin');
     const redirectPath = redirectFromQuery ?? redirectFromStorage ?? '/';
 
     sessionStorage.removeItem('redirectAfterLogin');
-    // Wait briefly to ensure authentication state has settled
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
+    // Redirect immediately - AuthContext has already updated authentication state
     router.replace(redirectPath);
   };
 

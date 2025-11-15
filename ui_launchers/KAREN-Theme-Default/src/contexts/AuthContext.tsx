@@ -493,7 +493,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       };
       setSession(sessionData);
 
-      // Update authentication state
+      // Update all authentication state together for consistent updates
+      // React 18 will batch these automatically, but we keep them together for clarity
       setUser(user);
       setIsAuthenticated(true);
       setAuthState((prev) => ({
@@ -503,7 +504,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         lastActivity: new Date(),
       }));
 
-      // Start session refresh timer
+      // Start session refresh timer after state updates
       startSessionRefreshTimer();
 
       connectivityLogger.logAuthentication(
@@ -910,19 +911,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // Set initial loading state to prevent premature redirects
-    setAuthState((prev) => ({ ...prev, isLoading: true }));
-
     // Only check auth if we're not already authenticated
     // This prevents unnecessary API calls and potential race conditions
     if (!isAuthenticated) {
+      // Set loading state only when we're actually checking auth
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
       checkAuth().finally(() => {
         // Ensure loading state is cleared even if checkAuth fails
         setAuthState((prev) => ({ ...prev, isLoading: false }));
       });
     } else {
-      // If already authenticated, clear loading state
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      // If already authenticated, ensure loading state is cleared without triggering unnecessary state updates
+      setAuthState((prev) => (prev.isLoading ? { ...prev, isLoading: false } : prev));
     }
 
     // Cleanup timer on unmount
