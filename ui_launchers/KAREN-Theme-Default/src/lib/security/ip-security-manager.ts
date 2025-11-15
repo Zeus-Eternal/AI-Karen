@@ -410,6 +410,9 @@ export class IpSecurityManager {
   private throttle: SimpleThrottle;
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
+  private adminDbFailureAt: number | null = null;
+  private adminDbRetryDelayMs = 5 * 60_000;
+  private adminDbWarningEmitted = false;
 
   constructor() {
     this.throttle = new SimpleThrottle(
@@ -950,14 +953,18 @@ export class IpSecurityManager {
       if (!adminUtils || typeof adminUtils.getIpWhitelistEntries !== 'function') {
         return;
       }
+      if (!this.canUseAdminDb()) {
+        return;
+      }
 
       const entries = await adminUtils.getIpWhitelistEntries();
       this.ipWhitelist.clear();
       for (const entry of entries) {
         this.ipWhitelist.set(entry.id, { ...entry });
       }
+      this.markAdminDbHealthy();
     } catch (error) {
-      console.warn('Failed to load IP whitelist entries:', error);
+      this.handleAdminDbFailure('loadWhitelist', error);
     }
   }
 
@@ -965,6 +972,9 @@ export class IpSecurityManager {
     try {
       const adminUtils = this.adminUtils;
       if (!adminUtils) {
+        return;
+      }
+      if (!this.canUseAdminDb()) {
         return;
       }
 
@@ -985,8 +995,9 @@ export class IpSecurityManager {
           console.warn('Failed to normalize blocked IP entry:', entry.ipAddress, error);
         }
       }
+      this.markAdminDbHealthy();
     } catch (error) {
-      console.warn('Failed to rehydrate blocked IPs:', error);
+      this.handleAdminDbFailure('rehydrateBlocks', error);
     }
   }
 
@@ -1155,6 +1166,34 @@ export class IpSecurityManager {
       } catch (error) {
         console.warn('Failed to auto-block suspicious IP:', error);
       }
+    }
+
+  }
+
+  private canUseAdminDb(): boolean {
+    if (this.adminDbFailureAt === null) {
+      return true;
+    }
+    return Date.now() - this.adminDbFailureAt >= this.adminDbRetryDelayMs;
+  }
+
+  private markAdminDbHealthy(): void {
+    this.adminDbFailureAt = null;
+    this.adminDbWarningEmitted = false;
+  }
+
+  private handleAdminDbFailure(operation: string, error: unknown): void {
+    this.adminDbFailureAt = Date.now();
+    if (!this.adminDbWarningEmitted) {
+      console.warn(
+        `Admin database unavailable for IP security operation '${operation}'; recheck after ${new Date(
+          this.adminDbFailureAt + this.adminDbRetryDelayMs,
+        ).toISOString()}`,
+        error,
+      );
+      this.adminDbWarningEmitted = true;
+    } else {
+      console.debug(`Admin database still unavailable for '${operation}'`, error);
     }
   }
 }

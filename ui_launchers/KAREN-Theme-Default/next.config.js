@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
@@ -10,7 +10,7 @@ let hasCritters = true;
 try {
   require.resolve('next/dist/compiled/critters');
 } catch (error) {
-  console.warn('Critters module not found; disabling optimizeCss experiment.', error);
+  console.warn('Critters module not found; disabling optimizeCss experiment.');
   hasCritters = false;
 }
 
@@ -223,6 +223,7 @@ const nextConfig = {
       // Redirect problematic async imports to safe fallbacks
       'react-syntax-highlighter/dist/esm/async-languages/prism': false,
       'react-syntax-highlighter/dist/esm/prism-async-light': false,
+      '@root-config': resolve(__dirname, '../config'),
     };
 
     // Fix react-syntax-highlighter refractor language imports

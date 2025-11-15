@@ -42,6 +42,9 @@
       ],
       "@ag-charts-community/*": [
         "./node_modules/ag-charts-community/*"
+      ],
+      "@root-config/*": [
+        "../config/*"
       ]
     },
     "strictNullChecks": true

@@ -1,4 +1,4 @@
-import rawPermissionConfig from '../../../../../config/permissions.json';
+import rawPermissionConfig from '@root-config/permissions.json';
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 export type Permission = string;
