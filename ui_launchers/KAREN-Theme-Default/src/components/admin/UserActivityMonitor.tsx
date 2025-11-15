@@ -76,7 +76,8 @@ export function UserActivityMonitor({ className = "" }: UserActivityMonitorProps
     return abortRef.current.signal;
   };
 
-  const guard = hasRole("admin") || hasRole("super_admin");
+  // With role hierarchy, super_admins automatically pass hasRole("admin")
+  const guard = hasRole("admin");
 
   // ---------- utilities ----------
   const formatDate = useCallback((date: Date | string) => {

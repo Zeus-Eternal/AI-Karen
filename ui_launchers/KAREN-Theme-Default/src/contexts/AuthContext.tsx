@@ -13,7 +13,7 @@ import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manag
 import { markAuthSuccess as markAuthSuccessInterceptor } from "@/lib/auth-interceptor";
 import { markAuthSuccess as markAuthSuccessApiClient } from "@/lib/api-client-integrated";
 import { AuthContext } from "./auth-context-instance";
-import { getHighestRole, type UserRole } from "@/components/security/rbac-shared";
+import { getHighestRole, ROLE_HIERARCHY, type UserRole } from "@/components/security/rbac-shared";
 
 
 export interface User {
@@ -609,13 +609,15 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     (role: UserRole): boolean => {
       if (!user) return false;
 
-      // Check the new role field first, then fall back to roles array
-      if (user.role) {
-        return user.role === role;
-      }
+      // Get user's highest role
+      const userRole = user.role || getHighestRole(user.roles);
 
-      // Legacy support: check roles array
-      return user.roles.includes(role);
+      // Use role hierarchy instead of exact matching
+      // This allows admins to access user-level features
+      const userRoleLevel = ROLE_HIERARCHY[userRole] ?? 0;
+      const requiredRoleLevel = ROLE_HIERARCHY[role] ?? 0;
+
+      return userRoleLevel >= requiredRoleLevel;
     },
     [user]
   );
@@ -639,7 +641,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   );
 
   const isAdmin = useCallback((): boolean => {
-    return hasRole("admin") || hasRole("super_admin");
+    // With role hierarchy, super_admins automatically pass hasRole("admin")
+    return hasRole("admin");
   }, [hasRole]);
 
   const isSuperAdmin = useCallback((): boolean => {

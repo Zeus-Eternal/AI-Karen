@@ -72,8 +72,8 @@ export const AdminBreadcrumbs: React.FC<AdminBreadcrumbsProps> = ({
   const pathname = usePathname() || "/";
 
   // RBAC: Only show to admins by default
-  const isAdmin =
-    !requireAdminAccess || hasRole("admin") || hasRole("super_admin");
+  // With role hierarchy, super_admins automatically pass hasRole("admin")
+  const isAdmin = !requireAdminAccess || hasRole("admin");
 
   const breadcrumbs = useMemo<BreadcrumbItem[]>(() => {
     // Custom items take full control
