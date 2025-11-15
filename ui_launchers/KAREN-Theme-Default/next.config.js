@@ -27,6 +27,14 @@ const nextConfig = {
     // Other experimental features can go here
     swcPlugins: [],
     forceSwcTransforms: true,
+    // Enable modern JavaScript output
+    modernBrowsers: true,
+    // Enable optimizeCss for production
+    optimizeCss: true,
+    // Enable React compiler optimizations
+    reactCompiler: false, // Set to true if using React 19+
+    // Reduce bundle size
+    optimizePackageImports: ['lucide-react', 'date-fns', 'lodash'],
   },
 
   // Add turbopack config to silence the warning
@@ -61,18 +69,34 @@ const nextConfig = {
 
   // Compiler optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'], // Keep error and warn logs
+    } : false,
+    // Enable React optimizations
+    reactRemoveProperties: process.env.NODE_ENV === 'production',
+  },
+
+  // Enable compression
+  compress: true,
+
+  // Image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 31536000, // 1 year
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
   // ESLint configuration - disable for faster builds
   // Note: eslint config moved to .eslintrc files
 
-  // Security headers
+  // Security and performance headers
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
+          // Security headers
           {
             key: 'X-Frame-Options',
             value: 'DENY',
@@ -92,6 +116,50 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https: wss: ws://localhost:* ws://127.0.0.1:*;",
+          },
+          // Performance headers
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+        ],
+      },
+      // Cache static assets aggressively
+      {
+        source: '/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Cache images
+      {
+        source: '/:path*.{jpg,jpeg,png,gif,webp,avif,svg,ico}',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Cache fonts
+      {
+        source: '/:path*.{woff,woff2,eot,ttf,otf}',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

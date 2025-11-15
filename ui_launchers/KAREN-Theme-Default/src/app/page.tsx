@@ -4,12 +4,9 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-import SettingsDialogComponent from "@/components/settings/SettingsDialog";
 import { GridContainer } from "@/components/ui/layout/grid-container";
 import { FlexContainer } from "@/components/ui/layout/flex-container";
 import { Separator } from "@/components/ui/separator";
-import NotificationsSection from "@/components/sidebar/NotificationsSection";
-import Dashboard from "@/components/dashboard/Dashboard";
 import { webUIConfig } from "@/lib/config";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
@@ -39,8 +36,37 @@ import {
 
 
 
+// Lazy load heavy components for better initial load performance
+const Dashboard = dynamic(
+  () => import("@/components/dashboard/Dashboard"),
+  {
+    loading: () => <div className="flex items-center justify-center p-8">Loading dashboard...</div>,
+    ssr: false // Dashboard is client-heavy, skip SSR
+  }
+);
+
+const SettingsDialogComponent = dynamic(
+  () => import("@/components/settings/SettingsDialog"),
+  {
+    loading: () => <div className="flex items-center justify-center p-8">Loading settings...</div>,
+    ssr: false
+  }
+);
+
+const NotificationsSection = dynamic(
+  () => import("@/components/sidebar/NotificationsSection"),
+  {
+    loading: () => <div className="flex items-center justify-center p-8">Loading notifications...</div>,
+    ssr: false
+  }
+);
+
 const ExtensionSidebar = dynamic(
-  () => import("@/components/extensions/ExtensionSidebar")
+  () => import("@/components/extensions/ExtensionSidebar"),
+  {
+    loading: () => <div className="w-16 border-r" />,
+    ssr: false
+  }
 );
 
 type ActiveView = "settings" | "dashboard" | "commsCenter";

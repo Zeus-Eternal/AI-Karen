@@ -1,22 +1,36 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import '@fontsource/inter'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
+import { Inter } from 'next/font/google'
 import '../styles/globals.css'
 import { Providers } from './providers'
+
+// Optimize font loading with Next.js font optimization
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  preload: true,
+  variable: '--font-inter',
+})
 
 // Next.js requires exporting metadata from layout files; suppress Fast Refresh warning.
 // eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
   title: 'AI Karen',
   description: 'AI Assistant Interface',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
-// Force dynamic rendering
+// Only force dynamic rendering if needed - static generation is much faster
+// Conditionally set based on environment
 // eslint-disable-next-line react-refresh/only-export-components
-export const dynamic = 'force-dynamic'
+export const dynamic = process.env.NEXT_PUBLIC_FORCE_DYNAMIC === 'true' ? 'force-dynamic' : 'auto'
+
+// Enable static optimization where possible
+// eslint-disable-next-line react-refresh/only-export-components
+export const revalidate = 60 // Revalidate every 60 seconds
 
 export default function RootLayout({
   children,
@@ -24,8 +38,13 @@ export default function RootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
-      <body className="font-sans">
+    <html lang="en" data-scroll-behavior="smooth" className={inter.variable}>
+      <head>
+        {/* Preconnect to critical domains */}
+        <link rel="preconnect" href="http://localhost:8080" />
+        <link rel="dns-prefetch" href="http://localhost:8080" />
+      </head>
+      <body className={`${inter.className} font-sans`}>
         <Providers>
           {children}
         </Providers>
