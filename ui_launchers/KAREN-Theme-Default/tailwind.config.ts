@@ -6,22 +6,23 @@ export default {
     './src/**/*.{js,ts,jsx,tsx}',
     './src/components/**/*.{js,ts,jsx,tsx}',
     './src/app/**/*.{js,ts,jsx,tsx}',
+    './public/**/*.html',
   ],
+  // Minimize safelist - only keep truly dynamic classes
   safelist: [
-    // Keep dynamic classes that might be generated
-    'text-green-500',
-    'text-red-500',
-    'text-blue-500',
-    'text-yellow-500',
-    'bg-green-50',
-    'bg-red-50',
-    'bg-blue-50',
-    'bg-yellow-50',
-    'border-green-200',
-    'border-red-200',
-    'border-blue-200',
-    'border-yellow-200',
+    // Status colors that are dynamically generated
+    {
+      pattern: /(text|bg|border)-(green|red|blue|yellow)-(50|200|500)/,
+      variants: ['hover', 'focus', 'dark'],
+    },
   ],
+  // Enable JIT mode optimizations
+  mode: 'jit',
+  // Future flags for better performance
+  future: {
+    hoverOnlyWhenSupported: true,
+    removeDeprecatedGapUtilities: true,
+  },
   theme: {
   	extend: {
       fontFamily: {

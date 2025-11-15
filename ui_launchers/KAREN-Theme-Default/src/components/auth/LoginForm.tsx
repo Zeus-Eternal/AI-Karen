@@ -108,10 +108,53 @@ function LoginForm({ onSuccess }: LoginFormProps) {
           Login
         </h1>
 
-        {/* Display authentication errors from AuthContext */}
+        {/* Display authentication errors from AuthContext with helpful troubleshooting */}
         {authState.error && (
-          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 rounded">
-            <p className="text-sm">{authState.error.message}</p>
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+            <div className="flex items-start">
+              <svg className="h-5 w-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
+                  Login Failed
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 mb-3">
+                  {authState.error.message}
+                </p>
+                {authState.error.statusCode === 401 && (
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border border-red-200 dark:border-red-800 mb-2">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                      Common Issues:
+                    </p>
+                    <ul className="text-xs text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
+                      <li>Default password is <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Password123!</code> (note the capital P and !)</li>
+                      <li>Account may be locked after failed attempts</li>
+                      <li>Backend authentication service may not be running</li>
+                      <li>Admin user may not be set up yet</li>
+                    </ul>
+                  </div>
+                )}
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-red-700 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200 font-medium">
+                    Troubleshooting Steps
+                  </summary>
+                  <div className="mt-2 pl-4 border-l-2 border-red-300 dark:border-red-700 text-gray-700 dark:text-gray-300">
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Verify you're using the correct credentials:
+                        <br/><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">admin@kari.ai</code> / <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">Password123!</code>
+                      </li>
+                      <li>Run admin setup script: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">python3 scripts/operations/setup_admin_proper.py</code></li>
+                      <li>Unlock account: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">python3 scripts/maintenance/unlock_admin_account.py</code></li>
+                      <li>Check backend is running: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">curl http://localhost:8000/api/auth/health</code></li>
+                    </ol>
+                    <p className="mt-2 text-xs">
+                      For detailed troubleshooting, see <a href="/AUTH_TROUBLESHOOTING.md" target="_blank" className="text-red-600 dark:text-red-400 hover:underline font-medium">AUTH_TROUBLESHOOTING.md</a>
+                    </p>
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
         )}
 
