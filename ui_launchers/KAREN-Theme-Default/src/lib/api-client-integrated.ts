@@ -17,7 +17,7 @@ import { isAuthenticated, clearSession } from './auth/session';
 // Import grace period tracking from auth-interceptor for consistency
 // Both modules need to check the same grace period to prevent redirect loops
 let lastAuthSuccessTime: number | null = null;
-const AUTH_GRACE_PERIOD_MS = 3000; // 3 second grace period after login
+const AUTH_GRACE_PERIOD_MS = 10000; // 10 second grace period after login
 
 /**
  * Call this when authentication succeeds to prevent 401 redirects during state propagation

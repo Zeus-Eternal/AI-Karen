@@ -59,9 +59,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (isLoggingIn) return;
 
     // Don't redirect immediately after successful login (prevent race conditions)
-    // Extended grace period to 2 seconds for reliable state propagation
+    // Extended grace period to 10 seconds for reliable state propagation
     const justLoggedIn = isAuthenticated && authState.lastActivity &&
-      (Date.now() - authState.lastActivity.getTime()) < 2000;
+      (Date.now() - authState.lastActivity.getTime()) < 10000;
     if (justLoggedIn) return;
 
     // If not authenticated, redirect to login
