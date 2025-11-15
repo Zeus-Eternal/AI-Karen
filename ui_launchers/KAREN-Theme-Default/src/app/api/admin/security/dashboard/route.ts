@@ -27,6 +27,15 @@ import type { AdminApiResponse, AuditLog, SecurityEvent, User } from '@/types/ad
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 25;
 
+function getAdminUtilsSafely(): AdminUtils | null {
+  try {
+    return getAdminDatabaseUtils();
+  } catch (error) {
+    console.warn('Admin database unavailable; falling back to default security dashboard values.', error);
+    return null;
+  }
+}
+
 type Severity = 'low' | 'medium' | 'high' | 'critical';
 type AdminUtils = ReturnType<typeof getAdminDatabaseUtils>;
 
@@ -142,7 +151,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const limit = clampInt(searchParams.get('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT);
         const offset = clampInt(searchParams.get('offset'), 0, 0, 10_000);
 
-        const adminUtils = getAdminDatabaseUtils();
+        const adminUtils = getAdminUtilsSafely();
         const { now, todayStart, hourAgo } = deriveTimeRange(period);
 
         const dashboardData: SecurityDashboardData = {
@@ -192,7 +201,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 /* ---------------------------- SUPPORTING GETTERS ---------------------------- */
 
-async function getSecurityOverview(adminUtils: AdminUtils, todayStart: Date, hourAgo: Date) {
+async function getSecurityOverview(adminUtils: AdminUtils | null, todayStart: Date, hourAgo: Date) {
   const sessionStats = safe(() => sessionTimeoutManager.getSessionStatistics(), {
     totalActiveSessions: 0,
     sessionsByRole: {},
@@ -210,16 +219,22 @@ async function getSecurityOverview(adminUtils: AdminUtils, todayStart: Date, hou
   const todayEvents = securityEvents.filter((e) => toDate(e.created_at) >= todayStart);
 
   // Failed attempts in the last hour (audit logs)
-  const recentAuditLogs = await adminUtils
-    .getAuditLogs(
-      { action: 'ip.failed_attempt', start_date: hourAgo },
-      { page: 1, limit: DEFAULT_LIMIT },
-    )
-    .catch(() => ({ data: [] as AuditLog[] }));
+  const recentAuditLogs =
+    adminUtils
+      ? await adminUtils
+          .getAuditLogs(
+            { action: 'ip.failed_attempt', start_date: hourAgo },
+            { page: 1, limit: DEFAULT_LIMIT },
+          )
+          .catch(() => ({ data: [] as AuditLog[] }))
+      : { data: [] as AuditLog[] };
   // Users & MFA (fallback to 1k users)
-  const userResponse = await adminUtils
-    .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
-    .catch(() => ({ data: [] as User[] }));
+  const userResponse =
+    adminUtils
+      ? await adminUtils
+          .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
+          .catch(() => ({ data: [] as User[] }))
+      : { data: [] as User[] };
   const allUsers = userResponse.data || [];
   const mfaEnabledCount = allUsers.filter((u) => !!u.two_factor_enabled).length;
   const lockedAccounts = allUsers.filter(
@@ -315,11 +330,14 @@ async function getIpSecurityData() {
   };
 }
 
-async function getMfaStatistics(adminUtils: AdminUtils) {
+async function getMfaStatistics(adminUtils: AdminUtils | null) {
   // Optionally ask mfaManager for authoritative counts if available
-  const userResponse = await adminUtils
-    .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
-    .catch(() => ({ data: [] as User[] }));
+  const userResponse =
+    adminUtils
+      ? await adminUtils
+          .getUsersWithRoleFilter({}, { page: 1, limit: 1000 })
+          .catch(() => ({ data: [] as User[] }))
+      : { data: [] as User[] };
   const allUsers = userResponse.data || [];
   const totalUsers = allUsers.length;
   const mfaEnabledUsers = allUsers.filter((u) => !!u.two_factor_enabled);
@@ -351,7 +369,7 @@ async function getMfaStatistics(adminUtils: AdminUtils) {
   };
 }
 
-async function getRecentSecurityEvents(adminUtils: AdminUtils, limit = DEFAULT_LIMIT, offset = 0) {
+async function getRecentSecurityEvents(adminUtils: AdminUtils | null, limit = DEFAULT_LIMIT, offset = 0) {
   const events = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
   const page = events
     .sort((a, b) => toDate(b.created_at).getTime() - toDate(a.created_at).getTime())
@@ -363,7 +381,7 @@ async function getRecentSecurityEvents(adminUtils: AdminUtils, limit = DEFAULT_L
   );
 
   const usersById: Record<string, User> = {};
-  if (userIds.length) {
+  if (adminUtils && userIds.length) {
     try {
       const users = await adminUtils.getUsersByIds(userIds);
       for (const u of users) {
@@ -388,11 +406,14 @@ async function getRecentSecurityEvents(adminUtils: AdminUtils, limit = DEFAULT_L
 }
 
 async function getRecentSecurityActivities(
-  adminUtils: AdminUtils,
+  adminUtils: AdminUtils | null,
   startFrom: Date,
   limit = DEFAULT_LIMIT,
   offset = 0,
 ) {
+  if (!adminUtils) {
+    return [];
+  }
   const securityActions = [
     'session.created',
     'session.terminated',

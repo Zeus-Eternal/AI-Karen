@@ -1,26 +1,10 @@
-"use client";
-
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { LoginForm } from '@/components/auth/LoginForm';
+import LoginPageClient from './LoginPageClient';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const handleLoginSuccess = async () => {
-    const redirectFromQuery = searchParams?.get('redirectPath');
-    const redirectFromStorage = sessionStorage.getItem('redirectAfterLogin');
-    const redirectPath = redirectFromQuery ?? redirectFromStorage ?? '/';
-
-    sessionStorage.removeItem('redirectAfterLogin');
-
-    // Wait for next tick to ensure auth state has fully propagated
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    // Redirect after auth state has settled
-    router.replace(redirectPath);
-  };
-
-  return <LoginForm onSuccess={handleLoginSuccess} />;
+  return (
+    <React.Suspense fallback={null}>
+      <LoginPageClient />
+    </React.Suspense>
+  );
 }

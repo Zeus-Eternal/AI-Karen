@@ -6,6 +6,14 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+let hasCritters = true;
+try {
+  require.resolve('next/dist/compiled/critters');
+} catch (error) {
+  console.warn('Critters module not found; disabling optimizeCss experiment.', error);
+  hasCritters = false;
+}
+
 let withBundleAnalyzer = (config) => config;
 try {
   if (process.env.ANALYZE === 'true') {
@@ -28,9 +36,8 @@ const nextConfig = {
     swcPlugins: [],
     forceSwcTransforms: true,
     // Enable modern JavaScript output
-    modernBrowsers: true,
-    // Enable optimizeCss for production
-    optimizeCss: true,
+    // Enable optimizeCss for production when critters is available
+    optimizeCss: hasCritters,
     // Enable React compiler optimizations
     reactCompiler: false, // Set to true if using React 19+
     // Reduce bundle size

@@ -23,10 +23,10 @@ export const metadata: Metadata = {
   },
 }
 
-// Only force dynamic rendering if needed - static generation is much faster
-// Conditionally set based on environment
+// Next.js requires a literal string for the `dynamic` export.
+// Switch it manually if you need to force dynamic rendering.
 // eslint-disable-next-line react-refresh/only-export-components
-export const dynamic = process.env.NEXT_PUBLIC_FORCE_DYNAMIC === 'true' ? 'force-dynamic' : 'auto'
+export const dynamic = 'auto'
 
 // Enable static optimization where possible
 // eslint-disable-next-line react-refresh/only-export-components

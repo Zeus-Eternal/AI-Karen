@@ -374,11 +374,16 @@ class SimpleThrottle {
  * ========================= */
 
 export class IpSecurityManager {
-  private _adminUtils?: ReturnType<typeof getAdminDatabaseUtils>;
+  private _adminUtils?: AdminDatabaseUtils | null;
 
-  private get adminUtils(): ReturnType<typeof getAdminDatabaseUtils> {
-    if (!this._adminUtils) {
-      this._adminUtils = getAdminDatabaseUtils();
+  private get adminUtils(): AdminDatabaseUtils | null {
+    if (this._adminUtils === undefined) {
+      try {
+        this._adminUtils = getAdminDatabaseUtils();
+      } catch (error) {
+        console.warn('Admin database unavailable for IP security manager', error);
+        this._adminUtils = null;
+      }
     }
     return this._adminUtils;
   }
@@ -674,9 +679,10 @@ export class IpSecurityManager {
       });
 
       // Persist block if backend provides such API (best-effort)
-      try { 
-        if (this.adminUtils.blockIp) {
-          await this.adminUtils.blockIp(ip, reason, blockedUntil, blockedBy);
+      try {
+        const adminUtils = this.adminUtils;
+        if (adminUtils?.blockIp) {
+          await adminUtils.blockIp(ip, reason, blockedUntil, blockedBy);
         }
       } catch (persistError) {
         console.warn('Failed to persist IP block:', persistError);
@@ -709,9 +715,10 @@ export class IpSecurityManager {
         previously_blocked_by: blk.blockedBy
       }, ip);
 
-      try { 
-        if (this.adminUtils.unblockIp) {
-          await this.adminUtils.unblockIp(ip);
+      try {
+        const adminUtils = this.adminUtils;
+        if (adminUtils?.unblockIp) {
+          await adminUtils.unblockIp(ip);
         }
       } catch (persistError) {
         console.warn('Failed to persist IP unblock:', persistError);
@@ -730,7 +737,10 @@ export class IpSecurityManager {
 
   async getBlockedIps(options: { limit?: number; offset?: number } = {}): Promise<BlockedIpEntry[]> {
     try {
-      const adminUtils = getAdminDatabaseUtils();
+      const adminUtils = this.adminUtils;
+      if (!adminUtils) {
+        return [];
+      }
       const result = await adminUtils.getBlockedIPs({
         limit: options.limit ?? 50,
         offset: options.offset ?? 0,
@@ -808,9 +818,10 @@ export class IpSecurityManager {
       
       if (new Date() > blk.blockedUntil) {
         this.blockedIps.delete(ip);
-        try { 
-          if (this.adminUtils.unblockIp) {
-            await this.adminUtils.unblockIp(ip); 
+        try {
+          const adminUtils = this.adminUtils;
+          if (adminUtils?.unblockIp) {
+            await adminUtils.unblockIp(ip);
           }
         } catch (error) {
           console.debug('Failed to unblock IP:', error);
@@ -882,9 +893,10 @@ export class IpSecurityManager {
         role_restriction: roleRestriction,
       });
 
-      try { 
-        if (this.adminUtils.upsertIpWhitelist) {
-          await this.adminUtils.upsertIpWhitelist(entry); 
+      try {
+        const adminUtils = this.adminUtils;
+        if (adminUtils?.upsertIpWhitelist) {
+          await adminUtils.upsertIpWhitelist(entry);
         }
       } catch (persistError) {
         console.warn('Failed to persist whitelist entry:', persistError);
@@ -995,9 +1007,10 @@ export class IpSecurityManager {
         removed_by: removedBy,
       });
 
-      try { 
-        if (this.adminUtils.removeIpWhitelist) {
-          await this.adminUtils.removeIpWhitelist(entryId); 
+      try {
+        const adminUtils = this.adminUtils;
+        if (adminUtils?.removeIpWhitelist) {
+          await adminUtils.removeIpWhitelist(entryId);
         }
       } catch (persistError) {
         console.warn('Failed to persist whitelist removal:', persistError);
@@ -1026,8 +1039,9 @@ export class IpSecurityManager {
 
       // Also allow backend decision if provided
       try {
-        if (this.adminUtils.isIpWhitelisted) {
-          const ok = await this.adminUtils.isIpWhitelisted(ip, userId, role);
+        const adminUtils = this.adminUtils;
+        if (adminUtils?.isIpWhitelisted) {
+          const ok = await adminUtils.isIpWhitelisted(ip, userId, role);
           if (typeof ok === 'boolean') return ok;
         }
       } catch (error) {
@@ -1055,8 +1069,9 @@ export class IpSecurityManager {
     userAgent?: string
   ): Promise<void> {
     try {
-      if (typeof this.adminUtils.createAuditLog === 'function') {
-        await this.adminUtils.createAuditLog({
+      const adminUtils = this.adminUtils;
+      if (adminUtils?.createAuditLog) {
+        await adminUtils.createAuditLog({
           user_id: actorId || 'system',
           action,
           resource_type: resourceType,
