@@ -346,7 +346,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 1,
+          retryAttempts: 0, // No retries - keep refresh fast and simple
           exponentialBackoff: false,
         }
       );
@@ -461,8 +461,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 2, // Limited retries for authentication
-          exponentialBackoff: true,
+          retryAttempts: 0, // No retries - API route handles retries
+          exponentialBackoff: false,
         }
       );
 
@@ -672,6 +672,21 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Check for session cookie first
       if (!hasSessionCookie()) {
+        // Only clear auth if we weren't already authenticated
+        // This prevents clearing auth on transient cookie issues
+        if (isAuthenticated) {
+          connectivityLogger.logAuthentication(
+            "warn",
+            "Session cookie missing but user was authenticated - keeping session",
+            {
+              success: true,
+              failureReason: "missing_cookie_but_authenticated",
+            },
+            "session_validation"
+          );
+          return true;
+        }
+
         connectivityLogger.logAuthentication(
           "info",
           "No session cookie found",
@@ -714,7 +729,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         {
           timeout,
-          retryAttempts: 1, // Single retry for validation
+          retryAttempts: 0, // No retries - keep session validation fast and simple
           exponentialBackoff: false,
         }
       );
@@ -790,13 +805,48 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       // Enhanced error handling
       const authError = createAuthError(error);
 
-      setUser(null);
-      setIsAuthenticated(false);
-      setAuthState((prev) => ({
-        ...prev,
-        error: authError.retryable ? authError : null, // Only show retryable errors
-      }));
-      stopSessionRefreshTimer();
+      // Only clear authentication on actual auth failures (401, 403), not on transient errors
+      const isAuthFailure = authError.statusCode === 401 || authError.statusCode === 403;
+      const isTransientError =
+        authError.category === ErrorCategory.NETWORK_ERROR ||
+        authError.category === ErrorCategory.TIMEOUT_ERROR ||
+        authError.retryable;
+
+      if (isAuthFailure) {
+        // Actual authentication failure - clear auth state
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthState((prev) => ({
+          ...prev,
+          error: authError,
+        }));
+        stopSessionRefreshTimer();
+      } else if (isTransientError && isAuthenticated) {
+        // Transient error but user was authenticated - keep session
+        connectivityLogger.logAuthentication(
+          "warn",
+          "Session validation failed with transient error - keeping authenticated state",
+          {
+            success: true,
+            failureReason: authError.message,
+          },
+          "session_validation"
+        );
+        setAuthState((prev) => ({
+          ...prev,
+          error: authError,
+        }));
+        return true; // Keep authenticated
+      } else {
+        // Error on initial auth check - clear state
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthState((prev) => ({
+          ...prev,
+          error: authError.retryable ? authError : null,
+        }));
+        stopSessionRefreshTimer();
+      }
 
       const errorObject =
         error instanceof Error ? error : new Error(String(error));
@@ -807,8 +857,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           : undefined;
 
       connectivityLogger.logAuthentication(
-        "error",
-        "Authentication check failed",
+        isAuthFailure ? "error" : "warn",
+        isAuthFailure ? "Authentication check failed" : "Session validation error (non-fatal)",
         {
           success: false,
           failureReason: authError.message,
@@ -824,11 +874,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           retryCount,
           metadata: {
             category: authError.category,
+            isAuthFailure,
+            isTransientError,
           },
         }
       );
 
-      return false;
+      return !isAuthFailure && isAuthenticated;
     } finally {
       isCheckingAuth.current = false;
     }
@@ -877,7 +929,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return () => {
       stopSessionRefreshTimer();
     };
-  }, [checkAuth, isAuthenticated, stopSessionRefreshTimer]);
+    // Only re-run when authentication status changes, not when checkAuth function changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   // Update activity timestamp on user interaction
   useEffect(() => {
