@@ -20,7 +20,7 @@ export interface RequestInterceptor {
 
 // Track last successful auth to prevent redirect loops during login
 let lastAuthSuccessTime: number | null = null;
-const AUTH_GRACE_PERIOD_MS = 3000; // 3 second grace period after login
+const AUTH_GRACE_PERIOD_MS = 10000; // 10 second grace period after login
 
 /**
  * Call this when authentication succeeds to prevent 401 redirects during state propagation

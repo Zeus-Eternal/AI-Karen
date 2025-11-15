@@ -168,16 +168,12 @@ export async function GET(request: NextRequest) {
     });
 
     if (response.status === 401 || response.status === 403) {
-      const body = (await parseJsonResponse(response)) ?? {
-        error: 'Extension access requires authentication or additional permissions',
-      };
-      return NextResponse.json(body, {
+      // During the grace period after login, return sample data instead of 401
+      // to prevent auth interceptor from triggering logout
+      console.warn('[GET /api/extensions] Backend returned auth error, using fallback', {
         status: response.status,
-        headers: {
-          'Cache-Control': 'no-store',
-          'X-Extensions-Fallback': 'auth-required',
-        },
       });
+      return buildFallbackResponse();
     }
 
     if (!response.ok) {

@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, Grid3X3, BarChart3, Sparkles, Brain, Bot, Zap, Database } from 'lucide-react';
 import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/hooks/use-auth';
+import { useIsReadyForApiCalls } from '@/hooks/use-auth-grace-period';
 import { useToast } from '@/hooks/use-toast';
 import { chatUiService } from '@/services/chat/chat-ui-service';
 import { format } from 'date-fns';
@@ -31,6 +32,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   defaultView = 'chat'
 }) => {
   const { user, isAuthenticated } = useAuth();
+  const isReadyForApiCalls = useIsReadyForApiCalls();
   const { toast } = useToast();
 
   const [activeView, setActiveView] = useState<ChatSystemView>(defaultView);
@@ -43,7 +45,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<AgGridReact<ConversationSummaryRow>>(null);
 
-  // Initialize chat session
+  // Initialize chat session - wait for grace period to avoid 401 errors
   useEffect(() => {
     const initializeChat = async () => {
       if (user && !sessionId && !conversationId) {
@@ -63,20 +65,21 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       }
     };
 
-    if (isAuthenticated) {
+    // Only initialize after grace period to ensure backend session is ready
+    if (isReadyForApiCalls) {
       void initializeChat();
     }
-  }, [user, isAuthenticated, sessionId, conversationId, toast]);
+  }, [user, isReadyForApiCalls, sessionId, conversationId, toast]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load conversations for grid view
+  // Load conversations for grid view - wait for grace period
   useEffect(() => {
     const loadConversations = async () => {
-      if (user && activeView === 'conversations') {
+      if (user && activeView === 'conversations' && isReadyForApiCalls) {
         try {
           const conversationRows = await chatUiService.getUserConversations(user.userId);
           setConversations(conversationRows);
@@ -87,7 +90,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     };
 
     void loadConversations();
-  }, [user, activeView]);
+  }, [user, activeView, isReadyForApiCalls]);
 
   // Handle message submission
   const handleSubmit = useCallback(async (message: string) => {
