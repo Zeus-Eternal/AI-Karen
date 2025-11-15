@@ -14,6 +14,27 @@ import {
 } from './api-client';
 import { isAuthenticated, clearSession } from './auth/session';
 
+// Import grace period tracking from auth-interceptor for consistency
+// Both modules need to check the same grace period to prevent redirect loops
+let lastAuthSuccessTime: number | null = null;
+const AUTH_GRACE_PERIOD_MS = 3000; // 3 second grace period after login
+
+/**
+ * Call this when authentication succeeds to prevent 401 redirects during state propagation
+ * Note: This should be called from AuthContext after successful login
+ */
+export function markAuthSuccess(): void {
+  lastAuthSuccessTime = Date.now();
+}
+
+/**
+ * Check if we're within the grace period after a successful login
+ */
+function isWithinAuthGracePeriod(): boolean {
+  if (lastAuthSuccessTime === null) return false;
+  return (Date.now() - lastAuthSuccessTime) < AUTH_GRACE_PERIOD_MS;
+}
+
 export interface ApiRequest extends RequestConfig {
   endpoint: string;
 }
@@ -87,7 +108,8 @@ export class IntegratedApiClient {
     const { endpoint, ...rest } = request;
 
     // If endpoint is protected and user is not authenticated, short-circuit
-    if (this.isProtectedEndpoint(endpoint) && typeof window !== 'undefined') {
+    // Skip this check during the auth grace period to prevent redirect loops
+    if (this.isProtectedEndpoint(endpoint) && typeof window !== 'undefined' && !isWithinAuthGracePeriod()) {
       try {
         if (!isAuthenticated()) {
           if (this.options.redirectOn401 && this.options.loginPath) {
@@ -112,11 +134,18 @@ export class IntegratedApiClient {
         this.options.treatNetworkErrorsAs401 && (status === undefined || status === 0);
 
       if (status === 401 || isNetworkLike401) {
-        // Clear session and optionally redirect
-        try { clearSession(); } catch { /* no-op */ }
+        // Don't redirect during grace period after successful login
+        // This prevents race conditions where API calls made immediately after login
+        // might fail before auth state has fully propagated
+        if (!isWithinAuthGracePeriod()) {
+          // Clear session and optionally redirect
+          try { clearSession(); } catch { /* no-op */ }
 
-        if (typeof window !== 'undefined' && this.options.redirectOn401 && this.options.loginPath) {
-          window.location.href = this.options.loginPath;
+          if (typeof window !== 'undefined' && this.options.redirectOn401 && this.options.loginPath) {
+            window.location.href = this.options.loginPath;
+          }
+        } else {
+          console.warn('[IntegratedApiClient] Suppressing 401 redirect during auth grace period', endpoint);
         }
       }
       throw error;

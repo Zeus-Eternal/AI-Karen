@@ -52,7 +52,9 @@ export default function UsageAnalyticsCharts() {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/analytics/usage?range=30d');
+        const response = await fetch('/api/analytics/usage?range=30d', {
+          credentials: 'include', // Include auth cookies
+        });
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
