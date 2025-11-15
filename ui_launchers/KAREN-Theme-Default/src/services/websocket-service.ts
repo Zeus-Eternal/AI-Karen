@@ -376,7 +376,7 @@ export class WebSocketService {
 
   // Get authentication token
   private getAuthToken(): string | null {
-    return localStorage.getItem('auth-token');
+    return localStorage.getItem('karen_access_token');
   }
 }
 
