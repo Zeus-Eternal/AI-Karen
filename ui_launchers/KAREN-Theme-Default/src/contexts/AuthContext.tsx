@@ -493,7 +493,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       };
       setSession(sessionData);
 
-      // Update authentication state
+      // Update all authentication state together for consistent updates
+      // React 18 will batch these automatically, but we keep them together for clarity
       setUser(user);
       setIsAuthenticated(true);
       setAuthState((prev) => ({
@@ -503,7 +504,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         lastActivity: new Date(),
       }));
 
-      // Start session refresh timer
+      // Start session refresh timer after state updates
       startSessionRefreshTimer();
 
       connectivityLogger.logAuthentication(
