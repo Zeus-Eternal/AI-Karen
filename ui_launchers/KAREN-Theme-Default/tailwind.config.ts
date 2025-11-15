@@ -21,7 +21,6 @@ export default {
   // Future flags for better performance
   future: {
     hoverOnlyWhenSupported: true,
-    removeDeprecatedGapUtilities: true,
   },
   theme: {
   	extend: {
