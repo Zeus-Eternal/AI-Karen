@@ -23,7 +23,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   showLoadingState = true,
   loadingMessage = 'Checking permissions...'
 }) => {
-  const { isAuthenticated, hasRole, hasPermission, user, authState } = useAuth();
+  const { isAuthenticated, hasRole, hasPermission, user, authState, isLoggingIn } = useAuth();
   const router = useRouter();
   const hasRedirectedRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -55,9 +55,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // If still loading, wait
     if (authState.isLoading) return;
 
+    // Don't redirect if login is in progress (prevents race condition)
+    if (isLoggingIn) return;
+
     // Don't redirect immediately after successful login (prevent race conditions)
+    // Extended grace period to 2 seconds for reliable state propagation
     const justLoggedIn = isAuthenticated && authState.lastActivity &&
-      (Date.now() - authState.lastActivity.getTime()) < 1000;
+      (Date.now() - authState.lastActivity.getTime()) < 2000;
     if (justLoggedIn) return;
 
     // If not authenticated, redirect to login
@@ -83,7 +87,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       router.replace(redirectTo);
       return;
     }
-  }, [isAuthenticated, authState.isLoading, authState.lastActivity, requiredRole, requiredPermission, redirectTo, hasRole, hasPermission, user?.role, router]);
+  }, [isAuthenticated, authState.isLoading, authState.lastActivity, isLoggingIn, requiredRole, requiredPermission, redirectTo, hasRole, hasPermission, user?.role, router]);
   // Don't show loading state if we're on login page to prevent flash
   const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
   // Show loading state while checking authentication

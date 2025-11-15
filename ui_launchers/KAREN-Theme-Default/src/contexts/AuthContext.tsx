@@ -10,6 +10,8 @@ import {
   ErrorCategory,
 } from "@/lib/connection/connection-manager";
 import { getTimeoutManager, OperationType } from "@/lib/connection/timeout-manager";
+import { markAuthSuccess as markAuthSuccessInterceptor } from "@/lib/auth-interceptor";
+import { markAuthSuccess as markAuthSuccessApiClient } from "@/lib/api-client-integrated";
 import { AuthContext } from "./auth-context-instance";
 import { getHighestRole, type UserRole } from "@/components/security/rbac-shared";
 
@@ -75,6 +77,7 @@ export interface AuthContextType {
   hasPermission: (permission: string) => boolean;
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
+  isLoggingIn: boolean;
 }
 
 export interface AuthProviderProps {
@@ -148,6 +151,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   // Flag to prevent multiple simultaneous auth checks
   const isCheckingAuth = useRef<boolean>(false);
+
+  // Flag to track login in progress - prevents redirect loops
+  const isLoggingInRef = useRef<boolean>(false);
 
   // Helper functions - use unified rbac-shared for role logic
   const createUserFromApiData = useCallback(
@@ -424,6 +430,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     const authenticationStartTime =
       typeof performance !== "undefined" ? performance.now() : Date.now();
 
+    // Mark login as in progress to prevent redirect loops
+    isLoggingInRef.current = true;
+
     connectivityLogger.logAuthentication(
       "info",
       "Authentication attempt started",
@@ -507,6 +516,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       // Start session refresh timer after state updates
       startSessionRefreshTimer();
 
+      // Mark auth success in both auth interceptor and API client to prevent 401 redirects during grace period
+      markAuthSuccessInterceptor();
+      markAuthSuccessApiClient();
+
       connectivityLogger.logAuthentication(
         "info",
         "Authentication successful",
@@ -530,7 +543,12 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-      
+      // Clear login flag after all state updates are complete
+      // Small delay to ensure React state has propagated
+      setTimeout(() => {
+        isLoggingInRef.current = false;
+      }, 0);
+
     } catch (err) {
       // Enhanced error handling with categorization
       const authError = createAuthError(err);
@@ -546,6 +564,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Stop any existing session refresh timer
       stopSessionRefreshTimer();
+
+      // Clear login flag on error
+      isLoggingInRef.current = false;
 
       const errorObject =
         err instanceof Error ? err : new Error(String(err));
@@ -973,6 +994,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     hasPermission,
     isAdmin,
     isSuperAdmin,
+    isLoggingIn: isLoggingInRef.current,
   };
 
   return (

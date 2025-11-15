@@ -17,6 +17,26 @@ export interface RequestInterceptor {
   onResponse?: (response: Response) => Promise<Response>;
   onError?: (error: Error) => Promise<unknown>;
 }
+
+// Track last successful auth to prevent redirect loops during login
+let lastAuthSuccessTime: number | null = null;
+const AUTH_GRACE_PERIOD_MS = 3000; // 3 second grace period after login
+
+/**
+ * Call this when authentication succeeds to prevent 401 redirects during state propagation
+ */
+export function markAuthSuccess(): void {
+  lastAuthSuccessTime = Date.now();
+}
+
+/**
+ * Check if we're within the grace period after a successful login
+ */
+function isWithinAuthGracePeriod(): boolean {
+  if (lastAuthSuccessTime === null) return false;
+  return (Date.now() - lastAuthSuccessTime) < AUTH_GRACE_PERIOD_MS;
+}
+
 class AuthInterceptor implements RequestInterceptor {
   private refreshInProgress = false;
   private refreshPromise: Promise<void> | null = null;
@@ -41,6 +61,15 @@ class AuthInterceptor implements RequestInterceptor {
       if (url.includes('/auth/login') || url.includes('/auth/logout')) {
         return response;
       }
+
+      // Don't redirect during grace period after successful login
+      // This prevents race conditions where API calls made immediately after login
+      // might fail before auth state has fully propagated
+      if (isWithinAuthGracePeriod()) {
+        console.warn('[AuthInterceptor] Suppressing 401 redirect during auth grace period', url);
+        return response;
+      }
+
       // Clear session state
       clearSession();
       // Redirect to login if we're in a browser environment
@@ -54,10 +83,15 @@ class AuthInterceptor implements RequestInterceptor {
     // Handle network errors that might be auth-related
     const errorWithStatus = error as Error & { status?: number };
     if (errorWithStatus.status === 401 || error.message?.includes('401')) {
-      // Clear session and redirect to login
-      clearSession();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      // Don't redirect during grace period after successful login
+      if (!isWithinAuthGracePeriod()) {
+        // Clear session and redirect to login
+        clearSession();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      } else {
+        console.warn('[AuthInterceptor] Suppressing 401 error redirect during auth grace period');
       }
     }
     throw error;
