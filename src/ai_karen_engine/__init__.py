@@ -1,6 +1,8 @@
 # mypy: ignore-errors
 """Core runtime components for Kari."""
 
+import importlib
+
 
 def __getattr__(name):
     if name == "SLMPool":
@@ -55,7 +57,10 @@ def __getattr__(name):
         from ai_karen_engine.doc_store import DocumentStore as _DS
 
         return _DS
-    raise AttributeError(name)
+    try:
+        return importlib.import_module(f"{__name__}.{name}")
+    except ImportError:
+        raise AttributeError(name)
 
 
 __all__ = [

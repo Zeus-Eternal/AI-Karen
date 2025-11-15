@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
+import os
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, Set, Union
 
@@ -128,13 +129,32 @@ def _all_permissions() -> Set[Permission]:
 def _load_permissions_config() -> Dict[str, Any]:
     """Load the canonical permission map shared with the frontend."""
 
-    # Align with repo root config directory; in container __file__ lives under /app/src
-    config_path = Path(__file__).resolve().parents[3] / "config" / "permissions.json"
-    try:
-        with config_path.open("r", encoding="utf-8") as handle:
-            return json.load(handle)
-    except FileNotFoundError as exc:  # pragma: no cover - configuration error
-        raise RuntimeError(f"Missing permissions configuration at {config_path}") from exc
+    env_override = os.getenv("KARI_PERMISSIONS_CONFIG") or os.getenv("PERMISSIONS_CONFIG_PATH")
+    candidates: list[Path] = []
+
+    if env_override:
+        candidates.append(Path(env_override))
+
+    resolved = Path(__file__).resolve()
+    for depth in range(3, 7):
+        try:
+            root_dir = resolved.parents[depth]
+        except IndexError:
+            continue
+        candidates.append(root_dir / "config" / "permissions.json")
+
+    candidates.append(Path.cwd() / "config" / "permissions.json")
+
+    for config_path in candidates:
+        if config_path and config_path.exists():
+            with config_path.open("r", encoding="utf-8") as handle:
+                return json.load(handle)
+
+    tried = ", ".join(str(path) for path in candidates if path)
+    raise RuntimeError(
+        "Missing permissions configuration (looked for permissions.json near repository root "
+        f"or via KARI_PERMISSIONS_CONFIG). Tried: {tried}"
+    )
 
 
 def _resolve_permission_names(raw_permissions: Iterable[str]) -> Set[Permission]:

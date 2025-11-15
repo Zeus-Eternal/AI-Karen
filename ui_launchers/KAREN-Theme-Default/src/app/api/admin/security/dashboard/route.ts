@@ -290,44 +290,57 @@ function getSessionStatistics() {
 }
 
 async function getIpSecurityData() {
-  const stats = await ipSecurityManager
-    .getIpStatistics()
-    .catch(() => ({ totalUniqueIps: 0, topAccessedIps: [] }));
-  const blockedIps = await ipSecurityManager.getBlockedIps().catch(() => [] as BlockedIpEntry[]);
-  const whitelistEntries = await ipSecurityManager
-    .getWhitelistEntries()
-    .catch(() => [] as IpWhitelistEntry[]);
-  const securityEvents = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
+  try {
+    const stats = await ipSecurityManager
+      .getIpStatistics()
+      .catch(() => ({ totalUniqueIps: 0, topAccessedIps: [] }));
+    const blockedIps = await ipSecurityManager
+      .getBlockedIps()
+      .catch(() => [] as BlockedIpEntry[]);
+    const whitelistEntries = await ipSecurityManager
+      .getWhitelistEntries()
+      .catch(() => [] as IpWhitelistEntry[]);
+    const securityEvents = safe<SecurityEvent[]>(() => securityManager.getSecurityEvents('system'), []);
 
-  const suspiciousActivities = securityEvents
-    .filter((event) => event.event_type === 'suspicious_activity')
-    .slice(0, 10)
-    .map((event) => ({
-      ip: event.ip_address || 'unknown',
-      user_id: event.user_id,
-      event_type: event.event_type,
-      severity: event.severity as Severity,
-      timestamp: toDate(event.created_at).toISOString(),
-      details: event.details,
-    }));
+    const suspiciousActivities = securityEvents
+      .filter((event) => event.event_type === 'suspicious_activity')
+      .slice(0, 10)
+      .map((event) => ({
+        ip: event.ip_address || 'unknown',
+        user_id: event.user_id,
+        event_type: event.event_type,
+        severity: event.severity as Severity,
+        timestamp: toDate(event.created_at).toISOString(),
+        details: event.details,
+      }));
 
-  return {
-    unique_ips_today: stats.totalUniqueIps,
-    whitelisted_ips: whitelistEntries.filter((entry) => entry.is_active !== false).length,
-    blocked_ips: blockedIps.map((entry) => ({
-      ip: entry.ipAddress,
-      reason: entry.reason || 'policy_violation',
-      blocked_until: entry.expiresAt ? toDate(entry.expiresAt).toISOString() : '',
-      failed_attempts: entry.failedAttempts,
-    })),
-    top_accessed_ips: (stats.topAccessedIps || []).map((summary) => ({
-      ip: summary.ip,
-      access_count: summary.accessCount,
-      users: summary.uniqueUsers,
-      last_access: summary.lastAccess?.toISOString() || new Date().toISOString(),
-    })),
-    suspicious_activities: suspiciousActivities,
-  };
+    return {
+      unique_ips_today: stats.totalUniqueIps,
+      whitelisted_ips: whitelistEntries.filter((entry) => entry.is_active !== false).length,
+      blocked_ips: blockedIps.map((entry) => ({
+        ip: entry.ipAddress,
+        reason: entry.reason || 'policy_violation',
+        blocked_until: entry.expiresAt ? toDate(entry.expiresAt).toISOString() : '',
+        failed_attempts: entry.failedAttempts,
+      })),
+      top_accessed_ips: (stats.topAccessedIps || []).map((summary) => ({
+        ip: summary.ip,
+        access_count: summary.accessCount,
+        users: summary.uniqueUsers,
+        last_access: summary.lastAccess?.toISOString() || new Date().toISOString(),
+      })),
+      suspicious_activities: suspiciousActivities,
+    };
+  } catch (error) {
+    console.warn('Failed to gather IP security data for dashboard', error);
+    return {
+      unique_ips_today: 0,
+      whitelisted_ips: 0,
+      blocked_ips: [],
+      top_accessed_ips: [],
+      suspicious_activities: [],
+    };
+  }
 }
 
 async function getMfaStatistics(adminUtils: AdminUtils | null) {

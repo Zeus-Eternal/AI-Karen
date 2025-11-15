@@ -2189,6 +2189,14 @@ export class AdminDatabaseUtils {
         is_active: row.is_active !== false,
       }));
     } catch (error) {
+      if (isUndefinedTableError(error, 'ip_whitelist')) {
+        console.warn(
+          'Whitelist table is not initialized; skipping IP whitelist entries for admin dashboard.',
+          error,
+        );
+        return [];
+      }
+
       throw new AdminDatabaseError('Failed to fetch whitelist entries', 'getIpWhitelistEntries', error);
     }
   }
@@ -2236,6 +2244,34 @@ export class AdminDatabaseUtils {
 /**
  * Convenience function to get AdminDatabaseUtils instance
  */
+function getErrorMessage(error: unknown): string {
+  if (!error) return '';
+
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+
+  const message = (error as { message?: unknown }).message;
+  if (typeof message === 'string') {
+    return message;
+  }
+
+  return '';
+}
+
+function isUndefinedTableError(error: unknown, tableName: string): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  if (!message) {
+    return false;
+  }
+
+  const target = tableName.toLowerCase();
+  return (
+    message.includes('undefined_table') ||
+    message.includes(`relation "${target}" does not exist`) ||
+    message.includes(`table "${target}" does not exist`)
+  );
+}
+
 export function getAdminDatabaseUtils(client?: DatabaseClient): AdminDatabaseUtils {
   const dbClient = client || getDatabaseClient();
   return new AdminDatabaseUtils(dbClient);

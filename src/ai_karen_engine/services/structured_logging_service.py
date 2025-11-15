@@ -91,14 +91,22 @@ class StructuredLogger:
 
     def _configure_json_logging(self):
         """Configure JSON logging format"""
+        # Determine the underlying logging.Logger (KarenLogger wraps it)
+        underlying_logger = getattr(self.base_logger, "logger", self.base_logger)
+        handlers = getattr(underlying_logger, "handlers", [])
+
         # Check if handler already has JSON formatter
-        for handler in self.base_logger.handlers:
-            if hasattr(handler.formatter, '_is_json_formatter'):
+        for handler in handlers:
+            formatter = getattr(handler, "formatter", None)
+            if getattr(formatter, "_is_json_formatter", False):
                 return
-        
+
+        if not handlers:
+            return
+
         # Add JSON formatter to all handlers
         json_formatter = StructuredLogFormatter()
-        for handler in self.base_logger.handlers:
+        for handler in handlers:
             handler.setFormatter(json_formatter)
 
     def _create_log_entry(

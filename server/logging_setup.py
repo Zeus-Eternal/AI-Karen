@@ -74,7 +74,7 @@ def configure_logging() -> None:
                 },
                 # Drop immediate duplicate log records in a short window
                 "dedup": {
-                    "()": "server.logging_setup._DedupFilter",
+                    "()": _DedupFilter,
                     "window_seconds": 0.75,
                 },
             },

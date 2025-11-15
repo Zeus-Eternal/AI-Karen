@@ -419,24 +419,23 @@ export class IpSecurityManager {
       this.config.throttle_window_ms,
       this.config.throttle_max_requests
     );
-    
-    // Start async initialization
-    this.initialize().catch(error => {
-      console.error('IP Security Manager initialization failed:', error);
-    });
   }
 
   private async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
     if (this.initializationPromise) {
       return this.initializationPromise;
     }
 
-    this.initializationPromise = (async () => {
+    const initPromise = (async () => {
       try {
         await Promise.all([
           this.loadConfiguration(),
           this.loadWhitelist(),
-          this.rehydrateBlocks()
+          this.rehydrateBlocks(),
         ]);
         this.isInitialized = true;
       } catch (error) {
@@ -449,7 +448,14 @@ export class IpSecurityManager {
       }
     })();
 
-    return this.initializationPromise;
+    this.initializationPromise = initPromise;
+    initPromise.catch(() => {
+      if (this.initializationPromise === initPromise) {
+        this.initializationPromise = null;
+      }
+    });
+
+    return initPromise;
   }
 
   /* ---------------------------------------

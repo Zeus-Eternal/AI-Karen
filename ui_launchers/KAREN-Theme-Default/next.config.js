@@ -45,9 +45,6 @@ const nextConfig = {
     externalDir: true,
   },
 
-  // Add turbopack config to silence the warning
-  turbopack: {},
-
   // These are now top-level config options in Next.js 15
   skipTrailingSlashRedirect: true,
 
@@ -214,17 +211,19 @@ const nextConfig = {
       config.externals.push('pg');
     }
 
-    // Fix lodash module resolution for slate-react (used by CopilotKit)
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      // Fix refractor/core module resolution for older react-syntax-highlighter versions
-      'refractor/core': 'refractor',
-      'refractor/core.js': 'refractor',
-      // Redirect problematic async imports to safe fallbacks
-      'react-syntax-highlighter/dist/esm/async-languages/prism': false,
-      'react-syntax-highlighter/dist/esm/prism-async-light': false,
-      '@root-config': resolve(__dirname, '../config'),
-    };
+      // Fix lodash module resolution for slate-react (used by CopilotKit)
+      config.resolve = config.resolve || {};
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        // Fix refractor/core module resolution for older react-syntax-highlighter versions
+        'refractor/core': 'refractor',
+        'refractor/core.js': 'refractor',
+        // Redirect problematic async imports to safe fallbacks
+        'react-syntax-highlighter/dist/esm/async-languages/prism': false,
+        'react-syntax-highlighter/dist/esm/prism-async-light': false,
+        '@root-config': resolve(__dirname, '../../config'),
+        '@root-config/permissions.json': resolve(__dirname, '../../config/permissions.json'),
+      };
 
     // Fix react-syntax-highlighter refractor language imports
     if (!isServer) {
