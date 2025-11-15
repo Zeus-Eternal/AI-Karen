@@ -83,6 +83,45 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function buildProxyHeaders(
+  request: NextRequest,
+  overrides: Record<string, string> = {},
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    Connection: 'keep-alive',
+    ...overrides,
+  };
+
+  const forwardable: Array<[string, string]> = [
+    ['authorization', 'Authorization'],
+    ['cookie', 'Cookie'],
+    ['x-request-id', 'X-Request-ID'],
+    ['x-correlation-id', 'X-Correlation-ID'],
+    ['x-api-key', 'X-API-Key'],
+  ];
+
+  for (const [source, target] of forwardable) {
+    const value = request.headers.get(source);
+    if (value) {
+      headers[target] = value;
+    }
+  }
+
+  return headers;
+}
+
+function extractAuthTokenFromCookies(request: NextRequest): string | null {
+  const preferredNames = ['auth_token', 'kari_session', 'session_token'];
+  for (const name of preferredNames) {
+    const entry = request.cookies.get(name);
+    if (entry?.value) {
+      return entry.value;
+    }
+  }
+  return null;
+}
+
 async function getModelHealthStatus(_modelId: string): Promise<ModelHealthStatus> {
   try {
     const { modelSelectionService } = await import('@/lib/model-selection-service');
@@ -219,18 +258,22 @@ export async function GET(request: NextRequest) {
 
   // Otherwise, proxy to backend with multi-candidate failover
   const candidates = getBackendCandidates();
-  const authHeader = request.headers.get('authorization') || undefined;
-  const headers: Record<string, string> = { Accept: 'application/json', Connection: 'keep-alive' };
-  if (authHeader) headers.Authorization = authHeader;
+  const headers = buildProxyHeaders(request);
+  const cookieAuthToken = extractAuthTokenFromCookies(request);
+  if (cookieAuthToken && !headers.Authorization) {
+    headers.Authorization = `Bearer ${cookieAuthToken}`;
+  }
 
   const queryString = url.searchParams.toString();
   let lastError: string | null = null;
   let resp: Response | null = null;
   let usedUrl = '';
+  let lastAttemptUrl = '';
 
   for (const base of candidates) {
     const target = withBackendPath('/api/models/library', base);
     const fullUrl = queryString ? `${target}?${queryString}` : target;
+    lastAttemptUrl = fullUrl;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -266,6 +309,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (resp && !resp.ok && [401, 403].includes(resp.status)) {
+    logger.warn('Models library backend unauthorized', {
+      requestId,
+      url: lastAttemptUrl,
+      status: resp.status,
+    });
+    resp = null;
+  }
+
   if (resp) {
     const contentType = resp.headers.get('content-type') || '';
     let data: unknown;
@@ -290,8 +342,8 @@ export async function GET(request: NextRequest) {
         usedUrl,
         error: parseMessage,
       });
-     data = { models: [] };
-   }
+      data = { models: [] };
+    }
 
     const dataRecord = asRecord(data);
     const modelCount = Array.isArray(dataRecord.models) ? dataRecord.models.length : undefined;

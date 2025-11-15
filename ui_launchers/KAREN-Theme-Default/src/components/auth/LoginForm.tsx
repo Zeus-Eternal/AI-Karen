@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { ConnectionError } from '@/lib/connection/connection-manager';
 import { useAuth } from '@/hooks/use-auth';
 
 export interface LoginFormProps {
@@ -10,13 +11,64 @@ export interface LoginFormProps {
 interface ValidationErrors {
   email?: string;
   password?: string;
+  totp_code?: string;
   general?: string;
+}
+
+const TWO_FACTOR_ERROR_REGEX =
+  /two[- ]?factor|2fa|mfa|authenticat|one[- ]?time|otp/i;
+
+type BackendErrorPayload = {
+  error?: string;
+  detail?: string;
+  [key: string]: unknown;
+};
+
+function extractServerErrorMessage(error: unknown): string | null {
+  if (error instanceof ConnectionError) {
+    const original = error.originalError as { data?: unknown } | undefined;
+    if (original?.data) {
+      if (typeof original.data === 'string') {
+        return original.data;
+      }
+      if (typeof original.data === 'object') {
+        const payload = original.data as BackendErrorPayload;
+        if (typeof payload.error === 'string') {
+          return payload.error;
+        }
+        if (typeof payload.detail === 'string') {
+          return payload.detail;
+        }
+      }
+    }
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return null;
+}
+
+function isTwoFactorError(error: unknown, message?: string | null): boolean {
+  const text = message ?? extractServerErrorMessage(error);
+  if (!text) {
+    return false;
+  }
+  return TWO_FACTOR_ERROR_REGEX.test(text);
 }
 
 function LoginForm({ onSuccess }: LoginFormProps) {
   const { login, authState, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -60,6 +112,14 @@ function LoginForm({ onSuccess }: LoginFormProps) {
     return true;
   };
 
+  const handleTotpChange = (value: string) => {
+    const sanitized = value.replace(/\D/g, '').slice(0, 6);
+    setTotpCode(sanitized);
+    if (validationErrors.totp_code) {
+      setValidationErrors((prev) => ({ ...prev, totp_code: undefined }));
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,14 +135,37 @@ function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
+    const trimmedTotp = totpCode.trim();
+    if (twoFactorRequired && !trimmedTotp) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        totp_code: 'Two-factor authentication code is required',
+      }));
+      return;
+    }
+
     try {
-      await login({ email, password });
+      const payload: { email: string; password: string; totp_code?: string } = {
+        email,
+        password,
+      };
+      if (twoFactorRequired && trimmedTotp) {
+        payload.totp_code = trimmedTotp;
+      }
+      await login(payload);
 
       // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
+      const errorMessage = extractServerErrorMessage(error);
+      if (isTwoFactorError(error, errorMessage)) {
+        setTwoFactorRequired(true);
+        console.warn('Two-factor authentication flow engaged', errorMessage ?? error);
+        return;
+      }
+
       // Error is handled by AuthContext and displayed via authState.error
       console.error('Login failed:', error);
     }
@@ -199,6 +282,45 @@ function LoginForm({ onSuccess }: LoginFormProps) {
               </p>
             )}
           </div>
+
+          {twoFactorRequired && (
+            <div className="mb-6">
+              <label
+                htmlFor="totp_code"
+                className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+              >
+                Two-factor authentication code
+              </label>
+              <input
+                id="totp_code"
+                type="text"
+                value={totpCode}
+                onChange={(e) => handleTotpChange(e.target.value)}
+                disabled={authState.isLoading}
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                autoComplete="one-time-code"
+                placeholder="123456"
+                required
+                className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline ${
+                  validationErrors.totp_code
+                    ? 'border-red-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                aria-invalid={!!validationErrors.totp_code}
+                aria-describedby={validationErrors.totp_code ? 'totp-error' : undefined}
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Enter the 6-digit code from your authenticator app or hardware token.
+              </p>
+              {validationErrors.totp_code && (
+                <p id="totp-error" className="text-red-500 text-xs italic mt-1">
+                  {validationErrors.totp_code}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex items-center justify-between">

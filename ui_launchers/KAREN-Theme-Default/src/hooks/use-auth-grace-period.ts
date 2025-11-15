@@ -61,7 +61,11 @@ export function useAuthGracePeriod(): AuthGracePeriodState {
 
   useEffect(() => {
     if (!isAuthenticated || !authState.lastActivity) {
-      setGracePeriodRemaining(0);
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(() => setGracePeriodRemaining(0));
+      } else {
+        setTimeout(() => setGracePeriodRemaining(0), 0);
+      }
       return;
     }
 

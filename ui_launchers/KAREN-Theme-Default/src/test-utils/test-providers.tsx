@@ -187,6 +187,7 @@ export const createMockAuthContext = (
     hasPermission,
     isAdmin,
     isSuperAdmin,
+    isLoggingIn: overrides.isLoggingIn ?? false,
   };
   // Apply any overrides
   return {

@@ -251,6 +251,7 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
     hasPermission,
     isAdmin,
     isSuperAdmin,
+    isLoggingIn: false,
   };
 };
 

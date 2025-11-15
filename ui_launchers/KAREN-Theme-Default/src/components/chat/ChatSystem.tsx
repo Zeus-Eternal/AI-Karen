@@ -31,7 +31,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   className = '',
   defaultView = 'chat'
 }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const isReadyForApiCalls = useIsReadyForApiCalls();
   const { toast } = useToast();
 
