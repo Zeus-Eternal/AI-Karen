@@ -44,7 +44,10 @@
         "./node_modules/ag-charts-community/*"
       ],
       "@root-config/*": [
-        "../config/*"
+        "../../config/*"
+      ],
+      "@root-config/permissions.json": [
+        "../../config/permissions.json"
       ]
     },
     "strictNullChecks": true

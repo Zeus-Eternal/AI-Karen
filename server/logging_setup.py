@@ -13,6 +13,30 @@ from typing import Any, Dict
 from .config import settings
 
 
+class _DedupFilter(logging.Filter):
+    """Filter that drops immediate duplicate log records within a short window."""
+
+    def __init__(self, window_seconds: float = 0.75):
+        super().__init__(name="")
+        self.window = window_seconds
+        self._last_key: tuple | None = None
+        self._last_ts: float = 0.0
+
+    def filter(self, record: logging.LogRecord) -> bool:  # True = keep
+        try:
+            import time as _time
+
+            key = (record.name, record.levelno, record.getMessage())
+            now = _time.time()
+            if self._last_key == key and (now - self._last_ts) <= self.window:
+                return False
+            self._last_key = key
+            self._last_ts = now
+        except Exception:
+            return True
+        return True
+
+
 def configure_logging() -> None:
     """Configure production-grade logging"""
     Path("logs").mkdir(exist_ok=True)
@@ -50,7 +74,7 @@ def configure_logging() -> None:
                 },
                 # Drop immediate duplicate log records in a short window
                 "dedup": {
-                    "()": "ai_karen_engine.core.logging.logger._DedupFilter",
+                    "()": "server.logging_setup._DedupFilter",
                     "window_seconds": 0.75,
                 },
             },

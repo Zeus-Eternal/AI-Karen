@@ -128,7 +128,8 @@ def _all_permissions() -> Set[Permission]:
 def _load_permissions_config() -> Dict[str, Any]:
     """Load the canonical permission map shared with the frontend."""
 
-    config_path = Path(__file__).resolve().parents[2] / "config" / "permissions.json"
+    # Align with repo root config directory; in container __file__ lives under /app/src
+    config_path = Path(__file__).resolve().parents[3] / "config" / "permissions.json"
     try:
         with config_path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
