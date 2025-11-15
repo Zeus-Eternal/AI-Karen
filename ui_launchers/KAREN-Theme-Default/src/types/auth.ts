@@ -66,6 +66,7 @@ export interface LoginResponse {
   tenant_id: string;
   preferences: UserPreferences;
   two_factor_enabled: boolean;
+  permissions?: string[];
 }
 
 export interface AuthContextType {

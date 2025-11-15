@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
+import { normalizePermission, normalizePermissionList } from '@/components/security/rbac-shared';
 import type { User, AdminApiResponse } from '@/types/admin';
 
 // Rate limiting storage (in-memory for simplicity, use Redis in production)
@@ -199,14 +200,15 @@ async function createAdminContext(user: User): Promise<AdminAuthContext> {
   
   try {
     const permissions = await adminUtils.getUserPermissions(user.user_id);
-    const permissionNames = permissions.map(p => p.name);
+    const permissionNames = normalizePermissionList(permissions.map((p) => p.name));
     
     return {
       user,
       hasPermission: async (permission: string): Promise<boolean> => {
-        // Super admins have all permissions
         if (user.role === 'super_admin') return true;
-        return permissionNames.includes(permission);
+        const canonical = normalizePermission(permission);
+        if (!canonical) return false;
+        return permissionNames.includes(canonical);
       },
       hasRole: (role: 'super_admin' | 'admin' | 'user') => user.role === role,
       isAdmin: () => ['admin', 'super_admin'].includes(user.role),

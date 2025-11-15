@@ -6,7 +6,13 @@
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  */
-import { getHighestRole, ROLE_PERMISSIONS, type UserRole, type Permission } from "@/components/security/rbac-shared";
+import {
+  getHighestRole,
+  normalizePermission,
+  normalizePermissionList,
+  ROLE_PERMISSIONS,
+  type UserRole,
+} from "@/components/security/rbac-shared";
 
 const ACCESS_TOKEN_STORAGE_KEY = "karen_access_token";
 
@@ -69,7 +75,10 @@ let currentSession: SessionData | null = null;
  * Store session data in memory (no localStorage or token management)
  */
 export function setSession(sessionData: SessionData): void {
-  currentSession = sessionData;
+  currentSession = {
+    ...sessionData,
+    permissions: normalizePermissionList(sessionData.permissions ?? []),
+  };
 }
 /**
  * Get current session data from memory
@@ -133,7 +142,7 @@ export async function validateSession(): Promise<boolean> {
           roles: userData.roles || [],
           tenantId: userData.tenant_id,
           role: userData.role || getHighestRole(userData.roles || []),
-          permissions: userData.permissions,
+          permissions: normalizePermissionList(userData.permissions),
         };
         setSession(sessionData);
         return true;
@@ -170,14 +179,16 @@ export function hasRole(role: string): boolean {
  */
 export function hasPermission(permission: string): boolean {
   if (!currentSession) return false;
+  const canonical = normalizePermission(permission);
+  if (!canonical) return false;
   // Check permissions array if available
   if (currentSession.permissions) {
-    return currentSession.permissions.includes(permission);
+    return normalizePermissionList(currentSession.permissions).includes(canonical);
   }
   // Default permissions based on role (use unified rbac-shared)
   const role = currentSession.role || getHighestRole(currentSession.roles);
   const rolePermissions = ROLE_PERMISSIONS[role] || [];
-  return rolePermissions.includes(permission as Permission);
+  return rolePermissions.includes(canonical);
 }
 /**
  * Check if user is admin (admin or super_admin)

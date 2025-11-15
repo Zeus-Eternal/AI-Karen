@@ -6,6 +6,8 @@ import {
   ROLE_HIERARCHY,
   ROLE_PERMISSIONS,
   getHighestRole,
+  normalizePermission,
+  normalizePermissionList,
   type Permission,
   type UserRole,
 } from "./rbac-shared";
@@ -32,8 +34,13 @@ export function usePermissions(): UsePermissionsResult {
 
   const hasPermission = (permission: Permission): boolean => {
     if (!isAuthenticated) return false;
-    const userPermissions = ROLE_PERMISSIONS[userRole] ?? [];
-    return userPermissions.includes(permission);
+    const canonical = normalizePermission(permission);
+    if (!canonical) return false;
+    const explicitPermissions = normalizePermissionList(user?.permissions);
+    const userPermissions = explicitPermissions.length
+      ? explicitPermissions
+      : ROLE_PERMISSIONS[userRole] ?? [];
+    return userPermissions.includes(canonical);
   };
 
   const canAccess = (options: { role?: UserRole; permission?: Permission }): boolean => {
