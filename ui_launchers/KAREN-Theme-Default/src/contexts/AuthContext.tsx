@@ -910,19 +910,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    // Set initial loading state to prevent premature redirects
-    setAuthState((prev) => ({ ...prev, isLoading: true }));
-
     // Only check auth if we're not already authenticated
     // This prevents unnecessary API calls and potential race conditions
     if (!isAuthenticated) {
+      // Set loading state only when we're actually checking auth
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
       checkAuth().finally(() => {
         // Ensure loading state is cleared even if checkAuth fails
         setAuthState((prev) => ({ ...prev, isLoading: false }));
       });
     } else {
-      // If already authenticated, clear loading state
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      // If already authenticated, ensure loading state is cleared without triggering unnecessary state updates
+      setAuthState((prev) => (prev.isLoading ? { ...prev, isLoading: false } : prev));
     }
 
     // Cleanup timer on unmount
