@@ -6,8 +6,8 @@
 
  "use client";
 
-import { ReactNode, useContext, useMemo } from 'react';
-import { AuthContext } from '@/contexts/auth-context-instance';
+import { ReactNode, useMemo } from 'react';
+import { useIsReadyForApiCalls } from '@/hooks/use-auth-grace-period';
 import {
   ExtensionIntegrationContext,
   useExtensionInitialization,
@@ -20,12 +20,10 @@ import { safeError } from '../safe-console';
  * Wraps children with extension integration initialization
  */
 export function ExtensionIntegrationProvider({ children }: { children: ReactNode }) {
-  const authContext = useContext(AuthContext);
-  const shouldInitializeExtensions = authContext
-    ? authContext.authState.isLoading
-      ? false
-      : authContext.isAuthenticated
-    : true;
+  // Only initialize extensions after the auth grace period has passed
+  // This prevents 401 errors when backend session hasn't fully propagated yet
+  const isReadyForApiCalls = useIsReadyForApiCalls();
+  const shouldInitializeExtensions = isReadyForApiCalls;
 
   const { initialized, error } = useExtensionInitialization(
     shouldInitializeExtensions
