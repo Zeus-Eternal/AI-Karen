@@ -11,24 +11,51 @@ const defaultPermissionConfig: PermissionConfig = {
   roles: {},
 };
 
-const permissionConfig: PermissionConfig = (() => {
-  const raw = process.env.NEXT_PUBLIC_PERMISSIONS_CONFIG;
-  if (!raw) {
-    return defaultPermissionConfig;
+// Lazy initialization to avoid undefined issues during module loading
+let permissionConfigCache: PermissionConfig | null = null;
+
+function getPermissionConfig(): PermissionConfig {
+  if (permissionConfigCache !== null) {
+    return permissionConfigCache;
   }
 
   try {
-    return JSON.parse(raw) as PermissionConfig;
+    const raw = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PERMISSIONS_CONFIG;
+    if (!raw) {
+      permissionConfigCache = defaultPermissionConfig;
+      return defaultPermissionConfig;
+    }
+
+    const parsed = JSON.parse(raw) as PermissionConfig;
+    // Validate the parsed config has the required structure
+    if (parsed && typeof parsed === 'object' && parsed.roles && parsed.permissions) {
+      permissionConfigCache = parsed;
+      return parsed;
+    }
+
+    console.warn('Invalid NEXT_PUBLIC_PERMISSIONS_CONFIG structure; using defaults');
+    permissionConfigCache = defaultPermissionConfig;
+    return defaultPermissionConfig;
   } catch (error) {
     console.warn(
       'Failed to parse NEXT_PUBLIC_PERMISSIONS_CONFIG; falling back to empty permissions set.',
       error
     );
+    permissionConfigCache = defaultPermissionConfig;
     return defaultPermissionConfig;
   }
-})();
+}
 
-const CANONICAL_PERMISSION_SET = new Set(permissionConfig.permissions);
+// Lazy getter for canonical permission set
+let canonicalPermissionSetCache: Set<string> | null = null;
+
+function getCanonicalPermissionSet(): Set<string> {
+  if (canonicalPermissionSetCache === null) {
+    const config = getPermissionConfig();
+    canonicalPermissionSetCache = new Set(config?.permissions || []);
+  }
+  return canonicalPermissionSetCache;
+}
 
 const PERMISSION_ALIASES: Record<string, Permission> = {
   'admin.users': 'admin:write',
@@ -59,7 +86,9 @@ const PERMISSION_ALIASES: Record<string, Permission> = {
 };
 
 function canonicalizeToken(token: string): Permission {
-  if (CANONICAL_PERMISSION_SET.has(token)) {
+  const canonicalSet = getCanonicalPermissionSet();
+
+  if (canonicalSet.has(token)) {
     return token;
   }
 
@@ -69,12 +98,12 @@ function canonicalizeToken(token: string): Permission {
     return alias;
   }
 
-  if (CANONICAL_PERMISSION_SET.has(lower)) {
+  if (canonicalSet.has(lower)) {
     return lower;
   }
 
   const colonCandidate = lower.replace(/\./g, ':').replace(/__+/g, ':').replace(/_/g, ':');
-  if (CANONICAL_PERMISSION_SET.has(colonCandidate)) {
+  if (canonicalSet.has(colonCandidate)) {
     return colonCandidate;
   }
 
@@ -101,20 +130,63 @@ export function normalizePermissionList(permissions?: readonly string[] | null):
 }
 
 function resolveRolePermissions(role: UserRole): Permission[] {
-  const entry = permissionConfig.roles?.[role];
-  if (!entry) {
+  try {
+    const config = getPermissionConfig();
+    if (!config || !config.roles) {
+      return [];
+    }
+
+    const entry = config.roles[role];
+    if (!entry) {
+      return [];
+    }
+
+    const inherited = entry.inherits_from && entry.inherits_from !== role
+      ? resolveRolePermissions(entry.inherits_from as UserRole)
+      : [];
+    const current = normalizePermissionList(entry.permissions);
+    return Array.from(new Set([...inherited, ...current]));
+  } catch (error) {
+    console.error(`Error resolving permissions for role ${role}:`, error);
     return [];
   }
-  const inherited = entry.inherits_from && entry.inherits_from !== role ? resolveRolePermissions(entry.inherits_from as UserRole) : [];
-  const current = normalizePermissionList(entry.permissions);
-  return Array.from(new Set([...inherited, ...current]));
 }
 
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  user: resolveRolePermissions('user'),
-  admin: resolveRolePermissions('admin'),
-  super_admin: resolveRolePermissions('super_admin'),
-};
+// Lazy initialization of role permissions to avoid module loading issues
+let rolePermissionsCache: Record<UserRole, Permission[]> | null = null;
+
+function getRolePermissions(): Record<UserRole, Permission[]> {
+  if (rolePermissionsCache === null) {
+    rolePermissionsCache = {
+      user: resolveRolePermissions('user'),
+      admin: resolveRolePermissions('admin'),
+      super_admin: resolveRolePermissions('super_admin'),
+    };
+  }
+  return rolePermissionsCache;
+}
+
+// Export a proxy object that lazily computes permissions
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = new Proxy({} as Record<UserRole, Permission[]>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string' && ['user', 'admin', 'super_admin'].includes(prop)) {
+      return getRolePermissions()[prop as UserRole];
+    }
+    return undefined;
+  },
+  ownKeys() {
+    return ['user', 'admin', 'super_admin'];
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    if (typeof prop === 'string' && ['user', 'admin', 'super_admin'].includes(prop)) {
+      return {
+        enumerable: true,
+        configurable: true,
+      };
+    }
+    return undefined;
+  },
+});
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   user: 1,
@@ -143,11 +215,17 @@ export function getRoleDisplayName(role: UserRole | string): string {
 }
 
 export function roleHasPermission(role: UserRole, permission: Permission): boolean {
-  const canonical = normalizePermission(permission);
-  if (!canonical) {
+  try {
+    const canonical = normalizePermission(permission);
+    if (!canonical) {
+      return false;
+    }
+    const permissions = ROLE_PERMISSIONS[role];
+    return Array.isArray(permissions) && permissions.includes(canonical);
+  } catch (error) {
+    console.error(`Error checking permission ${permission} for role ${role}:`, error);
     return false;
   }
-  return ROLE_PERMISSIONS[role]?.includes(canonical) ?? false;
 }
 
 export function roleHierarchy(userRole: UserRole, requiredRole: UserRole): boolean {
