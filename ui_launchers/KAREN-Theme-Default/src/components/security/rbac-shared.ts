@@ -1,3 +1,5 @@
+import permissionsConfigFile from '@root-config/permissions.json';
+
 export type UserRole =
   | 'user'
   | 'readonly'
@@ -40,16 +42,9 @@ const BASELINE_ROLES: readonly UserRole[] = [
 const STATIC_PERMISSION_CONFIG = loadStaticPermissionConfig();
 
 function loadStaticPermissionConfig(): PermissionConfig {
-  const normalized = parsePermissionPayload(
-    typeof process !== 'undefined'
-      ? process.env?.NEXT_PUBLIC_BASELINE_PERMISSIONS_CONFIG ?? process.env?.NEXT_PUBLIC_PERMISSIONS_CONFIG
-      : undefined,
-    'NEXT_PUBLIC_BASELINE_PERMISSIONS_CONFIG'
-  );
+  const normalized = normalizeConfigSource(permissionsConfigFile, '@root-config/permissions.json');
   if (!normalized) {
-    throw new Error(
-      '[rbac] Failed to load baseline permissions config. Ensure NEXT_PUBLIC_BASELINE_PERMISSIONS_CONFIG is injected by next.config.js.'
-    );
+    throw new Error('[rbac] Failed to load baseline permissions config from @root-config/permissions.json');
   }
   return normalized;
 }
@@ -176,22 +171,16 @@ function tryLoadEnvPermissionConfig(): PermissionConfig | null {
   if (typeof process === 'undefined') {
     return null;
   }
-  return (
-    parsePermissionPayload(process.env?.NEXT_PUBLIC_PERMISSIONS_CONFIG, 'NEXT_PUBLIC_PERMISSIONS_CONFIG') ??
-    null
-  );
-}
-
-function parsePermissionPayload(raw: string | undefined, context: string): PermissionConfig | null {
-  if (!raw || raw.trim().length === 0) {
+  const raw = process.env?.NEXT_PUBLIC_PERMISSIONS_CONFIG;
+  if (!raw) {
     return null;
   }
 
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return normalizeConfigSource(parsed, context);
+    return normalizeConfigSource(parsed, 'NEXT_PUBLIC_PERMISSIONS_CONFIG');
   } catch (error) {
-    console.warn(`[rbac] Failed to parse ${context}; falling back to static permissions file.`, error);
+    console.warn('Failed to parse NEXT_PUBLIC_PERMISSIONS_CONFIG; falling back to static permissions file.', error);
     return null;
   }
 }
