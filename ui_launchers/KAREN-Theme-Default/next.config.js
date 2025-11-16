@@ -15,11 +15,11 @@ const permissionsCandidates = [
   resolve('/', 'config', 'permissions.json'),
 ];
 
-let permissionsConfigPayload = '{}';
+let baselinePermissionsPayload = '{}';
 for (const candidate of permissionsCandidates) {
   if (!candidate) continue;
   try {
-    permissionsConfigPayload = readFileSync(candidate, 'utf8');
+    baselinePermissionsPayload = readFileSync(candidate, 'utf8');
     break;
   } catch (error) {
     console.warn(
@@ -28,6 +28,13 @@ for (const candidate of permissionsCandidates) {
     );
   }
 }
+
+const envOverridePermissions =
+  typeof process.env.NEXT_PUBLIC_PERMISSIONS_CONFIG === 'string' &&
+  process.env.NEXT_PUBLIC_PERMISSIONS_CONFIG.trim().length > 0
+    ? process.env.NEXT_PUBLIC_PERMISSIONS_CONFIG
+    : null;
+const resolvedPermissionsPayload = envOverridePermissions ?? baselinePermissionsPayload;
 
 let hasCritters = true;
 try {
@@ -69,7 +76,8 @@ const nextConfig = {
   },
 
   env: {
-    NEXT_PUBLIC_PERMISSIONS_CONFIG: permissionsConfigPayload,
+    NEXT_PUBLIC_PERMISSIONS_CONFIG: resolvedPermissionsPayload,
+    NEXT_PUBLIC_BASELINE_PERMISSIONS_CONFIG: baselinePermissionsPayload,
   },
 
   // These are now top-level config options in Next.js 15

@@ -51,7 +51,7 @@
   "roles": {
     "super_admin": {
       "description": "Highest privilege role with unrestricted access",
-      "inherits_from": null,
+      "inherits_from": "admin",
       "permissions": [
         "admin:read",
         "admin:system",
@@ -104,7 +104,7 @@
     },
     "admin": {
       "description": "Platform administrator",
-      "inherits_from": "super_admin",
+      "inherits_from": null,
       "permissions": [
         "admin:read",
         "admin:system",
@@ -143,7 +143,6 @@
         "scheduler:execute",
         "scheduler:read",
         "scheduler:write",
-        "security:evil_mode",
         "security:read",
         "security:write",
         "training:delete",
