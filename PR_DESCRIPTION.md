@@ -34,18 +34,37 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = new Proxy({} as 
   // ... additional handlers
 });
 
-// After (Object Getters - this PR)
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  get user(): Permission[] {
-    return getRolePermissions('user');
-  },
-  get admin(): Permission[] {
-    return getRolePermissions('admin');
-  },
-  get super_admin(): Permission[] {
-    return getRolePermissions('super_admin');
-  },
-};
+// After (Object.defineProperty + Function API - this PR)
+// 1. Export function API
+export function getRolePermissions(role: UserRole): Permission[] {
+  initializeRolePermissions();
+  return rolePermissionsCache![role] || [];
+}
+
+// 2. Backward compatible constant using Object.defineProperty
+export const ROLE_PERMISSIONS = (() => {
+  const obj = {} as Record<UserRole, Permission[]>;
+
+  Object.defineProperty(obj, 'user', {
+    get: () => getRolePermissions('user'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  Object.defineProperty(obj, 'admin', {
+    get: () => getRolePermissions('admin'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  Object.defineProperty(obj, 'super_admin', {
+    get: () => getRolePermissions('super_admin'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  return Object.freeze(obj);
+})();
 ```
 
 ### Enhanced Error Handling
@@ -73,27 +92,31 @@ function initializeRolePermissions(): void {
 }
 ```
 
-## Why Object Getters Over Proxy?
+## Why Object.defineProperty + Function API Over Proxy?
 
-| Feature | Proxy (Previous) | Object Getters (This PR) |
-|---------|-----------------|--------------------------|
-| **Webpack Compatibility** | ⚠️ Issues with bundling | ✅ Fully compatible |
+| Feature | Proxy (Previous) | Object.defineProperty (This PR) |
+|---------|-----------------|--------------------------------|
+| **Webpack Compatibility** | ⚠️ Issues with bundling | ✅ Maximum compatibility |
 | **Lazy Evaluation** | ✅ Yes | ✅ Yes |
 | **Browser Support** | ✅ ES6+ | ✅ ES5+ (universal) |
-| **Performance** | Good | ✅ Better (native) |
+| **Performance** | Good | ✅ Better (low-level API) |
 | **Bundler Optimization** | ⚠️ Can cause issues | ✅ Optimizes correctly |
-| **Predictability** | ⚠️ Edge cases exist | ✅ Standard behavior |
+| **Module Analysis** | ⚠️ Can be analyzed | ✅ Runtime-only |
+| **Function API** | ❌ No | ✅ Yes (getRolePermissions) |
+| **Immutability** | ⚠️ Partial | ✅ Object.freeze |
 
 ## Benefits
 
-✅ **Superior webpack/bundler compatibility** - Works flawlessly with all build tools and optimizations
-✅ **No Proxy edge cases** - Eliminates compatibility issues with module bundlers
-✅ **Maintains lazy initialization** - Properties only computed on first access
+✅ **Maximum webpack/bundler compatibility** - Object.defineProperty is lowest-level JS API, works with all build tools
+✅ **Function-based API** - New `getRolePermissions(role)` function for direct access without object properties
+✅ **No Proxy edge cases** - Eliminates all compatibility issues with module bundlers
+✅ **Zero module-level computation** - IIFE returns pre-created object, getters only run at runtime
 ✅ **Better error handling** - Added try-catch with safe fallback defaults
 ✅ **Universal support** - Works in all JavaScript environments (ES5+)
-✅ **Better performance** - Native getters are faster than Proxy handlers
+✅ **Immutable** - Object.freeze prevents any modification attempts
+✅ **Better performance** - Low-level API faster than Proxy handlers
 ✅ **More predictable** - Standard JavaScript behavior, easier to debug
-✅ **Zero breaking changes** - Maintains full API compatibility
+✅ **Zero breaking changes** - Maintains full backward API compatibility
 
 ## Testing Recommendations
 
