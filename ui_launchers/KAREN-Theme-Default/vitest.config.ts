@@ -59,6 +59,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(rootDir, "src"),
+      "@root-config": resolve(rootDir, "../../config"),
+      "@root-config/permissions.json": resolve(rootDir, "../../config/permissions.json"),
       nodemailer: resolve(rootDir, "stubs/nodemailer.ts"),
     },
   },
