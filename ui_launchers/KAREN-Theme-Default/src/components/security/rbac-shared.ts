@@ -1,5 +1,3 @@
-import rawPermissionConfig from '@root-config/permissions.json';
-
 export type UserRole = 'user' | 'admin' | 'super_admin';
 export type Permission = string;
 
@@ -8,7 +6,27 @@ type PermissionConfig = {
   roles: Record<string, { permissions?: readonly string[]; inherits_from?: string | null; description?: string }>;
 };
 
-const permissionConfig = rawPermissionConfig as PermissionConfig;
+const defaultPermissionConfig: PermissionConfig = {
+  permissions: [],
+  roles: {},
+};
+
+const permissionConfig: PermissionConfig = (() => {
+  const raw = process.env.NEXT_PUBLIC_PERMISSIONS_CONFIG;
+  if (!raw) {
+    return defaultPermissionConfig;
+  }
+
+  try {
+    return JSON.parse(raw) as PermissionConfig;
+  } catch (error) {
+    console.warn(
+      'Failed to parse NEXT_PUBLIC_PERMISSIONS_CONFIG; falling back to empty permissions set.',
+      error
+    );
+    return defaultPermissionConfig;
+  }
+})();
 
 const CANONICAL_PERMISSION_SET = new Set(permissionConfig.permissions);
 
@@ -83,7 +101,7 @@ export function normalizePermissionList(permissions?: readonly string[] | null):
 }
 
 function resolveRolePermissions(role: UserRole): Permission[] {
-  const entry = permissionConfig.roles[role];
+  const entry = permissionConfig.roles?.[role];
   if (!entry) {
     return [];
   }

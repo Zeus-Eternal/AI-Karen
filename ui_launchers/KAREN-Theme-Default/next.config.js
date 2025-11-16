@@ -1,10 +1,33 @@
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { createRequire } from 'module';
+import { readFileSync } from 'fs';
 
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const projectRoot = resolve(__dirname, '../..');
+const permissionsCandidates = [
+  process.env.PERMISSIONS_CONFIG_PATH,
+  resolve(process.cwd(), 'config/permissions.json'),
+  resolve(projectRoot, 'config', 'permissions.json'),
+  resolve('/', 'config', 'permissions.json'),
+];
+
+let permissionsConfigPayload = '{}';
+for (const candidate of permissionsCandidates) {
+  if (!candidate) continue;
+  try {
+    permissionsConfigPayload = readFileSync(candidate, 'utf8');
+    break;
+  } catch (error) {
+    console.warn(
+      `Failed to read permissions config at ${candidate}; trying next location.`,
+      error
+    );
+  }
+}
 
 let hasCritters = true;
 try {
@@ -43,6 +66,10 @@ const nextConfig = {
     // Reduce bundle size
     optimizePackageImports: ['lucide-react', 'date-fns', 'lodash'],
     externalDir: true,
+  },
+
+  env: {
+    NEXT_PUBLIC_PERMISSIONS_CONFIG: permissionsConfigPayload,
   },
 
   // These are now top-level config options in Next.js 15
@@ -211,19 +238,19 @@ const nextConfig = {
       config.externals.push('pg');
     }
 
-      // Fix lodash module resolution for slate-react (used by CopilotKit)
-      config.resolve = config.resolve || {};
-      config.resolve.alias = {
-        ...(config.resolve.alias || {}),
-        // Fix refractor/core module resolution for older react-syntax-highlighter versions
-        'refractor/core': 'refractor',
-        'refractor/core.js': 'refractor',
-        // Redirect problematic async imports to safe fallbacks
-        'react-syntax-highlighter/dist/esm/async-languages/prism': false,
-        'react-syntax-highlighter/dist/esm/prism-async-light': false,
-        '@root-config': resolve(__dirname, '../../config'),
-        '@root-config/permissions.json': resolve(__dirname, '../../config/permissions.json'),
-      };
+    // Fix lodash module resolution for slate-react (used by CopilotKit)
+    config.resolve = config.resolve || {};
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      // Fix refractor/core module resolution for older react-syntax-highlighter versions
+      'refractor/core': 'refractor',
+      'refractor/core.js': 'refractor',
+      // Redirect problematic async imports to safe fallbacks
+      'react-syntax-highlighter/dist/esm/async-languages/prism': false,
+      'react-syntax-highlighter/dist/esm/prism-async-light': false,
+      '@root-config': resolve(__dirname, '../../config'),
+      '@root-config/permissions.json': resolve(__dirname, '../../config/permissions.json'),
+    };
 
     // Fix react-syntax-highlighter refractor language imports
     if (!isServer) {
