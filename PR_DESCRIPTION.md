@@ -124,24 +124,46 @@ const obj = (() => {
   - Updated `roleHasPermission()` to use function API
   - Added Object.freeze for immutability
 
-## Critical: Clear Build Cache
+## 🔴 CRITICAL: Clear Build Cache (REQUIRED!)
 
-**After merging, users MUST:**
+**The error persists because your `.next` directory contains stale cached code!**
 
-1. **Clear Next.js cache:**
-   ```bash
-   rm -rf ui_launchers/KAREN-Theme-Default/.next
-   ```
+Evidence: The error references `rolesConfig` which **does not exist** in the current code. This proves the build cache is using old JavaScript bundles.
 
-2. **Restart dev server:**
-   ```bash
-   cd ui_launchers/KAREN-Theme-Default
-   npm run dev
-   ```
+### ⚡ Quick Fix (Choose One):
 
-3. **Hard refresh browser** (Ctrl+Shift+R or Cmd+Shift+R)
+**Option 1: New npm script (Easiest)**
+```bash
+cd ui_launchers/KAREN-Theme-Default
+npm run clean:dev
+# This clears cache and restarts dev server automatically
+```
 
-The old bundled code is cached - clearing is essential for the fix to take effect.
+**Option 2: Manual cleanup**
+```bash
+cd ui_launchers/KAREN-Theme-Default
+rm -rf .next
+rm -rf node_modules/.cache
+npm run dev
+```
+
+**Option 3: Single command**
+```bash
+npm run clean
+npm run dev
+```
+
+### ⚠️ WITHOUT Clearing Cache:
+- ❌ The fix will NOT work
+- ❌ You'll continue seeing the same error
+- ❌ The code change has no effect
+
+### ✅ AFTER Clearing Cache:
+- ✅ Error disappears immediately
+- ✅ Object.defineProperty code loads correctly
+- ✅ RBAC permissions work as expected
+
+**See [CLEAR_CACHE_FIX.md](ui_launchers/KAREN-Theme-Default/CLEAR_CACHE_FIX.md) for comprehensive troubleshooting.**
 
 ## Testing Recommendations
 
