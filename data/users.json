@@ -12,7 +12,7 @@
     "is_active": true,
     "created_at": "2025-11-08T03:00:00+00:00",
     "last_login": "2025-11-15T11:52:06.222864+00:00",
-    "failed_login_attempts": 0,
+    "failed_login_attempts": 1,
     "locked_until": null,
     "tenant_id": "default",
     "two_factor_enabled": false,

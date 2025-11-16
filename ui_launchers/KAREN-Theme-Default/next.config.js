@@ -10,8 +10,8 @@ const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '../..');
 const permissionsCandidates = [
   process.env.PERMISSIONS_CONFIG_PATH,
-  resolve(process.cwd(), 'config/permissions.json'),
   resolve(projectRoot, 'config', 'permissions.json'),
+  resolve(process.cwd(), 'config/permissions.json'),
   resolve('/', 'config', 'permissions.json'),
 ];
 

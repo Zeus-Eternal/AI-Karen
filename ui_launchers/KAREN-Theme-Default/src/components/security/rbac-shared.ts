@@ -11,6 +11,20 @@ const defaultPermissionConfig: PermissionConfig = {
   roles: {},
 };
 
+function ensurePermissionConfigShape(config?: PermissionConfig | null): PermissionConfig {
+  if (!config || typeof config !== 'object') {
+    return { permissions: [], roles: {} };
+  }
+
+  const permissions = Array.isArray(config.permissions) ? config.permissions : [];
+  const roles =
+    config.roles && typeof config.roles === 'object'
+      ? config.roles
+      : {};
+
+  return { permissions, roles };
+}
+
 // Lazy initialization to avoid undefined issues during module loading
 let permissionConfigCache: PermissionConfig | null = null;
 
@@ -22,27 +36,20 @@ function getPermissionConfig(): PermissionConfig {
   try {
     const raw = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PERMISSIONS_CONFIG;
     if (!raw) {
-      permissionConfigCache = defaultPermissionConfig;
-      return defaultPermissionConfig;
+      permissionConfigCache = ensurePermissionConfigShape(defaultPermissionConfig);
+      return permissionConfigCache;
     }
 
     const parsed = JSON.parse(raw) as PermissionConfig;
-    // Validate the parsed config has the required structure
-    if (parsed && typeof parsed === 'object' && parsed.roles && parsed.permissions) {
-      permissionConfigCache = parsed;
-      return parsed;
-    }
-
-    console.warn('Invalid NEXT_PUBLIC_PERMISSIONS_CONFIG structure; using defaults');
-    permissionConfigCache = defaultPermissionConfig;
-    return defaultPermissionConfig;
+    permissionConfigCache = ensurePermissionConfigShape(parsed);
+    return permissionConfigCache;
   } catch (error) {
     console.warn(
       'Failed to parse NEXT_PUBLIC_PERMISSIONS_CONFIG; falling back to empty permissions set.',
       error
     );
-    permissionConfigCache = defaultPermissionConfig;
-    return defaultPermissionConfig;
+    permissionConfigCache = ensurePermissionConfigShape(defaultPermissionConfig);
+    return permissionConfigCache;
   }
 }
 
@@ -132,11 +139,7 @@ export function normalizePermissionList(permissions?: readonly string[] | null):
 function resolveRolePermissions(role: UserRole): Permission[] {
   try {
     const config = getPermissionConfig();
-    if (!config || !config.roles) {
-      return [];
-    }
-
-    const entry = config.roles[role];
+    const entry = config.roles?.[role];
     if (!entry) {
       return [];
     }
