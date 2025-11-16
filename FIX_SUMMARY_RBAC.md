@@ -37,19 +37,21 @@ if (parsed && typeof parsed === 'object' && parsed.roles && parsed.permissions) 
 ```
 Validates parsed config has required fields before use.
 
-### 4. Proxy Pattern for ROLE_PERMISSIONS
+### 4. Object Getters for ROLE_PERMISSIONS
 ```typescript
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = new Proxy({} as Record<UserRole, Permission[]>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string' && ['user', 'admin', 'super_admin'].includes(prop)) {
-      return getRolePermissions()[prop as UserRole];
-    }
-    return undefined;
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  get user(): Permission[] {
+    return getRolePermissions('user');
   },
-  // ... additional proxy handlers
-});
+  get admin(): Permission[] {
+    return getRolePermissions('admin');
+  },
+  get super_admin(): Permission[] {
+    return getRolePermissions('super_admin');
+  },
+};
 ```
-Ensures permissions are only computed when accessed, not during module initialization.
+Uses native JavaScript property getters instead of Proxy for maximum webpack/bundler compatibility. Ensures permissions are only computed when accessed, not during module initialization.
 
 ### 5. Comprehensive Error Handling
 All critical functions wrapped in try-catch with proper logging:

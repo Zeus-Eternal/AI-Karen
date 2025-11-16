@@ -155,38 +155,45 @@ function resolveRolePermissions(role: UserRole): Permission[] {
 // Lazy initialization of role permissions to avoid module loading issues
 let rolePermissionsCache: Record<UserRole, Permission[]> | null = null;
 
-function getRolePermissions(): Record<UserRole, Permission[]> {
-  if (rolePermissionsCache === null) {
+function initializeRolePermissions(): void {
+  if (rolePermissionsCache !== null) {
+    return;
+  }
+
+  try {
     rolePermissionsCache = {
       user: resolveRolePermissions('user'),
       admin: resolveRolePermissions('admin'),
       super_admin: resolveRolePermissions('super_admin'),
     };
+  } catch (error) {
+    console.error('Failed to initialize role permissions, using empty defaults:', error);
+    rolePermissionsCache = {
+      user: [],
+      admin: [],
+      super_admin: [],
+    };
   }
-  return rolePermissionsCache;
 }
 
-// Export a proxy object that lazily computes permissions
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = new Proxy({} as Record<UserRole, Permission[]>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string' && ['user', 'admin', 'super_admin'].includes(prop)) {
-      return getRolePermissions()[prop as UserRole];
-    }
-    return undefined;
+// Lazy getter function instead of direct export
+function getRolePermissions(role: UserRole): Permission[] {
+  initializeRolePermissions();
+  return rolePermissionsCache![role] || [];
+}
+
+// Export object with getters for lazy initialization
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  get user(): Permission[] {
+    return getRolePermissions('user');
   },
-  ownKeys() {
-    return ['user', 'admin', 'super_admin'];
+  get admin(): Permission[] {
+    return getRolePermissions('admin');
   },
-  getOwnPropertyDescriptor(_target, prop) {
-    if (typeof prop === 'string' && ['user', 'admin', 'super_admin'].includes(prop)) {
-      return {
-        enumerable: true,
-        configurable: true,
-      };
-    }
-    return undefined;
+  get super_admin(): Permission[] {
+    return getRolePermissions('super_admin');
   },
-});
+};
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   user: 1,
