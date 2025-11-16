@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .next && rm -rf node_modules/.cache && echo 'Build cache cleared successfully!'",
+    "clean:dev": "npm run clean && npm run dev",
     "dev": "node scripts/preflight-check.cjs && next dev -p 8000",
     "dev:8010": "node scripts/preflight-check.cjs && next dev -p 8010",
     "dev:safe": "node dev-server.js",

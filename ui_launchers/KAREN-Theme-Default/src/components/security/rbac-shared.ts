@@ -176,24 +176,38 @@ function initializeRolePermissions(): void {
   }
 }
 
-// Lazy getter function instead of direct export
-function getRolePermissions(role: UserRole): Permission[] {
+// Function-based API to get role permissions (prevents any module-level initialization)
+export function getRolePermissions(role: UserRole): Permission[] {
   initializeRolePermissions();
   return rolePermissionsCache![role] || [];
 }
 
-// Export object with getters for lazy initialization
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  get user(): Permission[] {
-    return getRolePermissions('user');
-  },
-  get admin(): Permission[] {
-    return getRolePermissions('admin');
-  },
-  get super_admin(): Permission[] {
-    return getRolePermissions('super_admin');
-  },
-};
+// Backward compatibility: Export ROLE_PERMISSIONS as a constant-like object
+// This uses Object.defineProperty which are only evaluated when accessed
+export const ROLE_PERMISSIONS = (() => {
+  const obj = {} as Record<UserRole, Permission[]>;
+
+  // Define properties lazily using Object.defineProperty
+  Object.defineProperty(obj, 'user', {
+    get: () => getRolePermissions('user'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  Object.defineProperty(obj, 'admin', {
+    get: () => getRolePermissions('admin'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  Object.defineProperty(obj, 'super_admin', {
+    get: () => getRolePermissions('super_admin'),
+    enumerable: true,
+    configurable: false,
+  });
+
+  return Object.freeze(obj);
+})();
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   user: 1,
@@ -227,7 +241,7 @@ export function roleHasPermission(role: UserRole, permission: Permission): boole
     if (!canonical) {
       return false;
     }
-    const permissions = ROLE_PERMISSIONS[role];
+    const permissions = getRolePermissions(role);
     return Array.isArray(permissions) && permissions.includes(canonical);
   } catch (error) {
     console.error(`Error checking permission ${permission} for role ${role}:`, error);
