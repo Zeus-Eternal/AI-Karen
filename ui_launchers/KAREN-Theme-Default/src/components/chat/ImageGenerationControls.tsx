@@ -59,7 +59,7 @@ export default function ImageGenerationControls({
     <Card className={cn('w-full', className)}>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Image className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <Image className="h-5 w-5 text-purple-600 dark:text-purple-400" aria-label="Image generation icon" />
           <CardTitle>Image Generation</CardTitle>
         </div>
         <CardDescription>

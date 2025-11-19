@@ -37,14 +37,8 @@
       "@/*": [
         "./src/*"
       ],
-      "@ag-grid-community/*": [
-        "./node_modules/ag-grid-community/*"
-      ],
-      "@ag-charts-community/*": [
-        "./node_modules/ag-charts-community/*"
-      ],
       "@root-config/*": [
-        "../../config/*"
+        "./config/*"
       ]
     },
     "strictNullChecks": true

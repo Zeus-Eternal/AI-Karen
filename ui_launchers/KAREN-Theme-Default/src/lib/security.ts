@@ -165,7 +165,8 @@ export const cachedSanitizeInput = (input: string, allowHtml: boolean = false): 
   return sanitized;
 };
 
-export default {
+// Security utilities export
+const SecurityUtils = {
   sanitizeInput,
   sanitizeMessageContent,
   validateFileUpload,
@@ -174,3 +175,5 @@ export default {
   truncateText,
   cachedSanitizeInput
 };
+
+export default SecurityUtils;

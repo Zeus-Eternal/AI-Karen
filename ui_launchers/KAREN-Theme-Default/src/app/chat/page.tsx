@@ -54,6 +54,7 @@ function ChatView() {
               </SidebarTrigger>
               <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                Karen AI Chat
               </h1>
             </FlexContainer>
             <FlexContainer className="gap-2" align="center">
@@ -92,6 +93,7 @@ function ChatView() {
             >
               <SidebarHeader className="p-4">
                 <h2 id="chat-primary-nav-title" className="text-lg font-semibold tracking-tight">
+                  Navigation
                 </h2>
               </SidebarHeader>
               <Separator className="my-1" />

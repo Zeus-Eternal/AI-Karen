@@ -13,14 +13,13 @@ import {
   Cpu,
   Database,
   Zap,
-  Users,
   MessageSquare,
   TrendingUp,
   Clock,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [sidebarCollapsed] = React.useState(false);
 
   // Mock data
   const metricsData = {

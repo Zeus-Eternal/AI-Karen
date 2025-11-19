@@ -174,18 +174,20 @@ function ResetPasswordForm() {
             
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
-                <a 
-                  href="/login" 
+                <a
+                  href="/login"
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
+                  Return to Login
                 </a>
               </p>
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
-                <a 
-                  href="/signup" 
+                <a
+                  href="/signup"
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
+                  Sign Up
                 </a>
               </p>
             </div>

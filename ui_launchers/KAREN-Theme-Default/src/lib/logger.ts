@@ -56,4 +56,7 @@ export const logger = {
   },
 };
 
-export default logger;
+// Logger export
+const Logger = logger;
+
+export default Logger;

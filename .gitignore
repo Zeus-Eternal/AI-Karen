@@ -124,3 +124,7 @@ ui_launchers/KAREN-Theme-Default/postcss.config.js
 */test*
 data/users.json
 data/users.json
+/,env_karen/lib
+/,env_karen
+/,env_karen
+/ui_launchers/STREAMLIT-Theme/venv

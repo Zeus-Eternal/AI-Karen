@@ -28,8 +28,8 @@ export function createLazyComponent<T extends ComponentType<any>>(
       });
     }
 
-    const module = await importFn();
-    const LoadedComponent = module.default;
+    const importedModule = await importFn();
+    const LoadedComponent = importedModule.default;
 
     const WrappedComponent = (props: ComponentPropsWithoutRef<T>) => (
       <LazyComponent fallback={fallback} errorFallback={errorFallback}>

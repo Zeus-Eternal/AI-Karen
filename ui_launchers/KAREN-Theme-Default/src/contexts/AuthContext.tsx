@@ -232,7 +232,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }, [getUserFriendlyErrorMessage]);
 
   // Helper function to get default permissions for a role
-  const getRolePermissions = (role: UserRole): string[] => ROLE_PERMISSIONS[role] ?? [];
+  const getRolePermissions = (role: UserRole): string[] => {
+    console.log('[DEBUG] getRolePermissions called with role:', role, 'ROLE_PERMISSIONS:', ROLE_PERMISSIONS);
+    if (!ROLE_PERMISSIONS) {
+      console.log('[DEBUG] getRolePermissions: ROLE_PERMISSIONS is undefined, returning empty array');
+      return [];
+    }
+    return ROLE_PERMISSIONS[role] ?? [];
+  };
 
   const stopSessionRefreshTimer = useCallback((): void => {
     if (sessionRefreshTimer.current) {
@@ -590,15 +597,21 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Role and permission checking functions
   const hasRole = useCallback(
     (role: UserRole): boolean => {
-      if (!user) return false;
+      console.log('[DEBUG] AuthContext.hasRole called with role:', role, 'user:', user);
+      if (!user) {
+        console.log('[DEBUG] AuthContext.hasRole returning false because user is null');
+        return false;
+      }
 
       // Get user's highest role
       const userRole = user.role || getHighestRole(user.roles);
+      console.log('[DEBUG] AuthContext.hasRole userRole:', userRole);
 
       // Use role hierarchy instead of exact matching
       // This allows admins to access user-level features
       const userRoleLevel = ROLE_HIERARCHY[userRole] ?? 0;
       const requiredRoleLevel = ROLE_HIERARCHY[role] ?? 0;
+      console.log('[DEBUG] AuthContext.hasRole userRoleLevel:', userRoleLevel, 'requiredRoleLevel:', requiredRoleLevel);
 
       return userRoleLevel >= requiredRoleLevel;
     },
@@ -607,22 +620,29 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   const hasPermission = useCallback(
     (permission: string): boolean => {
-      if (!user) return false;
+      console.log('[DEBUG] AuthContext.hasPermission called with permission:', permission, 'user:', user);
+      if (!user) {
+        console.log('[DEBUG] AuthContext.hasPermission returning false because user is null');
+        return false;
+      }
 
       // Check permissions array if available
       const canonicalPermission = normalizePermission(permission);
       if (!canonicalPermission) {
+        console.log('[DEBUG] AuthContext.hasPermission returning false because canonicalPermission is null');
         return false;
       }
 
       if (user.permissions) {
+        console.log('[DEBUG] AuthContext.hasPermission checking user.permissions:', user.permissions);
         return normalizePermissionList(user.permissions).includes(canonicalPermission);
       }
 
       // Default permissions based on role
-      const rolePermissions = getRolePermissions(
-        user.role || (user.roles[0] as UserRole)
-      );
+      const userRole = user.role || (user.roles[0] as UserRole);
+      console.log('[DEBUG] AuthContext.hasPermission using userRole:', userRole);
+      const rolePermissions = getRolePermissions(userRole);
+      console.log('[DEBUG] AuthContext.hasPermission rolePermissions:', rolePermissions);
       return rolePermissions.includes(canonicalPermission);
     },
     [user]

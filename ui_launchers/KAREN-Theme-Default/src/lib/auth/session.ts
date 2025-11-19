@@ -161,33 +161,50 @@ export async function validateSession(): Promise<boolean> {
  * Get current user data from session
  */
 export function getCurrentUser(): SessionData | null {
+  console.log('[DEBUG] getCurrentUser called, currentSession:', currentSession);
   return currentSession;
 }
 /**
  * Check if user has specific role
  */
 export function hasRole(role: string): boolean {
-  if (!currentSession) return false;
+  console.log('[DEBUG] hasRole called with role:', role, 'currentSession:', currentSession);
+  if (!currentSession) {
+    console.log('[DEBUG] hasRole returning false because currentSession is null');
+    return false;
+  }
   // Check the new role field first, then fall back to roles array
   if (currentSession.role) {
+    console.log('[DEBUG] hasRole checking currentSession.role:', currentSession.role);
     return currentSession.role === role;
   }
+  console.log('[DEBUG] hasRole checking currentSession.roles:', currentSession.roles);
   return currentSession.roles.includes(role);
 }
 /**
  * Check if user has specific permission
  */
 export function hasPermission(permission: string): boolean {
-  if (!currentSession) return false;
+  console.log('[DEBUG] hasPermission called with permission:', permission, 'currentSession:', currentSession);
+  if (!currentSession) {
+    console.log('[DEBUG] hasPermission returning false because currentSession is null');
+    return false;
+  }
   const canonical = normalizePermission(permission);
-  if (!canonical) return false;
+  if (!canonical) {
+    console.log('[DEBUG] hasPermission returning false because canonical permission is null');
+    return false;
+  }
   // Check permissions array if available
   if (currentSession.permissions) {
+    console.log('[DEBUG] hasPermission checking currentSession.permissions:', currentSession.permissions);
     return normalizePermissionList(currentSession.permissions).includes(canonical);
   }
   // Default permissions based on role (use unified rbac-shared)
   const role = currentSession.role || getHighestRole(currentSession.roles);
-  const rolePermissions = ROLE_PERMISSIONS[role] || [];
+  console.log('[DEBUG] hasPermission using role:', role, 'for permission:', permission);
+  const rolePermissions = ROLE_PERMISSIONS ? ROLE_PERMISSIONS[role] || [] : [];
+  console.log('[DEBUG] hasPermission rolePermissions:', rolePermissions);
   return rolePermissions.includes(canonical);
 }
 /**

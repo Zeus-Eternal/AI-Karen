@@ -218,10 +218,8 @@ export default function WeatherPluginPage() {
           <p>
             If the backend is configured with a valid <code>OPENWEATHER_API_KEY</code>,
             Karen will fetch live weather data from OpenWeatherMap. Without it,
-            the plugin returns mocked results for demo purposes.
-          </p>
-          <p className="mt-1 text-xs sm:text-sm md:text-base">
-            without specifying a city.
+            the plugin returns mocked results for demo purposes. You can also set a default location
+            to get weather information without specifying a city.
           </p>
         </AlertDescription>
       </Alert>

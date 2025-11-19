@@ -32,10 +32,6 @@ import {
 
 
 
-
-
-
-
 // Lazy load heavy components for better initial load performance
 const Dashboard = dynamic(
   () => import("@/components/dashboard/Dashboard"),
@@ -262,9 +258,7 @@ function AuthenticatedHomePage() {
                     </div>
                     <div className="modern-card-content min-h-[150px]">
                       <p className="text-sm text-muted-foreground">
-                        This space is reserved for future features.
-                      </p>
-                      <p className="mt-2 text-sm text-muted-foreground">
+                        This space is reserved for future features. You'll be able to store
                         conversations or important points she's learned here for
                         your easy review.
                       </p>

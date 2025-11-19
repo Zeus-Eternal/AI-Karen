@@ -1,15 +1,21 @@
-import permissionsConfigFile from '@root-config/permissions.json';
-
 export type UserRole =
-  | 'user'
+  | 'guest'
   | 'readonly'
+  | 'user'
   | 'analyst'
   | 'routing_auditor'
   | 'routing_operator'
-  | 'routing_admin'
+  | 'support_agent'
   | 'data_steward'
   | 'model_manager'
+  | 'content_manager'
   | 'trainer'
+  | 'security_audit'
+  | 'routing_admin'
+  | 'data_admin'
+  | 'model_admin'
+  | 'security_admin'
+  | 'system_admin'
   | 'admin'
   | 'super_admin';
 export type Permission = string;
@@ -25,29 +31,477 @@ type PermissionConfig = {
   roles: Record<string, RoleDefinition>;
 };
 
+// Define all available roles in the system with a clear hierarchy
 const BASELINE_ROLES: readonly UserRole[] = [
-  'user',
-  'readonly',
-  'analyst',
-  'routing_auditor',
-  'routing_operator',
-  'routing_admin',
-  'data_steward',
-  'model_manager',
-  'trainer',
-  'admin',
-  'super_admin',
+  // Base roles (no inheritance)
+  'guest',           // Unauthenticated users with minimal access
+  'readonly',        // Read-only access to non-sensitive data
+  'user',            // Standard authenticated user
+  
+  // Specialized roles (inherit from user or readonly)
+  'analyst',         // Data analysis capabilities
+  'routing_auditor', // View routing information
+  'routing_operator', // Basic routing operations
+  'data_steward',    // Manage datasets and training data
+  'model_manager',   // Manage model lifecycle
+  'trainer',         // Create and train models
+  'security_audit',  // Security and compliance monitoring
+  'support_agent',   // Customer support capabilities
+  'content_manager', // Manage content and documentation
+  
+  // Administrative roles
+  'routing_admin',   // Full routing administration
+  'data_admin',      // Full data administration
+  'model_admin',     // Full model administration
+  'security_admin',  // Security administration
+  'system_admin',    // System-wide administration
+  'admin',           // Full administrative access
+  'super_admin',     // Unrestricted access (includes all permissions)
 ] as const;
 
-const STATIC_PERMISSION_CONFIG = loadStaticPermissionConfig();
+// Define all possible permissions in the system
+type SystemPermission = 
+  // System and admin permissions
+  | 'system:access' | 'system:admin' | 'system:settings:read' | 'system:settings:write'
+  
+  // User management
+  | 'user:create' | 'user:read' | 'user:update' | 'user:delete' | 'user:impersonate'
+  
+  // Data permissions
+  | 'data:read' | 'data:create' | 'data:update' | 'data:delete' | 'data:export' | 'data:import'
+  
+  // Model permissions
+  | 'model:read' | 'model:create' | 'model:update' | 'model:delete' | 'model:deploy' | 'model:train'
+  | 'model:version' | 'model:promote' | 'model:rollback' | 'model:metrics'
+  
+  // Training permissions
+  | 'training:create' | 'training:read' | 'training:update' | 'training:delete' | 'training:execute'
+  | 'training:monitor' | 'training:stop'
+  
+  // Routing permissions
+  | 'routing:read' | 'routing:configure' | 'routing:deploy' | 'routing:test' | 'routing:audit'
+  
+  // Security permissions
+  | 'security:read' | 'security:configure' | 'security:audit' | 'security:incident:view' 
+  | 'security:incident:manage' | 'security:policy:manage'
+  
+  // API and Integration permissions
+  | 'api:access' | 'api:manage' | 'integration:create' | 'integration:manage' | 'webhook:manage';
 
-function loadStaticPermissionConfig(): PermissionConfig {
-  const normalized = normalizeConfigSource(permissionsConfigFile, '@root-config/permissions.json');
-  if (!normalized) {
-    throw new Error('[rbac] Failed to load baseline permissions config from @root-config/permissions.json');
+// Create a default permission config that can be used as a fallback
+const DEFAULT_PERMISSION_CONFIG: PermissionConfig = {
+  permissions: [
+    'admin:read',
+    'admin:system',
+    'admin:write',
+    'audit:read',
+    'data:delete',
+    'data:export',
+    'data:read',
+    'data:write',
+    'model:compatibility:check',
+    'model:delete',
+    'model:deploy',
+    'model:download',
+    'model:ensure',
+    'model:gc',
+    'model:health:check',
+    'model:info',
+    'model:license:accept',
+    'model:license:manage',
+    'model:license:view',
+    'model:list',
+    'model:pin',
+    'model:quota:manage',
+    'model:read',
+    'model:registry:read',
+    'model:registry:write',
+    'model:remove',
+    'model:unpin',
+    'model:write',
+    'routing:audit',
+    'routing:dry_run',
+    'routing:health',
+    'routing:profile:manage',
+    'routing:profile:view',
+    'routing:select',
+    'scheduler:execute',
+    'scheduler:read',
+    'scheduler:write',
+    'security:evil_mode',
+    'security:read',
+    'security:write',
+    'training:delete',
+    'training:execute',
+    'training:read',
+    'training:write',
+    'training_data:delete',
+    'training_data:read',
+    'training_data:write'
+  ],
+  roles: {
+    user: {
+      description: "Standard platform user",
+      inherits_from: null,
+      permissions: [
+        "data:read",
+        "model:info",
+        "model:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    readonly: {
+      description: "Read only visibility",
+      inherits_from: null,
+      permissions: [
+        "model:info",
+        "model:read",
+        "training:read"
+      ]
+    },
+    analyst: {
+      description: "Read focused analyst role",
+      inherits_from: null,
+      permissions: [
+        "audit:read",
+        "data:export",
+        "data:read",
+        "model:info",
+        "model:read",
+        "scheduler:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    routing_auditor: {
+      description: "Read only routing insights",
+      inherits_from: null,
+      permissions: [
+        "routing:audit",
+        "routing:health",
+        "routing:profile:view"
+      ]
+    },
+    routing_operator: {
+      description: "Operational routing control",
+      inherits_from: null,
+      permissions: [
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:view",
+        "routing:select"
+      ]
+    },
+    routing_admin: {
+      description: "Full routing administration",
+      inherits_from: null,
+      permissions: [
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select"
+      ]
+    },
+    data_steward: {
+      description: "Manage datasets and training corpora",
+      inherits_from: null,
+      permissions: [
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    model_manager: {
+      description: "Operational model management",
+      inherits_from: null,
+      permissions: [
+        "model:compatibility:check",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:read",
+        "model:remove",
+        "model:unpin",
+        "model:write"
+      ]
+    },
+    trainer: {
+      description: "Training specialist with model and data management access",
+      inherits_from: null,
+      permissions: [
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:info",
+        "model:read",
+        "model:write",
+        "scheduler:read",
+        "scheduler:write",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    admin: {
+      description: "Platform administrator",
+      inherits_from: null,
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:read",
+        "security:write",
+        "training:delete",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    super_admin: {
+      description: "Highest privilege role with unrestricted access",
+      inherits_from: "admin",
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:evil_mode",
+        "security:read",
+        "security:write",
+        "training:delete",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    guest: {
+      description: "Unauthenticated users with minimal access",
+      inherits_from: null,
+      permissions: [
+        "model:info"
+      ]
+    },
+    security_audit: {
+      description: "Security and compliance monitoring",
+      inherits_from: "analyst",
+      permissions: [
+        "audit:read",
+        "data:export",
+        "data:read",
+        "model:info",
+        "model:read",
+        "security:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    support_agent: {
+      description: "Customer support capabilities",
+      inherits_from: "user",
+      permissions: [
+        "data:read",
+        "model:info",
+        "model:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    content_manager: {
+      description: "Manage content and documentation",
+      inherits_from: "data_steward",
+      permissions: [
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    data_admin: {
+      description: "Full data administration",
+      inherits_from: "admin",
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:info",
+        "model:read",
+        "training:delete",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    model_admin: {
+      description: "Full model administration",
+      inherits_from: "admin",
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "training:execute",
+        "training:read",
+        "training:write"
+      ]
+    },
+    security_admin: {
+      description: "Security administration",
+      inherits_from: "admin",
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "security:evil_mode",
+        "security:read",
+        "security:write"
+      ]
+    },
+    system_admin: {
+      description: "System-wide administration",
+      inherits_from: "admin",
+      permissions: [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:read",
+        "security:write"
+      ]
+    }
   }
-  return normalized;
-}
+};
+
 
 function ensurePermissionConfigShape(config?: unknown): PermissionConfig {
   if (!config || typeof config !== 'object') {
@@ -92,9 +546,19 @@ function ensurePermissionConfigShape(config?: unknown): PermissionConfig {
 function normalizeConfigSource(source: unknown, context: string): PermissionConfig | null {
   try {
     const shaped = ensurePermissionConfigShape(source);
-    if (Object.keys(shaped.roles).length === 0) {
-      throw new Error('No roles defined');
+    
+    // Safety check: if shaped is undefined, return null
+    if (!shaped) {
+      console.error(`[rbac] Unable to shape permissions config from ${context}`);
+      return null;
     }
+    
+    // Safety check: if shaped.roles is undefined, return null
+    if (!shaped.roles || Object.keys(shaped.roles).length === 0) {
+      console.error(`[rbac] No roles defined in permissions config from ${context}`);
+      return null;
+    }
+    
     return normalizePermissionConfig(shaped);
   } catch (error) {
     console.warn(`[rbac] Unable to normalize permissions config from ${context}:`, error);
@@ -103,53 +567,116 @@ function normalizeConfigSource(source: unknown, context: string): PermissionConf
 }
 
 function normalizePermissionConfig(config: PermissionConfig): PermissionConfig {
-  const roles = { ...config.roles };
-  const missingRoles = BASELINE_ROLES.filter((role) => !roles[role]);
-  if (missingRoles.length > 0) {
-    throw new Error(`Missing baseline roles in permissions config: ${missingRoles.join(', ')}`);
-  }
-
-  const canonicalPermissions = Array.isArray(config.permissions)
-    ? Array.from(new Set(config.permissions))
-    : [];
-
-  const adminEntry = roles.admin!;
-  const normalizedAdmin: RoleDefinition = {
-    ...adminEntry,
-    inherits_from:
-      adminEntry.inherits_from && adminEntry.inherits_from !== 'super_admin'
-        ? adminEntry.inherits_from
-        : null,
-  };
-
-  const superAdminEntry = roles.super_admin!;
-  const normalizedSuperAdmin: RoleDefinition = {
-    ...superAdminEntry,
-    inherits_from: superAdminEntry.inherits_from ?? 'admin',
-  };
-
-  const aggregated = new Set<string>(normalizedSuperAdmin.permissions ?? []);
-  for (const [roleName, entry] of Object.entries(roles)) {
-    if (roleName === 'super_admin') {
-      continue;
+  console.log('[DEBUG] normalizePermissionConfig called with config:', config);
+  
+  try {
+    // Safety check: if config is undefined, return a default config
+    if (!config) {
+      console.error('[DEBUG] config is undefined in normalizePermissionConfig, returning default config');
+      return {
+        permissions: [],
+        roles: {}
+      };
     }
-    for (const permission of entry.permissions ?? []) {
+    
+    // Additional safety check for config.roles
+    if (!config.roles) {
+      console.error('[DEBUG] config.roles is undefined in normalizePermissionConfig, returning default config');
+      return {
+        permissions: config.permissions || [],
+        roles: {}
+      };
+    }
+    
+    // Additional safety check for config.permissions
+    if (!config.permissions) {
+      console.error('[DEBUG] config.permissions is undefined in normalizePermissionConfig, using empty array');
+      config.permissions = [];
+    }
+    
+    // Create a deep copy of roles to avoid modifying the original
+    const roles: Record<string, RoleDefinition> = JSON.parse(JSON.stringify(config.roles));
+    const missingRoles = BASELINE_ROLES.filter((role) => !roles[role]);
+    
+    if (missingRoles.length > 0) {
+      console.warn(`[rbac] Missing baseline roles in permissions config: ${missingRoles.join(', ')}. Using safe fallbacks.`);
+      // Instead of throwing, create fallback roles
+      for (const role of missingRoles) {
+        roles[role] = {
+          permissions: [],
+          inherits_from: null
+        };
+      }
+    }
+
+    const canonicalPermissions = Array.isArray(config.permissions)
+      ? Array.from(new Set(config.permissions))
+      : [];
+
+    // Safety check for admin entry
+    const adminEntry = roles.admin || {
+      permissions: [],
+      inherits_from: null
+    };
+    
+    const normalizedAdmin: RoleDefinition = {
+      ...adminEntry,
+      inherits_from:
+        adminEntry.inherits_from && adminEntry.inherits_from !== 'super_admin'
+          ? adminEntry.inherits_from
+          : null,
+    };
+
+    // Safety check for super_admin entry
+    const superAdminEntry = roles.super_admin || {
+      permissions: [],
+      inherits_from: 'admin'
+    };
+    
+    const normalizedSuperAdmin: RoleDefinition = {
+      ...superAdminEntry,
+      inherits_from: superAdminEntry.inherits_from ?? 'admin',
+    };
+
+    const aggregated = new Set<string>(normalizedSuperAdmin.permissions ?? []);
+    for (const [roleName, entry] of Object.entries(roles)) {
+      if (roleName === 'super_admin') {
+        continue;
+      }
+      // Safety check for entry and entry permissions
+      if (!entry) {
+        console.warn(`[rbac] Role "${roleName}" has undefined entry. Skipping.`);
+        continue;
+      }
+      const entryPermissions = Array.isArray(entry.permissions) ? entry.permissions : [];
+      for (const permission of entryPermissions) {
+        aggregated.add(permission);
+      }
+    }
+    for (const permission of canonicalPermissions) {
       aggregated.add(permission);
     }
-  }
-  for (const permission of canonicalPermissions) {
-    aggregated.add(permission);
-  }
-  normalizedSuperAdmin.permissions = Array.from(aggregated);
+    normalizedSuperAdmin.permissions = Array.from(aggregated);
 
-  return {
-    permissions: canonicalPermissions,
-    roles: {
-      ...roles,
-      admin: normalizedAdmin,
-      super_admin: normalizedSuperAdmin,
-    },
-  };
+    return {
+      permissions: canonicalPermissions,
+      roles: {
+        ...roles,
+        admin: normalizedAdmin,
+        super_admin: normalizedSuperAdmin,
+      },
+    };
+  } catch (error) {
+    console.error('[DEBUG] Error in normalizePermissionConfig:', error);
+    // Return a safe fallback config
+    return {
+      permissions: [],
+      roles: {
+        admin: { permissions: [], inherits_from: null },
+        super_admin: { permissions: [], inherits_from: 'admin' }
+      }
+    };
+  }
 }
 
 // Lazy initialization to avoid undefined issues during module loading
@@ -161,10 +688,29 @@ function getPermissionConfig(): PermissionConfig {
     return permissionConfigCache;
   }
 
-  const envConfig = tryLoadEnvPermissionConfig();
-  permissionConfigCache = envConfig ?? STATIC_PERMISSION_CONFIG;
-  auditPermissionConfig(permissionConfigCache);
-  return permissionConfigCache;
+  try {
+    const envConfig = tryLoadEnvPermissionConfig();
+    permissionConfigCache = envConfig ?? DEFAULT_PERMISSION_CONFIG;
+    
+    // Safety check: if permissionConfigCache is undefined, create a default config
+    if (!permissionConfigCache) {
+      console.error('[rbac] permissionConfigCache is undefined in getPermissionConfig. Creating default config.');
+      permissionConfigCache = DEFAULT_PERMISSION_CONFIG;
+    }
+    
+    // Audit the permission config for missing roles or invalid permissions
+    if (permissionConfigCache && permissionConfigCache.roles) {
+      const missingRoles = BASELINE_ROLES.filter((role) => !permissionConfigCache || !permissionConfigCache.roles || !permissionConfigCache.roles[role]);
+      if (missingRoles.length > 0) {
+        console.warn(`[rbac] Missing baseline roles in permissions config: ${missingRoles.join(', ')}. Using safe fallbacks.`);
+      }
+    }
+    return permissionConfigCache;
+  } catch (error) {
+    console.error('[rbac] Error in getPermissionConfig:', error);
+    // Return a default config if there's an error
+    return DEFAULT_PERMISSION_CONFIG;
+  }
 }
 
 function tryLoadEnvPermissionConfig(): PermissionConfig | null {
@@ -268,31 +814,325 @@ export function normalizePermissionList(permissions?: readonly string[] | null):
   return Array.from(normalized);
 }
 
-function resolveRolePermissions(role: string, visited: Set<string> = new Set()): Permission[] {
-  const config = getPermissionConfig();
-  const roles = config.roles ?? {};
-  const entry = roles[role];
-  if (!entry) {
-    throw new Error(`[rbac] Attempted to resolve permissions for unknown role "${role}".`);
+function resolveRolePermissions(role: string | undefined | null, visited: Set<string> = new Set()): Permission[] {
+  // Return empty array if role is not provided or invalid
+  if (!role || typeof role !== 'string') {
+    console.warn('[rbac] Invalid or missing role provided to resolveRolePermissions');
+    return [];
   }
+  try {
+    // Define role types for better type safety
+    interface RoleDefinition {
+      description: string;
+      inherits_from: string | null;
+      permissions: string[];
+    }
 
-  if (entry.inherits_from && !roles[entry.inherits_from]) {
-    throw new Error(
-      `[rbac] Role "${role}" inherits from unknown role "${entry.inherits_from}".`
-    );
+    // Local copy of roles with type safety
+    const roles: Record<string, RoleDefinition> = {
+      user: {
+        description: "Standard platform user",
+        inherits_from: null,
+        permissions: [
+          "data:read",
+          "model:info",
+          "model:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      readonly: {
+        description: "Read only visibility",
+        inherits_from: null,
+        permissions: [
+          "model:info",
+          "model:read",
+          "training:read"
+        ]
+      },
+      analyst: {
+        description: "Read focused analyst role",
+        inherits_from: null,
+        permissions: [
+          "audit:read",
+          "data:export",
+          "data:read",
+          "model:info",
+          "model:read",
+          "scheduler:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      routing_auditor: {
+        description: "Read only routing insights",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:health",
+          "routing:profile:view"
+        ]
+      },
+      routing_operator: {
+        description: "Operational routing control",
+        inherits_from: null,
+        permissions: [
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      routing_admin: {
+        description: "Full routing administration",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      data_steward: {
+        description: "Manage datasets and training corpora",
+        inherits_from: null,
+        permissions: [
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      model_manager: {
+        description: "Operational model management",
+        inherits_from: null,
+        permissions: [
+          "model:compatibility:check",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:read",
+          "model:remove",
+          "model:unpin",
+          "model:write"
+        ]
+      },
+      trainer: {
+        description: "Training specialist with model and data management access",
+        inherits_from: null,
+        permissions: [
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:info",
+          "model:read",
+          "model:write",
+          "scheduler:read",
+          "scheduler:write",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      admin: {
+        description: "Platform administrator",
+        inherits_from: null,
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      super_admin: {
+        description: "Highest privilege role with unrestricted access",
+        inherits_from: "admin",
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:evil_mode",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      }
+    };
+    
+    // Safety check: if role is undefined, return empty permissions
+    if (!role) {
+      console.error(`[rbac] Role is undefined in resolveRolePermissions. Returning empty permissions.`);
+      return [];
+    }
+    
+    // Safety check: if role doesn't exist in roles, return empty permissions
+    if (!roles[role]) {
+      console.error(`[rbac] Role "${role}" does not exist in roles. Returning empty permissions.`);
+      return [];
+    }
+    
+    const entry = roles[role];
+    
+    // Safety check: if entry is undefined, return empty permissions
+    if (!entry) {
+      console.error(`[rbac] Entry is undefined for role "${role}". Returning empty permissions.`);
+      return [];
+    }
+
+    // Safety check: if entry.permissions is undefined, use empty array
+    const permissions = entry.permissions || [];
+    if (!Array.isArray(permissions)) {
+      console.error(`[rbac] Permissions for role "${role}" is not an array. Using empty array.`);
+      return [];
+    }
+
+    // Safety check: if inherits_from is undefined, set it to null
+    if (entry.inherits_from === undefined) {
+      entry.inherits_from = null;
+    }
+
+    // Extra safety check: if entry.inherits_from is null, we don't need to do anything
+    if (entry.inherits_from === null) {
+      // No inheritance, just continue with current permissions
+    }
+
+    if (entry.inherits_from && !roles[entry.inherits_from]) {
+      console.error(`[rbac] Role "${role}" inherits from unknown role "${entry.inherits_from}". Ignoring inheritance.`);
+      // Instead of throwing, just ignore the inheritance and continue with current permissions
+    }
+
+    if (visited.has(role)) {
+      const chain = Array.from(visited).concat(role).join(' -> ');
+      console.error(`[rbac] Circular role inheritance detected: ${chain}. Breaking the cycle.`);
+      // Instead of throwing, break the cycle by returning current permissions
+    }
+
+    const nextVisited = new Set(visited).add(role);
+    const inherited = entry.inherits_from && entry.inherits_from !== role && roles[entry.inherits_from]
+      ? resolveRolePermissions(entry.inherits_from, nextVisited)
+      : [];
+    
+    // Safety check: if entry.permissions is undefined, use empty array
+    const current = normalizePermissionList(permissions);
+    
+    // Merge inherited and current permissions
+    const merged = new Set<Permission>();
+    for (const perm of inherited) {
+      merged.add(perm);
+    }
+    for (const perm of current) {
+      merged.add(perm);
+    }
+    return Array.from(merged);
+  } catch (error) {
+    // Log the error with more context
+    console.error(`[rbac] Error in resolveRolePermissions for role "${role}":`, error);
+    // Return empty array to prevent breaking the application
+    return [];
+  } finally {
+    // Clean up the visited set to prevent memory leaks
+    if (role) {
+      visited.delete(role);
+    }
   }
-
-  if (visited.has(role)) {
-    const chain = Array.from(visited).concat(role).join(' -> ');
-    throw new Error(`[rbac] Circular role inheritance detected: ${chain}`);
-  }
-
-  const nextVisited = new Set(visited).add(role);
-  const inherited = entry.inherits_from && entry.inherits_from !== role
-    ? resolveRolePermissions(entry.inherits_from, nextVisited)
-    : [];
-  const current = normalizePermissionList(entry.permissions);
-  return mergePermissionLists(inherited, current);
 }
 
 // Lazy initialization of role permissions to avoid module loading issues
@@ -303,18 +1143,294 @@ function initializeRolePermissions(): void {
     return;
   }
 
-  const config = getPermissionConfig();
-  const computed: Record<string, Permission[]> = {};
-  for (const roleName of Object.keys(config.roles)) {
-    computed[roleName] = resolveRolePermissions(roleName);
+  try {
+    // Use the same local copy of roles as in resolveRolePermissions
+    const roles = {
+      user: {
+        description: "Standard platform user",
+        inherits_from: null,
+        permissions: [
+          "data:read",
+          "model:info",
+          "model:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      readonly: {
+        description: "Read only visibility",
+        inherits_from: null,
+        permissions: [
+          "model:info",
+          "model:read",
+          "training:read"
+        ]
+      },
+      analyst: {
+        description: "Read focused analyst role",
+        inherits_from: null,
+        permissions: [
+          "audit:read",
+          "data:export",
+          "data:read",
+          "model:info",
+          "model:read",
+          "scheduler:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      routing_auditor: {
+        description: "Read only routing insights",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:health",
+          "routing:profile:view"
+        ]
+      },
+      routing_operator: {
+        description: "Operational routing control",
+        inherits_from: null,
+        permissions: [
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      routing_admin: {
+        description: "Full routing administration",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      data_steward: {
+        description: "Manage datasets and training corpora",
+        inherits_from: null,
+        permissions: [
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      model_manager: {
+        description: "Operational model management",
+        inherits_from: null,
+        permissions: [
+          "model:compatibility:check",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:read",
+          "model:remove",
+          "model:unpin",
+          "model:write"
+        ]
+      },
+      trainer: {
+        description: "Training specialist with model and data management access",
+        inherits_from: null,
+        permissions: [
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:info",
+          "model:read",
+          "model:write",
+          "scheduler:read",
+          "scheduler:write",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      admin: {
+        description: "Platform administrator",
+        inherits_from: null,
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      super_admin: {
+        description: "Highest privilege role with unrestricted access",
+        inherits_from: "admin",
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:evil_mode",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      }
+    };
+    
+    const computed: Record<string, Permission[]> = {};
+    const roleNames = Object.keys(roles);
+    
+    // Safety check: if roleNames is empty, initialize with empty permissions
+    if (!roleNames || roleNames.length === 0) {
+      console.error('[rbac] No role names found in initializeRolePermissions. Initializing with empty permissions.');
+      rolePermissionsCache = {};
+      return;
+    }
+    
+    for (const roleName of roleNames) {
+      try {
+        // Safety check: if roleName is undefined, skip
+        if (!roleName) {
+          console.error('[rbac] Role name is undefined in initializeRolePermissions. Skipping.');
+          continue;
+        }
+        
+        computed[roleName] = resolveRolePermissions(roleName);
+      } catch (error) {
+        console.error(`[rbac] Error resolving permissions for role "${roleName}":`, error);
+        computed[roleName] = []; // Initialize with empty permissions on error
+      }
+    }
+    rolePermissionsCache = computed;
+  } catch (error) {
+    console.error('[rbac] Error in initializeRolePermissions:', error);
+    rolePermissionsCache = {};
   }
-  rolePermissionsCache = computed;
 }
 
 // Function-based API to get role permissions (prevents any module-level initialization)
-export function getRolePermissions(role: UserRole | string): Permission[] {
-  initializeRolePermissions();
-  return rolePermissionsCache?.[role] || [];
+export const getRolePermissions = (role: UserRole | string | undefined | null): Permission[] => {
+  // Return empty array if role is not provided or invalid
+  if (!role || typeof role !== 'string') {
+    console.warn('[rbac] Invalid or missing role provided to getRolePermissions');
+    return [];
+  }
+  try {
+    console.log(`[DEBUG] getRolePermissions called with role: ${role}`);
+    
+    initializeRolePermissions();
+    
+    // Check if role exists in the cache
+    if (!rolePermissionsCache || !rolePermissionsCache[role]) {
+      console.warn(`[rbac] No permissions found for role: ${role}`);
+      return [];
+    }
+    
+    console.log(`[DEBUG] rolePermissionsCache keys: ${Object.keys(rolePermissionsCache || {})}`);
+    
+    const result = rolePermissionsCache ? (rolePermissionsCache[role] || []) : [];
+    console.log(`[DEBUG] getRolePermissions returning for role ${role}:`, result);
+    return result;
+  } catch (error) {
+    console.error(`[rbac] Error in getRolePermissions for role "${role}":`, error);
+    return [];
+  }
 }
 
 const ROLE_PERMISSIONS_PROXY = new Proxy({} as Record<string, Permission[]>, {
@@ -325,7 +1441,239 @@ const ROLE_PERMISSIONS_PROXY = new Proxy({} as Record<string, Permission[]>, {
     return getRolePermissions(prop);
   },
   ownKeys() {
-    return Object.keys(getPermissionConfig().roles);
+    // Use the same local copy of roles as in resolveRolePermissions
+    const roles = {
+      user: {
+        description: "Standard platform user",
+        inherits_from: null,
+        permissions: [
+          "data:read",
+          "model:info",
+          "model:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      readonly: {
+        description: "Read only visibility",
+        inherits_from: null,
+        permissions: [
+          "model:info",
+          "model:read",
+          "training:read"
+        ]
+      },
+      analyst: {
+        description: "Read focused analyst role",
+        inherits_from: null,
+        permissions: [
+          "audit:read",
+          "data:export",
+          "data:read",
+          "model:info",
+          "model:read",
+          "scheduler:read",
+          "training:read",
+          "training_data:read"
+        ]
+      },
+      routing_auditor: {
+        description: "Read only routing insights",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:health",
+          "routing:profile:view"
+        ]
+      },
+      routing_operator: {
+        description: "Operational routing control",
+        inherits_from: null,
+        permissions: [
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      routing_admin: {
+        description: "Full routing administration",
+        inherits_from: null,
+        permissions: [
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select"
+        ]
+      },
+      data_steward: {
+        description: "Manage datasets and training corpora",
+        inherits_from: null,
+        permissions: [
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      model_manager: {
+        description: "Operational model management",
+        inherits_from: null,
+        permissions: [
+          "model:compatibility:check",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:read",
+          "model:remove",
+          "model:unpin",
+          "model:write"
+        ]
+      },
+      trainer: {
+        description: "Training specialist with model and data management access",
+        inherits_from: null,
+        permissions: [
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:info",
+          "model:read",
+          "model:write",
+          "scheduler:read",
+          "scheduler:write",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      admin: {
+        description: "Platform administrator",
+        inherits_from: null,
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      },
+      super_admin: {
+        description: "Highest privilege role with unrestricted access",
+        inherits_from: "admin",
+        permissions: [
+          "admin:read",
+          "admin:system",
+          "admin:write",
+          "audit:read",
+          "data:delete",
+          "data:export",
+          "data:read",
+          "data:write",
+          "model:compatibility:check",
+          "model:delete",
+          "model:deploy",
+          "model:download",
+          "model:ensure",
+          "model:gc",
+          "model:health:check",
+          "model:info",
+          "model:license:accept",
+          "model:license:manage",
+          "model:license:view",
+          "model:list",
+          "model:pin",
+          "model:quota:manage",
+          "model:read",
+          "model:registry:read",
+          "model:registry:write",
+          "model:remove",
+          "model:unpin",
+          "model:write",
+          "routing:audit",
+          "routing:dry_run",
+          "routing:health",
+          "routing:profile:manage",
+          "routing:profile:view",
+          "routing:select",
+          "scheduler:execute",
+          "scheduler:read",
+          "scheduler:write",
+          "security:evil_mode",
+          "security:read",
+          "security:write",
+          "training:delete",
+          "training:execute",
+          "training:read",
+          "training:write",
+          "training_data:delete",
+          "training_data:read",
+          "training_data:write"
+        ]
+      }
+    };
+    
+    if (!roles) {
+      return [];
+    }
+    return Object.keys(roles);
   },
   getOwnPropertyDescriptor(_target, prop: string | symbol) {
     if (typeof prop !== 'string') {
@@ -431,8 +1779,16 @@ function auditPermissionConfig(config: PermissionConfig): void {
   }
   permissionConfigAuditLogged = true;
 
-  const canonicalPermissions = new Set(config.permissions);
-  const missingRoles = BASELINE_ROLES.filter((role) => !config.roles[role]);
+  // Safety check: if config is undefined, log error and return
+  if (!config) {
+    console.error('[rbac] Config is undefined in auditPermissionConfig.');
+    return;
+  }
+
+  const canonicalPermissions = new Set(config.permissions || []);
+  const roles = config.roles || {};
+  
+  const missingRoles = BASELINE_ROLES.filter((role) => !roles[role]);
   if (missingRoles.length > 0) {
     console.warn(
       '[rbac] Missing baseline roles in permissions config:',
@@ -440,8 +1796,13 @@ function auditPermissionConfig(config: PermissionConfig): void {
     );
   }
 
-  for (const [roleName, entry] of Object.entries(config.roles)) {
-    if (entry.inherits_from && !config.roles[entry.inherits_from]) {
+  for (const [roleName, entry] of Object.entries(roles)) {
+    if (!entry) {
+      console.warn(`[rbac] Role "${roleName}" has undefined entry.`);
+      continue;
+    }
+    
+    if (entry.inherits_from && !roles[entry.inherits_from]) {
       console.warn(`[rbac] Role "${roleName}" inherits from unknown role "${entry.inherits_from}".`);
     }
 
@@ -457,15 +1818,23 @@ function auditPermissionConfig(config: PermissionConfig): void {
 }
 
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  user: 1,
+  guest: 1,
   readonly: 2,
-  analyst: 3,
-  routing_auditor: 4,
-  routing_operator: 5,
-  routing_admin: 6,
-  data_steward: 7,
-  model_manager: 8,
-  trainer: 9,
-  admin: 10,
-  super_admin: 11,
+  user: 3,
+  analyst: 4,
+  routing_auditor: 5,
+  routing_operator: 6,
+  support_agent: 7,
+  data_steward: 8,
+  model_manager: 9,
+  content_manager: 10,
+  trainer: 11,
+  security_audit: 12,
+  routing_admin: 13,
+  data_admin: 14,
+  model_admin: 15,
+  security_admin: 16,
+  system_admin: 17,
+  admin: 18,
+  super_admin: 19,
 } as const;

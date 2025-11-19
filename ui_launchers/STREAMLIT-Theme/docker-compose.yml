@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  kari-ai-console:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - USER_ID=dev_user
+      - DEFAULT_MODEL=llama-cpp
+      - DEBUG_MODE=False
+    volumes:
+      - ./services:/app/services
+    restart: unless-stopped
+    networks:
+      - kari-network
+
+  # Optional: Add a reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - kari-ai-console
+    restart: unless-stopped
+    networks:
+      - kari-network
+    profiles:
+      - production
+
+networks:
+  kari-network:
+    driver: bridge
+
+volumes:
+  ssl:

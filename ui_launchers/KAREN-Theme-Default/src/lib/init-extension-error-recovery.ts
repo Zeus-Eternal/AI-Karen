@@ -167,7 +167,9 @@ if (isBrowser()) {
   }, 100);
 }
 
-export default {
+const extensionErrorRecovery = {
   initialize: initializeExtensionErrorRecovery,
   checkStatus: checkExtensionErrorRecoveryStatus
 };
+
+export default extensionErrorRecovery;

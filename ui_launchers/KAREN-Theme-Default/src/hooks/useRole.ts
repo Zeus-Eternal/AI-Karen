@@ -6,9 +6,11 @@
 
 import { useAuth } from '@/hooks/use-auth';
 
+import type { UserRole } from '@/components/security/rbac-shared';
+
 export interface UseRoleReturn {
-  role: 'super_admin' | 'admin' | 'user' | null;
-  hasRole: (role: 'super_admin' | 'admin' | 'user') => boolean;
+  role: UserRole | null;
+  hasRole: (role: UserRole) => boolean;
   hasPermission: (permission: string) => boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -52,7 +54,7 @@ export const useRole = (): UseRoleReturn => {
 /**
  * Hook to check if user has specific role
  */
-export const useHasRole = (requiredRole: 'super_admin' | 'admin' | 'user'): boolean => {
+export const useHasRole = (requiredRole: UserRole): boolean => {
   const { hasRole } = useAuth();
   return hasRole(requiredRole);
 };

@@ -52,14 +52,14 @@ export interface EnhancedMessageBubbleProps {
   className?: string;
 }
 
-export default function EnhancedMessageBubble({
+const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
   message,
   onCopy,
   onRegenerate,
   onRate,
   showMetadata = true,
   className,
-}: EnhancedMessageBubbleProps) {
+}: EnhancedMessageBubbleProps): JSX.Element => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -292,3 +292,4 @@ export default function EnhancedMessageBubble({
 }
 
 // Export commonly used types and the component
+export default EnhancedMessageBubble;
