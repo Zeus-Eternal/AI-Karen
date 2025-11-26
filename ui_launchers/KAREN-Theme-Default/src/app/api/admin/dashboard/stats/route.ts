@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Note: Removed 'force-dynamic' to allow static export
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 /**
  * GET /api/admin/dashboard/stats
  * 

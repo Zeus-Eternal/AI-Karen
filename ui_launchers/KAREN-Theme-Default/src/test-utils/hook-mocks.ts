@@ -13,11 +13,7 @@
 import type { AuthContextType, User, LoginCredentials } from '@/contexts/AuthContext';
 import type { UseRoleReturn } from '@/hooks/useRole';
 import { mockSuperAdminUser, mockAdminUser, mockRegularUser, createMockAuthContext } from './test-providers';
-import {
-  normalizePermission,
-  normalizePermissionList,
-  ROLE_PERMISSIONS,
-} from '@/components/security/rbac-shared';
+import { RBACService } from '@/lib/security/rbac/RBACService';
 
 type AuthRole = Parameters<AuthContextType['hasRole']>[0];
 
@@ -206,17 +202,18 @@ export const createMockUseRole = (
       return user.roles?.includes(requiredRole) ?? false;
     }),
     hasPermission: vi.fn((permission: string) => {
-      const canonical = normalizePermission(permission);
-      if (!canonical) return false;
-      return !!user && normalizePermissionList(user.permissions).includes(canonical);
+      if (!user) return false;
+      const rbacService = RBACService.getInstance();
+      const result = rbacService.hasPermission(permission);
+      return result.hasPermission ?? false;
     }),
     isAdmin: !!(user && (user.role === 'admin' || user.role === 'super_admin')),
     isSuperAdmin: !!(user && user.role === 'super_admin'),
     isUser: !!(user && user.role === 'user'),
-    canManageUsers: !!user && normalizePermissionList(user.permissions).includes('admin:read'),
-    canManageAdmins: !!user && normalizePermissionList(user.permissions).includes('admin:write'),
-    canManageSystem: !!user && normalizePermissionList(user.permissions).includes('admin:system'),
-    canViewAuditLogs: !!user && normalizePermissionList(user.permissions).includes('audit:read'),
+    canManageUsers: !!user && (RBACService.getInstance().hasPermission('admin:read').hasPermission ?? false),
+    canManageAdmins: !!user && (RBACService.getInstance().hasPermission('admin:write').hasPermission ?? false),
+    canManageSystem: !!user && (RBACService.getInstance().hasPermission('admin:system').hasPermission ?? false),
+    canViewAuditLogs: !!user && (RBACService.getInstance().hasPermission('audit:read').hasPermission ?? false),
   };
   return { ...base, ...overrides };
 };
@@ -233,15 +230,9 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
 
   const hasPermission = vi.fn((permission: string): boolean => {
     if (!user) return false;
-    const canonical = normalizePermission(permission);
-    if (!canonical) return false;
-    const directPermissions = normalizePermissionList(user.permissions);
-    if (directPermissions.length) {
-      return directPermissions.includes(canonical);
-    }
-    const fallbackRole = (user.role || user.roles?.[0] || 'user') as AuthRole;
-    const rolePerms = getRolePermissions(fallbackRole);
-    return rolePerms.includes(canonical);
+    const rbacService = RBACService.getInstance();
+    const result = rbacService.hasPermission(permission);
+    return result.hasPermission ?? false;
   });
 
   const isAdmin = vi.fn(() => hasRole('admin') || hasRole('super_admin'));
@@ -269,7 +260,6 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
   };
 };
 
-const getRolePermissions = (role: AuthRole): string[] => ROLE_PERMISSIONS[role] ?? [];
 
 // ---------------------------------------------------------------------------
 // Isolation & cleanup

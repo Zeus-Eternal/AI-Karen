@@ -17,9 +17,9 @@ import { Separator } from '../ui/separator';
 /**
  * @file WeatherPluginPage.tsx
  * @description Page for configuring Weather Service settings for Karen AI.
- * When the backend provides an OPENWEATHER_API_KEY environment variable,
+ * When backend provides an OPENWEATHER_API_KEY environment variable,
  * live weather data is fetched from OpenWeatherMap. Otherwise, mocked
- * responses are used. This page lets users set preferences for the future
+ * responses are used. This page lets users set preferences for future
  * full integration.
  */
 export default function WeatherPluginPage() {
@@ -119,17 +119,17 @@ export default function WeatherPluginPage() {
         <Info className="h-4 w-4 " />
         <AlertTitle>How to Use Weather Features</AlertTitle>
         <AlertDescription>
-          Ask Karen for the weather in a specific location directly in the chat (e.g., "What's the weather in London?").
-          She can use different services based on your configuration below. The "Default Location" can be used if you ask for weather without specifying a place.
+          Ask Karen for weather in a specific location directly in chat (e.g., &ldquo;What&rsquo;s the weather in London?&rdquo;).
+          She can use different services based on your configuration below. The &ldquo;Default Location&rdquo; can be used if you ask for weather without specifying a place.
         </AlertDescription>
       </Alert>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Weather Service & Preferences</CardTitle>
-          <CardDescription>
-            Choose your weather data source and display preferences.
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-lg">Weather Service & Preferences</CardTitle>
+            <CardDescription>
+              Choose your weather data source and display preferences.
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="weather-service-select">Weather Service Source</Label>
@@ -147,7 +147,7 @@ export default function WeatherPluginPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              Select the service Karen should use. "Custom API" is a placeholder for future integration with services requiring an API key.
+              Select a service Karen should use. &ldquo;Custom API&rdquo; is a placeholder for future integration with services requiring an API key.
             </p>
           </div>
           {['custom_api', 'openweather'].includes(settings.weatherService) && (
@@ -162,7 +162,7 @@ export default function WeatherPluginPage() {
                 disabled /* Keep disabled until actual service logic is implemented */
               />
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                API key usage requires backend support for the selected service.
+                API key usage requires backend support for selected service.
               </p>
             </div>
           )}
@@ -201,7 +201,7 @@ export default function WeatherPluginPage() {
                 </Button>
             </div>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              This preference will be used when Karen reports the weather.
+              This preference will be used when Karen reports weather.
             </p>
           </div>
         </CardContent>
@@ -216,9 +216,9 @@ export default function WeatherPluginPage() {
         <AlertTitle>About Weather Integration</AlertTitle>
         <AlertDescription>
           <p>
-            If the backend is configured with a valid <code>OPENWEATHER_API_KEY</code>,
+            If backend is configured with a valid <code>OPENWEATHER_API_KEY</code>,
             Karen will fetch live weather data from OpenWeatherMap. Without it,
-            the plugin returns mocked results for demo purposes. You can also set a default location
+            plugin returns mocked results for demo purposes. You can also set a default location
             to get weather information without specifying a city.
           </p>
         </AlertDescription>

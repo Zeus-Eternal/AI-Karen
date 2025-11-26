@@ -5,10 +5,10 @@ import { useExtensionContext } from "@/hooks/use-extension-context";
 import { navigationActions } from "@/extensions";
 import {
   getPluginService,
-  getExtensionService,
+  extensionService,
   type PluginCategory,
 } from "@/services";
-import type { ExtensionInfo as LegacyExtensionInfo } from "@/services/extensionService";
+import type { ExtensionInfo as LegacyExtensionInfo } from "@/services/extensions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -58,7 +58,7 @@ export default function SidebarNavigation() {
 
     (async () => {
       try {
-        const exts = await getExtensionService().getInstalledExtensions();
+        const exts = await extensionService.getInstalledExtensions();
         if (active) setExtensions(exts ?? []);
       } catch (error) {
         if (active) {

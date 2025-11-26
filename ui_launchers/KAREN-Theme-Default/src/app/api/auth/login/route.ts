@@ -7,6 +7,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
 const TIMEOUT_MS = 15000; // 15 seconds
 const MAX_RETRIES = 2;
 const SESSION_COOKIE_NAME = 'kari_session';

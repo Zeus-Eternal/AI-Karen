@@ -4,8 +4,8 @@
  * Advanced HTTP client with comprehensive error handling, retries, and interceptors.
  * Based on requirements: 12.2, 12.3
  */
-import { useAppStore } from "@/store/app-store";
-import { queryClient } from "@/lib/query-client";
+// Removed direct imports to avoid circular dependencies
+import { QueryClient } from '@tanstack/react-query';
 
 // Enhanced API Response types
 export interface ApiResponse<T = unknown> {
@@ -98,6 +98,26 @@ export class EnhancedApiClient {
   private requestLogs: Map<string, RequestLog> = new Map();
   private rateLimiters: Map<string, { count: number; resetTime: number }> =
     new Map();
+  private storeCallbacks: {
+    setLoading?: (key: string, loading: boolean) => void;
+    setGlobalLoading?: (loading: boolean) => void;
+    clearLoading?: (key: string) => void;
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+    setConnectionQuality?: (quality: 'good' | 'poor' | 'offline') => void;
+  } = {};
+  private queryClientCallback?: () => QueryClient;
+  
+  // Static properties to store callbacks
+  private static storeCallbacks: {
+    setLoading?: (key: string, loading: boolean) => void;
+    setGlobalLoading?: (loading: boolean) => void;
+    clearLoading?: (key: string) => void;
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+    setConnectionQuality?: (quality: 'good' | 'poor' | 'offline') => void;
+  } = {};
+  private static queryClientCallback?: () => QueryClient;
   constructor(baseURL?: string) {
     this.baseURL = baseURL || this.getBaseURL();
     this.setupDefaultInterceptors();
@@ -161,9 +181,9 @@ export class EnhancedApiClient {
     if (typeof window !== "undefined") {
       const protocol = window.location.protocol;
       const host = window.location.host;
-      return `${protocol}//${host}/api`;
+      return `${protocol}//${host}`;
     }
-    return process.env.NEXT_PUBLIC_API_URL || "/api";
+    return process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
   }
   // Setup default interceptors
   private setupDefaultInterceptors(): void {
@@ -201,12 +221,12 @@ export class EnhancedApiClient {
     this.addRequestInterceptor(async (config) => {
       try {
         if (!config.skipLoading) {
-          const { setLoading, setGlobalLoading } = useAppStore.getState();
+          const { setLoading, setGlobalLoading } = this.storeCallbacks;
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
-            setGlobalLoading(true);
+            setGlobalLoading?.(true);
           } else {
-            setLoading(loadingKey, true);
+            setLoading?.(loadingKey, true);
           }
         }
         return config;
@@ -220,12 +240,12 @@ export class EnhancedApiClient {
       try {
         // Clear loading states
         if (!config.skipLoading) {
-          const { setGlobalLoading, clearLoading } = useAppStore.getState();
+          const { setGlobalLoading, clearLoading } = this.storeCallbacks;
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
-            setGlobalLoading(false);
+            setGlobalLoading?.(false);
           } else {
-            clearLoading(loadingKey);
+            clearLoading?.(loadingKey);
           }
         }
         // Handle rate limiting
@@ -241,9 +261,9 @@ export class EnhancedApiClient {
         }
         // Handle 401 unauthorized
         if (response.status === 401) {
-          const { logout, addNotification } = useAppStore.getState();
-          logout();
-          addNotification({
+          const { logout, addNotification } = this.storeCallbacks;
+          logout?.();
+          addNotification?.({
             type: "warning",
             title: "Session Expired",
             message: "Please log in again to continue.",
@@ -251,8 +271,8 @@ export class EnhancedApiClient {
         }
         // Handle 403 forbidden
         if (response.status === 403) {
-          const { addNotification } = useAppStore.getState();
-          addNotification({
+          const { addNotification } = this.storeCallbacks;
+          addNotification?.({
             type: "error",
             title: "Access Denied",
             message: "You do not have permission to perform this action.",
@@ -269,29 +289,28 @@ export class EnhancedApiClient {
       try {
         // Clear loading states on error
         if (!config.skipLoading) {
-          const { setGlobalLoading, clearLoading } = useAppStore.getState();
+          const { setGlobalLoading, clearLoading } = this.storeCallbacks;
           const loadingKey = config.loadingKey || "api";
           if (loadingKey === "global") {
-            setGlobalLoading(false);
+            setGlobalLoading?.(false);
           } else {
-            clearLoading(loadingKey);
+            clearLoading?.(loadingKey);
           }
         }
         if (!config.skipErrorHandling) {
-          const { addNotification, setConnectionQuality } =
-            useAppStore.getState();
+          const { addNotification, setConnectionQuality } = this.storeCallbacks;
           // Handle different error types
           switch (error.code) {
             case "NETWORK_ERROR":
-              setConnectionQuality("offline");
-              addNotification({
+              setConnectionQuality?.("offline");
+              addNotification?.({
                 type: "error",
                 title: "Network Error",
                 message: "Please check your internet connection and try again.",
               });
               break;
             case "TIMEOUT":
-              addNotification({
+              addNotification?.({
                 type: "warning",
                 title: "Request Timeout",
                 message:
@@ -299,7 +318,7 @@ export class EnhancedApiClient {
               });
               break;
             case "RATE_LIMITED":
-              addNotification({
+              addNotification?.({
                 type: "warning",
                 title: "Rate Limited",
                 message:
@@ -308,7 +327,7 @@ export class EnhancedApiClient {
               break;
             default:
               if (error.status && error.status >= 500) {
-                addNotification({
+                addNotification?.({
                   type: "error",
                   title: "Server Error",
                   message: "A server error occurred. Please try again later.",
@@ -352,6 +371,39 @@ export class EnhancedApiClient {
   }
   public addErrorInterceptor(interceptor: ErrorInterceptor): void {
     this.errorInterceptors.push(interceptor);
+  }
+  
+  // Set store callbacks to avoid circular dependencies
+  public setStoreCallbacks(callbacks: {
+    setLoading?: (key: string, loading: boolean) => void;
+    setGlobalLoading?: (loading: boolean) => void;
+    clearLoading?: (key: string) => void;
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+    setConnectionQuality?: (quality: 'good' | 'poor' | 'offline') => void;
+  }): void {
+    this.storeCallbacks = callbacks;
+  }
+  
+  // Set query client callback to avoid circular dependencies
+  public setQueryClientCallback(callback: () => QueryClient): void {
+    this.queryClientCallback = callback;
+  }
+  
+  // Static methods to set callbacks
+  public static setStoreCallbacks(callbacks: {
+    setLoading?: (key: string, loading: boolean) => void;
+    setGlobalLoading?: (loading: boolean) => void;
+    clearLoading?: (key: string) => void;
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+    setConnectionQuality?: (quality: 'good' | 'poor' | 'offline') => void;
+  }): void {
+    EnhancedApiClient.storeCallbacks = callbacks;
+  }
+  
+  public static setQueryClientCallback(callback: () => QueryClient): void {
+    EnhancedApiClient.queryClientCallback = callback;
   }
   // Check rate limiting
   private checkRateLimit(endpoint: string): boolean {
@@ -459,7 +511,11 @@ export class EnhancedApiClient {
         // Invalidate queries if specified
         if (invalidateQueries.length > 0) {
           for (const queryKey of invalidateQueries) {
-            queryClient.invalidateQueries({ queryKey: [queryKey] });
+            const queryClientCallback = this.queryClientCallback || EnhancedApiClient.queryClientCallback;
+            if (queryClientCallback) {
+              const client = queryClientCallback();
+              client.invalidateQueries({ queryKey: [queryKey] });
+            }
           }
         }
         return data;

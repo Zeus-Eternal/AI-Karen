@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from 'react';
+import * as React from "react";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyManager from "./ApiKeyManager";
@@ -12,7 +12,7 @@ import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
 import LLMSettings from "./LLMSettings";
 import ModelLibrary from "./ModelLibrary";
-import CopilotKitSettings from "./CopilotKitSettings";
+import CopilotSettings from "./CopilotKitSettings";
 
 import { 
   Brain, 
@@ -36,8 +36,8 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
  * This component is intended to be rendered as a main view.
  */
 export default function SettingsDialog() {
-  const [activeTab, setActiveTab] = useState("api-key");
-
+  const [activeTab, setActiveTab] = useState("copilot")
+  
   // Listen for cross-navigation events between tabs
   useEffect(() => {
     const handleNavigateToModelLibrary = () => {
@@ -64,8 +64,8 @@ export default function SettingsDialog() {
           Settings
         </h2>
         <p className="text-sm text-muted-foreground">
-          Customize Karen AI's behavior, API connections, personal knowledge,
-          notifications, and more. Your preferences are saved locally in your
+          Customize Karen AI&rsquo;s behavior, API connections, personal knowledge,
+          notifications and more. Your preferences are saved locally in your
           browser.
         </p>
       </div>
@@ -78,8 +78,8 @@ export default function SettingsDialog() {
           <TabsTrigger value="model-library">
             <Library className="mr-1 sm:mr-2 h-4 w-4" /> Model Library
           </TabsTrigger>
-          <TabsTrigger value="copilotkit">
-            <MessageSquare className="mr-1 sm:mr-2 h-4 w-4" /> CopilotKit
+          <TabsTrigger value="copilot">
+            <MessageSquare className="mr-1 sm:mr-2 h-4 w-4" /> Copilot
           </TabsTrigger>
           <TabsTrigger value="api-key">
             <KeyRound className="mr-1 sm:mr-2 h-4 w-4" /> API Key
@@ -104,7 +104,7 @@ export default function SettingsDialog() {
           </TabsTrigger>
         </TabsList>
 
-        {/* This div ensures padding and allows content to grow within the main scrollable area */}
+        {/* This div ensures padding and allows content to grow within main scrollable area */}
         <div className="mt-4">
           <TabsContent value="llm">
             <ErrorBoundary>
@@ -116,9 +116,9 @@ export default function SettingsDialog() {
               <ModelLibrary />
             </ErrorBoundary>
           </TabsContent>
-          <TabsContent value="copilotkit">
+          <TabsContent value="copilot">
             <ErrorBoundary>
-              <CopilotKitSettings />
+              <CopilotSettings />
             </ErrorBoundary>
           </TabsContent>
           <TabsContent value="api-key">

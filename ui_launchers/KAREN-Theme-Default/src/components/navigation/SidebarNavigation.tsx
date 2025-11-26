@@ -336,9 +336,9 @@ const NavigationItemComponent: React.FC<NavigationItemComponentProps> = ({
         disabled={item.disabled}
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-current={isActive ? "page" : undefined}
-        aria-level={level + 1}
         title={isCollapsed ? item.label : undefined}
         role="button"
+        data-level={level}
       >
         {/* Icon */}
         {Icon && (

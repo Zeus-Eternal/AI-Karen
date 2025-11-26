@@ -169,7 +169,7 @@ export class SessionErrorBoundary extends Component<
         <div className="text-center space-y-6 max-w-md mx-auto p-6">
           <AlertCircle className="h-16 w-16 mx-auto text-red-500" aria-hidden="true" />
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold" role="heading" aria-level={2}>
+            <h2 className="text-xl font-semibold">
               {isAuthError ? "Authentication Error" : "Something went wrong"}
             </h2>
             <p className="text-muted-foreground">

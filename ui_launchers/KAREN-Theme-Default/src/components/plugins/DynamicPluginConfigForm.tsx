@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -595,7 +594,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
         <Alert>
           <Info className="w-4 h-4 " />
           <AlertDescription>
-            You have unsaved changes. Don't forget to save your configuration.
+            You have unsaved changes. Don&rsquo;t forget to save your configuration.
           </AlertDescription>
         </Alert>
       )}
@@ -626,7 +625,7 @@ export const DynamicPluginConfigForm: React.FC<DynamicPluginConfigFormProps> = (
             <p className="text-muted-foreground">
               {searchQuery 
                 ? 'Try adjusting your search query'
-                : 'This plugin doesn\'t have any configurable settings.'
+                : `This plugin doesn&rsquo;t have any configurable settings.`
               }
             </p>
           </CardContent>

@@ -18,10 +18,10 @@ import {
   type PermissionCheckResult,
   type RBACConfig,
   type Role,
-  type RoleHierarchy,
+  type RoleHierarchyItem,
   type Restriction,
   type RBACUser,
-} from "@/types/rbac";
+} from "@/lib/security/rbac/types";
 
 import { RBACContext, type RBACContextValue } from './rbac-context';
 
@@ -134,7 +134,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
   /**
    * Role hierarchy
    */
-  const { data: roleHierarchy = [] } = useQuery<RoleHierarchy[], Error>({
+  const { data: roleHierarchy = [] } = useQuery<RoleHierarchyItem[], Error>({
     queryKey: [
       "rbac",
       "role-hierarchy",
@@ -147,7 +147,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
         params.append("roleIds", role.id);
       }
       const response =
-        await enhancedApiClient.get<RoleHierarchy[]>(
+        await enhancedApiClient.get<RoleHierarchyItem[]>(
           `/api/rbac/role-hierarchy?${params.toString()}`
         );
       return response.data ?? [];
@@ -274,7 +274,7 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
         for (const restriction of activeRestrictions) {
           if (restriction.type === "ip_restriction") {
             const ipCfg = normalizeIPRestrictionConfig(
-              restriction.config
+              restriction.config || {}
             );
             if (
               ipCfg.blockedIPs.includes(context.ipAddress) ||
@@ -334,8 +334,10 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
   );
 
   const hasPermission = useCallback(
-    (permission: Permission, context?: Partial<AccessContext>): boolean =>
-      checkPermission(permission, context).granted,
+    (permission: Permission, context?: Partial<AccessContext>): boolean => {
+      const result = checkPermission(permission, context);
+      return result.granted ?? false;
+    },
     [checkPermission]
   );
 
@@ -533,19 +535,32 @@ export function RBACProvider({ children, config }: RBACProviderProps) {
 
 function getDefaultRBACConfig(): RBACConfig {
   return {
+    enableCache: true,
+    cacheTTL: 5 * 60 * 1000,
+    enableDebugLogging: false,
+    enableStrictMode: false,
+    enableDynamicPermissions: true,
+    defaultRole: "user",
+    guestRole: "guest",
     enableRoleHierarchy: true,
     conflictResolution: "highest_priority",
     sessionTimeout: 30 * 60 * 1000,
     requireReauthentication: false,
     auditLevel: "detailed",
     cachePermissions: true,
-    cacheTTL: 5 * 60 * 1000,
   };
 }
 
 function getDefaultEvilModeConfig(): EvilModeConfig {
   return {
     enabled: true,
+    justificationRequired: true,
+    timeout: 60,
+    timeLimit: 60,
+    maxActions: 100,
+    auditLogging: true,
+    notificationEnabled: true,
+    allowedRoles: ["admin"],
     requiredRole: "security:evil_mode",
     confirmationRequired: true,
     additionalAuthRequired: true,
@@ -553,7 +568,6 @@ function getDefaultEvilModeConfig(): EvilModeConfig {
     restrictions: [],
     warningMessage:
       "You are about to enable Evil Mode. This grants elevated privileges that can potentially harm the system. Proceed with extreme caution.",
-    timeLimit: 60,
   };
 }
 
@@ -622,6 +636,7 @@ function normalizeRBACUser(
       candidate.id,
     email: candidate.email,
     roles: Array.isArray(candidate.roles) ? candidate.roles : [],
+    is_active: candidate.is_active ?? true,
     directPermissions: candidate.directPermissions ?? [],
     restrictions: candidate.restrictions ?? [],
     metadata: normalizedMetadata,

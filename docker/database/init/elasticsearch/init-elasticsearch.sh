@@ -97,7 +97,19 @@ create_template() {
 # Install curl if not present
 if ! command -v curl &> /dev/null; then
     log "Installing curl..."
-    apk add --no-cache curl
+    # Try different package managers
+    if command -v apk &> /dev/null; then
+        apk add --no-cache curl
+    elif command -v apt-get &> /dev/null; then
+        apt-get update && apt-get install -y curl
+    elif command -v yum &> /dev/null; then
+        yum install -y curl
+    elif command -v pacman &> /dev/null; then
+        pacman -S --noconfirm curl
+    else
+        log "❌ No known package manager found. Please install curl manually."
+        return 1
+    fi
 fi
 
 # Wait for Elasticsearch to be ready
@@ -105,25 +117,26 @@ wait_for_elasticsearch
 
 # Create indices from mapping files
 log "Creating Elasticsearch indices..."
+log "Current directory: $(pwd)"
 
 # Memory index for AI Karen memory storage
-create_index "ai_karen_memory" "/init/elasticsearch/memory_index.json"
+create_index "ai_karen_memory" "$(dirname "$0")/../../migrations/elasticsearch/memory_index.json"
 
 # Document index for general document storage
-create_index "ai_karen_documents" "/init/elasticsearch/document_index.json"
+create_index "ai_karen_documents" "$(dirname "$0")/../../migrations/elasticsearch/document_index.json"
 
 # Analytics index for system metrics and analytics
-create_index "ai_karen_analytics" "/init/elasticsearch/analytics_index.json"
+create_index "ai_karen_analytics" "$(dirname "$0")/../../migrations/elasticsearch/analytics_index.json"
 
 # Logs index for application logs
-create_index "ai_karen_logs" "/init/elasticsearch/logs_index.json"
+create_index "ai_karen_logs" "$(dirname "$0")/../../migrations/elasticsearch/logs_index.json"
 
 # Create index templates
 log "Creating index templates..."
 
 # Template for time-series data
-if [ -f "/init/elasticsearch/timeseries_template.json" ]; then
-    create_template "ai_karen_timeseries" "/init/elasticsearch/timeseries_template.json"
+if [ -f "$(dirname "$0")/../../migrations/elasticsearch/timeseries_template.json" ]; then
+    create_template "ai_karen_timeseries" "$(dirname "$0")/../../migrations/elasticsearch/timeseries_template.json"
 fi
 
 # Configure cluster settings

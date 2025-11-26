@@ -14,7 +14,7 @@ from ..production_hardening_audit import (
     IssueType,
     IssueSeverity,
     CodebaseIssue,
-    ProductionAuditReport
+    AuditReport
 )
 from ...core.services.base import ServiceConfig
 
@@ -161,7 +161,7 @@ const API_URL = "http://localhost:3000/api";
         report = await audit_service.audit_codebase()
         
         # Verify report structure
-        assert isinstance(report, ProductionAuditReport)
+        assert isinstance(report, AuditReport)
         assert report.total_files_scanned > 0
         assert report.total_issues_found > 0
         assert len(report.issues) > 0

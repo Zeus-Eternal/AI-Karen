@@ -1,0 +1,665 @@
+{
+  "registry": {
+    "version": "1.0.0",
+    "description": "Service Facades Registry",
+    "last_updated": "2025-11-26T05:42:31Z",
+    "domains": [
+      {
+        "name": "memory",
+        "description": "Memory & Cognitive Services",
+        "facades": [
+          {
+            "module": "unified_memory_service",
+            "class": "UnifiedMemoryService",
+            "description": "Primary memory API for the system"
+          },
+          {
+            "module": "neurovault_integration_service",
+            "class": "NeuroVaultIntegrationService",
+            "description": "Integrates advanced memory platforms"
+          },
+          {
+            "module": "memory_policy",
+            "class": "MemoryPolicy",
+            "description": "Memory policy management"
+          },
+          {
+            "module": "memory_writeback",
+            "class": "MemoryWriteback",
+            "description": "Memory writeback operations"
+          },
+          {
+            "module": "memory_transformation_utils",
+            "class": "MemoryTransformationUtils",
+            "description": "Memory transformation utilities"
+          }
+        ],
+        "internal_modules": [
+          "internal/backends.py",
+          "internal/compatibility.py",
+          "internal/exhaustion_handler.py",
+          "internal/tenant_isolation.py",
+          "internal/caching.py"
+        ]
+      },
+      {
+        "name": "cognitive",
+        "description": "Cognitive Services",
+        "facades": [
+          {
+            "module": "working_memory",
+            "class": "WorkingMemory",
+            "description": "Working memory service"
+          },
+          {
+            "module": "episodic_memory",
+            "class": "EpisodicMemory",
+            "description": "Episodic memory service"
+          }
+        ]
+      },
+      {
+        "name": "models",
+        "description": "Models & Providers Services",
+        "facades": [
+          {
+            "module": "model_orchestrator_service",
+            "class": "ModelOrchestratorService",
+            "description": "Single entry for model requests"
+          },
+          {
+            "module": "model_registry",
+            "class": "ModelRegistry",
+            "description": "Manages known models and metadata"
+          },
+          {
+            "module": "provider_registry",
+            "class": "ProviderRegistry",
+            "description": "Manages providers and capabilities"
+          },
+          {
+            "module": "llm_router",
+            "class": "LLMRouter",
+            "description": "Core routing logic for LLM calls"
+          },
+          {
+            "module": "intelligent_model_router",
+            "class": "IntelligentModelRouter",
+            "description": "Dynamic model selection"
+          },
+          {
+            "module": "model_library_service",
+            "class": "ModelLibraryService",
+            "description": "Model library management"
+          },
+          {
+            "module": "model_download_manager",
+            "class": "ModelDownloadManager",
+            "description": "Model download and storage"
+          },
+          {
+            "module": "model_availability_handler",
+            "class": "ModelAvailabilityHandler",
+            "description": "Model availability management"
+          },
+          {
+            "module": "provider_health_monitor",
+            "class": "ProviderHealthMonitor",
+            "description": "Provider health monitoring"
+          }
+        ],
+        "internal_modules": [
+          "internal/optimization.py",
+          "internal/cuda_acceleration.py",
+          "internal/slm_adapters.py",
+          "internal/discovery.py",
+          "internal/metadata_store.py"
+        ]
+      },
+      {
+        "name": "infra",
+        "description": "Infrastructure Services",
+        "facades": [
+          {
+            "module": "database_connection_manager",
+            "class": "DatabaseConnectionManager",
+            "description": "Database connection management"
+          },
+          {
+            "module": "redis_connection_manager",
+            "class": "RedisConnectionManager",
+            "description": "Redis connection management"
+          },
+          {
+            "module": "model_connection_manager",
+            "class": "ModelConnectionManager",
+            "description": "Model connection management"
+          },
+          {
+            "module": "integrated_cache_system",
+            "class": "IntegratedCacheSystem",
+            "description": "Global cache abstraction"
+          },
+          {
+            "module": "smart_cache_manager",
+            "class": "SmartCacheManager",
+            "description": "High-level caching strategy"
+          },
+          {
+            "module": "database_query_cache_service",
+            "class": "DatabaseQueryCacheService",
+            "description": "DB-specific query caching"
+          },
+          {
+            "module": "cache_invalidation_service",
+            "class": "CacheInvalidationService",
+            "description": "Cache invalidation management"
+          },
+          {
+            "module": "database_optimization_service",
+            "class": "DatabaseOptimizationService",
+            "description": "Database optimization"
+          },
+          {
+            "module": "database_health_monitor",
+            "class": "DatabaseHealthMonitor",
+            "description": "Database health monitoring"
+          },
+          {
+            "module": "database_consistency_validator",
+            "class": "DatabaseConsistencyValidator",
+            "description": "Database consistency validation"
+          },
+          {
+            "module": "connection_health_manager",
+            "class": "ConnectionHealthManager",
+            "description": "Connection health management"
+          }
+        ],
+        "internal_modules": [
+          "internal/db_health_impl.py",
+          "internal/cache_backends.py",
+          "internal/connection_checks.py"
+        ]
+      },
+      {
+        "name": "monitoring",
+        "description": "Monitoring & Metrics Services",
+        "facades": [
+          {
+            "module": "structured_logging_service",
+            "class": "StructuredLoggingService",
+            "description": "Structured logging service"
+          },
+          {
+            "module": "metrics_service",
+            "class": "MetricsService",
+            "description": "Metrics collection service"
+          },
+          {
+            "module": "production_monitoring_service",
+            "class": "ProductionMonitoringService",
+            "description": "Production monitoring service"
+          },
+          {
+            "module": "integrated_performance_monitoring",
+            "class": "IntegratedPerformanceMonitoring",
+            "description": "Performance monitoring"
+          },
+          {
+            "module": "response_performance_metrics",
+            "class": "ResponsePerformanceMetrics",
+            "description": "Response performance metrics"
+          },
+          {
+            "module": "slo_monitoring",
+            "class": "SLOMonitoring",
+            "description": "SLO monitoring"
+          },
+          {
+            "module": "performance_benchmarking",
+            "class": "PerformanceBenchmarking",
+            "description": "Performance benchmarking"
+          },
+          {
+            "module": "performance_monitor",
+            "class": "PerformanceMonitor",
+            "description": "Performance monitoring"
+          },
+          {
+            "module": "usage_service",
+            "class": "UsageService",
+            "description": "Usage tracking service"
+          },
+          {
+            "module": "user_satisfaction_tracker",
+            "class": "UserSatisfactionTracker",
+            "description": "User satisfaction tracking"
+          },
+          {
+            "module": "correlation_service",
+            "class": "CorrelationService",
+            "description": "Correlation service"
+          }
+        ],
+        "internal_modules": [
+          "internal/logging_impl.py",
+          "internal/metrics_adapters.py",
+          "internal/perf_aggregators.py",
+          "internal/slo_rules.py"
+        ]
+      },
+      {
+        "name": "audit",
+        "description": "Audit & Compliance Services",
+        "facades": [
+          {
+            "module": "audit_logger",
+            "class": "AuditLogger",
+            "description": "Central audit logging"
+          },
+          {
+            "module": "training_audit_logger",
+            "class": "TrainingAuditLogger",
+            "description": "Training audit logging"
+          },
+          {
+            "module": "audit_cleanup",
+            "class": "AuditCleanup",
+            "description": "Audit cleanup service"
+          },
+          {
+            "module": "audit_deduplication",
+            "class": "AuditDeduplication",
+            "description": "Audit deduplication"
+          },
+          {
+            "module": "privacy_compliance",
+            "class": "PrivacyCompliance",
+            "description": "Privacy compliance"
+          },
+          {
+            "module": "auth_data_cleanup_service",
+            "class": "AuthDataCleanupService",
+            "description": "Auth data cleanup"
+          }
+        ],
+        "internal_modules": [
+          "internal/audit_store.py",
+          "internal/retention_policies.py",
+          "internal/deduplication_impl.py"
+        ]
+      },
+      {
+        "name": "ai_orchestrator",
+        "description": "AI Orchestration Services",
+        "facades": [
+          {
+            "module": "ai_orchestrator",
+            "class": "AIOrchestrator",
+            "description": "Main AI orchestration"
+          },
+          {
+            "module": "flow_manager",
+            "class": "FlowManager",
+            "description": "Flow management"
+          },
+          {
+            "module": "decision_engine",
+            "class": "DecisionEngine",
+            "description": "Decision engine"
+          },
+          {
+            "module": "prompt_manager",
+            "class": "PromptManager",
+            "description": "Prompt management"
+          },
+          {
+            "module": "context_manager",
+            "class": "ContextManager",
+            "description": "Context management"
+          }
+        ],
+        "internal_modules": [
+          "internal/flow_impl.py",
+          "internal/prompt_strategies.py",
+          "internal/context_resolvers.py",
+          "internal/streaming_impl.py"
+        ]
+      },
+      {
+        "name": "orchestration",
+        "description": "Orchestration Services",
+        "facades": [
+          {
+            "module": "intelligent_response_controller",
+            "class": "IntelligentResponseController",
+            "description": "Intelligent response control"
+          },
+          {
+            "module": "progressive_response_streamer",
+            "class": "ProgressiveResponseStreamer",
+            "description": "Progressive response streaming"
+          },
+          {
+            "module": "conversation_service",
+            "class": "ConversationService",
+            "description": "Conversation management"
+          },
+          {
+            "module": "conversation_tracker",
+            "class": "ConversationTracker",
+            "description": "Conversation tracking"
+          },
+          {
+            "module": "web_ui_api",
+            "class": "WebUiApi",
+            "description": "Web UI API"
+          },
+          {
+            "module": "chat_transformation_utils",
+            "class": "ChatTransformationUtils",
+            "description": "Chat transformation utilities"
+          },
+          {
+            "module": "ag_ui_memory_interface",
+            "class": "AgUiMemoryInterface",
+            "description": "UI memory interface"
+          },
+          {
+            "module": "user_service",
+            "class": "UserService",
+            "description": "User management"
+          },
+          {
+            "module": "auth_service",
+            "class": "AuthService",
+            "description": "Authentication service"
+          },
+          {
+            "module": "auth_utils",
+            "class": "AuthUtils",
+            "description": "Authentication utilities"
+          },
+          {
+            "module": "webhook_service",
+            "class": "WebhookService",
+            "description": "Webhook service"
+          }
+        ]
+      },
+      {
+        "name": "tools",
+        "description": "Tools Services",
+        "facades": [
+          {
+            "module": "registry",
+            "class": "ToolRegistry",
+            "description": "Tool registry"
+          },
+          {
+            "module": "core_tools",
+            "class": "CoreTools",
+            "description": "Core tools"
+          },
+          {
+            "module": "copilot_tools",
+            "class": "CopilotTools",
+            "description": "Copilot tools"
+          },
+          {
+            "module": "contracts",
+            "class": "ToolContracts",
+            "description": "Tool contracts"
+          }
+        ]
+      },
+      {
+        "name": "optimization",
+        "description": "Optimization & Resilience Services",
+        "facades": [
+          {
+            "module": "optimization_configuration_manager",
+            "class": "OptimizationConfigurationManager",
+            "description": "Optimization configuration"
+          },
+          {
+            "module": "optimization_integration_orchestrator",
+            "class": "OptimizationIntegrationOrchestrator",
+            "description": "Optimization integration"
+          },
+          {
+            "module": "priority_processing_system",
+            "class": "PriorityProcessingSystem",
+            "description": "Priority processing"
+          },
+          {
+            "module": "resource_allocation_system",
+            "class": "ResourceAllocationSystem",
+            "description": "Resource allocation"
+          },
+          {
+            "module": "graceful_degradation_coordinator",
+            "class": "GracefulDegradationCoordinator",
+            "description": "Graceful degradation"
+          },
+          {
+            "module": "fallback_provider",
+            "class": "FallbackProvider",
+            "description": "Fallback provider"
+          },
+          {
+            "module": "timeout_performance_handler",
+            "class": "TimeoutPerformanceHandler",
+            "description": "Timeout performance handling"
+          },
+          {
+            "module": "error_recovery_system",
+            "class": "ErrorRecoverySystem",
+            "description": "Error recovery"
+          },
+          {
+            "module": "error_response_service",
+            "class": "ErrorResponseService",
+            "description": "Error response"
+          }
+        ],
+        "internal_modules": [
+          "internal/optimization_recommendation_engine.py",
+          "internal/vector_optimization.py",
+          "internal/e2e_optimization.py",
+          "internal/error_aggregation_service.py",
+          "internal/streaming_interruption_handler.py"
+        ]
+      },
+      {
+        "name": "agents",
+        "description": "Agent Services",
+        "facades": [
+          {
+            "module": "agent_orchestrator",
+            "class": "AgentOrchestrator",
+            "description": "Main agent orchestrator"
+          },
+          {
+            "module": "agent_task_router",
+            "class": "AgentTaskRouter",
+            "description": "Agent task routing"
+          },
+          {
+            "module": "agent_reasoning",
+            "class": "AgentReasoning",
+            "description": "Agent reasoning"
+          },
+          {
+            "module": "agent_registry",
+            "class": "AgentRegistry",
+            "description": "Agent registry"
+          },
+          {
+            "module": "agent_executor",
+            "class": "AgentExecutor",
+            "description": "Agent execution"
+          },
+          {
+            "module": "agent_memory",
+            "class": "AgentMemory",
+            "description": "Agent memory"
+          },
+          {
+            "module": "agent_tool_broker",
+            "class": "AgentToolBroker",
+            "description": "Agent tool brokerage"
+          },
+          {
+            "module": "agent_safety",
+            "class": "AgentSafety",
+            "description": "Agent safety"
+          },
+          {
+            "module": "agent_response_composer",
+            "class": "AgentResponseComposer",
+            "description": "Agent response composition"
+          },
+          {
+            "module": "agent_monitor",
+            "class": "AgentMonitor",
+            "description": "Agent monitoring"
+          },
+          {
+            "module": "agent_memory_fusion",
+            "class": "AgentMemoryFusion",
+            "description": "Agent memory fusion"
+          },
+          {
+            "module": "agent_echo_core",
+            "class": "AgentEchoCore",
+            "description": "Agent echo core"
+          },
+          {
+            "module": "agent_ui_integration",
+            "class": "AgentUIIntegration",
+            "description": "Agent UI integration"
+          }
+        ],
+        "internal_modules": [
+          "internal/agent_schemas.py",
+          "internal/agent_validation.py",
+          "internal/agent_metrics.py"
+        ]
+      },
+      {
+        "name": "extensions",
+        "description": "Extension Services",
+        "facades": [
+          {
+            "module": "extension_registry",
+            "class": "ExtensionRegistry",
+            "description": "Extension registry"
+          },
+          {
+            "module": "extension_loader",
+            "class": "ExtensionLoader",
+            "description": "Extension loading"
+          },
+          {
+            "module": "extension_executor",
+            "class": "ExtensionExecutor",
+            "description": "Extension execution"
+          },
+          {
+            "module": "extension_monitor",
+            "class": "ExtensionMonitor",
+            "description": "Extension monitoring"
+          },
+          {
+            "module": "extension_config",
+            "class": "ExtensionConfig",
+            "description": "Extension configuration"
+          },
+          {
+            "module": "extension_auth",
+            "class": "ExtensionAuth",
+            "description": "Extension authentication"
+          },
+          {
+            "module": "extension_permissions",
+            "class": "ExtensionPermissions",
+            "description": "Extension permissions"
+          },
+          {
+            "module": "extension_rbac",
+            "class": "ExtensionRBAC",
+            "description": "Extension RBAC"
+          },
+          {
+            "module": "extension_marketplace",
+            "class": "ExtensionMarketplace",
+            "description": "Extension marketplace"
+          },
+          {
+            "module": "extension_api",
+            "class": "ExtensionApi",
+            "description": "Extension API"
+          },
+          {
+            "module": "extension_health_monitor",
+            "class": "ExtensionHealthMonitor",
+            "description": "Extension health monitoring"
+          },
+          {
+            "module": "extension_error_recovery",
+            "class": "ExtensionErrorRecovery",
+            "description": "Extension error recovery"
+          },
+          {
+            "module": "extension_tenant_access",
+            "class": "ExtensionTenantAccess",
+            "description": "Extension tenant access"
+          },
+          {
+            "module": "extension_environment_config",
+            "class": "ExtensionEnvironmentConfig",
+            "description": "Extension environment config"
+          },
+          {
+            "module": "extension_config_validator",
+            "class": "ExtensionConfigValidator",
+            "description": "Extension config validation"
+          },
+          {
+            "module": "extension_config_hot_reload",
+            "class": "ExtensionConfigHotReload",
+            "description": "Extension config hot reload"
+          },
+          {
+            "module": "extension_config_integration",
+            "class": "ExtensionConfigIntegration",
+            "description": "Extension config integration"
+          },
+          {
+            "module": "extension_alerting_system",
+            "class": "ExtensionAlertingSystem",
+            "description": "Extension alerting system"
+          }
+        ],
+        "internal_modules": [
+          "internal/extension_schemas.py",
+          "internal/extension_validation.py",
+          "internal/extension_metrics.py"
+        ]
+      }
+    ],
+    "import_rules": {
+      "allowed_patterns": [
+        "from services.{domain}.{module} import {class}",
+        "from services.{domain} import {class}"
+      ],
+      "forbidden_patterns": [
+        "from services.*.internal.* import *",
+        "from services.{domain}.internal.* import *"
+      ],
+      "enforcement": "scripts/check_service_imports.py"
+    }
+  }
+}

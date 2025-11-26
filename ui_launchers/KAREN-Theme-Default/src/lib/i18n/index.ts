@@ -16,14 +16,17 @@ export interface I18nConfig {
   contextSeparator: string;
   namespaceSeparator: string;
 }
+
 export interface TranslationResource {
   [key: string]: string | TranslationResource;
 }
+
 export interface TranslationResources {
   [locale: string]: {
     [namespace: string]: TranslationResource;
   };
 }
+
 export interface FormatOptions {
   locale?: string;
   currency?: string;
@@ -35,15 +38,18 @@ export interface FormatOptions {
   maximumFractionDigits?: number;
   numeric?: Intl.RelativeTimeFormatNumeric;
 }
+
 export interface PluralOptions {
   count: number;
   [key: string]: unknown;
 }
+
 export interface InterpolationOptions {
   [key: string]: string | number | boolean;
 }
 
 type TranslationOptions = InterpolationOptions & Partial<PluralOptions> & { ns?: string };
+
 export const DEFAULT_CONFIG: I18nConfig = {
   defaultLocale: 'en',
   locales: ['en', 'es', 'fr', 'de', 'ja', 'zh', 'ar', 'ru'],
@@ -56,15 +62,18 @@ export const DEFAULT_CONFIG: I18nConfig = {
   contextSeparator: '_',
   namespaceSeparator: ':',
 };
+
 export class I18nManager {
   private config: I18nConfig;
   private resources: TranslationResources = {};
   private currentLocale: string;
   private listeners: Set<(locale: string) => void> = new Set();
+
   constructor(config: Partial<I18nConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.currentLocale = this.config.defaultLocale;
   }
+
   /**
    * Return a copy of the current configuration
    */
@@ -75,6 +84,7 @@ export class I18nManager {
       locales: [...this.config.locales],
     };
   }
+
   /**
    * Merge additional configuration values into the manager
    */
@@ -105,6 +115,7 @@ export class I18nManager {
       }
     }
   }
+
   /**
    * Initialize the i18n system with resources
    */
@@ -123,6 +134,7 @@ export class I18nManager {
       this.currentLocale = savedLocale;
     }
   }
+
   /**
    * Change the current locale
    */
@@ -134,18 +146,21 @@ export class I18nManager {
     this.storeLocale(locale);
     this.notifyListeners(locale);
   }
+
   /**
    * Get the current locale
    */
   getCurrentLocale(): string {
     return this.currentLocale;
   }
+
   /**
    * Get available locales
    */
   getAvailableLocales(): string[] {
     return [...this.config.locales];
   }
+
   /**
    * Translate a key
    */
@@ -168,6 +183,7 @@ export class I18nManager {
     console.warn(`Translation missing for key: ${key} (locale: ${this.currentLocale})`);
     return key;
   }
+
   /**
    * Format numbers according to locale
    */
@@ -192,6 +208,7 @@ export class I18nManager {
       return value.toString();
     }
   }
+
   /**
    * Format dates according to locale
    */
@@ -216,6 +233,7 @@ export class I18nManager {
         : '';
     }
   }
+
   /**
    * Format relative time (e.g., "2 hours ago")
    */
@@ -227,6 +245,7 @@ export class I18nManager {
       return `${value} ${unit}`;
     }
   }
+
   /**
    * Get text direction for current locale
    */
@@ -234,6 +253,7 @@ export class I18nManager {
     const rtlLocales = ['ar', 'he', 'fa', 'ur'];
     return rtlLocales.includes(this.currentLocale) ? 'rtl' : 'ltr';
   }
+
   /**
    * Get locale info
    */
@@ -262,6 +282,7 @@ export class I18nManager {
       direction: this.getTextDirection(),
     };
   }
+
   /**
    * Add a locale change listener
    */
@@ -269,6 +290,7 @@ export class I18nManager {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
   }
+
   /**
    * Load additional translation resources
    */
@@ -284,6 +306,7 @@ export class I18nManager {
       ...resources,
     };
   }
+
   // Private methods
   private getTranslation(key: string, namespace: string): string | null {
     const keys = key.split('.');
@@ -317,6 +340,7 @@ export class I18nManager {
     }
     return null;
   }
+
   private interpolate(template: string, options: InterpolationOptions): string {
     const { prefix, suffix } = this.config.interpolation;
     return template.replace(
@@ -327,6 +351,7 @@ export class I18nManager {
       }
     );
   }
+
   private getPluralKey(key: string, count: number): string {
     // Special case for zero - check if zero form exists first
     if (count === 0) {
@@ -350,9 +375,11 @@ export class I18nManager {
     const pluralSuffix = ruleMap[rule] || 'other';
     return `${key}.${pluralSuffix}`;
   }
+
   private escapeRegex(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+
   private detectBrowserLocale(): string | null {
     if (typeof window === 'undefined' || !window.navigator) {
       return null;
@@ -361,6 +388,7 @@ export class I18nManager {
     const shortLocale = language.split('-')[0];
     return this.config.locales.includes(shortLocale) ? shortLocale : null;
   }
+
   private getStoredLocale(): string | null {
     if (typeof window === 'undefined' || !window.localStorage) {
       return null;
@@ -371,6 +399,7 @@ export class I18nManager {
       return null;
     }
   }
+
   private storeLocale(locale: string): void {
     if (typeof window === 'undefined' || !window.localStorage) {
       return;
@@ -381,7 +410,7 @@ export class I18nManager {
       // Ignore storage errors
     }
   }
-  
+
   private notifyListeners(locale: string): void {
     this.listeners.forEach(callback => {
       try {
@@ -392,6 +421,7 @@ export class I18nManager {
     });
   }
 }
+
 // Global instance
 export const i18n = new I18nManager();
 export default i18n;

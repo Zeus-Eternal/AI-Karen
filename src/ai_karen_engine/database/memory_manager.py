@@ -31,7 +31,9 @@ from ai_karen_engine.database.models import TenantMemoryItem
 
 # Optional metrics
 try:
-    from ai_karen_engine.services.metrics_service import get_metrics_service
+    from ai_karen_engine.services.monitoring.unified_monitoring_service import UnifiedMonitoringService
+    from ai_karen_engine.services.monitoring.internal.metrics_service import MetricsService
+    get_metrics_service = MetricsService if MetricsService else None
 except Exception:  # pragma: no cover
     get_metrics_service = None  # type: ignore[assignment]
 

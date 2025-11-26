@@ -1,9 +1,15 @@
 // ui_launchers/web_ui/src/app/api/admin/security/settings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
+// Note: Removed 'force-dynamic' to allow static export
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import type { SecuritySettings } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
+import { safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
 
 /**
  * GET /api/admin/security/settings
@@ -93,10 +99,10 @@ export async function PUT(request: NextRequest) {
             settingsUpdated: changes.map((c) => c.setting),
           },
           ip_address:
-            request.headers.get('x-forwarded-for') ??
-            request.headers.get('x-real-ip') ??
+            safeGetHeaders(request).get('x-forwarded-for') ??
+            safeGetHeaders(request).get('x-real-ip') ??
             'unknown',
-          user_agent: request.headers.get('user-agent') ?? 'unknown',
+          user_agent: safeGetHeaders(request).get('user-agent') ?? 'unknown',
         },
       );
     }

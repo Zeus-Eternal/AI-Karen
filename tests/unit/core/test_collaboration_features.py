@@ -584,7 +584,7 @@ class TestCollaborationAnalytics:
     @pytest.mark.asyncio
     async def test_collaboration_analytics_tracking(self):
         """Test collaboration analytics data collection."""
-        from extensions.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
+        from extensions_hub.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
         
         analytics = AnalyticsDashboardExtension()
         
@@ -608,7 +608,7 @@ class TestCollaborationAnalytics:
     @pytest.mark.asyncio
     async def test_collaboration_analytics_data_retrieval(self):
         """Test retrieving collaboration analytics data."""
-        from extensions.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
+        from extensions_hub.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
         
         analytics = AnalyticsDashboardExtension()
         

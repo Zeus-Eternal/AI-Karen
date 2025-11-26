@@ -1,6 +1,10 @@
 // app/api/models/all/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
+import { safeGetSearchParams, safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 /**
  * GET /api/models/all
@@ -13,13 +17,14 @@ import { withBackendPath } from '@/app/api/_utils/backend';
 export async function GET(request: NextRequest) {
   // Build upstream URL with original query params
   const upstreamUrl = new URL(withBackendPath('/api/models/all'));
-  const incomingUrl = new URL(request.url);
-  incomingUrl.searchParams.forEach((v, k) => upstreamUrl.searchParams.append(k, v));
+  const searchParams = safeGetSearchParams(request);
+  searchParams.forEach((v, k) => upstreamUrl.searchParams.append(k, v));
 
   // Minimal, explicit header forwarding
   const headers = new Headers({ Accept: 'application/json' });
-  const authorization = request.headers.get('authorization');
-  const cookie = request.headers.get('cookie');
+  const requestHeaders = safeGetHeaders(request);
+  const authorization = requestHeaders.get('authorization');
+  const cookie = requestHeaders.get('cookie');
   if (authorization) headers.set('Authorization', authorization);
   if (cookie) headers.set('Cookie', cookie);
 

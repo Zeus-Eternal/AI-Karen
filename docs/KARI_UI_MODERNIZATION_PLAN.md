@@ -76,7 +76,7 @@ This document outlines the comprehensive modernization strategy for transforming
 
 ### 1.1 Design Tokens Update
 **Files to Create/Update:**
-- `/ui_launchers/web_ui/src/styles/design-tokens.css` - New design token system
+- `/ui_launchers/web_ui/src/styles/ArtifactSystem.css` - New design token system
 - `/ui_launchers/web_ui/tailwind.config.ts` - Enhanced Tailwind configuration
 - `/ui_launchers/web_ui/src/lib/design-system/` - Design system utilities
 
@@ -207,7 +207,7 @@ const navigationStructure = [
 ```
 
 ### 2.2 Enhanced Header
-**File:** `/ui_launchers/web_ui/src/components/layout/ModernHeader.tsx`
+**File:** `/ui_launchers/web_ui/src/components/layout/Header.tsx`
 
 **Features:**
 - Global search (Cmd+K)

@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from ai_karen_engine.extensions.base import BaseExtension, BackgroundTask
-from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionContext
+from ai_karen_engine.extension_host.models2 import ExtensionManifest, ExtensionContext
 from ai_karen_engine.extensions.orchestrator import PluginOrchestrator
 from ai_karen_engine.extensions.data_manager import ExtensionDataManager
 from ai_karen_engine.hooks.hook_types import HookTypes

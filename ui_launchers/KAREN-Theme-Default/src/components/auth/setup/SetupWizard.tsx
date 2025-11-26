@@ -225,7 +225,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
             </h1>
             <p className="text-lg text-muted-foreground">
-              Let's get your AI assistant ready for action
+              Let&rsquo;s get your AI assistant ready for action
+              Let&rsquo;s get your AI assistant ready for action
+              Let&rsquo;s get your AI assistant ready for action
             </p>
           </div>
         </div>

@@ -411,7 +411,7 @@ export default function ModelLibrary() {
           break;
         }
         case 'cancel': {
-          // Find the task ID for this model
+          // Find and task ID for this model
           const task = downloadTasks.find(t => t.modelId === modelId);
           if (task) {
             await cancelDownload(task.id);
@@ -973,7 +973,7 @@ export default function ModelLibrary() {
               {searchQuery && (
                 <Badge variant="secondary" className="gap-1">
                   <Search className="h-3 w-3 " />
-                  Search: "{searchQuery}"
+                  Search: &ldquo;{searchQuery}&rdquo;
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1084,7 +1084,7 @@ export default function ModelLibrary() {
                   title="No Local Models Yet"
                   helpKey="downloadProcess"
                 >
-                  Download models from the available models section below to get started. 
+                  Download models from available models section below to get started. 
                   Local models provide faster access and work offline.
                 </HelpCallout>
               ) : (

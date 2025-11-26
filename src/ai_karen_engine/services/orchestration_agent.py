@@ -4,7 +4,7 @@ OrchestrationAgent: health-aware, preference-first LLM orchestration with helper
 Implements requirements:
 - User preference honoring with health/auth checks and graceful fallbacks
 - Configurable provider hierarchy with hard final fallback and degraded mode
-- Helper models (TinyLlama scaffolding, DistilBERT, spaCy) to augment responses
+- Helper models (SmallLanguageModel scaffolding, DistilBERT, spaCy) to augment responses
 - Dynamic prompt suggestions included in a strict response envelope
 - Intelligent routing for simple classification and extraction tasks
 """
@@ -32,7 +32,7 @@ from ai_karen_engine.services.provider_registry import (
 )
 from ai_karen_engine.services.distilbert_service import DistilBertService
 from ai_karen_engine.services.spacy_service import SpacyService
-from ai_karen_engine.services.tinyllama_service import TinyLlamaService
+from ai_karen_engine.services.small_language_model_service import SmallLanguageModelService
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class OrchestrationAgent:
         health_checker: Optional[HealthChecker] = None,
         distilbert: Optional[DistilBertService] = None,
         spacy_service: Optional[SpacyService] = None,
-        tinyllama_service: Optional[TinyLlamaService] = None,
+        small_language_model_service: Optional[SmallLanguageModelService] = None,
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         # Configuration for orchestration behavior (must be first)
@@ -70,7 +70,7 @@ class OrchestrationAgent:
         self.degraded_manager = get_degraded_mode_manager()
         self.distilbert = distilbert or DistilBertService()
         self.spacy_service = spacy_service or SpacyService()
-        self.tinyllama_service = tinyllama_service or TinyLlamaService()
+        self.small_language_model_service = small_language_model_service or SmallLanguageModelService()
         
         # Initialize model selection algorithm
         self.model_selector = ModelSelectionAlgorithm(
@@ -151,21 +151,21 @@ class OrchestrationAgent:
             }
             return build_response_envelope(extracted, "Helper", "spacy", metadata=meta, suggestions=suggestions)
 
-        # If scaffolding, prefer TinyLlama
+        # If scaffolding, prefer SmallLanguageModel
         if task_type == "scaffolding":
             scaffolded = await self._run_scaffolding(data.message)
             suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
             meta = {
-                "annotations": ["AI Enhanced", "Helper: TinyLlama"],
+                "annotations": ["AI Enhanced", "Helper: SmallLanguageModel"],
                 "routing": {
                     "task": task_type,
-                    "rationale": "Scaffolding task routed to TinyLlama",
+                    "rationale": "Scaffolding task routed to SmallLanguageModel",
                     "selection_path": "helper_model_routing"
                 },
                 "latency": time.time() - t0,
                 "confidence": 0.8,
             }
-            return build_response_envelope(scaffolded, "Helper", "tinyllama", metadata=meta, suggestions=suggestions)
+            return build_response_envelope(scaffolded, "Helper", "small_language_model", metadata=meta, suggestions=suggestions)
 
         # General/complex chat → main LLM with 4-step selection process
         selection_result = await self.model_selector.select_provider_and_model(
@@ -359,16 +359,19 @@ class OrchestrationAgent:
         model = llm_preferences.get("preferred_model") or llm_preferences.get("model", "").strip()
         if model and validated.get("provider"):
             # Basic model validation - could be enhanced with registry lookup
-            if self.preference_validation["validate_model_exists"]:
+            if self.preference_validation["validate_model_exists"] and validated.get("provider"):
                 provider_name = validated["provider"]
-                is_available = self.provider_registry.is_model_available(
-                    provider_name,
-                    model,
-                    healthy_only=self.preference_validation.get(
-                        "validate_provider_exists",
-                        True,
-                    ),
-                )
+                if provider_name:
+                    is_available = self.provider_registry.is_model_available(
+                        provider_name,
+                        model,
+                        healthy_only=self.preference_validation.get(
+                            "validate_provider_exists",
+                            True,
+                        ),
+                    )
+                else:
+                    is_available = False
 
                 if is_available:
                     validated["model"] = model
@@ -402,7 +405,24 @@ class OrchestrationAgent:
         """Use DistilBERT embeddings to produce simple sentiment/intent classification."""
         try:
             emb = await self.distilbert.get_embeddings(text)
-            score = sum(emb) / max(1, len(emb))
+            
+            # Handle different embedding types
+            if isinstance(emb, list) and len(emb) > 0:
+                if isinstance(emb[0], list):
+                    # It's a list of lists (batch embeddings), flatten the first one
+                    emb_flat = [x for sublist in emb[:1] for x in sublist if isinstance(x, (int, float))]
+                else:
+                    # It's a flat list of floats, filter out non-numeric values
+                    emb_flat = [x for x in emb if isinstance(x, (int, float))]
+                
+                # Calculate average embedding value
+                if emb_flat:
+                    score = sum(emb_flat) / max(1, len(emb_flat))
+                else:
+                    score = 0.0
+            else:
+                score = 0.0
+                
             sentiment = "positive" if score > 0.1 else "negative" if score < -0.1 else "neutral"
             intent = "question" if "?" in text else ("task" if any(w in text.lower() for w in ["build", "create", "make"]) else "statement")
             return f"Classification -> intent: {intent}, sentiment: {sentiment}"
@@ -422,12 +442,12 @@ class OrchestrationAgent:
             return "Extraction unavailable; falling back to main LLM would be appropriate."
 
     async def _run_scaffolding(self, text: str) -> str:
-        """Use TinyLlama to generate scaffolding, outlines, and quick structures."""
+        """Use SmallLanguageModel to generate scaffolding, outlines, and quick structures."""
         try:
             # Determine scaffolding type based on content
             text_lower = text.lower()
             if "outline" in text_lower:
-                outline_result = await self.tinyllama_service.generate_outline(text, max_points=5)
+                outline_result = await self.small_language_model_service.generate_outline(text, max_points=5)
                 if outline_result.outline:
                     formatted_outline = "\n".join([f"• {point}" for point in outline_result.outline])
                     return f"Generated outline:\n{formatted_outline}"
@@ -435,7 +455,7 @@ class OrchestrationAgent:
                     return "Outline generation completed but no points extracted."
             
             elif "summarize" in text_lower or "summary" in text_lower:
-                summary_result = await self.tinyllama_service.summarize_context(text, summary_type="concise")
+                summary_result = await self.small_language_model_service.summarize_context(text, summary_type="concise")
                 if summary_result.summary:
                     return f"Summary: {summary_result.summary}"
                 else:
@@ -443,14 +463,14 @@ class OrchestrationAgent:
             
             else:
                 # General scaffolding
-                scaffold_result = await self.tinyllama_service.generate_scaffold(text, scaffold_type="structure")
+                scaffold_result = await self.small_language_model_service.generate_scaffold(text, scaffold_type="structure")
                 if scaffold_result.content:
                     return f"Structure scaffold:\n{scaffold_result.content}"
                 else:
                     return "Scaffolding generation completed but no structure extracted."
                     
         except Exception as e:
-            logger.debug(f"TinyLlama scaffolding failed: {e}")
+            logger.debug(f"SmallLanguageModel scaffolding failed: {e}")
             return "Scaffolding unavailable; falling back to main LLM would be appropriate."
 
 
@@ -510,18 +530,18 @@ class OrchestrationAgent:
         """Use helper models to build brief scaffolding and context."""
         parts: List[str] = []
         
-        # TinyLlama scaffolding for reasoning and outline generation
+        # SmallLanguageModel scaffolding for reasoning and outline generation
         try:
-            if self.tinyllama_service:
-                scaffold_result = await self.tinyllama_service.generate_scaffold(
-                    data.message, 
+            if self.small_language_model_service:
+                scaffold_result = await self.small_language_model_service.generate_scaffold(
+                    data.message,
                     scaffold_type="reasoning",
                     max_tokens=50
                 )
                 if scaffold_result.content:
                     parts.append(f"Reasoning scaffold: {scaffold_result.content}")
         except Exception as e:
-            logger.debug(f"TinyLlama scaffolding failed, using fallback: {e}")
+            logger.debug(f"SmallLanguageModel scaffolding failed, using fallback: {e}")
             # Fallback to simple outline
             outline = self._scaffold_outline(data.message)
             if outline:
@@ -561,12 +581,12 @@ class OrchestrationAgent:
         """Get list of available helper models."""
         helpers = []
         
-        # Check TinyLlama availability
-        if self.tinyllama_service:
+        # Check SmallLanguageModel availability
+        if self.small_language_model_service:
             try:
-                health = self.tinyllama_service.get_health_status()
+                health = self.small_language_model_service.get_health_status()
                 if health.is_healthy:
-                    helpers.append("TinyLlama")
+                    helpers.append("SmallLanguageModel")
             except Exception:
                 pass
         

@@ -152,7 +152,7 @@ export default function ApiKeyManager() {
             <AlertTitle className="font-semibold text-accent-foreground">Server Configuration Reminder</AlertTitle>
             <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
               The API key (starting with <code>{displayApiKey.substring(0,7)}...</code>) is {currentApiKeyIsSaved ? "saved in your browser" : "currently entered"}.
-              For Karen AI's features to function, this key must also be configured on the server (typically via an <code>.env</code> file and a Genkit server restart).
+              For Karen AI&rsquo;s features to function, this key must also be configured on the server (typically via an <code>.env</code> file and a Genkit server restart).
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block mt-2 text-primary underline">
                 Get a Google AI API Key <ExternalLink className="inline-block h-3 w-3 ml-0.5 " />
               </a>

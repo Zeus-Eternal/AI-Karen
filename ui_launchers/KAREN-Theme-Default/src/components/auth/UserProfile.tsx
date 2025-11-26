@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -542,7 +543,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                 <Input type="file" accept="image/*" onChange={handleAvatarChange} />
               ) : (
                 preferences.ui.avatarUrl && (
-                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full " alt="avatar" />
+                  <Image src={preferences.ui.avatarUrl} width={48} height={48} className="h-12 w-12 rounded-full " alt="avatar" />
                 )
               )}
             </div>

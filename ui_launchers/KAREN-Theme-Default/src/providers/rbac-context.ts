@@ -10,7 +10,7 @@ import {
   type RBACConfig,
   type Role,
   type RBACUser,
-} from '@/types/rbac';
+} from '@/lib/security/rbac/types';
 
 export interface RBACContextValue {
   currentUser: RBACUser | null;

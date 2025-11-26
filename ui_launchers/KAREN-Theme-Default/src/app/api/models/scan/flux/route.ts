@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
 /**
  * Flux Model Scanner API
@@ -10,6 +11,9 @@ import crypto from 'crypto';
  * - Adds filters, pagination, sorting, humanized sizes
  * - Optionally peeks configs for richer metadata
  */
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 type SortKey = 'modified' | 'name' | 'size';
 type SortOrder = 'asc' | 'desc';
@@ -63,7 +67,7 @@ async function safeAccess(p: string): Promise<boolean> {
 }
 
 function parseQuery(request: NextRequest) {
-  const q = request.nextUrl.searchParams;
+  const q = safeGetSearchParams(request);
 
   const directory = (q.get('directory') || DEFAULTS.directory).trim();
   const page = clamp(Number(q.get('page') ?? DEFAULTS.page), 1, 100000);

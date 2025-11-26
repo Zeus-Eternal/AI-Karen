@@ -29,7 +29,7 @@ import {
   Settings,
 } from "lucide-react";
 
-import { getMemoryService } from "@/services/memoryService";
+import { useCopilot } from "@/ai/copilot/hooks/useCopilot";
 import type {
   MemoryNetworkNode as BaseMemoryNetworkNode,
   MemoryNetworkEdge,
@@ -130,7 +130,18 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     searchQuery: "",
   });
 
-  const memoryService = useMemo(() => getMemoryService(), []);
+  const backendConfig = useMemo(
+    () => ({
+      baseUrl: '/api',
+      userId,
+      sessionId: 'memory-network-graph-session',
+    }),
+    [userId]
+  );
+  
+  useCopilot({
+    backendConfig,
+  });
 
   // Color scales for different visualization modes
   const colorScales = useMemo(
@@ -153,7 +164,22 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
       setLoading(true);
       setError(null);
 
-      const stats = await memoryService.getMemoryStats(userId);
+      // Use the new Copilot system to get memory stats
+      const response = await fetch(`${backendConfig.baseUrl}/api/memory/stats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch memory stats: ${response.status}`);
+      }
+      
+      const stats = await response.json();
 
       const nodes: MemoryNetworkNode[] = [];
       const edges: SimulationEdgeDatum[] = [];
@@ -256,7 +282,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userId, memoryService, colorScales, config.nodeSize]);
+  }, [userId, backendConfig, colorScales, config.nodeSize]);
 
   /** Filter data for rendering */
   const filteredData = useMemo<InternalNetworkData | null>(() => {

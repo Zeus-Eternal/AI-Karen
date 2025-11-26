@@ -4,7 +4,7 @@ import { getSampleExtensionsRecord } from '@/lib/extensions/sample-data';
 
 const DEFAULT_TIMEOUT_MS = 5_000;
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 export const revalidate = 0;
 
 type NormalizedExtensionsResponse = {

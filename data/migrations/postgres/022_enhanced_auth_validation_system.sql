@@ -5,7 +5,7 @@
 BEGIN;
 
 -- ============================================================================
--- Update auth_users table to match ProductionAuthService requirements
+-- Update auth_users table to match AuthService requirements
 -- ============================================================================
 
 -- Add username column for flexible login (email or username)
@@ -715,7 +715,7 @@ BEGIN
     RAISE NOTICE '- Password strength validation';
     RAISE NOTICE '- Enhanced monitoring views';
     RAISE NOTICE '=================================================================';
-    RAISE NOTICE 'Database schema updated for ProductionAuthService compatibility';
+    RAISE NOTICE 'Database schema updated for AuthService compatibility';
     RAISE NOTICE 'All existing users have been migrated with usernames';
     RAISE NOTICE '=================================================================';
 END $;

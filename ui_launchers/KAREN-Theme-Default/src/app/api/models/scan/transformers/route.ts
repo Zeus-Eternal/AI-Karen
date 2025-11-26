@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
 type ConfigData = Record<string, unknown>;
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 type ModelDir = {
   dirname: string;
@@ -42,7 +46,7 @@ const DEFAULTS: QueryOpts = {
 };
 
 function parseQuery(request: NextRequest): QueryOpts {
-  const q = request.nextUrl.searchParams;
+  const q = safeGetSearchParams(request);
   const num = (v: string | null, d: number, min = 1, max = 100000) =>
     Math.min(Math.max(Number(v ?? d), min), max);
 

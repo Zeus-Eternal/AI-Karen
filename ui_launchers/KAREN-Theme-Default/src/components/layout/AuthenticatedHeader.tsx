@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 import {
   DropdownMenu,
@@ -23,6 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+interface User {
+  email?: string;
+  userId?: string;
+  roles?: string[] | string;
+}
 
 export const AuthenticatedHeader: React.FC = () => {
   const { user, logout } = useAuth();
@@ -57,9 +64,11 @@ export const AuthenticatedHeader: React.FC = () => {
     : "";
 
   return (
-    <>
-      <div className="flex items-center gap-3">
-        <ThemeToggle />
+    <ErrorBoundary>
+      <div className="flex items-center gap-3" role="toolbar" aria-label="User actions">
+        <ErrorBoundary>
+          <ThemeToggle />
+        </ErrorBoundary>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -67,6 +76,7 @@ export const AuthenticatedHeader: React.FC = () => {
               variant="ghost"
               className="relative h-10 w-10 rounded-full"
               aria-label="Open user menu"
+              aria-expanded={false}
             >
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -78,14 +88,16 @@ export const AuthenticatedHeader: React.FC = () => {
 
           <DropdownMenuContent className="w-64" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none md:text-base">
-                  {user?.email ?? user?.userId ?? ""}
-                </p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {rolesText}
-                </p>
-              </div>
+              <ErrorBoundary>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none md:text-base">
+                    {user?.email ?? user?.userId ?? ""}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {rolesText}
+                  </p>
+                </div>
+              </ErrorBoundary>
             </DropdownMenuLabel>
 
             <DropdownMenuSeparator />
@@ -94,7 +106,7 @@ export const AuthenticatedHeader: React.FC = () => {
               onClick={() => setShowProfile(true)}
               className="cursor-pointer"
             >
-              <User className="mr-2 h-4 w-4" />
+              <User className="mr-2 h-4 w-4" aria-hidden="true" />
               <span>Profile & Settings</span>
             </DropdownMenuItem>
 
@@ -111,7 +123,7 @@ export const AuthenticatedHeader: React.FC = () => {
               onClick={handleLogout}
               className="text-red-600 focus:text-red-700 cursor-pointer"
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -124,9 +136,11 @@ export const AuthenticatedHeader: React.FC = () => {
           <DialogHeader>
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
-          <UserProfile onClose={() => setShowProfile(false)} />
+          <ErrorBoundary>
+            <UserProfile onClose={() => setShowProfile(false)} />
+          </ErrorBoundary>
         </DialogContent>
       </Dialog>
-    </>
+    </ErrorBoundary>
   );
 };

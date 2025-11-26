@@ -2,7 +2,7 @@
  * Main Model Selection Service - Orchestrates all modular services
  */
 import type { Model, ModelLibraryResponse } from "../model-utils";
-import { getKarenBackend } from "../karen-backend";
+import { enhancedApiClient } from "../enhanced-api-client";
 
 // Modular services
 import { ModelHealthMonitor } from "./health-monitor";
@@ -317,11 +317,10 @@ export class ModelSelectionService extends BaseModelService {
         models = await this.modelScanner.scanLocalDirectories();
       } else {
         // API fallback
-        const backend = getKarenBackend();
-        const response = await backend.makeRequestPublic<ModelLibraryResponse>(
+        const response = await enhancedApiClient.get<ModelLibraryResponse>(
           "/api/models/library"
         );
-        models = response?.models || [];
+        models = response?.data?.models || [];
       }
 
       // Update health for all models

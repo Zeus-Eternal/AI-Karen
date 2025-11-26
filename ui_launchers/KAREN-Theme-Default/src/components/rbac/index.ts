@@ -13,7 +13,6 @@
 export { PermissionGate } from './PermissionGate';
 export type {
   PermissionGateProps,
-  PermissionDeniedFallbackProps,
 } from './PermissionGate';
 export { withPermission, usePermissionGate } from './permission-gate-helpers';
 export type {
@@ -50,4 +49,4 @@ export type {
   PermissionCheckResult,
   RoleHierarchy,
   Restriction,
-} from '@/types/rbac';
+} from '@/lib/security/rbac/types';

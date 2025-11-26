@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -545,12 +546,18 @@ export const EnhancedPluginMarketplace: React.FC<EnhancedPluginMarketplaceProps>
               <div className="flex items-start gap-3">
                   <Avatar className="w-10 h-10">
                     {review.userAvatar ? (
-                      <img
+                      <Image
                         src={review.userAvatar}
                         alt={review.userName}
+                        width={40}
+                        height={40}
                         className="aspect-square h-full w-full rounded-full object-cover"
                       />
-                    ) : null}
+                    ) : (
+                      <div className="aspect-square h-full w-full rounded-full bg-muted flex items-center justify-center">
+                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
                     <AvatarFallback>
                     {review.userName
                       .split(" ")

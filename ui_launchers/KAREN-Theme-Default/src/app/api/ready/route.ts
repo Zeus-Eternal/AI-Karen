@@ -454,6 +454,36 @@ function checkResources(): ReadinessCheck {
  */
 export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
+    // Check if this is a build-time request
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // During build time, return a mock response to avoid dynamic server usage
+    if (isBuildTime) {
+      return NextResponse.json({
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+        checks: {
+          application: { status: 'ready', message: 'Build-time check' },
+          dependencies: { status: 'ready', message: 'Build-time check' },
+          configuration: { status: 'ready', message: 'Build-time check' },
+          resources: { status: 'ready', message: 'Build-time check' },
+        },
+        details: {
+          startupTime: 0,
+          initializationComplete: true,
+          criticalServicesReady: true,
+          lastHealthyBackend: null,
+        },
+      }, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    }
+
     const [applicationCheck, dependenciesCheck, configurationCheck, resourcesCheck] =
       await Promise.all([
         Promise.resolve(checkApplication()),

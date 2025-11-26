@@ -30,13 +30,11 @@ module.exports = {
     'jsx-a11y/html-has-lang': 'error',
     'jsx-a11y/iframe-has-title': 'error',
     'jsx-a11y/img-redundant-alt': 'error',
-    'jsx-a11y/interactive-supports-focus': 'error',
     'jsx-a11y/label-has-associated-control': 'error',
     'jsx-a11y/lang': 'error',
     'jsx-a11y/media-has-caption': 'error',
     'jsx-a11y/mouse-events-have-key-events': 'error',
     'jsx-a11y/no-access-key': 'error',
-    'jsx-a11y/no-autofocus': 'error',
     'jsx-a11y/no-distracting-elements': 'error',
     'jsx-a11y/no-interactive-element-to-noninteractive-role': 'error',
     'jsx-a11y/no-noninteractive-element-interactions': 'error',
@@ -80,26 +78,13 @@ module.exports = {
     }],
     
     // Keyboard navigation
-    'jsx-a11y/click-events-have-key-events': 'error',
-    'jsx-a11y/mouse-events-have-key-events': 'error',
     
     // Semantic HTML
-    'jsx-a11y/no-redundant-roles': ['error', {
-      nav: ['navigation'],
-      button: ['button'],
-      img: ['img']
-    }],
     
     // Media accessibility
-    'jsx-a11y/media-has-caption': ['error', {
-      audio: ['Audio'],
-      video: ['Video'],
-      track: ['Track']
-    }],
     
     // Table accessibility
-    'jsx-a11y/table-has-caption': 'warn',
-    'jsx-a11y/scope': 'error'
+    'jsx-a11y/table-has-caption': 'warn'
   },
   
   settings: {

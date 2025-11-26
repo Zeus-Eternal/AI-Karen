@@ -560,7 +560,7 @@ export default function ProviderManagement({
     }
   };
 
-  // Convert LLMProvider to ProviderStatus for the new components
+  // Convert LLMProvider to ProviderStatus for new components
   const convertToProviderStatus = (provider: LLMProvider): ProviderStatus => ({
     name: provider.name,
     status: provider.health_status,
@@ -797,13 +797,13 @@ export default function ProviderManagement({
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2">
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void discoverProviderModels(provider.name, true)}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Discover Models
-                    </Button>
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void discoverProviderModels(provider.name, true)}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Discover Models
+                      </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -851,13 +851,13 @@ export default function ProviderManagement({
                           // Update provider status based on test results
                           const updatedProviders = providers.map(p =>
                             p.name === provider.name
-                              ? {
-                                  ...p,
-                                  health_status: result.overall_status === 'passed' ? 'healthy' as const : 'unhealthy' as const,
-                                  last_health_check: Date.now(),
-                                  error_message: result.overall_status === 'failed' ? 'Validation failed' : undefined
-                                }
-                              : p
+                                ? {
+                                    ...p,
+                                    health_status: result.overall_status === 'passed' ? 'healthy' as const : 'unhealthy' as const,
+                                    last_health_check: Date.now(),
+                                    error_message: result.overall_status === 'failed' ? 'Validation failed' : undefined
+                                  }
+                                : p
                           );
                           setProviders(updatedProviders);
                         }}
@@ -921,8 +921,8 @@ export default function ProviderManagement({
         <AlertDescription className="text-sm space-y-2 md:text-base lg:text-lg">
           <p>• Configure API keys for remote providers to enable model access</p>
           <p>• Health checks verify provider connectivity and model availability</p>
-          <p>• Local providers run on your machine and don't require API keys</p>
-          <p>• Model discovery refreshes the available model list for each provider</p>
+          <p>• Local providers run on your machine and don&rsquo;t require API keys</p>
+          <p>• Model discovery refreshes available model list for each provider</p>
         </AlertDescription>
       </Alert>
     </div>

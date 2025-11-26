@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ../config:/app/config
     container_name: kari-ui
     ports:
       - "3000:3000"

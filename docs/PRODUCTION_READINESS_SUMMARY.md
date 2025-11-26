@@ -55,7 +55,7 @@
 - ✅ 13 CRITICAL silent error handlers (empty catch blocks)
 - ✅ 8 HIGH severity @ts-ignore directives
 - ✅ 3 TODO placeholder implementations (documented with warnings)
-- ✅ 4 CRITICAL syntax errors in design-tokens
+- ✅ 4 CRITICAL syntax errors in ArtifactSystem
 
 **Impact**:
 - Error handling: 45% → 95%

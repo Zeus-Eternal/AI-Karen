@@ -208,7 +208,7 @@ export const useStreamingController = (): StreamingController => {
       const timeoutController = new AbortController();
       const timeoutId = setTimeout(() => timeoutController.abort(), 30000); // 30s timeout
 
-      const combinedSignal = AbortSignal.any ? 
+      const combinedSignal = AbortSignal.any ?
         AbortSignal.any([controller.signal, timeoutController.signal]) :
         controller.signal;
 
@@ -239,6 +239,7 @@ export const useStreamingController = (): StreamingController => {
       let fullText = '';
       let bytesReceived = 0;
 
+      // eslint-disable-next-line no-constant-condition
       while (true) {
         // Check for abort before reading
         if (controller.signal.aborted) {

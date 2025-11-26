@@ -176,9 +176,12 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
+  console.log('useToast: Starting hook initialization');
   const [state, setState] = React.useState<State>(memoryState)
+  console.log('useToast: State initialized');
 
   React.useEffect(() => {
+    console.log('useToast: Adding listener');
     listeners.push(setState)
     return () => {
       const index = listeners.indexOf(setState)

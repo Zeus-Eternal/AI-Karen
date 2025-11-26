@@ -5,6 +5,10 @@ import { getAdminUtils } from '@/lib/database/admin-utils';
 import { AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES, getAuditLogger } from '@/lib/audit/audit-logger';
 import { emailIntegration } from '@/lib/email';
 import { getBaseUrl } from '@/lib/email/config';
+import { safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 /**
  * POST /api/admin/admins/invite
  * 
@@ -107,13 +111,13 @@ export async function POST(request: NextRequest) {
           invitedEmail: email,
           hasCustomMessage: Boolean(message),
           emailDeliveryStatus: emailResult.success ? 'sent' : 'failed',
-          emailDeliveryError: emailResult.error,
+          emailDeliveryError: emailResult.error
         },
         request,
         ip_address:
-          request.headers.get('x-forwarded-for') ||
-          request.headers.get('x-real-ip') ||
-          undefined,
+          safeGetHeaders(request).get('x-forwarded-for') ||
+          safeGetHeaders(request).get('x-real-ip') ||
+          undefined
       }
     );
 

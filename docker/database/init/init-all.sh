@@ -4,6 +4,33 @@ set -e
 # AI Karen Database Initialization Master Script
 # This script coordinates the initialization of all database services
 
+# Default database connection settings (can be overridden by environment variables)
+POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
+POSTGRES_PORT="${POSTGRES_PORT:-5434}"
+POSTGRES_USER="${POSTGRES_USER:-karen_user}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-karen_secure_pass_change_me}"
+POSTGRES_DB="${POSTGRES_DB:-ai_karen}"
+
+# Default Elasticsearch connection settings
+ELASTICSEARCH_HOST="${ELASTICSEARCH_HOST:-localhost}"
+ELASTICSEARCH_PORT="${ELASTICSEARCH_PORT:-9200}"
+
+# Default Milvus connection settings
+MILVUS_HOST="${MILVUS_HOST:-localhost}"
+MILVUS_PORT="${MILVUS_PORT:-19530}"
+
+# Default Redis connection settings
+REDIS_HOST="${REDIS_HOST:-localhost}"
+REDIS_PORT="${REDIS_PORT:-6380}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-redis_secure_pass_change_me}"
+
+# Default DuckDB settings
+PROJECT_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+DUCKDB_PATH="${DUCKDB_PATH:-$PROJECT_ROOT/data/duckdb/kari_duckdb.db}"
+
+# Default environment
+ENVIRONMENT="${ENVIRONMENT:-development}"
+
 echo "🚀 Starting AI Karen Database Initialization..."
 echo "=================================================="
 
@@ -64,7 +91,22 @@ run_init_script() {
     log "INFO" "Initializing $service_name..."
     
     if [ -f "$script_path" ] && [ -x "$script_path" ]; then
-        if "$script_path"; then
+        # Pass environment variables to the script
+        if [ "$service_name" = "Redis" ]; then
+            REDIS_HOST="$REDIS_HOST" REDIS_PORT="$REDIS_PORT" REDIS_PASSWORD="$REDIS_PASSWORD" "$script_path"
+        elif [ "$service_name" = "Milvus" ]; then
+            MILVUS_HOST="$MILVUS_HOST" MILVUS_PORT="$MILVUS_PORT" "$script_path"
+        elif [ "$service_name" = "PostgreSQL" ]; then
+            POSTGRES_HOST="$POSTGRES_HOST" POSTGRES_PORT="$POSTGRES_PORT" POSTGRES_USER="$POSTGRES_USER" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_DB="$POSTGRES_DB" "$script_path"
+        elif [ "$service_name" = "Elasticsearch" ]; then
+            ELASTICSEARCH_HOST="$ELASTICSEARCH_HOST" ELASTICSEARCH_PORT="$ELASTICSEARCH_PORT" "$script_path"
+        elif [ "$service_name" = "DuckDB" ]; then
+            DUCKDB_PATH="$DUCKDB_PATH" "$script_path"
+        else
+            "$script_path"
+        fi
+        
+        if [ $? -eq 0 ]; then
             log "SUCCESS" "$service_name initialization completed successfully"
             return 0
         else
@@ -129,7 +171,7 @@ $$ LANGUAGE plpgsql;
 SELECT load_classifier_seed();
 EOF
             
-            if psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f /tmp/load_classifier_data.sql; then
+            if psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT:-5434}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f /tmp/load_classifier_data.sql; then
                 log "SUCCESS" "Classifier data loaded into PostgreSQL"
             else
                 log "WARN" "Failed to load classifier data into PostgreSQL"
@@ -184,7 +226,7 @@ verify_services() {
     local all_healthy=true
     
     # Check PostgreSQL
-    if psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" > /dev/null 2>&1; then
+    if PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT:-5434}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" > /dev/null 2>&1; then
         log "SUCCESS" "PostgreSQL is healthy"
     else
         log "ERROR" "PostgreSQL health check failed"
@@ -208,7 +250,7 @@ verify_services() {
     fi
     
     # Check Redis
-    if redis-cli -h "${REDIS_HOST:-localhost}" -p "${REDIS_PORT:-6379}" ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} ping > /dev/null 2>&1; then
+    if redis-cli -h "${REDIS_HOST:-localhost}" -p "${REDIS_PORT:-6380}" ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} ping > /dev/null 2>&1; then
         log "SUCCESS" "Redis is healthy"
     else
         log "ERROR" "Redis health check failed"
@@ -289,17 +331,32 @@ main() {
     log "INFO" "AI Karen Database Initialization Started"
     log "INFO" "Environment: ${ENVIRONMENT:-development}"
     
-    # Install required tools
-    log "INFO" "Installing required tools..."
-    apk add --no-cache curl netcat-openbsd postgresql-client redis
+    # Check for required tools (but don't try to install them due to permission issues)
+    log "INFO" "Checking for required tools..."
+    
+    if ! command -v curl &> /dev/null; then
+        log "WARN" "curl not found, some functionality may not work"
+    fi
+    
+    if ! command -v nc &> /dev/null && ! command -v netcat &> /dev/null; then
+        log "WARN" "netcat/nc not found, some connectivity checks may fail"
+    fi
+    
+    if ! command -v psql &> /dev/null; then
+        log "WARN" "psql not found, PostgreSQL operations may fail"
+    fi
+    
+    if ! command -v redis-cli &> /dev/null; then
+        log "WARN" "redis-cli not found, Redis operations may fail"
+    fi
     
     # Wait for all services to be ready
     log "INFO" "Waiting for database services to be ready..."
     
-    check_service "PostgreSQL" "pg_isready -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USER}"
+    check_service "PostgreSQL" "PGPASSWORD=${POSTGRES_PASSWORD} pg_isready -h ${POSTGRES_HOST} -p ${POSTGRES_PORT:-5434} -U ${POSTGRES_USER}"
     check_service "Elasticsearch" "curl -s -f http://${ELASTICSEARCH_HOST:-localhost}:${ELASTICSEARCH_PORT:-9200}/_cluster/health"
     check_service "Milvus" "nc -z ${MILVUS_HOST:-localhost} ${MILVUS_PORT:-19530}"
-    check_service "Redis" "redis-cli -h ${REDIS_HOST:-localhost} -p ${REDIS_PORT:-6379} ${REDIS_PASSWORD:+-a $REDIS_PASSWORD} ping"
+    check_service "Redis" "redis-cli -h ${REDIS_HOST:-localhost} -p ${REDIS_PORT:-6380} ${REDIS_PASSWORD:+-a $REDIS_PASSWORD} ping"
     
     # Initialize each service
     log "INFO" "Starting service initialization..."
@@ -308,16 +365,16 @@ main() {
     log "INFO" "PostgreSQL initialization handled by container entrypoint"
     
     # DuckDB initialization
-    run_init_script "DuckDB" "/init/duckdb/init-duckdb.sh"
+    run_init_script "DuckDB" "$(dirname "$0")/duckdb/init-duckdb-simple.sh"
     
     # Elasticsearch initialization
-    run_init_script "Elasticsearch" "/init/elasticsearch/init-elasticsearch.sh"
+    run_init_script "Elasticsearch" "$(dirname "$0")/elasticsearch/init-elasticsearch.sh"
     
     # Milvus initialization
-    run_init_script "Milvus" "/init/milvus/init-milvus.sh"
+    run_init_script "Milvus" "$(dirname "$0")/milvus/init-milvus.sh"
     
     # Redis initialization
-    run_init_script "Redis" "/init/redis/init-redis.sh"
+    run_init_script "Redis" "$(dirname "$0")/redis/init-redis.sh"
     
     # Load bootstrap data
     load_bootstrap_data

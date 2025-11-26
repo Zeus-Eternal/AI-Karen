@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Static export detection
+function isStaticExport(): boolean {
+  return (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_EXPORT === 'true' ||
+    process.env.STATIC_EXPORT === 'true' ||
+    (typeof window === 'undefined' && process.env.NODE_ENV === 'production')
+  );
+}
+
 interface SwitchModelRequest {
   from_model_id?: string;
   to_model_id: string;
@@ -129,6 +139,18 @@ function noCacheHeaders(extra?: Record<string, string>) {
 export async function POST(request: NextRequest) {
   const started = Date.now();
   try {
+    // Skip model switching during static export
+    if (isStaticExport()) {
+      return NextResponse.json({
+        success: false,
+        error: 'Model switching unavailable during static export',
+        message: 'This endpoint is not available during static site generation'
+      }, {
+        status: 503,
+        headers: noCacheHeaders()
+      });
+    }
+
     const { from_model_id, to_model_id, preserve_context, switch_reason } = await readBody(request);
 
     // Load service on-demand to avoid circular deps in cold starts

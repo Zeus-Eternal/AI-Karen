@@ -4,7 +4,7 @@ import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateSuperAdminCreation, hashPassword } from '@/lib/auth/setup-validation';
 import type { CreateSuperAdminRequest, AdminApiResponse, User } from '@/types/admin';
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 
 /**
  * Create the initial super admin account during first-run setup

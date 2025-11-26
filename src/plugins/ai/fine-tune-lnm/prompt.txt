@@ -1,2 +1,0 @@
-Train a personalised DistilBERT on recent interactions.
-Inputs: {{ text }}, {{ intent }}, {{ category }}.

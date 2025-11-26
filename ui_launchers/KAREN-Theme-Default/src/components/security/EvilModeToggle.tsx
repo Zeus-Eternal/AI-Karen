@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useReducer } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRBAC } from "@/providers/rbac-hooks";
 import { auditLogger } from "@/services/audit-logger";
-import type { EvilModeConfig, EvilModeSession } from "@/types/rbac";
+import type { EvilModeConfig, EvilModeSession } from "@/lib/security/rbac/types";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

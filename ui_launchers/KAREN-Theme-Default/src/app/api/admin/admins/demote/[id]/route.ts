@@ -1,13 +1,29 @@
 /**
  * Admin Demotion API Route
  * POST /api/admin/admins/demote/[id] - Demote admin to user
- * 
+ *
  * Requirements: 3.3
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
+
+/**
+ * Generate static params for admin demote route
+ * Since we can't pre-generate all possible admin IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 /**
  * POST /api/admin/admins/demote/[id] - Demote admin to user (super admin only)
  */

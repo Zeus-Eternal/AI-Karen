@@ -1,0 +1,416 @@
+groups:
+  - name: database_health_alerts
+    rules:
+      # PostgreSQL Health Alerts
+      - alert: PostgreSQLConnectionFailure
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL connection failure"
+          description: "PostgreSQL database is not accepting connections for more than 1 minute"
+          
+      - alert: PostgreSQLSlowQueries
+        expr: rate(postgres_query_duration_seconds_count{le="+Inf"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "PostgreSQL is experiencing {{ $value }} slow queries per second"
+          
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL high connection usage"
+          description: "PostgreSQL connection usage is at {{ $value }}% of maximum"
+          
+      - alert: PostgreSQLCriticalConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL critical connection usage"
+          description: "PostgreSQL connection usage is at {{ $value }}% of maximum"
+          
+      - alert: PostgreSQLDeadlocks
+        expr: rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "PostgreSQL is experiencing {{ $value }} deadlocks per second"
+          
+      - alert: PostgreSQLDiskSpaceLow
+        expr: (1 - (pg_database_size_bytes{datname!~"template.*"} / pg_tablespace_size_bytes{spcname="pg_default"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL disk space low"
+          description: "PostgreSQL disk usage is at {{ $value }}%"
+          
+      - alert: PostgreSQLDiskSpaceCritical
+        expr: (1 - (pg_database_size_bytes{datname!~"template.*"} / pg_tablespace_size_bytes{spcname="pg_default"})) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL disk space critical"
+          description: "PostgreSQL disk usage is at {{ $value }}%"
+
+      # Redis Health Alerts
+      - alert: RedisConnectionFailure
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis connection failure"
+          description: "Redis is not accepting connections for more than 1 minute"
+          
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is at {{ $value }}%"
+          
+      - alert: RedisCriticalMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis critical memory usage"
+          description: "Redis memory usage is at {{ $value }}%"
+          
+      - alert: RedisEvictedKeys
+        expr: rate(redis_evicted_keys_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis evicting keys"
+          description: "Redis is evicting {{ $value }} keys per second due to memory pressure"
+          
+      - alert: RedisExpiredKeys
+        expr: rate(redis_expired_keys_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis high key expiration rate"
+          description: "Redis is expiring {{ $value }} keys per second"
+          
+      - alert: RedisConnectionsHigh
+        expr: redis_connected_clients / redis_config_maxclients * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: redis
+        annotations:
+          summary: "Redis high connection usage"
+          description: "Redis connection usage is at {{ $value }}% of maximum"
+
+      # Elasticsearch Health Alerts
+      - alert: ElasticsearchConnectionFailure
+        expr: up{job="elasticsearch"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch connection failure"
+          description: "Elasticsearch is not accepting connections for more than 1 minute"
+          
+      - alert: ElasticsearchClusterRed
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch cluster health is red"
+          description: "Elasticsearch cluster is in red state - some primary shards are unassigned"
+          
+      - alert: ElasticsearchClusterYellow
+        expr: elasticsearch_cluster_health_status{color="yellow"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch cluster health is yellow"
+          description: "Elasticsearch cluster is in yellow state - some replica shards are unassigned"
+          
+      - alert: ElasticsearchHighDiskUsage
+        expr: elasticsearch_filesystem_data_used_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch high disk usage"
+          description: "Elasticsearch disk usage is at {{ $value }}%"
+          
+      - alert: ElasticsearchCriticalDiskUsage
+        expr: elasticsearch_filesystem_data_used_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch critical disk usage"
+          description: "Elasticsearch disk usage is at {{ $value }}%"
+          
+      - alert: ElasticsearchHighJVMHeap
+        expr: elasticsearch_jvm_memory_heap_used_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch high JVM heap usage"
+          description: "Elasticsearch JVM heap usage is at {{ $value }}%"
+          
+      - alert: ElasticsearchCriticalJVMHeap
+        expr: elasticsearch_jvm_memory_heap_used_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch critical JVM heap usage"
+          description: "Elasticsearch JVM heap usage is at {{ $value }}%"
+
+      # Milvus Health Alerts
+      - alert: MilvusConnectionFailure
+        expr: up{job="milvus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: milvus
+        annotations:
+          summary: "Milvus connection failure"
+          description: "Milvus is not accepting connections for more than 1 minute"
+          
+      - alert: MilvusCollectionLoadFailed
+        expr: milvus_collection_load_failed_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: milvus
+        annotations:
+          summary: "Milvus collection load failure"
+          description: "Milvus failed to load {{ $value }} collections"
+          
+      - alert: MilvusHighQueryLatency
+        expr: histogram_quantile(0.95, rate(milvus_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: milvus
+        annotations:
+          summary: "Milvus high query latency"
+          description: "95th percentile Milvus query latency is {{ $value }} seconds"
+          
+      - alert: MilvusCriticalQueryLatency
+        expr: histogram_quantile(0.95, rate(milvus_query_duration_seconds_bucket[5m])) > 5
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: milvus
+        annotations:
+          summary: "Milvus critical query latency"
+          description: "95th percentile Milvus query latency is {{ $value }} seconds"
+
+      # DuckDB Health Alerts
+      - alert: DuckDBFileAccessError
+        expr: duckdb_file_access_errors_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: duckdb
+        annotations:
+          summary: "DuckDB file access error"
+          description: "DuckDB is experiencing {{ $value }} file access errors"
+          
+      - alert: DuckDBQueryTimeout
+        expr: rate(duckdb_query_timeouts_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: duckdb
+        annotations:
+          summary: "DuckDB query timeout"
+          description: "DuckDB is experiencing {{ $value }} query timeouts per second"
+          
+      - alert: DuckDBHighMemoryUsage
+        expr: duckdb_memory_usage_bytes / duckdb_memory_limit_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: duckdb
+        annotations:
+          summary: "DuckDB high memory usage"
+          description: "DuckDB memory usage is at {{ $value }}%"
+          
+      - alert: DuckDBCriticalMemoryUsage
+        expr: duckdb_memory_usage_bytes / duckdb_memory_limit_bytes * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: duckdb
+        annotations:
+          summary: "DuckDB critical memory usage"
+          description: "DuckDB memory usage is at {{ $value }}%"
+
+  - name: database_performance_alerts
+    rules:
+      # Database Performance Alerts
+      - alert: DatabaseSlowQueryRate
+        expr: |
+          (
+            rate(postgres_query_duration_seconds_count{le="+Inf"}[5m]) +
+            rate(redis_slowlog_total[5m]) +
+            rate(elasticsearch_search_query_time_seconds_count[5m]) +
+            rate(milvus_query_duration_seconds_count[5m]) +
+            rate(duckdb_query_duration_seconds_count[5m])
+          ) > 20
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database slow query rate"
+          description: "Databases are experiencing {{ $value }} slow queries per second"
+          
+      - alert: DatabaseHighErrorRate
+        expr: |
+          (
+            rate(postgres_errors_total[5m]) +
+            rate(redis_errors_total[5m]) +
+            rate(elasticsearch_errors_total[5m]) +
+            rate(milvus_errors_total[5m]) +
+            rate(duckdb_errors_total[5m])
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database error rate"
+          description: "Databases are experiencing {{ $value }} errors per second"
+          
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          (
+            pg_stat_database_numbackends / pg_settings_max_connections > 0.9 or
+            redis_connected_clients / redis_config_maxclients > 0.9 or
+            elasticsearch_thread_pool_queue > 100 or
+            milvus_connection_pool_usage > 0.9 or
+            duckdb_connection_pool_usage > 0.9
+          ) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool exhausted"
+          description: "One or more database connection pools are near exhaustion"
+
+  - name: database_replication_alerts
+    rules:
+      # Database Replication Alerts
+      - alert: PostgreSQLReplicationLag
+        expr: pg_stat_replication_pg_wal_lag_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL replication lag"
+          description: "PostgreSQL replication lag is {{ $value }} seconds"
+          
+      - alert: PostgreSQLCriticalReplicationLag
+        expr: pg_stat_replication_pg_wal_lag_seconds > 600
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: postgres
+        annotations:
+          summary: "PostgreSQL critical replication lag"
+          description: "PostgreSQL replication lag is {{ $value }} seconds"
+          
+      - alert: ElasticsearchReplicationLag
+        expr: elasticsearch_index_unassigned_shards > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch unassigned shards"
+          description: "Elasticsearch has {{ $value }} unassigned shards"
+          
+      - alert: ElasticsearchCriticalReplicationLag
+        expr: elasticsearch_index_unassigned_shards / elasticsearch_index_primaries > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          database: elasticsearch
+        annotations:
+          summary: "Elasticsearch critical unassigned shards"
+          description: "Elasticsearch has {{ $value }}% unassigned shards"

@@ -95,7 +95,9 @@ export const ProductionErrorFallback: React.FC<ErrorFallbackProps> = ({
           </div>
           <CardTitle className="text-xl">Application Error</CardTitle>
           <CardDescription>
-            We're experiencing technical difficulties. Please try refreshing the page.
+            We&rsquo;re experiencing technical difficulties
+            We&rsquo;re experiencing technical difficulties
+            We&rsquo;re experiencing technical difficulties. Please try refreshing the page.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

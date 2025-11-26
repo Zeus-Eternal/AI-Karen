@@ -283,7 +283,7 @@ class OptimizationIntegrationOrchestrator:
                 wrapped_scaffolding = self.reasoning_preservation_layer.wrap_tinyllama_service(scaffolding_service)
                 
                 # Integrate with cache system
-                cached_scaffolding = await self.cache_system.integrate_with_tinyllama_service(wrapped_scaffolding)
+                cached_scaffolding = await self.cache_system.integrate_with_small_language_model_service(wrapped_scaffolding)
                 
                 integrated_components["scaffolding_service"] = cached_scaffolding
                 
@@ -302,7 +302,7 @@ class OptimizationIntegrationOrchestrator:
                 
                 default_scaffolding = get_intelligent_scaffolding_service()
                 wrapped_scaffolding = self.reasoning_preservation_layer.wrap_tinyllama_service(default_scaffolding)
-                cached_scaffolding = await self.cache_system.integrate_with_tinyllama_service(wrapped_scaffolding)
+                cached_scaffolding = await self.cache_system.integrate_with_small_language_model_service(wrapped_scaffolding)
                 
                 integrated_components["scaffolding_service"] = cached_scaffolding
                 

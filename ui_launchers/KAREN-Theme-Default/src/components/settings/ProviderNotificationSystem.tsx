@@ -124,7 +124,7 @@ export function ProviderNotificationSystem({
 
   const loadNotifications = async () => {
     try {
-      // Mock data - in real implementation, this would come from the backend
+      // Mock data - in real implementation, this would come from backend
       const mockNotifications: ProviderNotification[] = [
         {
           id: '1',
@@ -416,7 +416,7 @@ export function ProviderNotificationSystem({
                 <BellOff className="h-8 w-8 mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">No notifications</p>
                 <p className="text-xs text-muted-foreground">
-                  You'll see provider status updates and alerts here
+                  You&rsquo;ll see provider status updates and alerts here
                 </p>
               </div>
             </CardContent>

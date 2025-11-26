@@ -63,15 +63,15 @@
   },
   
   "database": {
-    "pool_size": 20,
-    "max_overflow": 40,
-    "pool_timeout": 30,
-    "pool_recycle": 3600,
+    "pool_size": 30,
+    "max_overflow": 60,
+    "pool_timeout": 20,
+    "pool_recycle": 1800,
     "pool_pre_ping": true,
-    "query_timeout": 30,
-    "connection_timeout": 45,
-    "enable_query_logging": false,
-    "slow_query_threshold_ms": 1000
+    "query_timeout": 20,
+    "connection_timeout": 30,
+    "enable_query_logging": true,
+    "slow_query_threshold_ms": 500
   },
   
   "memory": {

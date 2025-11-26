@@ -57,13 +57,11 @@ export type {
   IncidentResponseProps as SecureLinkIncidentResponseProps,
 } from './SecureLink';
 
-// RBAC Guard
-export { default as RBACGuard } from './RBACGuard';
+// RBAC components are now in src/components/rbac
+export { PermissionGate } from '@/components/rbac';
 export type {
-  RBACGuardProps,
-} from './RBACGuard';
-export { usePermissions } from './usePermissions';
-export type { UsePermissionsResult } from './usePermissions';
+  PermissionGateProps,
+} from '@/components/rbac';
 
 // Sanitized Markdown
 export { default as SanitizedMarkdown } from './SanitizedMarkdown';

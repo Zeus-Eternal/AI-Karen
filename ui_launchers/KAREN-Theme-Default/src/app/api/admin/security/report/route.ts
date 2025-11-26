@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
+import { safeGetSearchParams, safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
 import type { BlockedIpEntry, SecurityAlert } from '@/lib/database/admin-utils';
 import type { AuditLogger } from '@/lib/audit/audit-logger';
 import type { AdminDatabaseUtils } from '@/lib/database/admin-utils';
@@ -66,13 +67,15 @@ interface ReportData {
   }>;
 }
 
-export const dynamic = 'force-dynamic';
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 export async function GET(request: NextRequest) {
   const startedAt = Date.now();
+  const headers = safeGetHeaders(request);
   const ip =
-    request.headers.get('x-forwarded-for') ||
-    request.headers.get('x-real-ip') ||
+    headers.get('x-forwarded-for') ||
+    headers.get('x-real-ip') ||
     'unknown';
 
   try {
@@ -86,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2) Input parsing / validation
-    const { searchParams } = new URL(request.url);
+    const searchParams = safeGetSearchParams(request);
     const formatParam = (searchParams.get('format') || 'json').toLowerCase();
     const format: ReportFormat = formatParam === 'csv' ? 'csv' : 'json';
 

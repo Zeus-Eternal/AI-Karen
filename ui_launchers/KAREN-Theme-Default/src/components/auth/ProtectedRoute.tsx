@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useEffect, useRef } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -66,12 +66,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     // If not authenticated, redirect to login
     if (!isAuthenticated) {
-      const currentPath = window.location.pathname + window.location.search;
-      // Avoid redirect loops - don't redirect if already on login or unauthorized pages
-      if (currentPath !== '/login' && currentPath !== '/unauthorized' && !currentPath.startsWith('/login')) {
-        sessionStorage.setItem('redirectAfterLogin', currentPath);
-        hasRedirectedRef.current = true;
-        router.replace('/login');
+      // Only access window on client side to avoid hydration mismatch
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname + window.location.search;
+        // Avoid redirect loops - don't redirect if already on login or unauthorized pages
+        if (currentPath !== '/login' && currentPath !== '/unauthorized' && !currentPath.startsWith('/login')) {
+          sessionStorage.setItem('redirectAfterLogin', currentPath);
+          hasRedirectedRef.current = true;
+          router.replace('/login');
+        }
       }
       return;
     }
@@ -89,7 +92,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [isAuthenticated, authState.isLoading, authState.lastActivity, isLoggingIn, requiredRole, requiredPermission, redirectTo, hasRole, hasPermission, user?.role, router]);
   // Don't show loading state if we're on login page to prevent flash
-  const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+  const [isOnLoginPage, setIsOnLoginPage] = useState(false);
+  
+  useEffect(() => {
+    // Only check window.location on client side to avoid hydration mismatch
+    if (typeof window !== 'undefined') {
+      setIsOnLoginPage(window.location.pathname === '/login');
+    }
+  }, []);
+  
   // Show loading state while checking authentication
   if (authState.isLoading && showLoadingState && !isOnLoginPage) {
     return (

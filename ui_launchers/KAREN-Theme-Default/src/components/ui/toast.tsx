@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as ToastPrimitives from "@radix-ui/react-toast";
 import { type VariantProps } from "class-variance-authority";
-import { X } from "lucide-react";
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Loader } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { toastVariants } from "./toast-variants";
@@ -19,7 +19,7 @@ export const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px] gap-2",
       className
     )}
     {...props}
@@ -31,14 +31,51 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 export const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => (
-  <ToastPrimitives.Root
-    ref={ref}
-    className={cn(toastVariants({ variant }), className)}
-    {...props}
-  />
-));
+    VariantProps<typeof toastVariants> & {
+      icon?: React.ReactNode;
+      loading?: boolean;
+    }
+>(({ className, variant, icon, loading = false, ...props }, ref) => {
+  // Default icons based on variant
+  const renderIcon = React.useMemo(() => {
+    if (icon) return icon;
+    if (loading) return <Loader className="h-5 w-5 animate-spin" />;
+    
+    switch (variant) {
+      case 'success':
+        return <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />;
+      case 'destructive':
+        return <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />;
+      case 'warning':
+        return <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />;
+      case 'info':
+        return <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
+      case 'loading':
+        return <Loader className="h-5 w-5 animate-spin" />;
+      default:
+        return null;
+    }
+  }, [icon, loading, variant]);
+
+  return (
+    <ToastPrimitives.Root
+      ref={ref}
+      className={cn(toastVariants({ variant }), className)}
+      {...props}
+    >
+      {renderIcon && (
+        <div className="flex-shrink-0">
+          {renderIcon}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <ToastPrimitives.Title className="text-sm font-semibold" />
+        <ToastPrimitives.Description className="text-sm opacity-90" />
+      </div>
+      <ToastPrimitives.Close />
+    </ToastPrimitives.Root>
+  );
+});
 Toast.displayName = ToastPrimitives.Root.displayName;
 
 /** Action */
@@ -100,6 +137,30 @@ export const ToastDescription = React.forwardRef<
   />
 ));
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
+
+/** Enhanced toast with built-in icon and action */
+export const EnhancedToast = React.forwardRef<
+  React.ElementRef<typeof Toast>,
+  React.ComponentPropsWithoutRef<typeof Toast> & {
+    title?: string;
+    description?: string;
+    action?: React.ReactNode;
+    icon?: React.ReactNode;
+    loading?: boolean;
+  }
+>(({ title, description, action, icon, loading, ...props }, ref) => (
+  <Toast ref={ref} icon={icon} loading={loading} {...props}>
+    {title && <ToastTitle>{title}</ToastTitle>}
+    {description && <ToastDescription>{description}</ToastDescription>}
+    {action && (
+      <ToastAction altText={typeof action === 'string' ? action : 'Action'}>
+        {action}
+      </ToastAction>
+    )}
+  </Toast>
+));
+
+EnhancedToast.displayName = "EnhancedToast";
 
 /** Types */
 export type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>;

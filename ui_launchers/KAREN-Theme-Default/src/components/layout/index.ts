@@ -34,20 +34,20 @@ export type { AppShellMainVariants } from "./app-shell-variants";
 
 // Headers
 export { AuthenticatedHeader } from "./AuthenticatedHeader";
-export { ModernHeader } from "./ModernHeader";
-export type { ModernHeaderProps } from "./ModernHeader";
+export { Header } from "./ModernHeader";
+export type { HeaderProps, NotificationItem } from "./ModernHeader";
 
 // Navigation
-export { default as DeveloperNav } from "./DeveloperNav";
+export { DeveloperNav } from "./DeveloperNav";
 export type { DeveloperNavProps } from "./DeveloperNav";
 
 // Sidebar
-export { ModernSidebar } from "./ModernSidebar";
+export { Sidebar } from "./Sidebar";
 export type {
   ModernSidebarProps,
   NavItem,
   NavSection,
-} from "./ModernSidebar";
+} from "./Sidebar";
 
 // Modern Layout Components
 export {
@@ -57,7 +57,7 @@ export {
   LayoutSection,
   LayoutHeader,
   LayoutContainer,
-} from "./ModernLayout";
+} from "./Layout";
 export type {
   BaseLayoutProps,
   LayoutGridProps,
@@ -69,4 +69,7 @@ export type {
   LayoutColumns,
   Breakpoint,
   ResponsiveColumnCount,
-} from "./ModernLayout";
+} from "./Layout";
+
+// Layout Types
+export type * from "./layout-types";

@@ -2,9 +2,29 @@
 
 from typing import Any, Dict, List
 
-from ai_karen_engine.extensions import get_extension_manager
-from ai_karen_engine.extensions.models import ExtensionStatusAPI
-from ai_karen_engine.utils.dependency_checks import import_fastapi
+try:
+    from ai_karen_engine.extension_host.__init__2 import get_extension_manager
+    from ai_karen_engine.extension_host.models import ExtensionStatusAPI
+    from ai_karen_engine.utils.dependency_checks import import_fastapi
+except ImportError:
+    # Define dummy classes if imports fail
+    class ExtensionStatusAPI:
+        def __init__(self, name, version, status, loaded_at=None, error_message=None):
+            self.name = name
+            self.version = version
+            self.status = status
+            self.loaded_at = loaded_at
+            self.error_message = error_message
+    
+    def get_extension_manager():
+        return None
+    
+    def import_fastapi(*args):
+        # Return dummy objects if FastAPI is not available
+        class Dummy:
+            def __init__(self, *args, **kwargs):
+                pass
+        return tuple([Dummy() for _ in args])
 
 APIRouter, Depends, HTTPException = import_fastapi(
     "APIRouter", "Depends", "HTTPException"

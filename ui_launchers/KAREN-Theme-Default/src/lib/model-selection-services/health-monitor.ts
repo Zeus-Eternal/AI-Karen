@@ -3,7 +3,7 @@
  */
 
 import type { Model, ModelHealth } from "../model-utils";
-import { getKarenBackend } from "../karen-backend";
+import { enhancedApiClient } from "../enhanced-api-client";
 import { BaseModelService } from "./base-service";
 
 export class ModelHealthMonitor extends BaseModelService {
@@ -21,18 +21,15 @@ export class ModelHealthMonitor extends BaseModelService {
       // 1) Check file existence and accessibility
       if (model.local_path) {
         try {
-          const backend = getKarenBackend();
           const response = await this.withTimeout(
-            backend.makeRequestPublic(`/api/models/health/file-check`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ path: model.local_path }),
+            enhancedApiClient.post(`/api/models/health/file-check`, {
+              path: model.local_path,
             }),
             this.DEFAULT_TIMEOUT_MS,
             "file-check"
           );
 
-          const fileCheck = response as {
+          const fileCheck = response?.data as {
             exists: boolean;
             readable: boolean;
             corrupted: boolean;
@@ -195,14 +192,13 @@ export class ModelHealthMonitor extends BaseModelService {
     >;
   }> {
     try {
-      const backend = getKarenBackend();
       const response = await this.withTimeout(
-        backend.makeRequestPublic("/api/system/memory"),
+        enhancedApiClient.get("/api/system/memory"),
         this.DEFAULT_TIMEOUT_MS,
         "system-memory"
       );
 
-      const memoryInfo = response as {
+      const memoryInfo = response?.data as {
         total: number;
         available: number;
         used: number;
@@ -277,23 +273,18 @@ export class ModelHealthMonitor extends BaseModelService {
     model: Model
   ): Promise<{ compatible: boolean; reason?: string }> {
     try {
-      const backend = getKarenBackend();
       const response = await this.withTimeout(
-        backend.makeRequestPublic("/api/providers/compatibility", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            provider: model.provider,
-            model_type: model.type,
-            format: model.format,
-            metadata: model.metadata,
-          }),
+        enhancedApiClient.post("/api/providers/compatibility", {
+          provider: model.provider,
+          model_type: model.type,
+          format: model.format,
+          metadata: model.metadata,
         }),
         this.DEFAULT_TIMEOUT_MS,
         "provider-compat"
       );
 
-      const compatibility = response as {
+      const compatibility = response?.data as {
         compatible: boolean;
         reason?: string;
       };
@@ -324,21 +315,16 @@ export class ModelHealthMonitor extends BaseModelService {
     const startTime = Date.now();
 
     try {
-      const backend = getKarenBackend();
       const response = await this.withTimeout(
-        backend.makeRequestPublic("/api/models/load-test", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model_id: model.id,
-            timeout_ms: 30_000,
-          }),
+        enhancedApiClient.post("/api/models/load-test", {
+          model_id: model.id,
+          timeout_ms: 30_000,
         }),
         this.DEFAULT_TIMEOUT_MS,
         "model-load-test"
       );
 
-      const loadTest = response as {
+      const loadTest = response?.data as {
         success: boolean;
         memory_usage?: number;
         error?: string;

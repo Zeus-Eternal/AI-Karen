@@ -6,11 +6,11 @@
 
 import { useAuth } from '@/hooks/use-auth';
 
-import type { UserRole } from '@/components/security/rbac-shared';
+import type { RoleName } from '@/lib/security/rbac/types';
 
 export interface UseRoleReturn {
-  role: UserRole | null;
-  hasRole: (role: UserRole) => boolean;
+  role: RoleName | null;
+  hasRole: (role: RoleName) => boolean;
   hasPermission: (permission: string) => boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -54,7 +54,7 @@ export const useRole = (): UseRoleReturn => {
 /**
  * Hook to check if user has specific role
  */
-export const useHasRole = (requiredRole: UserRole): boolean => {
+export const useHasRole = (requiredRole: RoleName): boolean => {
   const { hasRole } = useAuth();
   return hasRole(requiredRole);
 };

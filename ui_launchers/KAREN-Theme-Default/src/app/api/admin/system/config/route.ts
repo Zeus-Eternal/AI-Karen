@@ -6,18 +6,26 @@
  * Requirements: 3.6
  */
 import { NextRequest, NextResponse } from 'next/server';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
+// Note: Removed 'force-dynamic' to allow static export
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse, SystemConfig, SystemConfigUpdate } from '@/types/admin';
+import { safeGetSearchParams, safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
 /**
  * GET /api/admin/system/config - Get system configuration (super admin only)
  */
 export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = safeGetSearchParams(request);
     const category = searchParams.get('category') || undefined;
     const adminUtils = getAdminDatabaseUtils();
     const configs = await adminUtils.getSystemConfig(category);
+    
     // Group configurations by category
     const groupedConfigs = configs.reduce((acc, config) => {
       if (!acc[config.category]) {
@@ -26,6 +34,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
       acc[config.category].push(config);
       return acc;
     }, {} as Record<string, SystemConfig[]>);
+    
     const response: AdminApiResponse<{ 
       configurations: SystemConfig[];
       grouped_configurations: Record<string, SystemConfig[]>;
@@ -43,6 +52,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
         message: 'System configuration retrieved successfully'
       }
     };
+    
     return NextResponse.json(response);
   } catch (error) {
     const errorResponse: AdminApiResponse<never> = {
@@ -53,6 +63,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
         details: { error: error instanceof Error ? error.message : 'Unknown error' }
       }
     };
+    
     return NextResponse.json(errorResponse, { status: 500 });
   }
 });
@@ -63,6 +74,7 @@ export const GET = requireSuperAdmin(async (request: NextRequest, _context) => {
 export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
   try {
     const body: Record<string, SystemConfigUpdate> = await request.json();
+    
     if (!body || Object.keys(body).length === 0) {
       const validationResponse: AdminApiResponse<never> = {
         success: false,
@@ -72,32 +84,40 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
           details: { provided_keys: Object.keys(body) }
         }
       };
+      
       return NextResponse.json(validationResponse, { status: 400 });
     }
+    
     const adminUtils = getAdminDatabaseUtils();
     const updatedConfigs: string[] = [];
     const errors: Record<string, string> = {};
+    
     // Process each configuration update
     for (const [key, update] of Object.entries(body)) {
       try {
         // Validate configuration key exists
         const existingConfigs = await adminUtils.getSystemConfig();
         const existingConfig = existingConfigs.find(c => c.key === key);
+        
         if (!existingConfig) {
           errors[key] = 'Configuration key not found';
           continue;
         }
+        
         // Validate value type
         const expectedType = existingConfig.value_type;
         const providedValue = update.value;
+        
         if (expectedType === 'number' && typeof providedValue !== 'number') {
           errors[key] = `Expected number, got ${typeof providedValue}`;
           continue;
         }
+        
         if (expectedType === 'boolean' && typeof providedValue !== 'boolean') {
           errors[key] = `Expected boolean, got ${typeof providedValue}`;
           continue;
         }
+        
         // Update configuration
         await adminUtils.updateSystemConfig(
           key,
@@ -105,7 +125,9 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
           context.user.user_id,
           update.description
         );
+        
         updatedConfigs.push(key);
+        
         // Log configuration change
         await adminUtils.createAuditLog({
           user_id: context.user.user_id,
@@ -120,13 +142,14 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
             new_description: update.description,
             category: existingConfig.category
           },
-          ip_address: request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
-          user_agent: request.headers.get('user-agent') || undefined
+          ip_address: safeGetHeaders(request).get('x-forwarded-for')?.split(',')[0] || 'unknown',
+          user_agent: safeGetHeaders(request).get('user-agent') || undefined
         });
       } catch (configError) {
         errors[key] = configError instanceof Error ? configError.message : 'Unknown error';
       }
     }
+    
     // Check if any updates were successful
     if (updatedConfigs.length === 0 && Object.keys(errors).length > 0) {
       const failureResponse: AdminApiResponse<never> = {
@@ -137,11 +160,14 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
           details: { errors, attempted_keys: Object.keys(body) }
         }
       };
+      
       return NextResponse.json(failureResponse, { status: 400 });
     }
+    
     // Get updated configurations for response
     const updatedSystemConfigs = await adminUtils.getSystemConfig();
     const responseConfigs = updatedSystemConfigs.filter(c => updatedConfigs.includes(c.key));
+    
     const response: AdminApiResponse<{
       updated_configurations: SystemConfig[];
       updated_keys: string[];
@@ -163,6 +189,7 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
         })
       }
     };
+    
     return NextResponse.json(response);
   } catch (error) {
     const updateErrorResponse: AdminApiResponse<never> = {
@@ -173,6 +200,7 @@ export const PUT = requireSuperAdmin(async (request: NextRequest, context) => {
         details: { error: error instanceof Error ? error.message : 'Unknown error' }
       }
     };
+    
     return NextResponse.json(updateErrorResponse, { status: 500 });
   }
 });

@@ -12,8 +12,8 @@ import { AuthContext } from '@/contexts/auth-context-instance';
 import {
   normalizePermission,
   normalizePermissionList,
-  ROLE_PERMISSIONS,
 } from '@/components/security/rbac-shared';
+import { RBACService } from '@/lib/security/rbac/RBACService';
 
 // Vitest mocking utilities (vi) are provided globally via tsconfig types.
 
@@ -88,7 +88,14 @@ export const createMockAuthContext = (
   overrides: Partial<AuthContextType> = {}
 ): AuthContextType => {
   // Helper function to get default permissions for a role (matches actual implementation)
-  const getRolePermissions = (role: AuthRole): string[] => ROLE_PERMISSIONS[role] ?? [];
+  const getRolePermissions = (role: AuthRole): string[] => {
+    try {
+      return RBACService.getInstance().getRolePermissions(role);
+    } catch {
+      // Fallback to empty array if RBAC service is not available
+      return [];
+    }
+  };
   // Create realistic mock functions that behave like the actual implementation
   const hasRole = vi.fn((role: AuthRole): boolean => {
     if (!user) return false;
@@ -617,7 +624,14 @@ export const runAuthScenarioTests = (
 };
 // Permission testing utilities
 export const createPermissionTestMatrix = (permissions: string[]) => {
-  const adminBaseline = new Set(ROLE_PERMISSIONS['admin'] ?? []);
+  let adminBaseline: Set<string> = new Set();
+  try {
+    adminBaseline = new Set(RBACService.getInstance().getRolePermissions('admin'));
+  } catch {
+    // Fallback to empty set if RBAC service is not available
+    adminBaseline = new Set();
+  }
+  
   return permissions.map((permission) => {
     const canonical = normalizePermission(permission) ?? permission;
     return {

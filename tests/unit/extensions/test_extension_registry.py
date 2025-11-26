@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ai_karen_engine.extensions.models import (
+from ai_karen_engine.extension_host.models2 import (
     ExtensionDependencies,
     ExtensionManifest,
     ExtensionStatus,

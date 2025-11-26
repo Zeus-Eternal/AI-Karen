@@ -63,11 +63,11 @@ deployment:
   services:
     database:
       enabled: true
-      connection_pool_size: 20
+      connection_pool_size: 30
       
     redis:
       enabled: true
-      connection_pool_size: 10
+      connection_pool_size: 15
       
     prometheus:
       enabled: true

@@ -10,7 +10,7 @@ export type { AppProvidersProps } from './AppProviders';
 export { AuthProvider } from './AuthContext';
 export { AuthContext } from './auth-context-instance';
 export { useAuth } from '../hooks/use-auth';
-export type { LoginCredentials, AuthError, AuthState, AuthProviderProps, AuthContextType, User } from './AuthContext';
+export type { LoginCredentials, AuthState, AuthProviderProps, AuthContextType, User } from './AuthContext';
 
 export { authStateManager } from './AuthStateManager';
 export type { AuthSnapshot, Listener } from './AuthStateManager';
@@ -22,8 +22,8 @@ export type { ErrorProviderProps, ErrorContextType } from './ErrorProvider';
 
 export { HookProvider, HookContext } from './HookContext';
 export { useHooks } from '../hooks/use-hooks';
-export type { HookProviderProps } from './HookContext';
-export type { HookContextType, HookRegistration, HookResult } from './hook-context';
+export type { HookProviderProps } from './hook-types';
+export type { HookContextType, HookRegistration, HookResult } from './hook-types';
 
 export { SessionProvider, SessionContext, withSessionProvider, default as Sessionprovider } from './SessionProvider';
 export { useSession } from '../hooks/use-session';

@@ -14,7 +14,7 @@ log() {
 # Function to wait for Redis to be ready
 wait_for_redis() {
     local host="${REDIS_HOST:-localhost}"
-    local port="${REDIS_PORT:-6379}"
+    local port="${REDIS_PORT:-6380}"
     local password="${REDIS_PASSWORD:-}"
     local max_attempts=30
     local attempt=1
@@ -24,7 +24,19 @@ wait_for_redis() {
     # Install redis-cli if not present
     if ! command -v redis-cli &> /dev/null; then
         log "Installing redis-cli..."
-        apk add --no-cache redis
+        # Try different package managers
+        if command -v apk &> /dev/null; then
+            apk add --no-cache redis
+        elif command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y redis-tools
+        elif command -v yum &> /dev/null; then
+            yum install -y redis
+        elif command -v pacman &> /dev/null; then
+            pacman -S --noconfirm redis
+        else
+            log "❌ No known package manager found. Please install redis-cli manually."
+            return 1
+        fi
     fi
     
     while [ $attempt -le $max_attempts ]; do
@@ -53,7 +65,7 @@ wait_for_redis() {
 redis_cmd() {
     local cmd="$1"
     local host="${REDIS_HOST:-localhost}"
-    local port="${REDIS_PORT:-6379}"
+    local port="${REDIS_PORT:-6380}"
     local password="${REDIS_PASSWORD:-}"
     
     if [ -n "$password" ]; then
@@ -66,7 +78,7 @@ redis_cmd() {
 # Function to execute Redis commands with multiple arguments
 redis_cmd_multi() {
     local host="${REDIS_HOST:-localhost}"
-    local port="${REDIS_PORT:-6379}"
+    local port="${REDIS_PORT:-6380}"
     local password="${REDIS_PASSWORD:-}"
     
     if [ -n "$password" ]; then

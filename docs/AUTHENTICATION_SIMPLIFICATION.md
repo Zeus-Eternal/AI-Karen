@@ -2,13 +2,13 @@
 
 ## Overview
 The temporary "no-auth" simplification has been retired. Kari AI now ships with the hardened
-`ProductionAuthService`, re-enabling full credential checks, JWT issuance, rate limiting, and
+`AuthService`, re-enabling full credential checks, JWT issuance, rate limiting, and
 first-run admin bootstrap flows.
 
 ## Key Updates
 
 ### 1. Authentication Service (`src/auth/auth_service.py`)
-- ✅ Wraps `ProductionAuthService` with a shared async singleton.
+- ✅ Wraps `AuthService` with a shared async singleton.
 - ✅ Exposes both async (`await get_auth_service()`) and sync (`get_auth_service_sync()`) accessors.
 - ✅ Provides an `AuthService` façade for legacy integrations (extensions, scripts).
 - ✅ Normalises `UserAccount` payloads for API consumers without leaking password hashes.

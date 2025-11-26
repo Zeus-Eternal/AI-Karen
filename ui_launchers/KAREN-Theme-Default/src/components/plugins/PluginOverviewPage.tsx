@@ -8,7 +8,7 @@ import { alertClassName } from "./utils/alertVariants";
 import { PlugZap, MessageSquare, Info, Settings2, CalendarDays, CloudSun, Database, Facebook, Mail } from "lucide-react";
 /**
  * @file PluginOverviewPage.tsx
- * @description Displays an overview of Karen AI's integrated tools/plugins and the vision for its plugin architecture.
+ * @description Displays an overview of Karen AI&rsquo;s integrated tools/plugins and the vision for its plugin architecture.
  */
 export default function PluginOverviewPage() {
   const integratedTools = [
@@ -26,7 +26,7 @@ export default function PluginOverviewPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Karen AI - Plugins & Tools Overview</h2>
           <p className="text-sm text-muted-foreground md:text-base lg:text-lg">
-            Understanding Karen AI's capabilities and how she integrates new features.
+            Understanding Karen AI&rsquo;s capabilities and how she integrates new features.
           </p>
         </div>
       </div>
@@ -34,12 +34,12 @@ export default function PluginOverviewPage() {
         <CardHeader>
           <CardTitle className="text-lg">Current Plugin & Tool Integration</CardTitle>
           <CardDescription>
-            Karen AI uses a "prompt-first" framework. This means her core AI is instructed on how to use available tools and capabilities based on your conversational requests.
+            Karen AI uses a &ldquo;prompt-first&rdquo; framework. This means her core AI is instructed on how to use available tools and capabilities based on your conversational requests.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm md:text-base lg:text-lg">
-            When you interact with Karen, her central AI decision-making flow (`decide-action-flow`) determines if a specialized tool is needed to fulfill your request. If so, it invokes the tool and then crafts a response based on the tool's output.
+            When you interact with Karen, her central AI decision-making flow (&grave;decide-action-flow&grave;) determines if a specialized tool is needed to fulfill your request. If so, it invokes the tool and then crafts a response based on the tool&rsquo;s output.
           </p>
           <Alert>
             <MessageSquare className="h-4 w-4 " />
@@ -87,13 +87,13 @@ export default function PluginOverviewPage() {
           <ul className="list-disc list-inside pl-5 text-xs text-muted-foreground space-y-1 sm:text-sm md:text-base">
             <li>Standardized plugin schemas describing inputs, outputs, and purpose.</li>
             <li>An AI meta-learning capability for Karen to dynamically understand and decide when to use new tools.</li>
-            <li>A secure way to manage and "install" or "register" these plugins.</li>
+            <li>A secure way to manage and &ldquo;install&rdquo; or &ldquo;register&rdquo; these plugins.</li>
           </ul>
           <Alert className={alertClassName("default", "bg-background")}>
             <Info className="h-4 w-4 " />
             <AlertTitle className="text-sm font-semibold md:text-base lg:text-lg">Developer Note</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm md:text-base">
-              Achieving true "drag-and-drop" dynamic plugin integration with autonomous learning is a complex AI research and engineering challenge. The current system relies on developers explicitly defining tools and guiding Karen's use of them through prompt engineering.
+              Achieving true &ldquo;drag-and-drop&rdquo; dynamic plugin integration with autonomous learning is a complex AI research and engineering challenge. The current system relies on developers explicitly defining tools and guiding Karen&rsquo;s use of them through prompt engineering.
             </AlertDescription>
           </Alert>
         </CardContent>

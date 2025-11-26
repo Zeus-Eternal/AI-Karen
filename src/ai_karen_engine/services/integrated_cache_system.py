@@ -31,9 +31,9 @@ class CacheIntegrationConfig:
     """Configuration for cache integration."""
     enable_flow_manager_caching: bool = True
     enable_decision_engine_caching: bool = True
-    enable_tinyllama_caching: bool = True
+    enable_small_language_model_caching: bool = True
     enable_response_caching: bool = True
-    cache_ttl_seconds: int = 3600  # 1 hour default
+    cache_ttl_seconds: float = 3600.0  # 1 hour default
     max_cache_size_mb: int = 100
     enable_distributed_cache: bool = False
     cache_warming_enabled: bool = True
@@ -261,15 +261,15 @@ class IntegratedCacheSystem:
             self.logger.error(f"Failed to integrate DecisionEngine with caching: {e}")
             return decision_engine
     
-    async def integrate_with_tinyllama_service(self, tinyllama_service: Any) -> Any:
+    async def integrate_with_small_language_model_service(self, small_language_model_service: Any) -> Any:
         """
-        Integrate caching with TinyLlama service while preserving scaffolding functionality.
+        Integrate caching with SmallLanguageModel service while preserving scaffolding functionality.
         """
-        if not self.config.enable_tinyllama_caching:
-            return tinyllama_service
+        if not self.config.enable_small_language_model_caching:
+            return small_language_model_service
         
         try:
-            class CachedTinyLlamaService:
+            class CachedSmallLanguageModelService:
                 def __init__(self, original_service, cache_system):
                     self._original = original_service
                     self._cache_system = cache_system
@@ -285,7 +285,7 @@ class IntegratedCacheSystem:
                                 pass
                 
                 def __getattr__(self, name):
-                    """Delegate to original TinyLlama service."""
+                    """Delegate to original SmallLanguageModel service."""
                     attr = getattr(self._original, name)
                     
                     if callable(attr) and name in [
@@ -301,13 +301,13 @@ class IntegratedCacheSystem:
                         start_time = time.time()
                         
                         # Generate cache key
-                        cache_key = self._cache_system._generate_tinyllama_cache_key(
+                        cache_key = self._cache_system._generate_small_language_model_cache_key(
                             method_name, args, kwargs
                         )
                         
                         # Check cache
                         cached_result = await self._cache_system.smart_cache_manager.get_cached_response(
-                            cache_key, {"method": method_name, "service": "tinyllama"}
+                            cache_key, {"method": method_name, "service": "small_language_model"}
                         )
                         
                         if cached_result:
@@ -322,7 +322,7 @@ class IntegratedCacheSystem:
                             await self._cache_system.smart_cache_manager.cache_response(
                                 cache_key,
                                 result,
-                                {"method": method_name, "service": "tinyllama"},
+                                {"method": method_name, "service": "small_language_model"},
                                 ttl_seconds=self._cache_system.config.cache_ttl_seconds
                             )
                             
@@ -335,15 +335,15 @@ class IntegratedCacheSystem:
                     
                     return cached_method
             
-            wrapped_service = CachedTinyLlamaService(tinyllama_service, self)
-            self.integrated_components["tinyllama_service"] = wrapped_service
+            wrapped_service = CachedSmallLanguageModelService(small_language_model_service, self)
+            self.integrated_components["small_language_model_service"] = wrapped_service
             
-            self.logger.info("TinyLlama service integrated with caching system")
+            self.logger.info("SmallLanguageModel service integrated with caching system")
             return wrapped_service
             
         except Exception as e:
-            self.logger.error(f"Failed to integrate TinyLlama service with caching: {e}")
-            return tinyllama_service
+            self.logger.error(f"Failed to integrate SmallLanguageModel service with caching: {e}")
+            return small_language_model_service
     
     def _generate_flow_cache_key(self, flow_type: Any, input_data: Any) -> str:
         """Generate cache key for flow execution."""
@@ -361,18 +361,18 @@ class IntegratedCacheSystem:
         except Exception:
             return f"decision:{method_name}:{int(time.time())}"
     
-    def _generate_tinyllama_cache_key(self, method_name: str, args: tuple, kwargs: dict) -> str:
-        """Generate cache key for TinyLlama methods."""
+    def _generate_small_language_model_cache_key(self, method_name: str, args: tuple, kwargs: dict) -> str:
+        """Generate cache key for SmallLanguageModel methods."""
         try:
-            # For TinyLlama, include the text content in the key for better cache hits
+            # For SmallLanguageModel, include the text content in the key for better cache hits
             text_content = ""
             if args and len(args) > 0:
                 text_content = str(args[0])[:100]  # First 100 chars of text
             
-            key_data = f"tinyllama:{method_name}:{text_content}:{hash(str(kwargs))}"
+            key_data = f"small_language_model:{method_name}:{text_content}:{hash(str(kwargs))}"
             return hashlib.md5(key_data.encode()).hexdigest()
         except Exception:
-            return f"tinyllama:{method_name}:{int(time.time())}"
+            return f"small_language_model:{method_name}:{int(time.time())}"
     
     def _update_metrics(self, hit: bool, response_time: float):
         """Update cache integration metrics."""
@@ -458,7 +458,7 @@ class IntegratedCacheSystem:
                 "config": {
                     "flow_manager_caching": self.config.enable_flow_manager_caching,
                     "decision_engine_caching": self.config.enable_decision_engine_caching,
-                    "tinyllama_caching": self.config.enable_tinyllama_caching,
+                    "small_language_model_caching": self.config.enable_small_language_model_caching,
                     "cache_ttl_seconds": self.config.cache_ttl_seconds,
                     "cache_warming_enabled": self.config.cache_warming_enabled
                 }
@@ -473,10 +473,10 @@ class IntegratedCacheSystem:
             # Adjust TTL based on hit rates
             if cache_stats.hit_rate > 0.8:
                 # High hit rate, increase TTL
-                self.config.cache_ttl_seconds = min(self.config.cache_ttl_seconds * 1.2, 7200)
+                self.config.cache_ttl_seconds = min(self.config.cache_ttl_seconds * 1.2, 7200.0)
             elif cache_stats.hit_rate < 0.3:
                 # Low hit rate, decrease TTL
-                self.config.cache_ttl_seconds = max(self.config.cache_ttl_seconds * 0.8, 300)
+                self.config.cache_ttl_seconds = max(self.config.cache_ttl_seconds * 0.8, 300.0)
             
             # Trigger cache cleanup if needed
             if cache_stats.cache_size_mb > self.config.max_cache_size_mb:

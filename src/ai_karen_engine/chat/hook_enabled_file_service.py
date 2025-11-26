@@ -33,7 +33,7 @@ from ai_karen_engine.hooks.hook_manager import get_hook_manager
 from ai_karen_engine.hooks.models import HookContext
 from ai_karen_engine.hooks.hook_types import HookTypes
 from ai_karen_engine.plugin_manager import get_plugin_manager
-from ai_karen_engine.extensions.manager import ExtensionManager
+from ai_karen_engine.extension_host.manager import ExtensionManager
 from ai_karen_engine.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)

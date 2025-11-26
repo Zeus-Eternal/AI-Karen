@@ -231,11 +231,18 @@ export class RateLimiter {
 
   private async loop(): Promise<void> {
     try {
-      while (true) {
-        if (this.paused) break;
+      let shouldContinue = true;
+      while (shouldContinue) {
+        if (this.paused) {
+          shouldContinue = false;
+          break;
+        }
         this.sweep();
 
-        if (this.queue.length === 0) break;
+        if (this.queue.length === 0) {
+          shouldContinue = false;
+          break;
+        }
 
         // respect concurrency
         if (this.inFlight >= this.config.maxConcurrent) {

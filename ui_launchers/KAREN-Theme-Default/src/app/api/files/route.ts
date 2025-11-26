@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withBackendPath } from '@/app/api/_utils/backend';
+import { safeGetSearchParams, safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 const TIMEOUT_MS = 15_000;
 
 export async function GET(request: NextRequest) {
   // Build upstream URL with original query params
-  const incoming = new URL(request.url);
+  const searchParams = safeGetSearchParams(request);
   const upstream = new URL(withBackendPath('/api/files'));
-  incoming.searchParams.forEach((v, k) => upstream.searchParams.append(k, v));
+  searchParams.forEach((v, k) => upstream.searchParams.append(k, v));
 
   // Minimal allow-listed headers
   const headers = new Headers({
     Accept: 'application/json, text/plain;q=0.8, */*;q=0.5',
     'Content-Type': 'application/json',
   });
-  const authorization = request.headers.get('authorization');
+  const requestHeaders = safeGetHeaders(request);
+  const authorization = requestHeaders.get('authorization');
   if (authorization) headers.set('Authorization', authorization);
-  const cookie = request.headers.get('cookie');
+  const cookie = requestHeaders.get('cookie');
   if (cookie) headers.set('Cookie', cookie);
 
   let upstreamResp: Response;

@@ -161,7 +161,7 @@ export default function BehaviorSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Customize Karen's Behavior</CardTitle>
+        <CardTitle className="text-lg">Customize Karen&rsquo;s Behavior</CardTitle>
         <CardDescription>
           Adjust how Karen interacts, remembers, and listens. Changes will apply to new interactions.
         </CardDescription>
@@ -204,7 +204,7 @@ export default function BehaviorSettings() {
                   <SelectItem value="humorous" aria-label="Select option">Humorous</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Influences the style of Karen's responses.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Influences the style of Karen&rsquo;s responses.</p>
             </div>
           </div>
           <div className="px-6 py-4">
@@ -223,7 +223,7 @@ export default function BehaviorSettings() {
                   <SelectItem value="detailed" aria-label="Select option">Detailed (Thorough explanations)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Determines the length and detail of Karen's answers.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Determines the length and detail of Karen&rsquo;s answers.</p>
             </div>
           </div>
           <div className="px-6 py-4">

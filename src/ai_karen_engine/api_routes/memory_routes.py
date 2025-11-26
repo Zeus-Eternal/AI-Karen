@@ -20,19 +20,23 @@ from ai_karen_engine.api_routes.unified_schemas import (
     FieldError,
     ValidationUtils,
 )
-from ai_karen_engine.services.structured_logging import PIIRedactor
+from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService, PIIRedactor
+from ai_karen_engine.services.monitoring.metrics_service import MetricsService
+from ai_karen_engine.services.monitoring.structured_logging_service import StructuredLoggingService
+from ai_karen_engine.services.monitoring.correlation_service import CorrelationService
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 logger = logging.getLogger(__name__)
 
 # Graceful imports with fallback mechanisms
 try:
-    from ai_karen_engine.services.memory_service import (
+    from ai_karen_engine.services.memory.unified_memory_service import (
         MemoryType,
         UISource,
         WebUIMemoryQuery,
         WebUIMemoryService,
     )
+    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
@@ -47,7 +51,9 @@ except ImportError:  # pragma: no cover - defensive
     RBAC_AVAILABLE = False
 
 try:
-    from ai_karen_engine.services.metrics_service import get_metrics_service
+    from ai_karen_engine.services.monitoring.metrics_service import get_metrics_service, MetricsService
+    from ai_karen_engine.services.monitoring.structured_logging_service import StructuredLoggingService
+    from ai_karen_engine.services.monitoring.correlation_service import CorrelationService
 
     METRICS_AVAILABLE = True
 except ImportError:
@@ -142,7 +148,7 @@ class MemDeleteResponse(ISO8601Model):
 router = APIRouter(tags=["memory"])
 
 try:
-    from ai_karen_engine.services.correlation_service import (
+    from ai_karen_engine.services.monitoring.correlation_service import (
         CorrelationService,
         create_correlation_logger,
     )
@@ -155,7 +161,7 @@ except ImportError:
     CORRELATION_AVAILABLE = False
 
 try:
-    from ai_karen_engine.services.structured_logging import (
+    from ai_karen_engine.services.monitoring.structured_logging_service import (
         get_structured_logging_service,
     )
 
@@ -271,7 +277,7 @@ async def memory_search(request: MemQuery, http_request: Request):
         CorrelationService.set_correlation_id(correlation_id)
 
         # Start trace tracking
-        from ai_karen_engine.services.correlation_service import get_correlation_tracker
+        from ai_karen_engine.services.monitoring.correlation_service import get_correlation_tracker
 
         tracker = get_correlation_tracker()
         tracker.start_trace(

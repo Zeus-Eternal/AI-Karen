@@ -68,8 +68,8 @@ export default function DatabaseConnectorPluginPage() {
           Karen AI includes a mocked tool example that simulates querying a database via chat.
           Try asking:
           <ul className="list-disc list-inside pl-4 mt-1">
-            <li>&quot;Tell me about the item &#39;Dune&#39;&quot;</li>
-            <li>&quot;What do you know about &#39;The Great Gatsby&#39;?&quot;</li>
+            <li>&ldquo;Tell me about the item &lsquo;Dune&rsquo;&rdquo;</li>
+            <li>&ldquo;What do you know about &lsquo;The Great Gatsby&rsquo;?&rdquo;</li>
           </ul>
         </AlertDescription>
       </Alert>
@@ -224,11 +224,11 @@ export default function DatabaseConnectorPluginPage() {
         <Info className="h-4 w-4" />
         <AlertTitle>How to Use This Conceptual Plugin</AlertTitle>
         <AlertDescription>
-          Interact with the conceptual &quot;Database Query&quot; tool by asking Karen AI directly
+          Interact with the conceptual &ldquo;Database Query&rdquo; tool by asking Karen AI directly
           in the main chat interface. For example:
           <ul className="list-disc list-inside pl-4 mt-1">
-            <li>&quot;What do you know about the item &#39;Dune&#39;?&quot;</li>
-            <li>&quot;Can you give me details for &#39;The Great Gatsby&#39; from the database?&quot;</li>
+            <li>&ldquo;What do you know about the item &lsquo;Dune&rsquo;?&rdquo;</li>
+            <li>&ldquo;Can you give me details for &lsquo;The Great Gatsby&rsquo; from the database?&rdquo;</li>
           </ul>
           This page illustrates future possibilities for direct database interaction.
         </AlertDescription>

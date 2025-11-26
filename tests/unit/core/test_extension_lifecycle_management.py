@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from ai_karen_engine.extensions import (
+from ai_karen_engine.extension_host.__init__2 import (
     ExtensionManager,
     HealthStatus,
     ExtensionStatus,

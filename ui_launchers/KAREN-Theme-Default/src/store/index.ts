@@ -31,6 +31,18 @@ export { usePluginStore } from './plugin-store';
 export type { PluginStore } from './plugin-store';
 
 // ---------------------------------------------------------------------------
+// Chat Store
+// ---------------------------------------------------------------------------
+export { useChatStore } from './chatStore';
+export type { Message, Conversation } from './chatStore';
+
+// ---------------------------------------------------------------------------
+// Theme Store
+// ---------------------------------------------------------------------------
+export { useThemeStore } from './themeStore';
+export type { Theme } from './themeStore';
+
+// ---------------------------------------------------------------------------
 // Selectors
 // ---------------------------------------------------------------------------
 export * from './ui-selectors';

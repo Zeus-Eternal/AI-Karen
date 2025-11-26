@@ -7,9 +7,8 @@ import {
   Role,
   User,
   Permission,
-  RoleHierarchy,
   RoleConflict,
-} from "@/types/rbac";
+} from "@/lib/security/rbac/types";
 import { useRBAC } from "@/providers/rbac-hooks";
 import { enhancedApiClient } from "@/lib/enhanced-api-client";
 
@@ -75,7 +74,7 @@ export function RoleManagement({ className }: RoleManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   return (
-    <PermissionGate permission="users:admin">
+    <PermissionGate permissions={["users:admin"]}>
       <div className={className}>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -441,7 +440,15 @@ function UserRoleTable({ users, roles, removeRole }: UserRoleTableProps) {
 // Role Hierarchy View
 // --------------------------------------------------------
 
-type RoleHierarchyItem = RoleHierarchy & { roleName?: string };
+type RoleHierarchyItem = {
+  roleId: string;
+  roleName?: string;
+  level: number;
+  parent: string | null;
+  children: string[];
+  parentRoles?: string[];
+  conflicts?: RoleConflict[];
+};
 type RoleHierarchyResponse =
   | RoleHierarchyItem[]
   | { data?: RoleHierarchyItem[] | undefined };
@@ -479,7 +486,7 @@ function RoleHierarchyView() {
       </Alert>
 
       {hierarchy.map((item) => (
-        <Card key={item.roleId}>
+        <Card key={String(item.roleId)}>
           <CardHeader>
             <CardTitle>{item.roleName ?? item.roleId}</CardTitle>
           </CardHeader>
@@ -512,7 +519,7 @@ function RoleHierarchyView() {
                         <AlertDescription>
                           Permission &apos;{conflict.permission}
                           &apos; conflicts between roles:{" "}
-                          {conflict.conflictingRoles.join(", ")}
+                          {conflict.conflictingRoles?.join(", ") || "Unknown"}
                           <br />
                           Resolution: {conflict.resolution}
                         </AlertDescription>

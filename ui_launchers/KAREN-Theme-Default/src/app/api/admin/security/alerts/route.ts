@@ -3,8 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils, type SecurityAlert } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
-export const dynamic = 'force-dynamic';
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
+// This route needs to be static for export compatibility
 
 type Severity = 'low' | 'medium' | 'high' | 'critical';
 interface AlertsQuery {
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
       return authResult; // middleware already responded (unauthorized / forbidden)
     }
 
-    const { searchParams } = new URL(request.url);
+    const searchParams = safeGetSearchParams(request);
     const limit = parseLimit(searchParams.get('limit'));
     const offset = parseOffset(searchParams.get('offset'));
     const severity = parseSeverity(searchParams.get('severity'));

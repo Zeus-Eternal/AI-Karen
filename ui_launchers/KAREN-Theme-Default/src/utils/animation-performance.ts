@@ -500,7 +500,7 @@ export const ANIMATION_PERFORMANCE_THRESHOLDS = {
 // Singleton animation performance monitor
 export const animationPerformanceMonitor = new AnimationPerformanceMonitor();
 
-export default {
+const animationPerformance = {
   performanceAnimationVariants,
   reducedMotionVariants,
   animationCSS,
@@ -509,3 +509,5 @@ export default {
   useWillChange,
   animationPerformanceMonitor,
 };
+
+export default animationPerformance;

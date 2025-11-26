@@ -95,7 +95,7 @@ function forwardResponse(origin: Response): Response {
 }
 
 /** ---------- Next.js Route flags ---------- */
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 export const revalidate = 0;
 
 /** ---------- Route ---------- */

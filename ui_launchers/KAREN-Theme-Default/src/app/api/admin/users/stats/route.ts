@@ -6,6 +6,11 @@
  * Requirements: 4.6, 7.3
  */
 import { NextRequest, NextResponse } from 'next/server';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
+// Note: Removed 'force-dynamic' to allow static export
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse, User, UserStatistics, PaginatedResponse } from '@/types/admin';

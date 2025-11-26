@@ -618,7 +618,7 @@ async def setup_default_health_checks() -> None:
 
     async def check_extensions():
         try:
-            from ai_karen_engine.extensions import get_extension_manager
+            from ai_karen_engine.extension_host.__init__2 import get_extension_manager
 
             manager = get_extension_manager()
             if not manager:

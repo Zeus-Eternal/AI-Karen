@@ -77,7 +77,9 @@ export function SetupCompleteStep({ onComplete, onPrevious }: SetupCompleteStepP
           <div className="space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-primary" />
-              What We've Accomplished
+              What We&rsquo;ve Accomplished
+              What We&rsquo;ve Accomplished
+              What We&rsquo;ve Accomplished
             </h3>
             <div className="grid gap-3">
               {completedSteps.map((step, index) => {

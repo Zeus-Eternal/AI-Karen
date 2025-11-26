@@ -1,10 +1,12 @@
 /**
  * Email Templates API
- * 
+ *
  * API endpoints for managing email templates including CRUD operations,
  * validation, and preview generation.
  */
 import { NextRequest, NextResponse } from 'next/server';
+
+// Note: Removed 'force-dynamic' to allow static export
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import {  EmailTemplate, CreateEmailTemplateRequest, EmailTemplateFilter } from '@/lib/email/types';
 import { PaginatedResponse } from '@/types/admin';

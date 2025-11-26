@@ -9,7 +9,6 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
 } from "react";
 import { Card } from "@/components/ui/card";
@@ -30,7 +29,6 @@ import {
   Clock,
   Tag,
 } from "lucide-react";
-import { getMemoryService } from "@/services/memoryService";
 import type {
   MemoryEntry,
   MemorySearchOptions,
@@ -193,7 +191,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
   });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const memoryService = useMemo(() => getMemoryService(), []);
 
   /* ----------------------------- Bootstrapping ----------------------------- */
 
@@ -205,8 +202,23 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
 
   const loadSearchHistory = useCallback(async () => {
     try {
-      const history = await memoryService.getSearchHistory(userId, 20);
-      const normalizedHistory: MemorySearchHistory[] = history.map((entry) => ({
+      const response = await fetch(`/api/memory/search/history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          limit: 20,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch search history: ${response.status}`);
+      }
+      
+      const history = await response.json();
+      const normalizedHistory: MemorySearchHistory[] = history.map((entry: Record<string, unknown>) => ({
         ...entry,
         filters: normalizeMemorySearchOptions(entry.filters),
       }));
@@ -215,12 +227,26 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       console.error("Failed to load search history:", error);
       // Gracefully fail - search history is a nice-to-have feature
     }
-  }, [userId, memoryService]);
+  }, [userId]);
 
   const loadSavedSearches = useCallback(async () => {
     try {
-      const searches = await memoryService.getSavedSearches(userId);
-      const normalizedSearches: SavedSearch[] = searches.map((saved) => ({
+      const response = await fetch(`/api/memory/search/saved`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch saved searches: ${response.status}`);
+      }
+      
+      const searches = await response.json();
+      const normalizedSearches: SavedSearch[] = searches.map((saved: Record<string, unknown>) => ({
         ...saved,
         filters: normalizeMemorySearchOptions(saved.filters),
         lastUsed: saved.lastUsed ?? saved.createdAt,
@@ -231,7 +257,7 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       console.error("Failed to load saved searches:", error);
       // Gracefully fail - saved searches are a nice-to-have feature
     }
-  }, [userId, memoryService]);
+  }, [userId]);
 
   const generateSuggestions = useCallback(
     async (searchQuery: string) => {
@@ -408,13 +434,26 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
           sortOrder: searchFilters.sortOrder,
         };
 
-        const result = await memoryService.searchMemories(q, {
-          userId,
-          tags: searchOptions.tags,
-          dateRange: searchOptions.timeRange,
-          minSimilarity: searchOptions.similarityThreshold,
-          maxResults: searchOptions.topK,
+        const response = await fetch(`/api/memory/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: q,
+            user_id: userId,
+            tags: searchOptions.tags,
+            time_range: searchOptions.timeRange,
+            min_similarity: searchOptions.similarityThreshold,
+            max_results: searchOptions.topK,
+          }),
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to search memories: ${response.status}`);
+        }
+        
+        const result = await response.json();
 
         const enhancedResult: MemorySearchResult = {
           memories: result.memories,
@@ -441,7 +480,6 @@ export const MemorySearch: React.FC<MemorySearchProps> = ({
       query,
       filters,
       userId,
-      memoryService,
       onSearchComplete,
       generateFacets,
       generateQuerySuggestions,

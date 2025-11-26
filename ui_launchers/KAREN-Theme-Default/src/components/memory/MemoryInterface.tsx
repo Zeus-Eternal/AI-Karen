@@ -1,7 +1,7 @@
 /**
  * Comprehensive Memory Interface Component (Production)
  * - Orchestrates Grid, Network, and Analytics views
- * - CopilotKit-enhanced editing (MemoryEditor)
+ * - KARI Copilot-enhanced editing (MemoryEditor)
  * - Safe fetch, explicit error surfacing
  * - Lazy-loaded charts & network viz
  * - Local refresh on save/delete without page reloads
@@ -17,7 +17,7 @@ import {
   ErrorBoundary,
   type ErrorFallbackProps,
 } from "@/components/error-handling/ErrorBoundary";
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotProvider } from "@/ai/copilot";
 import MemoryGrid from "./MemoryGrid";
 import MemoryEditor from "./MemoryEditor";
 
@@ -90,7 +90,12 @@ export interface MemoryAnalytics {
 export interface MemoryInterfaceProps {
   userId: string;
   tenantId?: string;
-  copilotApiKey?: string;
+  backendConfig?: {
+    baseUrl: string;
+    apiKey?: string;
+    userId: string;
+    sessionId: string;
+  };
   height?: number;
 }
 
@@ -122,7 +127,7 @@ async function safeJsonPost<T = unknown>(url: string, payload: unknown): Promise
 export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   userId,
   tenantId,
-  copilotApiKey,
+  backendConfig,
   height = 600,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -336,7 +341,11 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   /* ----- Render ----- */
   return (
     <ErrorBoundary fallback={MemoryInterfaceFallback}>
-      <CopilotKit publicApiKey={copilotApiKey}>
+      <CopilotProvider backendConfig={backendConfig || {
+        baseUrl: '/api',
+        userId,
+        sessionId: 'memory-session',
+      }}>
         <div
           className="memory-interface relative flex flex-col"
           style={{ height: `${height}px` }}
@@ -484,7 +493,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
             tenantId={tenantId}
           />
         </div>
-      </CopilotKit>
+      </CopilotProvider>
     </ErrorBoundary>
   );
 };

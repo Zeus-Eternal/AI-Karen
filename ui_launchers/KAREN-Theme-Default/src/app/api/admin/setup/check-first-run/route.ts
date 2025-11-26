@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { FirstRunSetup, AdminApiResponse } from '@/types/admin';
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 
 /**
  * Check if this is the first run (no super admin exists)

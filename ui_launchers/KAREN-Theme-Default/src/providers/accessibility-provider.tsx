@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useUIStore, selectAnimationState } from '../store';
+import { useUIStore, selectAnimationState } from '../store/index';
 import {
   AccessibilityContext,
   type AccessibilityContextValue,
@@ -32,6 +32,11 @@ export function AccessibilityProvider({
   const [mounted, setMounted] = useState(false);
   // Load settings from localStorage on mount
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     const loadSettings = () => {
       try {
         const stored = localStorage.getItem(storageKey);
@@ -96,7 +101,9 @@ export function AccessibilityProvider({
 
   // Detect system preferences
   useEffect(() => {
-    if (!mounted || typeof window === 'undefined' || !window.matchMedia) return;
+    if (!mounted || typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
     // Detect reduced motion
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleReducedMotionChange = (e: MediaQueryListEvent) => {
@@ -135,7 +142,9 @@ export function AccessibilityProvider({
   }, [mounted, settings.reducedMotion, settings.highContrast, updateSetting]);
   // Apply accessibility settings to document
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || typeof window === 'undefined') {
+      return;
+    }
     const root = document.documentElement;
     // Apply font size
     root.style.setProperty('--accessibility-font-size', {
@@ -171,7 +180,9 @@ export function AccessibilityProvider({
   };
   // Announce messages to screen readers
   const announce = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    if (!settings.announcements || !mounted) return;
+    if (!settings.announcements || !mounted || typeof window === 'undefined') {
+      return;
+    }
     const announcement = document.createElement('div');
     announcement.setAttribute('aria-live', priority);
     announcement.setAttribute('aria-atomic', 'true');

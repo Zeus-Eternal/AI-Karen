@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from ai_karen_engine.extensions.base import BaseExtension
-from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionContext
+from ai_karen_engine.extension_host.models2 import ExtensionManifest, ExtensionContext
 
 
 class DummyExtension(BaseExtension):

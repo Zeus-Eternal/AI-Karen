@@ -1,4 +1,4 @@
-from ai_karen_engine.extensions.models import ExtensionManifest
+from ai_karen_engine.extension_host.models2 import ExtensionManifest
 
 
 def test_extension_manifest_valid():

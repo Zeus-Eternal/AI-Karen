@@ -23,7 +23,7 @@ class TestPluginOrchestration:
     @pytest.fixture
     def plugin_orchestrator(self, plugin_router):
         """Create plugin orchestrator fixture."""
-        from ai_karen_engine.extensions import PluginOrchestrator
+        from ai_karen_engine.extension_host.__init__2 import PluginOrchestrator
         return PluginOrchestrator(plugin_router=plugin_router)
     
     def test_orchestrator_initialization(self, plugin_orchestrator, plugin_router):
@@ -65,7 +65,7 @@ class TestExtensionPluginCommunication:
     @pytest.fixture
     def extension_manager(self):
         """Create extension manager fixture."""
-        from ai_karen_engine.extensions import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
         from ai_karen_engine.plugins.router import PluginRouter
         
         plugin_router = PluginRouter()
@@ -118,7 +118,7 @@ class TestExtensionExamples:
     @pytest.fixture
     def extension_manager(self):
         """Create extension manager fixture."""
-        from ai_karen_engine.extensions import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
         from ai_karen_engine.plugins.router import PluginRouter
         
         plugin_router = PluginRouter()
@@ -233,7 +233,7 @@ class TestDataFlow:
     @pytest.fixture
     def full_setup(self):
         """Create full extension and plugin setup."""
-        from ai_karen_engine.extensions import ExtensionManager, PluginOrchestrator
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager, PluginOrchestrator
         from ai_karen_engine.plugins.router import PluginRouter
         
         plugin_router = PluginRouter()

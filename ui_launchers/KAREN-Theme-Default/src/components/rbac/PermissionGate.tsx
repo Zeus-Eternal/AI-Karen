@@ -1,105 +1,49 @@
-"use client";
+/**
+ * PermissionGate Component
+ * 
+ * This component conditionally renders its children based on whether the current user
+ * has the specified permissions. It can check for a single permission or multiple permissions,
+ * and can require all permissions or any of them.
+ */
 
-import * as React from 'react';
-import { Permission, AccessContext, PermissionCheckResult } from '@/types/rbac';
-import { useRBAC } from '@/providers/rbac-hooks';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldX, Lock, AlertTriangle } from 'lucide-react';
+import React from 'react';
+import { PermissionGateProps } from '../../lib/security/rbac/types';
+import { useRBAC } from '../hooks/useRBAC';
 
-export interface PermissionGateProps {
-  permission: Permission | Permission[];
-  requireAll?: boolean; // If true, requires all permissions; if false, requires any
-  context?: Partial<AccessContext>;
-  fallback?: React.ReactNode;
-  showFallback?: boolean;
-  children: React.ReactNode;
-}
+// Re-export the type for convenience
+export type { PermissionGateProps };
 
 /**
- * PermissionGate component that conditionally renders children based on user permissions.
- * Provides graceful degradation for unauthorized access.
+ * A component that conditionally renders its children based on permissions
  */
-export function PermissionGate({
-  permission,
+export const PermissionGate: React.FC<PermissionGateProps> = ({
+  permissions,
   requireAll = false,
-  context,
-  fallback,
-  showFallback = true,
-  children
-}: PermissionGateProps) {
-  const { hasPermission, hasAllPermissions, hasAnyPermission, checkPermission } = useRBAC();
+  fallback = null,
+  children,
+  showError = false
+}) => {
+  const { hasAnyPermission, hasAllPermissions, error } = useRBAC();
 
-  // Determine if user has required permissions
-  const hasAccess = React.useMemo(() => {
-    if (Array.isArray(permission)) {
-      return requireAll 
-        ? hasAllPermissions(permission)
-        : hasAnyPermission(permission);
-    }
-    return hasPermission(permission, context);
-  }, [permission, requireAll, context, hasPermission, hasAllPermissions, hasAnyPermission]);
+  // Convert single permission to array for uniform handling
+  const permissionArray = Array.isArray(permissions) ? permissions : [permissions];
 
-  // Get detailed permission check result for better error messages
-  const permissionResult = React.useMemo(() => {
-    if (Array.isArray(permission)) {
-      // For arrays, check the first permission for detailed info
-      return checkPermission(permission[0], context);
-    }
-    return checkPermission(permission, context);
-  }, [permission, context, checkPermission]);
+  // Check permissions based on requireAll flag
+  const hasRequiredPermissions = requireAll
+    ? hasAllPermissions(permissionArray)
+    : hasAnyPermission(permissionArray);
 
-  if (hasAccess) {
-    return <>{children}</>;
+  // Show error message if showError is true and there's an error
+  if (showError && error) {
+    return (
+      <div className="rbac-error">
+        <p>Error checking permissions: {error}</p>
+      </div>
+    );
   }
 
-  // Show fallback if provided
-  if (fallback) {
-    return <>{fallback}</>;
-  }
+  // Render children if user has required permissions, otherwise render fallback
+  return <>{hasRequiredPermissions ? children : fallback}</>;
+};
 
-  // Show default fallback if enabled
-  if (showFallback) {
-    return <PermissionDeniedFallback permissionResult={permissionResult} />;
-  }
-
-  // Don't render anything
-  return null;
-}
-
-export interface PermissionDeniedFallbackProps {
-  permissionResult: PermissionCheckResult;
-}
-
-function PermissionDeniedFallback({ permissionResult }: PermissionDeniedFallbackProps) {
-  const getIcon = () => {
-    if (permissionResult.requiresElevation) {
-      return <AlertTriangle className="h-4 w-4 " />;
-    }
-    if (permissionResult.restrictions?.length > 0) {
-      return <Lock className="h-4 w-4 " />;
-    }
-    return <ShieldX className="h-4 w-4 " />;
-  };
-
-  const getVariant = () => {
-    if (permissionResult.requiresElevation) {
-      return 'default' as const;
-    }
-    return 'destructive' as const;
-  };
-
-  return (
-    <Alert variant={getVariant()} className="my-2">
-      {getIcon()}
-      <AlertDescription>
-        {permissionResult.reason}
-        {permissionResult.elevationReason && (
-          <div className="mt-1 text-sm text-muted-foreground md:text-base lg:text-lg">
-            {permissionResult.elevationReason}
-          </div>
-        )}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
+export default PermissionGate;

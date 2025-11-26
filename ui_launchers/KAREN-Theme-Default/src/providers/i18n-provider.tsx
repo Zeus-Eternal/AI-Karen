@@ -20,6 +20,11 @@ export function I18nProvider({
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     let active = true;
     let unsubscribe: (() => void) | undefined;
 
@@ -70,7 +75,7 @@ export function I18nProvider({
   }, [defaultLocale, locales]);
 
   useEffect(() => {
-    if (!isInitialized) {
+    if (!isInitialized || typeof window === 'undefined') {
       return;
     }
 

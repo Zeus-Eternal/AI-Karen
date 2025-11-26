@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 
 from ai_karen_engine.services.production_cache_service import (
-    ProductionCacheService,
+    CacheService,
     CacheEntry,
     CacheStats,
     get_cache_service,
@@ -16,8 +16,8 @@ from ai_karen_engine.services.production_cache_service import (
 )
 
 
-class TestProductionCacheService:
-    """Test cases for ProductionCacheService."""
+class TestCacheService:
+    """Test cases for CacheService."""
     
     @pytest.fixture
     def mock_redis_client(self):
@@ -30,7 +30,7 @@ class TestProductionCacheService:
     @pytest.fixture
     def cache_service(self, mock_redis_client):
         """Create a cache service instance for testing."""
-        return ProductionCacheService(redis_client=mock_redis_client)
+        return CacheService(redis_client=mock_redis_client)
     
     def test_init(self, cache_service):
         """Test cache service initialization."""

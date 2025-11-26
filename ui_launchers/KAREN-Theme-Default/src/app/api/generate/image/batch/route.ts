@@ -1,6 +1,16 @@
 // app/api/image/generate/batch/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
+// Static export detection
+function isStaticExport(): boolean {
+  return (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_EXPORT === 'true' ||
+    process.env.STATIC_EXPORT === 'true' ||
+    (typeof window === 'undefined' && process.env.NODE_ENV === 'production')
+  );
+}
+
 interface SingleImageReq {
   id?: string;
   prompt: string;
@@ -195,6 +205,17 @@ async function simulateOneRequest(req: SingleImageReq): Promise<BatchResultItem>
 
 // ---------- Route handlers ----------
 export async function POST(request: NextRequest) {
+  // Skip image generation during static export
+  if (isStaticExport()) {
+    return NextResponse.json(
+      {
+        error: 'Image generation unavailable during static export',
+        message: 'This endpoint is not available during static site generation'
+      },
+      { status: 503 }
+    );
+  }
+
   // Parse body
   let body: BatchImageGenerationRequest;
   try {

@@ -5,8 +5,22 @@
  * Requirements: 3.3
  */
 import { NextRequest, NextResponse } from 'next/server';
-// Force this route to be dynamic
-export const dynamic = 'force-dynamic';
+
+/**
+ * Generate static params for admin promote route
+ * Since we can't pre-generate all possible admin IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 import { requireSuperAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse } from '@/types/admin';

@@ -10,7 +10,6 @@ import {
   MutationCache,
   QueryCache,
 } from '@tanstack/react-query';
-import { useAppStore } from '@/store/app-store';
 // Default query options
 const defaultOptions: DefaultOptions = {
   queries: {
@@ -66,38 +65,36 @@ export const createQueryClient = () => {
     defaultOptions,
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, _mutation) => {
-        const { setError, addNotification } = useAppStore.getState();
-        const message = resolveErrorMessage(error, 'An error occurred');
-        setError('mutation', message);
-        addNotification({
-          type: 'error',
-          title: 'Operation Failed',
-          message,
-        });
+        // Log errors to console instead of using store to avoid SSR issues
+        if (typeof window !== 'undefined') {
+          const message = resolveErrorMessage(error, 'An error occurred');
+          console.error('Mutation error:', message);
+        }
       },
       onSuccess: () => {
-        const { clearError } = useAppStore.getState();
-        clearError('mutation');
+        // Clear errors on success
+        if (typeof window !== 'undefined') {
+          console.log('Mutation succeeded');
+        }
       },
     }),
     queryCache: new QueryCache({
       onError: (error, query) => {
-        const { setError, addNotification } = useAppStore.getState();
-        const message = resolveErrorMessage(error, 'Failed to load data');
+        // Log errors to console instead of using store to avoid SSR issues
+        if (typeof window !== 'undefined') {
+          const message = resolveErrorMessage(error, 'Failed to load data');
+          console.error('Query error:', message);
 
-        if (query.state.fetchStatus === 'fetching' && query.state.data !== undefined) {
-          addNotification({
-            type: 'warning',
-            title: 'Data Sync Issue',
-            message: 'Unable to refresh data. Using cached version.',
-          });
-        } else {
-          setError('query', message);
+          if (query.state.fetchStatus === 'fetching' && query.state.data !== undefined) {
+            console.warn('Data sync issue: Unable to refresh data. Using cached version.');
+          }
         }
       },
       onSuccess: () => {
-        const { clearError } = useAppStore.getState();
-        clearError('query');
+        // Clear errors on success
+        if (typeof window !== 'undefined') {
+          console.log('Query succeeded');
+        }
       },
     }),
   });
@@ -158,36 +155,53 @@ export const queryKeys = {
     logs: () => ['system', 'logs'] as const,
   },
 } as const;
-// Query client instance
-export const queryClient = createQueryClient();
+// Query client instance - create it lazily to avoid SSR issues
+let queryClientInstance: QueryClient | null = null;
+
+export const getQueryClient = () => {
+  if (!queryClientInstance) {
+    queryClientInstance = createQueryClient();
+  }
+  return queryClientInstance;
+};
+
+// For backward compatibility, we export a getter that creates the client if needed
+export const queryClient = () => {
+  console.log('queryClient: Function called');
+  const client = getQueryClient();
+  console.log('queryClient: Client retrieved successfully');
+  return client;
+};
 // Helper function to invalidate related queries
 export const invalidateQueries = {
-  auth: () => queryClient.invalidateQueries({ queryKey: queryKeys.auth.user() }),
-  dashboard: () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() }),
-  chat: () => queryClient.invalidateQueries({ queryKey: queryKeys.chat.all() }),
-  memory: () => queryClient.invalidateQueries({ queryKey: queryKeys.memory.all() }),
-  plugins: () => queryClient.invalidateQueries({ queryKey: queryKeys.plugins.all() }),
-  providers: () => queryClient.invalidateQueries({ queryKey: queryKeys.providers.all() }),
-  users: () => queryClient.invalidateQueries({ queryKey: queryKeys.users.all() }),
-  system: () => queryClient.invalidateQueries({ queryKey: queryKeys.system.all() }),
-  all: () => queryClient.invalidateQueries(),
+  auth: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.auth.user() }),
+  dashboard: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.dashboard.all() }),
+  chat: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.chat.all() }),
+  memory: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.memory.all() }),
+  plugins: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.plugins.all() }),
+  providers: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.providers.all() }),
+  users: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.users.all() }),
+  system: () => getQueryClient().invalidateQueries({ queryKey: queryKeys.system.all() }),
+  all: () => getQueryClient().invalidateQueries(),
 };
 // Helper function to prefetch common queries
 export const prefetchQueries = {
   dashboard: async () => {
+    const client = getQueryClient();
     await Promise.all([
-      queryClient.prefetchQuery({
+      client.prefetchQuery({
         queryKey: queryKeys.dashboard.metrics(),
         queryFn: () => fetch('/api/dashboard/metrics').then(res => res.json()),
       }),
-      queryClient.prefetchQuery({
+      client.prefetchQuery({
         queryKey: queryKeys.dashboard.health(),
         queryFn: () => fetch('/api/system/health').then(res => res.json()),
       }),
     ]);
   },
   user: async (userId: string) => {
-    await queryClient.prefetchQuery({
+    const client = getQueryClient();
+    await client.prefetchQuery({
       queryKey: queryKeys.users.user(userId),
       queryFn: () => fetch(`/api/users/${userId}`).then(res => res.json()),
     });
@@ -196,12 +210,12 @@ export const prefetchQueries = {
 // Helper function to set query data optimistically
 export const setQueryData = {
   user: (userData: unknown) => {
-    queryClient.setQueryData(queryKeys.auth.user(), userData);
+    getQueryClient().setQueryData(queryKeys.auth.user(), userData);
   },
   conversation: (conversationId: string, data: unknown) => {
-    queryClient.setQueryData(queryKeys.chat.conversation(conversationId), data);
+    getQueryClient().setQueryData(queryKeys.chat.conversation(conversationId), data);
   },
   plugin: (pluginId: string, data: unknown) => {
-    queryClient.setQueryData(queryKeys.plugins.plugin(pluginId), data);
+    getQueryClient().setQueryData(queryKeys.plugins.plugin(pluginId), data);
   },
 };

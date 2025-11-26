@@ -15,8 +15,8 @@ from datetime import datetime
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from ai_karen_engine.extensions.manager import ExtensionManager
-from ai_karen_engine.extensions.models import (
+from ai_karen_engine.extension_host.manager import ExtensionManager
+from ai_karen_engine.extension_host.models2 import (
     ExtensionManifest,
     ExtensionRecord,
     ExtensionStatus,

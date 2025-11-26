@@ -45,6 +45,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = React.memo(
     return <span className={className}>{formattedValue}</span>;
   }
 );
+FormattedNumber.displayName = "FormattedNumber";
 
 /* ==============
    Date / Time
@@ -58,20 +59,20 @@ export interface FormattedDateProps {
   className?: string;
 }
 
-export const FormattedDate: React.FC<FormattedDateProps> = React.memo(
-  ({ value, dateStyle, timeStyle, timeZone, className }) => {
-    const { formatDate } = useFormatting();
-    const options: FormatOptions = { dateStyle, timeStyle, timeZone };
+const FormattedDateComponent: React.FC<FormattedDateProps> = ({ value, dateStyle, timeStyle, timeZone, className }) => {
+  const { formatDate } = useFormatting();
+  const options: FormatOptions = { dateStyle, timeStyle, timeZone };
 
-    const formattedValue = React.useMemo(
-      () => formatDate(value, options),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [value, dateStyle, timeStyle, timeZone]
-    );
+  const formattedValue = React.useMemo(
+    () => formatDate(value, options),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [value, dateStyle, timeStyle, timeZone]
+  );
 
-    return <span className={className}>{formattedValue}</span>;
-  }
-);
+  return <span className={className}>{formattedValue}</span>;
+};
+FormattedDateComponent.displayName = "FormattedDate";
+export const FormattedDate = React.memo(FormattedDateComponent);
 
 /* ==================
    Relative Time / Ago
@@ -84,8 +85,8 @@ export interface FormattedRelativeTimeProps {
   className?: string;
 }
 
-export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
-  React.memo(({ value, unit, numeric = "auto", className }) => {
+const FormattedRelativeTimeComponent: React.FC<FormattedRelativeTimeProps> =
+  ({ value, unit, numeric = "auto", className }) => {
     const { formatRelativeTime } = useFormatting();
 
     const formattedValue = React.useMemo(
@@ -95,7 +96,9 @@ export const FormattedRelativeTime: React.FC<FormattedRelativeTimeProps> =
     );
 
     return <span className={className}>{formattedValue}</span>;
-  });
+  };
+FormattedRelativeTimeComponent.displayName = "FormattedRelativeTime";
+export const FormattedRelativeTime = React.memo(FormattedRelativeTimeComponent);
 
 const useCurrentTimestamp = (intervalMs = 60_000) => {
   return React.useSyncExternalStore(
@@ -144,7 +147,7 @@ const computeRelativeTimeParts = (referenceMs: number, inputMs: number): Relativ
   return { value: -Math.floor(diffInSeconds / 31536000), unit: "year" };
 };
 
-export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) => {
+const TimeAgoComponent: React.FC<TimeAgoProps> = ({ date, className }) => {
   const [relativeTime, setRelativeTime] = React.useState<RelativeTimeParts>(DEFAULT_RELATIVE_TIME);
   const now = useCurrentTimestamp();
 
@@ -161,7 +164,9 @@ export const TimeAgo: React.FC<TimeAgoProps> = React.memo(({ date, className }) 
   }, [date, now]);
 
   return <FormattedRelativeTime value={relativeTime.value} unit={relativeTime.unit} className={className} />;
-});
+};
+TimeAgoComponent.displayName = "TimeAgo";
+export const TimeAgo = React.memo(TimeAgoComponent);
 
 /* =====================
    Currency / Percentage
@@ -175,26 +180,26 @@ export interface FormattedCurrencyProps {
   className?: string;
 }
 
-export const FormattedCurrency: React.FC<FormattedCurrencyProps> = React.memo(
-  ({
-    value,
-    currency,
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
-    className,
-  }) => {
-    return (
-      <FormattedNumber
-        value={value}
-        style="currency"
-        currency={currency}
-        minimumFractionDigits={minimumFractionDigits}
-        maximumFractionDigits={maximumFractionDigits}
-        className={className}
-      />
-    );
-  }
-);
+const FormattedCurrencyComponent: React.FC<FormattedCurrencyProps> = ({
+  value,
+  currency,
+  minimumFractionDigits = 2,
+  maximumFractionDigits = 2,
+  className,
+}) => {
+  return (
+    <FormattedNumber
+      value={value}
+      style="currency"
+      currency={currency}
+      minimumFractionDigits={minimumFractionDigits}
+      maximumFractionDigits={maximumFractionDigits}
+      className={className}
+    />
+  );
+};
+FormattedCurrencyComponent.displayName = "FormattedCurrency";
+export const FormattedCurrency = React.memo(FormattedCurrencyComponent);
 
 export interface FormattedPercentProps {
   value: number; // 0.15 => 15%
@@ -203,19 +208,19 @@ export interface FormattedPercentProps {
   className?: string;
 }
 
-export const FormattedPercent: React.FC<FormattedPercentProps> = React.memo(
-  ({ value, minimumFractionDigits = 0, maximumFractionDigits = 2, className }) => {
-    return (
-      <FormattedNumber
-        value={value}
-        style="percent"
-        minimumFractionDigits={minimumFractionDigits}
-        maximumFractionDigits={maximumFractionDigits}
-        className={className}
-      />
-    );
-  }
-);
+const FormattedPercentComponent: React.FC<FormattedPercentProps> = ({ value, minimumFractionDigits = 0, maximumFractionDigits = 2, className }) => {
+  return (
+    <FormattedNumber
+      value={value}
+      style="percent"
+      minimumFractionDigits={minimumFractionDigits}
+      maximumFractionDigits={maximumFractionDigits}
+      className={className}
+    />
+  );
+};
+FormattedPercentComponent.displayName = "FormattedPercent";
+export const FormattedPercent = React.memo(FormattedPercentComponent);
 
 /* ==================
    File Size Formatter
@@ -227,41 +232,41 @@ export interface FormattedFileSizeProps {
   className?: string;
 }
 
-export const FormattedFileSize: React.FC<FormattedFileSizeProps> = React.memo(
-  ({ bytes, binary = false, className }) => {
-    const { locale } = useLocale();
+const FormattedFileSizeComponent: React.FC<FormattedFileSizeProps> = ({ bytes, binary = false, className }) => {
+  const { locale } = useLocale();
 
-    const units = binary
-      ? ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
-      : ["B", "KB", "MB", "GB", "TB", "PB"];
+  const units = binary
+    ? ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
+    : ["B", "KB", "MB", "GB", "TB", "PB"];
 
-    const base = binary ? 1024 : 1000;
+  const base = binary ? 1024 : 1000;
 
-    if (!Number.isFinite(bytes)) {
-      return <span className={className}>—</span>;
-    }
-
-    const sign = Math.sign(bytes) || 1;
-    const abs = Math.abs(bytes);
-
-    if (abs === 0) {
-      return <span className={className}>0 B</span>;
-    }
-
-    const exponent = Math.min(Math.floor(Math.log(abs) / Math.log(base)), units.length - 1);
-    const value = abs / Math.pow(base, exponent);
-    const unit = units[exponent];
-
-    const formatter = new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: exponent === 0 ? 0 : 1,
-    });
-
-    return (
-      <span className={className}>
-        {sign < 0 ? "-" : ""}
-        {formatter.format(value)} {unit}
-      </span>
-    );
+  if (!Number.isFinite(bytes)) {
+    return <span className={className}>—</span>;
   }
-);
+
+  const sign = Math.sign(bytes) || 1;
+  const abs = Math.abs(bytes);
+
+  if (abs === 0) {
+    return <span className={className}>0 B</span>;
+  }
+
+  const exponent = Math.min(Math.floor(Math.log(abs) / Math.log(base)), units.length - 1);
+  const value = abs / Math.pow(base, exponent);
+  const unit = units[exponent];
+
+  const formatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: exponent === 0 ? 0 : 1,
+  });
+
+  return (
+    <span className={className}>
+      {sign < 0 ? "-" : ""}
+      {formatter.format(value)} {unit}
+    </span>
+  );
+};
+FormattedFileSizeComponent.displayName = "FormattedFileSize";
+export const FormattedFileSize = React.memo(FormattedFileSizeComponent);

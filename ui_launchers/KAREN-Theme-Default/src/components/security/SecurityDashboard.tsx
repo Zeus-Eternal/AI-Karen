@@ -152,7 +152,7 @@ export function SecurityDashboard({ className }: SecurityDashboardProps) {
   };
 
   return (
-    <PermissionGate permission="security:view">
+    <PermissionGate permissions={["security:view"]}>
       <div className={className}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

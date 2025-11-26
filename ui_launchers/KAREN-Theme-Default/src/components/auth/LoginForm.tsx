@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectionError } from '@/lib/connection/connection-manager';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -63,6 +63,26 @@ function isTwoFactorError(error: unknown, message?: string | null): boolean {
   return TWO_FACTOR_ERROR_REGEX.test(text);
 }
 
+const LOCKOUT_MESSAGE_REGEX = /locked until\s+([0-9:\-T\s]+(?:utc|z)?)/i;
+
+function parseLockoutInfo(message?: string | null) {
+  if (!message) return null;
+
+  const match = message.match(LOCKOUT_MESSAGE_REGEX);
+  if (!match) return null;
+
+  const raw = match[1].trim();
+  const normalized = raw
+    .replace(/\s+utc$/i, 'Z')
+    .replace(/\s+z$/i, 'Z')
+    .replace(' ', 'T');
+
+  const parsedMs = Date.parse(normalized) || Date.parse(raw);
+  const lockedUntil = Number.isNaN(parsedMs) ? undefined : new Date(parsedMs);
+
+  return { raw, lockedUntil };
+}
+
 function LoginForm({ onSuccess }: LoginFormProps) {
   const { login, authState, clearError } = useAuth();
   const [email, setEmail] = useState('');
@@ -71,13 +91,57 @@ function LoginForm({ onSuccess }: LoginFormProps) {
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const lastFailedCredentials = useRef<{ email: string; password: string } | null>(null);
 
-  // Clear general error when user starts typing
+  const lockoutInfo = useMemo(
+    () => parseLockoutInfo(typeof authState.error === 'string' ? authState.error : null),
+    [authState.error]
+  );
+
+  // Ensure component is mounted before rendering to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Track the credentials that produced the last error so we only clear
+  // once the user edits either field, instead of instantly after an error is set.
   useEffect(() => {
     if (authState.error) {
+      lastFailedCredentials.current = { email, password };
+    } else {
+      lastFailedCredentials.current = null;
+    }
+  }, [authState.error, email, password]);
+
+  useEffect(() => {
+    if (!authState.error || !lastFailedCredentials.current) {
+      return;
+    }
+
+    const { email: failedEmail, password: failedPassword } = lastFailedCredentials.current;
+    const emailChanged = email !== failedEmail;
+    const passwordChanged = password !== failedPassword;
+
+    if (emailChanged || passwordChanged) {
       clearError();
+      lastFailedCredentials.current = null;
     }
   }, [email, password, authState.error, clearError]);
+
+  // Show a loading state that matches server rendering while mounting
+  if (!isMounted) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+          <h1 className="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">
+            Loading...
+          </h1>
+          <div>Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Validate email format
   const validateEmail = (email: string): boolean => {
@@ -203,9 +267,24 @@ function LoginForm({ onSuccess }: LoginFormProps) {
                   Login Failed
                 </p>
                 <p className="text-sm text-red-700 dark:text-red-300 mb-3">
-                  {authState.error.message}
+                  {typeof authState.error === 'string' ? authState.error : 'An error occurred during login'}
                 </p>
-                {authState.error.statusCode === 401 && (
+                {lockoutInfo && (
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border border-red-200 dark:border-red-800 mb-2">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                      Account locked
+                    </p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300">
+                      {lockoutInfo.lockedUntil
+                        ? `Locked until ${lockoutInfo.lockedUntil.toLocaleString()} (${lockoutInfo.lockedUntil.toISOString()})`
+                        : `Locked: ${lockoutInfo.raw}`}
+                    </p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mt-1">
+                      Wait for the lockout to expire or unlock via <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">python3 scripts/maintenance/unlock_admin_account.py</code>.
+                    </p>
+                  </div>
+                )}
+                {typeof authState.error === 'string' && authState.error.includes('401') && (
                   <div className="bg-white dark:bg-gray-800 p-3 rounded border border-red-200 dark:border-red-800 mb-2">
                     <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
                       Common Issues:
@@ -224,7 +303,7 @@ function LoginForm({ onSuccess }: LoginFormProps) {
                   </summary>
                   <div className="mt-2 pl-4 border-l-2 border-red-300 dark:border-red-700 text-gray-700 dark:text-gray-300">
                     <ol className="list-decimal list-inside space-y-1">
-                      <li>Verify you're using the correct credentials:
+                      <li>Verify you&apos;re using the correct credentials:
                         <br/><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">admin@kari.ai</code> / <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">Password123!</code>
                       </li>
                       <li>Run admin setup script: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">python3 scripts/operations/setup_admin_proper.py</code></li>

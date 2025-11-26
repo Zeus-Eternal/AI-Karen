@@ -87,7 +87,7 @@ These warnings don't block the build but indicate missing exports that may cause
 **Files Affected:**
 - `src/components/ChatInterface/components/CopilotActions.tsx`
 - `src/components/layout/AuthenticatedHeader.tsx`
-- `src/components/layout/ModernHeader.tsx`
+- `src/components/layout/Header.tsx`
 
 **Missing Exports from** `@/components/ui/dropdown-menu`:
 - `DropdownMenu`

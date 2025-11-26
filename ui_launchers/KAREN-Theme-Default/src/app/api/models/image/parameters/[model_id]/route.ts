@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Generate static params for model image parameters route
+ * Since we can't pre-generate all possible model IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { model_id: '1' },
+    { model_id: '2' },
+    { model_id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
 /** ---------- Types ---------- */
 
 type IntegerParam = {
@@ -281,6 +297,94 @@ export async function GET(
     const modelId = resolvedParams?.model_id;
     if (!modelId) {
       return NextResponse.json({ error: 'Missing model_id parameter' }, { status: 400 });
+    }
+
+    // Check if we're in a static export context
+    const isStaticExport = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    if (isStaticExport) {
+      // Return a minimal response for static export
+      return NextResponse.json({
+        model_id: modelId,
+        model_name: `Model ${modelId}`,
+        provider: 'unknown',
+        supported_modes: ['text2img'],
+        parameters: {
+          prompt: {
+            type: 'string',
+            required: true,
+            description: 'Text description of image to generate',
+            max_length: 1000,
+          },
+          width: {
+            type: 'integer',
+            min: 256,
+            max: 1024,
+            default: 512,
+            step: 64,
+            description: 'Width of generated image in pixels',
+          },
+          height: {
+            type: 'integer',
+            min: 256,
+            max: 1024,
+            default: 512,
+            step: 64,
+            description: 'Height of generated image in pixels',
+          },
+          steps: {
+            type: 'integer',
+            min: 1,
+            max: 100,
+            default: 20,
+            description: 'Number of denoising / sampling steps',
+          },
+          guidance_scale: {
+            type: 'float',
+            min: 0.0,
+            max: 20.0,
+            default: 7.5,
+            description: 'Prompt adherence strength (higher = closer to prompt)',
+          },
+          seed: {
+            type: 'integer',
+            min: -1,
+            max: 2147483647,
+            default: -1,
+            description: 'Random seed (-1 for random)',
+          },
+          batch_size: {
+            type: 'integer',
+            min: 1,
+            max: 4,
+            default: 1,
+            description: 'Number of images to generate per batch',
+          },
+        },
+        presets: [
+          {
+            name: 'Quality',
+            description: 'High quality with more steps and stronger guidance',
+            parameters: { steps: 50, guidance_scale: 12.0, width: 512, height: 512 },
+          },
+          {
+            name: 'Speed',
+            description: 'Fast generation with fewer steps',
+            parameters: { steps: 10, guidance_scale: 5.0, width: 512, height: 512 },
+          },
+        ],
+        limitations: {
+          max_batch_size: 4,
+          max_resolution: 1024 * 1024,
+          memory_requirement_mb: 4000,
+          estimated_time_per_image: 30,
+        },
+      }, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
     }
 
     const { modelSelectionService } = await import('@/lib/model-selection-service');

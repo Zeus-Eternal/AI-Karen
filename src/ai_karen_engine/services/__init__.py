@@ -160,6 +160,7 @@ __all__ = [
     "execute_plugin_simple",
     "get_plugin_marketplace_info",
     # Memory service
+    "UnifiedMemoryService",
     "WebUIMemoryService",
     "transform_web_ui_memory_query",
     "transform_memory_entries_to_web_ui",
@@ -254,7 +255,23 @@ from ai_karen_engine.services.plugin_registry import PluginRegistry
 from ai_karen_engine.services.plugin_execution import PluginExecutionEngine
 
 # Import Memory service
+from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
 from ai_karen_engine.services.memory_service import WebUIMemoryService
+
+# Import Models service
+from ai_karen_engine.services.models.model_orchestrator_service import ModelOrchestratorService
+
+# Import Monitoring services
+from ai_karen_engine.services.monitoring.structured_logging_service import StructuredLoggingService
+from ai_karen_engine.services.monitoring.metrics_service import MetricsService
+from ai_karen_engine.services.monitoring.correlation_service import CorrelationService
+
+# Import Agents service
+from ai_karen_engine.services.agents.agent_orchestrator import AgentOrchestrator
+
+# Import Extensions services
+from ai_karen_engine.services.extensions.extension_registry import ExtensionRegistry
+from ai_karen_engine.services.extensions.extension_loader import ExtensionLoader
 from ai_karen_engine.services.memory_compatibility import (
     transform_web_ui_memory_query,
     transform_memory_entries_to_web_ui,

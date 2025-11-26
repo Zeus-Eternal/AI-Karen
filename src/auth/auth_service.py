@@ -6,8 +6,8 @@ import asyncio
 from dataclasses import asdict
 from typing import Any, Dict, Optional
 
-from ai_karen_engine.services.production_auth_service import (
-    ProductionAuthService,
+from ai_karen_engine.services.auth_service import (
+    AuthService,
     UserAccount,
 )
 
@@ -21,7 +21,7 @@ __all__ = [
 
 
 _service_lock = asyncio.Lock()
-_auth_service: Optional[ProductionAuthService] = None
+_auth_service: Optional[AuthService] = None
 _service_started = False
 
 
@@ -47,13 +47,13 @@ def user_account_to_dict(user: UserAccount) -> Dict[str, Any]:
     return payload
 
 
-async def _ensure_service_started() -> ProductionAuthService:
+async def _ensure_service_started() -> AuthService:
     """Initialise and return the shared production auth service."""
 
     global _auth_service, _service_started
 
     if _auth_service is None:
-        _auth_service = ProductionAuthService()
+        _auth_service = AuthService()
 
     if not _service_started:
         async with _service_lock:
@@ -65,13 +65,13 @@ async def _ensure_service_started() -> ProductionAuthService:
     return _auth_service
 
 
-async def get_auth_service() -> ProductionAuthService:
+async def get_auth_service() -> AuthService:
     """Return the lazily initialised production authentication service."""
 
     return await _ensure_service_started()
 
 
-def get_auth_service_sync() -> ProductionAuthService:
+def get_auth_service_sync() -> AuthService:
     """Blocking helper used by CLI tools and scripts."""
 
     if _auth_service is not None and _service_started:
@@ -92,9 +92,9 @@ class AuthService:
     """Compatibility façade used by legacy integration points."""
 
     def __init__(self) -> None:
-        self._service: Optional[ProductionAuthService] = None
+        self._service: Optional[AuthService] = None
 
-    async def _get_service(self) -> ProductionAuthService:
+    async def _get_service(self) -> AuthService:
         if self._service is None:
             self._service = await get_auth_service()
         return self._service

@@ -4,6 +4,22 @@ import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { getAdminUtils } from '@/lib/database/admin-utils';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
 
+/**
+ * Generate static params for alerts resolve route
+ * Since we can't pre-generate all possible alert IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
 type ResolveBody = {
   resolutionNote?: string; // optional human note for audit trail
 };
@@ -27,11 +43,11 @@ export async function POST(
   try {
     // RBAC: super_admin required
     const authResult = await adminAuthMiddleware(request, 'super_admin');
-    if (authResult instanceof NextResponse) {
-      return authResult; // middleware responded (401/403)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error?.message || 'Unauthorized' }, { status: authResult.status || 401 });
     }
 
-    const { user: currentUser } = authResult ?? {};
+    const { user: currentUser } = authResult;
     if (!currentUser?.user_id) {
       return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }

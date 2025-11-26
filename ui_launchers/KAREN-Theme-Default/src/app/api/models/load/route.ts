@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Static export detection
+function isStaticExport(): boolean {
+  return (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_EXPORT === 'true' ||
+    process.env.STATIC_EXPORT === 'true' ||
+    (typeof window === 'undefined' && process.env.NODE_ENV === 'production')
+  );
+}
+
 type Provider =
   | 'llama-cpp'
   | 'transformers'
@@ -237,6 +247,11 @@ async function loadViaService(
  */
 export async function POST(request: NextRequest) {
   try {
+    // Skip model loading during static export
+    if (isStaticExport()) {
+      return err(503, 'STATIC_EXPORT', 'Model loading unavailable during static export');
+    }
+
     const body = await request.json().catch(() => ({}));
     const payload = sanitizePayload(body);
 
@@ -347,8 +362,37 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(_request: NextRequest) {
   try {
+    // During static export, return minimal response without calling modelSelectionService
+    if (isStaticExport()) {
+      const st = state();
+      return ok({
+        currently_loaded: st.lastModelId ?? null,
+        loading_status: false,
+        last_load_time: null,
+        last_result: null,
+        last_error: null,
+        last_provider: null,
+        started_at: null,
+        finished_at: null,
+        options: {
+          preserve_context: true,
+          force_reload: false,
+        },
+        available_providers: [
+          'llama-cpp',
+          'transformers',
+          'stable-diffusion',
+          'flux',
+        ],
+        system_resources: {
+          memory_available: false,
+          gpu_available: false,
+        },
+      });
+    }
+
     // We prefer reading some live info from modelSelectionService if helpful,
-    // but we don’t fail if it’s unavailable.
+    // but we don't fail if it's unavailable.
     let stats: unknown = {};
     try {
       const { modelSelectionService } = await import('@/lib/model-selection-service');

@@ -117,7 +117,7 @@ export function AuditLogViewer({ className = "" }: AuditLogViewerProps) {
   const showingCount = Math.min(filter.limit || 50, totalCount);
 
   return (
-    <PermissionGate permission="security:audit">
+    <PermissionGate permissions={["security:audit"]}>
       <div className={className}>
         <div className="flex items-center justify-between mb-6">
           <div>

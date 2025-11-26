@@ -16,11 +16,11 @@ export * from './dashboard';
 export * from './memory';
 export * from './audit';
 export * from './chat-ui';
+export * from './custom-modes';
 
 // --- Modules that share type names are exposed via namespaces to avoid conflicts ---
 export * as EnhancedChatTypes from './enhanced-chat';
 export * as AdminTypes from './admin';
 export * as PluginTypes from './plugins';
 export * as ProviderTypes from './providers';
-export * as RBACTypes from './rbac';
 export * as WorkflowTypes from './workflows';

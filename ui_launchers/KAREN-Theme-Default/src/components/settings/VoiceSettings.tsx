@@ -223,7 +223,7 @@ export default function VoiceSettings() {
       <CardHeader>
         <CardTitle className="text-lg">Text-to-Speech Voice</CardTitle>
         <CardDescription>
-          Choose a preferred voice for Karen AI's spoken responses. Availability depends on your browser and operating system.
+          Choose a preferred voice for Karen AI&rsquo;s spoken responses. Availability depends on your browser and operating system.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0 sm:p-4 md:p-6">
@@ -269,7 +269,7 @@ export default function VoiceSettings() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-                    If no voice is selected, or the selected voice is unavailable, the browser's default will be used.
+                    If no voice is selected, or the selected voice is unavailable, the browser&rsquo;s default will be used.
                     </p>
                 </div>
                 )}

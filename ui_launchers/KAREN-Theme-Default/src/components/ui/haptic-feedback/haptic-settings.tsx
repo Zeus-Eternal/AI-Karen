@@ -39,7 +39,7 @@ export function HapticSettings({
           <span className="text-lg">📱</span>
           <div>
             <h3 className="font-medium">Haptic Feedback Not Supported</h3>
-            <p className="text-sm md:text-base lg:text-lg">Your device doesn't support haptic feedback.</p>
+            <p className="text-sm md:text-base lg:text-lg">Your device doesn&rsquo;t support haptic feedback.</p>
           </div>
         </div>
       </div>
@@ -122,8 +122,8 @@ export function HapticSettings({
         <ul className="text-sm text-muted-foreground space-y-1 md:text-base lg:text-lg">
           <li>• Provides tactile feedback for better user experience</li>
           <li>• Works on mobile devices and some desktop browsers</li>
+          <li>• Respects user&rsquo;s reduced motion preferences</li>
           <li>• Can be disabled in device settings or browser preferences</li>
-          <li>• Respects user's reduced motion preferences</li>
         </ul>
       </div>
     </div>

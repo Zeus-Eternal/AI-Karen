@@ -293,7 +293,7 @@ class TestWebSocketIntegration:
     @pytest.mark.asyncio
     async def test_collaboration_analytics_integration(self):
         """Test collaboration analytics integration."""
-        from extensions.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
+        from extensions_hub.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
         
         analytics = AnalyticsDashboardExtension()
         

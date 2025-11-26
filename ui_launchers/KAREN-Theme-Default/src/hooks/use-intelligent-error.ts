@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeError } from '@/lib/safe-console';
-import { getApiClient } from '@/lib/api-client';
+import { useApiClient } from '@/hooks/use-api-client';
 
 export interface ErrorAnalysisRequest {
   error_message: string;
@@ -81,7 +81,8 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<{ error: Error | string; context?: Partial<ErrorAnalysisRequest> } | null>(null);
 
-  const apiClient = getApiClient();
+  const apiClient = useApiClient();
+  const client = typeof window !== 'undefined' ? apiClient : null;
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -114,7 +115,28 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
         ...context,
       };
 
-      const response = await apiClient.post<ErrorAnalysisResponse>(
+      if (!client) {
+        // Skip API call during server-side rendering
+        const fallbackAnalysis: ErrorAnalysisResponse = {
+          title: 'Error Analysis Unavailable',
+          summary: 'Error analysis is not available during server-side rendering.',
+          category: 'system_error',
+          severity: 'low',
+          next_steps: [
+            'Try refreshing the page',
+            'Contact admin if the problem persists'
+          ],
+          contact_admin: false,
+          cached: false,
+          response_time_ms: 0,
+          technical_details: `Original error: ${typeof error === 'string' ? error : error.message}`,
+        };
+        setAnalysis(fallbackAnalysis);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const response = await client.post<ErrorAnalysisResponse>(
         '/api/error-response/analyze',
         request,
         {
@@ -167,7 +189,7 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
       setIsAnalyzing(false);
       abortControllerRef.current = null;
     }
-  }, [apiClient, useAiAnalysis, retryCount, maxRetries, onAnalysisComplete, onAnalysisError]);
+  }, [client, useAiAnalysis, retryCount, maxRetries, onAnalysisComplete, onAnalysisError]);
 
   /**
    * Debounced error analysis

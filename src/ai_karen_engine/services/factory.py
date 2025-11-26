@@ -28,6 +28,7 @@ class ServicesConfig:
         enable_nlp_manager: bool = True,
         enable_spacy: bool = True,
         enable_distilbert: bool = True,
+        enable_small_language_model: bool = True,
         # Knowledge Services
         enable_knowledge_graph: bool = True,
         enable_knowledge_connectors: bool = True,
@@ -114,6 +115,7 @@ class ServicesConfig:
         self.enable_nlp_manager = enable_nlp_manager
         self.enable_spacy = enable_spacy
         self.enable_distilbert = enable_distilbert
+        self.enable_small_language_model = enable_small_language_model
 
         # Knowledge Services
         self.enable_knowledge_graph = enable_knowledge_graph
@@ -362,6 +364,14 @@ class ServicesFactory:
             )
 
             manager = get_nlp_service_manager()
+            
+            # Configure NLP services based on config flags
+            manager.configure_services(
+                enable_spacy=self.config.enable_spacy,
+                enable_distilbert=self.config.enable_distilbert,
+                enable_small_language_model=self.config.enable_small_language_model
+            )
+            
             self._services["nlp_manager"] = manager
             logger.info("NLP Service Manager created successfully")
             return manager
@@ -552,10 +562,10 @@ class ServicesFactory:
 
         try:
             from ai_karen_engine.services.production_auth_service import (
-                ProductionAuthService,
+                AuthService,
             )
 
-            service = ProductionAuthService()
+            service = AuthService()
             self._services["production_auth"] = service
             logger.info("Production Auth Service created successfully")
             return service
@@ -573,10 +583,10 @@ class ServicesFactory:
 
         try:
             from ai_karen_engine.services.production_cache_service import (
-                ProductionCacheService,
+                CacheService,
             )
 
-            service = ProductionCacheService()
+            service = CacheService()
             self._services["production_cache"] = service
             logger.info("Production Cache Service created successfully")
             return service

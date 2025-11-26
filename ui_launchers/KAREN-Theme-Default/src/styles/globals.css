@@ -4,7 +4,8 @@
 @tailwind utilities;
 
 /* Import Modern Design Tokens */
-@import './modern-design-tokens.css';
+@import './design-tokens.css';
+@import './chat-styles.css';
 
 /* Base layer - Production optimizations */
 @layer base {

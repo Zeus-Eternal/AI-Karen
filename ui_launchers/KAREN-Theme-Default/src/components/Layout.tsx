@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { MessageSquare, Settings, BarChart3, Puzzle, Moon, Sun } from 'lucide-react'
-import { useThemeStore } from '../stores/themeStore'
+import { useThemeStore } from '../store/themeStore'
 import { cn } from '../lib/utils'
 
 const navigation = [

@@ -4,7 +4,7 @@ Re-exports from the consolidated plugin system.
 """
 
 try:
-    from src.extensions.plugins.core.manager import (
+    from ai_karen_engine.plugin_manager import (
         PluginManager,
         get_plugin_manager,
         create_plugin_manager,

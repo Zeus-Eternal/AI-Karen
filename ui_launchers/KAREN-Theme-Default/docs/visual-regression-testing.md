@@ -94,7 +94,7 @@ npm run test-storybook -- --coverage
 
 ### Design Tokens Stories
 
-Located in `src/design-tokens/design-tokens.stories.tsx`:
+Located in `src/ArtifactSystem/ArtifactSystem.stories.tsx`:
 
 - **Colors**: Complete color palette showcase
 - **Spacing**: Spacing scale visualization

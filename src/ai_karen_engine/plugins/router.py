@@ -4,7 +4,7 @@ Re-exports from the consolidated plugin system.
 """
 
 try:
-    from src.extensions.plugins.core.router import (
+    from ai_karen_engine.plugin_router import (
         PluginRouter,
         get_plugin_router,
         AccessDenied,

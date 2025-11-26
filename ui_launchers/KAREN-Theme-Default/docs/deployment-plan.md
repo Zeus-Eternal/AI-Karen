@@ -10,7 +10,7 @@ This document outlines the phased deployment strategy for the UI modernization p
 **Target**: Core infrastructure and design system
 
 #### Components to Deploy:
-- Design token system (`src/design-tokens/`)
+- Design token system (`src/ArtifactSystem/`)
 - Modern CSS architecture (`src/styles/`)
 - Layout components (`src/components/ui/layout/`)
 - Performance monitoring (`src/utils/performance-monitor.ts`)

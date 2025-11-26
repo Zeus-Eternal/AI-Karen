@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 import { logger } from '@/lib/logger';
+import { safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
+// Force dynamic rendering to avoid static generation issues
+export const dynamic = 'auto';
 
 const API_PATH = '/api/system/config/models';
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -35,9 +39,10 @@ function buildForwardHeaders(
     ...overrides,
   };
 
-  const authorization = request.headers.get('authorization');
-  const cookie = request.headers.get('cookie');
-  const requestId = request.headers.get('x-request-id') || request.headers.get('X-Request-ID');
+  const safeHeaders = safeGetHeaders(request);
+  const authorization = safeHeaders.get('authorization');
+  const cookie = safeHeaders.get('cookie');
+  const requestId = safeHeaders.get('x-request-id') || safeHeaders.get('X-Request-ID');
 
   if (authorization) headers.Authorization = authorization;
   if (cookie) headers.Cookie = cookie;
@@ -154,6 +159,28 @@ async function forwardToBackend(
 }
 
 export async function GET(request: NextRequest) {
+  // Check if we're in a static export context
+  const isStaticExport = process.env.NEXT_PHASE === 'phase-production-build';
+  
+  if (isStaticExport) {
+    // Return a minimal response for static export
+    return NextResponse.json({
+      defaultModel: 'unknown',
+      fallbackModel: 'unknown',
+      autoSelectEnabled: true,
+      preferLocalModels: true,
+      allowedProviders: [],
+      maxConcurrentModels: 1,
+      modelSelectionTimeout: 30000,
+      enableModelCaching: true,
+      cacheExpirationTime: 3600,
+    }, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
   try {
     const { response, url } = await forwardToBackend(request, {
       method: 'GET',

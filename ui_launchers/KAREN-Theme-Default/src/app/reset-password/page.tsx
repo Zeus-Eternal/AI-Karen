@@ -182,7 +182,7 @@ function ResetPasswordForm() {
                 </a>
               </p>
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Don&rsquo;t have an account?{' '}
                 <a
                   href="/signup"
                   className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"

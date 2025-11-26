@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
 // ----------------------------- Types & Constants -----------------------------
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 type ModelRecord = {
   filename: string;
@@ -58,7 +62,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 function parseQuery(request: NextRequest) {
-  const q = request.nextUrl.searchParams;
+  const q = safeGetSearchParams(request);
 
   const directory = (q.get('directory') || DEFAULTS.directory).trim();
 

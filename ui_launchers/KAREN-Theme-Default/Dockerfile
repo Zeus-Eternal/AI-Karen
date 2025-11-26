@@ -23,6 +23,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application source
 COPY . .
 
+# Copy config files from project root
+COPY ../config/permissions.json ./config/permissions.json
+
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

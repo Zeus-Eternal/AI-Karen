@@ -3,9 +3,31 @@
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
-import { EvilModeSession } from "@/types/rbac";
 // import { enhancedApiClient } from "@/lib/enhanced-api-client"; // not used currently
 import { PermissionGate } from "@/components/rbac";
+
+// Define EvilModeSession type locally
+interface EvilModeSession {
+  id: string;
+  sessionId: string;
+  userId: string;
+  startTime: Date;
+  endTime?: Date;
+  reason: string;
+  justification?: string;
+  approvedBy: string;
+  isActive: boolean;
+  actions: EvilModeAction[];
+}
+
+interface EvilModeAction {
+  action: string;
+  timestamp: Date;
+  resource: string;
+  impact: string;
+  reversible: boolean;
+  details: Record<string, unknown>;
+}
 
 import {
   Card,
@@ -130,7 +152,7 @@ export function EvilModeAnalytics({ className }: EvilModeAnalyticsProps) {
   });
 
   return (
-    <PermissionGate permission="security:admin">
+    <PermissionGate permissions={["security:admin"]}>
       <div className={className}>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -865,11 +887,15 @@ async function getEvilModeStats(_dateRange: { start: Date; end: Date }): Promise
 async function getEvilModeSessions(_dateRange: { start: Date; end: Date }): Promise<EvilModeSession[]> {
   return [
     {
-      userId: "user-1",
+      id: "session-1",
       sessionId: "session-1",
+      userId: "user-1",
       startTime: new Date(Date.now() - 3_600_000),
       endTime: new Date(Date.now() - 1_800_000),
+      reason: "Emergency system maintenance",
       justification: "Emergency system maintenance",
+      approvedBy: "admin-user",
+      isActive: false,
       actions: [
         {
           action: "Modified system configuration",
@@ -882,11 +908,15 @@ async function getEvilModeSessions(_dateRange: { start: Date; end: Date }): Prom
       ],
     },
     {
-      userId: "user-2",
+      id: "session-2",
       sessionId: "session-2",
+      userId: "user-2",
       startTime: new Date(Date.now() - 5_400_000),
       endTime: undefined, // active
+      reason: "Incident response",
       justification: "Incident response",
+      approvedBy: "admin-user",
+      isActive: true,
       actions: [
         {
           action: "Accessed protected data",

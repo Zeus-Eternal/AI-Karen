@@ -3,9 +3,7 @@
  * Comprehensive error handler that integrates categorization and recovery
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
-import { CategorizedError, ErrorCategory, ErrorSeverity } from './error-categories';
-import { ErrorCategorizer } from './error-categorizer';
-import { ErrorRecoveryManager, RecoveryResult } from './error-recovery';
+import { CategorizedError, ErrorCategory, ErrorSeverity, ErrorCategorizer, ErrorRecoveryManager, RecoveryResult } from './index';
 
 export interface ErrorHandlingOptions {
   enableRecovery?: boolean;

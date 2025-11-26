@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ModernSidebar } from '@/components/layout/ModernSidebar';
-import { ModernHeader } from '@/components/layout/ModernHeader';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Header } from '@/components/layout/ModernHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Sparkline } from '@/components/ui/sparkline';
@@ -24,8 +24,8 @@ export default function PerformancePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <ModernSidebar />
-      <ModernHeader />
+      <Sidebar/>
+      <Header />
 
       <main className="ml-64 mt-16 p-6">
         <div className="space-y-6">

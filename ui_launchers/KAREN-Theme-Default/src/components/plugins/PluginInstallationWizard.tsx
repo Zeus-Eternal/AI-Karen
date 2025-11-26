@@ -466,14 +466,14 @@ const stepTitles: Record<InstallationStep, string> = {
 };
 
 const stepDescriptions: Record<InstallationStep, string> = {
-  source: "Choose how you want to install the plugin",
-  selection: "Select the plugin you want to install",
+  source: "Choose how you want to install plugin",
+  selection: "Select plugin you want to install",
   validation: "Validating plugin manifest and compatibility",
   dependencies: "Checking and resolving plugin dependencies",
-  permissions: "Configure security permissions for the plugin",
+  permissions: "Configure security permissions for plugin",
   configuration: "Set up plugin configuration options",
   review: "Review installation details before proceeding",
-  installation: "Installing and configuring the plugin",
+  installation: "Installing and configuring plugin",
   complete: "Plugin has been successfully installed",
 };
 
@@ -677,7 +677,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle>Choose Installation Source</CardTitle>
-        <CardDescription>Select where to install the plugin from.</CardDescription>
+        <CardDescription>Select where to install plugin from.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <RadioGroup
@@ -803,7 +803,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
     <Card>
       <CardHeader>
         <CardTitle>Select Plugin</CardTitle>
-        <CardDescription>Pick a plugin from the marketplace list.</CardDescription>
+        <CardDescription>Pick a plugin from marketplace list.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -855,7 +855,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           <Loader2 className="w-5 h-5 animate-spin" />
           Validating
         </CardTitle>
-        <CardDescription>We’re checking compatibility and manifest integrity.</CardDescription>
+        <CardDescription>We&rsquo;re checking compatibility and manifest integrity.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -952,7 +952,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
             {state.resolvedDependencies.some((d) => !d.installed) && (
               <Alert>
                 <Info className="w-4 h-4" />
-                <AlertDescription>Missing dependencies will be installed during the plugin installation.</AlertDescription>
+                <AlertDescription>Missing dependencies will be installed during plugin installation.</AlertDescription>
               </Alert>
             )}
           </div>
@@ -975,7 +975,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           {state.permissions.length === 0 && (
             <div className="text-center py-8">
               <Shield className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">This plugin doesn't require any special permissions.</p>
+              <p className="text-muted-foreground">This plugin doesn&rsquo;t require any special permissions.</p>
             </div>
           )}
 
@@ -1136,7 +1136,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                   update(raw);
                 }
               }}
-              placeholder='e.g. {"conn":"postgres://..."}'
+              placeholder={`e.g. {"conn":"postgres://..."}`}
             />
           );
         default:
@@ -1288,7 +1288,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           <Loader2 className="w-5 h-5 animate-spin" />
           Installing
         </CardTitle>
-        <CardDescription>We’re setting everything up.</CardDescription>
+        <CardDescription>We&rsquo;re setting everything up.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -1327,7 +1327,7 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
           <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
           <h3 className="text-lg font-medium mb-2">{state.manifest?.name} is now installed!</h3>
           <p className="text-muted-foreground mb-6">
-            The plugin is active and ready to use. You can configure it further in the plugin settings.
+            The plugin is active and ready to use. You can configure it further in plugin settings.
           </p>
 
           <div className="flex justify-center gap-2">
@@ -1501,8 +1501,8 @@ export const PluginInstallationWizard: React.FC<PluginInstallationWizardProps> =
                       <AlertDescription>
                         {permission.level === "admin" &&
                           "This grants administrative capabilities and should only be given to trusted plugins."}
-                        {permission.level === "write" && "This allows the plugin to modify data or settings."}
-                        {permission.level === "read" && "This allows the plugin to read data only."}
+                        {permission.level === "write" && "This allows plugin to modify data or settings."}
+                        {permission.level === "read" && "This allows plugin to read data only."}
                       </AlertDescription>
                     </Alert>
                   </>

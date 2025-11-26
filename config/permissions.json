@@ -1,278 +1,82 @@
 {
-  "permissions": [
-    "admin:read",
-    "admin:system",
-    "admin:write",
-    "audit:read",
-    "data:delete",
-    "data:export",
-    "data:read",
-    "data:write",
-    "model:compatibility:check",
-    "model:delete",
-    "model:deploy",
-    "model:download",
-    "model:ensure",
-    "model:gc",
-    "model:health:check",
-    "model:info",
-    "model:license:accept",
-    "model:license:manage",
-    "model:license:view",
-    "model:list",
-    "model:pin",
-    "model:quota:manage",
-    "model:read",
-    "model:registry:read",
-    "model:registry:write",
-    "model:remove",
-    "model:unpin",
-    "model:write",
-    "routing:audit",
-    "routing:dry_run",
-    "routing:health",
-    "routing:profile:manage",
-    "routing:profile:view",
-    "routing:select",
-    "scheduler:execute",
-    "scheduler:read",
-    "scheduler:write",
-    "security:evil_mode",
-    "security:read",
-    "security:write",
-    "training:delete",
-    "training:execute",
-    "training:read",
-    "training:write",
-    "training_data:delete",
-    "training_data:read",
-    "training_data:write"
-  ],
+  "permissions": {
+    "read": [
+      "Read access to files and directories"
+    ],
+    "edit": [
+      "Edit access to files and directories"
+    ],
+    "browser": [
+      "Browser-related permissions"
+    ],
+    "command": [
+      "Command execution permissions"
+    ],
+    "mcp": [
+      "Model Context Protocol permissions"
+    ]
+  },
   "roles": {
-    "super_admin": {
-      "description": "Highest privilege role with unrestricted access",
-      "inherits_from": "admin",
-      "permissions": [
-        "admin:read",
-        "admin:system",
-        "admin:write",
-        "audit:read",
-        "data:delete",
-        "data:export",
-        "data:read",
-        "data:write",
-        "model:compatibility:check",
-        "model:delete",
-        "model:deploy",
-        "model:download",
-        "model:ensure",
-        "model:gc",
-        "model:health:check",
-        "model:info",
-        "model:license:accept",
-        "model:license:manage",
-        "model:license:view",
-        "model:list",
-        "model:pin",
-        "model:quota:manage",
-        "model:read",
-        "model:registry:read",
-        "model:registry:write",
-        "model:remove",
-        "model:unpin",
-        "model:write",
-        "routing:audit",
-        "routing:dry_run",
-        "routing:health",
-        "routing:profile:manage",
-        "routing:profile:view",
-        "routing:select",
-        "scheduler:execute",
-        "scheduler:read",
-        "scheduler:write",
-        "security:evil_mode",
-        "security:read",
-        "security:write",
-        "training:delete",
-        "training:execute",
-        "training:read",
-        "training:write",
-        "training_data:delete",
-        "training_data:read",
-        "training_data:write"
-      ]
-    },
     "admin": {
-      "description": "Platform administrator",
-      "inherits_from": null,
-      "permissions": [
-        "admin:read",
-        "admin:system",
-        "admin:write",
-        "audit:read",
-        "data:delete",
-        "data:export",
-        "data:read",
-        "data:write",
-        "model:compatibility:check",
-        "model:delete",
-        "model:deploy",
-        "model:download",
-        "model:ensure",
-        "model:gc",
-        "model:health:check",
-        "model:info",
-        "model:license:accept",
-        "model:license:manage",
-        "model:license:view",
-        "model:list",
-        "model:pin",
-        "model:quota:manage",
-        "model:read",
-        "model:registry:read",
-        "model:registry:write",
-        "model:remove",
-        "model:unpin",
-        "model:write",
-        "routing:audit",
-        "routing:dry_run",
-        "routing:health",
-        "routing:profile:manage",
-        "routing:profile:view",
-        "routing:select",
-        "scheduler:execute",
-        "scheduler:read",
-        "scheduler:write",
-        "security:read",
-        "security:write",
-        "training:delete",
-        "training:execute",
-        "training:read",
-        "training:write",
-        "training_data:delete",
-        "training_data:read",
-        "training_data:write"
-      ]
-    },
-    "trainer": {
-      "description": "Training specialist with model and data management access",
-      "inherits_from": null,
-      "permissions": [
-        "data:export",
-        "data:read",
-        "data:write",
-        "model:deploy",
-        "model:download",
-        "model:ensure",
-        "model:info",
-        "model:read",
-        "model:write",
-        "scheduler:read",
-        "scheduler:write",
-        "training:execute",
-        "training:read",
-        "training:write",
-        "training_data:read",
-        "training_data:write"
-      ]
-    },
-    "analyst": {
-      "description": "Read focused analyst role",
-      "inherits_from": null,
-      "permissions": [
-        "audit:read",
-        "data:export",
-        "data:read",
-        "model:info",
-        "model:read",
-        "scheduler:read",
-        "training:read",
-        "training_data:read"
-      ]
+      "permissions": ["read", "edit", "browser", "command", "mcp"],
+      "description": "Full administrative access"
     },
     "user": {
-      "description": "Standard platform user",
-      "inherits_from": null,
-      "permissions": [
-        "data:read",
-        "model:info",
-        "model:read",
-        "training:read",
-        "training_data:read"
-      ]
+      "permissions": ["read", "browser"],
+      "description": "Standard user access"
+    },
+    "developer": {
+      "permissions": ["read", "edit", "browser", "command"],
+      "description": "Developer access with editing capabilities"
+    },
+    "super_admin": {
+      "permissions": ["read", "edit", "browser", "command", "mcp"],
+      "description": "Super administrator with full system access"
+    },
+    "trainer": {
+      "permissions": ["read", "edit", "browser", "command"],
+      "description": "AI model trainer with editing capabilities"
+    },
+    "analyst": {
+      "permissions": ["read", "browser"],
+      "description": "Data analyst with read-only access"
     },
     "readonly": {
-      "description": "Read only visibility",
-      "inherits_from": null,
-      "permissions": [
-        "model:info",
-        "model:read",
-        "training:read"
-      ]
+      "permissions": ["read"],
+      "description": "Read-only access to all resources"
     },
     "model_manager": {
-      "description": "Operational model management",
-      "inherits_from": null,
-      "permissions": [
-        "model:compatibility:check",
-        "model:download",
-        "model:ensure",
-        "model:gc",
-        "model:health:check",
-        "model:info",
-        "model:license:accept",
-        "model:license:view",
-        "model:list",
-        "model:pin",
-        "model:read",
-        "model:remove",
-        "model:unpin",
-        "model:write"
-      ]
+      "permissions": ["read", "edit", "command", "mcp"],
+      "description": "Manages AI models and configurations"
     },
     "data_steward": {
-      "description": "Manage datasets and training corpora",
-      "inherits_from": null,
-      "permissions": [
-        "data:delete",
-        "data:export",
-        "data:read",
-        "data:write",
-        "training_data:delete",
-        "training_data:read",
-        "training_data:write"
-      ]
+      "permissions": ["read", "edit", "browser"],
+      "description": "Manages data quality and access"
     },
     "routing_admin": {
-      "description": "Full routing administration",
-      "inherits_from": null,
-      "permissions": [
-        "routing:audit",
-        "routing:dry_run",
-        "routing:health",
-        "routing:profile:manage",
-        "routing:profile:view",
-        "routing:select"
-      ]
+      "permissions": ["read", "edit", "command"],
+      "description": "Administrates routing rules and configurations"
     },
     "routing_operator": {
-      "description": "Operational routing control",
-      "inherits_from": null,
-      "permissions": [
-        "routing:dry_run",
-        "routing:health",
-        "routing:profile:view",
-        "routing:select"
-      ]
+      "permissions": ["read", "command"],
+      "description": "Operates routing systems"
     },
     "routing_auditor": {
-      "description": "Read only routing insights",
-      "inherits_from": null,
-      "permissions": [
-        "routing:audit",
-        "routing:health",
-        "routing:profile:view"
-      ]
+      "permissions": ["read", "browser"],
+      "description": "Audits routing operations and logs"
     }
+  },
+  "fileRestrictions": {
+    "allowedPatterns": [
+      "\\.(ts|tsx|js|jsx|json|md|mdx)$",
+      "\\.(css|scss|less)$",
+      "\\.(png|jpg|jpeg|gif|svg|webp)$"
+    ],
+    "deniedPatterns": [
+      "^\\.",
+      "node_modules",
+      "\\.env",
+      "\\.git"
+    ]
   }
 }

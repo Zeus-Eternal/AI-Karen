@@ -12,8 +12,9 @@ from typing import Dict, Any, Optional, List, Union
 
 from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.services.distilbert_service import DistilBertService
+from ai_karen_engine.services.small_language_model_service import SmallLanguageModelService, ScaffoldResult, OutlineResult, SummaryResult
 from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
-from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
+from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig, SmallLanguageModelConfig
 from ai_karen_engine.config.config_manager import config_manager
 
 logger = logging.getLogger(__name__)
@@ -48,8 +49,12 @@ class NLPServiceManager:
                 "KARI_ENABLE_DEGRADED_HELPERS=1 to allow full model loading."
             )
 
-        self.spacy_service = SpacyService(self.config.spacy)
-        self.distilbert_service = DistilBertService(self.config.distilbert)
+        # Initialize services based on configuration
+        self.spacy_service = SpacyService(self.config.spacy) if self.config.spacy.enabled else None
+        self.distilbert_service = DistilBertService(self.config.distilbert) if self.config.distilbert.enabled else None
+        self.small_language_model_service = SmallLanguageModelService(self.config.small_language_model) if self.config.small_language_model.enabled else None
+        
+        # Initialize health monitor with available services
         self.health_monitor = NLPHealthMonitor(
             self.spacy_service,
             self.distilbert_service,
@@ -68,11 +73,13 @@ class NLPServiceManager:
             # Create config objects with defaults
             spacy_config = SpacyConfig(**nlp_config_dict.get("spacy", {}))
             distilbert_config = DistilBertConfig(**nlp_config_dict.get("distilbert", {}))
+            small_language_model_config = SmallLanguageModelConfig(**nlp_config_dict.get("small_language_model", {}))
             
             config = NLPConfig(
                 spacy=spacy_config,
                 distilbert=distilbert_config,
-                **{k: v for k, v in nlp_config_dict.items() if k not in ["spacy", "distilbert"]}
+                small_language_model=small_language_model_config,
+                **{k: v for k, v in nlp_config_dict.items() if k not in ["spacy", "distilbert", "small_language_model"]}
             )
             
             logger.info("NLP configuration loaded successfully")
@@ -116,20 +123,78 @@ class NLPServiceManager:
     
     # DistilBERT service methods
     async def get_embeddings(
-        self, 
-        texts: Union[str, List[str]], 
+        self,
+        texts: Union[str, List[str]],
         normalize: bool = True
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using DistilBERT service."""
         return await self.distilbert_service.get_embeddings(texts, normalize)
     
     async def batch_embeddings(
-        self, 
-        texts: List[str], 
+        self,
+        texts: List[str],
         batch_size: Optional[int] = None
     ) -> List[List[float]]:
         """Generate embeddings for multiple texts in batches."""
         return await self.distilbert_service.batch_embeddings(texts, batch_size)
+    
+    # TinyLlama service methods
+    async def generate_scaffold(
+        self,
+        text: str,
+        scaffold_type: str = "reasoning",
+        max_tokens: Optional[int] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> ScaffoldResult:
+        """Generate scaffolding using Small Language Model service."""
+        return await self.small_language_model_service.generate_scaffold(
+            text, scaffold_type, max_tokens, context
+        )
+    
+    async def generate_outline(
+        self,
+        text: str,
+        outline_style: str = "bullet",
+        max_points: int = 5
+    ) -> OutlineResult:
+        """Generate outline using Small Language Model service."""
+        return await self.small_language_model_service.generate_outline(
+            text, outline_style, max_points
+        )
+    
+    async def summarize_context(
+        self,
+        text: str,
+        summary_type: str = "concise",
+        max_tokens: Optional[int] = None
+    ) -> SummaryResult:
+        """Summarize context using Small Language Model service."""
+        return await self.small_language_model_service.summarize_context(
+            text, summary_type, max_tokens
+        )
+    
+    async def generate_short_fill(
+        self,
+        context: str,
+        prompt: str,
+        max_tokens: Optional[int] = None,
+        fill_type: str = "continuation"
+    ) -> ScaffoldResult:
+        """Generate short fill using Small Language Model service."""
+        return await self.small_language_model_service.generate_short_fill(
+            context, prompt, max_tokens, fill_type
+        )
+    
+    async def augment_response(
+        self,
+        user_message: str,
+        main_response: str,
+        augmentation_type: str = "enhancement"
+    ) -> Dict[str, Any]:
+        """Augment response using Small Language Model service."""
+        return await self.small_language_model_service.augment_response(
+            user_message, main_response, augmentation_type
+        )
     
     # Combined NLP operations
     async def process_message_full(self, text: str) -> Dict[str, Any]:
@@ -229,6 +294,27 @@ class NLPServiceManager:
         return await self.health_monitor.run_diagnostic()
     
     # Configuration methods
+    def configure_services(
+        self,
+        enable_spacy: bool = True,
+        enable_distilbert: bool = True,
+        enable_small_language_model: bool = True
+    ):
+        """Configure which NLP services should be enabled.
+        
+        Args:
+            enable_spacy: Whether to enable spaCy service
+            enable_distilbert: Whether to enable DistilBERT service
+            enable_small_language_model: Whether to enable Small Language Model service
+        """
+        # Update configuration
+        self.config.spacy.enabled = enable_spacy
+        self.config.distilbert.enabled = enable_distilbert
+        self.config.small_language_model.enabled = enable_small_language_model
+        
+        # Log the configuration
+        logger.info(f"NLP services configured: spaCy={enable_spacy}, DistilBERT={enable_distilbert}, Small Language Model={enable_small_language_model}")
+    
     def get_config(self) -> NLPConfig:
         """Get current NLP configuration."""
         return self.config
@@ -237,9 +323,10 @@ class NLPServiceManager:
         """Update NLP configuration."""
         try:
             # Update main config
+            from ai_karen_engine.config.config_manager import save_config
             current_config = config_manager.get_config()
             current_config["nlp"] = new_config
-            config_manager.save_config(current_config)
+            save_config(current_config)
             
             # Reload configuration
             self.config = self._load_config()
@@ -259,12 +346,14 @@ class NLPServiceManager:
         """Clear all service caches."""
         self.spacy_service.clear_cache()
         self.distilbert_service.clear_cache()
+        self.small_language_model_service.clear_cache()
         logger.info("All NLP service caches cleared")
     
     def reset_all_metrics(self):
         """Reset all service metrics."""
         self.spacy_service.reset_metrics()
         self.distilbert_service.reset_metrics()
+        self.small_language_model_service.reset_metrics()
         logger.info("All NLP service metrics reset")
     
     # Utility methods
@@ -272,14 +361,16 @@ class NLPServiceManager:
         """Check if NLP services are ready for use."""
         spacy_status = self.spacy_service.get_health_status()
         distilbert_status = self.distilbert_service.get_health_status()
+        small_language_model_status = self.small_language_model_service.get_health_status()
         
-        return (spacy_status.is_healthy and distilbert_status.is_healthy) or \
-               (spacy_status.fallback_mode and distilbert_status.fallback_mode)
+        return (spacy_status.is_healthy and distilbert_status.is_healthy and small_language_model_status.is_healthy) or \
+               (spacy_status.fallback_mode and distilbert_status.fallback_mode and small_language_model_status.fallback_mode)
     
     def get_service_info(self) -> Dict[str, Any]:
         """Get information about all NLP services."""
         spacy_status = self.spacy_service.get_health_status()
         distilbert_status = self.distilbert_service.get_health_status()
+        small_language_model_status = self.small_language_model_service.get_health_status()
         
         return {
             "spacy": {
@@ -296,6 +387,14 @@ class NLPServiceManager:
                 "device": distilbert_status.device,
                 "cache_size": distilbert_status.cache_size,
                 "embedding_dimension": self.config.distilbert.embedding_dimension
+            },
+            "small_language_model": {
+                "model_name": self.config.small_language_model.model_name,
+                "model_loaded": small_language_model_status.model_loaded,
+                "fallback_mode": small_language_model_status.fallback_mode,
+                "cache_size": small_language_model_status.cache_size,
+                "max_tokens": self.config.small_language_model.max_tokens,
+                "temperature": self.config.small_language_model.temperature
             },
             "monitoring_enabled": self.config.enable_monitoring,
             "ready": self.is_ready()

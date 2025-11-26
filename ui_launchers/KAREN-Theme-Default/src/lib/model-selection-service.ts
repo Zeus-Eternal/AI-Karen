@@ -8,7 +8,7 @@
  */
 
 import { Model, ModelLibraryResponse } from "@/lib/model-utils";
-import { getKarenBackend } from "@/lib/karen-backend";
+import { enhancedApiClient } from "@/lib/enhanced-api-client";
 import { safeError, safeLog } from "@/lib/safe-console";
 
 export interface ModelSelectionPreferences {
@@ -61,12 +61,11 @@ export class ModelSelectionService {
     }
 
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<ModelLibraryResponse>(
+      const response = await enhancedApiClient.get<ModelLibraryResponse>(
         "/api/models/library"
       );
       
-      this.cachedModels = response.models || [];
+      this.cachedModels = response?.data?.models || [];
       this.lastFetchTime = now;
 
       safeLog(
@@ -84,11 +83,10 @@ export class ModelSelectionService {
    */
   async getUserPreferences(): Promise<ModelSelectionPreferences> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<ModelSelectionPreferences>(
+      const response = await enhancedApiClient.get<ModelSelectionPreferences>(
         "/api/user/preferences/models"
       );
-      return response || {};
+      return response?.data || {};
     } catch (error) {
       safeError(
         "ModelSelectionService: Failed to get user preferences:",
@@ -112,12 +110,7 @@ export class ModelSelectionService {
     }
 
     try {
-      const backend = getKarenBackend();
-      await backend.makeRequestPublic("/api/user/preferences/models", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(preferences),
-      });
+      await enhancedApiClient.put("/api/user/preferences/models", preferences);
 
       safeLog("ModelSelectionService: Saved user preferences");
     } catch (error) {
@@ -134,11 +127,10 @@ export class ModelSelectionService {
    */
   async getDefaultModelConfig(): Promise<{ defaultModel?: string }> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{ defaultModel?: string }>(
+      const response = await enhancedApiClient.get<{ defaultModel?: string }>(
         "/api/system/config/models"
       );
-      return response || {};
+      return response?.data || {};
     } catch (error) {
       safeError(
         "ModelSelectionService: Failed to get default model config:",
@@ -337,9 +329,8 @@ export class ModelSelectionService {
    */
   async isModelReady(modelId: string): Promise<boolean> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{ ready: boolean }>(`/api/models/${modelId}/status`);
-      return response.ready === true;
+      const response = await enhancedApiClient.get<{ ready: boolean }>(`/api/models/${modelId}/status`);
+      return response?.data?.ready === true;
     } catch (error) {
       safeError(`ModelSelectionService: Failed to check model readiness for ${modelId}:`, error);
       return false;

@@ -6,8 +6,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
-import { normalizePermission, normalizePermissionList } from '@/components/security/rbac-shared';
+import { RBACService } from '@/lib/security/rbac/RBACService';
 import type { User, AdminApiResponse } from '@/types/admin';
+import { safeGetNextUrl } from '@/app/api/_utils/static-export-helpers';
 
 // Rate limiting storage (in-memory for simplicity, use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -58,19 +59,58 @@ export interface AdminAuthResult {
  */
 async function validateAdminSession(request: NextRequest): Promise<User | null> {
   try {
+    // Check if this is a build-time request
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // During build time, return a mock admin user to avoid dynamic server usage
+    if (isBuildTime) {
+      return {
+        user_id: 'build-admin',
+        email: 'admin@example.com',
+        full_name: 'Build Admin',
+        role: 'super_admin',
+        roles: ['super_admin'],
+        tenant_id: 'default',
+        preferences: {},
+        is_verified: true,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+        last_login_at: new Date(),
+        failed_login_attempts: 0,
+        locked_until: undefined,
+        two_factor_enabled: false,
+        created_by: 'system'
+      };
+    }
+    
     // Validate request URL
-    if (!request.url) {
+    const nextUrl = safeGetNextUrl(request);
+    if (!nextUrl) {
       console.error('Invalid request URL');
       return null;
     }
 
     // Forward session validation to existing auth endpoint
-    const validateUrl = new URL('/api/auth/validate-session', request.url);
+    // Use a fixed base URL during static export to avoid dynamic server usage
+    const baseUrl = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_APP_URL
+      ? process.env.NEXT_PUBLIC_APP_URL
+      : 'http://localhost:3000';
+    const validateUrl = new URL('/api/auth/validate-session', baseUrl);
+    
+    // Get cookies safely
+    let cookieHeader = '';
+    try {
+      cookieHeader = request.headers.get('cookie') || '';
+    } catch {
+      // Fallback for static export
+      cookieHeader = '';
+    }
     
     const response = await fetch(validateUrl, {
       method: 'GET',
       headers: {
-        'Cookie': request.headers.get('cookie') || '',
+        'Cookie': cookieHeader,
         'Content-Type': 'application/json',
       },
     });
@@ -129,12 +169,23 @@ async function validateAdminSession(request: NextRequest): Promise<User | null> 
  * Rate limiting for admin endpoints
  */
 function checkRateLimit(
-  request: NextRequest, 
-  limit: number = 100, 
+  request: NextRequest,
+  limit: number = 100,
   windowMs: number = 60000
 ): { allowed: boolean; remaining: number; resetTime: number } {
   const clientIP = getClientIP(request);
-  const key = `admin_rate_limit:${clientIP}:${request.nextUrl.pathname}`;
+  const nextUrl = safeGetNextUrl(request);
+  
+  // Use a fixed pathname during static export to avoid dynamic server usage
+  let pathname = 'admin-api';
+  try {
+    pathname = nextUrl.pathname;
+  } catch {
+    // Fallback to a generic pathname if nextUrl.pathname is not available
+    pathname = 'admin-api';
+  }
+  
+  const key = `admin_rate_limit:${clientIP}:${pathname}`;
   const now = Date.now();
   
   let current = rateLimitStore.get(key);
@@ -171,6 +222,14 @@ function checkRateLimit(
  */
 function getClientIP(request: NextRequest): string {
   try {
+    // Check if this is a build-time request
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // During build time, return a placeholder IP to avoid dynamic server usage
+    if (isBuildTime) {
+      return '127.0.0.1';
+    }
+    
     const forwarded = request.headers.get('x-forwarded-for');
     const realIP = request.headers.get('x-real-ip');
     const remoteAddr = request.headers.get('remote-addr');
@@ -196,19 +255,15 @@ function getClientIP(request: NextRequest): string {
  * Create admin authentication context
  */
 async function createAdminContext(user: User): Promise<AdminAuthContext> {
-  const adminUtils = getAdminDatabaseUtils();
-  
   try {
-    const permissions = await adminUtils.getUserPermissions(user.user_id);
-    const permissionNames = normalizePermissionList(permissions.map((p) => p.name));
-    
     return {
       user,
       hasPermission: async (permission: string): Promise<boolean> => {
         if (user.role === 'super_admin') return true;
-        const canonical = normalizePermission(permission);
-        if (!canonical) return false;
-        return permissionNames.includes(canonical);
+        const rbacService = RBACService.getInstance();
+        await rbacService.initialize();
+        const result = rbacService.hasPermission(permission);
+        return result.hasPermission ?? false;
       },
       hasRole: (role: 'super_admin' | 'admin' | 'user') => user.role === role,
       isAdmin: () => ['admin', 'super_admin'].includes(user.role),
@@ -259,22 +314,53 @@ async function logAdminAccess(
   }
 
   try {
+    // Check if this is a build-time request
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // Skip logging during build time to avoid dynamic server usage
+    if (isBuildTime) {
+      return;
+    }
+    
     const adminUtils = getAdminDatabaseUtils();
+    const nextUrl = safeGetNextUrl(request);
+    
+    // Use safe access to pathname and searchParams to avoid dynamic server usage
+    let pathname = 'admin-api';
+    let searchParams: Record<string, string> = {};
+    
+    try {
+      pathname = nextUrl.pathname;
+      searchParams = Object.fromEntries(nextUrl.searchParams);
+    } catch {
+      // Fallback values during static export
+      pathname = 'admin-api';
+      searchParams = {};
+    }
+    
+    // Get headers safely to avoid dynamic server usage
+    let userAgent = '';
+    try {
+      userAgent = request.headers.get('user-agent') || '';
+    } catch {
+      userAgent = '';
+    }
+    
     await adminUtils.createAuditLog({
       user_id: user.user_id,
       action: 'admin_api.access',
       resource_type: 'api_endpoint',
-      resource_id: request.nextUrl.pathname,
+      resource_id: pathname,
       details: {
         method: request.method,
-        endpoint: request.nextUrl.pathname,
-        user_agent: request.headers.get('user-agent'),
+        endpoint: pathname,
+        user_agent: userAgent,
         required_role: options.requiredRole,
         required_permission: options.requiredPermission,
-        query_params: Object.fromEntries(request.nextUrl.searchParams)
+        query_params: searchParams
       },
       ip_address: getClientIP(request),
-      user_agent: request.headers.get('user-agent') || undefined
+      user_agent: userAgent || undefined
     });
   } catch (error) {
     console.error('Failed to log admin access:', error);
@@ -381,7 +467,7 @@ export async function withAdminAuth(
       500,
       { 
         error_message: error instanceof Error ? error.message : 'Unknown error',
-        path: request.nextUrl.pathname
+        path: safeGetNextUrl(request).pathname || 'unknown'
       }
     );
   }

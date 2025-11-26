@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageIcon, AlertCircle } from 'lucide-react';
 
@@ -18,7 +19,7 @@ const DefaultErrorFallback: React.FC<{ className?: string }> = ({ className }) =
   </div>
 );
 
-type ImageAttributes = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'loading'>;
+type ImageAttributes = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'width' | 'height'>;
 
 type MotionIncompatibleProps =
   | 'onDrag'
@@ -114,7 +115,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     onAnimationStart: _onAnimationStart,
     onAnimationEnd: _onAnimationEnd,
     onAnimationIteration: _onAnimationIteration,
-    ...motionCompatibleProps
+    ...imageProps
   } = restProps as MotionSafeImageProps;
 
   void _onAnimationStart;
@@ -143,11 +144,12 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         >
           {resolvedPlaceholder}
           {blurDataURL && (
-            <img
+            <Image
               src={blurDataURL}
               alt=""
               className="absolute inset-0 w-full h-full object-cover blur-sm"
               aria-hidden="true"
+              fill
             />
           )}
           {isLoading && (
@@ -172,17 +174,22 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
       {/* Actual image */}
       {showImage && (
-        <motion.img
-          src={src}
-          alt={alt}
-          className={`w-full h-full object-cover ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          onLoad={handleLoad}
-          onError={handleError}
+        <motion.div
+          className={`w-full h-full ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
-          {...motionCompatibleProps}
-        />
+        >
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            className="object-cover"
+            onLoad={handleLoad}
+            onError={handleError}
+            {...imageProps}
+          />
+        </motion.div>
       )}
     </div>
   );

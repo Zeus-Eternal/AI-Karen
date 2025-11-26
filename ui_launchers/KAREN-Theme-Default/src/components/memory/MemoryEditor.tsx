@@ -1,5 +1,5 @@
 /**
- * CopilotKit-enhanced Memory Editor Component (Production)
+ * KARI Copilot-enhanced Memory Editor Component (Production)
  * - Fixes unclosed hooks/blocks
  * - Strong typing + accessibility
  * - Debounced AI suggestions
@@ -10,8 +10,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { CopilotTextarea } from "@copilotkit/react-textarea";
-import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
+import { useCopilotAction, useCopilotReadable } from "@/ai/copilot/hooks/useCopilot";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -93,10 +92,10 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
     setAiSuggestions([]);
   }, [memory, isOpen]);
 
-  // Expose current memory context to CopilotKit
-  useCopilotReadable({
-    description: "Current memory being edited in the MemoryEditor modal",
-    value: memory
+  // Expose current memory context to Copilot
+  useCopilotReadable(
+    "memory-editor-context",
+    memory
       ? {
           id: memory.id,
           content: memory.content,
@@ -105,7 +104,8 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           relationships: memory.relationships,
         }
       : null,
-  });
+    "Current memory being edited in the MemoryEditor modal"
+  );
 
   // Fetch helpers
   const safeJsonPost = useCallback(
@@ -183,27 +183,26 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
     [tenantId, userId, safeJsonPost]
   );
 
-  // CopilotKit actions
-  useCopilotAction({
-    name: "enhanceMemory",
-    description: "Enhance and improve memory content with AI suggestions",
-    parameters: [
-      { name: "content", type: "string", description: "The memory content to enhance" },
-      { name: "context", type: "string", description: "Additional context about the memory" },
-    ],
-    handler: async ({ content, context }) => {
-      await generateAISuggestions(content, context);
-    },
-  });
+  // Copilot actions
+  useCopilotAction(
+    "enhanceMemory",
+    "Enhance and improve memory content with AI suggestions",
+    async ({ content, context }) => {
+      if (typeof content === 'string' && typeof context === 'string') {
+        await generateAISuggestions(content, context);
+      }
+    }
+  );
 
-  useCopilotAction({
-    name: "categorizeMemory",
-    description: "Suggest the best category and cluster for a memory",
-    parameters: [{ name: "content", type: "string", description: "The memory to categorize" }],
-    handler: async ({ content }) => {
-      await getCategorySuggestions(content);
-    },
-  });
+  useCopilotAction(
+    "categorizeMemory",
+    "Suggest the best category and cluster for a memory",
+    async ({ content }) => {
+      if (typeof content === 'string') {
+        await getCategorySuggestions(content);
+      }
+    }
+  );
 
   // Debounced autosuggest while typing
   useEffect(() => {
@@ -299,7 +298,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
               {memory ? "Edit Memory" : "Create New Memory"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              AI-assisted editing with CopilotKit autosuggestions.
+              AI-assisted editing with KARI Copilot autosuggestions.
             </p>
           </div>
           <Button variant="ghost" size="icon" aria-label="Close" onClick={onCancel}>
@@ -313,7 +312,7 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
           <div>
             <div className="mb-4 space-y-2">
               <Label htmlFor="memory-content">Content</Label>
-              <CopilotTextarea
+              <textarea
                 id="memory-content"
                 className={cn(
                   "min-h-[140px] w-full resize-y rounded-md border p-3 text-sm",
@@ -322,15 +321,6 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 placeholder="Enter memory content... (AI suggestions appear as you type)"
-                autosuggestionsConfig={{
-                  textareaPurpose: "Memory content editing with AI enhancement",
-                  chatApiConfigs: {
-                    suggestionsApiConfig: {
-                      maxTokens: 250,
-                      stop: ["\n"],
-                    },
-                  },
-                }}
               />
             </div>
 

@@ -12,6 +12,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Generate static params for email template route
+ * Since we can't pre-generate all possible template IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import type { AdminApiResponse } from '@/types/admin';
 import type {
@@ -55,8 +71,13 @@ async function loadTemplateById(templateId: string): Promise<EmailTemplate | nul
    * For production use, configure default templates in environment config
    * and they will be loaded on each request. Changes are not persisted.
    */
-  const templates = await EmailTemplateManager.createDefaultTemplates('system');
-  return templates.find((t) => t.id === templateId) || null;
+  try {
+    const templates = await EmailTemplateManager.createDefaultTemplates('system');
+    return templates.find((t) => t.id === templateId) || null;
+  } catch (error) {
+    console.error('Error loading template:', error);
+    return null;
+  }
 }
 
 /**
@@ -93,7 +114,7 @@ export async function GET(
       'email_template',
       {
         details: { template_id: templateId, template_name: template.name },
-        request,
+        request
       }
     );
 
@@ -172,7 +193,7 @@ export async function PUT(
       'email_template',
       {
         details: { template_id: templateId, template_name: updated.name, changes: Object.keys(body || {}) },
-        request,
+        request
       }
     );
 
@@ -244,7 +265,7 @@ export async function DELETE(
       'email_template',
       {
         details: { template_id: templateId, template_name: existing.name },
-        request,
+        request
       }
     );
 
@@ -359,9 +380,9 @@ export async function POST(
           template_id: templateId,
           template_name: template.name,
           variables_preview_count: Object.keys(variables || {}).length,
-          warnings: validation.warnings,
+          warnings: validation.warnings
         },
-        request,
+        request
       }
     );
 

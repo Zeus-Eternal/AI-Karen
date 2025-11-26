@@ -9,13 +9,13 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from ..production_auth_service import ProductionAuthService, UserAccount
+from ..production_auth_service import AuthService, UserAccount
 from ..auth_data_cleanup_service import AuthDataCleanupService
 from ...core.services.base import ServiceConfig
 
 
-class TestProductionAuthService:
-    """Test cases for ProductionAuthService."""
+class TestAuthService:
+    """Test cases for AuthService."""
     
     @pytest.fixture
     def temp_users_file(self):
@@ -77,7 +77,7 @@ class TestProductionAuthService:
                 "require_strong_passwords": False  # Disable for testing
             }
         )
-        return ProductionAuthService(config)
+        return AuthService(config)
     
     @pytest.mark.asyncio
     async def test_service_initialization(self, auth_service):

@@ -6,7 +6,7 @@
  * preferences while maintaining backward compatibility.
  */
 
-import { getKarenBackend } from "../karen-backend";
+import { enhancedApiClient } from "../enhanced-api-client";
 import { BaseModelService } from "./base-service";
 import { ModelSelectionPreferences, PreferencesServiceConfig } from "./types";
 import { PreferencesError, ErrorUtils } from "./errors/model-selection-errors";
@@ -90,14 +90,13 @@ export class PreferencesService extends BaseModelService implements IPreferences
       this.USER_PREFERENCES_CACHE_KEY,
       async () => {
         try {
-          const backend = getKarenBackend();
           const response = await this.withTimeout(
-            backend.makeRequestPublic("/api/user/preferences/models"),
+            enhancedApiClient.get<ModelSelectionPreferences>("/api/user/preferences/models"),
             this.DEFAULT_TIMEOUT_MS,
             "getUserPreferences"
           );
 
-          const raw = (response || {}) as Partial<ModelSelectionPreferences>;
+          const raw = (response?.data || {}) as Partial<ModelSelectionPreferences>;
           const cleaned = this.cleanPreferences(raw);
           const validatedPreferences = this.mergeWithDefaults(cleaned);
 
@@ -130,14 +129,8 @@ export class PreferencesService extends BaseModelService implements IPreferences
     }
 
     try {
-      const backend = getKarenBackend();
-
       await this.withTimeout(
-        backend.makeRequestPublic("/api/user/preferences/models", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cleaned),
-        }),
+        enhancedApiClient.put("/api/user/preferences/models", cleaned),
         this.DEFAULT_TIMEOUT_MS,
         "saveUserPreferences"
       );
@@ -167,14 +160,13 @@ export class PreferencesService extends BaseModelService implements IPreferences
       this.DEFAULT_CONFIG_CACHE_KEY,
       async () => {
         try {
-          const backend = getKarenBackend();
           const response = await this.withTimeout(
-            backend.makeRequestPublic("/api/system/config/models"),
+            enhancedApiClient.get<{ defaultModel?: string }>("/api/system/config/models"),
             this.DEFAULT_TIMEOUT_MS,
             "getDefaultModelConfig"
           );
 
-          const config = (response || {}) as { defaultModel?: string };
+          const config = (response?.data || {}) as { defaultModel?: string };
           const cleaned =
             typeof config.defaultModel === "string" && config.defaultModel.trim().length > 0
               ? { defaultModel: config.defaultModel.trim() }

@@ -1,11 +1,15 @@
 /**
  * Health Check API Endpoint
- * 
+ *
  * Proxies health check requests to the backend server to maintain consistency
  * with the backend health check format expected by the frontend.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// Note: Removed 'force-dynamic' to allow static export
+export const dynamic = 'auto';
+export const runtime = 'nodejs';
 import * as os from 'os';
 import type { BackendHealthData } from '@/types/health';
 
@@ -514,6 +518,44 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
 
   try {
+    // Check if this is a build-time request
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // During build time, return a mock response to avoid dynamic server usage
+    if (isBuildTime) {
+      return NextResponse.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: process.env.NEXT_PUBLIC_APP_VERSION || process.env.APP_VERSION || 'unknown',
+        uptime: process.uptime(),
+        checks: {
+          database: { status: 'healthy', message: 'Build-time check' },
+          redis: { status: 'healthy', message: 'Build-time check' },
+          external_apis: { status: 'healthy', message: 'Build-time check' },
+          filesystem: { status: 'healthy', message: 'Build-time check' },
+          memory: { status: 'healthy', message: 'Build-time check' },
+          performance: { status: 'healthy', message: 'Build-time check' },
+        },
+        metrics: {
+          memory: getMemoryMetrics(),
+          performance: getPerformanceMetrics(),
+          requests: { ...requestMetrics },
+        },
+        environment: {
+          nodeVersion: process.version,
+          platform: process.platform,
+          environment: process.env.NODE_ENV || 'development',
+        },
+      }, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    }
+
     // Proxy the health check request to the backend
     const backendUrl = `${BACKEND_URL}/api/health`;
 

@@ -1,6 +1,8 @@
 """
 Enhanced Memory Service for Web UI Integration.
 Extends the existing MemoryManager with web UI specific features and query methods.
+
+This service is being refactored to use the new unified memory service.
 """
 
 import logging
@@ -22,6 +24,7 @@ from ai_karen_engine.database.memory_manager import (
     MemoryQuery,
 )
 from ai_karen_engine.database.models import TenantConversation, TenantMemoryEntry
+from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -378,37 +381,45 @@ class MemoryContextBuilder:
     ) -> Optional[Dict[str, Any]]:
         """Get conversation context from database."""
         try:
-            async with self.memory_service.db_client.get_async_session() as session:
-                result = await session.execute(
-                    select(TenantConversation).where(
-                        TenantConversation.id == uuid.UUID(conversation_id)
+            if self.memory_service.db_client:
+                async with self.memory_service.db_client.get_async_session() as session:
+                    result = await session.execute(
+                        select(TenantConversation).where(
+                            TenantConversation.id == uuid.UUID(conversation_id)
+                        )
                     )
-                )
-                conversation = result.scalar_one_or_none()
+                    conversation = result.scalar_one_or_none()
 
-                if conversation:
-                    return {
-                        "title": conversation.title,
-                        "summary": conversation.summary,
-                        "ui_context": conversation.ui_context,
-                        "ai_insights": conversation.ai_insights,
-                        "user_settings": conversation.user_settings,
-                        "tags": conversation.tags,
-                        "last_updated": conversation.updated_at.isoformat(),
-                    }
+                    if conversation:
+                        return {
+                            "title": conversation.title,
+                            "summary": conversation.summary,
+                            "ui_context": conversation.ui_context,
+                            "ai_insights": conversation.ai_insights,
+                            "user_settings": conversation.user_settings,
+                            "tags": conversation.tags,
+                            "last_updated": conversation.updated_at.isoformat(),
+                        }
 
-                return None
+                    return None
 
         except Exception as e:
             logger.error(f"Failed to get conversation context: {e}")
             return None
 
 
-class WebUIMemoryService:
-    """Enhanced memory service with web UI specific features."""
+class WebUIMemoryService(UnifiedMemoryService):
+    """Enhanced memory service with web UI specific features.
+    
+    This class now extends the UnifiedMemoryService to provide backward compatibility
+    while leveraging the new unified architecture.
+    """
 
     def __init__(self, base_memory_manager: Optional[MemoryManager]):
         """Initialize with existing memory manager."""
+        # Initialize the unified memory service
+        super().__init__()
+        
         self.base_manager = base_memory_manager
         self.db_client = base_memory_manager.db_client if base_memory_manager else None
         self.context_builder = MemoryContextBuilder(self)
@@ -437,7 +448,7 @@ class WebUIMemoryService:
         conversation_id: Optional[str] = None,
         memory_type: MemoryType = MemoryType.GENERAL,
         tags: Optional[List[str]] = None,
-        importance_score: int = None,
+        importance_score: Optional[int] = None,
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
         ttl_hours: Optional[int] = None,
@@ -593,18 +604,19 @@ class WebUIMemoryService:
     ) -> bool:
         """Confirm or reject an AI-generated memory."""
         try:
-            async with self.db_client.get_async_session() as session:
-                await session.execute(
-                    update(TenantMemoryEntry)
-                    .where(TenantMemoryEntry.vector_id == memory_id)
-                    .values(user_confirmed=confirmed)
-                )
-                await session.commit()
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    await session.execute(
+                        update(TenantMemoryEntry)
+                        .where(TenantMemoryEntry.vector_id == memory_id)
+                        .values(user_confirmed=confirmed)
+                    )
+                    await session.commit()
 
-                if confirmed:
-                    self.web_ui_metrics["memory_confirmations"] += 1
+                    if confirmed:
+                        self.web_ui_metrics["memory_confirmations"] += 1
 
-                return True
+                    return True
 
         except Exception as e:
             logger.error(f"Failed to confirm memory {memory_id}: {e}")
@@ -618,14 +630,15 @@ class WebUIMemoryService:
             raise ValueError("Importance score must be between 1 and 10")
 
         try:
-            async with self.db_client.get_async_session() as session:
-                await session.execute(
-                    update(TenantMemoryEntry)
-                    .where(TenantMemoryEntry.vector_id == memory_id)
-                    .values(importance_score=importance_score)
-                )
-                await session.commit()
-                return True
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    await session.execute(
+                        update(TenantMemoryEntry)
+                        .where(TenantMemoryEntry.vector_id == memory_id)
+                        .values(importance_score=importance_score)
+                    )
+                    await session.commit()
+                    return True
 
         except Exception as e:
             logger.error(f"Failed to update memory importance: {e}")
@@ -639,9 +652,10 @@ class WebUIMemoryService:
     ) -> Dict[str, Any]:
         """Get memory analytics for web UI dashboard."""
         try:
-            async with self.db_client.get_async_session() as session:
-                # Base query
-                query_conditions = []
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    # Base query
+                    query_conditions = []
                 if user_id:
                     query_conditions.append(
                         TenantMemoryEntry.user_id == uuid.UUID(user_id)
@@ -766,22 +780,23 @@ class WebUIMemoryService:
     ):
         """Update database with web UI specific fields."""
         try:
-            async with self.db_client.get_async_session() as session:
-                await session.execute(
-                    update(TenantMemoryEntry)
-                    .where(TenantMemoryEntry.vector_id == memory_id)
-                    .values(
-                        ui_source=web_ui_metadata.get("ui_source"),
-                        conversation_id=uuid.UUID(web_ui_metadata["conversation_id"])
-                        if web_ui_metadata.get("conversation_id")
-                        else None,
-                        memory_type=web_ui_metadata.get("memory_type"),
-                        importance_score=web_ui_metadata.get("importance_score"),
-                        ai_generated=web_ui_metadata.get("ai_generated"),
-                        user_confirmed=web_ui_metadata.get("user_confirmed"),
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    await session.execute(
+                        update(TenantMemoryEntry)
+                        .where(TenantMemoryEntry.vector_id == memory_id)
+                        .values(
+                            ui_source=web_ui_metadata.get("ui_source"),
+                            conversation_id=uuid.UUID(web_ui_metadata["conversation_id"])
+                            if web_ui_metadata.get("conversation_id")
+                            else None,
+                            memory_type=web_ui_metadata.get("memory_type"),
+                            importance_score=web_ui_metadata.get("importance_score"),
+                            ai_generated=web_ui_metadata.get("ai_generated"),
+                            user_confirmed=web_ui_metadata.get("user_confirmed"),
+                        )
                     )
-                )
-                await session.commit()
+                    await session.commit()
 
         except Exception as e:
             logger.error(f"Failed to update web UI fields: {e}")
@@ -791,29 +806,30 @@ class WebUIMemoryService:
     ) -> Dict[str, Dict[str, Any]]:
         """Get web UI specific data for memory entries."""
         try:
-            async with self.db_client.get_async_session() as session:
-                result = await session.execute(
-                    select(TenantMemoryEntry).where(
-                        TenantMemoryEntry.vector_id.in_(memory_ids)
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    result = await session.execute(
+                        select(TenantMemoryEntry).where(
+                            TenantMemoryEntry.vector_id.in_(memory_ids)
+                        )
                     )
-                )
 
-                web_ui_data = {}
-                for memory in result.fetchall():
-                    web_ui_data[memory.vector_id] = {
-                        "ui_source": memory.ui_source,
-                        "conversation_id": str(memory.conversation_id)
-                        if memory.conversation_id
-                        else None,
-                        "memory_type": memory.memory_type,
-                        "importance_score": memory.importance_score,
-                        "access_count": memory.access_count,
-                        "last_accessed": memory.last_accessed,
-                        "ai_generated": memory.ai_generated,
-                        "user_confirmed": memory.user_confirmed,
-                    }
+                    web_ui_data = {}
+                    for memory in result.fetchall():
+                        web_ui_data[memory.vector_id] = {
+                            "ui_source": memory.ui_source,
+                            "conversation_id": str(memory.conversation_id)
+                            if memory.conversation_id
+                            else None,
+                            "memory_type": memory.memory_type,
+                            "importance_score": memory.importance_score,
+                            "access_count": memory.access_count,
+                            "last_accessed": memory.last_accessed,
+                            "ai_generated": memory.ai_generated,
+                            "user_confirmed": memory.user_confirmed,
+                        }
 
-                return web_ui_data
+                    return web_ui_data
 
         except Exception as e:
             logger.error(f"Failed to get web UI memory data: {e}")
@@ -863,16 +879,17 @@ class WebUIMemoryService:
     ):
         """Increment access count for a memory."""
         try:
-            async with self.db_client.get_async_session() as session:
-                await session.execute(
-                    update(TenantMemoryEntry)
-                    .where(TenantMemoryEntry.vector_id == memory_id)
-                    .values(
-                        access_count=TenantMemoryEntry.access_count + 1,
-                        last_accessed=datetime.utcnow(),
+            if self.db_client:
+                async with self.db_client.get_async_session() as session:
+                    await session.execute(
+                        update(TenantMemoryEntry)
+                        .where(TenantMemoryEntry.vector_id == memory_id)
+                        .values(
+                            access_count=TenantMemoryEntry.access_count + 1,
+                            last_accessed=datetime.utcnow(),
+                        )
                     )
-                )
-                await session.commit()
+                    await session.commit()
 
         except Exception as e:
             logger.error(f"Failed to increment access count: {e}")
@@ -1062,7 +1079,7 @@ class WebUIMemoryService:
 
     def get_metrics(self) -> Dict[str, Any]:
         """Get combined metrics from base manager and web UI service."""
-        base_metrics = self.base_manager.metrics.copy()
+        base_metrics = self.base_manager.metrics.copy() if self.base_manager else {}
         base_metrics.update(self.web_ui_metrics)
         return base_metrics
 

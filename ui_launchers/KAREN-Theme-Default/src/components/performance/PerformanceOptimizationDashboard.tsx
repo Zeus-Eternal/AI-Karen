@@ -254,6 +254,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
       case "bundle":
         return <Package className="h-4 w-4" />;
       case "image":
+        // eslint-disable-next-line jsx-a11y/alt-text
         return <Image className="h-4 w-4" />;
       case "cache":
         return <Database className="h-4 w-4" />;
@@ -368,6 +369,7 @@ export const PerformanceOptimizationDashboard: React.FC<PerformanceOptimizationD
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium md:text-base lg:text-lg">Images Optimized</CardTitle>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>

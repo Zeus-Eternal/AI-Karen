@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any, List
 
-from extensions.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
-from extensions.analytics.dashboard.api_routes import router
+from extensions_hub.analytics.dashboard.analytics_extension import AnalyticsDashboardExtension
+from extensions_hub.analytics.dashboard.api_routes import router
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 

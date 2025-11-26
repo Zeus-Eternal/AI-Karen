@@ -251,7 +251,10 @@ export function DatabaseErrorFallback({
             <DatabaseIcon className="h-4 w-4" />
             <AlertTitle>Data Loading Issue</AlertTitle>
             <AlertDescription className="text-sm md:text-base lg:text-lg">
-              We're having trouble accessing the data. Please try again.
+              We&rsquo;re having trouble accessing
+              We&rsquo;re having trouble accessing
+              We&rsquo;re having trouble accessing
+              data. Please try again.
             </AlertDescription>
           </Alert>
 

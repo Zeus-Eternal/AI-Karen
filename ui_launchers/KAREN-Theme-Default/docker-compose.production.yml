@@ -35,6 +35,8 @@ services:
       - ./logs:/app/logs
       # Mount uploads directory if needed
       - ./uploads:/app/uploads
+      # Mount config directory from project root
+      - ../config:/app/config
     networks:
       - kari-network
     depends_on:

@@ -23,7 +23,7 @@ declare module '@/components/ui/button' {
     size?: ButtonSize;
     icon?: ReactNode;
     asChild?: boolean;
-  };
+  }
 
   export const buttonVariants: (options?: {
     variant?: ButtonVariant;

@@ -5,6 +5,22 @@
  * Requirements: 4.4, 4.5
  */
 import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Generate static params for user reset password route
+ * Since we can't pre-generate all possible user IDs, return empty array
+ */
+export function generateStaticParams() {
+  // Return sample IDs for static generation
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ];
+}
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { getDatabaseClient } from '@/lib/database/client';

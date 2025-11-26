@@ -15,13 +15,13 @@ import { Button } from '@/components/ui/button';
 
 export interface DynamicExtensionRouterProps {
   children?: React.ReactNode;
-  fallback?: React.ComponentType;
+  fallback?: React.ReactNode;
 }
 
 /**
  * Dynamic router that renders extension components based on current path
  */
-export function DynamicExtensionRouter({ children, fallback: Fallback }: DynamicExtensionRouterProps) {
+export function DynamicExtensionRouter({ children, fallback }: DynamicExtensionRouterProps) {
   const pathname = usePathname();
   const routes = useExtensionRoutes();
 
@@ -55,8 +55,8 @@ export function DynamicExtensionRouter({ children, fallback: Fallback }: Dynamic
     return <>{children}</>;
   }
 
-  if (Fallback) {
-    return <Fallback />;
+  if (fallback) {
+    return <>{fallback}</>;
   }
 
   return null;
@@ -174,7 +174,7 @@ function ExtensionErrorFallback({
         
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Extension Error</h3>
         <p className="text-gray-600 mb-4">
-          The extension "{extensionId}" encountered an error and could not be loaded.
+          The extension &ldquo;{extensionId}&rdquo; encountered an error and could not be loaded.
         </p>
         
         {routePath && (

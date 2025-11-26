@@ -10,8 +10,12 @@ import { adminAuthMiddleware } from '@/lib/middleware/admin-auth';
 import { deliveryStatusManager } from '@/lib/email/delivery-tracker';
 import { auditLogger } from '@/lib/audit/audit-logger';
 import type { AdminApiResponse } from '@/types/admin';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
-export const dynamic = 'force-dynamic';
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
+// This route needs to be static for export compatibility
 
 type Role = 'admin' | 'super_admin';
 
@@ -87,7 +91,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
+    const searchParams = safeGetSearchParams(request);
 
     const startDate = parseIsoDate(searchParams.get('start_date'));
     const endDate = parseIsoDate(searchParams.get('end_date'));
@@ -140,7 +144,7 @@ export async function GET(request: NextRequest) {
             total_sent: statistics?.total_sent ?? 0,
           },
           request,
-        },
+        }
       );
     } catch {
       // swallow audit errors; do not break telemetry view

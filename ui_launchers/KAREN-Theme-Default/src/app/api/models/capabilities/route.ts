@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Static export detection
+function isStaticExport(): boolean {
+  return (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_EXPORT === 'true' ||
+    process.env.STATIC_EXPORT === 'true' ||
+    (typeof window === 'undefined' && process.env.NODE_ENV === 'production')
+  );
+}
+
 /** ---------------- Types ---------------- */
 
 type NumericParam = {
@@ -319,6 +329,33 @@ export async function GET(request: NextRequest) {
 
     if (!modelId) {
       return NextResponse.json({ error: 'Missing required parameter: model_id' }, { status: 400 });
+    }
+
+    // During static export, return minimal response without calling modelSelectionService
+    if (isStaticExport()) {
+      const response: CapabilitiesResponse = {
+        model_id: modelId,
+        model_name: modelId,
+        provider: 'unknown',
+        type: 'unknown',
+        capabilities: [],
+        supported_modes: [],
+        parameters: {},
+        compatibility: {
+          multimodal: false,
+          streaming: false,
+          batch_processing: false,
+        },
+      };
+
+      return NextResponse.json(response, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=3600',
+          'X-Model-Type': response.type,
+          'X-Model-Provider': response.provider,
+        },
+      });
     }
 
     const { modelSelectionService } = await import('@/lib/model-selection-service');

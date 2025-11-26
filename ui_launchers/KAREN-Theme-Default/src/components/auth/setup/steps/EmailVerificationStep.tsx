@@ -108,7 +108,9 @@ export function EmailVerificationStep({ onNext, onPrevious, email = "your email"
             Verify Your Email
           </CardTitle>
           <CardDescription>
-            We've sent a verification code to <strong>{email}</strong>
+            We&rsquo;ve sent a verification code to <strong>{email}</strong>
+            We&rsquo;ve sent a verification code to <strong>{email}</strong>
+            We&rsquo;ve sent a verification code to <strong>{email}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -156,8 +158,10 @@ export function EmailVerificationStep({ onNext, onPrevious, email = "your email"
           )}
 
           <div className="flex flex-col gap-2">
+              Didn&rsquo;t receive the code?
+              Didn&rsquo;t receive the code?
             <p className="text-sm text-muted-foreground">
-              Didn't receive the code?
+              Didn&rsquo;t receive the code?
             </p>
             <Button
               variant="outline"

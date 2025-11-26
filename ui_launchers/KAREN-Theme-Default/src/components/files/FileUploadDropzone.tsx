@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import {
   Upload,
@@ -306,7 +307,7 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
                   {/* File Icon/Preview */}
                   <div className="flex-shrink-0">
                     {item.preview ? (
-                      <img src={item.preview} alt={item.file.name} className="h-10 w-10 rounded object-cover" />
+                      <Image src={item.preview} alt={`Preview of ${item.file.name}`} width={40} height={40} className="h-10 w-10 rounded object-cover" />
                     ) : (
                       <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">{getFileIcon(item.file)}</div>
                     )}

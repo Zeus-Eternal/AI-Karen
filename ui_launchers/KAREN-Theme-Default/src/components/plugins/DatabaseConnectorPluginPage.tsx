@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -30,14 +29,14 @@ export default function DatabaseConnectorPluginPage() {
         <AlertTriangle className="h-4 w-4 " />
         <AlertTitle>Simulated Functionality & How to Use</AlertTitle>
         <AlertDescription>
-          <p>The "Item Details Lookup" feature currently uses a **mocked (simulated) tool**. It does not connect to a live external database.</p>
-          <p className="mt-2">Karen can provide details for a few pre-defined examples, such as the items 'Dune' or 'The Great Gatsby'.</p>
+          <p>The &ldquo;Item Details Lookup&rdquo; feature currently uses a **mocked (simulated) tool**. It does not connect to a live external database.</p>
+          <p className="mt-2">Karen can provide details for a few pre-defined examples, such as the items &lsquo;Dune&rsquo; or &lsquo;The Great Gatsby&rsquo;.</p>
           <p className="mt-2">
             To use this feature, ask Karen directly in the chat interface. For example:
           </p>
           <ul className="list-disc list-inside pl-4 mt-1 text-xs sm:text-sm md:text-base">
-            <li>"Tell me about the item 'Dune'"</li>
-            <li>"What do you know about 'The Great Gatsby'?"</li>
+            <li>&ldquo;Tell me about the item &lsquo;Dune&rsquo;&rdquo;</li>
+            <li>&ldquo;What do you know about &lsquo;The Great Gatsby&rsquo;?&rdquo;</li>
           </ul>
            <p className="mt-2">This page serves as a placeholder for where settings for a more advanced, live database connector plugin might appear in the future.</p>
         </AlertDescription>
@@ -47,7 +46,7 @@ export default function DatabaseConnectorPluginPage() {
         <CardHeader>
           <CardTitle className="text-lg">Current Capability</CardTitle>
           <CardDescription>
-            Karen can use her "Query Simulated Database" tool when you ask about specific items in the chat.
+            Karen can use her &ldquo;Query Simulated Database&rdquo; tool when you ask about specific items in the chat.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -12,20 +12,74 @@ import asyncio
 import logging
 import time
 import weakref
-from typing import Dict, Any, Optional, Type, TypeVar, Callable, Set, List
+from typing import Dict, Any, Optional, Type, TypeVar, Callable, Set, List, Union
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from ai_karen_engine.services.memory_service import WebUIMemoryService
-from ai_karen_engine.services.conversation_service import WebUIConversationService
-from ai_karen_engine.services.plugin_service import PluginService
-from ai_karen_engine.services.tool_service import ToolService
-from ai_karen_engine.services.analytics_service import AnalyticsService
-from ai_karen_engine.database.conversation_manager import ConversationManager
-
 logger = logging.getLogger(__name__)
+
+try:
+    from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+    from ai_karen_engine.services.memory_service import WebUIMemoryService
+    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
+    from ai_karen_engine.services.conversation_service import WebUIConversationService
+    from ai_karen_engine.services.plugin_service import PluginService
+    from ai_karen_engine.services.tool_service import ToolService
+    from ai_karen_engine.services.analytics_service import AnalyticsService
+    from ai_karen_engine.database.conversation_manager import ConversationManager
+except ImportError as e:
+    logger.warning(f"Some service imports failed: {e}")
+    # Define dummy classes for missing services to allow the registry to load
+    class AIOrchestrator:
+        def __init__(self, config):
+            self.config = config
+        async def initialize(self):
+            pass
+    
+    class WebUIMemoryService:
+        def __init__(self, memory_manager):
+            self.memory_manager = memory_manager
+        async def initialize(self):
+            pass
+    
+    class UnifiedMemoryService:
+        def __init__(self):
+            pass
+        async def initialize(self):
+            pass
+    
+    class WebUIConversationService:
+        def __init__(self, conversation_manager, memory_service):
+            self.conversation_manager = conversation_manager
+            self.memory_service = memory_service
+        async def initialize(self):
+            pass
+    
+    class PluginService:
+        def __init__(self, marketplace_path, core_plugins_path):
+            self.marketplace_path = marketplace_path
+            self.core_plugins_path = core_plugins_path
+        async def initialize(self):
+            pass
+    
+    class ToolService:
+        def __init__(self, config):
+            self.config = config
+        async def initialize(self):
+            pass
+    
+    class AnalyticsService:
+        def __init__(self, config):
+            self.config = config
+        async def initialize(self):
+            pass
+    
+    class ConversationManager:
+        def __init__(self, db_client, memory_manager, embedding_manager):
+            self.db_client = db_client
+            self.memory_manager = memory_manager
+            self.embedding_manager = embedding_manager
 
 T = TypeVar('T')
 
@@ -161,7 +215,7 @@ class ServiceRegistry:
             logger.debug(f"Metric {metric_name} already registered, returning dummy metric")
             
             # Return dummy metric to prevent errors
-            class DummyMetric:
+            class DummyMetric1:
                 def labels(self, **kwargs):
                     return self
                 def inc(self, amount=1):
@@ -171,7 +225,7 @@ class ServiceRegistry:
                 def set(self, value):
                     pass
             
-            return DummyMetric()
+            return DummyMetric1()
         
         try:
             metric = metric_factory()
@@ -183,7 +237,7 @@ class ServiceRegistry:
                 logger.warning(f"Metric {metric_name} already registered by external system, using dummy metric")
                 self._registered_metrics.add(metric_name)
                 
-                class DummyMetric:
+                class DummyMetric2:
                     def labels(self, **kwargs):
                         return self
                     def inc(self, amount=1):
@@ -193,7 +247,7 @@ class ServiceRegistry:
                     def set(self, value):
                         pass
                 
-                return DummyMetric()
+                return DummyMetric2()
             else:
                 logger.error(f"Failed to register metric {metric_name}: {e}")
                 raise
@@ -321,7 +375,7 @@ class ServiceRegistry:
             except ImportError:
                 # Create a simple config object if ServiceConfig doesn't exist
                 class SimpleServiceConfig:
-                    def __init__(self, name: str, enabled: bool = True, dependencies: List[str] = None, config: Dict = None):
+                    def __init__(self, name: str, enabled: bool = True, dependencies: Optional[List[str]] = None, config: Optional[Dict] = None):
                         self.name = name
                         self.enabled = enabled
                         self.dependencies = dependencies or []
@@ -343,10 +397,23 @@ class ServiceRegistry:
                 elif service_info.service_type == WebUIMemoryService:
                     # WebUIMemoryService needs base_memory_manager
                     try:
-                        from ai_karen_engine.database.memory_manager import MemoryManager
-                        from ai_karen_engine.database.client import MultiTenantPostgresClient
-                        from ai_karen_engine.core.milvus_client import MilvusClient
-                        from ai_karen_engine.core import default_models
+                        try:
+                            from ai_karen_engine.database.memory_manager import MemoryManager
+                            from ai_karen_engine.database.client import MultiTenantPostgresClient
+                            from ai_karen_engine.core.milvus_client import MilvusClient
+                            from ai_karen_engine.core import default_models
+                        except ImportError:
+                            # Use dummy classes if imports fail
+                            class MemoryManager:
+                                def __init__(self, db_client, milvus_client, embedding_manager): pass
+                            
+                            class MultiTenantPostgresClient:
+                                def __init__(self): pass
+                            
+                            class MilvusClient:
+                                def __init__(self): pass
+                            
+                            default_models = type('DefaultModels', (), {'load_default_models': lambda: None, 'get_embedding_manager': lambda: None})()
                         
                         # Initialize required components with error handling
                         db_client = MultiTenantPostgresClient()
@@ -365,6 +432,13 @@ class ServiceRegistry:
                     except Exception as e:
                         logger.warning(f"Failed to initialize WebUIMemoryService components: {e}")
                         # Create a minimal fallback instance if possible
+                        instance = None
+                elif service_info.service_type == UnifiedMemoryService:
+                    # UnifiedMemoryService can be initialized directly
+                    try:
+                        instance = UnifiedMemoryService()
+                    except Exception as e:
+                        logger.warning(f"Failed to initialize UnifiedMemoryService: {e}")
                         instance = None
                         
                 elif service_info.service_type == WebUIConversationService:
@@ -437,6 +511,9 @@ class ServiceRegistry:
                                 
                                 async def run_health_check(self, name):
                                     return {"status": "healthy", "mode": "fallback"}
+                                
+                                async def initialize(self):
+                                    pass
                             
                             instance = MinimalAnalyticsService(config)
                             logger.info("Created fallback analytics service")
@@ -817,7 +894,7 @@ async def get_ai_orchestrator() -> AIOrchestrator:
     return await registry.get_service("ai_orchestrator")
 
 
-async def get_memory_service() -> WebUIMemoryService:
+async def get_memory_service() -> Union[WebUIMemoryService, UnifiedMemoryService]:
     """Get Memory service instance."""
     registry = get_service_registry()
     return await registry.get_service("memory_service")

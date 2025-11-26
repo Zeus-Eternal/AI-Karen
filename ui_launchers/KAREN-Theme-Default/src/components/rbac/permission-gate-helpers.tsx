@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { Permission, AccessContext } from '@/types/rbac';
+import { Permission, AccessContext } from '@/lib/security/rbac/types';
 import { useRBAC } from '@/providers/rbac-hooks';
 
 import { PermissionGate } from './PermissionGate';
@@ -17,15 +17,14 @@ export function withPermission<P extends object>(
   permission: Permission | Permission[],
   options: WithPermissionOptions<P> = {},
 ) {
-  const { requireAll = false, fallback: FallbackComponent, showFallback = true } = options;
+  const { requireAll = false, fallback: FallbackComponent } = options;
 
   return function PermissionWrappedComponent(props: P) {
     return (
       <PermissionGate
-        permission={permission}
+        permissions={permission}
         requireAll={requireAll}
         fallback={FallbackComponent ? <FallbackComponent {...props} /> : undefined}
-        showFallback={showFallback}
       >
         <Component {...props} />
       </PermissionGate>

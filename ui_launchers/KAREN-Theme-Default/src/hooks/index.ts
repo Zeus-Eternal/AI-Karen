@@ -4,24 +4,11 @@
  * Centralized export hub for all custom React hooks.
  */
 
-export { useExtensionCache } from './extensions/useExtensionCache';
-
-export { useExtensionControls } from './extensions/useExtensionControls';
-
-export { useExtensionHealth } from './extensions/useExtensionHealth';
-export type { ExtensionHealth } from './extensions/useExtensionHealth';
-
-export { useExtensionMarketplace } from './extensions/useExtensionMarketplace';
-export type { MarketplaceExtension } from './extensions/useExtensionMarketplace';
-
-export { useExtensionNavigation } from './extensions/useExtensionNavigation';
-export type { UseExtensionNavigation } from './extensions/useExtensionNavigation';
-
-export { useExtensionSettings } from './extensions/useExtensionSettings';
-export type { ExtensionSettings } from './extensions/useExtensionSettings';
-
 export { useExtensions } from './extensions/useExtensions';
 export type { UseExtensionsResult } from './extensions/useExtensions';
+
+export { useExtensionMarketplace } from './extensions/useExtensionMarketplace';
+export type { MarketplaceExtension, UseExtensionMarketplaceResult } from './extensions/useExtensionMarketplace';
 
 export { useAccessibilityTesting, useAccessibilityMonitor, useAccessibilityTestRunner } from './use-accessibility-testing';
 export type { UseAccessibilityTestingOptions, AccessibilityTestingState } from './use-accessibility-testing';

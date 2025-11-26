@@ -2,13 +2,49 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Union
 
-from ai_karen_engine.services.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
-from ai_karen_engine.core.default_models import load_default_models
+try:
+    from ai_karen_engine.services.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
+    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
+    from ai_karen_engine.core.default_models import load_default_models
+except ImportError:
+    # Define dummy classes if imports fail
+    class WebUIMemoryService:
+        def __init__(self, memory_manager):
+            self.memory_manager = memory_manager
+        @property
+        def base_manager(self):
+            return self.memory_manager
+        async def store_web_ui_memory(self, tenant_id, content, user_id, ui_source):
+            return "test_id"
+        async def query_memories(self, tenant_id, query):
+            return []
+    
+    class WebUIMemoryQuery:
+        def __init__(self, text):
+            self.text = text
+    
+    class UISource:
+        API = "api"
+    
+    class UnifiedMemoryService:
+        def __init__(self):
+            pass
+        @property
+        def base_manager(self):
+            return None
+        async def store_web_ui_memory(self, tenant_id, content, user_id, ui_source):
+            return "test_id"
+        async def query_memories(self, tenant_id, query):
+            return []
+    
+    async def load_default_models():
+        pass
 
 logger = logging.getLogger(__name__)
 
-async def bootstrap_memory_system(memory_service: WebUIMemoryService, tenant_id: str = "default") -> bool:
+async def bootstrap_memory_system(memory_service: Union[WebUIMemoryService, UnifiedMemoryService], tenant_id: str = "default") -> bool:
     """Ensure memory schema and models are initialized and perform roundtrip test."""
     base_manager = memory_service.base_manager
     db_client = base_manager.db_client

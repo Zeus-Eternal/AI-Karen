@@ -38,13 +38,17 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
         <CardHeader>
           <CardTitle className="text-3xl font-bold">Welcome to AI-Karen</CardTitle>
           <CardDescription className="text-lg">
-            Let's get your AI-Karen instance set up and ready to use
+            Let&rsquo;s get your AI-Karen instance set up and ready to use
+            Let&rsquo;s get your AI-Karen instance set up and ready to use
+            Let&rsquo;s get your AI-Karen instance set up and ready to use
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+            You&rsquo;ll create your super administrator account, verify your email, and configure
           <p className="text-muted-foreground">
+            You&rsquo;ll create your super administrator account, verify your email, and configure
             This setup wizard will guide you through the initial configuration process.
-            You'll create your super administrator account, verify your email, and configure
+            You&rsquo;ll create your super administrator account, verify your email, and configure
             essential security settings.
           </p>
 

@@ -199,7 +199,18 @@ export const useUIStore = create<UIStore>()(
     })),
     {
       name: 'ui-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        // Only use localStorage on the client side
+        if (typeof window !== 'undefined') {
+          return localStorage;
+        }
+        // Return a noop storage for server-side rendering
+        return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        };
+      }),
       // Only persist certain parts of the state
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,

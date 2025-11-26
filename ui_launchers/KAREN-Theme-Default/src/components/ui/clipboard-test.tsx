@@ -55,9 +55,9 @@ export function ClipboardTest({ className = '' }: ClipboardTestProps) {
       <div className="mt-4 p-4 bg-gray-50 rounded-lg sm:p-4 md:p-6">
         <h3 className="font-semibold mb-2">Test Instructions:</h3>
         <ol className="list-decimal list-inside space-y-1 text-sm md:text-base lg:text-lg">
-          <li>Click the "Test Clipboard" button above</li>
+          <li>Click the &ldquo;Test Clipboard&rdquo; button above</li>
           <li>The test will attempt to write and read from clipboard</li>
-          <li>If successful, you'll see a green checkmark</li>
+          <li>If successful, you&rsquo;ll see a green checkmark</li>
           <li>If it fails, check browser permissions and focus</li>
         </ol>
       </div>

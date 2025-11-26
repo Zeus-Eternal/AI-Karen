@@ -107,7 +107,7 @@ const formatDate = (dateString: string): string => {
 const FileIconRenderer: React.FC<{ data: FileMetadata }> = ({ data }) => {
   const getIcon = () => {
     switch (data.file_type) {
-      case 'image': return <Image className="h-4 w-4 text-green-600" />;
+      case 'image': return <Image className="h-4 w-4 text-green-600" aria-label="Image file" />;
       case 'video': return <Video className="h-4 w-4 text-purple-600" />;
       case 'audio': return <Music className="h-4 w-4 text-blue-600" />;
       case 'document': return <FileText className="h-4 w-4 text-gray-600" />;
@@ -342,7 +342,7 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
         <div className="flex items-center gap-1">
           {data.has_thumbnail && (
             <Badge variant="outline" className="text-[10px] sm:text-xs md:text-sm">
-              <Image className="mr-1 h-3 w-3" /> Thumb
+              <Image className="mr-1 h-3 w-3" aria-label="Thumbnail" /> Thumb
             </Badge>
           )}
           {data.extracted_content_available && (

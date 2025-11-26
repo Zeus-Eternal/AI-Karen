@@ -54,8 +54,8 @@
     "react.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "vitest.d.ts"
+    "vitest.d.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

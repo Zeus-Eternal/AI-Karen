@@ -296,10 +296,12 @@ export function registerA11yMatchers() {
 }
 
 // Default export bundle
-export default {
+const accessibilityTestSetup = {
   configs: accessibilityConfigs,
   createWrapper: createAccessibilityTestWrapper,
   runTestSuite: runAccessibilityTestSuite,
   validatePattern: validateAccessibilityPattern,
   registerA11yMatchers,
 };
+
+export default accessibilityTestSetup;

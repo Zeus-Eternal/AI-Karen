@@ -10,7 +10,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from ai_karen_engine.extensions.manager import ExtensionManager
+from ai_karen_engine.extension_host.manager import ExtensionManager
 from ai_karen_engine.plugins.router import PluginRouter
 
 
@@ -52,11 +52,11 @@ def test_extension_system_imports():
     print("Testing extension system imports...")
     
     try:
-        from ai_karen_engine.extensions import ExtensionManager
-        from ai_karen_engine.extensions import BaseExtension
-        from ai_karen_engine.extensions import ExtensionRegistry
-        from ai_karen_engine.extensions import PluginOrchestrator
-        from ai_karen_engine.extensions import ExtensionValidator
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import BaseExtension
+        from ai_karen_engine.extension_host.__init__2 import ExtensionRegistry
+        from ai_karen_engine.extension_host.__init__2 import PluginOrchestrator
+        from ai_karen_engine.extension_host.__init__2 import ExtensionValidator
         
         print("✅ All extension system imports successful!")
         return True

@@ -3,7 +3,7 @@
  * Requirements: 1.3, 2.3, 3.3, 4.3
  */
 
-import { ErrorCategory, ErrorSeverity, CategorizedError, ERROR_PATTERNS, USER_ERROR_MESSAGES } from './error-categories';
+import { ErrorCategory, ErrorSeverity, CategorizedError, ERROR_PATTERNS, USER_ERROR_MESSAGES } from './index';
 
 export class ErrorCategorizer {
   private static instance: ErrorCategorizer;

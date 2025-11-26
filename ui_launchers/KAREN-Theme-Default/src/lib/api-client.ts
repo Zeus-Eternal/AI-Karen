@@ -5,7 +5,7 @@
  * Based on requirements: 12.2, 12.3
  */
 
-import { useAppStore } from '../store/app-store';
+// Removed direct import of useAppStore to avoid circular dependency
 
 // API Response types
 export interface ApiResponse<T = unknown> {
@@ -51,6 +51,10 @@ export class ApiClient {
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
   private errorInterceptors: ErrorInterceptor[] = [];
+  private storeCallbacks: {
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+  } = {};
 
   constructor(baseURL?: string) {
     this.baseURL = baseURL || this.getBaseURL();
@@ -92,13 +96,15 @@ export class ApiClient {
     this.addResponseInterceptor(async (response) => {
       // Handle 401 unauthorized
       if (response.status === 401) {
-        const { logout, addNotification } = useAppStore.getState();
-        logout();
-        addNotification({
-          type: 'warning',
-          title: 'Session Expired',
-          message: 'Please log in again to continue.',
-        });
+        // Only access the store on the client side
+        if (typeof window !== 'undefined') {
+          this.storeCallbacks.logout?.();
+          this.storeCallbacks.addNotification?.({
+            type: 'warning',
+            title: 'Session Expired',
+            message: 'Please log in again to continue.',
+          });
+        }
       }
 
       return response;
@@ -107,15 +113,16 @@ export class ApiClient {
     // Error interceptor for global error handling
     this.addErrorInterceptor(async (error) => {
       if (!error.code) {
-        const { addNotification } = useAppStore.getState();
-        
-        // Handle network errors
-        if (error.message.includes('fetch')) {
-          addNotification({
-            type: 'error',
-            title: 'Network Error',
-            message: 'Please check your internet connection and try again.',
-          });
+        // Only access the store on the client side
+        if (typeof window !== 'undefined') {
+          // Handle network errors
+          if (error.message.includes('fetch')) {
+            this.storeCallbacks.addNotification?.({
+              type: 'error',
+              title: 'Network Error',
+              message: 'Please check your internet connection and try again.',
+            });
+          }
         }
       }
 
@@ -136,6 +143,14 @@ export class ApiClient {
   // Add error interceptor
   public addErrorInterceptor(interceptor: ErrorInterceptor): void {
     this.errorInterceptors.push(interceptor);
+  }
+
+  // Set store callbacks to avoid circular dependency
+  public setStoreCallbacks(callbacks: {
+    logout?: () => void;
+    addNotification?: (notification: { type: string; title: string; message: string }) => void;
+  }): void {
+    this.storeCallbacks = callbacks;
   }
 
   // Make HTTP request

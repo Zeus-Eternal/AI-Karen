@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { useCopilot } from "@/ai/copilot/hooks/useCopilot";
 
 export interface MemoryNetworkNode {
   id: string;
@@ -351,11 +352,22 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
   const [error, setError] = useState<string | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
 
+  const backendConfig = useMemo(
+    () => ({
+      baseUrl: "/api",
+      userId,
+      sessionId: "memory-network-visualization-session",
+    }),
+    [userId]
+  );
+
+  useCopilot({ backendConfig });
+
   const fetchNetworkData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/memory/network", {
+      const response = await fetch(`/api/memory/network`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

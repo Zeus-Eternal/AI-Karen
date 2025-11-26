@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Image from "next/image";
 import { AgCharts } from "ag-charts-react";
 import type {
   AgCartesianAxisOptions,
@@ -227,9 +228,11 @@ const ImagePreview: React.FC<{
         </CardHeader>
         <CardContent>
           <div className="flex justify-center bg-muted rounded-lg p-4 overflow-auto max-h-96">
-            <img
+            <Image
               src={`/api/files/${file.file_id}/thumbnail`}
-              alt={file.filename}
+              alt={`Preview of ${file.filename}`}
+              width={500}
+              height={500}
               className="max-w-full h-auto"
               style={{
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,

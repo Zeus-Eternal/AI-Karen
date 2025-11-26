@@ -133,7 +133,11 @@ export function ThemeProvider({
       return;
     }
 
-    localStorage.setItem(storageKey, theme);
+    try {
+      localStorage.setItem(storageKey, theme);
+    } catch (error) {
+      console.warn('[ThemeProvider] Failed to persist theme preference:', error);
+    }
   }, [mounted, storageKey, theme]);
 
   // Handle theme and density changes

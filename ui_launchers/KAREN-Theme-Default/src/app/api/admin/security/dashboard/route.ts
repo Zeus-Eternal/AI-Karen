@@ -17,6 +17,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+// Allow static generation at build time
+export const dynamic = 'auto';
+
 import { enhancedAuthMiddleware } from '@/lib/security/enhanced-auth-middleware';
 import { securityManager } from '@/lib/security/security-manager';
 import { sessionTimeoutManager, type ConcurrentSessionSummary } from '@/lib/security/session-timeout-manager';

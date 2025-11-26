@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 import asyncio
 
-from ai_karen_engine.extensions.manager import ExtensionManager, get_extension_manager
-from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionStatus
+from ai_karen_engine.extension_host.manager import ExtensionManager, get_extension_manager
+from ai_karen_engine.extension_host.models2 import ExtensionManifest, ExtensionStatus
 from ai_karen_engine.extensions.base import BaseExtension
 from ai_karen_engine.hooks import HookTypes, HookContext, HookResult
 from ai_karen_engine.hooks.hook_manager import HookManager
@@ -562,7 +562,7 @@ class TestExtensionBaseClassHookIntegration:
     @pytest.fixture
     def mock_manifest(self):
         """Create a mock extension manifest."""
-        from ai_karen_engine.extensions.models import ExtensionManifest
+        from ai_karen_engine.extension_host.models2 import ExtensionManifest
         return ExtensionManifest(
             name="test_hook_extension",
             version="1.0.0",
@@ -576,7 +576,7 @@ class TestExtensionBaseClassHookIntegration:
     @pytest.fixture
     def mock_context(self):
         """Create a mock extension context."""
-        from ai_karen_engine.extensions.models import ExtensionContext
+        from ai_karen_engine.extension_host.models2 import ExtensionContext
         return ExtensionContext(
             plugin_router=MagicMock(),
             db_session=MagicMock(),
@@ -728,7 +728,7 @@ class TestExtensionMCPHookIntegration:
     @pytest.fixture
     def mock_manifest(self):
         """Create a mock extension manifest."""
-        from ai_karen_engine.extensions.models import ExtensionManifest
+        from ai_karen_engine.extension_host.models2 import ExtensionManifest
         return ExtensionManifest(
             name="test_mcp_extension",
             version="1.0.0",

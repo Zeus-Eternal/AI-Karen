@@ -37,18 +37,18 @@ export default function PrivacySettings() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle className="font-semibold">Local Browser Storage</AlertTitle>
           <AlertDescription className="text-muted-foreground space-y-1">
-            <p>Karen AI stores your settings and some personalization data directly in your browser's local storage. This ensures your preferences are remembered across sessions on this specific browser. This data includes:</p>
+            <p>Karen AI stores your settings and some personalization data directly in your browser&rsquo;s local storage. This ensures your preferences are remembered across sessions on this specific browser. This data includes:</p>
             <ul className="list-disc list-inside pl-4">
-              <li><strong>API Key (for convenience):</strong> The Google AI API key you enter in the "API Key" tab is saved here to pre-fill the field. For the AI to function, this key must also be configured server-side (typically in an <code>.env</code> file).</li>
-              <li><strong>Behavior Settings:</strong> Your choices for Karen's memory depth, personality tone, verbosity, and active listening mode (from the "Behavior" tab).</li>
-              <li><strong>Persona Instructions:</strong> Custom directives you provide for Karen's core persona (from the "Persona" tab).</li>
-              <li><strong>Personal Facts:</strong> Facts you manually add or confirm for Karen to remember about you (managed in the "Facts" tab).</li>
-              <li><strong>Voice Preferences:</strong> Your selected Text-To-Speech voice (from the "Voice" tab).</li>
-              <li><strong>Notification Preferences:</strong> Your choices for in-app alerts (from the "Alerts" tab).</li>
+              <li><strong>API Key (for convenience):</strong> The Google AI API key you enter in &ldquo;API Key&rdquo; tab is saved here to pre-fill field. For AI to function, this key must also be configured server-side (typically in an <code>.env</code> file).</li>
+              <li><strong>Behavior Settings:</strong> Your choices for Karen&rsquo;s memory depth, personality tone, verbosity, and active listening mode (from &ldquo;Behavior&rdquo; tab).</li>
+              <li><strong>Persona Instructions:</strong> Custom directives you provide for Karen&rsquo;s core persona (from &ldquo;Persona&rdquo; tab).</li>
+              <li><strong>Personal Facts:</strong> Facts you manually add or confirm for Karen to remember about you (managed in &ldquo;Facts&rdquo; tab).</li>
+              <li><strong>Voice Preferences:</strong> Your selected Text-To-Speech voice (from &ldquo;Voice&rdquo; tab).</li>
+              <li><strong>Notification Preferences:</strong> Your choices for in-app alerts (from &ldquo;Alerts&rdquo; tab).</li>
               <li><strong>Plugin-Specific Settings:</strong> Configuration for plugins like the Weather service (default location, temperature unit).</li>
             </ul>
             <p className="mt-2">
-              <strong>Your Control:</strong> You can modify or clear most of this data through the respective settings tabs. To remove all locally stored data for this application, you can clear your browser's site data for this specific website.
+              <strong>Your Control:</strong> You can modify or clear most of this data through respective settings tabs. To remove all locally stored data for this application, you can clear your browser&rsquo;s site data for this specific website.
             </p>
           </AlertDescription>
         </Alert>
@@ -56,7 +56,7 @@ export default function PrivacySettings() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-foreground">Managing Personal Information</h3>
           <p className="text-sm text-muted-foreground">
-            You have direct control over the personal facts Karen remembers. Visit the "Facts" tab to add, review, delete, or confirm facts. Confirmed facts are used to personalize your interactions.
+            You have direct control over personal facts Karen remembers. Visit &ldquo;Facts&rdquo; tab to add, review, delete, or confirm facts. Confirmed facts are used to personalize your interactions.
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export default function PrivacySettings() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-foreground">Clearing Current Chat Display</h3>
           <p className="text-sm text-muted-foreground">
-            To visually clear the messages displayed in the current chat window and start a fresh chat session, simply refresh your browser page. Karen's memory of past topics in new sessions will depend on your "Memory Depth" settings and any "Personal Facts" you've saved.
+            To visually clear the messages displayed in current chat window and start a fresh chat session, simply refresh your browser page. Karen&rsquo;s memory of past topics in new sessions will depend on your &ldquo;Memory Depth&rdquo; settings and any &ldquo;Personal Facts&rdquo; you&rsquo;ve saved.
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export default function PrivacySettings() {
             <Info className="h-4 w-4 text-accent-foreground" />
             <AlertTitle className="font-semibold text-accent-foreground">Information: Server Data</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-              This application primarily uses data stored locally in your browser for settings and personalization. Any persistent storage of user accounts or extensive conversation histories on a server would be governed by the application's backend and its own privacy policy. Currently, there are no specific user settings here for managing server-side data retention, as the focus is on local storage and in-session memory.
+              This application primarily uses data stored locally in your browser for settings and personalization. Any persistent storage of user accounts or extensive conversation histories on a server would be governed by the application&rsquo;s backend and its own privacy policy. Currently, there are no specific user settings here for managing server-side data retention, as focus is on local storage and in-session memory.
             </AlertDescription>
           </Alert>
         </div>
@@ -87,7 +87,7 @@ export default function PrivacySettings() {
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-foreground">Account Data Deletion Request (Conceptual)</h3>
           <p className="text-sm text-muted-foreground mb-2">
-            If this application supported server-side user accounts with persistent data storage, a mechanism to request the deletion of that account and associated data would be provided here.
+            If this application supported server-side user accounts with persistent data storage, a mechanism to request deletion of that account and associated data would be provided here.
           </p>
           <Button 
             variant="outline" 

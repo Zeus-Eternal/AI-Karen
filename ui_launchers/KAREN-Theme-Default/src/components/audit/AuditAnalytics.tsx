@@ -114,7 +114,7 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
   });
 
   return (
-    <PermissionGate permission="security:audit">
+    <PermissionGate permissions="security:audit">
       <div className={className}>
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>

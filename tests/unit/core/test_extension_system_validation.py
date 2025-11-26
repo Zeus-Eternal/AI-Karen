@@ -64,12 +64,12 @@ class TestExtensionSystemImports:
     
     def test_extension_system_imports(self):
         """Test that all extension system imports work correctly."""
-        from ai_karen_engine.extensions import ExtensionManager
-        from ai_karen_engine.extensions import BaseExtension
-        from ai_karen_engine.extensions import ExtensionRegistry
-        from ai_karen_engine.extensions import ExtensionManifest
-        from ai_karen_engine.extensions import PluginOrchestrator
-        from ai_karen_engine.extensions import ExtensionValidator
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import BaseExtension
+        from ai_karen_engine.extension_host.__init__2 import ExtensionRegistry
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManifest
+        from ai_karen_engine.extension_host.__init__2 import PluginOrchestrator
+        from ai_karen_engine.extension_host.__init__2 import ExtensionValidator
         
         # Verify classes are importable
         assert ExtensionManager is not None
@@ -94,7 +94,7 @@ class TestExtensionDiscovery:
     @pytest.fixture
     def extension_manager(self):
         """Create extension manager for testing."""
-        from ai_karen_engine.extensions import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
         from ai_karen_engine.plugins.router import PluginRouter
         
         plugin_router = PluginRouter()
@@ -169,7 +169,7 @@ class TestExtensionPluginIntegration:
     @pytest.fixture
     def managers(self):
         """Create extension and plugin managers for testing."""
-        from ai_karen_engine.extensions import ExtensionManager
+        from ai_karen_engine.extension_host.__init__2 import ExtensionManager
         from ai_karen_engine.plugins.router import PluginRouter
         
         plugin_router = PluginRouter()
@@ -189,7 +189,7 @@ class TestExtensionPluginIntegration:
     
     def test_plugin_orchestrator_creation(self, managers):
         """Test that plugin orchestrator can be created with new structure."""
-        from ai_karen_engine.extensions import PluginOrchestrator
+        from ai_karen_engine.extension_host.__init__2 import PluginOrchestrator
         
         extension_manager, plugin_router = managers
         
@@ -223,7 +223,7 @@ class TestImportPathConsistency:
     def test_extension_import_paths(self):
         """Test that extension import paths are consistent."""
         # Test direct imports
-        from ai_karen_engine.extensions.manager import ExtensionManager
+        from ai_karen_engine.extension_host.manager import ExtensionManager
         from ai_karen_engine.extensions.orchestrator import PluginOrchestrator
         from ai_karen_engine.extensions.base import BaseExtension
         
@@ -242,7 +242,7 @@ class TestImportPathConsistency:
     def test_no_circular_imports(self):
         """Test that there are no circular import issues."""
         # This test will fail if there are circular imports
-        from ai_karen_engine.extensions import (
+        from ai_karen_engine.extension_host.__init__2 import (
             ExtensionManager, BaseExtension, PluginOrchestrator
         )
         from ai_karen_engine.plugins import PluginRouter

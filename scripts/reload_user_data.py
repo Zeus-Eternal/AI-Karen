@@ -13,7 +13,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.ai_karen_engine.services.production_auth_service import ProductionAuthService
+from src.ai_karen_engine.services.production_auth_service import AuthService
 from datetime import datetime, timezone
 
 
@@ -22,7 +22,7 @@ async def reload_user_data():
     print("Reloading user data...")
     
     # Create auth service instance
-    auth_service = ProductionAuthService()
+    auth_service = AuthService()
     
     # Initialize and load users
     await auth_service.initialize()

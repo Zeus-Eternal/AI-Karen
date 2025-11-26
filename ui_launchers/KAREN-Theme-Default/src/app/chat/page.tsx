@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
-import { MetaBar } from "@/components/chat";
-import { ChatInterface } from "@/components/chat";
+import { CopilotChatInterface } from "@/ai/copilot";
 import { webUIConfig } from "@/lib/config";
 import { GridContainer } from "@/components/ui/layout/grid-container";
 import { FlexContainer } from "@/components/ui/layout/flex-container";
@@ -155,23 +154,20 @@ function ChatView() {
           )}
 
           <SidebarInset className="chat-surface min-h-0">
-            <MetaBar />
             <div id="chat-messages" className="chat-messages">
               <div className="container max-w-screen-xl">
                 <div className="chat-panel">
-                  <ChatInterface
+                  <CopilotChatInterface
                     className="h-full smooth-transition"
-                    useCopilotKit={true}
-                    enableCodeAssistance={true}
-                    enableContextualHelp={true}
-                    enableDocGeneration={true}
-                    showTabs={true}
-                    showSettings={true}
-                    enableVoiceInput={false}
-                    enableFileUpload={true}
-                    enableAnalytics={true}
-                    enableExport={true}
-                    enableSharing={false}
+                    expertiseLevel="intermediate"
+                    backendConfig={{
+                      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ||
+                              process.env.NEXT_PUBLIC_KAREN_BACKEND_URL ||
+                              process.env.KAREN_BACKEND_URL ||
+                              'http://localhost:8000',
+                      userId: 'current-user', // This will be replaced with actual user ID from auth context
+                      sessionId: 'current-session' // This will be replaced with actual session ID from auth context
+                    }}
                   />
                 </div>
               </div>

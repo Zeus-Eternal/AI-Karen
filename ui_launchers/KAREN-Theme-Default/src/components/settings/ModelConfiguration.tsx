@@ -457,7 +457,7 @@ const ModelConfiguration: React.FC<ModelConfigurationProps> = ({
             Model Configuration
           </h3>
           <p className="text-sm text-muted-foreground">
-            Configure Kari's default reasoning models, fallbacks, and routing
+            Configure Kari&rsquo;s default reasoning models, fallbacks, and routing
             preferences for production traffic.
           </p>
         </div>

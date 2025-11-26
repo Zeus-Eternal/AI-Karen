@@ -6,10 +6,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
 const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 const TIMEOUT_MS = 10000; //10 seconds
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {

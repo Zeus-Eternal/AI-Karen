@@ -23,7 +23,19 @@ wait_for_milvus() {
     # Install netcat if not present
     if ! command -v nc &> /dev/null; then
         log "Installing netcat..."
-        apk add --no-cache netcat-openbsd
+        # Try different package managers
+        if command -v apk &> /dev/null; then
+            apk add --no-cache netcat-openbsd
+        elif command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y netcat
+        elif command -v yum &> /dev/null; then
+            yum install -y nmap-ncat
+        elif command -v pacman &> /dev/null; then
+            pacman -S --noconfirm gnu-netcat
+        else
+            log "❌ No known package manager found. Please install netcat manually."
+            return 1
+        fi
     fi
     
     while [ $attempt -le $max_attempts ]; do
@@ -44,8 +56,26 @@ wait_for_milvus() {
 # Install Python and pymilvus if not present
 if ! command -v python3 &> /dev/null; then
     log "Installing Python and dependencies..."
-    apk add --no-cache python3 py3-pip
-    pip3 install pymilvus==2.3.2 numpy
+    # Try different package managers
+    if command -v apk &> /dev/null; then
+        apk add --no-cache python3 py3-pip
+    elif command -v apt-get &> /dev/null; then
+        apt-get update && apt-get install -y python3 python3-pip
+    elif command -v yum &> /dev/null; then
+        yum install -y python3 python3-pip
+    elif command -v pacman &> /dev/null; then
+        pacman -S --noconfirm python python-pip
+    else
+        log "❌ No known package manager found. Please install Python manually."
+        return 1
+    fi
+fi
+
+# Install pymilvus if not present
+if ! python3 -c "import pymilvus" &> /dev/null; then
+    log "Installing pymilvus using Docker..."
+    # Use Docker to install pymilvus since pip is not available
+    docker run --rm -v "$(pwd)":/tmp -w /tmp python:3.9-slim pip install pymilvus==2.3.2 numpy
 fi
 
 # Wait for Milvus to be ready
@@ -289,9 +319,14 @@ if __name__ == "__main__":
     main()
 EOF
 
-# Run the Python initialization script
-log "Running Milvus initialization script..."
-python3 /tmp/init_milvus.py
+# Run the Python initialization script using Docker
+log "Running Milvus initialization script using Docker..."
+docker run --rm \
+    -v /tmp/init_milvus.py:/tmp/init_milvus.py \
+    --network ai-karen_ai-karen-net \
+    -e MILVUS_HOST=ai-karen-milvus \
+    python:3.9-slim \
+    sh -c "pip install pymilvus==2.3.2 numpy marshmallow==3.20.1 && python /tmp/init_milvus.py"
 
 # Clean up
 rm -f /tmp/init_milvus.py

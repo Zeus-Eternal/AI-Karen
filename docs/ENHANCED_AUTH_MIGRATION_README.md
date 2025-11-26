@@ -201,7 +201,7 @@ WHERE rule_name = 'login_password';
 
 ### Authentication Service
 
-The `ProductionAuthService` now supports:
+The `AuthService` now supports:
 
 - Username-based authentication
 - Enhanced password validation

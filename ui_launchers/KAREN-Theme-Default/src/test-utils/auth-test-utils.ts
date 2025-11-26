@@ -16,7 +16,7 @@ import {
   getConnectionManager,
 } from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
-import { getHighestRole } from '@/components/security/rbac-shared';
+import { RBACService } from '@/lib/security/rbac/RBACService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -193,7 +193,7 @@ export async function testDatabaseAuthentication(
         email: String(userData.email),
         roles: Array.isArray(userData.roles) ? userData.roles : [],
         tenant_id: String(userData.tenant_id ?? ''),
-        role: String(userData.role ?? getHighestRole(Array.isArray(userData.roles) ? userData.roles : [])),
+        role: String(userData.role ?? RBACService.getInstance().getHighestRole(Array.isArray(userData.roles) ? userData.roles : [])),
       },
       responseTime,
       retryCount: result.retryCount ?? 0,

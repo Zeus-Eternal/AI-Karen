@@ -1,0 +1,76 @@
+# Metrics collected at 2025-11-24T00:40:03.287Z
+
+# HELP kari_http_requests_total Total number of HTTP requests
+# TYPE kari_http_requests_total counter
+# HELP kari_active_sessions_total Number of active user sessions
+# TYPE kari_active_sessions_total gauge
+kari_active_sessions_total 0
+# HELP kari_websocket_connections_total Number of active WebSocket connections
+# TYPE kari_websocket_connections_total gauge
+kari_websocket_connections_total 0
+# HELP kari_feature_usage_total Total usage count for application features
+# TYPE kari_feature_usage_total counter
+# HELP kari_plugin_executions_total Total number of plugin executions
+# TYPE kari_plugin_executions_total counter
+# HELP kari_model_requests_total Total number of model requests
+# TYPE kari_model_requests_total counter
+# HELP kari_memory_usage_bytes Memory usage in bytes
+# TYPE kari_memory_usage_bytes gauge
+kari_memory_usage_bytes{type="rss"} 0
+kari_memory_usage_bytes{type="heap_total"} 0
+kari_memory_usage_bytes{type="heap_used"} 0
+kari_memory_usage_bytes{type="external"} 0
+# HELP kari_cpu_usage_percent CPU usage percentage
+# TYPE kari_cpu_usage_percent gauge
+kari_cpu_usage_percent 0
+# HELP kari_uptime_seconds Application uptime in seconds
+# TYPE kari_uptime_seconds gauge
+kari_uptime_seconds 3.408772359
+# HELP kari_errors_total Total number of errors
+# TYPE kari_errors_total counter
+# HELP kari_error_boundary_triggered_total Total number of error boundary triggers
+# TYPE kari_error_boundary_triggered_total counter
+# HELP kari_error_recovery_attempts_total Total number of error recovery attempts
+# TYPE kari_error_recovery_attempts_total counter
+kari_error_recovery_attempts_total 0
+# HELP kari_error_recovery_success_total Total number of successful error recoveries
+# TYPE kari_error_recovery_success_total counter
+kari_error_recovery_success_total 0
+# HELP kari_health_check_status Health check status (1 = healthy, 0 = unhealthy)
+# TYPE kari_health_check_status gauge
+# HELP kari_database_connections_total Number of database connections
+# TYPE kari_database_connections_total gauge
+kari_database_connections_total{state="active"} 0
+kari_database_connections_total{state="idle"} 0
+# HELP kari_database_connections_failed_total Total number of failed database connections
+# TYPE kari_database_connections_failed_total counter
+kari_database_connections_failed_total 0
+# HELP kari_redis_connections_total Number of Redis connections
+# TYPE kari_redis_connections_total gauge
+kari_redis_connections_total 0
+# HELP kari_redis_connections_failed_total Total number of failed Redis connections
+# TYPE kari_redis_connections_failed_total counter
+kari_redis_connections_failed_total 0
+# HELP kari_user_sessions_total Total number of user sessions created
+# TYPE kari_user_sessions_total counter
+kari_user_sessions_total 0
+# HELP kari_user_conversions_total Total number of user conversions
+# TYPE kari_user_conversions_total counter
+kari_user_conversions_total 0
+# HELP kari_user_bounces_total Total number of user bounces
+# TYPE kari_user_bounces_total counter
+kari_user_bounces_total 0
+# HELP kari_api_rate_limit_exceeded_total Total number of API rate limit exceeded events
+# TYPE kari_api_rate_limit_exceeded_total counter
+kari_api_rate_limit_exceeded_total 0
+# HELP kari_failed_login_attempts_total Total number of failed login attempts
+# TYPE kari_failed_login_attempts_total counter
+# HELP kari_evil_mode_activations_total Total number of Evil Mode activations
+# TYPE kari_evil_mode_activations_total counter
+kari_evil_mode_activations_total 0
+# HELP kari_metrics_collection_duration_seconds Time spent collecting metrics
+# TYPE kari_metrics_collection_duration_seconds gauge
+kari_metrics_collection_duration_seconds 0.001
+# HELP kari_metrics_collection_timestamp_seconds Timestamp of metrics collection
+# TYPE kari_metrics_collection_timestamp_seconds gauge
+kari_metrics_collection_timestamp_seconds 1763944803.287

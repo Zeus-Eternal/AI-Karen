@@ -72,7 +72,7 @@ export default function NotificationsSection() {
         <>
           <Alert {...alertStyling}>
             <MessageSquarePlus className="h-4 w-4 !text-primary/80 " />
-            <AlertTitle className="text-sm font-semibold text-primary md:text-base lg:text-lg">Review Karen's Suggestions</AlertTitle>
+            <AlertTitle className="text-sm font-semibold text-primary md:text-base lg:text-lg">Review Karen&rsquo;s Suggestions</AlertTitle>
             <AlertDescription className="text-xs text-primary/90 sm:text-sm md:text-base">
               Karen has identified these new pieces of information from your conversations. You can review, confirm, or dismiss them in <strong>Settings &gt; Facts</strong> to help her remember them accurately.
             </AlertDescription>

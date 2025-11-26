@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo.dev"
+  },
+  "include": [
+    "next-env.d.ts",
+    "react.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "vitest.d.ts"
+    // Note: .next/types/**/*.ts is excluded for development
+  ]
+}

@@ -1,0 +1,1 @@
+{"defaultModel":"unknown","fallbackModel":"unknown","autoSelectEnabled":true,"preferLocalModels":true,"allowedProviders":[],"maxConcurrentModels":1,"modelSelectionTimeout":30000,"enableModelCaching":true,"cacheExpirationTime":3600}

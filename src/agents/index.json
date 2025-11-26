@@ -1,0 +1,134 @@
+{
+  "worker_agent": {
+    "name": "Worker Agent",
+    "type": "worker",
+    "version": "1.0.0",
+    "description": "A general-purpose worker agent for handling single-domain tasks",
+    "entry_point": "handler.py",
+    "path": "src/agents/worker_agent",
+    "manifest": {
+      "id": "worker_agent",
+      "name": "Worker Agent",
+      "type": "worker",
+      "version": "1.0.0",
+      "description": "A general-purpose worker agent for handling single-domain tasks",
+      "entry_point": "handler.py",
+      "requirements": [],
+      "capabilities": [
+        {
+          "name": "task_execution",
+          "description": "Execute tasks within a single domain",
+          "version": "1.0.0",
+          "parameters": {}
+        }
+      ],
+      "dependencies": {},
+      "environment": {},
+      "resources": {},
+      "permissions": ["read", "execute"],
+      "metadata": {
+        "author": "Kari Team",
+        "created_at": "2025-11-26T00:00:00Z"
+      }
+    }
+  },
+  "specialized_agent": {
+    "name": "Specialized Agent",
+    "type": "specialized",
+    "version": "1.0.0",
+    "description": "A specialized agent with domain expertise",
+    "entry_point": "handler.py",
+    "path": "src/agents/specialized_agent",
+    "manifest": {
+      "id": "specialized_agent",
+      "name": "Specialized Agent",
+      "type": "specialized",
+      "version": "1.0.0",
+      "description": "A specialized agent with domain expertise",
+      "entry_point": "handler.py",
+      "requirements": [],
+      "capabilities": [
+        {
+          "name": "domain_expertise",
+          "description": "Provide expertise in specific domains",
+          "version": "1.0.0",
+          "parameters": {}
+        }
+      ],
+      "dependencies": {},
+      "environment": {},
+      "resources": {},
+      "permissions": ["read", "write", "execute"],
+      "metadata": {
+        "author": "Kari Team",
+        "created_at": "2025-11-26T00:00:00Z"
+      }
+    }
+  },
+  "system_agent": {
+    "name": "System Agent",
+    "type": "system",
+    "version": "1.0.0",
+    "description": "A system agent for orchestration stack operations",
+    "entry_point": "handler.py",
+    "path": "src/agents/system_agent",
+    "manifest": {
+      "id": "system_agent",
+      "name": "System Agent",
+      "type": "system",
+      "version": "1.0.0",
+      "description": "A system agent for orchestration stack operations",
+      "entry_point": "handler.py",
+      "requirements": [],
+      "capabilities": [
+        {
+          "name": "system_operations",
+          "description": "Perform system-level operations",
+          "version": "1.0.0",
+          "parameters": {}
+        }
+      ],
+      "dependencies": {},
+      "environment": {},
+      "resources": {},
+      "permissions": ["read", "write", "execute", "admin"],
+      "metadata": {
+        "author": "Kari Team",
+        "created_at": "2025-11-26T00:00:00Z"
+      }
+    }
+  },
+  "meta_agent": {
+    "name": "Meta Agent",
+    "type": "meta",
+    "version": "1.0.0",
+    "description": "A meta agent for watching and evaluation",
+    "entry_point": "handler.py",
+    "path": "src/agents/meta_agent",
+    "manifest": {
+      "id": "meta_agent",
+      "name": "Meta Agent",
+      "type": "meta",
+      "version": "1.0.0",
+      "description": "A meta agent for watching and evaluation",
+      "entry_point": "handler.py",
+      "requirements": [],
+      "capabilities": [
+        {
+          "name": "evaluation",
+          "description": "Evaluate and monitor other agents",
+          "version": "1.0.0",
+          "parameters": {}
+        }
+      ],
+      "dependencies": {},
+      "environment": {},
+      "resources": {},
+      "permissions": ["read", "execute"],
+      "metadata": {
+        "author": "Kari Team",
+        "created_at": "2025-11-26T00:00:00Z"
+      }
+    }
+  }
+}

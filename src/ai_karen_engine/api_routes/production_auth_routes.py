@@ -18,7 +18,7 @@ except ImportError:
 
 from ..auth.models import UserData
 from ..auth.rbac_middleware import get_rbac_manager
-from ..services.production_auth_service import ProductionAuthService
+from ..services.production_auth_service import AuthService
 from ..core.services.base import ServiceConfig
 
 
@@ -82,7 +82,7 @@ class UserResponse(BaseModel):
 
 
 # Initialize service
-auth_service = ProductionAuthService()
+auth_service = AuthService()
 
 # Security scheme
 security = HTTPBearer()

@@ -25,6 +25,12 @@ type Provider = 'sendgrid' | 'ses' | 'mailgun' | 'postmark' | 'smtp';
 
 const SUPPORTED_PROVIDERS: Provider[] = ['sendgrid', 'ses', 'mailgun', 'postmark', 'smtp'];
 
+export function generateStaticParams() {
+  return SUPPORTED_PROVIDERS.map((provider) => ({
+    provider,
+  }));
+}
+
 
 /* -------------------------------------------------------------------------- */
 /*                               ROUTE:  POST                                 */

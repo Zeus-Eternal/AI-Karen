@@ -14,7 +14,7 @@ import { adminAuthMiddleware } from "@/lib/middleware/admin-auth";
 import { emailQueueManager } from "@/lib/email/email-queue";
 import { auditLogger } from "@/lib/audit/audit-logger";
 
-export const dynamic = "force-dynamic";
+// This route needs to be static for export compatibility
 
 type QueueStatusFilter = "all" | "pending" | "failed";
 
@@ -45,7 +45,7 @@ async function safeAudit(
       resourceId: undefined,
       details,
       request: req,
-      ip_address: ipFrom(req),
+      ip_address: ipFrom(req)
     });
   } catch {
     // swallow audit errors

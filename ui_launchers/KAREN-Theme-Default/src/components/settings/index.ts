@@ -61,10 +61,10 @@ export type {
 // BehaviorSettings
 export { default as BehaviorSettings } from './BehaviorSettings';
 
-// CopilotKitSettings
-export { default as CopilotKitSettings } from './CopilotKitSettings';
+// CopilotSettings
+export { default as CopilotSettings } from './CopilotKitSettings';
 export type {
-  CopilotKitConfig,
+  CopilotConfig,
 } from './CopilotKitSettings';
 
 // DownloadManager

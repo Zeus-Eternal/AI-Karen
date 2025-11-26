@@ -10,7 +10,7 @@ Requirements addressed:
 - 2.5: Resource-aware processing SHALL maintain performance when system load is high
 - 8.1: Preserve existing DecisionEngine logic for intent analysis and tool selection
 - 8.2: Maintain FlowManager workflow execution and statistics
-- 8.3: Preserve TinyLlama scaffolding for reasoning and outline generation
+- 8.3: Preserve SmallLanguageModel scaffolding for reasoning and outline generation
 """
 
 import asyncio
@@ -30,7 +30,7 @@ from ai_karen_engine.models.shared_types import (
 )
 from ai_karen_engine.services.ai_orchestrator.decision_engine import DecisionEngine
 from ai_karen_engine.services.ai_orchestrator.flow_manager import FlowManager
-from ai_karen_engine.services.tinyllama_service import TinyLlamaService
+from ai_karen_engine.services.small_language_model_service import SmallLanguageModelService
 
 
 @dataclass
@@ -55,7 +55,7 @@ class ResponsePerformanceMetrics:
     memory_usage_mb: float = 0.0
     decision_engine_duration_ms: float = 0.0
     flow_manager_duration_ms: float = 0.0
-    tinyllama_duration_ms: float = 0.0
+    small_language_model_duration_ms: float = 0.0
     optimization_applied: List[str] = field(default_factory=list)
     resource_pressure_detected: bool = False
     fallback_used: bool = False
@@ -285,7 +285,7 @@ class IntelligentResponseController:
         self,
         decision_engine: DecisionEngine,
         flow_manager: FlowManager,
-        tinyllama_service: Optional[TinyLlamaService] = None,
+        small_language_model_service: Optional[SmallLanguageModelService] = None,
         config: Optional[ResourcePressureConfig] = None
     ):
         self.logger = logging.getLogger("intelligent_response.controller")
@@ -293,7 +293,7 @@ class IntelligentResponseController:
         # Preserve original components without modification
         self._decision_engine = decision_engine
         self._flow_manager = flow_manager
-        self._tinyllama_service = tinyllama_service
+        self._small_language_model_service = small_language_model_service
         
         # Resource optimization components
         self.config = config or ResourcePressureConfig()
@@ -435,12 +435,12 @@ class IntelligentResponseController:
         response_id: Optional[str] = None
     ) -> Any:
         """
-        Generate scaffolding with optimization while preserving TinyLlama logic.
+        Generate scaffolding with optimization while preserving SmallLanguageModel logic.
         
-        This method wraps the existing TinyLlamaService without modifying its behavior.
+        This method wraps the existing SmallLanguageModelService without modifying its behavior.
         """
-        if not self._tinyllama_service:
-            raise RuntimeError("TinyLlama service not available")
+        if not self._small_language_model_service:
+            raise RuntimeError("SmallLanguageModel service not available")
         
         response_id = response_id or f"scaffold_{int(time.time() * 1000)}"
         
@@ -454,14 +454,14 @@ class IntelligentResponseController:
             # Pre-scaffolding resource optimization
             await self._optimize_resources_before_response(metrics)
             
-            # Execute original TinyLlama logic (PRESERVED)
-            tinyllama_start = time.time()
-            result = await self._tinyllama_service.generate_scaffold(
+            # Execute original SmallLanguageModel logic (PRESERVED)
+            small_language_model_start = time.time()
+            result = await self._small_language_model_service.generate_scaffold(
                 text, scaffold_type, max_tokens, context
             )
-            tinyllama_duration = (time.time() - tinyllama_start) * 1000
+            small_language_model_duration = (time.time() - small_language_model_start) * 1000
             
-            metrics.tinyllama_duration_ms = tinyllama_duration
+            metrics.small_language_model_duration_ms = small_language_model_duration
             
             # Post-scaffolding resource optimization
             await self._optimize_resources_after_response(result, metrics)
@@ -632,6 +632,6 @@ class IntelligentResponseController:
         return self._flow_manager
     
     @property
-    def tinyllama_service(self) -> Optional[TinyLlamaService]:
-        """Access to original TinyLlamaService (preserved)."""
-        return self._tinyllama_service
+    def small_language_model_service(self) -> Optional[SmallLanguageModelService]:
+        """Access to original SmallLanguageModelService (preserved)."""
+        return self._small_language_model_service

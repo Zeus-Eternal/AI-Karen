@@ -3,7 +3,7 @@
  */
 
 import type { Model } from "../model-utils";
-import { getKarenBackend } from "../karen-backend";
+import { enhancedApiClient } from "../enhanced-api-client";
 import { BaseModelService } from "./base-service";
 import {
   SystemResourceInfo,
@@ -20,9 +20,8 @@ export class ResourceMonitor extends BaseModelService {
    */
   async getSystemResourceInfo(): Promise<SystemResourceInfo> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic("/api/system/resources");
-      const resourceInfo = response as SystemResourceInfo;
+      const response = await enhancedApiClient.get<SystemResourceInfo>("/api/system/resources");
+      const resourceInfo = response?.data as SystemResourceInfo;
 
       // Defensive normalization
       return {
@@ -232,11 +231,17 @@ export class ResourceMonitor extends BaseModelService {
    */
   async trackModelResourceUsage(modelId: string): Promise<ModelResourceUsage | null> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic(
+      const response = await enhancedApiClient.get<{
+        memory_usage?: number;
+        gpu_memory_usage?: number;
+        cpu_usage?: number;
+        gpu_utilization?: number;
+        load_time_ms?: number;
+        inference_time_ms?: number;
+      }>(
         `/api/models/resource-usage/${encodeURIComponent(modelId)}`
       );
-      const usage = (response || {}) as {
+      const usage = (response?.data || {}) as {
         memory_usage?: number;
         gpu_memory_usage?: number;
         cpu_usage?: number;
@@ -267,11 +272,20 @@ export class ResourceMonitor extends BaseModelService {
     timeRange: "1h" | "24h" | "7d" | "30d" = "24h"
   ): Promise<ResourceUsageHistoryEntry[]> {
     try {
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic(
+      const response = await enhancedApiClient.get<Array<{
+        model_id: string;
+        average_memory_usage: number;
+        peak_memory_usage: number;
+        average_gpu_memory_usage?: number;
+        peak_gpu_memory_usage?: number;
+        average_cpu_usage: number;
+        peak_cpu_usage: number;
+        total_inference_time_ms: number;
+        inference_count: number;
+      }>>(
         `/api/models/resource-usage/history?range=${timeRange}`
       );
-      const history = Array.isArray(response) ? response : [];
+      const history = Array.isArray(response?.data) ? response.data : [];
 
       return history.map((entry: unknown) => {
         const typedEntry = entry as {

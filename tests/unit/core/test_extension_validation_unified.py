@@ -14,7 +14,7 @@ from typing import Dict, Any
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from ai_karen_engine.extensions.validator import ExtensionValidator, ValidationError
-from ai_karen_engine.extensions.models import ExtensionManifest
+from ai_karen_engine.extension_host.models2 import ExtensionManifest
 
 
 def create_test_manifest(overrides: Dict[str, Any] = None) -> Dict[str, Any]:

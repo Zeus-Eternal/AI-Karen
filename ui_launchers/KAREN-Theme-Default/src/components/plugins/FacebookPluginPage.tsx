@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -46,11 +45,11 @@ export default function FacebookPluginPage() {
       {/* Connection Settings Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Facebook Account Connection</CardTitle>
-          <CardDescription>
-            Securely connect your Facebook account (Non-functional placeholder).
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-lg">Facebook Account Connection</CardTitle>
+            <CardDescription>
+              Securely connect your Facebook account (Non-functional placeholder).
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-4">
           <Button className="w-full sm:w-auto" disabled>
             <Facebook className="mr-2 h-4 w-4" /> Connect with Facebook
@@ -66,22 +65,22 @@ export default function FacebookPluginPage() {
       {/* Available Actions Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Available Actions</CardTitle>
-          <CardDescription>
-            Perform actions on your connected Facebook account (Conceptual placeholders).
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-lg">Available Actions</CardTitle>
+            <CardDescription>
+              Perform actions on your connected Facebook account (Conceptual placeholders).
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <ResponsiveCardGrid>
-          <Button variant="outline" disabled className="w-full" >
-            <MessageSquare className="mr-2 h-4 w-4 "/> Fetch Recent Posts
-          </Button>
-          <Button variant="outline" disabled className="w-full" >
-            <Send className="mr-2 h-4 w-4 "/> Post to Timeline
-          </Button>
-           <Button variant="outline" disabled className="w-full" >
-            <BarChart3 className="mr-2 h-4 w-4 "/> Analyze Page Insights
-          </Button>
+            <Button variant="outline" disabled className="w-full" >
+              <MessageSquare className="mr-2 h-4 w-4 "/> Fetch Recent Posts
+            </Button>
+            <Button variant="outline" disabled className="w-full" >
+              <Send className="mr-2 h-4 w-4 "/> Post to Timeline
+            </Button>
+             <Button variant="outline" disabled className="w-full" >
+              <BarChart3 className="mr-2 h-4 w-4 "/> Analyze Page Insights
+            </Button>
           </ResponsiveCardGrid>
         </CardContent>
       </Card>
@@ -91,14 +90,14 @@ export default function FacebookPluginPage() {
       {/* Premium Automations Section (Conceptual) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center">
-            <Zap className="mr-2 h-5 w-5 text-primary/80 " />
-            Premium Automations (Conceptual)
-          </CardTitle>
-          <CardDescription>
-            Set up advanced automated tasks for Karen to perform with your Facebook account. (Requires backend implementation).
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-lg flex items-center">
+              <Zap className="mr-2 h-5 w-5 text-primary/80 " />
+              Premium Automations (Conceptual)
+            </CardTitle>
+            <CardDescription>
+              Set up advanced automated tasks for Karen to perform with your Facebook account. (Requires backend implementation).
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30 sm:p-4 md:p-6">
             <div>
@@ -110,7 +109,7 @@ export default function FacebookPluginPage() {
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30 sm:p-4 md:p-6">
             <div>
               <Label htmlFor="auto-summarize-mentions" className="font-medium">Daily Mentions Summary</Label>
-              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Karen will check for new mentions daily and provide a summary in the Comms Center.</p>
+              <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Karen will check for new mentions daily and provide a summary in Comms Center.</p>
             </div>
             <Switch id="auto-summarize-mentions" disabled />
           </div>
@@ -132,20 +131,20 @@ export default function FacebookPluginPage() {
       {/* Plugin Settings Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Plugin Settings</CardTitle>
-          <CardDescription>
-            Configure default behaviors for the Facebook plugin (Conceptual placeholders).
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="text-lg">Plugin Settings</CardTitle>
+            <CardDescription>
+              Configure default behaviors for Facebook plugin (Conceptual placeholders).
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="fb-default-page">Default Page/Profile ID for Posts</Label>
-            <Input id="fb-default-page" placeholder="e.g., 100001234567890 or 'mypageusername'" disabled />
+            <Input id="fb-default-page" placeholder="e.g., 100001234567890 or &lsquo;mypageusername&rsquo;" disabled />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fb-notifications">Notification Preferences</Label>
             <p className="text-xs text-muted-foreground sm:text-sm md:text-base">
-              (Placeholder for settings like 'Notify on new comments', 'Alert for mentions', etc.)
+              (Placeholder for settings like &lsquo;Notify on new comments&rsquo;, &lsquo;Alert for mentions&rsquo;, etc.)
             </p>
           </div>
         </CardContent>
@@ -160,9 +159,9 @@ export default function FacebookPluginPage() {
         <div className="text-sm [&_p]:leading-relaxed">
           If this plugin were fully implemented, you could potentially interact with it via chat. For example:
           <ul className="list-disc list-inside pl-4 mt-1 text-xs sm:text-sm md:text-base">
-              <li>"Karen, what are my latest Facebook notifications?"</li>
-              <li>"Karen, post 'Having a great day!' to my Facebook."</li>
-              <li>"Karen, show me insights for my main Facebook page."</li>
+              <li>&ldquo;Karen, what are my latest Facebook notifications?&rdquo;</li>
+              <li>&ldquo;Karen, post &lsquo;Having a great day!&rsquo; to my Facebook.&rdquo;</li>
+              <li>&ldquo;Karen, show me insights for my main Facebook page.&rdquo;</li>
           </ul>
           This page illustrates future possibilities for more direct Facebook interaction and configuration.
         </div>

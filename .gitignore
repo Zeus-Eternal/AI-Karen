@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
+.tools/
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -128,3 +129,10 @@ data/users.json
 /,env_karen
 /,env_karen
 /ui_launchers/STREAMLIT-Theme/venv
+/.kilo
+/docker/database/backups
+/llama_CPP_Server/venv
+/scripts
+/src/ai_karen_engine/services/__tests__
+/tests
+/ui_launchers/KAREN-Theme-Default/out/_next

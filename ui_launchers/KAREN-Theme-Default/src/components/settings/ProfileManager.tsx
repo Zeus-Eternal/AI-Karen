@@ -7,8 +7,11 @@ import { useState, useEffect } from "react";
 import { ErrorBoundary, type ErrorFallbackProps } from "@/components/ui/error-boundary";
 import type { LLMProvider, LLMProfile } from "./types";
 
-const ProfileManagerErrorFallback: React.FC<ErrorFallbackProps> = ({ error }) => (
-  <div>Something went wrong in ProfileManager: {error?.message}</div>
+const ProfileManagerErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetErrorBoundary }) => (
+  <div>
+    <div>Something went wrong in ProfileManager: {error?.message}</div>
+    <button onClick={resetErrorBoundary}>Try again</button>
+  </div>
 );
 
 export interface ProfileManagerProps {
@@ -70,7 +73,7 @@ export default function ProfileManager({
   }, [onClose]);
 
   return (
-    <ErrorBoundary fallback={<ProfileManagerErrorFallback />}>
+    <ErrorBoundary fallback={<ProfileManagerErrorFallback error={new Error('ProfileManager error')} resetErrorBoundary={() => {}} />}>
       <Card>
         <CardHeader>
           <CardTitle>Profiles</CardTitle>

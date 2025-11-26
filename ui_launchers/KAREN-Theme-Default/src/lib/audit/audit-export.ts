@@ -289,7 +289,7 @@ export class AuditLogExporter {
   /**
    * Export to Excel format (placeholder - would require xlsx library)
    */
-  private async exportToExcel(logs: AuditLog[], options: ExportOptions): Promise<Buffer> {
+  public async exportToExcel(logs: AuditLog[], options: ExportOptions): Promise<Buffer> {
     // This would require implementing Excel export using a library like 'xlsx'
     // For now, we'll return CSV content as a buffer
     const csvContent = this.exportToCsv(logs, options);
@@ -299,7 +299,7 @@ export class AuditLogExporter {
   /**
    * Export to PDF format (placeholder - would require PDF library)
    */
-  private async exportToPdf(logs: AuditLog[], options: ExportOptions): Promise<Buffer> {
+  public async exportToPdf(logs: AuditLog[], options: ExportOptions): Promise<Buffer> {
     // This would require implementing PDF export using a library like 'pdfkit' or 'puppeteer'
     // For now, we'll return a simple text representation
     const textContent = this.exportToText(logs, options);

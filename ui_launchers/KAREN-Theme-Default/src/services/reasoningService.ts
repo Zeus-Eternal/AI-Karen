@@ -1,7 +1,7 @@
 /**
  * Reasoning Service - Connects to the backend reasoning system with fallbacks
  */
-import { getConfigManager } from '@/lib/endpoint-config';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { safeError } from '@/lib/safe-console';
 
 export interface ReasoningRequest {
@@ -52,21 +52,14 @@ export type FetchOptions = {
 };
 
 class ReasoningService {
-  private baseUrl: string;
   // Prefer proxy routes; fallback to direct backend host
   private readonly PROXY_ANALYZE = '/api/karen/api/reasoning/analyze';
   private readonly PROXY_DEGRADED = '/api/health/degraded-mode';
 
   constructor() {
-    this.baseUrl = getConfigManager().getBackendUrl(); // e.g., https://api.kari.local
+    // Initialize with enhanced API client
   }
 
-  private buildURL(path: string): string {
-    // normalize join: baseUrl (no trailing slash) + path (with leading slash)
-    const base = this.baseUrl?.replace(/\/+$/, '') || '';
-    const suffix = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${suffix}`;
-  }
 
   private async fetchJSON<T = unknown>(url: string, opts: FetchOptions = {}): Promise<T> {
     const {
@@ -179,7 +172,7 @@ class ReasoningService {
 
     // 2) Direct backend fallback
     try {
-      const directUrl = this.buildURL('/api/reasoning/analyze');
+      const directUrl = '/api/reasoning/analyze';
       const data = await this.fetchJSON<ReasoningResponse>(directUrl, {
         method: 'POST',
         body: request,
@@ -204,15 +197,23 @@ class ReasoningService {
   async testConnection(): Promise<boolean> {
     // proxy
     try {
-      const ok = await this.fetchJSON<unknown>(this.PROXY_DEGRADED, { timeoutMs: 8000 });
-      return !!ok;
+      const response = await enhancedApiClient.get<unknown>(this.PROXY_DEGRADED, { timeout: 8000 });
+      return !!response.data;
     } catch {
       // fallback to backend
     }
     try {
-      const url = this.buildURL('/health/degraded-mode');
-      const ok = await this.fetchJSON<unknown>(url, { timeoutMs: 8000 });
-      return !!ok;
+      // Temporarily set the base URL for the direct backend call
+      const client = enhancedApiClient as unknown as { baseURL?: string };
+      const originalBaseURL = client.baseURL;
+      client.baseURL = ''; // This will use the current domain without /api prefix
+      
+      const response = await enhancedApiClient.get<unknown>('/health/degraded-mode', { timeout: 8000 });
+      
+      // Restore the original base URL
+      client.baseURL = originalBaseURL;
+      
+      return !!response.data;
     } catch {
       return false;
     }
@@ -249,17 +250,25 @@ class ReasoningService {
 
     // proxy first
     try {
-      const degraded = await this.fetchJSON<unknown>(this.PROXY_DEGRADED, { timeoutMs: 10000 });
-      return mapDegraded(degraded);
+      const response = await enhancedApiClient.get<unknown>(this.PROXY_DEGRADED, { timeout: 10000 });
+      return mapDegraded(response.data);
     } catch (proxyErr) {
       safeError('Degraded-mode (proxy) check failed:', proxyErr);
     }
 
     // backend fallback
     try {
-      const url = this.buildURL('/health/degraded-mode');
-      const degraded = await this.fetchJSON<unknown>(url, { timeoutMs: 10000 });
-      return mapDegraded(degraded);
+      // Temporarily set the base URL for the direct backend call
+      const client = enhancedApiClient as unknown as { baseURL?: string };
+      const originalBaseURL = client.baseURL;
+      client.baseURL = ''; // This will use the current domain without /api prefix
+      
+      const response = await enhancedApiClient.get<unknown>('/health/degraded-mode', { timeout: 10000 });
+      
+      // Restore the original base URL
+      client.baseURL = originalBaseURL;
+      
+      return mapDegraded(response.data);
     } catch (backendErr) {
       safeError('Degraded-mode (backend) check failed:', backendErr);
     }

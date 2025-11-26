@@ -18,20 +18,32 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export interface CopilotKitConfig {
+export interface CopilotConfig {
   enabled: boolean;
-  apiEndpoint: string;
+  backendUrl: string;
+  expertiseLevel: "beginner" | "intermediate" | "advanced" | "expert";
   features: {
-    codeAssistance: boolean;
-    contextualHelp: boolean;
-    autoComplete: boolean;
-    codeReview: boolean;
+    intelligentAssistant: boolean;
+    memoryManagement: boolean;
+    workflowAutomation: boolean;
+    artifactSystem: boolean;
+    pluginDiscovery: boolean;
+    multiModalInput: boolean;
   };
   ui: {
     theme: "auto" | "light" | "dark";
-    position: "bottom-right" | "bottom-left" | "top-right" | "top-left";
-    showShortcuts: boolean;
-    compactMode: boolean;
+    fontSize: "small" | "medium" | "large";
+    showTimestamps: boolean;
+    showMemoryOps: boolean;
+    showDebugInfo: boolean;
+    maxMessageHistory: number;
+    enableAnimations: boolean;
+    enableSoundEffects: boolean;
+    enableKeyboardShortcuts: boolean;
+    autoScroll: boolean;
+    markdownSupport: boolean;
+    codeHighlighting: boolean;
+    imagePreview: boolean;
   };
   performance: {
     debounceMs: number;
@@ -40,20 +52,32 @@ export interface CopilotKitConfig {
   };
 }
 
-const defaultConfig: CopilotKitConfig = {
+const defaultConfig: CopilotConfig = {
   enabled: true,
-  apiEndpoint: "/copilot",
+  backendUrl: "/api",
+  expertiseLevel: "intermediate",
   features: {
-    codeAssistance: true,
-    contextualHelp: true,
-    autoComplete: true,
-    codeReview: false,
+    intelligentAssistant: true,
+    memoryManagement: true,
+    workflowAutomation: true,
+    artifactSystem: true,
+    pluginDiscovery: true,
+    multiModalInput: true,
   },
   ui: {
     theme: "auto",
-    position: "bottom-right",
-    showShortcuts: true,
-    compactMode: false,
+    fontSize: "medium",
+    showTimestamps: true,
+    showMemoryOps: true,
+    showDebugInfo: false,
+    maxMessageHistory: 50,
+    enableAnimations: true,
+    enableSoundEffects: false,
+    enableKeyboardShortcuts: true,
+    autoScroll: true,
+    markdownSupport: true,
+    codeHighlighting: true,
+    imagePreview: true,
   },
   performance: {
     debounceMs: 300,
@@ -62,7 +86,7 @@ const defaultConfig: CopilotKitConfig = {
   },
 };
 
-const STORAGE_KEY = "copilotkit_config";
+const STORAGE_KEY = "copilot_config";
 
 function clampInt(value: unknown, min: number, max: number, fallback: number) {
   const n = typeof value === "number" ? value : Number(value);
@@ -70,9 +94,9 @@ function clampInt(value: unknown, min: number, max: number, fallback: number) {
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
 
-export default function CopilotKitSettings() {
+export default function CopilotSettings() {
   const { toast } = useToast();
-  const [config, setConfig] = useState<CopilotKitConfig>(defaultConfig);
+  const [config, setConfig] = useState<CopilotConfig>(defaultConfig);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -81,7 +105,7 @@ export default function CopilotKitSettings() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<CopilotKitConfig>;
+        const parsed = JSON.parse(raw) as Partial<CopilotConfig>;
         // Minimal defensive merge to survive older shapes
         setConfig((prev) => ({
           ...prev,
@@ -126,12 +150,12 @@ export default function CopilotKitSettings() {
       setHasChanges(false);
       toast({
         title: "Settings saved",
-        description: "CopilotKit configuration has been stored locally.",
+        description: "KARI Copilot configuration has been stored locally.",
       });
     } catch {
       toast({
         title: "Save failed",
-        description: "Could not persist CopilotKit settings. Try again.",
+        description: "Could not persist KARI Copilot settings. Try again.",
         variant: "destructive",
       });
     } finally {
@@ -157,10 +181,10 @@ export default function CopilotKitSettings() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-5 w-5" />
-                CopilotKit Settings
+                KARI Copilot Settings
               </CardTitle>
               <CardDescription>
-                Configure the UI framework that powers your AI development assistant.
+                Configure the KARI Copilot system that serves as the UI gateway to KAREN&rsquo;s entire engine.
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -198,9 +222,9 @@ export default function CopilotKitSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="enable-copilot">Enable CopilotKit</Label>
+              <Label htmlFor="enable-copilot">Enable KARI Copilot</Label>
               <p className="text-sm text-muted-foreground">
-                Toggle the entire assistant on/off.
+                Toggle the KARI Copilot system on/off.
               </p>
             </div>
             <Switch
@@ -211,17 +235,37 @@ export default function CopilotKitSettings() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="api-endpoint">API Endpoint</Label>
+            <Label htmlFor="backend-url">Backend URL</Label>
             <Input
-              id="api-endpoint"
-              value={config.apiEndpoint}
-              onChange={(e) => handleConfigChange("apiEndpoint", e.target.value)}
-              placeholder="/copilot"
+              id="backend-url"
+              value={config.backendUrl}
+              onChange={(e) => handleConfigChange("backendUrl", e.target.value)}
+              placeholder="/api"
               spellCheck={false}
               autoComplete="off"
             />
             <p className="text-sm text-muted-foreground">
-              Relative or absolute URL for your CopilotKit backend.
+              Relative or absolute URL for the KAREN backend.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expertise-level">Expertise Level</Label>
+            <select
+              id="expertise-level"
+              className="w-full rounded-md border bg-transparent p-2"
+              value={config.expertiseLevel}
+              onChange={(e) =>
+                handleConfigChange("expertiseLevel", e.target.value as CopilotConfig["expertiseLevel"])
+              }
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+            <p className="text-sm text-muted-foreground">
+              Select your expertise level to customize the interface.
             </p>
           </div>
         </CardContent>
@@ -238,64 +282,96 @@ export default function CopilotKitSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="feat-code">Code Assistance</Label>
+              <Label htmlFor="feat-intelligent">Intelligent Assistant</Label>
               <p className="text-sm text-muted-foreground">
-                AI suggestions and inline completions.
+                Context-aware suggestions and actions.
               </p>
             </div>
             <Switch
-              id="feat-code"
-              checked={config.features.codeAssistance}
+              id="feat-intelligent"
+              checked={config.features.intelligentAssistant}
               onCheckedChange={(checked) =>
-                handleConfigChange("features.codeAssistance", checked)
+                handleConfigChange("features.intelligentAssistant", checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="feat-context">Contextual Help</Label>
+              <Label htmlFor="feat-memory">Memory Management</Label>
               <p className="text-sm text-muted-foreground">
-                Tips & references based on current file/context.
+                Manage short-term, long-term, and persistent memory.
               </p>
             </div>
             <Switch
-              id="feat-context"
-              checked={config.features.contextualHelp}
+              id="feat-memory"
+              checked={config.features.memoryManagement}
               onCheckedChange={(checked) =>
-                handleConfigChange("features.contextualHelp", checked)
+                handleConfigChange("features.memoryManagement", checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="feat-autocomplete">Auto Complete</Label>
+              <Label htmlFor="feat-workflow">Workflow Automation</Label>
               <p className="text-sm text-muted-foreground">
-                Predictive token completion as you type.
+                Execute backend-provided workflows.
               </p>
             </div>
             <Switch
-              id="feat-autocomplete"
-              checked={config.features.autoComplete}
+              id="feat-workflow"
+              checked={config.features.workflowAutomation}
               onCheckedChange={(checked) =>
-                handleConfigChange("features.autoComplete", checked)
+                handleConfigChange("features.workflowAutomation", checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="feat-review">Code Review</Label>
+              <Label htmlFor="feat-artifact">Artifact System</Label>
               <p className="text-sm text-muted-foreground">
-                Automated review suggestions & nits.
+                Manage and preview generated artifacts.
               </p>
             </div>
             <Switch
-              id="feat-review"
-              checked={config.features.codeReview}
+              id="feat-artifact"
+              checked={config.features.artifactSystem}
               onCheckedChange={(checked) =>
-                handleConfigChange("features.codeReview", checked)
+                handleConfigChange("features.artifactSystem", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="feat-plugin">Plugin Discovery</Label>
+              <p className="text-sm text-muted-foreground">
+                Discover and manage plugins.
+              </p>
+            </div>
+            <Switch
+              id="feat-plugin"
+              checked={config.features.pluginDiscovery}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.pluginDiscovery", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="feat-multimodal">Multi-Modal Input</Label>
+              <p className="text-sm text-muted-foreground">
+                Support for text, code, image, and audio input.
+              </p>
+            </div>
+            <Switch
+              id="feat-multimodal"
+              checked={config.features.multiModalInput}
+              onCheckedChange={(checked) =>
+                handleConfigChange("features.multiModalInput", checked)
               }
             />
           </div>
@@ -316,7 +392,7 @@ export default function CopilotKitSettings() {
                 className="w-full rounded-md border bg-transparent p-2"
                 value={config.ui.theme}
                 onChange={(e) =>
-                  handleConfigChange("ui.theme", e.target.value as CopilotKitConfig["ui"]["theme"])
+                  handleConfigChange("ui.theme", e.target.value as CopilotConfig["ui"]["theme"])
                 }
               >
                 <option value="auto">Auto</option>
@@ -326,54 +402,202 @@ export default function CopilotKitSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="position">Position</Label>
+              <Label htmlFor="font-size">Font Size</Label>
               <select
-                id="position"
+                id="font-size"
                 className="w-full rounded-md border bg-transparent p-2"
-                value={config.ui.position}
+                value={config.ui.fontSize}
                 onChange={(e) =>
                   handleConfigChange(
-                    "ui.position",
-                    e.target.value as CopilotKitConfig["ui"]["position"]
+                    "ui.fontSize",
+                    e.target.value as CopilotConfig["ui"]["fontSize"]
                   )
                 }
               >
-                <option value="bottom-right">Bottom Right</option>
-                <option value="bottom-left">Bottom Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="top-left">Top Left</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
               </select>
             </div>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="ui-shortcuts">Show Shortcuts</Label>
+              <Label htmlFor="ui-timestamps">Show Timestamps</Label>
               <p className="text-sm text-muted-foreground">
-                Display quick keys in the UI.
+                Display message timestamps.
               </p>
             </div>
             <Switch
-              id="ui-shortcuts"
-              checked={config.ui.showShortcuts}
+              id="ui-timestamps"
+              checked={config.ui.showTimestamps}
               onCheckedChange={(checked) =>
-                handleConfigChange("ui.showShortcuts", checked)
+                handleConfigChange("ui.showTimestamps", checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="ui-compact">Compact Mode</Label>
+              <Label htmlFor="ui-memory">Show Memory Operations</Label>
               <p className="text-sm text-muted-foreground">
-                Reduce padding and density for small screens.
+                Display memory management options.
               </p>
             </div>
             <Switch
-              id="ui-compact"
-              checked={config.ui.compactMode}
+              id="ui-memory"
+              checked={config.ui.showMemoryOps}
               onCheckedChange={(checked) =>
-                handleConfigChange("ui.compactMode", checked)
+                handleConfigChange("ui.showMemoryOps", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-debug">Show Debug Info</Label>
+              <p className="text-sm text-muted-foreground">
+                Display debug information.
+              </p>
+            </div>
+            <Switch
+              id="ui-debug"
+              checked={config.ui.showDebugInfo}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.showDebugInfo", checked)
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ui-max-history">Max Message History</Label>
+            <Input
+              id="ui-max-history"
+              type="number"
+              inputMode="numeric"
+              value={config.ui.maxMessageHistory}
+              onChange={(e) =>
+                handleConfigChange(
+                  "ui.maxMessageHistory",
+                  clampInt(e.target.value, 10, 1000, config.ui.maxMessageHistory)
+                )
+              }
+              min={10}
+              max={1000}
+            />
+            <p className="text-sm text-muted-foreground">
+              Maximum number of messages to keep (10–1000).
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-animations">Enable Animations</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable UI animations.
+              </p>
+            </div>
+            <Switch
+              id="ui-animations"
+              checked={config.ui.enableAnimations}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.enableAnimations", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-sound">Enable Sound Effects</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable sound effects.
+              </p>
+            </div>
+            <Switch
+              id="ui-sound"
+              checked={config.ui.enableSoundEffects}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.enableSoundEffects", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-shortcuts">Enable Keyboard Shortcuts</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable keyboard shortcuts.
+              </p>
+            </div>
+            <Switch
+              id="ui-shortcuts"
+              checked={config.ui.enableKeyboardShortcuts}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.enableKeyboardShortcuts", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-autoscroll">Enable Auto Scroll</Label>
+              <p className="text-sm text-muted-foreground">
+                Auto-scroll to new messages.
+              </p>
+            </div>
+            <Switch
+              id="ui-autoscroll"
+              checked={config.ui.autoScroll}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.autoScroll", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-markdown">Enable Markdown</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable markdown rendering.
+              </p>
+            </div>
+            <Switch
+              id="ui-markdown"
+              checked={config.ui.markdownSupport}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.markdownSupport", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-code">Enable Code Highlighting</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable code syntax highlighting.
+              </p>
+            </div>
+            <Switch
+              id="ui-code"
+              checked={config.ui.codeHighlighting}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.codeHighlighting", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="ui-image">Enable Image Preview</Label>
+              <p className="text-sm text-muted-foreground">
+                Enable image preview.
+              </p>
+            </div>
+            <Switch
+              id="ui-image"
+              checked={config.ui.imagePreview}
+              onCheckedChange={(checked) =>
+                handleConfigChange("ui.imagePreview", checked)
               }
             />
           </div>
@@ -449,19 +673,19 @@ export default function CopilotKitSettings() {
       {/* Information */}
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>About CopilotKit</AlertTitle>
+        <AlertTitle>About KARI Copilot</AlertTitle>
         <AlertDescription className="space-y-2">
           <p>
-            CopilotKit is a UI framework for building AI-powered interfaces — it’s not an LLM provider.
-            Use it to wire models and features into a cohesive developer experience.
+            KARI Copilot is an advanced chat interface that serves as the UI gateway to KAREN&rsquo;s entire engine.
+            It integrates CORTEX (intent + routing + reasoning), MemoryManager/NeuroVault, and the Prompt-First Plugin Engine.
           </p>
           <div className="flex gap-2 mt-2">
             <Button variant="outline" size="sm" asChild>
               <a
-                href="https://copilotkit.ai/docs"
+                href="/docs/copilot"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Open CopilotKit documentation"
+                aria-label="Open KARI Copilot documentation"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
                 Docs
@@ -469,10 +693,10 @@ export default function CopilotKitSettings() {
             </Button>
             <Button variant="outline" size="sm" asChild>
               <a
-                href="https://github.com/CopilotKit/CopilotKit"
+                href="https://github.com/KIRO-AI/KAREN"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Open CopilotKit GitHub repository"
+                aria-label="Open KAREN GitHub repository"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
                 GitHub

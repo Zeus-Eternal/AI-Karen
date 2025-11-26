@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+import { safeGetSearchParams, safeGetHeaders } from '@/app/api/_utils/static-export-helpers';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.KAREN_API_PROXY_LONG_TIMEOUT_MS || 30000);
 
@@ -101,8 +105,9 @@ function buildProxyHeaders(
     ['x-api-key', 'X-API-Key'],
   ];
 
+  const safeHeaders = safeGetHeaders(request);
   for (const [source, target] of forwardable) {
-    const value = request.headers.get(source);
+    const value = safeHeaders.get(source);
     if (value) {
       headers[target] = value;
     }
@@ -114,9 +119,15 @@ function buildProxyHeaders(
 function extractAuthTokenFromCookies(request: NextRequest): string | null {
   const preferredNames = ['auth_token', 'kari_session', 'session_token'];
   for (const name of preferredNames) {
-    const entry = request.cookies.get(name);
-    if (entry?.value) {
-      return entry.value;
+    // During static export, cookies might not be available
+    try {
+      const entry = request.cookies.get(name);
+      if (entry?.value) {
+        return entry.value;
+      }
+    } catch {
+      // Continue to next name if cookies are not available
+      continue;
     }
   }
   return null;
@@ -160,8 +171,7 @@ function categorize(models: EnhancedModelInfo[]) {
 
 export async function GET(request: NextRequest) {
   const requestId = randomUUID();
-  const url = request.nextUrl;
-  const q = url.searchParams;
+  const q = safeGetSearchParams(request);
 
   // Query sanitization
   const scan = q.get('scan') === 'true';
@@ -173,7 +183,7 @@ export async function GET(request: NextRequest) {
 
   logger.info('Models library request received', {
     requestId,
-    method: request.method,
+    method: 'GET', // Since this is a GET handler, we can hardcode this
     scan,
     includeHealth,
     forceRefresh,
@@ -263,50 +273,60 @@ export async function GET(request: NextRequest) {
   if (cookieAuthToken && !headers.Authorization) {
     headers.Authorization = `Bearer ${cookieAuthToken}`;
   }
+  
+  // Check if we're in a static export context (no auth available)
+  const isStaticExport = !headers.Authorization && !cookieAuthToken &&
+                        process.env.NEXT_PHASE === 'phase-production-build';
 
-  const queryString = url.searchParams.toString();
+  const queryString = q.toString();
   let lastError: string | null = null;
   let resp: Response | null = null;
   let usedUrl = '';
   let lastAttemptUrl = '';
 
-  for (const base of candidates) {
-    const target = withBackendPath('/api/models/library', base);
-    const fullUrl = queryString ? `${target}?${queryString}` : target;
-    lastAttemptUrl = fullUrl;
+  // Skip backend calls during static export if no auth is available
+  if (!isStaticExport) {
+    for (const base of candidates) {
+      const target = withBackendPath('/api/models/library', base);
+      const fullUrl = queryString ? `${target}?${queryString}` : target;
+      lastAttemptUrl = fullUrl;
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    logger.info('Models library proxying to backend candidate', { requestId, fullUrl });
+      logger.info('Models library proxying to backend candidate', { requestId, fullUrl });
 
-    try {
-      resp = await fetch(fullUrl, {
-        method: 'GET',
-        headers,
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      clearTimeout(timer);
+      try {
+        resp = await fetch(fullUrl, {
+          method: 'GET',
+          headers,
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        clearTimeout(timer);
 
-      if (resp.ok) {
-        usedUrl = fullUrl;
-        break;
+        if (resp.ok) {
+          usedUrl = fullUrl;
+          break;
+        }
+
+        // Retry on 5xx; on 4xx we still try next candidate (in case auth differs per backend)
+        lastError = `HTTP ${resp.status}`;
+        logger.warn('Backend candidate responded non-OK', {
+          requestId,
+          fullUrl,
+          status: resp.status,
+        });
+      } catch (error: unknown) {
+        clearTimeout(timer);
+        const message = error instanceof Error ? error.message : String(error);
+        lastError = message || 'Fetch failed';
+        logger.warn('Backend candidate fetch error', { requestId, fullUrl, error: lastError });
       }
-
-      // Retry on 5xx; on 4xx we still try next candidate (in case auth differs per backend)
-      lastError = `HTTP ${resp.status}`;
-      logger.warn('Backend candidate responded non-OK', {
-        requestId,
-        fullUrl,
-        status: resp.status,
-      });
-    } catch (error: unknown) {
-      clearTimeout(timer);
-      const message = error instanceof Error ? error.message : String(error);
-      lastError = message || 'Fetch failed';
-      logger.warn('Backend candidate fetch error', { requestId, fullUrl, error: lastError });
     }
+  } else {
+    logger.info('Skipping backend calls during static export', { requestId });
+    lastError = 'Static export - no authentication available';
   }
 
   if (resp && !resp.ok && [401, 403].includes(resp.status)) {
@@ -372,6 +392,20 @@ export async function GET(request: NextRequest) {
 
   // Backend completely unreachable — try local fallback scan
   try {
+    // Skip fallback scan during static export since it requires authentication
+    if (isStaticExport) {
+      logger.info('Skipping fallback scan during static export', { requestId });
+      const minimal: LibraryResponse = {
+        models: [],
+        total_count: 0,
+        local_count: 0,
+        available_count: 0,
+        source: 'minimal_fallback',
+        message: 'Static export - models will be available at runtime',
+      };
+      return okJson(minimal, 200);
+    }
+    
     logger.warn('Backend unavailable; attempting fallback scan', { requestId });
     const { modelSelectionService } = await import('@/lib/model-selection-service');
     const fallbackModels = await modelSelectionService.scanLocalDirectories({

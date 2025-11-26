@@ -63,7 +63,7 @@ export function KeyboardNavigationProvider({
 
   const registerNavigationContainer = useCallback((element: HTMLElement) => {
     containerRef.current = element;
-    
+
     // Count navigable items
     const updateItemCount = () => {
       if (element) {
@@ -88,7 +88,7 @@ export function KeyboardNavigationProvider({
     };
   }, []);
 
-  const unregisterNavigationContainer = useCallback(() => {
+  const unregisterNavigationContainer = React.useCallback(() => {
     containerRef.current = null;
     setItemCount(0);
   }, []);

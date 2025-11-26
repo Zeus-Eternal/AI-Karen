@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Worker Agent Task Schema",
+  "description": "Schema for tasks that can be executed by the Worker Agent",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "The type of task to execute",
+      "enum": ["data_processing", "analysis"],
+      "default": "data_processing"
+    },
+    "data": {
+      "type": "object",
+      "description": "The data to process or analyze",
+      "properties": {
+        "input": {
+          "type": "string",
+          "description": "Input data as a string"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Additional parameters for the task",
+          "properties": {
+            "format": {
+              "type": "string",
+              "description": "Data format",
+              "enum": ["json", "xml", "text"],
+              "default": "json"
+            },
+            "options": {
+              "type": "object",
+              "description": "Task-specific options"
+            }
+          }
+        }
+      },
+      "required": ["input"]
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Task priority (1-10, where 10 is highest)",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 5
+    },
+    "timeout": {
+      "type": "integer",
+      "description": "Task timeout in seconds",
+      "minimum": 1,
+      "default": 60
+    }
+  },
+  "required": ["type", "data"]
+}

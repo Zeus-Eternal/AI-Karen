@@ -2,7 +2,8 @@
  * Authentication Interceptor
  * Handles 401 errors and automatic token refresh
  */
-import { clearSession } from './auth/session';
+import { TokenService } from './auth/core/TokenService';
+import { SessionService } from './auth/core/SessionService';
 
 type RequestInitWithUrl = RequestInit & { url?: string };
 
@@ -70,8 +71,9 @@ class AuthInterceptor implements RequestInterceptor {
         return response;
       }
 
-      // Clear session state
-      clearSession();
+      // Clear session state directly to avoid circular dependency
+      TokenService.getInstance().clearToken();
+      SessionService.getInstance().endSession().catch(console.error);
       // Redirect to login if we're in a browser environment
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
@@ -86,7 +88,8 @@ class AuthInterceptor implements RequestInterceptor {
       // Don't redirect during grace period after successful login
       if (!isWithinAuthGracePeriod()) {
         // Clear session and redirect to login
-        clearSession();
+        TokenService.getInstance().clearToken();
+        SessionService.getInstance().endSession().catch(console.error);
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }

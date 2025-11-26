@@ -41,18 +41,18 @@ export default function UnauthorizedPage() {
           <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
           <CardDescription>
             {!isAuthenticated 
-              ? "You need to be logged in to access this page."
-              : "You don't have permission to access this resource."
+                  ? "You need to be logged in to access this page."
+                  : "You don&rsquo;t have permission to access this resource."
             }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center text-sm text-muted-foreground">
             {!isAuthenticated ? (
-              <p>Please log in with an account that has the required permissions.</p>
+              <p>Please log in with an account that has required permissions.</p>
             ) : (
               <p>
-                Your current role ({user?.role || 'user'}) doesn't have access to this resource. 
+                Your current role ({user?.role || 'user'}) doesn&rsquo;t have access to this resource. 
                 Contact your administrator if you believe this is an error.
               </p>
             )}
@@ -61,6 +61,7 @@ export default function UnauthorizedPage() {
           <div className="flex flex-col gap-2">
             <Button onClick={handleGoBack} variant="outline" className="w-full">
               <ArrowLeft className="mr-2 h-4 w-4" />
+              Go Back
             </Button>
             
             <Link href={getRedirectPath()} className="w-full">
@@ -68,10 +69,12 @@ export default function UnauthorizedPage() {
                 {!isAuthenticated ? (
                   <>
                     <LogIn className="mr-2 h-4 w-4" />
+                    Go to Login
                   </>
                 ) : (
                   <>
                     <Home className="mr-2 h-4 w-4" />
+                    Go to Home
                   </>
                 )}
               </Button>

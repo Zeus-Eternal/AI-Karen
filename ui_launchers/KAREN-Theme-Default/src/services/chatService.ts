@@ -2,7 +2,6 @@
  * Chat Service - Handles conversation management and AI processing
  * Integrates with Python backend conversation and AI orchestrator services
  */
-import { getKarenBackend } from '@/lib/karen-backend';
 import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler } from './errorHandler';
 import { generateUUID } from '@/lib/uuid';
@@ -66,6 +65,22 @@ interface ConversationsListResponse {
   conversations?: ApiConversationPayload[];
 }
 
+interface MemorySearchResponse {
+  memories: Array<{
+    id: string;
+    content: string;
+    similarity_score?: number;
+    tags?: string[];
+  }>;
+}
+
+interface AIProcessingResponse {
+  response: string;
+  ai_data?: Record<string, unknown>;
+  suggested_actions?: string[];
+  proactive_suggestion?: string;
+}
+
 const mapApiMessageToChatMessage = (msg: ApiConversationMessage): ChatMessage => {
   const timestampValue = msg.created_at ?? msg.timestamp;
   return {
@@ -78,7 +93,6 @@ const mapApiMessageToChatMessage = (msg: ApiConversationMessage): ChatMessage =>
   };
 };
 export class ChatService {
-  private backend = getKarenBackend();
   private apiClient = enhancedApiClient;
   private errorHandler = getServiceErrorHandler();
   private cache = new Map<string, ConversationSession>();
@@ -90,19 +104,85 @@ export class ChatService {
   ): Promise<HandleUserMessageResult> {
     return this.errorHandler.withRetryAndFallback(
       async () => {
-        const response = await this.backend.processUserMessage(
-          message,
-          conversationHistory,
-          settings,
-          options.userId,
-          options.sessionId,
-          {
-            preferredLLMProvider: options.preferredLLMProvider,
-            preferredModel: options.preferredModel,
+        const sid = options.sessionId || generateUUID();
+        
+        // First, query relevant memories if needed
+        let relevantMemories: MemorySearchResponse['memories'] = [];
+        if (options.storeInMemory !== false) {
+          try {
+            const memoriesResponse = await this.apiClient.post<MemorySearchResponse>('/api/memory/search', {
+              user_id: options.userId || sid || "anonymous",
+              session_id: sid,
+              query: message,
+              top_k: 5,
+              similarity_threshold: 0.7
+            });
+            relevantMemories = memoriesResponse.data?.memories || [];
+          } catch (error) {
+            console.warn('Failed to query memories for chat context', error);
+          }
+        }
+        
+        // Process the user message with the AI orchestrator
+        const response = await this.apiClient.post<AIProcessingResponse>('/api/ai/conversation-processing', {
+          prompt: message,
+          conversation_history: conversationHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp.toISOString(),
+          })),
+          user_settings: settings,
+          session_id: sid,
+          context: {
+            relevant_memories: relevantMemories.map(mem => ({
+              content: mem.content,
+              similarity_score: mem.similarity_score,
+              tags: mem.tags,
+            })),
+            user_id: options.userId,
+            session_id: sid,
+            tools: options.tools ? Object.keys(options.tools) : undefined,
           },
-          options.tools
-        );
-        return response;
+          include_memories: options.storeInMemory !== false,
+          include_insights: true,
+          // Include LLM preferences for proper fallback hierarchy
+          llm_preferences: {
+            preferred_llm_provider: options.preferredLLMProvider || "llama-cpp",
+            preferred_model: options.preferredModel || "llama3.2:latest",
+          },
+        });
+        
+        // Transform the response to match the expected HandleUserMessageResult format
+        const result: HandleUserMessageResult = {
+          finalResponse: response.data?.response || "I'm sorry, I couldn't process your request.",
+          aiDataForFinalResponse: response.data?.ai_data,
+          suggestedNewFacts: response.data?.suggested_actions,
+          proactiveSuggestion: response.data?.proactive_suggestion,
+        };
+        
+        // Store the conversation in memory if successful
+        if (result.finalResponse && options.storeInMemory !== false) {
+          try {
+            await this.apiClient.post('/api/memory/commit', {
+              user_id: options.userId || sid || "anonymous",
+              org_id: null,
+              text: `User: ${message}\nAssistant: ${result.finalResponse}`,
+              tags: ["conversation", "chat"],
+              importance: 5,
+              decay: "short",
+              session_id: sid,
+              metadata: {
+                type: "conversation",
+                user_message: message,
+                assistant_response: result.finalResponse,
+              },
+            });
+          } catch (error) {
+            console.warn('Failed to store conversation in memory', error);
+          }
+        }
+        
+        return result;
       },
       {
         finalResponse: "I'm experiencing some technical difficulties right now. Please try again in a moment.",
@@ -111,7 +191,7 @@ export class ChatService {
       {
         service: 'ChatService',
         method: 'processUserMessage',
-        endpoint: '/api/chat/process',
+        endpoint: '/api/ai/conversation-processing',
       }
     );
   }

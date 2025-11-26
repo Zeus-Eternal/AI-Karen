@@ -125,7 +125,7 @@ function ExtensionNavGroup({
           item={item}
           currentPath={currentPath}
           compact={compact}
-          children={childItems.filter((child) => child.parent === item.id)}
+          childItems={childItems.filter((child) => child.parent === item.id)}
         />
       ))}
     </div>
@@ -136,18 +136,18 @@ export interface ExtensionNavItemProps {
   item: ExtensionNavItem;
   currentPath: string;
   compact: boolean;
-  children?: ExtensionNavItem[];
+  childItems?: ExtensionNavItem[];
 }
 
 function ExtensionNavItemRow({
   item,
   currentPath,
   compact,
-  children = [],
+  childItems = [],
 }: ExtensionNavItemProps) {
   const isActive =
     currentPath === item.path || currentPath.startsWith(item.path + "/");
-  const hasChildren = children.length > 0;
+  const hasChildren = childItems.length > 0;
 
   const IconComponent =
     item.icon && iconMap[item.icon] ? iconMap[item.icon] : Puzzle;
@@ -185,7 +185,7 @@ function ExtensionNavItemRow({
                 variant="secondary"
                 className="ml-2 text-xs sm:text-sm md:text-base"
               >
-                {children.length}
+                {childItems.length}
               </Badge>
             )}
 
@@ -198,7 +198,7 @@ function ExtensionNavItemRow({
       {/* Child items */}
       {hasChildren && !compact && (
         <div className="ml-6 mt-1 space-y-1">
-          {children.map((child) => {
+          {childItems.map((child) => {
             const ChildIcon = child.icon ? iconMap[child.icon] : undefined;
             const childIsActive = currentPath === child.path;
 

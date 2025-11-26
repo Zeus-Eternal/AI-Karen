@@ -13,16 +13,16 @@ log() {
 
 # Install DuckDB if not present
 if ! command -v duckdb &> /dev/null; then
-    log "Installing DuckDB..."
-    apk add --no-cache wget
-    wget -O /usr/local/bin/duckdb https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip
-    unzip -o /usr/local/bin/duckdb -d /usr/local/bin/
-    chmod +x /usr/local/bin/duckdb
-    rm -f /usr/local/bin/duckdb_cli-linux-amd64.zip
+    log "DuckDB CLI not found, using Docker instead..."
+    # We'll use Docker to run DuckDB commands
+    DUCKDB_CMD="docker run --rm -v \"$PROJECT_ROOT\":/project -w /project duckdb/duckdb:latest"
+else
+    DUCKDB_CMD="duckdb"
 fi
 
 # Set DuckDB path
-DUCKDB_PATH="${DUCKDB_PATH:-/data/duckdb/kari_duckdb.db}"
+PROJECT_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+DUCKDB_PATH="${DUCKDB_PATH:-$PROJECT_ROOT/data/duckdb/kari_duckdb.db}"
 DUCKDB_DIR=$(dirname "$DUCKDB_PATH")
 
 # Create DuckDB directory if it doesn't exist
@@ -30,7 +30,7 @@ log "Creating DuckDB directory: $DUCKDB_DIR"
 mkdir -p "$DUCKDB_DIR"
 
 # Create backup directory
-BACKUP_DIR="${DUCKDB_BACKUP_PATH:-/data/duckdb/backups}"
+BACKUP_DIR="${DUCKDB_BACKUP_PATH:-$PROJECT_ROOT/data/duckdb/backups}"
 log "Creating backup directory: $BACKUP_DIR"
 mkdir -p "$BACKUP_DIR"
 
@@ -41,7 +41,7 @@ run_duckdb_sql() {
     
     if [ -f "$sql_file" ]; then
         log "Running $description..."
-        duckdb "$DUCKDB_PATH" < "$sql_file"
+        eval "$DUCKDB_CMD \"$DUCKDB_PATH\" < \"$sql_file\""
         log "✅ $description completed successfully"
     else
         log "⚠️  $sql_file not found, skipping $description"
@@ -53,7 +53,7 @@ log "Initializing DuckDB database at: $DUCKDB_PATH"
 
 # Create the database file and initial schema
 log "Creating DuckDB schema..."
-duckdb "$DUCKDB_PATH" <<EOF
+eval "$DUCKDB_CMD \"$DUCKDB_PATH\" << 'EOF'
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS profiles (
     user_id VARCHAR PRIMARY KEY,
@@ -174,7 +174,7 @@ log "Initial backup created: $BACKUP_FILE"
 
 # Verify database integrity
 log "Verifying database integrity..."
-duckdb "$DUCKDB_PATH" <<EOF
+duckdb "$DUCKDB_PATH" << 'EOF'
 -- Check table counts
 SELECT 'profiles' as table_name, COUNT(*) as row_count FROM profiles
 UNION ALL
@@ -211,4 +211,4 @@ log "Views created: recent_profile_changes, user_activity_summary"
 
 # Display database info
 log "Database information:"
-duckdb "$DUCKDB_PATH" -c ".tables"
+eval "$DUCKDB_CMD \"$DUCKDB_PATH\" -c \".tables\""

@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ModernSidebar } from '@/components/layout/ModernSidebar';
-import { ModernHeader } from '@/components/layout/ModernHeader';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Header } from '@/components/layout/ModernHeader';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Brain,
@@ -22,6 +20,8 @@ import {
 } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Sparkline } from '@/components/ui/sparkline';
+import { useAuth } from '@/hooks/use-auth';
+import MemoryGrid from '@/components/memory/MemoryGrid';
 
 interface MemoryEntry {
   id: string;
@@ -37,10 +37,11 @@ interface MemoryEntry {
 }
 
 export default function MemoryLabPage() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemory, setSelectedMemory] = useState<MemoryEntry | null>(null);
 
-  // Mock data
+  // Mock data for stats (these would come from an API in production)
   const memoryStats = {
     totalVectors: 89234,
     totalSize: 2.4, // GB
@@ -48,51 +49,12 @@ export default function MemoryLabPage() {
     avgSearchLatency: 45, // ms
   };
 
-  const mockMemories: MemoryEntry[] = [
-    {
-      id: '1',
-      content: 'User discussed implementing a new authentication system using OAuth 2.0 with JWT tokens',
-      embedding: Array(1536).fill(0),
-      metadata: {
-        timestamp: new Date('2024-01-15'),
-        source: 'chat',
-        tags: ['authentication', 'oauth', 'security'],
-        accessCount: 12,
-      },
-      similarity: 0.92,
-    },
-    {
-      id: '2',
-      content: 'Performance optimization: Implemented caching layer that reduced API response time by 40%',
-      embedding: Array(1536).fill(0),
-      metadata: {
-        timestamp: new Date('2024-01-14'),
-        source: 'workflow',
-        tags: ['performance', 'optimization', 'caching'],
-        accessCount: 8,
-      },
-      similarity: 0.88,
-    },
-    {
-      id: '3',
-      content: 'User preference: Prefers concise technical explanations with code examples',
-      embedding: Array(1536).fill(0),
-      metadata: {
-        timestamp: new Date('2024-01-13'),
-        source: 'preferences',
-        tags: ['user-preferences', 'communication-style'],
-        accessCount: 45,
-      },
-      similarity: 0.85,
-    },
-  ];
-
   const sparklineData = [30, 35, 32, 40, 38, 45, 48, 46, 50, 52];
 
   return (
     <div className="min-h-screen bg-background">
-      <ModernSidebar />
-      <ModernHeader />
+      <Sidebar/>
+      <Header />
 
       <main className="ml-64 mt-16 p-6">
         <div className="space-y-6">
@@ -105,7 +67,7 @@ export default function MemoryLabPage() {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Memory Lab</h1>
                 <p className="text-muted-foreground">
-                  Explore, analyze, and manage Kari's memory systems
+                  Explore, analyze, and manage Kari&rsquo;s memory systems
                 </p>
               </div>
             </div>
@@ -176,46 +138,29 @@ export default function MemoryLabPage() {
                     <Button>Search</Button>
                   </div>
 
-                  <ScrollArea className="h-[500px]">
-                    <div className="space-y-3">
-                      {mockMemories.map((memory) => (
-                        <Card
-                          key={memory.id}
-                          className="cursor-pointer transition-all hover:shadow-md"
-                          onClick={() => setSelectedMemory(memory)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between">
-                                <p className="text-sm">{memory.content}</p>
-                                {memory.similarity && (
-                                  <Badge variant="secondary" className="ml-2 shrink-0">
-                                    {(memory.similarity * 100).toFixed(0)}% match
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{memory.metadata.source}</span>
-                                <span>•</span>
-                                <span>
-                                  {memory.metadata.timestamp.toLocaleDateString()}
-                                </span>
-                                <span>•</span>
-                                <span>{memory.metadata.accessCount} accesses</span>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {memory.metadata.tags.map((tag) => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <div className="h-[500px]">
+                    {user && (
+                      <MemoryGrid
+                        userId={user.userId}
+                        tenantId={user.tenantId}
+                        onMemorySelect={(memory) => {
+                          // Convert MemoryGridRow to MemoryEntry format for compatibility
+                          setSelectedMemory({
+                            id: memory.id,
+                            content: memory.content,
+                            embedding: [],
+                            metadata: {
+                              timestamp: new Date(memory.timestamp),
+                              source: memory.semantic_cluster,
+                              tags: [],
+                              accessCount: 0,
+                            },
+                            similarity: memory.relevance_score,
+                          });
+                        }}
+                      />
+                    )}
+                  </div>
                 </TabsContent>
 
                 {/* Analytics Tab */}
@@ -255,22 +200,9 @@ export default function MemoryLabPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {mockMemories
-                            .sort((a, b) => b.metadata.accessCount - a.metadata.accessCount)
-                            .slice(0, 3)
-                            .map((memory) => (
-                              <div
-                                key={memory.id}
-                                className="flex items-center justify-between text-sm"
-                              >
-                                <span className="truncate text-muted-foreground">
-                                  {memory.content.substring(0, 40)}...
-                                </span>
-                                <Badge variant="secondary">
-                                  {memory.metadata.accessCount}
-                                </Badge>
-                              </div>
-                            ))}
+                          <p className="text-sm text-muted-foreground">
+                            Memory analytics will be displayed here when data is available.
+                          </p>
                         </div>
                       </CardContent>
                     </Card>

@@ -3,7 +3,7 @@
 Apply Enhanced Authentication Migration
 
 This script applies the new enhanced authentication and validation system migration
-to update the database schema for the improved ProductionAuthService.
+to update the database schema for the improved AuthService.
 """
 
 import os

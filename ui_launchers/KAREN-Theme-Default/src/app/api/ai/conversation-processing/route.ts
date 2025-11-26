@@ -8,7 +8,7 @@ const REQUEST_TIMEOUT_MS = Number(
     60_000
 );
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 export const revalidate = 0;
 
 type ConversationMessage = {

@@ -6,9 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering to avoid static generation issues
+export const dynamic = 'auto';
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { AdminApiResponse, ActivitySummary, AuditLog } from '@/types/admin';
+import { safeGetSearchParams } from '@/app/api/_utils/static-export-helpers';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -51,7 +55,7 @@ function getPeriodAndRange(periodParam?: string): { period: Period; startDate: D
 
 export const GET = requireAdmin(async (request: NextRequest, _context) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = safeGetSearchParams(request);
     const { period, startDate, endDate } = getPeriodAndRange(searchParams.get('period') || undefined);
 
     // Optional limit override for analysis—clamped for safety

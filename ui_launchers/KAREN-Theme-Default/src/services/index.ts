@@ -99,15 +99,8 @@ export type {
 // Extension Services
 // ============================================================================
 
-export { AuthenticatedExtensionService, getAuthenticatedExtensionService, initializeAuthenticatedExtensionService } from './extensions/authenticatedExtensionService';
-export type {
-  ExtensionInfo as AuthenticatedExtensionInfo,
-  ExtensionEvent as AuthenticatedExtensionEvent,
-  BackgroundTask,
-  ServiceState,
-} from './extensions/authenticatedExtensionService';
-
-export { getCacheConfig, setCacheConfig } from './extensions/cacheService';
+export { extensionService, ExtensionService } from './extensions';
+export type { ExtensionInfo } from './extensions';
 
 
 
@@ -133,11 +126,6 @@ export { ErrorReportingService } from './error-reporting';
 export { createUserFriendlyError, getServiceErrorHandler, ServiceErrorHandler, initializeServiceErrorHandler } from './errorHandler';
 export type { RetryOptions, ServiceError, ErrorHandlerConfig } from './errorHandler';
 
-export { getExtensionService, initializeExtensionService, ExtensionService } from './extensionService';
-export type {
-  ExtensionInfo as ExtensionServiceInfo,
-  ExtensionEvent as ExtensionServiceEvent,
-} from './extensionService';
 
 export { reasoningService } from './reasoningService';
 export type { ReasoningResponse, ReasoningRequest, FetchOptions } from './reasoningService';

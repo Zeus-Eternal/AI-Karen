@@ -105,7 +105,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
       }
       return updated;
     });
-  }, [onErrorAnalyzed, optionsOnAnalysisComplete]);
+  }, [onErrorAnalyzed, optionsOnAnalysisComplete, setGlobalErrors]);
 
   const handleAnalysisError = useCallback((error: Error) => {
     onAnalysisError?.(error);
@@ -189,7 +189,7 @@ export const ErrorProvider: FC<ErrorProviderProps> = ({
         component_stack: boundaryInfo?.componentStack,
         error_boundary: true,
         timestamp: new Date().toISOString(),
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        user_agent: typeof window !== 'undefined' && navigator ? navigator.userAgent : undefined,
         url: typeof window !== 'undefined' ? window.location.href : undefined,
       },
     };

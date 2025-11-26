@@ -3,7 +3,7 @@
  */
 
 import type { Model, DirectoryScanOptions, ModelScanResult } from "../model-utils";
-import { getKarenBackend } from "../karen-backend";
+import { enhancedApiClient } from "../enhanced-api-client";
 import { BaseModelService } from "./base-service";
 import { ModelHealthMonitor } from "./health-monitor";
 
@@ -125,8 +125,7 @@ export class ModelScanner extends BaseModelService {
   async scanLlamaCppModels(directory: string, options: DirectoryScanOptions): Promise<Model[]> {
     try {
       // Use backend API for directory scanning
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{
+      const response = await enhancedApiClient.get<{
         models: Array<{
           filename: string;
           path: string;
@@ -138,7 +137,7 @@ export class ModelScanner extends BaseModelService {
 
       const models: Model[] = [];
       
-      for (const file of response.models || []) {
+      for (const file of response?.data?.models || []) {
         try {
           // Extract GGUF metadata from filename and file info
           const metadata = this.extractGGUFMetadata(file.filename, file.metadata);
@@ -205,8 +204,7 @@ export class ModelScanner extends BaseModelService {
   async scanTransformersModels(directory: string, options: DirectoryScanOptions): Promise<Model[]> {
     try {
       // Use backend API for directory scanning
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{
+      const response = await enhancedApiClient.get<{
         models: Array<{
           dirname: string;
           path: string;
@@ -219,7 +217,7 @@ export class ModelScanner extends BaseModelService {
 
       const models: Model[] = [];
       
-      for (const modelDir of response.models || []) {
+      for (const modelDir of response?.data?.models || []) {
         try {
           // Extract transformers metadata from config files
           const metadata = this.extractTransformersMetadata(modelDir.dirname, modelDir.config, modelDir.tokenizer_config);
@@ -289,8 +287,7 @@ export class ModelScanner extends BaseModelService {
   async scanStableDiffusionModels(directory: string, options: DirectoryScanOptions): Promise<Model[]> {
     try {
       // Use backend API for directory scanning
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{
+      const response = await enhancedApiClient.get<{
         models: Array<{
           name: string;
           path: string;
@@ -303,7 +300,7 @@ export class ModelScanner extends BaseModelService {
 
       const models: Model[] = [];
       
-      for (const sdModel of response.models || []) {
+      for (const sdModel of response?.data?.models || []) {
         try {
           // Extract SD metadata from model info
           const metadata = this.extractStableDiffusionMetadata(sdModel.name, sdModel.type, sdModel.config);
@@ -370,8 +367,7 @@ export class ModelScanner extends BaseModelService {
   async scanFluxModels(directory: string, options: DirectoryScanOptions): Promise<Model[]> {
     try {
       // Use backend API for directory scanning
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<{
+      const response = await enhancedApiClient.get<{
         models: Array<{
           name: string;
           path: string;
@@ -384,7 +380,7 @@ export class ModelScanner extends BaseModelService {
 
       const models: Model[] = [];
       
-      for (const fluxModel of response.models || []) {
+      for (const fluxModel of response?.data?.models || []) {
         try {
           // Extract Flux metadata from model info
           const metadata = this.extractFluxMetadata(fluxModel.name, fluxModel.type, fluxModel.config);

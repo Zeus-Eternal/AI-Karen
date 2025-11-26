@@ -7,6 +7,10 @@
  * Requirements: 4.2, 4.3, 4.4
  */
 import { NextRequest, NextResponse } from 'next/server';
+
+// Explicitly set dynamic to auto for static export compatibility
+export const dynamic = 'auto';
+
 import { requireAdmin } from '@/lib/middleware/admin-auth';
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import { validateEmail, hashPassword } from '@/lib/auth/setup-validation';

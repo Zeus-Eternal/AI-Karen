@@ -1,0 +1,1 @@
+{"status":"ok","environment":"production","timestamp":"2025-11-24T00:40:03.209Z","uptimeSeconds":3,"checks":{"backend":{"configured":true},"authentication":{"simpleAuthEnabled":true}}}

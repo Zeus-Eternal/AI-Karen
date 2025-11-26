@@ -12,7 +12,7 @@ import warnings
 import sys
 import importlib
 import inspect
-from typing import Any, Dict, Optional, Type, Callable, Union
+from typing import Any, Dict, Optional, Type, Callable, Union, List
 from types import ModuleType
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -93,27 +93,15 @@ class CompatibilityImportManager:
             
             # Plugin mappings organized by category
             "examples": {
-                "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
-                "ai_karen_engine.plugins.sandbox_fail": "plugins.examples.sandbox_fail",
-            },
-            "core": {
-                "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
-                "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
-                "ai_karen_engine.plugins.tui_fallback": "plugins.core.tui_fallback",
-            },
-            "automation": {
-                "ai_karen_engine.plugins.autonomous_task_handler": "plugins.automation.autonomous_task_handler",
-                "ai_karen_engine.plugins.git_merge_safe": "plugins.automation.git_merge_safe",
+                "ai_karen_engine.plugins.hello_world": "plugins_hub.examples.hello_world",
+                "ai_karen_engine.plugins.sandbox_fail": "plugins_hub.examples.sandbox_fail",
             },
             "integrations": {
-                "ai_karen_engine.plugins.desktop_agent": "plugins.integrations.desktop_agent",
-                "ai_karen_engine.plugins.k8s_scale": "plugins.integrations.k8s_scale",
-                "ai_karen_engine.plugins.llm_manager": "plugins.integrations.llm_manager",
+                "ai_karen_engine.plugins.llm_manager": "plugins_hub.ai.llm_manager",
+                "ai_karen_engine.plugins.weather_query": "plugins_hub.integrations.weather_query",
             },
             "ai": {
-                "ai_karen_engine.plugins.fine_tune_lnm": "plugins.ai.fine_tune_lnm",
-                "ai_karen_engine.plugins.hf_llm": "plugins.ai.hf_llm",
-                "ai_karen_engine.plugins.llm_services": "plugins.ai.llm_services",
+                "ai_karen_engine.plugins.llm_services": "plugins_hub.ai.llm_services",
             }
         }
     
@@ -276,8 +264,8 @@ def is_migration_complete() -> bool:
         importlib.import_module("ai_karen_engine.plugins.router")
         
         # Check some representative plugins
-        importlib.import_module("plugins.core.time_query")
-        importlib.import_module("plugins.integrations.llm_manager")
+        importlib.import_module("plugins_hub.integrations.weather_query")
+        importlib.import_module("plugins_hub.ai.llm_manager")
         
         return True
     except ImportError:

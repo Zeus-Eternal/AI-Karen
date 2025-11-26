@@ -162,7 +162,8 @@ export type {
 // ============================================================================
 export { default as ModelCard } from '../settings/ModelCard';
 export { default as ModelDetailsDialog } from '../settings/ModelDetailsDialog';
-export { default as ModelSelector } from '../chat/ModelSelector';
+// ModelSelector doesn't exist yet - using EnhancedModelSelector as replacement
+export { default as ModelSelector } from './EnhancedModelSelector';
 
 // ============================================================================
 // Shared Types and Interfaces

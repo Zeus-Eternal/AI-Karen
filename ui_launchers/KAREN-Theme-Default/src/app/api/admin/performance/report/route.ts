@@ -19,7 +19,7 @@ import { getQueryOptimizer } from '@/lib/database/query-optimizer';
 import { getAuditLogger } from '@/lib/audit/audit-logger';
 import type { PerformanceReport } from '@/types/admin';
 
-export const dynamic = 'force-dynamic';
+// Note: Removed 'force-dynamic' to allow static export
 
 type ReportFormat = 'json' | 'csv';
 
@@ -74,7 +74,7 @@ async function auditSuccess(
     await audit.log(userId ?? 'unknown', event, 'admin_performance_report', {
       details,
       request,
-      ip_address: ipFrom(request),
+      ip_address: ipFrom(request)
     });
   } catch {
     // swallow audit failures
@@ -91,7 +91,7 @@ async function auditError(
     await audit.log(userId ?? 'unknown', 'admin.performance.report.error', 'admin_performance_report', {
       details: { message },
       request,
-      ip_address: ipFrom(request),
+      ip_address: ipFrom(request)
     });
   } catch {
     // swallow audit failures

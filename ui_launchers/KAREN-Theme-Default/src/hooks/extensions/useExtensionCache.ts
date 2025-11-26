@@ -1,8 +1,7 @@
 "use client";
 import { useRef } from "react";
-import type { ExtensionCacheConfig } from "@/services/extensions";
 
-export function useExtensionCache(config?: Partial<ExtensionCacheConfig>) {
+export function useExtensionCache(config?: Record<string, unknown>) {
   const cacheRef = useRef<Record<string, unknown>>({});
 
   const get = (key: string) => cacheRef.current[key];

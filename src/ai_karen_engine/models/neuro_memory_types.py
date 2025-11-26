@@ -12,6 +12,7 @@ import math
 # Use TYPE_CHECKING to avoid circular imports
 if TYPE_CHECKING:
     from ai_karen_engine.services.memory_service import MemoryType, WebUIMemoryEntry
+    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
 else:
     # Define minimal types for runtime
     class MemoryType:
@@ -146,8 +147,6 @@ class NeuroMemoryEntry:
     
     def __post_init__(self):
         """Initialize NeuroMemoryEntry with proper defaults."""
-        super().__post_init__() if hasattr(super(), '__post_init__') else None
-        
         # Set default decay lambda based on memory type
         if self.decay_lambda == 0.1:  # Only set if using default
             self.decay_lambda = self.neuro_type.get_default_decay_lambda()

@@ -1,5 +1,5 @@
 /**
- * Enhanced Error Boundary with AG-UI and CopilotKit Fallbacks
+ * Enhanced Error Boundary with AG-UI and Copilot Fallbacks
  * 
  * Provides comprehensive error handling for React components with
  * intelligent fallback strategies and recovery mechanisms.
@@ -159,7 +159,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="error-boundary-content">
             <div className="error-icon">⚠️</div>
             <h3>Something went wrong</h3>
-            <p>{componentName} encountered an error and couldn't be displayed.</p>
+            <p>{componentName} encountered an error and couldn&rsquo;t be displayed.</p>
             {enableRetry && retryCount < this.maxRetries && (
               <Button
                 onClick={this.handleRetry}
