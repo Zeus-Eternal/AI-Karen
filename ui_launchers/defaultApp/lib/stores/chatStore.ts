@@ -46,7 +46,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       currentConversation: null,
       messages: [],

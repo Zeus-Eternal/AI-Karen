@@ -24,22 +24,25 @@ export function useChat() {
     setIsLoading,
     setError,
   } = useChatStore()
-  
+
   const abortControllerRef = useRef<AbortController | null>(null)
-  
-  /**
-   * Load messages for the current conversation
-   */
+
+  const clearCurrentConversation = useCallback(() => {
+    setCurrentConversation(null)
+    setMessages([])
+    setError(null)
+  }, [setCurrentConversation, setMessages, setError])
+
   const loadMessages = useCallback(async () => {
     if (!currentConversation) return
-    
+
     try {
       setIsLoading(true)
       setError(null)
-      
+
       const response = await apiClient.getMessages(currentConversation.id)
       const data = await response.json()
-      
+
       setMessages(data.messages || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load messages')
@@ -48,72 +51,69 @@ export function useChat() {
       setIsLoading(false)
     }
   }, [currentConversation, setIsLoading, setError, setMessages])
-  
-  /**
-   * Send a message and optionally stream the response
-   */
-  const sendMessage = useCallback(async (
-    content: string,
-    options?: {
-      stream?: boolean
-      agentId?: string
-      executionMode?: 'native' | 'langgraph' | 'deepagents' | 'auto'
-    }
-  ) => {
-    if (!currentConversation) {
-      setError('No active conversation')
-      return
-    }
-    
-    if (!content.trim()) {
-      setError('Message cannot be empty')
-      return
-    }
-    
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      // Cancel any ongoing request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
+
+  const sendMessage = useCallback(
+    async (
+      content: string,
+      options?: {
+        stream?: boolean
+        agentId?: string
+        executionMode?: 'native' | 'langgraph' | 'deepagents' | 'auto'
       }
-      abortControllerRef.current = new AbortController()
-      
-      // Create user message
-      const userMessage: Message = {
-        id: uuidv4(),
-        conversationId: currentConversation.id,
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date().toISOString(),
+    ) => {
+      if (!currentConversation) {
+        setError('No active conversation')
+        return
       }
-      addMessage(userMessage)
-      
-      // Create placeholder for assistant message
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        conversationId: currentConversation.id,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date().toISOString(),
-        isStreaming: options?.stream || false,
+
+      if (!content.trim()) {
+        setError('Message cannot be empty')
+        return
       }
-      addMessage(assistantMessage)
-      
-      if (options?.stream) {
-        // Stream the response
-        setIsStreaming(true)
-        
-        await apiClient.streamMessage(
-          currentConversation.id,
-          content,
-          {
+
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort()
+        }
+        abortControllerRef.current = new AbortController()
+
+        const userMessage: Message = {
+          id: uuidv4(),
+          conversationId: currentConversation.id,
+          role: 'user',
+          content: content.trim(),
+          timestamp: new Date().toISOString(),
+        }
+        addMessage(userMessage)
+
+        const assistantMessage: Message = {
+          id: uuidv4(),
+          conversationId: currentConversation.id,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date().toISOString(),
+          isStreaming: Boolean(options?.stream),
+        }
+        addMessage(assistantMessage)
+
+        if (options?.stream) {
+          setIsStreaming(true)
+
+          await apiClient.streamMessage(currentConversation.id, content, {
             agentId: options?.agentId,
             executionMode: options?.executionMode,
+            signal: abortControllerRef.current.signal,
             onChunk: (chunk) => {
+              const currentContent =
+                useChatStore
+                  .getState()
+                  .messages.find((message) => message.id === assistantMessage.id)?.content || ''
+
               updateMessage(assistantMessage.id, {
-                content: (messages.find(m => m.id === assistantMessage.id)?.content || '') + chunk,
+                content: `${currentContent}${chunk}`,
               })
             },
             onMetadata: (metadata) => {
@@ -134,117 +134,100 @@ export function useChat() {
                 isStreaming: false,
               })
             },
-          }
-        )
-      } else {
-        // Non-streaming request
-        const response = await apiClient.sendMessage(
-          currentConversation.id,
-          content,
-          {
+          })
+        } else {
+          const response = await apiClient.sendMessage(currentConversation.id, content, {
             agentId: options?.agentId,
             executionMode: options?.executionMode,
-          }
-        )
-        
-        const data = await response.json()
-        
-        updateMessage(assistantMessage.id, {
-          content: data.response || '',
-          metadata: data.metadata,
-        })
+          })
+
+          const data = await response.json()
+
+          updateMessage(assistantMessage.id, {
+            content: data.response || '',
+            metadata: data.metadata,
+          })
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to send message')
+        console.error('Error sending message:', err)
+      } finally {
+        setIsLoading(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message')
-      console.error('Error sending message:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentConversation, addMessage, updateMessage, setIsLoading, setError, setIsStreaming, messages])
-  
-  /**
-   * Create a new conversation
-   */
-  const createConversation = useCallback(async (title?: string) => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      const response = await apiClient.createConversation(title)
-      const conversation: Conversation = await response.json()
-      
+    },
+    [currentConversation, addMessage, updateMessage, setIsLoading, setError, setIsStreaming]
+  )
+
+  const createConversation = useCallback(
+    async (title?: string) => {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const response = await apiClient.createConversation(title)
+        const conversation: Conversation = await response.json()
+
+        setCurrentConversation(conversation)
+        setMessages([])
+
+        return conversation
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create conversation')
+        console.error('Error creating conversation:', err)
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [setCurrentConversation, setMessages, setIsLoading, setError]
+  )
+
+  const selectConversation = useCallback(
+    async (conversation: Conversation) => {
       setCurrentConversation(conversation)
-      setMessages([])
-      
-      return conversation
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create conversation')
-      console.error('Error creating conversation:', err)
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [setCurrentConversation, setMessages, setIsLoading, setError])
-  
-  /**
-   * Select an existing conversation
-   */
-  const selectConversation = useCallback(async (conversation: Conversation) => {
-    setCurrentConversation(conversation)
-    // Messages will be loaded by the useEffect
-  }, [setCurrentConversation])
-  
-  /**
-   * Update conversation title
-   */
-  const updateConversation = useCallback(async (conversationId: string, updates: { title?: string }) => {
-    try {
-      const response = await apiClient.updateConversation(conversationId, updates)
-      const updated: Conversation = await response.json()
-      
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(updated)
+    },
+    [setCurrentConversation]
+  )
+
+  const updateConversation = useCallback(
+    async (conversationId: string, updates: { title?: string }) => {
+      try {
+        const response = await apiClient.updateConversation(conversationId, updates)
+        const updated: Conversation = await response.json()
+
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation(updated)
+        }
+
+        return updated
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update conversation')
+        console.error('Error updating conversation:', err)
+        return null
       }
-      
-      return updated
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update conversation')
-      console.error('Error updating conversation:', err)
-      return null
-    }
-  }, [currentConversation, setCurrentConversation, setError])
-  
-  /**
-   * Delete a conversation
-   */
-  const deleteConversation = useCallback(async (conversationId: string) => {
-    try {
-      await apiClient.deleteConversation(conversationId)
-      
-      if (currentConversation?.id === conversationId) {
-        clearCurrentConversation()
+    },
+    [currentConversation, setCurrentConversation, setError]
+  )
+
+  const deleteConversation = useCallback(
+    async (conversationId: string) => {
+      try {
+        await apiClient.deleteConversation(conversationId)
+
+        if (currentConversation?.id === conversationId) {
+          clearCurrentConversation()
+        }
+
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete conversation')
+        console.error('Error deleting conversation:', err)
+        return false
       }
-      
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete conversation')
-      console.error('Error deleting conversation:', err)
-      return false
-    }
-  }, [currentConversation, setError])
-  
-  /**
-   * Clear the current conversation
-   */
-  const clearCurrentConversation = useCallback(() => {
-    setCurrentConversation(null)
-    setMessages([])
-    setError(null)
-  }, [setCurrentConversation, setMessages, setError])
-  
-  /**
-   * Stop streaming response
-   */
+    },
+    [currentConversation, clearCurrentConversation, setError]
+  )
+
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -252,15 +235,13 @@ export function useChat() {
     }
     setIsStreaming(false)
   }, [setIsStreaming])
-  
-  // Load messages when conversation changes
+
   useEffect(() => {
     if (currentConversation) {
       loadMessages()
     }
-  }, [currentConversation?.id, loadMessages])
-  
-  // Cleanup on unmount
+  }, [currentConversation, loadMessages])
+
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -268,16 +249,13 @@ export function useChat() {
       }
     }
   }, [])
-  
+
   return {
-    // State
     currentConversation,
     messages,
     isStreaming,
     isLoading,
     error,
-    
-    // Actions
     sendMessage,
     createConversation,
     selectConversation,

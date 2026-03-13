@@ -18,7 +18,7 @@ Then create the `.env.local` file with this content:
 # AI-Karen Backend API Configuration
 # Update this with your backend server URL
 
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 
 # Optional: API Key if your backend requires authentication
 # NEXT_PUBLIC_API_KEY=your_api_key_here
@@ -45,7 +45,7 @@ Check your backend configuration to confirm the correct port and URL.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | - | Your AI-Karen backend server URL |
+| `NEXT_PUBLIC_BACKEND_URL` | Yes | - | Your AI-Karen backend server URL |
 | `NEXT_PUBLIC_API_KEY` | No | - | API key for authentication (if required) |
 | `NEXT_PUBLIC_DEBUG` | No | false | Enable debug logging in console |
 
