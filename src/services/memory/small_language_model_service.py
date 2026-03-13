@@ -28,7 +28,7 @@ import GPUtil
 import importlib
 
 try:
-    from src.services.nlp_config import SmallLanguageModelConfig
+    from services.memory.internal.nlp_config import SmallLanguageModelConfig
 except ImportError:
     # Create a basic config if not available
     class SmallLanguageModelConfig:
@@ -58,9 +58,11 @@ def _get_llamacpp_client():
         return llamacpp_inprocess_client
     
     import_paths = [
-        "plugins_hub.ai.llm_services.llama.llama_client",
-        "plugins.ai.llm_services.llama.llama_client",
-        "ai_karen_engine.plugins.llm_services.llama.llama_client",
+        "src.services.memory.internal.llamacpp_client",
+        "services.memory.internal.llamacpp_client",
+        "src.services.models.llm_router",
+        "src.ai_karen_engine.integrations.llm_registry",
+        "src.ai_karen_engine.plugins.manager",
     ]
     
     for module_path in import_paths:
@@ -247,7 +249,7 @@ class SmallLanguageModelService:
                     self.client = client
                     
                     # Load the model
-                    model_path = self.models_dir / f"{self.current_model}.gguf"
+                    model_path = self._resolve_model_file_path(self.current_model)
                     if model_path.exists():
                         # Load model using client
                         load_result = self.client.load_model(str(model_path))
@@ -347,7 +349,7 @@ class SmallLanguageModelService:
     def _update_model_availability(self):
         """Update model registry with local availability information."""
         for model_name, model_info in self.MODEL_REGISTRY.items():
-            model_path = self.models_dir / f"{model_name}.gguf"
+            model_path = self._resolve_model_file_path(model_name)
             model_info.local_path = str(model_path)
             model_info.is_available = model_path.exists()
     
@@ -379,6 +381,18 @@ class SmallLanguageModelService:
             return default_models[0]
         
         return suitable_models[0]
+    
+    def _resolve_model_file_path(self, model_name: str) -> Path:
+        """Return the GGUF file that should be loaded for the given model."""
+        base_path = self.models_dir / f"{model_name}.gguf"
+        if base_path.exists():
+            return base_path
+
+        candidates = sorted(self.models_dir.glob(f"{model_name}*.gguf"))
+        if candidates:
+            return candidates[0]
+
+        return base_path
     
     def _download_model(self, model_name: str) -> bool:
         """Download a model if it's not available locally."""

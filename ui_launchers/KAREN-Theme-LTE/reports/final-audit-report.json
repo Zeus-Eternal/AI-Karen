@@ -1,0 +1,123 @@
+{
+  "timestamp": "2025-10-22T22:10:09.366Z",
+  "reports": [
+    {
+      "type": "Quick Audit",
+      "timestamp": "2025-10-22T22:09:46.475Z",
+      "summary": {
+        "PASS": 7,
+        "WARNING": 4,
+        "FAIL": 3
+      },
+      "results": [
+        {
+          "category": "Server",
+          "test": "Availability",
+          "status": "PASS",
+          "message": "Server responding with status 200",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "X-Frame-Options",
+          "status": "PASS",
+          "message": "Header present: DENY",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "X-Content-Type-Options",
+          "status": "PASS",
+          "message": "Header present: nosniff",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "X-XSS-Protection",
+          "status": "PASS",
+          "message": "Header present: 1; mode=block",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "Strict-Transport-Security",
+          "status": "WARNING",
+          "message": "Missing security header: strict-transport-security",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "Content-Security-Policy",
+          "status": "PASS",
+          "message": "Header present: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https: wss: ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+          "details": null
+        },
+        {
+          "category": "Security",
+          "test": "Data Exposure",
+          "status": "PASS",
+          "message": "No obvious sensitive data in HTML",
+          "details": null
+        },
+        {
+          "category": "API",
+          "test": "/api/health",
+          "status": "FAIL",
+          "message": "Request failed: Request timeout",
+          "details": null
+        },
+        {
+          "category": "API",
+          "test": "/api/admin/users",
+          "status": "FAIL",
+          "message": "Request failed: Request timeout",
+          "details": null
+        },
+        {
+          "category": "API",
+          "test": "/api/admin/system/config",
+          "status": "FAIL",
+          "message": "Request failed: Request timeout",
+          "details": null
+        },
+        {
+          "category": "API",
+          "test": "/api/auth/login",
+          "status": "WARNING",
+          "message": "Unexpected status (405)",
+          "details": null
+        },
+        {
+          "category": "FileSystem",
+          "test": ".env.local permissions",
+          "status": "WARNING",
+          "message": "File permissions: 777 (should be 600 for env files)",
+          "details": null
+        },
+        {
+          "category": "FileSystem",
+          "test": "package.json permissions",
+          "status": "PASS",
+          "message": "File permissions: 777",
+          "details": null
+        },
+        {
+          "category": "FileSystem",
+          "test": "Backup files",
+          "status": "WARNING",
+          "message": "Found 2 backup files: .next.bak.old, .next.old",
+          "details": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalAudits": 1,
+    "quickAuditPassed": 7,
+    "quickAuditWarnings": 4,
+    "quickAuditFailed": 3,
+    "playwrightTests": 0,
+    "playwrightPassed": 0,
+    "playwrightFailed": 0
+  }
+}

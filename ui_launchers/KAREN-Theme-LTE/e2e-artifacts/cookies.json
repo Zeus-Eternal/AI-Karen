@@ -1,0 +1,12 @@
+[
+  {
+    "name": "auth_token",
+    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXZfYWRtaW4iLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZXMiOlsiYWRtaW4iLCJyb3V0aW5nX29wZXJhdG9yIiwidXNlciJdLCJleHAiOjE3NjEyNDM0NjAsImlhdCI6MTc2MTE1NzA2MCwidHlwZSI6ImFjY2VzcyJ9.3-3yikkZotLaMv-oDkVzU_EoDBju4vL-_afH87NjHLk",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 1761243460.028562,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]

@@ -10,16 +10,16 @@ import os
 import hashlib
 import logging
 import time
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, Any, Dict
 from dataclasses import dataclass
 from cachetools import TTLCache
 import threading
 import numpy as np
 
 try:
-    from src.services.nlp_config import DistilBertConfig
+    from services.memory.internal.nlp_config import DistilBertConfig
 except ImportError:
-    from nlp_config import DistilBertConfig
+    from services.memory.internal.nlp_config import DistilBertConfig
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +218,42 @@ class DistilBertService:
         """Load DistilBERT model and tokenizer."""
         try:
             # Check for offline mode environment variables
+            import os as os_module
+            transformers_offline = os_module.getenv("TRANSFORMERS_OFFLINE", "")
+            hf_hub_offline = os_module.getenv("HF_HUB_OFFLINE", "")
+            transformers_cache_dir = os_module.getenv("TRANSFORMERS_CACHE_DIR", "")
+            hf_home = os_module.getenv("HF_HOME", "")
+            
             offline = (
-                os.getenv("TRANSFORMERS_OFFLINE", "").lower() in ("1", "true", "yes") or
-                os.getenv("HF_HUB_OFFLINE", "").lower() in ("1", "true", "yes")
+                transformers_offline.lower() in ("1", "true", "yes") or
+                hf_hub_offline.lower() in ("1", "true", "yes")
             )
+            
+            # Add diagnostic logging
+            logger.info("=== DISTILBERT MODEL LOADING DIAGNOSTICS ===")
+            logger.info(f"Model name: {self.config.model_name}")
+            logger.info(f"TRANSFORMERS_OFFLINE: {transformers_offline}")
+            logger.info(f"HF_HUB_OFFLINE: {hf_hub_offline}")
+            logger.info(f"TRANSFORMERS_CACHE_DIR: {transformers_cache_dir}")
+            logger.info(f"HF_HOME: {hf_home}")
+            logger.info(f"Offline mode: {offline}")
+            
+            # Check if model files exist in expected locations
+            import os.path
+            model_paths_to_check = [
+                f"./models/transformers/{self.config.model_name}",
+                f"{transformers_cache_dir}/{self.config.model_name}" if transformers_cache_dir else None,
+                f"{hf_home}/hub/{self.config.model_name}" if hf_home else None,
+                f"/root/.cache/huggingface/hub/models--{self.config.model_name.replace('/', '--')}",
+            ]
+            
+            for path in model_paths_to_check:
+                if path and os.path.exists(path):
+                    logger.info(f"✓ Model directory found: {path}")
+                    files = os.listdir(path)
+                    logger.info(f"  Files: {files[:5]}{'...' if len(files) > 5 else ''}")
+                elif path:
+                    logger.warning(f"✗ Model directory not found: {path}")
             
             if AutoTokenizer is None or AutoModel is None:
                 raise RuntimeError("Transformers library is unavailable")
@@ -239,11 +271,15 @@ class DistilBertService:
                 )
                 logger.info("✓ Model loaded successfully from local cache")
             except Exception as e:
+                logger.error(f"Failed to load model in offline mode: {e}")
+                logger.error(f"Error type: {type(e).__name__}")
+                logger.error(f"Error details: {str(e)}")
+                
                 if offline:
-                    logger.error(f"Failed to load model in offline mode: {e}")
+                    logger.error("Cannot fallback to online mode - offline mode is enforced")
                     raise
                 else:
-                    logger.warning(f"Failed to load from cache, trying online: {e}")
+                    logger.warning("Falling back to online mode")
                     tokenizer = AutoTokenizer.from_pretrained(
                         self.config.model_name,
                         local_files_only=False,
@@ -264,11 +300,14 @@ class DistilBertService:
             return tokenizer, model
             
         except Exception as e:
+            logger.error("=== DISTILBERT MODEL LOADING FAILED ===")
             logger.error(f"Failed to load DistilBERT model: {e}")
             logger.error(f"Model name: {self.config.model_name}")
             logger.error(f"Offline mode: {offline}")
             logger.error(f"TRANSFORMERS_OFFLINE: {os.getenv('TRANSFORMERS_OFFLINE', 'not set')}")
             logger.error(f"HF_HUB_OFFLINE: {os.getenv('HF_HUB_OFFLINE', 'not set')}")
+            logger.error(f"TRANSFORMERS_CACHE_DIR: {os.getenv('TRANSFORMERS_CACHE_DIR', 'not set')}")
+            logger.error(f"Current working directory: {os.getcwd()}")
             return None, None
     
     async def get_embeddings(
@@ -355,6 +394,9 @@ class DistilBertService:
     async def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding using DistilBERT model."""
         # Tokenize input
+        if self.tokenizer is None:
+            raise RuntimeError("Tokenizer not initialized")
+        
         inputs = self.tokenizer(
             text,
             truncation=True,
@@ -389,6 +431,9 @@ class DistilBertService:
     
     def _model_forward(self, inputs):
         """Forward pass through the model (runs in thread pool)."""
+        if self.model is None:
+            raise RuntimeError("Model not initialized")
+            
         if torch is not None:
             with torch.no_grad():
                 return self.model(**inputs)
@@ -944,7 +989,7 @@ class DistilBertService:
             sentiment_scores[sentiment] = similarity
         
         # Determine best sentiment
-        best_sentiment = max(sentiment_scores, key=sentiment_scores.get)
+        best_sentiment = max(sentiment_scores.keys(), key=lambda k: sentiment_scores[k])
         confidence = sentiment_scores[best_sentiment]
         
         # Calculate sentiment score (-1 to 1)
@@ -1031,10 +1076,31 @@ class DistilBertService:
             "flagged_categories": flagged_categories
         }
     
-    def _calculate_cosine_similarity(self, embeddings1: List[float], embeddings2: List[float]) -> float:
+    def _calculate_cosine_similarity(self, embeddings1: Union[List[float], List[List[float]]], embeddings2: Union[List[float], List[List[float]]]) -> float:
         """Calculate cosine similarity between two embedding vectors."""
         if not embeddings1 or not embeddings2:
             return 0.0
+        
+        # Handle nested lists by flattening if needed
+        if embeddings1 and isinstance(embeddings1, list) and len(embeddings1) > 0 and isinstance(embeddings1[0], list):
+            # Flatten nested list structure
+            flattened_embeddings1 = []
+            for sublist in embeddings1:
+                if isinstance(sublist, list):
+                    flattened_embeddings1.extend(sublist)
+                else:
+                    flattened_embeddings1.append(sublist)
+            embeddings1 = flattened_embeddings1
+        
+        if embeddings2 and isinstance(embeddings2, list) and len(embeddings2) > 0 and isinstance(embeddings2[0], list):
+            # Flatten nested list structure
+            flattened_embeddings2 = []
+            for sublist in embeddings2:
+                if isinstance(sublist, list):
+                    flattened_embeddings2.extend(sublist)
+                else:
+                    flattened_embeddings2.append(sublist)
+            embeddings2 = flattened_embeddings2
         
         # Convert to numpy arrays for calculation
         vec1 = np.array(embeddings1)

@@ -1,0 +1,382 @@
+groups:
+  - name: copilot.alerts
+    rules:
+      # Alert if CoPilot API is down
+      - alert: CoPilotAPIDown
+        expr: up{job="copilot-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: copilot_api
+        annotations:
+          summary: "CoPilot API is down"
+          description: "CoPilot API ({{ $labels.instance }}) has been down for more than 1 minute"
+
+      # Alert if CoPilot API error rate is high
+      - alert: CoPilotAPIHighErrorRate
+        expr: rate(copilot_api_errors_total[5m]) / rate(copilot_api_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_api
+        annotations:
+          summary: "CoPilot API error rate is high"
+          description: "CoPilot API error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if CoPilot API response time is high
+      - alert: CoPilotAPIHighResponseTime
+        expr: histogram_quantile(0.95, rate(copilot_api_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_api
+        annotations:
+          summary: "CoPilot API response time is high"
+          description: "CoPilot API 95th percentile response time is {{ $value | humanizeDuration }} for more than 5 minutes"
+
+      # Alert if Agent UI Service is down
+      - alert: CoPilotAgentUIServiceDown
+        expr: up{job="copilot-agent-ui"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: copilot_agent_ui
+        annotations:
+          summary: "CoPilot Agent UI Service is down"
+          description: "CoPilot Agent UI Service ({{ $labels.instance }}) has been down for more than 1 minute"
+
+      # Alert if Thread Manager has too many threads
+      - alert: CoPilotThreadManagerTooManyThreads
+        expr: thread_manager_active_threads > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_thread_manager
+        annotations:
+          summary: "CoPilot Thread Manager has too many active threads"
+          description: "CoPilot Thread Manager has {{ $value }} active threads for more than 5 minutes"
+
+      # Alert if Thread Manager thread creation rate is high
+      - alert: CoPilotThreadManagerHighThreadCreationRate
+        expr: rate(thread_manager_threads_created_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_thread_manager
+        annotations:
+          summary: "CoPilot Thread Manager thread creation rate is high"
+          description: "CoPilot Thread Manager is creating {{ $value }} threads per second for more than 5 minutes"
+
+      # Alert if Session Manager has too many sessions
+      - alert: CoPilotSessionManagerTooManySessions
+        expr: session_manager_active_sessions > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_session_manager
+        annotations:
+          summary: "CoPilot Session Manager has too many active sessions"
+          description: "CoPilot Session Manager has {{ $value }} active sessions for more than 5 minutes"
+
+      # Alert if Session Manager session timeout rate is high
+      - alert: CoPilotSessionManagerHighSessionTimeoutRate
+        expr: rate(session_manager_sessions_timed_out_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_session_manager
+        annotations:
+          summary: "CoPilot Session Manager session timeout rate is high"
+          description: "CoPilot Session Manager is timing out {{ $value }} sessions per minute for more than 5 minutes"
+
+      # Alert if Response Formatter error rate is high
+      - alert: CoPilotResponseFormatterHighErrorRate
+        expr: rate(response_formatter_errors_total[5m]) / rate(response_formatter_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_response_formatter
+        annotations:
+          summary: "CoPilot Response Formatter error rate is high"
+          description: "CoPilot Response Formatter error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if Extension error rate is high
+      - alert: CoPilotExtensionHighErrorRate
+        expr: rate(extension_errors_total[5m]) / rate(extension_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_extensions
+        annotations:
+          summary: "CoPilot Extension error rate is high"
+          description: "CoPilot Extension error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if Extension response time is high
+      - alert: CoPilotExtensionHighResponseTime
+        expr: histogram_quantile(0.95, rate(extension_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_extensions
+        annotations:
+          summary: "CoPilot Extension response time is high"
+          description: "CoPilot Extension 95th percentile response time is {{ $value | humanizeDuration }} for more than 5 minutes"
+
+      # Alert if Memory Integration error rate is high
+      - alert: CoPilotMemoryHighErrorRate
+        expr: rate(memory_errors_total[5m]) / rate(memory_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_memory
+        annotations:
+          summary: "CoPilot Memory Integration error rate is high"
+          description: "CoPilot Memory Integration error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if Conversation error rate is high
+      - alert: CoPilotConversationHighErrorRate
+        expr: rate(conversation_errors_total[5m]) / rate(conversation_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_conversations
+        annotations:
+          summary: "CoPilot Conversation error rate is high"
+          description: "CoPilot Conversation error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if Conversation rate is too high
+      - alert: CoPilotConversationHighRate
+        expr: rate(conversation_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_conversations
+        annotations:
+          summary: "CoPilot Conversation rate is too high"
+          description: "CoPilot Conversation rate is {{ $value }} requests per second for more than 5 minutes"
+
+      # Alert if WebSocket connections are too high
+      - alert: CoPilotWebSocketTooManyConnections
+        expr: websocket_active_connections > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_websocket
+        annotations:
+          summary: "CoPilot WebSocket has too many active connections"
+          description: "CoPilot WebSocket has {{ $value }} active connections for more than 5 minutes"
+
+      # Alert if WebSocket error rate is high
+      - alert: CoPilotWebSocketHighErrorRate
+        expr: rate(websocket_errors_total[5m]) / rate(websocket_messages_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_websocket
+        annotations:
+          summary: "CoPilot WebSocket error rate is high"
+          description: "CoPilot WebSocket error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if CoPilot UI is down
+      - alert: CoPilotUIDown
+        expr: up{job="copilot-ui"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: copilot_ui
+        annotations:
+          summary: "CoPilot UI is down"
+          description: "CoPilot UI ({{ $labels.instance }}) has been down for more than 1 minute"
+
+      # Alert if CoPilot UI error rate is high
+      - alert: CoPilotUIHighErrorRate
+        expr: rate(ui_errors_total[5m]) / rate(ui_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_ui
+        annotations:
+          summary: "CoPilot UI error rate is high"
+          description: "CoPilot UI error rate is {{ $value | humanizePercentage }} for more than 5 minutes"
+
+      # Alert if CoPilot UI response time is high
+      - alert: CoPilotUIHighResponseTime
+        expr: histogram_quantile(0.95, rate(ui_request_duration_seconds_bucket[5m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          component: copilot_ui
+        annotations:
+          summary: "CoPilot UI response time is high"
+          description: "CoPilot UI 95th percentile response time is {{ $value | humanizeDuration }} for more than 5 minutes"
+
+  - name: copilot.database.alerts
+    rules:
+      # Alert if PostgreSQL CPU usage is high
+      - alert: PostgreSQLHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL CPU usage is high"
+          description: "PostgreSQL CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if PostgreSQL memory usage is high
+      - alert: PostgreSQLHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL memory usage is high"
+          description: "PostgreSQL memory usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if PostgreSQL connections are too high
+      - alert: PostgreSQLTooManyConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL has too many connections"
+          description: "PostgreSQL is using {{ $value }}% of maximum connections for more than 5 minutes"
+
+      # Alert if Redis memory usage is high
+      - alert: RedisHighMemoryUsage
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Redis connections are too high
+      - alert: RedisTooManyConnections
+        expr: redis_connected_clients > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis has too many connections"
+          description: "Redis has {{ $value }} active connections for more than 5 minutes"
+
+  - name: copilot.storage.alerts
+    rules:
+      # Alert if Elasticsearch CPU usage is high
+      - alert: ElasticsearchHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: elasticsearch
+        annotations:
+          summary: "Elasticsearch CPU usage is high"
+          description: "Elasticsearch CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Elasticsearch memory usage is high
+      - alert: ElasticsearchHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: elasticsearch
+        annotations:
+          summary: "Elasticsearch memory usage is high"
+          description: "Elasticsearch memory usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Elasticsearch disk usage is high
+      - alert: ElasticsearchHighDiskUsage
+        expr: (elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          component: elasticsearch
+        annotations:
+          summary: "Elasticsearch disk usage is high"
+          description: "Elasticsearch disk usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Milvus CPU usage is high
+      - alert: MilvusHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: milvus
+        annotations:
+          summary: "Milvus CPU usage is high"
+          description: "Milvus CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Milvus memory usage is high
+      - alert: MilvusHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: milvus
+        annotations:
+          summary: "Milvus memory usage is high"
+          description: "Milvus memory usage is {{ $value }}% for more than 5 minutes"
+
+  - name: copilot.infrastructure.alerts
+    rules:
+      # Alert if node CPU usage is high
+      - alert: NodeHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: node
+        annotations:
+          summary: "Node CPU usage is high"
+          description: "Node CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if node memory usage is high
+      - alert: NodeHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: node
+        annotations:
+          summary: "Node memory usage is high"
+          description: "Node memory usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if node disk usage is high
+      - alert: NodeHighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: node
+        annotations:
+          summary: "Node disk usage is high"
+          description: "Node disk usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Docker container CPU usage is high
+      - alert: DockerContainerHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name!=""}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: docker
+        annotations:
+          summary: "Docker container CPU usage is high"
+          description: "Docker container {{ $labels.name }} CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # Alert if Docker container memory usage is high
+      - alert: DockerContainerHighMemoryUsage
+        expr: (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: docker
+        annotations:
+          summary: "Docker container memory usage is high"
+          description: "Docker container {{ $labels.name }} memory usage is {{ $value }}% for more than 5 minutes"

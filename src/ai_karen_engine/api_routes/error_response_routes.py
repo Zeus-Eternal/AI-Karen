@@ -24,14 +24,14 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.services.error_response_service import (
+from services.memory.error_response_service import (
     ErrorResponseService,
     IntelligentErrorResponse,
     ErrorContext,
     ErrorCategory,
     ErrorSeverity
 )
-from ai_karen_engine.services.provider_health_monitor import get_health_monitor
+from services.memory.internal.provider_health_monitor import get_health_monitor
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["error-response"], prefix="/error-response")
@@ -525,5 +525,4 @@ if hasattr(router, "add_exception_handler"):
     router.add_exception_handler(RateLimitExceeded, rate_limit_handler)  # type: ignore[attr-defined]
 elif hasattr(router, "exception_handler"):
     router.exception_handler(RateLimitExceeded)(rate_limit_handler)  # type: ignore[attr-defined]
-
 

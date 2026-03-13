@@ -23,7 +23,7 @@ from ai_karen_engine.core.response.scheduler_manager import (
 from ai_karen_engine.core.response.factory import get_global_scheduler_manager
 # Simple auth imports
 from ai_karen_engine.core.dependencies import get_current_user_context
-from ai_karen_engine.services.training_audit_logger import get_training_audit_logger
+from services.memory.internal.training_audit_logger import get_training_audit_logger
 
 logger = logging.getLogger(__name__)
 

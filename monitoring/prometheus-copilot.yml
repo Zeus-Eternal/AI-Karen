@@ -1,0 +1,252 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alert_rules.yml
+  - model_orchestrator_alerts.yml
+  - validation_security_alerts.yml
+  - performance_metrics_alerts.yml
+  - database_metrics_alerts.yml
+  - copilot_alerts.yml
+
+scrape_configs:
+  # CoPilot API metrics
+  - job_name: 'copilot-api'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'copilot_.*'
+        target_label: component
+        replacement: 'copilot_api'
+
+  # CoPilot Agent UI Service metrics
+  - job_name: 'copilot-agent-ui'
+    metrics_path: /api/agent-ui/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'agent_ui_.*'
+        target_label: component
+        replacement: 'copilot_agent_ui'
+
+  # CoPilot Thread Manager metrics
+  - job_name: 'copilot-thread-manager'
+    metrics_path: /api/thread-manager/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'thread_manager_.*'
+        target_label: component
+        replacement: 'copilot_thread_manager'
+
+  # CoPilot Session Manager metrics
+  - job_name: 'copilot-session-manager'
+    metrics_path: /api/session-manager/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'session_manager_.*'
+        target_label: component
+        replacement: 'copilot_session_manager'
+
+  # CoPilot Response Formatter metrics
+  - job_name: 'copilot-response-formatter'
+    metrics_path: /api/response-formatter/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'response_formatter_.*'
+        target_label: component
+        replacement: 'copilot_response_formatter'
+
+  # CoPilot Extension metrics
+  - job_name: 'copilot-extensions'
+    metrics_path: /api/extensions/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'extension_.*'
+        target_label: component
+        replacement: 'copilot_extensions'
+
+  # CoPilot Memory Integration metrics
+  - job_name: 'copilot-memory'
+    metrics_path: /api/memory/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'memory_.*'
+        target_label: component
+        replacement: 'copilot_memory'
+
+  # CoPilot Conversation metrics
+  - job_name: 'copilot-conversations'
+    metrics_path: /api/conversations/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'conversation_.*'
+        target_label: component
+        replacement: 'copilot_conversations'
+
+  # CoPilot WebSocket metrics
+  - job_name: 'copilot-websocket'
+    metrics_path: /api/websocket/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'websocket_.*'
+        target_label: component
+        replacement: 'copilot_websocket'
+
+  # CoPilot UI metrics
+  - job_name: 'copilot-ui'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['web-copilot:8010']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'ui_.*'
+        target_label: component
+        replacement: 'copilot_ui'
+
+  # Model Orchestrator metrics
+  - job_name: 'model-orchestrator'
+    metrics_path: /api/models/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'model_orchestrator_.*'
+        target_label: component
+        replacement: 'model_orchestrator'
+
+  # Model Orchestrator Health metrics
+  - job_name: 'model-orchestrator-health'
+    metrics_path: /api/models/health/metrics
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 60s
+    scrape_timeout: 10s
+
+  # Performance metrics
+  - job_name: 'performance-metrics'
+    metrics_path: /api/performance/prometheus
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'system_.*|service_.*'
+        target_label: component
+        replacement: 'performance_monitoring'
+
+  # Performance health
+  - job_name: 'performance-health'
+    metrics_path: /api/performance/health
+    static_configs:
+      - targets: ['api-copilot:8000']
+    scrape_interval: 60s
+    scrape_timeout: 10s
+
+  # Database metrics
+  - job_name: 'postgres-copilot'
+    static_configs:
+      - targets: ['postgres-copilot-exporter:9187']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis metrics
+  - job_name: 'redis-copilot'
+    static_configs:
+      - targets: ['redis-copilot-exporter:9121']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Elasticsearch metrics
+  - job_name: 'elasticsearch-copilot'
+    static_configs:
+      - targets: ['elasticsearch-copilot-exporter:9114']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Milvus metrics
+  - job_name: 'milvus-copilot'
+    static_configs:
+      - targets: ['milvus-copilot:9091']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node exporter metrics
+  - job_name: 'node-copilot'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Docker metrics
+  - job_name: 'docker-copilot'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Nginx metrics (if used)
+  - job_name: 'nginx-copilot'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Blackbox exporter for endpoint monitoring
+  - job_name: 'blackbox-copilot'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://api-copilot:8000/health
+        - http://web-copilot:8010
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 30s
+    scrape_timeout: 10s

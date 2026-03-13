@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-10-20T22:45:26.710Z",
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "warnings": 0
+  },
+  "accessibility": {
+    "violations": [],
+    "passes": [
+      {
+        "description": "Skip links present"
+      },
+      {
+        "description": "ARIA labels used"
+      },
+      {
+        "description": "Focus management implemented"
+      },
+      {
+        "description": "Screen reader support"
+      }
+    ],
+    "incomplete": [],
+    "score": 100,
+    "recommendations": []
+  },
+  "performance": {
+    "metrics": {},
+    "score": 100,
+    "recommendations": []
+  },
+  "responsive": {
+    "breakpoints": [],
+    "score": 90,
+    "recommendations": [
+      "Implement touch optimization"
+    ]
+  },
+  "design": {
+    "tokenUsage": 0,
+    "componentConsistency": 0,
+    "score": 100,
+    "recommendations": []
+  },
+  "recommendations": []
+}

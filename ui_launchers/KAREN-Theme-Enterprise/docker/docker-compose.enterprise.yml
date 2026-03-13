@@ -1,0 +1,58 @@
+# docker-compose.enterprise.yml
+# Launch KAREN-Theme-Enterprise UI with AI-Karen backend from project root
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.enterprise.yml up
+#
+# This extends the base docker-compose.yml with the Enterprise Theme UI
+
+services:
+  # ──────────────────────────────────────────────────────────────────────
+  # Enterprise Theme UI (Next.js)
+  # ──────────────────────────────────────────────────────────────────────
+  enterprise-ui:
+    build:
+      context: ./ui_launchers/KAREN-Theme-Enterprise
+      dockerfile: docker/Dockerfile
+    container_name: karen-enterprise-ui
+    restart: unless-stopped
+    ports:
+      - "3002:3000"  # Changed from 3000 to avoid conflict with pdf-ocr-frontend
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      # Server-side (inside container) should call the API service directly
+      - KAREN_BACKEND_URL=http://api:8000
+      # Client-side (browser) should call the backend via localhost
+      - NEXT_PUBLIC_KAREN_BACKEND_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - API_URL=http://api:8000
+    volumes:
+      # Mount config directory for permissions
+      - ./config:/app/config:ro
+      # Mount logs for persistent logging
+      - enterprise-ui-logs:/app/logs
+    networks:
+      - ai-karen-net
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+# Volumes
+volumes:
+  enterprise-ui-logs:
+    driver: local

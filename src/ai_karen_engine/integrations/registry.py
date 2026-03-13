@@ -979,6 +979,86 @@ class LLMRegistry:
         """Get runtime specification."""
         return self._runtimes.get(name)
     
+    # ---------- Model Listing ----------
+    
+    def list_models(self, provider: str) -> List[ModelMetadata]:
+        """
+        List available models for a specific provider.
+        
+        Args:
+            provider: Name of provider
+            
+        Returns:
+            List of ModelMetadata objects for provider's models
+        """
+        spec = self._providers.get(provider)
+        if not spec:
+            logger.warning(f"Provider '{provider}' not found in registry")
+            return []
+        
+        models = []
+        
+        # Try to discover models dynamically
+        if spec.discover:
+            try:
+                discovered = spec.discover()
+                for model_dict in discovered:
+                    models.append(ModelMetadata(
+                        id=model_dict.get("id", model_dict.get("name", "unknown")),
+                        name=model_dict.get("name", model_dict.get("id", "Unknown")),
+                        provider=provider,
+                        family=model_dict.get("family", ""),
+                        format=model_dict.get("format", ""),
+                        parameters=model_dict.get("parameters"),
+                        context_length=model_dict.get("context_length"),
+                        capabilities=set(model_dict.get("capabilities", [])),
+                        local_path=model_dict.get("local_path"),
+                        download_url=model_dict.get("download_url"),
+                        license=model_dict.get("license"),
+                        description=model_dict.get("description", "")
+                    ))
+            except Exception as e:
+                logger.debug(f"Model discovery failed for {provider}: {e}")
+        
+        # Add fallback models if discovery failed or returned no models
+        if not models and spec.fallback_models:
+            for model_dict in spec.fallback_models:
+                models.append(ModelMetadata(
+                    id=model_dict.get("id", model_dict.get("name", "unknown")),
+                    name=model_dict.get("name", model_dict.get("id", "Unknown")),
+                    provider=provider,
+                    family=model_dict.get("family", ""),
+                    format=model_dict.get("format", ""),
+                    parameters=model_dict.get("parameters"),
+                    context_length=model_dict.get("context_length"),
+                    capabilities=set(model_dict.get("capabilities", [])),
+                    local_path=model_dict.get("local_path"),
+                    download_url=model_dict.get("download_url"),
+                    license=model_dict.get("license"),
+                    description=model_dict.get("description", "")
+                ))
+        
+        return models
+    
+    def get_provider_instance(self, provider: str) -> Optional[Any]:
+        """
+        Get provider instance for health checks and model testing.
+        
+        Args:
+            provider: Name of provider
+            
+        Returns:
+            Provider instance or None
+        """
+        spec = self._providers.get(provider)
+        if not spec:
+            logger.warning(f"Provider '{provider}' not found in registry")
+            return None
+        
+        # Get or create provider instance
+        instance = self.get_provider(provider)
+        return instance
+    
     # ---------- Internal Methods ----------
     
     def _register_core_components(self) -> None:
@@ -1058,20 +1138,15 @@ class LLMRegistry:
         # HuggingFace Provider
         huggingface_spec = ProviderSpec(
             name="huggingface",
-            requires_api_key=False,  # Can work without API key for local models
-            description="HuggingFace Hub models and local execution",
-            category="LLM",
-            capabilities={"local_execution", "model_download", "embeddings"},
-            discover=self._discover_huggingface_models,
+            requires_api_key=False,  # Can work without API key for downloading models
+            description="HuggingFace Hub model download service (NOT an LLM provider)",
+            category="DOWNLOAD_SERVICE",  # Changed from "LLM" to avoid listing as LLM provider
+            capabilities={"model_download", "storage"},
+            discover=None,  # No model discovery - it's a download service
             validate=self._validate_huggingface_key,
             health_check=self._health_check_huggingface,
             required_dependencies=["transformers", "torch"],
-            fallback_priority=70,
-            can_fallback_to=["local", "superkent"],
-            fallback_models=[
-                {"id": "microsoft/DialoGPT-large", "name": "DialoGPT Large", "family": "gpt", "format": "safetensors"},
-                {"id": "microsoft/DialoGPT-medium", "name": "DialoGPT Medium", "family": "gpt", "format": "safetensors"},
-            ]
+            fallback_models=[]  # No fallback models - not an LLM provider
         )
         self.register_provider(huggingface_spec)
         
@@ -1113,7 +1188,8 @@ class LLMRegistry:
             description="CopilotKit UI framework for AI-powered interfaces",
             category="UI_FRAMEWORK",  # Separate category to exclude from LLM lists
             capabilities={"ui_integration", "code_assistance", "contextual_help"},
-            fallback_models=[]  # No models - it's a UI framework
+            fallback_models=[],  # No models - it's a UI framework
+            discover=None  # No model discovery - it's a UI framework
         )
         self.register_provider(copilotkit_spec)
     
@@ -1440,45 +1516,35 @@ class LLMRegistry:
     def _discover_local_models(self) -> List[Dict[str, Any]]:
         """Discover local model files."""
         try:
-            # This would scan local directories for model files
-            # For now, return empty list as placeholder
             models = []
             
-            # Scan common model directories
+            # Scan model directories using absolute paths
             model_dirs = [
-                Path("models"),
-                Path("~/.cache/huggingface/hub").expanduser(),
-                Path("~/.cache/llama.cpp").expanduser()
+                Path("/app/models/llama-cpp"),  # GGUF models for llama.cpp
+                Path("/app/models/stable-diffusion"),  # Diffusion models
+                # Note: transformers models are handled by separate runtime, not scanned here
             ]
             
             for model_dir in model_dirs:
                 if model_dir.exists():
                     # Scan for GGUF files
                     for gguf_file in model_dir.rglob("*.gguf"):
+                        # Skip duplicates
+                        model_id = gguf_file.stem
+                        if any(m.get("id") == model_id for m in models):
+                            continue
                         models.append({
                             "id": gguf_file.stem,
                             "name": gguf_file.stem.replace("-", " ").title(),
-                            "family": "unknown",
+                            "family": "llama",  # Better family detection
                             "format": "gguf",
                             "local_path": str(gguf_file),
                             "capabilities": ["text"],
                             "size": gguf_file.stat().st_size if gguf_file.exists() else None
                         })
-                    
-                    # Scan for safetensors files
-                    for st_file in model_dir.rglob("*.safetensors"):
-                        if "model" in st_file.name:  # Likely a model file
-                            models.append({
-                                "id": st_file.parent.name,
-                                "name": st_file.parent.name.replace("-", " ").title(),
-                                "family": "unknown",
-                                "format": "safetensors",
-                                "local_path": str(st_file.parent),
-                                "capabilities": ["text"],
-                                "size": st_file.stat().st_size if st_file.exists() else None
-                            })
             
-            return models[:10]  # Limit to first 10 found
+            logger.info(f"Discovered {len(models)} local models: {[m['id'] for m in models]}")
+            return models
         except Exception as e:
             logger.warning(f"Local model discovery failed: {e}")
             return []

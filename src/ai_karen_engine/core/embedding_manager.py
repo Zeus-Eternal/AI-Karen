@@ -8,11 +8,14 @@ import logging
 import os
 import time
 from collections import deque
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import numpy as np
 from functools import lru_cache
 
-SentenceTransformer = None  # type: ignore[assignment]
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
+SentenceTransformer: Optional[type] = None
 _SENTENCE_TRANSFORMERS_STATUS: Optional[bool] = None
 SENTENCE_TRANSFORMERS_AVAILABLE: bool = False
 
@@ -48,12 +51,10 @@ class EmbeddingManager:
                 self.model_name = config.default_embedding_model
             except Exception:
                 # Fallback to environment variable or default (using all-MPNet-base-v2 as per stack spec)
-                self.model_name = os.getenv(
-                    "KARI_EMBED_MODEL", 
-                    "sentence-transformers/all-MPNet-base-v2"
-                )
+                default_model = "sentence-transformers/all-MPNet-base-v2"
+                self.model_name = os.getenv("KARI_EMBED_MODEL", default_model)
         
-        self.model: Optional[SentenceTransformer] = None
+        self.model = None  # type: ignore[assignment]
         self.model_loaded = False
         self.dim = 768  # Default DistilBERT dimension
         self.cache_size = cache_size
@@ -87,7 +88,7 @@ class EmbeddingManager:
         return _SENTENCE_TRANSFORMERS_STATUS
 
     def _load_distilbert_model(self) -> bool:
-        """Load the DistilBERT model with proper error handling."""
+        """Load DistilBERT model with proper error handling."""
         if not self._ensure_sentence_transformers():
             logger.warning(
                 "[EmbeddingManager] sentence-transformers not installed; skipping DistilBERT load"
@@ -98,12 +99,56 @@ class EmbeddingManager:
             logger.info(f"[EmbeddingManager] Loading DistilBERT model: {self.model_name}")
             start_time = time.time()
 
-            # Load the sentence-transformers model
-            self.model = SentenceTransformer(self.model_name)
+            # Check if we're in offline mode and try to load from local cache
+            offline_mode = os.getenv("TRANSFORMERS_OFFLINE", "0") == "1" or os.getenv("HF_HUB_OFFLINE", "0") == "1"
+            
+            if offline_mode:
+                logger.info("[EmbeddingManager] Loading model in offline mode")
+                # Try alternative approach - specify cache folder and use model path directly
+                cache_dir = os.getenv("TRANSFORMERS_CACHE_DIR", "/root/.cache/huggingface")
+                model_path = f"{cache_dir}/hub/models--{self.model_name}"
+                logger.info(f"[EmbeddingManager] Trying to load from model path: {model_path}")
+                
+                # Check if model path exists
+                if os.path.exists(model_path):
+                    logger.info(f"[EmbeddingManager] Model path exists, loading from {model_path}")
+                    try:
+                        if SentenceTransformer is not None:
+                            st_class = SentenceTransformer
+                            self.model = st_class(model_path)
+                        else:
+                            raise RuntimeError("SentenceTransformer is None")
+                    except Exception as path_exc:
+                        logger.warning(f"[EmbeddingManager] Failed to load from model path: {path_exc}")
+                        # Try with original model name but with cache folder
+                        logger.info(f"[EmbeddingManager] Trying with cache folder")
+                        if SentenceTransformer is not None:
+                            st_class = SentenceTransformer
+                            self.model = st_class(self.model_name, cache_folder=cache_dir)
+                        else:
+                            raise RuntimeError("SentenceTransformer is None")
+                else:
+                    # Try with original model name but with cache folder
+                    logger.info(f"[EmbeddingManager] Model path not found, trying with cache folder")
+                    if SentenceTransformer is not None:
+                        st_class = SentenceTransformer
+                        self.model = st_class(self.model_name, cache_folder=cache_dir)
+                    else:
+                        raise RuntimeError("SentenceTransformer is None")
+            else:
+                # Load sentence-transformers model normally
+                if SentenceTransformer is not None:
+                    st_class = SentenceTransformer
+                    self.model = st_class(self.model_name)
+                else:
+                    raise RuntimeError("SentenceTransformer is None")
             
             # Test the model with a sample text to ensure it works and get dimension
-            test_embedding = self.model.encode("test", convert_to_numpy=True)
-            self.dim = len(test_embedding)
+            if self.model is not None:
+                test_embedding = self.model.encode("test", convert_to_numpy=True)
+                self.dim = len(test_embedding)
+            else:
+                raise RuntimeError("Model is None after loading")
             
             load_time = time.time() - start_time
             logger.info(f"[EmbeddingManager] Successfully loaded {self.model_name} in {load_time:.2f}s (dim={self.dim})")
@@ -119,7 +164,7 @@ class EmbeddingManager:
             return False
 
     async def initialize(self) -> None:
-        """Initialize the embedding manager and load the DistilBERT model."""
+        """Initialize embedding manager and load DistilBERT model."""
         success = self._load_distilbert_model()
         if not success:
             logger.warning("[EmbeddingManager] DistilBERT model loading failed - fallback mechanisms will be used")
@@ -131,8 +176,11 @@ class EmbeddingManager:
             
         try:
             # Use sentence-transformers for proper semantic embeddings
-            vector = self.model.encode(text, convert_to_numpy=True)
-            return vector.tolist()
+            if self.model is not None:
+                vector = self.model.encode(text, convert_to_numpy=True)
+                return vector.tolist()
+            else:
+                raise RuntimeError("Model is None during embedding computation")
         except Exception as exc:
             logger.error(f"[EmbeddingManager] DistilBERT encoding failed: {exc}")
             raise
@@ -294,7 +342,10 @@ class EmbeddingManager:
                 return [[0.0] * self.dim for _ in texts]
             
             # Batch encode with DistilBERT
-            embeddings = self.model.encode(valid_texts, convert_to_numpy=True, batch_size=32)
+            if self.model is not None:
+                embeddings = self.model.encode(valid_texts, convert_to_numpy=True, batch_size=32)
+            else:
+                raise RuntimeError("Model is None during batch embedding computation")
             
             # Create result list with proper ordering
             result = []
@@ -397,10 +448,10 @@ class EmbeddingManager:
             confidence = float(np.clip(confidence, 0.0, 1.0))
             
             return {
-                "similarity": similarity,
-                "confidence": confidence,
-                "magnitude_factor": magnitude_factor,
-                "similarity_factor": similarity_factor
+                "similarity": float(similarity),
+                "confidence": float(confidence),
+                "magnitude_factor": float(magnitude_factor),
+                "similarity_factor": float(similarity_factor)
             }
             
         except Exception as exc:
@@ -414,7 +465,7 @@ class EmbeddingManager:
 
     def find_most_similar(self, query_embedding: List[float], candidate_embeddings: List[List[float]], 
                          top_k: int = 5) -> List[Dict[str, Any]]:
-        """Find the most similar embeddings from a list of candidates."""
+        """Find most similar embeddings from a list of candidates."""
         try:
             if not candidate_embeddings:
                 return []

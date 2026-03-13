@@ -1,1 +1,0 @@
-export { ExtensionProvider } from '../../extensions';

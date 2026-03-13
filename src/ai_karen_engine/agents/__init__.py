@@ -1,78 +1,49 @@
 """
-Agent system for Kari's copilot integration.
+Agent Integration System for AI Karen Engine
 
-This package implements the agent planning and orchestration system with
-human-like cognitive architecture, soft reasoning, and comprehensive
-execution pipelines with guardrails.
+This package provides the integration layer between the UI components and the backend
+agent orchestration system, supporting multiple execution modes (Native, LangGraph, DeepAgents).
 """
 
-from .planner import (
-    AgentPlanner,
-    SoftReasoningEngine,
-    Plan,
-    PlanStep,
-    CognitionTrail,
-    ConfidenceScore,
-    RiskAssessment,
-    EmotionalContext,
-    ConfidenceLevel,
-    RiskLevel,
-    ReasoningType
+from .integration_service import AgentIntegrationService, get_agent_integration_service
+from .models import (
+    AgentExecutionMode,
+    AgentRequest,
+    AgentResponse,
+    AgentStatus,
+    AgentCapability,
+    AgentMetrics,
+    AgentConfig,
+    StreamChunk,
+    AgentError,
+    AgentLifecycleEvent
 )
-
-from .execution_pipeline import (
-    ExecutionPipeline,
-    ExecutionContext,
-    GuardrailEngine,
-    ApprovalWorkflow,
-    ApprovalRequest,
-    GuardrailCheck,
-    ExecutionStatus,
-    ApprovalStatus,
-    GuardrailViolation,
-    CircuitBreaker
+from .execution_handlers import (
+    NativeExecutionHandler,
+    LangGraphExecutionHandler,
+    DeepAgentsExecutionHandler,
+    get_execution_handler
 )
-
-from .audit_logger import (
-    AuditLogger,
-    AuditEvent,
-    AuditEventType,
-    AuditSeverity,
-    get_audit_logger,
-    initialize_audit_logging
-)
+from .lifecycle_manager import AgentLifecycleManager
+from .capability_router import AgentCapabilityRouter
 
 __all__ = [
-    # Planner components
-    "AgentPlanner",
-    "SoftReasoningEngine", 
-    "Plan",
-    "PlanStep",
-    "CognitionTrail",
-    "ConfidenceScore",
-    "RiskAssessment",
-    "EmotionalContext",
-    "ConfidenceLevel",
-    "RiskLevel",
-    "ReasoningType",
-    
-    # Execution pipeline components
-    "ExecutionPipeline",
-    "ExecutionContext",
-    "GuardrailEngine",
-    "ApprovalWorkflow",
-    "ApprovalRequest",
-    "GuardrailCheck",
-    "ExecutionStatus",
-    "ApprovalStatus",
-    "GuardrailViolation",
-    "CircuitBreaker",
-    
-    # Audit logging components
-    "AuditLogger",
-    "AuditEvent",
-    "AuditEventType",
-    "AuditSeverity",
-    "get_audit_logger",
-    "initialize_audit_logging"
+    "AgentIntegrationService",
+    "get_agent_integration_service",
+    "AgentExecutionMode",
+    "AgentRequest",
+    "AgentResponse",
+    "AgentStatus",
+    "AgentCapability",
+    "AgentMetrics",
+    "AgentConfig",
+    "StreamChunk",
+    "AgentError",
+    "AgentLifecycleEvent",
+    "NativeExecutionHandler",
+    "LangGraphExecutionHandler",
+    "DeepAgentsExecutionHandler",
+    "get_execution_handler",
+    "AgentLifecycleManager",
+    "AgentCapabilityRouter",
 ]

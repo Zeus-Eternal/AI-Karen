@@ -17,11 +17,17 @@ from enum import Enum
 import json
 from pathlib import Path
 
-from src.services.model_discovery_engine import (
-    ModelInfo, ModelType, ModalityType, ModelCategory, ModelSpecialization
+from services.memory.internal.model_discovery_engine import (
+    ModelInfo,
+    ModelType,
+    ModalityType,
+    ModelCategory,
+    ModelSpecialization,
 )
-from src.services.intelligent_model_router import (
-    ModelRouter, RoutingDecision, ModelPerformanceMetrics
+from services.memory.intelligent_model_router import (
+    ModelRouter,
+    RoutingDecision,
+    ModelPerformanceMetrics,
 )
 
 logger = logging.getLogger("kari.model_recommendation_engine")

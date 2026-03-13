@@ -768,7 +768,7 @@ class ServicesFactory:
             return None
 
         try:
-            from src.services.provider_health_monitor import (
+            from services.memory.internal.provider_health_monitor import (
                 ProviderHealthMonitor,
             )
 

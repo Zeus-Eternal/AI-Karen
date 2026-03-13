@@ -5,7 +5,11 @@ Handles 4.x validation requirements, environment-specific config, and framework 
 """
 
 import logging
-from .config import Settings
+try:
+    from .config import Settings
+except ImportError:
+    # Fallback for when running tests
+    from config import Settings
 
 logger = logging.getLogger("kari")
 

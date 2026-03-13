@@ -1,173 +1,60 @@
-"""
-Worker Agent Handler
+"""Handler for the worker agent."""
 
-This is the main entry point for the Worker Agent.
-It implements the standard agent interface as defined in the architecture specification.
-"""
-
-import json
-import logging
-from typing import Dict, Any, Optional
-
-logger = logging.getLogger(__name__)
+from typing import Any, Dict, Optional
 
 
 class WorkerAgentHandler:
-    """
-    Handler for the Worker Agent.
-    
-    This agent is responsible for executing tasks within a single domain.
-    It follows the standard agent interface defined in the architecture specification.
-    """
+    """Handler class for the worker agent."""
     
     def __init__(self):
         """Initialize the worker agent handler."""
-        self.context = {}
-        self.initialized = False
+        self.name = "worker_agent"
+        self.version = "1.0.0"
     
-    def initialize(self, context: Dict[str, Any]) -> None:
+    def process_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Initialize the agent with the given context.
+        Process a task and return the result.
         
         Args:
-            context: Initialization context containing configuration and state
-        """
-        logger.info("Initializing Worker Agent with context: %s", context)
-        self.context = context
-        self.initialized = True
-        logger.info("Worker Agent initialized successfully")
-    
-    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute a task.
-        
-        Args:
-            task: Task definition containing the task to execute
+            task: The task to process
             
         Returns:
-            Result of the task execution
+            The result of processing the task
         """
-        if not self.initialized:
-            raise RuntimeError("Worker Agent not initialized")
-        
-        logger.info("Executing task: %s", task)
-        
-        # Extract task details
+        # Basic task processing logic
         task_type = task.get("type", "unknown")
         task_data = task.get("data", {})
         
-        # Process the task based on its type
-        if task_type == "data_processing":
-            result = self._process_data(task_data)
-        elif task_type == "analysis":
-            result = self._perform_analysis(task_data)
-        else:
-            result = {"status": "error", "message": f"Unknown task type: {task_type}"}
+        result = {
+            "status": "completed",
+            "result": f"Processed {task_type} task",
+            "data": task_data
+        }
         
-        logger.info("Task execution result: %s", result)
         return result
     
-    def finalize(self, result: Dict[str, Any]) -> None:
+    def get_capabilities(self) -> list:
         """
-        Finalize the agent with the given result.
+        Get the capabilities of the worker agent.
         
-        Args:
-            result: Final result to process
-        """
-        if not self.initialized:
-            raise RuntimeError("Worker Agent not initialized")
-        
-        logger.info("Finalizing Worker Agent with result: %s", result)
-        
-        # Perform any cleanup or final processing
-        self.context = {}
-        self.initialized = False
-        
-        logger.info("Worker Agent finalized successfully")
-    
-    def _process_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process data task.
-        
-        Args:
-            data: Data to process
-            
         Returns:
-            Result of data processing
+            List of capabilities
         """
-        # Placeholder for data processing logic
-        processed_data = {
-            "status": "success",
-            "message": "Data processed successfully",
-            "input_data": data,
-            "processed_at": "2025-11-26T00:00:00Z"
-        }
-        return processed_data
+        return [
+            "task_execution",
+            "basic_reasoning",
+            "response_generation"
+        ]
     
-    def _perform_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def get_info(self) -> Dict[str, Any]:
         """
-        Perform analysis task.
+        Get information about the worker agent.
         
-        Args:
-            data: Data to analyze
-            
         Returns:
-            Result of analysis
+            Agent information
         """
-        # Placeholder for analysis logic
-        analysis_result = {
-            "status": "success",
-            "message": "Analysis completed successfully",
-            "input_data": data,
-            "analysis_result": {
-                "summary": "This is a placeholder analysis result",
-                "confidence": 0.95
-            },
-            "analyzed_at": "2025-11-26T00:00:00Z"
+        return {
+            "name": self.name,
+            "version": self.version,
+            "capabilities": self.get_capabilities()
         }
-        return analysis_result
-
-
-# Global handler instance
-_handler = None
-
-
-def initialize(context: Dict[str, Any]) -> None:
-    """
-    Initialize the agent with the given context.
-    
-    Args:
-        context: Initialization context containing configuration and state
-    """
-    global _handler
-    _handler = WorkerAgentHandler()
-    _handler.initialize(context)
-
-
-def execute(task: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Execute a task.
-    
-    Args:
-        task: Task definition containing the task to execute
-        
-    Returns:
-        Result of the task execution
-    """
-    if _handler is None:
-        raise RuntimeError("Worker Agent not initialized")
-    
-    return _handler.execute(task)
-
-
-def finalize(result: Dict[str, Any]) -> None:
-    """
-    Finalize the agent with the given result.
-    
-    Args:
-        result: Final result to process
-    """
-    if _handler is None:
-        raise RuntimeError("Worker Agent not initialized")
-    
-    _handler.finalize(result)

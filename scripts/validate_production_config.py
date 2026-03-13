@@ -29,10 +29,12 @@ class ProductionConfigValidator:
         self.issues: List[ValidationIssue] = []
         self.config_files = {
             'env': '.env',
-            'production_env': 'config/production.env',
-            'production_json': 'config/production.json',
-            'security_yml': 'config/security_production.yml',
-            'logging_yml': 'config/logging_production.yml'
+            'production_env': 'config/production/production.env',
+            'production_json': 'config/production/production.json',
+            'security_yml': 'config/production/security_production.yml',
+            'logging_yml': 'config/production/logging_production.yml',
+            'auth_env': 'config/auth/production_auth_config.env',
+            'deployment_yml': 'config/deployment/deployment.yml'
         }
         
     def add_issue(self, category: str, severity: str, message: str, 

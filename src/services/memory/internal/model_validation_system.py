@@ -25,7 +25,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import platform
 import psutil
 
-from ...internal.model_discovery_engine import ModelInfo, ModelType, ModelStatus, ResourceRequirements
+from services.memory.internal.model_discovery_engine import (
+    ModelInfo,
+    ModelType,
+    ModelStatus,
+    ResourceRequirements,
+)
 
 logger = logging.getLogger("kari.model_validation_system")
 

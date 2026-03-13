@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-10-22T22:33:52.549Z",
+  "summary": {
+    "PASS": 1,
+    "WARNING": 2,
+    "FAIL": 1
+  },
+  "results": [
+    {
+      "category": "Server",
+      "test": "Availability",
+      "status": "FAIL",
+      "message": "Server not accessible: Request timeout",
+      "details": null
+    },
+    {
+      "category": "FileSystem",
+      "test": ".env.local permissions",
+      "status": "WARNING",
+      "message": "File permissions: 777 (should be 600 for env files)",
+      "details": null
+    },
+    {
+      "category": "FileSystem",
+      "test": "package.json permissions",
+      "status": "PASS",
+      "message": "File permissions: 777",
+      "details": null
+    },
+    {
+      "category": "FileSystem",
+      "test": "Backup files",
+      "status": "WARNING",
+      "message": "Found 2 backup files: .next.bak.old, .next.old",
+      "details": null
+    }
+  ]
+}

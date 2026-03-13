@@ -1,0 +1,369 @@
+/* ========================================
+   KAREN AI - PRODUCTION OPTIMIZATIONS
+   Performance and bundle size optimizations
+   ======================================== */
+
+/* ====== CRITICAL CSS INLINING ====== */
+
+/* Above-the-fold critical styles */
+.critical-above-fold {
+  /* Essential layout styles for immediate render */
+  display: block;
+  visibility: visible;
+}
+
+/* ====== BUNDLE OPTIMIZATIONS ====== */
+
+/* Remove unused CSS classes */
+.unused-component {
+  /* This will be removed by PurgeCSS/Tailwind JIT */
+}
+
+/* ====== PERFORMANCE OPTIMIZATIONS ====== */
+
+/* GPU acceleration for smooth animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Contain paint for better performance */
+.paint-contained {
+  contain: layout style paint;
+}
+
+/* Optimize images */
+.optimized-image {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px 200px;
+  loading: lazy;
+}
+
+/* ====== LAZY LOADING STYLES ====== */
+
+/* Lazy loading placeholder */
+.lazy-placeholder {
+  background: linear-gradient(90deg, var(--color-neutral-100) 25%, var(--color-neutral-200) 50%, var(--color-neutral-100) 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Lazy loaded content fade-in */
+.lazy-loaded {
+  animation: lazy-fade-in 0.3s ease-out;
+}
+
+@keyframes lazy-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ====== CODE SPLITTING OPTIMIZATIONS ====== */
+
+/* Dynamic component loading states */
+.dynamic-component-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background: var(--color-neutral-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-neutral-200);
+}
+
+.dynamic-component-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background: var(--color-error);
+  color: var(--color-background);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+}
+
+/* ====== TREE SHAKING HELPERS ====== */
+
+/* Mark classes that should be preserved */
+.preserve-class {
+  /* This class should be preserved during tree shaking */
+}
+
+/* ====== MEMORY OPTIMIZATIONS ====== */
+
+/* Virtual scrolling helpers */
+.virtual-scroll-container {
+  overflow-y: auto;
+  contain: strict;
+  height: 100%;
+}
+
+.virtual-scroll-item {
+  contain: layout style;
+  will-change: transform;
+}
+
+/* ====== NETWORK OPTIMIZATIONS ====== */
+
+/* Resource hints */
+.preload-critical {
+  /* Applied to critical resources */
+}
+
+.prefetch-next {
+  /* Applied to next page resources */
+}
+
+/* ====== RENDERING OPTIMIZATIONS ====== */
+
+/* Reduce layout thrashing */
+.layout-stable {
+  contain: layout;
+}
+
+/* Optimize reflows */
+.reflow-optimized {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ====== ANIMATION PERFORMANCE ====== */
+
+/* Use transform and opacity for animations */
+.performant-animation {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Avoid expensive properties */
+.no-expensive-animations * {
+  /* Avoid animating these properties */
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ====== FONT OPTIMIZATIONS ====== */
+
+/* Font display strategies */
+.font-display-swap {
+  font-display: swap;
+}
+
+.font-display-fallback {
+  font-display: fallback;
+}
+
+.font-display-optional {
+  font-display: optional;
+}
+
+/* ====== INTERSECTION OBSERVER HELPERS ====== */
+
+/* Elements that should be lazy loaded */
+.intersection-observer-target {
+  /* Target for intersection observer */
+}
+
+/* ====== WEB VITALS OPTIMIZATIONS ====== */
+
+/* Largest Contentful Paint (LCP) optimization */
+.lcp-optimized {
+  /* Apply to largest content element */
+  contain: layout;
+  will-change: transform;
+}
+
+/* First Input Delay (FID) optimization */
+.fid-optimized {
+  /* Apply to interactive elements */
+  touch-action: manipulation;
+}
+
+/* Cumulative Layout Shift (CLS) optimization */
+.cls-stable {
+  /* Apply to elements that might cause layout shift */
+  contain: layout;
+  position: relative;
+}
+
+/* ====== SERVICE WORKER OPTIMIZATIONS ====== */
+
+/* Offline fallback styles */
+.offline-fallback {
+  display: none;
+}
+
+.offline .offline-fallback {
+  display: block;
+}
+
+/* ====== BROWSER COMPATIBILITY ====== */
+
+/* Progressive enhancement */
+.progressive-enhancement {
+  /* Base styles for all browsers */
+}
+
+@supports (display: grid) {
+  .progressive-enhancement {
+    /* Enhanced styles for modern browsers */
+    display: grid;
+  }
+}
+
+/* ====== ACCESSIBILITY OPTIMIZATIONS ====== */
+
+/* Skip links for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary);
+  color: var(--color-background);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* ====== DEBUGGING AND PROFILING ====== */
+
+/* Performance debugging (remove in production) */
+.debug-performance {
+  /* Debug styles for performance profiling */
+  outline: 2px solid red;
+}
+
+.debug-performance::before {
+  content: "DEBUG";
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: red;
+  color: white;
+  padding: 2px 4px;
+  font-size: 10px;
+}
+
+/* ====== MEDIA QUERY OPTIMIZATIONS ====== */
+
+/* Responsive image optimization */
+.responsive-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Mobile-first responsive utilities */
+@media (max-width: 767px) {
+  .mobile-optimized {
+    /* Mobile-specific optimizations */
+    font-size: 16px; /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-optimized {
+    /* Desktop-specific optimizations */
+  }
+}
+
+/* ====== REDUCED MOTION SUPPORT ====== */
+
+@media (prefers-reduced-motion: reduce) {
+  .respect-reduced-motion {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ====== HIGH CONTRAST MODE ====== */
+
+@media (prefers-contrast: high) {
+  .high-contrast-optimized {
+    border-width: 2px;
+    outline: 2px solid currentColor;
+  }
+}
+
+/* ====== DATA SAVING MODE ====== */
+
+@media (prefers-reduced-data: reduce) {
+  .data-saving-optimized {
+    /* Reduce data usage */
+    background-image: none !important;
+    video {
+      display: none;
+    }
+  }
+}
+
+/* ====== BATTERY OPTIMIZATIONS ====== */
+
+@media (prefers-reduced-transparency: reduce) {
+  .battery-optimized {
+    /* Reduce transparency and effects */
+    backdrop-filter: none !important;
+    background: var(--color-surface) !important;
+  }
+}
+
+/* ====== PRINT OPTIMIZATIONS ====== */
+
+@media print {
+  .print-optimized {
+    /* Print-specific optimizations */
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ====== CRITICAL CSS METRICS ====== */
+
+/* Performance metrics visualization (development only) */
+.performance-metrics {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 9999;
+}
+
+/* Hide in production */
+body:not(.development) .performance-metrics {
+  display: none;
+}

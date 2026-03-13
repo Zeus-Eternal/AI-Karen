@@ -15,9 +15,14 @@ except ImportError:
     Response = object
     BaseHTTPMiddleware = object
 
-from ai_karen_engine.core.logging.logger import get_logger
+from ai_karen_engine.core.logging.logger import get_structured_logger
+import logging
 
-logger = get_logger(__name__)
+# Get the underlying Python logger
+logger = get_structured_logger(__name__).logger
+
+# Context storage for request tracking
+_context = {}
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -53,14 +58,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             trace_id = str(uuid.uuid4())
             request.state.trace_id = trace_id
         
-        # Set logging context
-        logger.set_context(
-            request_id=request_id,
-            trace_id=trace_id,
-            method=request.method,
-            path=request.url.path,
-            client_ip=request.client.host if request.client else "unknown"
-        )
+        # Store context for this request
+        global _context
+        _context.update({
+            'request_id': request_id,
+            'trace_id': trace_id,
+            'method': request.method,
+            'path': request.url.path,
+            'client_ip': request.client.host if request.client else "unknown"
+        })
+        
+        # Create logger adapter with context
+        logger_adapter = logging.LoggerAdapter(logger, _context)
         
         # Log request
         start_time = time.time()
@@ -81,7 +90,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 request_info["body_error"] = str(e)
         
-        logger.info("Request started", **request_info)
+        logger_adapter.info("Request started", extra={'context': {**_context, **request_info}})
         
         try:
             # Process request
@@ -108,11 +117,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             
             # Log based on status code
             if response.status_code >= 500:
-                logger.error("Request completed with server error", **response_info)
+                logger_adapter.error("Request completed with server error", extra={'context': {**_context, **response_info}})
             elif response.status_code >= 400:
-                logger.warning("Request completed with client error", **response_info)
+                logger_adapter.warning("Request completed with client error", extra={'context': {**_context, **response_info}})
             else:
-                logger.info("Request completed successfully", **response_info)
+                logger_adapter.info("Request completed successfully", extra={'context': {**_context, **response_info}})
             
             # Add headers to response
             response.headers["X-Request-ID"] = request_id
@@ -126,19 +135,22 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             process_time = time.time() - start_time
             
             # Log exception
-            logger.exception(
+            logger_adapter.exception(
                 "Request failed with exception",
-                error_type=type(error).__name__,
-                error_message=str(error),
-                process_time=round(process_time, 4)
+                extra={'context': {
+                    **_context,
+                    'error_type': type(error).__name__,
+                    'error_message': str(error),
+                    'process_time': round(process_time, 4)
+                }}
             )
             
             # Re-raise the exception to be handled by error middleware
             raise
         
         finally:
-            # Clear logging context
-            logger.clear_context()
+            # Clear context for this request
+            _context.clear()
 
 
 def logging_middleware(

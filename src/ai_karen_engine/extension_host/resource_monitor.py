@@ -22,7 +22,7 @@ except ImportError:
     PSUTIL_AVAILABLE = False
     psutil = None
 
-from ai_karen_engine.extension_host.models2 import ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extension_host.models import ExtensionRecord, ExtensionStatus
 from ai_karen_engine.hooks.hook_types import HookTypes
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.database.models import ExtensionUsage

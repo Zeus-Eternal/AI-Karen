@@ -1,361 +1,286 @@
 """
-Tests for Backend FastAPI Database Configuration.
-Tests database connection timeout settings, connection pooling, and graceful shutdown.
+Tests for database configuration functionality.
+
+Tests database connection settings, validation, and error handling.
 """
 
-import asyncio
 import pytest
-import time
-from unittest.mock import Mock, patch, AsyncMock
-from datetime import datetime, timezone
+from unittest.mock import Mock, patch
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import the modules to test
-from server.config import Settings
-from server.database_config import DatabaseConfig, get_database_config
+from validate_database_config import (
+    validate_database_connection,
+    get_database_connection_status,
+    DatabaseConfigError,
+    DatabaseConnectionStatus
+)
 
 
-class TestDatabaseConfig:
-    """Test database configuration functionality"""
+class TestDatabaseConnectionValidation:
+    """Test database connection validation functionality."""
     
-    @pytest.fixture
-    def settings(self):
-        """Create test settings with enhanced database configuration"""
-        return Settings(
-            database_url="postgresql://test_user:test_pass@localhost:5432/test_db",
-            db_connection_timeout=45,
-            db_query_timeout=30,
-            db_pool_size=10,
-            db_max_overflow=20,
-            db_pool_recycle=3600,
-            db_pool_pre_ping=True,
-            db_pool_timeout=30,
-            db_echo=False,
-            db_health_check_interval=30,
-            db_max_connection_failures=5,
-            db_connection_retry_delay=5,
-            shutdown_timeout=30,
-            enable_graceful_shutdown=True,
-        )
-    
-    @pytest.fixture
-    def db_config(self, settings):
-        """Create database configuration instance"""
-        return DatabaseConfig(settings)
-    
-    def test_database_config_initialization(self, db_config, settings):
-        """Test database configuration initialization"""
-        assert db_config.settings == settings
-        assert db_config._database_manager is None
-        assert not db_config._shutdown_event.is_set()
-        assert db_config._graceful_shutdown_task is None
-    
-    @pytest.mark.asyncio
-    async def test_initialize_database_success(self, db_config):
-        """Test successful database initialization"""
-        mock_manager = Mock()
-        mock_manager.initialize = AsyncMock(return_value=True)
-        
-        with patch('server.database_config.initialize_database_manager', 
-                  return_value=mock_manager) as mock_init:
-            result = await db_config.initialize_database()
-            
-            assert result is True
-            assert db_config._database_manager == mock_manager
-            
-            # Verify initialization was called with correct parameters
-            mock_init.assert_called_once_with(
-                database_url=db_config.settings.database_url,
-                pool_size=db_config.settings.db_pool_size,
-                max_overflow=db_config.settings.db_max_overflow,
-                pool_recycle=db_config.settings.db_pool_recycle,
-                pool_pre_ping=db_config.settings.db_pool_pre_ping,
-                echo=db_config.settings.db_echo,
-            )
-    
-    @pytest.mark.asyncio
-    async def test_initialize_database_failure(self, db_config):
-        """Test database initialization failure"""
-        with patch('server.database_config.initialize_database_manager', 
-                  side_effect=Exception("Connection failed")):
-            result = await db_config.initialize_database()
-            
-            assert result is False
-            assert db_config._database_manager is None
-    
-    @pytest.mark.asyncio
-    async def test_setup_graceful_shutdown_enabled(self, db_config):
-        """Test graceful shutdown setup when enabled"""
-        db_config.settings.enable_graceful_shutdown = True
-        
-        with patch('signal.signal') as mock_signal:
-            await db_config.setup_graceful_shutdown()
-            
-            # Verify signal handlers were registered
-            assert mock_signal.call_count == 2
-            assert db_config._graceful_shutdown_task is not None
-    
-    @pytest.mark.asyncio
-    async def test_setup_graceful_shutdown_disabled(self, db_config):
-        """Test graceful shutdown setup when disabled"""
-        db_config.settings.enable_graceful_shutdown = False
-        
-        with patch('signal.signal') as mock_signal:
-            await db_config.setup_graceful_shutdown()
-            
-            # Verify no signal handlers were registered
-            mock_signal.assert_not_called()
-            assert db_config._graceful_shutdown_task is None
-    
-    @pytest.mark.asyncio
-    async def test_get_database_health_not_initialized(self, db_config):
-        """Test database health when not initialized"""
-        health = await db_config.get_database_health()
-        
-        assert health["status"] == "not_initialized"
-        assert health["healthy"] is False
-        assert "error" in health
-    
-    @pytest.mark.asyncio
-    async def test_get_database_health_success(self, db_config):
-        """Test successful database health check"""
-        mock_manager = Mock()
-        mock_health_data = {
-            "healthy": True,
-            "response_time_ms": 50.0,
-            "pool_info": {"size": 10, "checked_out": 2}
+    def test_valid_postgresql_config(self):
+        """Test validation of valid PostgreSQL configuration."""
+        valid_config = {
+            "type": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "database": "test_db",
+            "username": "test_user",
+            "password": "test_password",
+            "ssl_mode": "require"
         }
-        mock_manager._health_check = AsyncMock(return_value=mock_health_data)
-        db_config._database_manager = mock_manager
         
-        health = await db_config.get_database_health()
+        result = validate_database_connection(valid_config)
         
-        assert health["healthy"] is True
-        assert health["response_time_ms"] == 50.0
-        assert "configuration" in health
-        assert health["configuration"]["pool_size"] == db_config.settings.db_pool_size
+        assert result.is_valid is True
+        assert result.config_type == "postgresql"
+        assert result.connection_string is not None
     
-    @pytest.mark.asyncio
-    async def test_get_database_health_failure(self, db_config):
-        """Test database health check failure"""
-        mock_manager = Mock()
-        mock_manager._health_check = AsyncMock(side_effect=Exception("Health check failed"))
-        db_config._database_manager = mock_manager
+    def test_valid_redis_config(self):
+        """Test validation of valid Redis configuration."""
+        valid_config = {
+            "type": "redis",
+            "host": "localhost",
+            "port": 6379,
+            "database": 0,
+            "password": "test_password"
+        }
         
-        health = await db_config.get_database_health()
+        result = validate_database_connection(valid_config)
         
-        assert health["status"] == "error"
-        assert health["healthy"] is False
-        assert "error" in health
+        assert result.is_valid is True
+        assert result.config_type == "redis"
+        assert result.connection_string is not None
     
-    @pytest.mark.asyncio
-    async def test_test_database_connection_success(self, db_config):
-        """Test successful database connection test"""
-        mock_manager = Mock()
-        mock_manager.async_health_check = AsyncMock(return_value=True)
-        db_config._database_manager = mock_manager
+    def test_invalid_config_missing_type(self):
+        """Test validation of config with missing type."""
+        invalid_config = {
+            "host": "localhost",
+            "port": 5432,
+            "database": "test_db"
+        }
         
-        result = await db_config.test_database_connection()
+        result = validate_database_connection(invalid_config)
         
-        assert result is True
-        mock_manager.async_health_check.assert_called_once()
+        assert result.is_valid is False
+        assert len(result.errors) > 0
+        assert any("type" in error.lower() for error in result.errors)
     
-    @pytest.mark.asyncio
-    async def test_test_database_connection_timeout(self, db_config):
-        """Test database connection test timeout"""
-        mock_manager = Mock()
-        # Simulate a slow health check that times out
-        async def slow_health_check():
-            await asyncio.sleep(db_config.settings.db_connection_timeout + 1)
-            return True
+    def test_invalid_config_invalid_port(self):
+        """Test validation of config with invalid port."""
+        invalid_config = {
+            "type": "postgresql",
+            "host": "localhost",
+            "port": "invalid_port",
+            "database": "test_db",
+            "username": "test_user",
+            "password": "test_password"
+        }
         
-        mock_manager.async_health_check = slow_health_check
-        db_config._database_manager = mock_manager
+        result = validate_database_connection(invalid_config)
         
-        result = await db_config.test_database_connection()
-        
-        assert result is False
+        assert result.is_valid is False
+        assert len(result.errors) > 0
+        assert any("port" in error.lower() for error in result.errors)
     
-    @pytest.mark.asyncio
-    async def test_test_database_connection_not_initialized(self, db_config):
-        """Test database connection test when not initialized"""
-        result = await db_config.test_database_connection()
+    def test_invalid_config_missing_required_fields(self):
+        """Test validation of config with missing required fields."""
+        invalid_config = {
+            "type": "postgresql"
+            # Missing host, database, username, password
+        }
         
-        assert result is False
+        result = validate_database_connection(invalid_config)
+        
+        assert result.is_valid is False
+        assert len(result.errors) > 0
     
-    @pytest.mark.asyncio
-    async def test_cleanup_success(self, db_config):
-        """Test successful cleanup"""
-        # Setup mock task and manager
-        mock_task = Mock()
-        mock_task.done.return_value = False
-        mock_task.cancel = Mock()
-        mock_task.__await__ = Mock(return_value=iter([]))
+    def test_unsupported_database_type(self):
+        """Test validation of unsupported database type."""
+        invalid_config = {
+            "type": "unsupported_db",
+            "host": "localhost",
+            "port": 5432,
+            "database": "test_db",
+            "username": "test_user",
+            "password": "test_password"
+        }
         
-        mock_manager = Mock()
-        mock_manager.close = AsyncMock()
+        result = validate_database_connection(invalid_config)
         
-        db_config._graceful_shutdown_task = mock_task
-        db_config._database_manager = mock_manager
-        
-        await db_config.cleanup()
-        
-        # Verify cleanup was performed
-        mock_task.cancel.assert_called_once()
-        mock_manager.close.assert_called_once()
+        assert result.is_valid is False
+        assert len(result.errors) > 0
+        assert any("unsupported" in error.lower() for error in result.errors)
+
+
+class TestDatabaseConnectionStatus:
+    """Test database connection status functionality."""
     
-    @pytest.mark.asyncio
-    async def test_cleanup_with_exception(self, db_config):
-        """Test cleanup with exception handling"""
-        mock_manager = Mock()
-        mock_manager.close = AsyncMock(side_effect=Exception("Close failed"))
-        db_config._database_manager = mock_manager
+    def test_get_connection_status_healthy(self):
+        """Test getting status of healthy database connection."""
+        with patch('validate_database_config.check_database_health') as mock_health_check:
+            mock_health_check.return_value = {
+                "status": "healthy",
+                "response_time": 0.05,
+                "last_check": "2023-01-01T00:00:00Z"
+            }
+            
+            status = get_database_connection_status("postgresql")
+            
+            assert status.status == DatabaseConnectionStatus.HEALTHY
+            assert status.response_time == 0.05
+            assert status.last_check == "2023-01-01T00:00:00Z"
+    
+    def test_get_connection_status_degraded(self):
+        """Test getting status of degraded database connection."""
+        with patch('validate_database_config.check_database_health') as mock_health_check:
+            mock_health_check.return_value = {
+                "status": "degraded",
+                "response_time": 0.5,
+                "last_check": "2023-01-01T00:00:00Z",
+                "error": "High latency detected"
+            }
+            
+            status = get_database_connection_status("postgresql")
+            
+            assert status.status == DatabaseConnectionStatus.DEGRADED
+            assert status.response_time == 0.5
+            assert status.error == "High latency detected"
+    
+    def test_get_connection_status_unhealthy(self):
+        """Test getting status of unhealthy database connection."""
+        with patch('validate_database_config.check_database_health') as mock_health_check:
+            mock_health_check.return_value = {
+                "status": "unhealthy",
+                "response_time": None,
+                "last_check": "2023-01-01T00:00:00Z",
+                "error": "Connection failed"
+            }
+            
+            status = get_database_connection_status("postgresql")
+            
+            assert status.status == DatabaseConnectionStatus.UNHEALTHY
+            assert status.response_time is None
+            assert status.error == "Connection failed"
+    
+    def test_get_connection_status_with_exception(self):
+        """Test getting status when health check raises exception."""
+        with patch('validate_database_config.check_database_health', side_effect=Exception("Database error")):
+            status = get_database_connection_status("postgresql")
+            
+            assert status.status == DatabaseConnectionStatus.ERROR
+            assert "Database error" in status.error
+
+
+class TestDatabaseConfigError:
+    """Test DatabaseConfigError exception class."""
+    
+    def test_database_config_error_creation(self):
+        """Test creating DatabaseConfigError with message."""
+        error = DatabaseConfigError("Test error message")
         
-        # Should not raise exception
-        await db_config.cleanup()
+        assert str(error) == "Test error message"
+        assert "DatabaseConfigError" in str(type(error))
+    
+    def test_database_config_error_with_code(self):
+        """Test creating DatabaseConfigError with message and code."""
+        error = DatabaseConfigError("Test error", code="DB001")
         
-        mock_manager.close.assert_called_once()
+        assert str(error) == "Test error"
+        assert error.code == "DB001"
+    
+    def test_database_config_error_with_details(self):
+        """Test creating DatabaseConfigError with message and details."""
+        details = {"host": "localhost", "port": 5432}
+        error = DatabaseConfigError("Test error", details=details)
+        
+        assert str(error) == "Test error"
+        assert error.details == details
 
 
 class TestDatabaseConfigIntegration:
-    """Integration tests for database configuration"""
+    """Test database configuration integration with other components."""
     
-    @pytest.mark.asyncio
-    async def test_database_lifespan_success(self):
-        """Test database lifespan context manager success"""
-        settings = Settings(
-            database_url="postgresql://test:test@localhost:5432/test",
-            enable_graceful_shutdown=False  # Disable for test
-        )
+    @patch('validate_database_config.psycopg2')
+    @patch('validate_database_config.redis')
+    def test_postgresql_connection_string_generation(self, mock_redis, mock_psycopg2):
+        """Test PostgreSQL connection string generation."""
+        from validate_database_config import generate_postgresql_connection_string
         
-        with patch('server.database_config.DatabaseConfig.initialize_database', 
-                  return_value=True) as mock_init:
-            with patch('server.database_config.DatabaseConfig.setup_graceful_shutdown') as mock_shutdown:
-                with patch('server.database_config.DatabaseConfig.cleanup') as mock_cleanup:
-                    from server.database_config import database_lifespan
-                    
-                    async with database_lifespan(settings) as db_config:
-                        assert db_config is not None
-                        mock_init.assert_called_once()
-                        mock_shutdown.assert_called_once()
-                    
-                    mock_cleanup.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_database_lifespan_initialization_failure(self):
-        """Test database lifespan with initialization failure"""
-        settings = Settings(
-            database_url="postgresql://test:test@localhost:5432/test",
-            enable_graceful_shutdown=False
-        )
+        mock_psycopg2.connect.return_value = Mock()  # Mock successful connection
         
-        with patch('server.database_config.DatabaseConfig.initialize_database', 
-                  side_effect=Exception("Init failed")):
-            with patch('server.database_config.DatabaseConfig.cleanup') as mock_cleanup:
-                from server.database_config import database_lifespan
-                
-                async with database_lifespan(settings) as db_config:
-                    assert db_config is None
-                
-                mock_cleanup.assert_called_once()
-    
-    def test_get_database_config_singleton(self):
-        """Test database config singleton pattern"""
-        settings = Settings()
-        
-        # First call creates instance
-        config1 = get_database_config(settings)
-        assert config1 is not None
-        
-        # Second call returns same instance
-        config2 = get_database_config()
-        assert config1 is config2
-
-
-class TestDatabaseConfigurationSettings:
-    """Test database configuration settings"""
-    
-    def test_default_database_settings(self):
-        """Test default database configuration values"""
-        settings = Settings()
-        
-        # Test timeout settings (Requirements 4.3, 4.4)
-        assert settings.db_connection_timeout == 45  # Increased from 15 to 45 seconds
-        assert settings.db_query_timeout == 30
-        
-        # Test connection pool settings
-        assert settings.db_pool_size == 10
-        assert settings.db_max_overflow == 20
-        assert settings.db_pool_recycle == 3600  # 1 hour
-        assert settings.db_pool_pre_ping is True
-        assert settings.db_pool_timeout == 30
-        assert settings.db_echo is False
-        
-        # Test health monitoring settings
-        assert settings.db_health_check_interval == 30
-        assert settings.db_max_connection_failures == 5
-        assert settings.db_connection_retry_delay == 5
-        
-        # Test graceful shutdown settings
-        assert settings.shutdown_timeout == 30
-        assert settings.enable_graceful_shutdown is True
-    
-    def test_environment_variable_override(self):
-        """Test that environment variables override default settings"""
-        import os
-        
-        # Set environment variables
-        env_vars = {
-            "DB_CONNECTION_TIMEOUT": "60",
-            "DB_POOL_SIZE": "15",
-            "DB_MAX_OVERFLOW": "30",
-            "ENABLE_GRACEFUL_SHUTDOWN": "false",
+        config = {
+            "type": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "database": "test_db",
+            "username": "test_user",
+            "password": "test_password",
+            "ssl_mode": "require"
         }
         
-        with patch.dict(os.environ, env_vars):
-            settings = Settings()
-            
-            assert settings.db_connection_timeout == 60
-            assert settings.db_pool_size == 15
-            assert settings.db_max_overflow == 30
-            assert settings.enable_graceful_shutdown is False
-
-
-class TestDatabaseHealthEndpoints:
-    """Test database health endpoint functionality"""
+        connection_string = generate_postgresql_connection_string(config)
+        
+        # Verify the connection string format
+        assert "postgresql://" in connection_string
+        assert "test_user" in connection_string
+        assert "test_password" in connection_string
+        assert "localhost" in connection_string
+        assert "5432" in connection_string
+        assert "test_db" in connection_string
     
-    @pytest.mark.asyncio
-    async def test_database_health_endpoint_success(self):
-        """Test database health endpoint with successful response"""
-        mock_db_config = Mock()
-        mock_health_data = {
-            "healthy": True,
-            "response_time_ms": 25.0,
-            "configuration": {"pool_size": 10}
+    @patch('validate_database_config.redis')
+    def test_redis_connection_string_generation(self, mock_redis):
+        """Test Redis connection string generation."""
+        from validate_database_config import generate_redis_connection_string
+        
+        config = {
+            "type": "redis",
+            "host": "localhost",
+            "port": 6379,
+            "database": 0,
+            "password": "test_password"
         }
-        mock_db_config.get_database_health = AsyncMock(return_value=mock_health_data)
         
-        # Simulate endpoint call
-        start_time = datetime.now(timezone.utc)
-        health_response = await mock_db_config.get_database_health()
+        connection_string = generate_redis_connection_string(config)
         
-        assert health_response["healthy"] is True
-        assert health_response["response_time_ms"] == 25.0
-        assert "configuration" in health_response
+        # Verify the connection string format
+        assert "redis://" in connection_string
+        assert "test_password" in connection_string
+        assert "localhost" in connection_string
+        assert "6379" in connection_string
+        assert "0" in connection_string
     
-    @pytest.mark.asyncio
-    async def test_database_connection_test_endpoint(self):
-        """Test database connection test endpoint"""
-        mock_db_config = Mock()
-        mock_db_config.test_database_connection = AsyncMock(return_value=True)
-        
-        start_time = time.time()
-        result = await mock_db_config.test_database_connection()
-        end_time = time.time()
-        
-        response_time = (end_time - start_time) * 1000
-        
-        assert result is True
-        assert response_time < 1000  # Should be fast for mock
+    def test_database_connection_retry_logic(self):
+        """Test database connection retry logic."""
+        with patch('validate_database_config.time.sleep') as mock_sleep:
+            with patch('validate_database_config.check_database_health') as mock_health_check:
+                # First attempt fails
+                mock_health_check.side_effect = [
+                    {"status": "unhealthy", "error": "Connection failed"},
+                    {"status": "healthy"}  # Second attempt succeeds
+                ]
+                
+                from validate_database_config import connect_with_retry
+                
+                config = {
+                    "type": "postgresql",
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "test_db",
+                    "username": "test_user",
+                    "password": "test_password"
+                }
+                
+                # Should retry and succeed
+                result = connect_with_retry(config, max_retries=2)
+                
+                assert result is not None
+                # Verify sleep was called for retry
+                mock_sleep.assert_called_once_with(1)
 
 
 if __name__ == "__main__":

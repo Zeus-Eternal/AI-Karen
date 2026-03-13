@@ -34,6 +34,13 @@ logger = logging.getLogger(__name__)
 class Permission(str, Enum):
     """System permissions recognised by the RBAC layer."""
 
+    # Legacy-friendly shorthand permissions
+    READ = "read"
+    EDIT = "edit"
+    BROWSER = "browser"
+    COMMAND = "command"
+    MCP = "mcp"
+
     # Training and experimentation
     TRAINING_READ = "training:read"
     TRAINING_WRITE = "training:write"

@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,8 @@ class VectorDBConfig:
     """Vector database configuration."""
 
     provider: str = "milvus"  # milvus, pinecone, weaviate
-    host: str = "localhost"
-    port: int = 19530
+    host: str = "ai-karen-milvus"
+    port: int = 19531
     collection_name: str = "ai_karen_memories"
     dimension: int = 1536
     metric_type: str = "COSINE"
@@ -153,7 +153,7 @@ class AIKarenConfig:
 
     # NLP and Embedding Models
     default_embedding_model: str = (
-        "sentence-transformers/distilbert-base-nli-stsb-mean-tokens"
+        "distilbert-base-uncased"
     )
     spacy_model: str = "en_core_web_sm"
 
@@ -194,16 +194,22 @@ class AIKarenConfig:
 class ConfigManager:
     """
     Configuration manager for AI Karen engine integration.
-
+    
     Handles loading, validation, and management of configuration from
     multiple sources including environment variables, config files,
     and runtime updates.
     """
-
+    
     def __init__(self, config_path: Optional[Union[str, Path]] = None):
         self.config_path = Path(config_path) if config_path else Path("config.json")
         self._config: Optional[AIKarenConfig] = None
-        self._watchers: List[callable] = []
+        self._watchers: List[Callable[[AIKarenConfig], None]] = []
+    
+    def initialize(self) -> None:
+        """Initialize the configuration manager."""
+        # Load initial configuration
+        self.load_config()
+
 
     def load_config(self) -> AIKarenConfig:
         """Load configuration from all sources."""
@@ -414,11 +420,11 @@ class ConfigManager:
 
         return config
 
-    def add_config_watcher(self, callback: callable) -> None:
+    def add_config_watcher(self, callback: Callable[[AIKarenConfig], None]) -> None:
         """Add a configuration change watcher."""
         self._watchers.append(callback)
-
-    def remove_config_watcher(self, callback: callable) -> None:
+    
+    def remove_config_watcher(self, callback: Callable[[AIKarenConfig], None]) -> None:
         """Remove a configuration change watcher."""
         if callback in self._watchers:
             self._watchers.remove(callback)
@@ -445,8 +451,11 @@ class ConfigManager:
 
         logger.info("Configuration updated at runtime")
 
-    def _config_to_dict(self, config: AIKarenConfig) -> Dict[str, Any]:
+    def _config_to_dict(self, config: Union[AIKarenConfig, None]) -> Dict[str, Any]:
         """Convert configuration object to dictionary."""
+        if config is None:
+            return {}
+            
         # This is a simplified implementation
         # In practice, you might want to use a more sophisticated serialization
         result = {}

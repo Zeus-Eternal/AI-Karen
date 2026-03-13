@@ -11,14 +11,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from ai_karen_engine.utils.dependency_checks import import_fastapi
-from ai_karen_engine.services.connection_health_manager import (
+from services.memory.connection_health_manager import (
     ConnectionHealthManager,
     get_connection_health_manager,
 )
-from ai_karen_engine.services.correlation_service import get_request_id
-from ai_karen_engine.services.structured_logging import (
-    get_structured_logging_service,
-)
+from services.monitoring.correlation_service import get_request_id
+from services.memory.internal.structured_logging import get_structured_logging_service
 import logging
 
 logger = logging.getLogger(__name__)

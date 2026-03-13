@@ -287,15 +287,25 @@ responses = SimpleNamespace(
 sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
 
 # Middleware stubs
-cors_stub = SimpleNamespace(CORSMiddleware=object)
-gzip_stub = SimpleNamespace(GZipMiddleware=object)
+import types
+cors_stub = types.ModuleType("fastapi.middleware.cors")
+setattr(cors_stub, "CORSMiddleware", object)
+gzip_stub = types.ModuleType("fastapi.middleware.gzip")
+setattr(gzip_stub, "GZipMiddleware", object)
 sys.modules.setdefault("fastapi.middleware.cors", cors_stub)
 sys.modules.setdefault("fastapi.middleware.gzip", gzip_stub)
 
 
-def Depends(func):
+from typing import Any, Callable, Optional, Literal
+
+def Depends(
+    dependency: Optional[Callable[..., Any]] = None,
+    *,
+    use_cache: bool = True,
+    scope: Optional[Literal['function', 'request']] = None
+) -> Any:
     """Simplistic dependency injection stub."""
-    return func
+    return dependency if dependency is not None else lambda: None
 
 
 def Query(default=None, **_kw):
@@ -348,3 +358,31 @@ class TestClient:
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp
+
+
+class BaseModel:
+    """Simple BaseModel implementation for stub."""
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__()
+    
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def dict(self):
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+    
+    def json(self):
+        import json
+        return json.dumps(self.dict())
+
+
+class Field:
+    """Simple Field implementation for stub."""
+    def __init__(self, default=None, description=None, **kwargs):
+        self.default = default
+        self.description = description
+        self.kwargs = kwargs
+    
+    def __call__(self, **kwargs):
+        return Field(**kwargs)

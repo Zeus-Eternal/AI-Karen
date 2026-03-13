@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 
-from ai_karen_engine.extension_host.models2 import ExtensionManifest
+from ai_karen_engine.extension_host.models import ExtensionManifest
 
 
 @dataclass

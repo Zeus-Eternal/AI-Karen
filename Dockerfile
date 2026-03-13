@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip wheel setuptools scikit-build
+# Install Poetry
+RUN pip install --no-cache-dir poetry
 
 # -----------------------------
 # Runtime stage (default: CPU-only, BLAS off)
@@ -25,8 +25,21 @@ ENV CC=/usr/bin/gcc \
     CXX=/usr/bin/g++ \
     CMAKE_ARGS="-DLLAMA_METAL=off -DLLAMA_CUBLAS=off -DLLAMA_BLAS=off"
 
-ENV PIP_PREFER_BINARY=1 PIP_DEFAULT_TIMEOUT=120
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+# Copy pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock* ./
+
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
+
+# Install dependencies
+RUN poetry config installer.max-workers 4
+RUN poetry config installer.parallel true
+# Install dependencies with retries and longer timeout
+RUN poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root
+# Ensure common spaCy model is available in the image to avoid runtime downloads
+RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------
 # Runtime-perf stage (OpenBLAS enabled)
@@ -37,8 +50,21 @@ ENV CC=/usr/bin/gcc \
     CXX=/usr/bin/g++ \
     CMAKE_ARGS="-DLLAMA_METAL=off -DLLAMA_CUBLAS=off -DLLAMA_BLAS=on -DLLAMA_BLAS_VENDOR=OpenBLAS"
 
-ENV PIP_PREFER_BINARY=1 PIP_DEFAULT_TIMEOUT=120
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+# Copy pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock* ./
+
+# Configure Poetry to not create a virtual environment
+RUN poetry config virtualenvs.create false
+
+# Install dependencies
+RUN poetry config installer.max-workers 4
+RUN poetry config installer.parallel true
+# Install dependencies with retries and longer timeout
+RUN poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root
+# Ensure common spaCy model is available in the image to avoid runtime downloads
+RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------
 # Final stage (select by target)
@@ -46,9 +72,15 @@ RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 FROM ${PROFILE}
 WORKDIR /app
 
+# Set PYTHONPATH to include src directory
+ENV PYTHONPATH=/app:/app/src:$PYTHONPATH
+
 # Copy application code
 COPY . .
 RUN pip install -e .
+
+# Make memory service initialization script executable
+RUN chmod +x scripts/init_memory_service.py
 
 # Create necessary directories
 RUN mkdir -p /app/models /app/logs /app/backups /app/certs

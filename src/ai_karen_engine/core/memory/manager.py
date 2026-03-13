@@ -2,10 +2,16 @@
 Unified MemoryManager: context recall and update
 - Postgres: Source of truth for all memory metadata
 - Redis: Ephemeral short-term cache and buffering (with RedisConnectionManager)
-- Milvus/NeuroVault: Vector semantic search
+- Zvec (Phase 2): Personal edge/offline RAG (per-user embedded DB)
+- Milvus/NeuroVault: Server-side vector semantic search
 - Elastic: Optional full-text search
 - DuckDB: Read-only analytics (NO WRITES - derived data only)
 - All ops logged/audited for observability
+
+PHASE 2: Zvec Integration
+- Zvec adapter provides offline RAG capability
+- Hybrid search: Zvec (personal) + Milvus (shared)
+- Fallback logic: Zvec → Milvus → Redis → DuckDB
 """
 
 from typing import Any, Dict, List, Optional
@@ -30,6 +36,18 @@ try:
     )
 except ImportError:
     recall_vectors = store_vector = None
+
+# PHASE 2: Zvec Integration (Edge/Offline RAG)
+try:
+    from ai_karen_engine.core.memory.zvec_neurovault_adapter import get_zvec_adapter
+    ZVEC_ADAPTER_AVAILABLE = True
+except ImportError:
+    ZVEC_ADAPTER_AVAILABLE = False
+    get_zvec_adapter = None
+    logger.warning("[MemoryManager] ZvecNeuroVaultAdapter not available (Phase 2 feature)")
+
+# Global Zvec adapter instance
+zvec_adapter = None
 
 try:
     from ai_karen_engine.clients.database.postgres_client import PostgresClient
@@ -223,7 +241,7 @@ async def flush_redis_to_postgres(client: PostgresClient, redis_mgr: RedisConnec
 
 def init_memory() -> None:
     """Initialize memory backends and start background syncer."""
-    global pg_syncer, redis_manager
+    global pg_syncer, redis_manager, zvec_adapter
 
     # Initialize Redis manager (replaces basic redis client)
     if REDIS_MANAGER_AVAILABLE and redis_manager is None:
@@ -242,6 +260,23 @@ def init_memory() -> None:
     if postgres and pg_syncer is None:
         pg_syncer = PostgresSyncer(postgres, redis_manager)
         pg_syncer.start()
+
+    # PHASE 2: Initialize Zvec Adapter
+    if ZVEC_ADAPTER_AVAILABLE and zvec_adapter is None:
+        try:
+            zvec_adapter = get_zvec_adapter(
+                enable_hybrid_search=True,
+                enable_fallback=True,
+                pii_scrubbing=True,
+                rbac_enabled=True,
+            )
+            if zvec_adapter:
+                logger.info("[MemoryManager] ZvecNeuroVaultAdapter initialized (Phase 2)")
+            else:
+                logger.warning("[MemoryManager] Zvec adapter factory returned None")
+        except Exception as ex:
+            logger.warning(f"[MemoryManager] ZvecNeuroVaultAdapter initialization failed: {ex}")
+            zvec_adapter = None
 
 # NeuroVault vector index
 neuro_vault = NeuroVault()
@@ -350,14 +385,43 @@ def recall_context(
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Recall the most relevant context for user/query from the memory stack.
-    Priority: NeuroVault > Elastic > Milvus > Postgres > Redis > DuckDB
+    
+    PHASE 2: Enhanced Priority with Zvec:
+    1. Zvec (Edge/Offline RAG) - NEW!
+    2. NeuroVault (Hybrid Search)
+    3. ElasticSearch (Optional)
+    4. Milvus (Server-side vectors)
+    5. Postgres
+    6. Redis
+    7. DuckDB (Analytics only)
     """
     _inc("memory_recall_total")
     MEM_RECALL_COUNT.inc()
     tenant_id = tenant_id or user_ctx.get("tenant_id")
     user_id = user_ctx.get("user_id") or "anonymous"
 
-    # 0. NeuroVault vector recall
+    # PHASE 2: 0. Zvec (Edge/Offline RAG)
+    if zvec_adapter:
+        try:
+            result = zvec_adapter.retrieve_context(
+                user_id=user_id,
+                query=query,
+                top_k=limit,
+                tenant_id=tenant_id,
+                hybrid_search=True,
+            )
+            if result and result.memories:
+                records = result.memories
+                logger.info(
+                    f"[MemoryManager] Zvec recall: {len(records)} results for user {user_id} "
+                    f"(zvec={result.sources.get('zvec_count', 0)}, "
+                    f"milvus={result.sources.get('milvus_count', 0)})"
+                )
+                return records
+        except Exception as ex:
+            logger.warning(f"[MemoryManager] Zvec recall failed: {ex}")
+
+    # 1. NeuroVault vector recall
     try:
         records = neuro_vault.query(user_id, query, top_k=limit)
         if records:

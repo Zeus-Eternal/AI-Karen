@@ -25,11 +25,11 @@ from ai_karen_engine.models.web_ui_types import (
 from ai_karen_engine.models.shared_types import FlowInput, FlowOutput, HandleUserMessageResult
 from ai_karen_engine.api_routes.ai_orchestrator_routes import ConversationProcessingRequest
 from ai_karen_engine.api_routes.memory_routes import MemQuery, MemCommit, ContextHit
-from src.services.memory_service import UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
+from services.memory.memory_service import UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
 
 # Import the new transformation utilities
-from src.services.memory_transformation_utils import MemoryTransformationUtils
-from src.services.chat_transformation_utils import ChatTransformationUtils
+from services.memory.internal.memory_transformation_utils import MemoryTransformationUtils
+from services.memory.internal.chat_transformation_utils import ChatTransformationUtils
 
 logger = logging.getLogger(__name__)
 

@@ -149,11 +149,11 @@ class KARENIntegration:
         # Map KAREN config keys to Llama.cpp Server config keys
         config_mapping = {
             # Model settings
-            "model_path": "model.path",
+            "model_path": "models.default_model",
             "model_directory": "models.directory",
-            "context_length": "server.n_ctx",
-            "threads": "server.threads",
-            "low_vram": "server.low_vram",
+            "context_length": "performance.context_window",
+            "threads": "performance.num_threads",
+            "low_vram": "performance.low_vram",
             
             # Server settings
             "host": "server.host",
@@ -199,11 +199,11 @@ class KARENIntegration:
         # Map Llama.cpp Server config keys to KAREN config keys
         config_mapping = {
             # Model settings
-            "model.path": "model_path",
+            "models.default_model": "model_path",
             "models.directory": "model_directory",
-            "server.n_ctx": "context_length",
-            "server.threads": "threads",
-            "server.low_vram": "low_vram",
+            "performance.context_window": "context_length",
+            "performance.num_threads": "threads",
+            "performance.low_vram": "low_vram",
             
             # Server settings
             "server.host": "host",
@@ -483,11 +483,11 @@ class KARENIntegration:
         
         # Add model settings
         config["model"] = {
-            "path": self.config_manager.get("model.path"),
+            "path": self.config_manager.get("models.default_model"),
             "directory": self.config_manager.get("models.directory"),
-            "context_length": self.config_manager.get("server.n_ctx"),
-            "threads": self.config_manager.get("server.threads"),
-            "low_vram": self.config_manager.get("server.low_vram")
+            "context_length": self.config_manager.get("performance.context_window"),
+            "threads": self.config_manager.get("performance.num_threads"),
+            "low_vram": self.config_manager.get("performance.low_vram")
         }
         
         # Add server settings

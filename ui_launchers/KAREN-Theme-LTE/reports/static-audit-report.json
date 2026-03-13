@@ -1,0 +1,373 @@
+{
+  "timestamp": "2025-10-22T22:33:39.973Z",
+  "summary": {
+    "PASS": 7,
+    "WARNING": 16,
+    "FAIL": 0
+  },
+  "results": [
+    {
+      "category": "Dependencies",
+      "test": "Security: helmet",
+      "status": "WARNING",
+      "message": "Consider adding security dependency: helmet",
+      "details": null
+    },
+    {
+      "category": "Dependencies",
+      "test": "Security: cors",
+      "status": "WARNING",
+      "message": "Consider adding security dependency: cors",
+      "details": null
+    },
+    {
+      "category": "Dependencies",
+      "test": "Security: express-rate-limit",
+      "status": "WARNING",
+      "message": "Consider adding security dependency: express-rate-limit",
+      "details": null
+    },
+    {
+      "category": "Dependencies",
+      "test": "Security: bcrypt",
+      "status": "WARNING",
+      "message": "Consider adding security dependency: bcrypt",
+      "details": null
+    },
+    {
+      "category": "Dependencies",
+      "test": "Security: jsonwebtoken",
+      "status": "WARNING",
+      "message": "Consider adding security dependency: jsonwebtoken",
+      "details": null
+    },
+    {
+      "category": "Dependencies",
+      "test": "Package structure",
+      "status": "PASS",
+      "message": "Found 111 dependencies",
+      "details": null
+    },
+    {
+      "category": "Environment",
+      "test": ".env.local permissions",
+      "status": "WARNING",
+      "message": "File permissions: 777 (should be 600)",
+      "details": null
+    },
+    {
+      "category": "Environment",
+      "test": ".env.local sensitive data",
+      "status": "PASS",
+      "message": "Found 7 sensitive environment variables",
+      "details": null
+    },
+    {
+      "category": "Source Code",
+      "test": "File count",
+      "status": "PASS",
+      "message": "Scanned 876 files (470 JSX, 378 TS/JS, 0 tests)",
+      "details": null
+    },
+    {
+      "category": "Source Code",
+      "test": "Medium severity issues",
+      "status": "WARNING",
+      "message": "Found 1 medium severity issues",
+      "details": [
+        {
+          "file": "./src/__tests__/accessibility/automated-accessibility-suite.test.tsx",
+          "issue": "innerHTML",
+          "severity": "MEDIUM",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "category": "Source Code",
+      "test": "Low severity issues",
+      "status": "WARNING",
+      "message": "Found 104 low severity issues (review recommended)",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "next.config.js",
+      "status": "PASS",
+      "message": "Configuration file present",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "next.config.js permissions",
+      "status": "WARNING",
+      "message": "File permissions too permissive: 777",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "next.config.mjs",
+      "status": "WARNING",
+      "message": "Optional configuration file missing",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "tsconfig.json",
+      "status": "PASS",
+      "message": "Configuration file present",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "tsconfig.json permissions",
+      "status": "WARNING",
+      "message": "File permissions too permissive: 777",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "tailwind.config.js",
+      "status": "WARNING",
+      "message": "Optional configuration file missing",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "playwright.config.ts",
+      "status": "PASS",
+      "message": "Configuration file present",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "playwright.config.ts permissions",
+      "status": "WARNING",
+      "message": "File permissions too permissive: 777",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": ".eslintrc.json",
+      "status": "WARNING",
+      "message": "Optional configuration file missing",
+      "details": null
+    },
+    {
+      "category": "Configuration",
+      "test": "docker-compose.yml",
+      "status": "WARNING",
+      "message": "Optional configuration file missing",
+      "details": null
+    },
+    {
+      "category": "Build",
+      "test": ".next size",
+      "status": "WARNING",
+      "message": "Build directory is large: 1206.29MB",
+      "details": null
+    },
+    {
+      "category": "Build",
+      "test": "node_modules size",
+      "status": "PASS",
+      "message": "node_modules size: 1400.36MB",
+      "details": null
+    }
+  ],
+  "categories": [
+    {
+      "name": "Dependencies",
+      "results": [
+        {
+          "category": "Dependencies",
+          "test": "Security: helmet",
+          "status": "WARNING",
+          "message": "Consider adding security dependency: helmet",
+          "details": null
+        },
+        {
+          "category": "Dependencies",
+          "test": "Security: cors",
+          "status": "WARNING",
+          "message": "Consider adding security dependency: cors",
+          "details": null
+        },
+        {
+          "category": "Dependencies",
+          "test": "Security: express-rate-limit",
+          "status": "WARNING",
+          "message": "Consider adding security dependency: express-rate-limit",
+          "details": null
+        },
+        {
+          "category": "Dependencies",
+          "test": "Security: bcrypt",
+          "status": "WARNING",
+          "message": "Consider adding security dependency: bcrypt",
+          "details": null
+        },
+        {
+          "category": "Dependencies",
+          "test": "Security: jsonwebtoken",
+          "status": "WARNING",
+          "message": "Consider adding security dependency: jsonwebtoken",
+          "details": null
+        },
+        {
+          "category": "Dependencies",
+          "test": "Package structure",
+          "status": "PASS",
+          "message": "Found 111 dependencies",
+          "details": null
+        }
+      ]
+    },
+    {
+      "name": "Environment",
+      "results": [
+        {
+          "category": "Environment",
+          "test": ".env.local permissions",
+          "status": "WARNING",
+          "message": "File permissions: 777 (should be 600)",
+          "details": null
+        },
+        {
+          "category": "Environment",
+          "test": ".env.local sensitive data",
+          "status": "PASS",
+          "message": "Found 7 sensitive environment variables",
+          "details": null
+        }
+      ]
+    },
+    {
+      "name": "Source Code",
+      "results": [
+        {
+          "category": "Source Code",
+          "test": "File count",
+          "status": "PASS",
+          "message": "Scanned 876 files (470 JSX, 378 TS/JS, 0 tests)",
+          "details": null
+        },
+        {
+          "category": "Source Code",
+          "test": "Medium severity issues",
+          "status": "WARNING",
+          "message": "Found 1 medium severity issues",
+          "details": [
+            {
+              "file": "./src/__tests__/accessibility/automated-accessibility-suite.test.tsx",
+              "issue": "innerHTML",
+              "severity": "MEDIUM",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "category": "Source Code",
+          "test": "Low severity issues",
+          "status": "WARNING",
+          "message": "Found 104 low severity issues (review recommended)",
+          "details": null
+        }
+      ]
+    },
+    {
+      "name": "Configuration",
+      "results": [
+        {
+          "category": "Configuration",
+          "test": "next.config.js",
+          "status": "PASS",
+          "message": "Configuration file present",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "next.config.js permissions",
+          "status": "WARNING",
+          "message": "File permissions too permissive: 777",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "next.config.mjs",
+          "status": "WARNING",
+          "message": "Optional configuration file missing",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "tsconfig.json",
+          "status": "PASS",
+          "message": "Configuration file present",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "tsconfig.json permissions",
+          "status": "WARNING",
+          "message": "File permissions too permissive: 777",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "tailwind.config.js",
+          "status": "WARNING",
+          "message": "Optional configuration file missing",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "playwright.config.ts",
+          "status": "PASS",
+          "message": "Configuration file present",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "playwright.config.ts permissions",
+          "status": "WARNING",
+          "message": "File permissions too permissive: 777",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": ".eslintrc.json",
+          "status": "WARNING",
+          "message": "Optional configuration file missing",
+          "details": null
+        },
+        {
+          "category": "Configuration",
+          "test": "docker-compose.yml",
+          "status": "WARNING",
+          "message": "Optional configuration file missing",
+          "details": null
+        }
+      ]
+    },
+    {
+      "name": "Build",
+      "results": [
+        {
+          "category": "Build",
+          "test": ".next size",
+          "status": "WARNING",
+          "message": "Build directory is large: 1206.29MB",
+          "details": null
+        },
+        {
+          "category": "Build",
+          "test": "node_modules size",
+          "status": "PASS",
+          "message": "node_modules size: 1400.36MB",
+          "details": null
+        }
+      ]
+    }
+  ]
+}

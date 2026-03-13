@@ -21,6 +21,8 @@ class ClientServiceConfig:
         enable_milvus: bool = True,
         enable_neo4j: bool = False,
         enable_duckdb: bool = False,
+        enable_zvec: bool = False,
+
         enable_elastic: bool = False,
         # NLP configs
         enable_spacy: bool = True,
@@ -31,16 +33,19 @@ class ClientServiceConfig:
         # Connection configs
         redis_url: Optional[str] = None,
         postgres_dsn: Optional[str] = None,
-        milvus_host: str = "localhost",
-        milvus_port: str = "19530",
+        milvus_host: str = "ai-karen-milvus",
+        milvus_port: str = "19531",
         neo4j_uri: Optional[str] = None,
         # Performance configs
         redis_pool_size: int = 10,
+        zvec_db_path: Optional[str] = None,
+
         milvus_pool_size: int = 5,
         postgres_pool_size: int = 10,
     ):
         self.enable_redis = enable_redis
         self.enable_postgres = enable_postgres
+        self.enable_zvec = enable_zvec
         self.enable_milvus = enable_milvus
         self.enable_neo4j = enable_neo4j
         self.enable_duckdb = enable_duckdb
@@ -56,6 +61,7 @@ class ClientServiceConfig:
         self.postgres_dsn = postgres_dsn or os.getenv("DATABASE_URL")
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
+        self.zvec_db_path = zvec_db_path or os.getenv("ZVEC_DB_PATH", "~/.ai-karen/zvec.db")
         self.neo4j_uri = neo4j_uri or os.getenv("NEO4J_URI")
 
         self.redis_pool_size = redis_pool_size
@@ -219,6 +225,34 @@ class ClientServiceFactory:
             logger.error(f"Failed to create Elasticsearch client: {e}")
             return None
 
+
+    def create_zvec_client(self, user_id: str = "default"):
+        """Create and configure Zvec client for specific user."""
+        if not self.config.enable_zvec:
+            logger.info("Zvec client disabled by configuration")
+            return None
+        
+        try:
+            from ai_karen_engine.clients.database.zvec_client import ZvecClient
+            
+            # Create per-user database path
+            from pathlib import Path
+            db_path = str(Path(self.config.zvec_db_path).expanduser())
+            user_db_path = f"{db_path.rsplit('.', 1)[0]}_{user_id}.db"
+            
+            client = ZvecClient(
+                db_path=user_db_path,
+                enabled=True
+            )
+            
+            self._services[f"zvec_{user_id}"] = client
+            logger.info(f"Zvec client created successfully for user: {user_id}")
+            return client
+            
+        except Exception as e:
+            logger.error(f"Failed to create Zvec client: {e}")
+            return None
+
     def create_nlp_service(self):
         """Create and configure NLP service (spaCy)."""
         if not self.config.enable_spacy:
@@ -291,6 +325,8 @@ class ClientServiceFactory:
         self.create_neo4j_client()
         self.create_duckdb_client()
         self.create_elastic_client()
+        # Note: Zvec clients created per-user on demand
+        # Use create_zvec_client(user_id) when needed
 
         # Create NLP and embedding services
         self.create_nlp_service()

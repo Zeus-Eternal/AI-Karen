@@ -1,0 +1,319 @@
+# CoPilot Architecture Production Deployment Configuration
+# This file contains deployment-specific settings for CoPilot production environments
+
+deployment:
+  environment: "production"
+  version: "1.0.0"
+  component: "copilot"
+  
+  # CoPilot-specific configuration
+  copilot:
+    enabled: true
+    auto_start: true
+    health_check_enabled: true
+    health_check_interval: 30
+    config:
+      # UI/UX Settings
+      ui_theme: "light"
+      default_language: "en"
+      enable_dark_mode: true
+      enable_accessibility_features: true
+      
+      # Agent Integration Settings
+      agent_ui_service:
+        endpoint: "/api/agent-ui"
+        timeout_seconds: 30
+        max_retries: 3
+        retry_backoff_seconds: 5
+        
+      # Thread Management
+      thread_manager:
+        max_threads_per_session: 10
+        thread_timeout_minutes: 60
+        cleanup_interval_minutes: 30
+        
+      # Session Management
+      session_manager:
+        session_timeout_minutes: 120
+        max_sessions_per_user: 5
+        enable_session_persistence: true
+        
+      # Response Formatting
+      response_formatter:
+        enable_streaming: true
+        streaming_chunk_size: 1024
+        max_response_size_mb: 10
+        enable_interactive_elements: true
+        
+      # Extension Integration
+      extensions:
+        enabled: true
+        auto_load: true
+        max_concurrent_extensions: 5
+        extension_timeout_seconds: 60
+        
+      # Memory Integration
+      memory_integration:
+        enabled: true
+        context_window_size: 100
+        max_memory_entries: 1000
+        memory_retention_days: 30
+        
+      # Security Settings
+      security:
+        enable_request_validation: true
+        enable_content_filtering: true
+        max_input_length: 10000
+        enable_rate_limiting: true
+        rate_limit_requests_per_minute: 60
+        
+      # Performance Settings
+      performance:
+        enable_lazy_loading: true
+        enable_response_caching: true
+        cache_ttl_minutes: 15
+        max_concurrent_requests: 100
+        request_timeout_seconds: 30
+        
+      # Monitoring Settings
+      monitoring:
+        enable_metrics: true
+        enable_tracing: true
+        metrics_port: 9093
+        health_endpoint: "/api/copilot/health"
+        
+  # Plugin configuration
+  plugins:
+    enabled:
+      - "model_orchestrator"
+      - "copilot_integration"
+      
+    # Plugin-specific configurations
+    model_orchestrator:
+      enabled: true
+      auto_start: true
+      health_check_enabled: true
+      health_check_interval: 60
+      config:
+        models_root: "/app/models"
+        registry_path: "/app/models/llm_registry.json"
+        max_concurrent_downloads: 3
+        enable_metrics: true
+        enable_rbac: true
+        offline_mode: false
+        mirror_url: null
+        max_storage_gb: 100
+        enable_license_tracking: true
+        enable_garbage_collection: true
+        enable_compatibility_checks: true
+        backup_registry: true
+        auto_cleanup_enabled: true
+        gc_threshold_gb: 80
+        pin_essential_models: true
+      
+      # Security settings
+      security:
+        rbac_config_path: "/app/config/model_orchestrator_rbac.yml"
+        enable_audit_logging: true
+        audit_retention_days: 365
+        max_file_size_gb: 10
+        allowed_model_owners: []  # Empty means all allowed
+        blocked_model_owners: []
+        require_license_acceptance: true
+        
+      # Performance settings
+      performance:
+        download_timeout_minutes: 30
+        retry_attempts: 3
+        retry_backoff_seconds: 5
+        concurrent_health_checks: 5
+        cache_model_info_minutes: 15
+        
+      # Monitoring settings
+      monitoring:
+        enable_prometheus_metrics: true
+        enable_opentelemetry_tracing: true
+        log_level: "INFO"
+        metrics_port: 9090
+        health_endpoint: "/api/models/health"
+        
+    # CoPilot Integration Plugin
+    copilot_integration:
+      enabled: true
+      auto_start: true
+      health_check_enabled: true
+      health_check_interval: 30
+      config:
+        agent_service_endpoint: "/api/agent"
+        conversation_service_endpoint: "/api/conversation"
+        enable_websocket: true
+        websocket_path: "/ws/copilot"
+        max_websocket_connections: 1000
+        websocket_timeout_minutes: 30
+        
+      # Security settings
+      security:
+        enable_authentication: true
+        enable_authorization: true
+        enable_cors: true
+        cors_origins: ["https://your-domain.com"]
+        
+      # Performance settings
+      performance:
+        enable_response_compression: true
+        compression_level: 6
+        enable_request_caching: true
+        cache_ttl_seconds: 300
+        
+      # Monitoring settings
+      monitoring:
+        enable_metrics: true
+        enable_tracing: true
+        metrics_port: 9094
+        health_endpoint: "/api/copilot-integration/health"
+
+  # Service dependencies
+  services:
+    database:
+      enabled: true
+      connection_pool_size: 30
+      copilot_db_name: "copilot_db"
+      
+    redis:
+      enabled: true
+      connection_pool_size: 15
+      copilot_db_index: 1
+      
+    prometheus:
+      enabled: true
+      scrape_interval: "15s"
+      copilot_metrics_path: "/metrics/copilot"
+      
+    grafana:
+      enabled: true
+      dashboard_refresh: "30s"
+      copilot_dashboard_path: "/dashboards/copilot"
+
+  # Resource limits
+  resources:
+    memory_limit: "4Gi"
+    cpu_limit: "2"
+    storage_limit: "100Gi"
+    
+  # Scaling configuration
+  scaling:
+    min_replicas: 2
+    max_replicas: 5
+    target_cpu_utilization: 70
+    target_memory_utilization: 80
+
+  # Health checks
+  health_checks:
+    startup_probe:
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 30
+      
+    liveness_probe:
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+      
+    readiness_probe:
+      initial_delay_seconds: 5
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 3
+      
+    # CoPilot-specific health checks
+    copilot_health:
+      endpoint: "/api/copilot/health"
+      interval_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+      
+    agent_integration_health:
+      endpoint: "/api/copilot/agent-integration-health"
+      interval_seconds: 60
+      timeout_seconds: 15
+      failure_threshold: 3
+
+  # Security configuration
+  security:
+    enable_tls: true
+    tls_cert_path: "/app/certs/tls.crt"
+    tls_key_path: "/app/certs/tls.key"
+    enable_rbac: true
+    rbac_config_path: "/app/config/security_config.yml"
+    
+    # CoPilot-specific security
+    copilot_security:
+      enable_request_validation: true
+      enable_content_filtering: true
+      max_input_length: 10000
+      enable_rate_limiting: true
+      rate_limit_requests_per_minute: 60
+      enable_cors: true
+      cors_origins: ["https://your-domain.com"]
+      enable_csrf_protection: true
+      enable_xss_protection: true
+      
+  # Logging configuration
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    enable_audit_logs: true
+    audit_log_path: "/app/logs/audit.log"
+    
+    # CoPilot-specific logging
+    copilot_logging:
+      enable_conversation_logging: true
+      conversation_log_path: "/app/logs/conversations.log"
+      enable_interaction_tracking: true
+      interaction_log_path: "/app/logs/interactions.log"
+      log_retention_days: 30
+      
+  # Backup configuration
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+    backup_path: "/app/backups"
+    include_models: false  # Models are too large for regular backups
+    include_registry: true
+    include_config: true
+    include_logs: true
+    
+    # CoPilot-specific backup
+    copilot_backup:
+      include_conversations: true
+      include_sessions: true
+      include_user_preferences: true
+      include_extension_data: true
+      
+  # Environment-specific configurations
+  environments:
+    development:
+      debug_mode: true
+      verbose_logging: true
+      enable_dev_tools: true
+      allow_public_access: true
+      
+    staging:
+      debug_mode: false
+      verbose_logging: true
+      enable_dev_tools: false
+      allow_public_access: false
+      enable_monitoring: true
+      
+    production:
+      debug_mode: false
+      verbose_logging: false
+      enable_dev_tools: false
+      allow_public_access: false
+      enable_monitoring: true
+      enable_ssl: true
+      enable_cdn: true

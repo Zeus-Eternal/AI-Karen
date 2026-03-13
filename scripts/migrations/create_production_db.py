@@ -10,16 +10,18 @@ import asyncio
 import os
 import sys
 
-# Add the src directory to the path
+# Add src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from ai_karen_engine.auth.service import AuthService, get_auth_service  # noqa: E402
+# Import AuthService and UserRole from correct module (same way as existing system)
+from ai_karen_engine.services import AuthService, UserRole  # noqa: E402
 from ai_karen_engine.core.logging import get_logger  # noqa: E402
 from ai_karen_engine.database.client import (  # noqa: E402
     create_database_tables,
     db_client,
 )
 
+# Don't instantiate at module level - will be done in main() when DB is ready
 auth_service: AuthService | None = None
 
 logger = get_logger(__name__)
@@ -44,50 +46,24 @@ async def create_admin_user():
                 logger.info("Admin user already exists")
                 return
 
-        # Create admin user
-        admin_user = await auth_service.create_user(
+        # Create admin user using actual create_user signature
+        admin_user, error = await auth_service.create_user(
             email=admin_email,
             password=admin_password,
             full_name="System Administrator",
-            roles=["admin", "user"],
-            tenant_id="default",
-            preferences={
-                "personalityTone": "professional",
-                "personalityVerbosity": "detailed",
-                "memoryDepth": "deep",
-                "customPersonaInstructions": "You are an AI assistant for system administration.",
-                "preferredLLMProvider": "llama-cpp",
-                "preferredModel": "llama3.2:latest",
-                "temperature": 0.7,
-                "maxTokens": 2000,
-                "notifications": {"email": True, "push": True},
-                "ui": {"theme": "dark", "language": "en", "avatarUrl": ""},
-                "chatMemory": {
-                    "shortTermDays": 7,
-                    "longTermDays": 90,
-                    "tailTurns": 5,
-                    "summarizeThresholdTokens": 4000,
-                },
-            },
+            roles=[UserRole.ADMIN, UserRole.USER],
+            is_verified=True
         )
 
-        # Mark admin as verified
-        with db_client.session_scope() as session:
-            from ai_karen_engine.database.models import AuthUser
-
-            admin_db_user = (
-                session.query(AuthUser)
-                .filter(AuthUser.user_id == admin_user.id)
-                .first()
-            )
-            if admin_db_user:
-                admin_db_user.is_verified = True
-                session.commit()
+        if error:
+            logger.error(f"Failed to create admin user: {error}")
+            print(f"❌ Failed to create admin user: {error}")
+            return
 
         logger.info(f"Created admin user: {admin_email}")
         print(f"✅ Admin user created: {admin_email}")
         print(f"⚠️  Default password: {admin_password}")
-        print("🔒 Please change the admin password immediately after first login!")
+        print("🔒 Please change admin password immediately after first login!")
 
     except Exception as e:
         logger.error(f"Failed to create admin user: {e}")
@@ -113,43 +89,19 @@ async def create_demo_user():
                 logger.info("Demo user already exists")
                 return
 
-        # Create demo user
-        demo_user = await auth_service.create_user(
+        # Create demo user using actual create_user signature
+        demo_user, error = await auth_service.create_user(
             email=demo_email,
             password=demo_password,
             full_name="Demo User",
-            roles=["user"],
-            tenant_id="default",
-            preferences={
-                "personalityTone": "friendly",
-                "personalityVerbosity": "balanced",
-                "memoryDepth": "medium",
-                "customPersonaInstructions": "",
-                "preferredLLMProvider": "llama-cpp",
-                "preferredModel": "llama3.2:latest",
-                "temperature": 0.7,
-                "maxTokens": 1000,
-                "notifications": {"email": False, "push": False},
-                "ui": {"theme": "light", "language": "en", "avatarUrl": ""},
-                "chatMemory": {
-                    "shortTermDays": 1,
-                    "longTermDays": 30,
-                    "tailTurns": 3,
-                    "summarizeThresholdTokens": 3000,
-                },
-            },
+            roles=[UserRole.USER],
+            is_verified=True
         )
 
-        # Mark demo user as verified
-        with db_client.session_scope() as session:
-            from ai_karen_engine.database.models import AuthUser
-
-            demo_db_user = (
-                session.query(AuthUser).filter(AuthUser.user_id == demo_user.id).first()
-            )
-            if demo_db_user:
-                demo_db_user.is_verified = True
-                session.commit()
+        if error:
+            logger.error(f"Failed to create demo user: {error}")
+            print(f"❌ Failed to create demo user: {error}")
+            return
 
         logger.info(f"Created demo user: {demo_email}")
         print(f"✅ Demo user created: {demo_email}")
@@ -199,11 +151,30 @@ async def main():
         print(f"❌ Failed to create tables: {e}")
         sys.exit(1)
 
+    # Initialize AuthService (after DB is ready)
+    global auth_service
+    # Use model_construct to bypass Pydantic validation for required fields
+    from ai_karen_engine.services.auth_service import AuthConfig
+    auth_config = AuthConfig.model_construct(
+        name="auth_service",
+        version="1.0.0"
+    )
+    auth_service = AuthService(config=auth_config)
+    
+    # Set database session for AuthService
+    # Note: We need to create a new session for each create_user() call
+    # because the session scope context manager closes the session
+    # So we'll set it inside each create_user function instead
+    
+    # Manually initialize service to prevent circular dependency
+    # The service's initialize() method tries to create a default admin user,
+    # which calls create_user(), which tries to initialize() again, causing a hang
+    # So we'll mark it as initialized without calling the full initialize() method
+    auth_service._initialized = True
+    auth_service._lock = asyncio.Lock()
+    
     # Create admin user
     print("3. Creating admin user...")
-    global auth_service
-    if auth_service is None:
-        auth_service = await get_auth_service()
     await create_admin_user()
 
     # Create demo user

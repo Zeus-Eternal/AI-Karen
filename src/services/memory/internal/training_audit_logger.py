@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 
-from src.services.audit_logging import get_audit_logger, AuditEventType, AuditSeverity
+from services.memory.internal.audit_logging import get_audit_logger, AuditEventType, AuditSeverity
 # Simple auth - using dict instead of UserData model
 from ai_karen_engine.core.logging import get_logger
 

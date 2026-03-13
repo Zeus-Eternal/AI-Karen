@@ -42,9 +42,9 @@ from ai_karen_engine.models.web_api_error_responses import (
     get_http_status_for_error_code,
 )
 from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
-from ai_karen_engine.services.web_ui_api import WebUITransformationService
-from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from ai_karen_engine.services.memory_service import WebUIMemoryService
+from services.memory.internal.web_ui_api import WebUITransformationService
+from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+from services.memory.memory_service import WebUIMemoryService
 from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
@@ -52,7 +52,7 @@ from ai_karen_engine.core.dependencies import (
     get_analytics_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
-from ai_karen_engine.services.analytics_service import AnalyticsService
+from services.memory.analytics_service import AnalyticsService
 
 # Ensure both `ai_karen_engine` and `src.ai_karen_engine` module paths reference the same module
 sys.modules.setdefault(
@@ -1663,5 +1663,4 @@ async def trigger_health_check(http_request: Request):
             "Failed to trigger health check",
             request_id,
         )
-
 

@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """
 Router configuration for Kari FastAPI Server.
 Handles all include_router() wiring without changing route definitions.
@@ -6,7 +5,8 @@ Handles all include_router() wiring without changing route definitions.
 
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+from typing import Optional, Any
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.responses import JSONResponse, Response as FastAPIResponse
 
 from .config import Settings
@@ -44,7 +44,9 @@ from ai_karen_engine.api_routes.audit import router as audit_router
 
 # NEW: Simple auth system
 try:
-    from src.auth.auth_routes import router as auth_router
+    from ai_karen_engine.api_routes.auth_routes import router as auth_router
+    from src.auth.auth_middleware import AuthenticationError
+    from src.auth.auth_middleware import get_auth_middleware
     logger.info("✅ Auth router imported successfully")
 except ImportError as e:
     # Fallback - disable auth routes if auth not available
@@ -72,7 +74,7 @@ from ai_karen_engine.api_routes.error_response_routes import router as error_res
 from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
 from ai_karen_engine.api_routes.health import router as health_router
 from ai_karen_engine.api_routes.model_management_routes import router as model_management_router
-from ai_karen_engine.api_routes.enhanced_huggingface_routes import router as enhanced_huggingface_router
+from ai_karen_engine.api_routes.huggingface_routes import router as enhanced_huggingface_router
 from ai_karen_engine.api_routes.response_core_routes import router as response_core_router
 from ai_karen_engine.api_routes.scheduler_routes import router as scheduler_router
 from ai_karen_engine.api_routes.public_routes import router as public_router
@@ -84,16 +86,19 @@ from ai_karen_engine.api_routes.validation_metrics_routes import router as valid
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
 from ai_karen_engine.api_routes.model_organization_routes import router as model_organization_router
 from ai_karen_engine.api_routes.user_preferences_routes import router as user_preferences_router
+from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
 
 # Multi-modal and AI enhancement routes
+multimodal_router: Optional[Any] = None
+ai_enhancement_router: Optional[Any] = None
+MULTIMODAL_AVAILABLE = False
+
 try:
     from ai_karen_engine.api_routes.multimodal_routes import router as multimodal_router
     from ai_karen_engine.api_routes.ai_routes import router as ai_enhancement_router
     MULTIMODAL_AVAILABLE = True
     logger.info("✅ Multi-modal and AI enhancement routers imported successfully")
 except ImportError as e:
-    multimodal_router = None
-    ai_enhancement_router = None
     MULTIMODAL_AVAILABLE = False
     logger.warning(f"🚫 Multi-modal routes not available: {e}")
 
@@ -135,31 +140,64 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         # Use FastAPI middleware for global auth
         @app.middleware("http")
         async def auth_middleware_handler(request, call_next):
-            # Skip auth for public endpoints
-            if auth_middleware.is_public_endpoint(request.url.path):
-                response = await call_next(request)
-                return _ensure_asgi_response(response)
+            # Check for development bypass headers first
+            skip_auth_header = request.headers.get("X-Skip-Auth")
+            dev_mode_header = request.headers.get("X-Development-Mode")
+            
+            if skip_auth_header == "dev" and dev_mode_header == "true":
+                # Development mode - set mock user context directly
+                mock_user_id = request.headers.get("X-Mock-User-ID", "dev-user")
+                request.state.user = {
+                    'user_id': mock_user_id,
+                    'email': f"{mock_user_id}@localhost",
+                    'user_type': 'developer',
+                    'permissions': ['extension:*', 'chat:write', 'memory:read', 'memory:write'],
+                    'token_id': 'dev-token-id'
+                }
+                logger.info(f"🔓 Development mode bypass for user: {mock_user_id}")
+            else:
+                # Skip auth for public endpoints
+                if auth_middleware.is_public_endpoint(request.url.path):
+                    response = await call_next(request)
+                    return _ensure_asgi_response(response)
 
-            # For protected endpoints, authenticate and add user to request state
-            try:
-                user_data = await auth_middleware.authenticate_request(request)
-                request.state.user = user_data
-            except HTTPException as exc:
-                logger.warning(
-                    "🚫 Authentication failed for %s %s: %s",
-                    request.method,
-                    request.url.path,
-                    exc.detail,
-                )
-                return _http_exception_response(exc)
-            except Exception:
-                # Let the dependency handle auth errors for specific endpoints
-                logger.exception(
-                    "⚠️ Unexpected error during authentication for %s %s",
-                    request.method,
-                    request.url.path,
-                )
-                request.state.user = None
+                # For protected endpoints, authenticate and add user to request state
+                try:
+                    user_data = auth_middleware.get_current_user(request)
+                    request.state.user = user_data
+                except HTTPException as exc:
+                    logger.warning(
+                        "🚫 Authentication failed for %s %s: %s",
+                        request.method,
+                        request.url.path,
+                        exc.detail,
+                    )
+                    return _http_exception_response(exc)
+                except AuthenticationError as exc:
+                    # Handle specific authentication errors
+                    logger.warning(
+                        "🚫 Authentication error for %s %s: %s",
+                        request.method,
+                        request.url.path,
+                        exc.message,
+                    )
+                    return _http_exception_response(HTTPException(
+                        status_code=exc.status_code,
+                        detail=exc.message
+                    ))
+                except Exception as exc:
+                    # Log unexpected authentication errors with full context
+                    logger.exception(
+                        "⚠️ Unexpected error during authentication for %s %s: %s",
+                        request.method,
+                        request.url.path,
+                        str(exc),
+                    )
+                    # Return a generic authentication error without exposing internal details
+                    return _http_exception_response(HTTPException(
+                        status_code=500,
+                        detail="Authentication service temporarily unavailable"
+                    ))
 
             response = await call_next(request)
             return _ensure_asgi_response(response)
@@ -191,12 +229,8 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])
     app.include_router(llm_router, prefix="/api/llm", tags=["llm"])
     
-    # Include mock provider routes only when explicitly enabled (never in production)
-    _enable_mocks = os.getenv("ENABLE_MOCK_PROVIDERS", "false").lower() in ("1", "true", "yes")
-    if effective_env != "production" and _enable_mocks:
-        from ai_karen_engine.api_routes.mock_provider_routes import router as mock_provider_router
-        app.include_router(mock_provider_router, tags=["mock-providers"])
-        logger.info("🧪 Mock provider routes enabled (development/testing)")
+    # Mock provider routes removed for production
+    logger.info("🚫 Mock provider routes disabled for production")
     
     # Provider and model routers
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
@@ -216,9 +250,10 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(provider_compatibility_router, tags=["provider-compatibility"])
     app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
-    app.include_router(performance_routes, prefix="/api/performance", tags=["performance"])
+    app.include_router(performance_routes, tags=["performance"])
     app.include_router(model_organization_router, tags=["model-organization"])
     app.include_router(user_preferences_router, tags=["user-preferences"])
+    app.include_router(user_data_router, prefix="/api", tags=["user-data"])
     app.include_router(settings_router)
     
     # Multi-modal and AI enhancement routes

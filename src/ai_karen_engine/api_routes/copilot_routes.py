@@ -50,6 +50,13 @@ async def check_rbac_scope(*args, **kwargs):  # pragma: no cover - compatibility
 async def _resolve_user_context(request: Request) -> Optional[Dict[str, Any]]:
     """Best-effort user context resolution without heavy imports."""
 
+    # First check if user context is already set on request state (by our wrapper)
+    try:
+        if hasattr(request.state, 'user') and request.state.user:
+            return request.state.user
+    except AttributeError:
+        pass
+    
     try:
         from ai_karen_engine.core.dependencies import get_current_user_context
     except Exception:
@@ -408,7 +415,7 @@ async def copilot_start_action_get(action: str, http_request: Request):
 async def copilot_assist(
     request: dict,
     http_request: Request,
-    chat_orchestrator = Depends(get_chat_orchestrator)
+    chat_orchestrator = Depends(get_chat_orchestrator),
 ):
     """Production-ready copilot assist endpoint with real AI integration."""
     _ensure_routing_actions_registered()
@@ -417,7 +424,20 @@ async def copilot_assist(
     
     # Extract and validate required fields
     try:
-        user_id = request.get("user_id", "anonymous")
+        # Get user context from request state (set by our authentication wrapper)
+        user_context = None
+        try:
+            user_context = getattr(http_request.state, 'user', None)
+        except AttributeError:
+            # Fallback for development mode
+            pass
+        
+        # Use authenticated user_id if available, otherwise fall back to request user_id
+        authenticated_user_id = None
+        if user_context:
+            authenticated_user_id = user_context.get("user_id")
+        
+        user_id = request.get("user_id", authenticated_user_id or "anonymous")
         message = request.get("message", "")
         org_id = request.get("org_id")
         top_k = request.get("top_k", 6)

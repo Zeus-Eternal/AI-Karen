@@ -1,0 +1,50 @@
+{
+  "admin": {
+    "name": "Administrator",
+    "email": "admin@kari.ai",
+    "password_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "role": "admin",
+    "preferences": {
+      "language": "English",
+      "timezone": "UTC",
+      "theme": "Dark Neon",
+      "notification_level": "All"
+    },
+    "account_type": "Premium",
+    "member_since": "Jan 2023",
+    "created_at": "2025-11-29T06:36:11.098716",
+    "last_login": null
+  },
+  "creator": {
+    "name": "Creator",
+    "email": "creator@kari.ai",
+    "password_hash": "756bf2effa2464565bab831d15a6a12d0fb1e7701294480c379b17f9c1064d0d",
+    "role": "creator",
+    "preferences": {
+      "language": "English",
+      "timezone": "UTC",
+      "theme": "Dark Neon",
+      "notification_level": "Important"
+    },
+    "account_type": "Premium",
+    "member_since": "Jan 2023",
+    "created_at": "2025-11-29T06:36:11.098723",
+    "last_login": null
+  },
+  "user": {
+    "name": "Demo User",
+    "email": "user@kari.ai",
+    "password_hash": "e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446",
+    "role": "user",
+    "preferences": {
+      "language": "English",
+      "timezone": "UTC",
+      "theme": "Dark Neon",
+      "notification_level": "Important"
+    },
+    "account_type": "Standard",
+    "member_since": "Nov 2023",
+    "created_at": "2025-11-29T06:36:11.098725",
+    "last_login": null
+  }
+}

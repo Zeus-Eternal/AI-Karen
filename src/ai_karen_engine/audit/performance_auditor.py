@@ -345,7 +345,7 @@ class StartupTimeTracker:
         
         logger.debug(f"Started measuring startup time for {service_name}")
     
-    def end_measurement(self, service_name: str, errors: List[str] = None) -> StartupMetrics:
+    def end_measurement(self, service_name: str, errors: Optional[List[str]] = None) -> Optional[StartupMetrics]:
         """End measuring startup time for a service."""
         end_time = time.time()
         memory_after = psutil.Process().memory_info().rss
@@ -736,6 +736,21 @@ class PerformanceAuditor:
         self.audit_history = []
         
         logger.info(f"Performance auditor initialized: {self.audit_log_path}")
+    
+    async def initialize(self) -> None:
+        """Initialize the performance auditor."""
+        # Ensure audit log directory exists
+        self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize baseline metrics if needed
+        if self.baseline_metrics is None:
+            self.baseline_metrics = {
+                'startup_time': 0.0,
+                'memory_usage': 0,
+                'cpu_usage': 0.0
+            }
+        
+        logger.info("Performance auditor initialization complete")
     
     async def audit_startup_performance(self) -> StartupReport:
         """Audit startup performance and generate comprehensive report."""

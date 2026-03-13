@@ -20,6 +20,40 @@ from server.app import create_app
 from server.run import run_server, parse_args, configure_logging
 from server.config import Settings
 
+# Initialize PerformanceAdaptiveRouter
+logger = logging.getLogger(__name__)
+
+try:
+    # Add src directory to Python path if not already there
+    src_path = os.path.join(os.path.dirname(__file__), 'src')
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+    
+    # Try to import and initialize PerformanceAdaptiveRouter
+    import importlib.util
+    
+    # Try to locate the module
+    spec = importlib.util.spec_from_file_location(
+        "performance_router_init",
+        os.path.join(src_path, "ai_karen_engine/integrations/performance_router_init.py")
+    )
+    
+    if spec is not None and spec.loader is not None:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        initialize_performance_router_sync = getattr(module, 'initialize_performance_router_sync', None)
+        
+        if initialize_performance_router_sync is not None:
+            initialize_performance_router_sync()
+            logger.info("PerformanceAdaptiveRouter initialized during system startup")
+        else:
+            logger.warning("initialize_performance_router_sync function not found in module")
+    else:
+        logger.warning("Could not locate PerformanceAdaptiveRouter module")
+        
+except Exception as e:
+    logger.warning(f"Failed to initialize PerformanceAdaptiveRouter: {e}")
+
 logger = logging.getLogger("kari")
 
 

@@ -8,7 +8,8 @@ enabling performance optimization through service lifecycle control.
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Set, Any, Callable
+from typing import Dict, List, Optional, Set, Any, Callable, Union
+from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
 
@@ -42,7 +43,7 @@ class ClassifiedServiceInfo:
     idle_since: Optional[float] = None
     suspension_count: int = 0
     total_active_time: float = 0.0
-    resource_usage: Dict[str, float] = None
+    resource_usage: Optional[Dict[str, float]] = None
     
     def __post_init__(self):
         if self.resource_usage is None:
@@ -57,7 +58,7 @@ class ClassifiedServiceRegistry(ServiceRegistry):
     lazy loading, and performance optimization features.
     """
     
-    def __init__(self, config_paths: Optional[List[str]] = None):
+    def __init__(self, config_paths: Optional[List[Union[str, Path]]] = None):
         """
         Initialize the classified service registry.
         
@@ -503,3 +504,149 @@ class ClassifiedServiceRegistry(ServiceRegistry):
         """Set the interval for idle service checks."""
         self.idle_check_interval = interval_seconds
         logger.info(f"Idle check interval set to {interval_seconds}s")
+    
+    def is_initialized(self) -> bool:
+        """
+        Check if the classified registry is initialized.
+        
+        Returns:
+            True if initialized, False otherwise
+        """
+        return len(self.classified_services) > 0
+    
+    async def initialize_services_by_classification(self) -> Dict[str, ServiceStatus]:
+        """
+        Initialize all services based on their classification.
+        
+        Returns:
+            Dictionary of service names to their status
+        """
+        logger.info("Initializing services by classification...")
+        
+        # Start with essential services first
+        essential_results = await self.start_essential_services()
+        
+        # Then initialize other services based on priority
+        all_results = essential_results.copy()
+        
+        # Get non-essential services in priority order
+        non_essential_services = [
+            name for name in self.startup_order
+            if name not in essential_results
+        ]
+        
+        for service_name in non_essential_services:
+            try:
+                classified_info = self.classified_services.get(service_name)
+                if classified_info and classified_info.config.enabled:
+                    await self.load_service_on_demand(service_name)
+                    all_results[service_name] = self._services[service_name].status
+                    logger.info(f"Initialized service: {service_name}")
+                else:
+                    logger.debug(f"Skipping disabled service: {service_name}")
+            except Exception as e:
+                logger.error(f"Failed to initialize service {service_name}: {e}")
+                all_results[service_name] = ServiceStatus.ERROR
+        
+        ready_count = sum(1 for status in all_results.values() if status == ServiceStatus.READY)
+        logger.info(f"Service initialization complete: {ready_count}/{len(all_results)} services ready")
+        
+        return all_results
+    
+    async def get_services_by_classification(self, classification: str) -> Dict[str, Any]:
+        """
+        Get services by their classification.
+        
+        Args:
+            classification: Service classification (essential, optional, background)
+            
+        Returns:
+            Dictionary of service names to their configurations
+        """
+        services = {}
+        for service_name, classified_info in self.classified_services.items():
+            if classified_info.config.classification.value == classification:
+                services[service_name] = classified_info.config
+        
+        return services
+    
+    def get_initialization_report(self) -> Dict[str, Any]:
+        """
+        Get a comprehensive initialization report.
+        
+        Returns:
+            Dictionary with initialization report
+        """
+        total_services = len(self.classified_services)
+        ready_services = sum(1 for s in self._services.values() if s.status == ServiceStatus.READY)
+        degraded_services = sum(1 for s in self._services.values() if s.status == ServiceStatus.DEGRADED)
+        error_services = sum(1 for s in self._services.values() if s.status == ServiceStatus.ERROR)
+        pending_services = sum(1 for s in self._services.values() if s.status == ServiceStatus.PENDING)
+        
+        report = {
+            "summary": {
+                "total_services": total_services,
+                "ready_services": ready_services,
+                "degraded_services": degraded_services,
+                "error_services": error_services,
+                "pending_services": pending_services,
+                "success_rate": (ready_services + degraded_services) / total_services if total_services > 0 else 0,
+                "startup_order": self.startup_order.copy()
+            },
+            "services": {},
+            "dependency_graph": self._build_dependency_graph(),
+            "metrics": {**self._metrics, **self.performance_metrics}
+        }
+        
+        # Detailed service information
+        for name, service_info in self._services.items():
+            classified_info = self.classified_services.get(name)
+            report["services"][name] = {
+                "status": service_info.status.value,
+                "type": service_info.service_type.__name__,
+                "initialization_time": service_info.initialization_time,
+                "initialization_attempts": service_info.initialization_attempts,
+                "fallback_mode": service_info.fallback_mode,
+                "error_message": service_info.error_message,
+                "classification": classified_info.config.classification.value if classified_info else "unknown",
+                "dependencies": {
+                    dep.name: {
+                        "status": dep.status.value,
+                        "required": dep.required,
+                        "error": dep.error_message
+                    } for dep in service_info.dependencies
+                }
+            }
+        
+        return report
+
+
+# Global classified registry instance
+_classified_registry: Optional[ClassifiedServiceRegistry] = None
+
+
+def get_classified_registry() -> Optional[ClassifiedServiceRegistry]:
+    """
+    Get global classified service registry instance.
+    
+    Returns:
+        The global ClassifiedServiceRegistry instance or None if not initialized
+    """
+    global _classified_registry
+    return _classified_registry
+
+
+def initialize_classified_registry(config_paths: Optional[List[Union[str, Path]]] = None) -> ClassifiedServiceRegistry:
+    """
+    Initialize the global classified service registry.
+    
+    Args:
+        config_paths: Paths to service configuration files
+        
+    Returns:
+        The initialized ClassifiedServiceRegistry instance
+    """
+    global _classified_registry
+    if _classified_registry is None:
+        _classified_registry = ClassifiedServiceRegistry(config_paths)
+    return _classified_registry

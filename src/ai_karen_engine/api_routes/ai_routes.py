@@ -12,32 +12,18 @@ import logging
 import time
 from typing import Dict, List, Optional, Any
 
-from ai_karen_engine.fastapi_stub import (
-    APIRouter as _StubAPIRouter,
-    HTTPException as _StubHTTPException,
-)
-from ai_karen_engine.pydantic_stub import BaseModel as _StubBaseModel, Field as _StubField
-
-APIRouter = _StubAPIRouter
-HTTPException = _StubHTTPException
-BaseModel = _StubBaseModel
-Field = _StubField
-
 try:
-    from fastapi import APIRouter as FastAPIAPIRouter, HTTPException as FastAPIHTTPException
+    from fastapi import APIRouter, HTTPException
 except ImportError:
-    pass
-else:
-    APIRouter = FastAPIAPIRouter
-    HTTPException = FastAPIHTTPException
+    from ai_karen_engine.fastapi_stub import (
+        APIRouter,
+        HTTPException,
+    )
 
-try:
-    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
-except ImportError:
-    pass
-else:
-    BaseModel = PydanticBaseModel
-    Field = PydanticField
+from ai_karen_engine.utils.dependency_checks import import_pydantic
+
+# Import Pydantic models
+BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = logging.getLogger("kari.ai_routes")
 

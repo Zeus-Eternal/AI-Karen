@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from ...internal.secret_manager import get_secret_manager
+from services.models.secret_manager import get_secret_manager
 
 logger = logging.getLogger(__name__)
 

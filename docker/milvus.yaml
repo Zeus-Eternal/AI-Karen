@@ -1,0 +1,295 @@
+# Milvus Configuration File
+# This configuration addresses the RootCoord, QueryCoord, QueryNode, node ID mismatch, and component shutdown issues
+
+etcd:
+  endpoints:
+    - milvus-etcd:2379
+  rootPath: by-dev
+  metaSubPath: meta
+  kvSubPath: kv
+  logSubPath: log
+  healthCheckInterval: 10
+  healthCheckTimeout: 30
+  # Use a clean root path to avoid stale metadata
+  use: true
+  # Session settings to prevent disconnections
+  session:
+    ttl: 60s  # Increased TTL
+    retryInterval: 5s  # Increased retry interval
+    # Enable session recovery
+    enableRecovery: true
+
+minio:
+  address: milvus-minio:9000
+  accessKeyID: ${MINIO_ACCESS_KEY}
+  secretAccessKey: ${MINIO_SECRET_KEY}
+  useSSL: false
+  bucketName: milvus-bucket
+  rootPath: files
+  healthCheckInterval: 10
+  healthCheckTimeout: 30
+
+log:
+  level: info
+  file:
+    maxAge: 1
+    maxSize: 300
+  format: text
+
+common:
+  storage:
+    path: /var/lib/milvus
+  use:
+    partition: true
+  # Session configuration to prevent node ID conflicts and disconnections
+  session:
+    ttl: 60s  # Increased TTL
+    retryInterval: 5s  # Increased retry interval
+    # Enable session recovery
+    enableRecovery: true
+    # Session keepalive settings
+    keepalive:
+      interval: 10s
+      timeout: 5s
+  # Component startup configuration
+  component:
+    # Enable all components explicitly
+    enable: true
+    # Component startup timeout
+    startTimeout: 180s  # Increased timeout
+
+# Component configurations
+rootCoord:
+  active:
+    enabled: true
+  port: 30001
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  dmlChannelNum: 16
+  maxPartitionNum: 1024
+  minSegmentSizeToEnableIndex: 1024
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+queryCoord:
+  active:
+    enabled: true
+  port: 30003
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  autoBalance: true
+  balancer: SimpleBalancer
+  # QueryNode health check settings
+  nodeHealthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Enhanced QueryCoord settings
+  enableActive:
+    enabled: true
+  # QueryCoord specific settings
+  graceTime: 60s  # Increased timeout
+  # Enable QueryCoord explicitly
+  standalone:
+    enabled: true
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+dataCoord:
+  active:
+    enabled: true
+  port: 30002
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  segment:
+    maxSize: 1024
+    sealProportion: 0.12
+    assignmentExpiration: 120
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+indexCoord:
+  active:
+    enabled: true
+  port: 30000
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+# DataNode configuration - Added to fix port conflict issues
+dataNode:
+  active:
+    enabled: true
+  port: 21124  # Changed from 19530 to avoid port conflict
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  gracefulTime: 60s  # Increased timeout
+  # Performance settings
+  streaming:
+    checkpointInterval: 10
+    checkpointAction: flush
+  # Memory settings
+  memory:
+    forcePurgeInterval: 30
+    lowWaterMark: 0.7
+    highWaterMark: 0.85
+    # Enable memory pooling
+    enablePooledMemory: true
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Enable DataNode explicitly
+  standalone:
+    enabled: true
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+# QueryNode configuration - Added to fix connection issues
+queryNode:
+  active:
+    enabled: true
+  port: 21123  # Default QueryNode port
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  gracefulTime: 60s  # Increased timeout
+  # Performance settings
+  streaming:
+    checkpointInterval: 10
+    checkpointAction: flush
+  # Memory settings
+  memory:
+    forcePurgeInterval: 30
+    lowWaterMark: 0.7
+    highWaterMark: 0.85
+    # Enable memory pooling
+    enablePooledMemory: true
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Enable QueryNode explicitly
+  standalone:
+    enabled: true
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+proxy:
+  port: 19531
+  healthCheck:
+    interval: 10s  # Increased interval
+    timeout: 60s  # Increased timeout
+  maxNameLength: 255
+  maxFieldNum: 64
+  maxShardNum: 16
+  maxDimension: 32768
+  timeTickInterval: 200
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Proxy specific settings
+  graceTime: 60s  # Increased timeout
+  # Graceful shutdown settings
+  gracefulStopTimeout: 60s  # Increased timeout
+
+# Performance tuning
+node:
+  id: 1
+  # Enable graceful shutdown
+  gracefulStopTimeout: 60s  # Increased timeout
+  # Node ID management
+  nodeIDAlloc:
+    enable: true
+    step: 1
+  # Session keepalive settings
+  session:
+    keepalive:
+      interval: 10s
+      timeout: 5s
+
+rocksmq:
+  path: /var/lib/milvus/rdb_data
+  lrucacheratio: 0.06
+  rocksmqPageSize: 67108864
+
+# Storage configuration
+localStorage:
+  path: /var/lib/milvus/local_storage
+
+# Network configuration
+grpc:
+  serverMaxSendSize: 536870912
+  serverMaxRecvSize: 536870912
+  clientMaxSendSize: 268435456
+  clientMaxRecvSize: 268435456
+  # Connection timeout settings
+  connection:
+    idleTimeout: 120s  # Increased timeout
+    keepalive:
+      time: 30s
+      timeout: 10s
+      permitWithoutStream: true
+
+# Component health check settings
+healthCheck:
+  minimalHealthDuration: 30s  # Increased duration
+  # Enable component health check
+  enabled: true
+  # Component health check timeout
+  timeout: 60s  # Increased timeout
+
+# Node ID management configuration to fix node ID mismatch issues
+nodeIDAlloc:
+  enable: true
+  step: 1
+  # Enable node ID recovery
+  enableRecovery: true
+  # Node ID allocation range
+  minID: 1
+  maxID: 1000
+
+# Standalone mode configuration
+standalone:
+  enabled: true
+  # Enable all components in standalone mode
+  components:
+    - rootCoord
+    - queryCoord
+    - dataCoord
+    - indexCoord
+    - queryNode
+    - proxy
+
+# Session management configuration to prevent disconnections
+session:
+  ttl: 60s  # Increased TTL
+  retryInterval: 5s  # Increased retry interval
+  # Enable session recovery
+  enableRecovery: true
+  # Session keepalive settings
+  keepalive:
+    interval: 10s
+    timeout: 5s

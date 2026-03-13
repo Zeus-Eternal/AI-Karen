@@ -11,14 +11,9 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 
-try:
-    from src.services.spacy_service import SpacyService, SpacyHealthStatus
-    from src.services.distilbert_service import DistilBertService, DistilBertHealthStatus
-    from src.services.nlp_config import NLPConfig
-except ImportError:
-    from spacy_service import SpacyService, SpacyHealthStatus
-    from distilbert_service import DistilBertService, DistilBertHealthStatus
-    from nlp_config import NLPConfig
+from services.memory.spacy_service import SpacyService, SpacyHealthStatus
+from services.memory.distilbert_service import DistilBertService, DistilBertHealthStatus
+from services.memory.internal.nlp_config import NLPConfig
 
 logger = logging.getLogger(__name__)
 

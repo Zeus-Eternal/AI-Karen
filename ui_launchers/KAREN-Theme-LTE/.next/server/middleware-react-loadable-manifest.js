@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"lib/accessibility/axe-testing.ts -> axe-core":{"id":9599,"files":["static/chunks/vendors-eb3709e718540ae4.js"]},"lib/accessibility/wcag-compliance.ts -> axe-core":{"id":9599,"files":["static/chunks/vendors-eb3709e718540ae4.js"]}}';

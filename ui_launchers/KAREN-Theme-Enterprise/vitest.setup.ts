@@ -1,0 +1,6 @@
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+// Extend Vitest's expect with jest-dom matchers
+import { expect } from 'vitest';
+
+expect.extend(matchers as any);

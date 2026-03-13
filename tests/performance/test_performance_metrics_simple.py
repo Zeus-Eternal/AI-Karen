@@ -9,6 +9,13 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
+if __name__ != "__main__":
+    import pytest
+    pytest.skip(
+        "Skipping standalone performance metrics script during pytest collection",
+        allow_module_level=True
+    )
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 

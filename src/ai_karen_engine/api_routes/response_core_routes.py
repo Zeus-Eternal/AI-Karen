@@ -36,7 +36,7 @@ from ..core.response.factory import (
 from ..core.response.scheduler_manager import AutonomousConfig
 from ..core.response.config import PipelineConfig
 from ..chat.chat_orchestrator import ChatOrchestrator, ChatRequest as LegacyChatRequest, ChatResponse as LegacyChatResponse
-from ..services.auth_utils import get_current_user
+from services.memory.internal.auth_utils import get_current_user
 from ..core.dependencies import get_current_user_context
 
 logger = logging.getLogger(__name__)

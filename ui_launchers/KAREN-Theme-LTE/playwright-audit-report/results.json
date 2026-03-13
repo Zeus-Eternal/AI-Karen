@@ -1,0 +1,625 @@
+{
+  "config": {
+    "configFile": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/playwright.audit.config.ts",
+    "rootDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 6
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-audit-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-audit-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "login-audit-debug.spec.ts",
+      "file": "login-audit-debug.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Login System Audit & Debug",
+          "file": "login-audit-debug.spec.ts",
+          "line": 68,
+          "column": 6,
+          "specs": [
+            {
+              "title": "1. Frontend Login Form Audit",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 30123,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts",
+                            "column": 16,
+                            "line": 79
+                          },
+                          "message": "Error: page.waitForLoadState: Test timeout of 30000ms exceeded.\n\n  77 |     \n  78 |     // Check if we're redirected to login or if login form is visible\n> 79 |     await page.waitForLoadState('networkidle');\n     |                ^\n  80 |     \n  81 |     // Look for login form elements\n  82 |     const emailInput = page.locator('input[type=\"email\"], input[id=\"email\"]');\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:79:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Testing frontend login form...\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.329Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-deb6c-1-Frontend-Login-Form-Audit-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-deb6c-1-Frontend-Login-Form-Audit-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-deb6c-1-Frontend-Login-Form-Audit-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-b414d4a0bd35eebeead4",
+              "file": "login-audit-debug.spec.ts",
+              "line": 70,
+              "column": 3
+            },
+            {
+              "title": "2. Backend API Connectivity Audit",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2510,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Testing backend API connectivity...\n"
+                        },
+                        {
+                          "text": "Testing backend: http://localhost:8000\n"
+                        },
+                        {
+                          "text": "  Health check: 200\n"
+                        },
+                        {
+                          "text": "  Login endpoint: 200\n"
+                        },
+                        {
+                          "text": "  Login response: {\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5Aa2FyaS5haSIsInJvbGVzIjpbInN1cGVyX2FkbWluIiwiYWRtaW4iLCJ1c2VyIl0sInRlbmFudF9pZCI6ImRlZmF1bHQiLCJ0eX...\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint: 401\n"
+                        },
+                        {
+                          "text": "Testing backend: http://localhost:8001\n"
+                        },
+                        {
+                          "text": "  Health check failed: Error: apiRequestContext.get: connect ECONNREFUSED ::1:8001\nCall log:\n\u001b[2m  - → GET http://localhost:8001/health\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Login endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED ::1:8001\nCall log:\n\u001b[2m  - → POST http://localhost:8001/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED ::1:8001\nCall log:\n\u001b[2m  - → POST http://localhost:8001/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "Testing backend: http://localhost:8002\n"
+                        },
+                        {
+                          "text": "  Health check failed: Error: apiRequestContext.get: connect ECONNREFUSED ::1:8002\nCall log:\n\u001b[2m  - → GET http://localhost:8002/health\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Login endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED ::1:8002\nCall log:\n\u001b[2m  - → POST http://localhost:8002/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED ::1:8002\nCall log:\n\u001b[2m  - → POST http://localhost:8002/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "Testing backend: http://127.0.0.1:8000\n"
+                        },
+                        {
+                          "text": "  Health check: 200\n"
+                        },
+                        {
+                          "text": "  Login endpoint: 200\n"
+                        },
+                        {
+                          "text": "  Login response: {\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlcl9hZG1pbiIsImVtYWlsIjoiYWRtaW5Aa2FyaS5haSIsInJvbGVzIjpbInN1cGVyX2FkbWluIiwiYWRtaW4iLCJ1c2VyIl0sInRlbmFudF9pZCI6ImRlZmF1bHQiLCJ0eX...\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint: 401\n"
+                        },
+                        {
+                          "text": "Testing backend: http://127.0.0.1:8001\n"
+                        },
+                        {
+                          "text": "  Health check failed: Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:8001\nCall log:\n\u001b[2m  - → GET http://127.0.0.1:8001/health\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Login endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:8001\nCall log:\n\u001b[2m  - → POST http://127.0.0.1:8001/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:8001\nCall log:\n\u001b[2m  - → POST http://127.0.0.1:8001/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "Testing backend: http://127.0.0.1:8002\n"
+                        },
+                        {
+                          "text": "  Health check failed: Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:8002\nCall log:\n\u001b[2m  - → GET http://127.0.0.1:8002/health\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Login endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:8002\nCall log:\n\u001b[2m  - → POST http://127.0.0.1:8002/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        },
+                        {
+                          "text": "  Simple auth endpoint failed: Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:8002\nCall log:\n\u001b[2m  - → POST http://127.0.0.1:8002/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 50\u001b[22m\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.347Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-c6ad02df3f4c8e35884c",
+              "file": "login-audit-debug.spec.ts",
+              "line": 118,
+              "column": 3
+            },
+            {
+              "title": "3. Frontend-Backend Integration Audit",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "timedOut",
+                      "duration": 30154,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts",
+                            "column": 16,
+                            "line": 170
+                          },
+                          "message": "Error: page.waitForLoadState: Test timeout of 30000ms exceeded.\n\n  168 |     \n  169 |     await page.goto('/');\n> 170 |     await page.waitForLoadState('networkidle');\n      |                ^\n  171 |     \n  172 |     // Find and fill login form\n  173 |     const emailInput = page.locator('input[type=\"email\"], input[id=\"email\"]').first();\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:170:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Testing frontend-backend integration...\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.358Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-018ff-d-Backend-Integration-Audit-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-018ff-d-Backend-Integration-Audit-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-018ff-d-Backend-Integration-Audit-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-5e54164aedb21354ad28",
+              "file": "login-audit-debug.spec.ts",
+              "line": 164,
+              "column": 3
+            },
+            {
+              "title": "4. Cookie and Session Management Audit",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "timedOut",
+                      "duration": 30147,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts",
+                            "column": 16,
+                            "line": 273
+                          },
+                          "message": "Error: page.waitForLoadState: Test timeout of 30000ms exceeded.\n\n  271 |     \n  272 |     await page.goto('/');\n> 273 |     await page.waitForLoadState('networkidle');\n      |                ^\n  274 |     \n  275 |     // Check initial cookies\n  276 |     const initialCookies = await context.cookies();\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:273:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Testing cookie and session management...\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.372Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-5c5bc-nd-Session-Management-Audit-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-5c5bc-nd-Session-Management-Audit-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-5c5bc-nd-Session-Management-Audit-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-44f107de969b06d4bccf",
+              "file": "login-audit-debug.spec.ts",
+              "line": 269,
+              "column": 3
+            },
+            {
+              "title": "5. Environment and Configuration Audit",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "failed",
+                      "duration": 490,
+                      "error": {
+                        "message": "Error: page.evaluate: ReferenceError: process is not defined\n    at eval (eval at evaluate (:290:30), <anonymous>:3:19)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+                        "stack": "Error: page.evaluate: ReferenceError: process is not defined\n    at eval (eval at evaluate (:290:30), <anonymous>:3:19)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:290:30), <anonymous>:3:19)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:364:32",
+                        "location": {
+                          "file": "eval at evaluate (:290:30), <anonymous>",
+                          "column": 19,
+                          "line": 3
+                        }
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "eval at evaluate (:290:30), <anonymous>",
+                            "column": 19,
+                            "line": 3
+                          },
+                          "message": "Error: page.evaluate: ReferenceError: process is not defined\n    at eval (eval at evaluate (:290:30), <anonymous>:3:19)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at eval (eval at evaluate (:290:30), <anonymous>:3:19)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:364:32"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Testing environment and configuration...\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.357Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-e398b-ent-and-Configuration-Audit-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-e398b-ent-and-Configuration-Audit-chromium/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "eval at evaluate (:290:30), <anonymous>",
+                        "column": 19,
+                        "line": 3
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-94cdf2dd7455fc8ed045",
+              "file": "login-audit-debug.spec.ts",
+              "line": 360,
+              "column": 3
+            },
+            {
+              "title": "6. Complete Login Flow Debug",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 5,
+                      "status": "timedOut",
+                      "duration": 30117,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts",
+                            "column": 16,
+                            "line": 434
+                          },
+                          "message": "Error: page.waitForLoadState: Test timeout of 30000ms exceeded.\n\n  432 |     \n  433 |     await page.goto('/');\n> 434 |     await page.waitForLoadState('networkidle');\n      |                ^\n  435 |     \n  436 |     // Take initial screenshot\n  437 |     await page.screenshot({ path: 'login-debug-initial.png', fullPage: true });\n    at /media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/e2e/login-audit-debug.spec.ts:434:16"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "🔍 AUDIT: Complete login flow debug with detailed logging...\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-14T23:56:01.352Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-f68e4-6-Complete-Login-Flow-Debug-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-f68e4-6-Complete-Login-Flow-Debug-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/media/zeus/Development17/KIRO/AI-Karen/ui_launchers/KAREN-Theme-Default/test-results/login-audit-debug-Login-Sy-f68e4-6-Complete-Login-Flow-Debug-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "267d8411d8caf704d0c9-7cae586936636bb71fd2",
+              "file": "login-audit-debug.spec.ts",
+              "line": 408,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-11-14T23:56:00.515Z",
+    "duration": 31276.087,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 5,
+    "flaky": 0
+  }
+}

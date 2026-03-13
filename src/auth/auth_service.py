@@ -7,7 +7,7 @@ from dataclasses import asdict
 from typing import Any, Dict, Optional
 
 from ai_karen_engine.services.auth_service import (
-    AuthService,
+    AuthService as CoreAuthService,
     UserAccount,
 )
 
@@ -21,7 +21,7 @@ __all__ = [
 
 
 _service_lock = asyncio.Lock()
-_auth_service: Optional[AuthService] = None
+_auth_service: Optional[CoreAuthService] = None
 _service_started = False
 
 
@@ -47,13 +47,13 @@ def user_account_to_dict(user: UserAccount) -> Dict[str, Any]:
     return payload
 
 
-async def _ensure_service_started() -> AuthService:
+async def _ensure_service_started() -> CoreAuthService:
     """Initialise and return the shared production auth service."""
 
     global _auth_service, _service_started
 
     if _auth_service is None:
-        _auth_service = AuthService()
+        _auth_service = CoreAuthService()
 
     if not _service_started:
         async with _service_lock:
@@ -65,13 +65,13 @@ async def _ensure_service_started() -> AuthService:
     return _auth_service
 
 
-async def get_auth_service() -> AuthService:
+async def get_auth_service() -> CoreAuthService:
     """Return the lazily initialised production authentication service."""
 
     return await _ensure_service_started()
 
 
-def get_auth_service_sync() -> AuthService:
+def get_auth_service_sync() -> CoreAuthService:
     """Blocking helper used by CLI tools and scripts."""
 
     if _auth_service is not None and _service_started:
@@ -92,9 +92,9 @@ class AuthService:
     """Compatibility façade used by legacy integration points."""
 
     def __init__(self) -> None:
-        self._service: Optional[AuthService] = None
+        self._service: Optional[CoreAuthService] = None
 
-    async def _get_service(self) -> AuthService:
+    async def _get_service(self) -> CoreAuthService:
         if self._service is None:
             self._service = await get_auth_service()
         return self._service
@@ -140,6 +140,7 @@ class AuthService:
         password: str,
         *,
         full_name: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         roles: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         service = await self._get_service()
@@ -147,6 +148,7 @@ class AuthService:
             email=email,
             password=password,
             full_name=full_name or email.split("@")[0],
+            tenant_id=tenant_id,
             roles=roles or ["user"],
         )
         if error:

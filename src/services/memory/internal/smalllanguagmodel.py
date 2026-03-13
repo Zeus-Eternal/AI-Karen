@@ -51,9 +51,11 @@ def _get_llamacpp_client():
         return llamacpp_inprocess_client
     
     import_paths = [
-        "plugins_hub.ai.llm_services.llama.llama_client",
-        "plugins.ai.llm_services.llama.llama_client",
-        "ai_karen_engine.plugins.llm_services.llama.llama_client",
+        "src.services.memory.internal.llamacpp_client",
+        "services.memory.internal.llamacpp_client",
+        "src.services.models.llm_router",
+        "src.ai_karen_engine.integrations.llm_registry",
+        "src.ai_karen_engine.plugins.manager",
     ]
     
     for module_path in import_paths:

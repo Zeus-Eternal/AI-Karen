@@ -15,7 +15,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ai_karen_engine.services.error_response_service import ErrorResponseService
+from services.memory.error_response_service import ErrorResponseService
 
 logger = logging.getLogger(__name__)
 

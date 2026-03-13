@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 from ai_karen_engine.core.logging import get_logger
-from src.services.audit_logging import get_audit_logger
+from services.memory.internal.audit_logging import get_audit_logger
 from src.services.audit_deduplication import get_audit_deduplication_service
 
 logger = get_logger(__name__)

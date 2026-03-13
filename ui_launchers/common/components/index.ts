@@ -6,3 +6,4 @@ export * from './settings';
 export * from './plugins';
 export * from './memory';
 export * from './analytics';
+export * from './task';

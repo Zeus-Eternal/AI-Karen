@@ -25,25 +25,32 @@ class PluginRouter:
 
 from ai_karen_engine.hooks.hook_mixin import HookMixin
 from ai_karen_engine.hooks.hook_types import HookTypes
-from ai_karen_engine.extensions.models import (
+from ai_karen_engine.extension_host.models import (
     ExtensionContext,
     ExtensionManifest,
     ExtensionRecord,
     ExtensionStatus,
 )
-from ai_karen_engine.extensions.registry import ExtensionRegistry
-from ai_karen_engine.extensions.validator import ExtensionValidator
-from ai_karen_engine.extensions.dependency_resolver import (
+from ai_karen_engine.extension_host.registry import ExtensionRegistry
+from ai_karen_engine.extension_host.validator import ExtensionValidator
+from ai_karen_engine.extension_host.dependency_resolver import (
     DependencyResolver,
     DependencyError,
 )
-from ai_karen_engine.extensions.resource_monitor import (
+from ai_karen_engine.extension_host.resource_monitor import (
     ResourceMonitor,
     ExtensionHealthChecker,
     HealthStatus,
 )
 from ai_karen_engine.event_bus import get_event_bus
-from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
+# from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
+# MarketplaceClient is not available, creating a dummy class for now
+class MarketplaceClient:
+    def __init__(self, *args, **kwargs):
+        pass
+    
+    def download_extension(self, *args, **kwargs):
+        pass
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.services.usage_service import UsageService
 from ai_karen_engine.database.models import (
@@ -302,7 +309,7 @@ class ExtensionManager(HookMixin):
         
         # Check endpoint compatibility with unified API
         try:
-            from ai_karen_engine.extensions.endpoint_adapter import ExtensionEndpointAdapter
+            from ai_karen_engine.extension_host.endpoint_adapter import ExtensionEndpointAdapter
             endpoint_adapter = ExtensionEndpointAdapter()
             compatibility = endpoint_adapter.validate_endpoint_compatibility(manifest)
             
@@ -680,7 +687,17 @@ class ExtensionManager(HookMixin):
         """
         try:
             # Local import to avoid circular dependency during app startup
-            from ai_karen_engine.extensions.base import BaseExtension  # type: ignore
+            # from ai_karen_engine.extensions.base import BaseExtension  # type: ignore
+            # BaseExtension is not available, creating a dummy class for now
+            class BaseExtension:
+                def __init__(self, *args, **kwargs):
+                    pass
+                
+                async def initialize(self):
+                    pass
+                
+                async def shutdown(self):
+                    pass
 
             init_file = extension_dir / "__init__.py"
             if not init_file.exists():

@@ -44,6 +44,7 @@ fakeredis
 psycopg
 psycopg2-binary
 asyncpg
+aiofiles
 aiohttp
 sqlalchemy
 alembic
@@ -85,3 +86,6 @@ chunkr_ai
 xmltodict
 croniter
 mcp
+# Optional: zvec is not published on PyPI for all platforms/interpreters.
+# Install manually only when enabling local Zvec features.
+# zvec

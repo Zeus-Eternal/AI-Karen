@@ -27,8 +27,8 @@ class DatabaseConfig:
     """Database configuration."""
     postgres_url: Optional[str] = None
     redis_url: Optional[str] = None
-    milvus_host: str = "localhost"
-    milvus_port: int = 19530
+    milvus_host: str = "ai-karen-milvus"
+    milvus_port: int = 19531
     elasticsearch_host: str = "localhost"
     elasticsearch_port: int = 9200
     pool_size: int = 10

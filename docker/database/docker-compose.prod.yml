@@ -1,10 +1,12 @@
-# Production Environment Configuration
-# This extends the base docker-compose.yml with production-specific settings
+# Production Environment Configuration with Security Hardening
+# This extends base docker-compose.yml with production-specific settings and security hardening
 
 version: '3.8'
 
 services:
   postgres:
+    image: postgres:15-alpine
+    container_name: ai-karen-postgres-prod
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-ai_karen_prod}
       - POSTGRES_USER=${POSTGRES_USER:-karen_prod}
@@ -35,6 +37,11 @@ services:
       -c log_connections=on
       -c log_disconnections=on
       -c log_lock_waits=on
+      -c log_statement=none
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/server.crt
+      -c ssl_key_file=/etc/ssl/private/server.key
+      -c ssl_ca_file=/etc/ssl/certs/ca.crt
     deploy:
       resources:
         limits:
@@ -43,29 +50,54 @@ services:
         reservations:
           memory: 1G
           cpus: '0.5'
-    restart: always
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-karen_prod} -d ${POSTGRES_DB:-ai_karen_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m,uid=999,gid=999
+    networks:
+      - ai-karen-db-prod
 
   elasticsearch:
+    image: docker.elastic.co/elasticsearch:8.9.0
+    container_name: ai-karen-elasticsearch-prod
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}  # Must be set in .env
       - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_HEAP_SIZE:-2g} -Xmx${ELASTICSEARCH_HEAP_SIZE:-2g}"
       - cluster.name=ai-karen-prod
       - node.name=ai-karen-prod-node
       - bootstrap.memory_lock=true
       - indices.memory.index_buffer_size=30%
       - indices.memory.min_index_buffer_size=96mb
+      - xpack.security.audit.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.certificate=certs/elasticsearch.crt
+      - xpack.security.transport.ssl.key=certs/elasticsearch.key
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca.crt
     ports:
       - "127.0.0.1:${ELASTICSEARCH_PORT:-9200}:9200"
     volumes:
       - elasticsearch_prod_data:/usr/share/elasticsearch/data
       - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./certs:/usr/share/elasticsearch/config/certs:ro
       - ./backups/elasticsearch:/backups:rw
     ulimits:
       memlock:
@@ -82,14 +114,30 @@ services:
         reservations:
           memory: 2G
           cpus: '1.0'
-    restart: always
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -s -k https://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "1000:1000"
+    networks:
+      - ai-karen-db-prod
 
   milvus:
+    image: milvusdb/milvus:v2.3.2
+    container_name: ai-karen-milvus-prod
     environment:
       ETCD_ENDPOINTS: milvus-etcd:2379
       MINIO_ADDRESS: milvus-minio:9000
@@ -108,14 +156,116 @@ services:
         reservations:
           memory: 4G
           cpus: '2.0'
-    restart: always
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -s http://localhost:9091/healthz || exit 1"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    networks:
+      - ai-karen-db-prod
+
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: ai-karen-milvus-etcd-prod
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+      - ETCD_HEARTBEAT_INTERVAL=100
+      - ETCD_ELECTION_TIMEOUT=1000
+      - ETCD_LOG_LEVEL=warn
+    volumes:
+      - etcd_prod_data:/etcd
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "etcdctl endpoint health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    networks:
+      - ai-karen-db-prod
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: ai-karen-milvus-minio-prod
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}  # Must be set in .env
+      MINIO_SERVER_URL: http://milvus-minio:9000
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_prod_data:/data
+      - ./backups/minio:/backups:rw
+    command: minio server /data --console-address ":9001"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    networks:
+      - ai-karen-db-prod
 
   redis:
+    image: redis:7-alpine
+    container_name: ai-karen-redis-prod
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
@@ -135,11 +285,16 @@ services:
       --syslog-enabled no
       --tcp-keepalive 300
       --timeout 0
+      --tls-port 0
+      --tls-cert-file /etc/redis/certs/redis.crt
+      --tls-key-file /etc/redis/private/redis.key
+      --tls-ca-cert-file /etc/redis/certs/ca.crt
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_prod_data:/data
       - ./config/redis_prod.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./certs:/etc/redis/certs:ro
       - ./backups/redis:/backups:rw
     deploy:
       resources:
@@ -149,71 +304,35 @@ services:
         reservations:
           memory: 2G
           cpus: '0.5'
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "5"
-
-  milvus-etcd:
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
-      - ETCD_HEARTBEAT_INTERVAL=100
-      - ETCD_ELECTION_TIMEOUT=1000
-      - ETCD_LOG_LEVEL=warn
-    volumes:
-      - etcd_prod_data:/etcd
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.5'
-        reservations:
-          memory: 512M
-          cpus: '0.25'
-    restart: always
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "3"
-
-  milvus-minio:
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_REGION_NAME: us-east-1
-    ports:
-      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
-    volumes:
-      - minio_prod_data:/data
-      - ./backups/minio:/backups:rw
-    command: minio server /data --console-address ":9001"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --raw incr ping || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    networks:
+      - ai-karen-db-prod
 
   duckdb-manager:
+    image: alpine:latest
+    container_name: ai-karen-duckdb-manager-prod
     volumes:
       - duckdb_prod_data:/data/duckdb
       - ./init/duckdb:/init:ro
       - ./backups/duckdb:/backups:rw
+    command: /bin/sh -c "while true; do sleep 3600; done"
     deploy:
       resources:
         limits:
@@ -222,12 +341,25 @@ services:
         reservations:
           memory: 512M
           cpus: '0.25'
-    restart: always
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    networks:
+      - ai-karen-db-prod
 
   # Production monitoring and backup services
   backup-scheduler:
     image: alpine:latest
-    container_name: ai-karen-backup-scheduler
+    container_name: ai-karen-backup-scheduler-prod
     volumes:
       - ./scripts:/scripts:ro
       - ./backups:/backups:rw
@@ -235,9 +367,14 @@ services:
     environment:
       - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}  # Daily at 2 AM
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}  # Must be set in .env
+      - S3_BUCKET=${S3_BUCKET:-ai-karen-backups}  # S3 bucket for offsite backups
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}  # Must be set in .env
+      - S3_SECRET_KEY=${S3_SECRET_KEY}  # Must be set in .env
     command: >
       sh -c "
-        apk add --no-cache docker-cli dcron &&
+        apk add --no-cache docker-cli dcron aws-cli &&
         echo '${BACKUP_SCHEDULE:-0 2 * * *} /scripts/backup.sh --name scheduled_$(date +%Y%m%d_%H%M%S)' > /etc/crontabs/root &&
         crond -f -l 2
       "
@@ -246,9 +383,67 @@ services:
       - elasticsearch
       - milvus
       - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
     networks:
-      - ai-karen-db
-    restart: always
+      - ai-karen-db-prod
+
+  # Security monitoring service
+  security-monitor:
+    image: docker.elastic.co/elasticsearch/filebeat:8.9.0
+    container_name: ai-karen-security-monitor-prod
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - SETUP_KIBANA=false
+    volumes:
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/log/ai-karen:/var/log/ai-karen:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+      - apparmor:docker-default
+      - label:disable
+    user: "999:999"
+    depends_on:
+      - elasticsearch
+    networks:
+      - ai-karen-db-prod
 
 volumes:
   postgres_prod_data:
@@ -295,9 +490,33 @@ volumes:
       device: ${DATA_PATH:-/opt/ai-karen/data}/duckdb
 
 networks:
-  ai-karen-db:
+  ai-karen-db-prod:
     driver: bridge
     name: ai-karen-database-prod-network
     ipam:
       config:
         - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      max-size: 1024
+      com.docker.network.bridge.name: ai-karen-db-prod-network
+      com.docker.network.bridge.enable_icc: "false"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+      com.docker.network.driver.mtu: 1500
+
+# Security hardening configurations
+# All secrets must be provided via environment variables
+# Never hardcode secrets in production
+# Required environment variables:
+# - POSTGRES_PASSWORD
+# - ELASTICSEARCH_PASSWORD
+# - MINIO_ROOT_PASSWORD
+# - MINIO_ROOT_USER
+# - REDIS_PASSWORD
+# - BACKUP_ENCRYPTION_KEY
+# - S3_ACCESS_KEY
+# - S3_SECRET_KEY
+# Optional environment variables:
+# - JWT_SECRET
+# - API_ENCRYPTION_KEY
+# - DATABASE_ENCRYPTION_KEY

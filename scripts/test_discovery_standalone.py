@@ -10,8 +10,14 @@ import sys
 import os
 from pathlib import Path
 
+# Prevent pytest from collecting this standalone script as a test module.
+__test__ = False
+
 # Add src to path
 sys.path.insert(0, 'src')
+
+IMPORT_READY = True
+IMPORT_ERROR: str | None = None
 
 # Import only the specific module we need
 try:
@@ -52,7 +58,8 @@ except ImportError as e:
         print("✅ Successfully imported ModelDiscoveryEngine via direct module loading")
     except Exception as e2:
         print(f"❌ Failed to import via direct loading: {e2}")
-        sys.exit(1)
+        IMPORT_READY = False
+        IMPORT_ERROR = str(e2)
 
 async def test_basic_functionality():
     """Test basic model discovery functionality."""
@@ -263,6 +270,12 @@ async def main():
     """Run all tests."""
     print("🧪 Model Discovery Engine Standalone Test Suite")
     print("=" * 70)
+
+    if not IMPORT_READY:
+        print("❌ Model discovery imports are unavailable in this environment")
+        if IMPORT_ERROR:
+            print(f"   Import error: {IMPORT_ERROR}")
+        return 1
     
     tests = [
         test_basic_functionality,

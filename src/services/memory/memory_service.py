@@ -654,119 +654,119 @@ class WebUIMemoryService(UnifiedMemoryService):
         try:
             if self.db_client:
                 async with self.db_client.get_async_session() as session:
-                # Base query
-                query_conditions = []
-                if user_id:
-                    query_conditions.append(
-                        TenantMemoryEntry.user_id == uuid.UUID(user_id)
+                    # Base query
+                    query_conditions = []
+                    if user_id:
+                        query_conditions.append(
+                            TenantMemoryEntry.user_id == uuid.UUID(user_id)
+                        )
+                    if time_range:
+                        query_conditions.append(
+                            TenantMemoryEntry.created_at >= time_range[0]
+                        )
+                        query_conditions.append(
+                            TenantMemoryEntry.created_at <= time_range[1]
+                        )
+
+                    base_query = select(TenantMemoryEntry)
+                    if query_conditions:
+                        base_query = base_query.where(and_(*query_conditions))
+
+                    # Get all memories for analysis
+                    result = await session.execute(base_query)
+                    memories = result.fetchall()
+
+                    # Analyze memories
+                    analytics = {
+                        "total_memories": len(memories),
+                        "memories_by_type": {},
+                        "memories_by_ui_source": {},
+                        "memories_by_importance": {},
+                        "ai_generated_count": 0,
+                        "user_confirmed_count": 0,
+                        "average_importance": 0,
+                        "most_accessed_memories": [],
+                        "recent_activity": [],
+                        "tag_frequency": {},
+                        "web_ui_metrics": self.web_ui_metrics.copy(),
+                    }
+
+                    if not memories:
+                        return analytics
+
+                    # Process memories
+                    importance_sum = 0
+                    for memory in memories:
+                        # Memory type distribution
+                        mem_type = memory.memory_type or "general"
+                        analytics["memories_by_type"][mem_type] = (
+                            analytics["memories_by_type"].get(mem_type, 0) + 1
+                        )
+
+                        # UI source distribution
+                        ui_source = memory.ui_source or "unknown"
+                        analytics["memories_by_ui_source"][ui_source] = (
+                            analytics["memories_by_ui_source"].get(ui_source, 0) + 1
+                        )
+
+                        # Importance distribution
+                        importance = memory.importance_score or 5
+                        analytics["memories_by_importance"][str(importance)] = (
+                            analytics["memories_by_importance"].get(str(importance), 0) + 1
+                        )
+                        importance_sum += importance
+
+                        # AI generated vs user confirmed
+                        if memory.ai_generated:
+                            analytics["ai_generated_count"] += 1
+                        if memory.user_confirmed:
+                            analytics["user_confirmed_count"] += 1
+
+                        # Tag frequency
+                        if memory.tags:
+                            for tag in memory.tags:
+                                analytics["tag_frequency"][tag] = (
+                                    analytics["tag_frequency"].get(tag, 0) + 1
+                                )
+
+                    analytics["average_importance"] = importance_sum / len(memories)
+
+                    # Get most accessed memories
+                    most_accessed_query = base_query.order_by(
+                        desc(TenantMemoryEntry.access_count)
+                    ).limit(10)
+                    most_accessed_result = await session.execute(most_accessed_query)
+                    analytics["most_accessed_memories"] = [
+                        {
+                            "id": mem.vector_id,
+                            "content": mem.content[:100] + "..."
+                            if len(mem.content) > 100
+                            else mem.content,
+                            "access_count": mem.access_count,
+                            "importance_score": mem.importance_score,
+                        }
+                        for mem in most_accessed_result.fetchall()
+                    ]
+
+                    # Recent activity (last 24 hours)
+                    recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+                    recent_query = base_query.where(
+                        TenantMemoryEntry.created_at > recent_cutoff
                     )
-                if time_range:
-                    query_conditions.append(
-                        TenantMemoryEntry.created_at >= time_range[0]
-                    )
-                    query_conditions.append(
-                        TenantMemoryEntry.created_at <= time_range[1]
-                    )
+                    recent_result = await session.execute(recent_query)
+                    analytics["recent_activity"] = [
+                        {
+                            "id": mem.vector_id,
+                            "content": mem.content[:50] + "..."
+                            if len(mem.content) > 50
+                            else mem.content,
+                            "memory_type": mem.memory_type,
+                            "created_at": mem.created_at.isoformat(),
+                        }
+                        for mem in recent_result.fetchall()
+                    ]
 
-                base_query = select(TenantMemoryEntry)
-                if query_conditions:
-                    base_query = base_query.where(and_(*query_conditions))
-
-                # Get all memories for analysis
-                result = await session.execute(base_query)
-                memories = result.fetchall()
-
-                # Analyze memories
-                analytics = {
-                    "total_memories": len(memories),
-                    "memories_by_type": {},
-                    "memories_by_ui_source": {},
-                    "memories_by_importance": {},
-                    "ai_generated_count": 0,
-                    "user_confirmed_count": 0,
-                    "average_importance": 0,
-                    "most_accessed_memories": [],
-                    "recent_activity": [],
-                    "tag_frequency": {},
-                    "web_ui_metrics": self.web_ui_metrics.copy(),
-                }
-
-                if not memories:
                     return analytics
-
-                # Process memories
-                importance_sum = 0
-                for memory in memories:
-                    # Memory type distribution
-                    mem_type = memory.memory_type or "general"
-                    analytics["memories_by_type"][mem_type] = (
-                        analytics["memories_by_type"].get(mem_type, 0) + 1
-                    )
-
-                    # UI source distribution
-                    ui_source = memory.ui_source or "unknown"
-                    analytics["memories_by_ui_source"][ui_source] = (
-                        analytics["memories_by_ui_source"].get(ui_source, 0) + 1
-                    )
-
-                    # Importance distribution
-                    importance = memory.importance_score or 5
-                    analytics["memories_by_importance"][str(importance)] = (
-                        analytics["memories_by_importance"].get(str(importance), 0) + 1
-                    )
-                    importance_sum += importance
-
-                    # AI generated vs user confirmed
-                    if memory.ai_generated:
-                        analytics["ai_generated_count"] += 1
-                    if memory.user_confirmed:
-                        analytics["user_confirmed_count"] += 1
-
-                    # Tag frequency
-                    if memory.tags:
-                        for tag in memory.tags:
-                            analytics["tag_frequency"][tag] = (
-                                analytics["tag_frequency"].get(tag, 0) + 1
-                            )
-
-                analytics["average_importance"] = importance_sum / len(memories)
-
-                # Get most accessed memories
-                most_accessed_query = base_query.order_by(
-                    desc(TenantMemoryEntry.access_count)
-                ).limit(10)
-                most_accessed_result = await session.execute(most_accessed_query)
-                analytics["most_accessed_memories"] = [
-                    {
-                        "id": mem.vector_id,
-                        "content": mem.content[:100] + "..."
-                        if len(mem.content) > 100
-                        else mem.content,
-                        "access_count": mem.access_count,
-                        "importance_score": mem.importance_score,
-                    }
-                    for mem in most_accessed_result.fetchall()
-                ]
-
-                # Recent activity (last 24 hours)
-                recent_cutoff = datetime.utcnow() - timedelta(hours=24)
-                recent_query = base_query.where(
-                    TenantMemoryEntry.created_at > recent_cutoff
-                )
-                recent_result = await session.execute(recent_query)
-                analytics["recent_activity"] = [
-                    {
-                        "id": mem.vector_id,
-                        "content": mem.content[:50] + "..."
-                        if len(mem.content) > 50
-                        else mem.content,
-                        "memory_type": mem.memory_type,
-                        "created_at": mem.created_at.isoformat(),
-                    }
-                    for mem in recent_result.fetchall()
-                ]
-
-                return analytics
 
         except Exception as e:
             logger.error(f"Failed to get memory analytics: {e}")

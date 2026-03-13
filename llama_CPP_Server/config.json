@@ -10,9 +10,9 @@
     "auth_token": null
   },
   "models": {
-    "directory": "/media/zeus/Development19/KIRO/AI-Karen/models/llama-cpp",
-    "default_model": null,
-    "auto_load_default": true,
+    "directory": "/mnt/Development/KIRO/AI-Karen/models/llama-cpp",
+    "default_model": "/mnt/Development/KIRO/AI-Karen/models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf",
+    "auto_load_default": false,
     "max_loaded_models": 2,
     "max_cache_gb": 8
   },
@@ -43,7 +43,7 @@
     }
   },
   "karen": {
-    "integration_enabled": true,
+    "integration_enabled": false,
     "endpoint": "http://localhost:8000",
     "health_timeout_s": 2
   },
@@ -78,5 +78,11 @@
       }
     },
     "api_keys": {}
+  },
+  "installation": {
+    "install_path": "/mnt/Development/KIRO/AI-Karen/llama_CPP_Server/_llama_cpp",
+    "venv_path": "/mnt/Development/KIRO/AI-Karen/llama_CPP_Server/venv",
+    "use_virtual_environment": false,
+    "install_method": "auto"
   }
 }

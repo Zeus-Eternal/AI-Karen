@@ -1,9 +1,9 @@
 # docker-compose.yml
 services:
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # PostgreSQL
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   postgres:
     container_name: ai-karen-postgres
     image: postgres:15-alpine
@@ -24,12 +24,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Elasticsearch
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   elasticsearch:
     container_name: ai-karen-elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
@@ -37,7 +45,12 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      # Disk watermark settings to prevent cluster issues
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=85%
+      - cluster.routing.allocation.disk.watermark.high=90%
+      - cluster.routing.allocation.disk.watermark.flood_stage=95%
     ports:
       - "9200:9200"
     volumes:
@@ -47,12 +60,20 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Redis
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   redis:
     container_name: ai-karen-redis
     image: redis:7-alpine
@@ -71,40 +92,61 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Milvus Dependencies: Etcd
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   milvus-etcd:
     container_name: ai-karen-milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
     restart: unless-stopped
     command: >
-      etcd
-      -advertise-client-urls=http://0.0.0.0:2379
-      -listen-client-urls=http://0.0.0.0:2379
-      --data-dir /etcd
+      sh -c "
+        chmod 700 /etcd 2>/dev/null || true &&
+        etcd --config-file /etc/etcd/etcd.conf.yml
+      "
     volumes:
       - etcd_data:/etcd
+      - ./docker/etcd.conf.yml:/etc/etcd/etcd.conf.yml:ro
     healthcheck:
       test: ["CMD-SHELL", "etcdctl endpoint health"]
       interval: 30s
       timeout: 20s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Milvus Dependencies: MinIO
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   milvus-minio:
     container_name: ai-karen-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    image: minio/minio:latest
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Use the new MinIO environment variables
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: minio server /data --console-address ":9001"
     ports:
       - "9000:9000"   # MinIO API
@@ -116,12 +158,20 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Milvus Vector DB (Standalone)
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   milvus:
     container_name: ai-karen-milvus
     image: milvusdb/milvus:v2.4.8
@@ -141,33 +191,70 @@ services:
       MINIO_ACCESS_KEY_ID:      ${MINIO_ACCESS_KEY}
       MINIO_SECRET_ACCESS_KEY:  ${MINIO_SECRET_KEY}
       DEPLOY_MODE:              standalone
+      # Add environment variables to clean stale metadata and data
+      CLEAN_STALE_META:         "true"
+      # Enable standalone mode explicitly
+      STANDALONE:              "true"
+      # Enable all components
+      ENABLE_ROOTCOORD:         "true"
+      ENABLE_QUERYCOORD:        "true"
+      ENABLE_DATACOORD:        "true"
+      ENABLE_INDEXCOORD:        "true"
+      ENABLE_QUERYNODE:         "true"
+      ENABLE_PROXY:            "true"
+      # Session management settings to prevent shutdowns
+      SESSION_TTL:             "60"
+      SESSION_KEEPALIVE_INTERVAL: "10"
+      SESSION_KEEPALIVE_TIMEOUT: "5"
+      # Graceful shutdown settings
+      GRACEFUL_STOP_TIMEOUT:   "60"
     ports:
-      - "19530:19530"   # gRPC API
+      - "19531:19530"   # gRPC API (changed from 19530 to avoid conflict)
       - "9091:9091"     # HTTP (health)
       - "19121:19121"   # Prometheus exporter
       - "30001:30001"   # RootCoord
       - "30002:30002"   # DataCoord
+      - "30003:30003"   # QueryCoord
+      - "21123:21123"   # QueryNode (added to fix connectivity issues)
+      - "21124:21124"   # DataNode (added to fix port conflict)
     volumes:
       - milvus_data:/var/lib/milvus
+      - ./docker/milvus.yaml:/milvus/configs/milvus.yaml:ro  # Mount custom configuration
     healthcheck:
-      test: ["CMD-SHELL", "timeout 10s bash -c '</dev/tcp/localhost/19530' || exit 1"]
+      test: ["CMD-SHELL", "timeout 10s bash -c '</dev/tcp/localhost/19531' || exit 1"]
       interval: 30s
       timeout: 15s
       retries: 10
-      start_period: 300s
+      start_period: 600s  # Increased from 300s to allow more time for initialization
+    deploy:
+      resources:
+        limits:
+          memory: 4G      # Increased memory limit
+          cpus: '2.0'     # Increased CPU limit
+        reservations:
+          memory: 2G      # Increased memory reservation
+          cpus: '1.0'     # Increased CPU reservation
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Local LLM Server (OPTIONAL - only starts with --profile local-llm)
   # Download model first: see models/llama-cpp/README.md
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   local-llm:
     container_name: ai-karen-local-llm
     image: ghcr.io/ggerganov/llama.cpp:server
     restart: unless-stopped
     profiles:
       - local-llm
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4.0'
+        reservations:
+          memory: 2G
+          cpus: '2.0'
     ports:
       - "8080:8080"
     volumes:
@@ -190,9 +277,9 @@ services:
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Prometheus Monitoring
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   prometheus:
     container_name: ai-karen-prometheus
     image: prom/prometheus:latest
@@ -202,12 +289,30 @@ services:
       - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
     ports:
       - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   # Grafana Dashboard
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
   grafana:
     container_name: ai-karen-grafana
     image: grafana/grafana:9.5.2
@@ -226,12 +331,20 @@ services:
     depends_on:
       - prometheus
       - elasticsearch
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     networks:
       - ai-karen-net
 
-  # ──────────────────────────────────────────────────────────────────────────────
-  # FastAPI Backend (“api”)
-  # ──────────────────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────────
+  # FastAPI Backend ("api")
+  # ──────────────────────────────────────────────────────────────────────
   api:
     container_name: ai-karen-api
     build:
@@ -240,12 +353,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-      - .env.resource-optimized
     environment:
       # Runtime mode for development (relaxes RBAC + auth strictness)
       ENVIRONMENT: "development"
       DEBUG: "true"
       AUTH_MODE: "hybrid"
+      # Set PYTHONPATH to include src directory for proper module imports
+      PYTHONPATH: "/app:/app/src:$PYTHONPATH"
       # Speed up dev boot: don't block readiness on heavy init
       KARI_FAST_STARTUP: "true"
       WARMUP_LLM: "false"
@@ -253,6 +367,22 @@ services:
       KARI_DEFER_ROUTER_WIRING: "false"
       # Enable dev login endpoint for local development
       AUTH_ALLOW_DEV_LOGIN: "true"
+      
+      # Memory service configuration
+      KARI_ENABLE_MEMORY_SERVICE: "true"
+      KARI_ENABLE_UNIFIED_MEMORY: "true"
+      KARI_MEMORY_SERVICE_TIMEOUT: "30"
+      KARI_MEMORY_SERVICE_MAX_RETRIES: "3"
+      KARI_MEMORY_FALLBACK_ENABLED: "true"
+      # Memory service offline mode settings
+      KARI_DISABLE_MEMORY_SURPRISE_FILTER: "true"
+      KARI_MEMORY_CACHE_TTL: "300"
+      KARI_MEMORY_FALLBACK_SCAN_LIMIT: "500"
+      KARI_MEMORY_RECENCY_ALPHA: "0.05"
+      # DistilBERT fallback settings
+      KARI_DISTILBERT_ENABLE_FALLBACK: "true"
+      KARI_DISTILBERT_CACHE_SIZE: "1000"
+      KARI_DISTILBERT_CACHE_TTL: "3600"
 
       # Redis connection with password; matches the `redis` service
       # Uses the same REDIS_PASSWORD provided via env_file (.env)
@@ -281,9 +411,9 @@ services:
       ELASTICSEARCH_HOST: "elasticsearch"
       ELASTICSEARCH_PORT: "9200"
       MILVUS_HOST: "milvus"
-      MILVUS_PORT: "19530"
+      MILVUS_PORT: "19531"
       VECTOR_DB_HOST: "milvus"
-      VECTOR_DB_PORT: "19530"
+      VECTOR_DB_PORT: "19531"
       # Enable/disable database services (set to false for faster development)
       KARI_ENABLE_VECTOR_DB: "true"  # Milvus vector database
       KARI_ENABLE_ELASTICSEARCH: "true"  # Elasticsearch for document search
@@ -298,6 +428,10 @@ services:
       AUTH_RATE_LIMIT_STORAGE: "redis"
       # Point auth rate limiter at the same Redis URL used elsewhere
       AUTH_RATE_LIMIT_REDIS_URL: "${REDIS_URL}"
+      # --- CORS Configuration ---
+      # Allow localhost, 127.0.0.1, and ANY Docker network IP (10.x.x.x, 172.x.x.x, 192.168.x.x)
+      CORS_ALLOW_ORIGIN_REGEX: "^https?://(localhost|127\\.0\\.0\\.1|10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|172\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3})(:\\d+)?$"
+      KARI_CORS_ORIGINS: "http://localhost:8010,http://127.0.0.1:8010,http://localhost:8000,http://127.0.0.1:8000"
       # Lock out faster on multiple failures
       AUTH_MAX_FAILED_ATTEMPTS: "5"
       AUTH_LOCKOUT_DURATION_MINUTES: "15"
@@ -315,8 +449,13 @@ services:
       SPACY_DOWNLOAD_MISSING: "false"
       # Transformers offline to avoid model downloads on startup
       TRANSFORMERS_OFFLINE: "true"
+      TRANSFORMERS_CACHE_DIR: "./models/transformers"
       HF_HUB_OFFLINE: "1"
       TOKENIZERS_PARALLELISM: "false"
+      # Additional offline settings for sentence-transformers
+      HF_DATASETS_OFFLINE: "1"
+      SENTENCE_TRANSFORMERS_OFFLINE: "true"
+      DISABLE_HUGGINGFACE_HUB: "1"
       # Enable heavy NLP helpers (DistilBERT, spaCy, etc.)
       KARI_ENABLE_DEGRADED_HELPERS: "1"
       # Model Orchestrator Plugin Configuration
@@ -334,7 +473,7 @@ services:
     command:
       - sh
       - -c
-      - python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools
+      - "python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools"
     volumes:
       # Bind-mount project into the container so the runtime sees the source files
       # NOTE: must be writable so Docker can create mountpoints under /app (for example /app/backups)
@@ -347,8 +486,10 @@ services:
       - logs_data:/app/logs
       # Backup volume
       - backup_data:/app/backups
-      # Hugging Face cache for transformers models
-      - "${HOME}/.cache/huggingface/hub:/root/.cache/huggingface/hub:ro"
+      # Hugging Face cache for transformers models - mount our local models to the expected location
+      - "./models/transformers:/root/.cache/huggingface/hub:rw"
+      # Local transformers models cache
+      - "./models/transformers:/app/cache/transformers:rw"
     depends_on:
       postgres:
         condition: service_healthy
@@ -372,25 +513,20 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G      # Hard limit at 2GB
-          cpus: '1.0'     # Limit to 1 CPU core
+          memory: 6G      # Increased to 6GB for better performance
+          cpus: '4.0'     # Increased to 4 CPU cores for better performance
         reservations:
-          memory: 512M    # Reserve 512MB minimum
-          cpus: '0.25'    # Reserve 0.25 CPU cores
-    # Memory and swap limits for additional protection
-    mem_limit: 2g
-    mem_reservation: 512m
-    memswap_limit: 2g
-    cpus: 1.0
+          memory: 2G      # Reserve 2GB minimum
+          cpus: '2.0'     # Reserve 2 CPU cores
     networks:
       - ai-karen-net
 
-  # ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────
   # Web UI (Next.js dev server on :8010, exposed on :8010)
-  # ────────────────────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────
   web:
     container_name: ai-karen-web
-    image: node:20-alpine
+    image: node:20-bullseye
     working_dir: /app
     env_file:
       - .env
@@ -407,10 +543,19 @@ services:
     ports:
       - "8010:8010"
     volumes:
-      - ./ui_launchers/KAREN-Theme-Default:/app
+      - ./ui_launchers/KAREN-Theme-LTE:/app
       - ./.env.local:/app/.env.local:ro
-      - node_modules_cache:/app/node_modules
-    command: sh -c "rm -rf /app/node_modules/.cache && npm install && npx next dev -p 8010"
+    command: >
+      sh -c "
+        rm -rf /app/node_modules/.cache &&
+        npm config set loglevel error &&
+        if [ -f /app/node_modules/.install_complete ]; then
+          echo 'Skipping npm install (already populated)';
+        else
+          npm install && touch /app/node_modules/.install_complete;
+        fi &&
+        npx next dev -p 8010
+      "
     deploy:
       resources:
         limits:
@@ -423,25 +568,34 @@ services:
     networks:
       - ai-karen-net
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # Named Volumes
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
+    driver: local
   es_data:
+    driver: local
   redis_data:
+    driver: local
   etcd_data:
+    driver: local
   minio_data:
+    driver: local
   milvus_data:
+    driver: local
   grafana_data:
+    driver: local
   models_data:
+    driver: local
   logs_data:
+    driver: local
   backup_data:
-  node_modules_cache:
+    driver: local
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # Custom Network
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 networks:
   ai-karen-net:
     driver: bridge

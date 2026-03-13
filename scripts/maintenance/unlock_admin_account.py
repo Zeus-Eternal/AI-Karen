@@ -4,16 +4,93 @@ Unlock Admin Account
 Comprehensive script to unlock the admin account and clear all lockout conditions.
 """
 
+
 import asyncio
 import asyncpg
+import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+
+def _load_env_file(env_filename=".env"):
+    """Load env vars from the workspace root .env if they are not already set."""
+    env_path = Path(__file__).resolve().parents[2] / env_filename
+    if not env_path.is_file():
+        return False
+
+    try:
+        with env_path.open() as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+
+                key, _, value = line.partition("=")
+                key = key.strip()
+                if not key:
+                    continue
+
+                value = value.strip()
+                if "#" in value:
+                    value = value.split("#", 1)[0].strip()
+
+                if (
+                    len(value) >= 2
+                    and value[0] == value[-1]
+                    and value[0] in ("'", '"')
+                ):
+                    value = value[1:-1]
+
+                os.environ.setdefault(key, value)
+        return True
+    except OSError:
+        return False
+
+
+def _reset_local_user_lockout(email: str):
+    """Reset lockout state stored in data/users.json so the simple auth service agrees."""
+    repo_root = Path(__file__).resolve().parents[2]
+    users_file = repo_root / "data" / "users.json"
+    try:
+        identifier = users_file.relative_to(repo_root)
+    except ValueError:
+        identifier = users_file
+
+    if not users_file.is_file():
+        return False, f"{identifier} not found"
+
+    try:
+        with users_file.open("r") as handle:
+            data = json.load(handle)
+    except Exception as exc:
+        return False, f"Could not read {identifier}: {exc}"
+
+    user_entry = data.get(email)
+    if not user_entry:
+        return False, f"{email} not present in {identifier}"
+
+    user_entry["failed_login_attempts"] = 0
+    user_entry["locked_until"] = None
+
+    try:
+        with users_file.open("w") as handle:
+            json.dump(data, handle, indent=2)
+            handle.write("\n")
+    except Exception as exc:
+        return False, f"Failed to write {identifier}: {exc}"
+
+    return True, f"Reset lockout state in {identifier}"
+
 
 async def unlock_admin_account():
     """Unlock the admin account and clear all lockout conditions."""
     print("🔓 Unlocking admin account...")
     
+    # Load local environment overrides if available (helps scripts run without sourcing .env)
+    _load_env_file()
+
     # Database connection details from environment
     db_config = {
         'host': os.getenv('POSTGRES_HOST', 'localhost'),
@@ -40,11 +117,17 @@ async def unlock_admin_account():
             print(f"   ❌ Admin user {admin_email} not found!")
             await conn.close()
             return False
-        
+
         print(f"   ✅ Found admin user: {admin_user['user_id']}")
         print(f"      Failed attempts: {admin_user['failed_login_attempts']}")
         print(f"      Locked until: {admin_user['locked_until']}")
         print(f"      Active: {admin_user['is_active']}")
+
+        reset_success, reset_msg = _reset_local_user_lockout(admin_email)
+        if reset_success:
+            print(f"   ✅ {reset_msg}")
+        else:
+            print(f"   ℹ️  {reset_msg}")
         
         # Step 2: Clear all lockout conditions
         print("   🧹 Clearing lockout conditions...")

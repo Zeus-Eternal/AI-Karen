@@ -11,12 +11,11 @@ from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-from ai_karen_engine.clients.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.clients.nlp_service import NLPService
 from ai_karen_engine.core.response_envelope import build_response_envelope
-from ai_karen_engine.services.distilbert_service import DistilBertService
-from ai_karen_engine.services.spacy_service import SpacyService
-from ai_karen_engine.services.metrics_service import get_metrics_service
+from ai_karen_engine.inference.core_helpers_runtime import CoreHelpersRuntime
+from ai_karen_engine.core.metrics_manager import get_metrics_manager
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,7 @@ class DegradedModeManager:
         self.spacy_service = None
         self.embedding_manager = None
         self.nlp_service = None
-        self.metrics_service = get_metrics_service()
+        self.metrics_service = get_metrics_manager()
         
         # Initialize services
         self._initialize_services()
@@ -150,20 +149,13 @@ class DegradedModeManager:
             )
         else:
             try:
-                self.distilbert_service = DistilBertService()
+                self.core_helpers_runtime = CoreHelpersRuntime()
                 self.status.core_helpers_available["distilbert"] = True
-                logger.info("DistilBERT service initialized for degraded mode")
+                logger.info("Core helpers runtime initialized for degraded mode")
             except Exception as e:
-                logger.warning(f"Failed to initialize DistilBERT service: {e}")
+                logger.warning(f"Failed to initialize core helpers runtime: {e}")
                 self.status.core_helpers_available["distilbert"] = False
-
-            try:
-                self.spacy_service = SpacyService()
-                self.status.core_helpers_available["spacy"] = True
-                logger.info("spaCy service initialized for degraded mode")
-            except Exception as e:
-                logger.warning(f"Failed to initialize spaCy service: {e}")
-                self.status.core_helpers_available["spacy"] = False
+                self.core_helpers_runtime = None
 
             try:
                 self.embedding_manager = EmbeddingManager()
@@ -188,7 +180,7 @@ class DegradedModeManager:
         """Return the provider/model tuple exposed to external routers."""
         return self._fallback_provider, self._fallback_model
 
-    def activate_degraded_mode(self, reason: DegradedModeReason, failed_providers: List[str] = None):
+    def activate_degraded_mode(self, reason: DegradedModeReason, failed_providers: Optional[List[str]] = None):
         """Activate degraded mode with specified reason."""
         if not self.status.is_active:
             self.status.is_active = True
@@ -258,29 +250,24 @@ class DegradedModeManager:
             embeddings_used = False
             
             # Try to use spaCy for entity extraction and parsing
-            if self.spacy_service and self.status.core_helpers_available.get("spacy", False):
+            if self.nlp_service and self.status.core_helpers_available.get("spacy", False):
                 try:
-                    parsed = await self.spacy_service.parse_message(user_input)
-                    entities = [f"{text}({label})" for text, label in parsed.entities]
-                    if parsed.dependencies:
-                        # Simple intent detection from dependencies
-                        verbs = [dep["text"] for dep in parsed.dependencies if dep["pos"] in ["VERB", "AUX"]]
-                        if verbs:
-                            intent = f"action_{verbs[0].lower()}"
+                    entities = self.nlp_service.extract_entities(user_input)
+                    entities = [f"{entity.get('text', '')}({entity.get('label', '')})" for entity in entities]
                 except Exception as e:
                     logger.debug(f"spaCy processing failed in degraded mode: {e}")
             
-            # Try to use DistilBERT for embeddings and sentiment
-            if self.distilbert_service and self.status.core_helpers_available.get("distilbert", False):
+            # Try to use CoreHelpersRuntime for embeddings
+            if self.core_helpers_runtime and self.status.core_helpers_available.get("distilbert", False):
                 try:
-                    embeddings = await self.distilbert_service.get_embeddings(user_input)
+                    embeddings = self.core_helpers_runtime.embed(user_input)
                     if embeddings:
                         embeddings_used = True
                         # Simple sentiment based on embedding patterns (very basic)
                         avg_embedding = sum(embeddings) / len(embeddings)
                         sentiment = "positive" if avg_embedding > 0.1 else "negative" if avg_embedding < -0.1 else "neutral"
                 except Exception as e:
-                    logger.debug(f"DistilBERT processing failed in degraded mode: {e}")
+                    logger.debug(f"CoreHelpersRuntime processing failed in degraded mode: {e}")
             
             # Fallback to basic NLP service if available
             if not entities and self.nlp_service and self.status.core_helpers_available.get("nlp", False):
@@ -348,7 +335,7 @@ class DegradedModeManager:
             
             return build_response_envelope(fallback_response, "UltraFallback", "error", metadata=metadata)
 
-    def _send_admin_alert(self, event_type: str, reason: Optional[DegradedModeReason], failed_providers: List[str]):
+    def _send_admin_alert(self, event_type: str, reason: Optional[DegradedModeReason], failed_providers: Optional[List[str]] = None):
         """Send admin alert for degraded mode events."""
         try:
             alert_data = {

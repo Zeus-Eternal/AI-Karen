@@ -228,6 +228,25 @@ def register_startup_tasks(app: FastAPI) -> None:
         except Exception as e:
             logger.warning(f"LLM provider initialization skipped: {e}")
 
+    @app.on_event("startup")
+    async def _init_memory_service() -> None:
+        """Initialize memory service with proper error handling"""
+        try:
+            # Check if memory service should be initialized
+            import os
+            enable_memory = os.getenv("KARI_ENABLE_MEMORY_SERVICE", "true").lower() in ("1", "true", "yes")
+            
+            if enable_memory:
+                logger.info("Initializing memory service...")
+                from ai_karen_engine.core.service_registry import initialize_services
+                await initialize_services()
+                logger.info("Memory service initialized successfully")
+            else:
+                logger.info("Memory service initialization disabled by environment variable")
+        except Exception as e:
+            logger.warning(f"Memory service initialization failed: {e}")
+            # Continue startup even if memory service fails
+
 
 async def initialize_fallback_systems() -> None:
     """Initialize fallback systems for degraded mode operation"""

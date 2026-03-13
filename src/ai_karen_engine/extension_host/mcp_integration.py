@@ -12,7 +12,7 @@ import logging
 from typing import Any, Dict, List, Optional, Callable
 
 from ai_karen_engine.mcp.registry import ServiceRegistry
-from ai_karen_engine.extension_host.models2 import ExtensionManifest
+from ai_karen_engine.extension_host.models import ExtensionManifest
 from ai_karen_engine.hooks.hook_types import HookTypes
 from ai_karen_engine.hooks.models import HookContext
 

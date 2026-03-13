@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Set
 
-from ai_karen_engine.extension_host.models2 import ExtensionManifest
+from ai_karen_engine.extension_host.models import ExtensionManifest
 
 
 class DependencyError(Exception):

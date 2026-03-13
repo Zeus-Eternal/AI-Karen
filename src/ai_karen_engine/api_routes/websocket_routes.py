@@ -28,7 +28,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
-from ai_karen_engine.chat.stream_processor import StreamProcessor
+from ai_karen_engine.chat.stream_processor import AsyncStreamProcessor as StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 # REMOVED: Complex auth service - replaced with simple auth
 from ai_karen_engine.utils.dependency_checks import import_pydantic
@@ -181,7 +181,7 @@ def get_websocket_gateway() -> WebSocketGateway:
 @lru_cache
 def get_stream_processor() -> StreamProcessor:
     """Get stream processor instance."""
-    return StreamProcessor(get_chat_orchestrator())
+    return StreamProcessor()
 
 
 async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:

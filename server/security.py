@@ -288,17 +288,17 @@ class ExtensionAuthManager:
             )
         
         try:
-            # Use enhanced token validation if available
+            # Use centralized token validation if available
             if self.token_manager:
                 from server.token_manager import TokenStatus, validate_and_extract_user_context
                 
                 user_context = await validate_and_extract_user_context(credentials.credentials)
                 
                 if not user_context:
-                    logger.warning("Token validation failed with enhanced token manager")
+                    logger.warning("Token validation failed with centralized token manager")
                     raise HTTPException(status_code=403, detail="Invalid or expired token")
                 
-                logger.debug(f"Authenticated {user_context['user_id']} for extension API (enhanced)")
+                logger.debug(f"Authenticated {user_context['user_id']} for extension API (centralized)")
                 return user_context
             else:
                 # Fallback to basic JWT validation
@@ -594,3 +594,60 @@ def require_tenant_extension_access(extension_name: str, required_permission: Op
         return user_context
     
     return dependency
+
+
+def validate_environment_security():
+    """
+    Validate environment security settings and secrets.
+    Returns a dictionary with overall status and detailed validation results.
+    """
+    from .config import settings
+    
+    validation_results = {
+        'overall_status': 'secure',
+        'secrets_validation': {},
+        'warnings': [],
+        'errors': []
+    }
+    
+    # Check critical security settings
+    critical_secrets = {
+        'SECRET_KEY': getattr(settings, 'secret_key', None),
+        'DATABASE_URL': getattr(settings, 'database_url', None),
+        'AUTH_SECRET_KEY': os.getenv('AUTH_SECRET_KEY'),
+        'EXTENSION_SECRET_KEY': os.getenv('EXTENSION_SECRET_KEY')
+    }
+    
+    all_valid = True
+    
+    for secret_name, secret_value in critical_secrets.items():
+        is_valid = bool(secret_value and len(str(secret_value)) > 8)
+        validation_results['secrets_validation'][secret_name] = {
+            'valid': is_valid,
+            'configured': bool(secret_value),
+            'length': len(str(secret_value)) if secret_value else 0
+        }
+        
+        if not is_valid:
+            all_valid = False
+            validation_results['errors'].append(f"Critical secret {secret_name} is not properly configured")
+    
+    # Check environment-specific security
+    if settings.environment.lower() == 'production':
+        # Production requires additional security checks
+        if not os.getenv('SSL_CERT_PATH') or not os.getenv('SSL_KEY_PATH'):
+            validation_results['warnings'].append("SSL certificates not configured for production")
+        
+        if os.getenv('DEBUG', 'false').lower() == 'true':
+            validation_results['errors'].append("DEBUG mode enabled in production environment")
+            all_valid = False
+    
+    # Set overall status
+    if validation_results['errors']:
+        validation_results['overall_status'] = 'insecure'
+    elif validation_results['warnings']:
+        validation_results['overall_status'] = 'degraded'
+    else:
+        validation_results['overall_status'] = 'secure'
+    
+    return validation_results

@@ -14,18 +14,26 @@ import time
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 
-from ai_karen_engine.services.model_discovery_service import (
-    get_model_discovery_service, ModelDiscoveryService, DiscoveryStatus
+from services.memory.model_discovery_service import (
+    get_model_discovery_service,
+    ModelDiscoveryService,
+    DiscoveryStatus,
 )
-from ai_karen_engine.services.intelligent_model_router import (
-    get_model_router, ModelRouter
+from services.memory.intelligent_model_router import get_model_router, ModelRouter
+from services.memory.internal.model_recommendation_engine import (
+    get_recommendation_engine,
+    RecommendationRequest,
+    FilterRequest,
+    RecommendationStrategy,
+    FilterCriteria,
 )
-from ai_karen_engine.services.model_recommendation_engine import (
-    get_recommendation_engine, RecommendationRequest, FilterRequest,
-    RecommendationStrategy, FilterCriteria
-)
-from ai_karen_engine.services.model_discovery_engine import (
-    ModelInfo, ModelType, ModalityType, ModelCategory, ModelSpecialization, ModelStatus
+from services.memory.internal.model_discovery_engine import (
+    ModelInfo,
+    ModelType,
+    ModalityType,
+    ModelCategory,
+    ModelSpecialization,
+    ModelStatus,
 )
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 

@@ -1,0 +1,63 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/ui/*": ["./src/types/stubs/ui/*"],
+      "@/services/chat/chat-ui-service": ["./src/services/chat/chat-ui-service"],
+      "@/types/*": ["./src/types/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/components/chat/*": ["./src/components/chat/*"]
+    }
+  },
+  "include": [
+    "src/components/chat/ChatSystem.tsx",
+    "src/components/chat/ConversationGrid.tsx",
+    "src/components/chat/CopilotActions.tsx",
+    "src/components/chat/EnhancedMessageBubble.tsx",
+    "src/components/chat/EnhancedModelSelector.tsx",
+    "src/components/chat/ErrorBoundary.tsx",
+    "src/components/chat/ImageGenerationControls.tsx",
+    "src/components/chat/InputBox.tsx",
+    "src/components/chat/MemoryGrid.tsx",
+    "src/components/chat/ModelSelector.production.tsx",
+    "src/components/chat/ModelSelector.tsx",
+    "src/components/chat/MultiModalModelSelector.tsx",
+    "src/components/chat/ProfileSelector.tsx",
+    "src/components/chat/RoutingHistory.tsx",
+    "src/components/chat/SafeChatWrapper.tsx",
+    "src/components/chat/TouchableMessageBubble.tsx",
+    "src/components/chat/VoiceInputHandler.tsx",
+    "src/components/chat/copilot/CopilotKitProvider.tsx",
+    "src/components/chat/copilot/CopilotTextarea.tsx",
+    "src/components/chat/enhanced/ConfidenceScoring.tsx",
+    "src/components/chat/enhanced/ContextPanel.tsx",
+    "src/components/chat/enhanced/ContextSuggestions.tsx",
+    "src/components/chat/enhanced/ConversationExportShare.tsx",
+    "src/components/chat/enhanced/ConversationManager.tsx",
+    "src/components/chat/enhanced/ConversationTemplates.tsx",
+    "src/components/chat/enhanced/ConversationThreading.tsx",
+    "src/components/chat/enhanced/EnhancedChatInterface.tsx",
+    "src/components/chat/enhanced/FilePreview.tsx",
+    "src/components/chat/enhanced/ImageAnalysis.tsx",
+    "src/components/chat/enhanced/MultimodalFileUpload.tsx",
+    "src/components/chat/enhanced/ReasoningVisualization.tsx",
+    "src/components/chat/enhanced/SourceAttribution.tsx",
+    "src/services/chat/chat-ui-service.ts",
+    "src/types/**/*.ts",
+    "src/types/**/*.d.ts",
+    "src/types/chat-ui.ts",
+    "src/types/stubs/**/*.d.ts",
+    "src/lib/types.ts",
+    "src/lib/safe-console.ts",
+    "src/lib/utils.ts",
+    "src/contexts/AuthContext.tsx",
+    "src/contexts/HookContext.tsx",
+    "src/hooks/use-toast.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

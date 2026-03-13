@@ -55,17 +55,21 @@ def configure_middleware(
     if not origins and env_name in ("development", "dev", "local", ""):
         origins = [
             "http://localhost:3000",
-            "http://127.0.0.1:3000", 
+            "http://127.0.0.1:3000",
             "http://localhost:8020",
             "http://127.0.0.1:8020",
+            "http://localhost:8001",  # Frontend development server
+            "http://127.0.0.1:8001",  # Frontend development server
             "http://localhost:8010",
             "http://127.0.0.1:8010",
             "http://localhost:8080",
             "http://127.0.0.1:8080",
             "https://localhost:3000",
             "https://127.0.0.1:3000",
-            "https://localhost:8020", 
+            "https://localhost:8020",
             "https://127.0.0.1:8020",
+            "https://localhost:8001",  # Frontend development server
+            "https://127.0.0.1:8001",  # Frontend development server
             "https://localhost:8010",
             "https://127.0.0.1:8010",
             "https://localhost:8080",

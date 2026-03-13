@@ -10,11 +10,21 @@ import os
 import threading
 from typing import Dict, Any, Optional, List, Union
 
-from src.services.spacy_service import SpacyService, ParsedMessage
-from src.services.distilbert_service import DistilBertService
-from src.services.small_language_model_service import SmallLanguageModelService, ScaffoldResult, OutlineResult, SummaryResult
-from src.services.nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
-from src.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig, SmallLanguageModelConfig
+from services.memory.spacy_service import SpacyService, ParsedMessage
+from services.memory.distilbert_service import DistilBertService
+from services.memory.small_language_model_service import (
+    SmallLanguageModelService,
+    ScaffoldResult,
+    OutlineResult,
+    SummaryResult,
+)
+from services.memory.internal.nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
+from services.memory.internal.nlp_config import (
+    NLPConfig,
+    SpacyConfig,
+    DistilBertConfig,
+    SmallLanguageModelConfig,
+)
 from ai_karen_engine.config.config_manager import config_manager
 
 logger = logging.getLogger(__name__)

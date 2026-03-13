@@ -18,7 +18,7 @@ from ai_karen_engine.server.rate_limiter import (
     RateLimitAlgorithm,
     DEFAULT_RATE_LIMIT_RULES
 )
-from ai_karen_engine.services.usage_service import UsageService
+from services.models.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 

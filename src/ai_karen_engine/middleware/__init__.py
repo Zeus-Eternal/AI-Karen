@@ -6,6 +6,15 @@ from ai_karen_engine.middleware.intelligent_error_handler import (
     IntelligentErrorHandlerMiddleware,
     add_intelligent_error_handler
 )
+from ai_karen_engine.middleware.safety_middleware import (
+    SafetyMiddleware,
+    SafetyMiddlewareConfig,
+    SafetyAction
+)
+from ai_karen_engine.middleware.safety_config import SafetyMiddlewareConfig
+from ai_karen_engine.middleware.content_safety_checker import ContentSafetyChecker
+from ai_karen_engine.middleware.authorization_checker import AuthorizationChecker
+from ai_karen_engine.middleware.safety_error_handler import SafetyErrorHandler
 
 # REMOVED: Complex auth middleware - replaced with simple auth
 # REMOVED: RBAC middleware - replaced with simple role checking
@@ -16,4 +25,10 @@ __all__ = [
     "rate_limit_middleware",
     "IntelligentErrorHandlerMiddleware",
     "add_intelligent_error_handler",
+    "SafetyMiddleware",
+    "SafetyMiddlewareConfig",
+    "SafetyAction",
+    "ContentSafetyChecker",
+    "AuthorizationChecker",
+    "SafetyErrorHandler",
 ]

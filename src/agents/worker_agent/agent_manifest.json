@@ -1,44 +1,12 @@
 {
-  "id": "worker_agent",
-  "name": "Worker Agent",
-  "type": "worker",
+  "name": "worker_agent",
   "version": "1.0.0",
-  "description": "A general-purpose worker agent for handling single-domain tasks",
-  "entry_point": "handler.py",
-  "requirements": [],
+  "description": "Basic worker agent for task execution",
   "capabilities": [
-    {
-      "name": "task_execution",
-      "description": "Execute tasks within a single domain",
-      "version": "1.0.0",
-      "parameters": {
-        "type": {
-          "type": "string",
-          "description": "The type of task to execute",
-          "enum": ["data_processing", "analysis"],
-          "required": true
-        },
-        "data": {
-          "type": "object",
-          "description": "The data to process or analyze",
-          "required": true
-        }
-      }
-    }
+    "task_execution",
+    "basic_reasoning",
+    "response_generation"
   ],
-  "dependencies": {},
-  "environment": {
-    "python_version": "3.9+"
-  },
-  "resources": {
-    "cpu": "1",
-    "memory": "1GB"
-  },
-  "permissions": ["read", "execute"],
-  "metadata": {
-    "author": "Kari Team",
-    "created_at": "2025-11-26T00:00:00Z",
-    "updated_at": "2025-11-26T00:00:00Z",
-    "tags": ["worker", "task", "single-domain"]
-  }
+  "dependencies": [],
+  "entry_point": "handler.py"
 }

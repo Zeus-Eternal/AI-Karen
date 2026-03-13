@@ -15,7 +15,7 @@ import numpy as np  # type: ignore
 logger = logging.getLogger(__name__)
 
 from ai_karen_engine.core.embedding_manager import record_metric  # type: ignore
-from ai_karen_engine.services.metrics_service import get_metrics_service
+from services.memory.metrics_service import get_metrics_service
 
 try:  # Optional approximate nearest neighbor backend
     import hnswlib  # type: ignore

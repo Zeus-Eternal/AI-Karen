@@ -21,10 +21,10 @@ from ai_karen_engine.integrations.provider_registry import (
     ModelInfo,
     get_provider_registry
 )
-from src.services.provider_health_monitor import (
+from services.memory.internal.provider_health_monitor import (
     ProviderHealthMonitor,
     HealthStatus,
-    get_health_monitor
+    get_health_monitor,
 )
 
 logger = logging.getLogger(__name__)

@@ -13,7 +13,7 @@ import logging
 
 from pydantic import ValidationError as PydanticValidationError
 
-from ai_karen_engine.extension_host.models2 import ExtensionManifest, NAME_PATTERN
+from ai_karen_engine.extension_host.models import ExtensionManifest, NAME_PATTERN
 
 # Import unified validation utilities
 try:

@@ -1,0 +1,412 @@
+{
+  "permissions": [
+    "admin:read",
+    "admin:system",
+    "admin:write",
+    "audit:read",
+    "data:delete",
+    "data:export",
+    "data:read",
+    "data:write",
+    "model:compatibility:check",
+    "model:delete",
+    "model:deploy",
+    "model:download",
+    "model:ensure",
+    "model:gc",
+    "model:health:check",
+    "model:info",
+    "model:license:accept",
+    "model:license:manage",
+    "model:license:view",
+    "model:list",
+    "model:pin",
+    "model:quota:manage",
+    "model:read",
+    "model:registry:read",
+    "model:registry:write",
+    "model:remove",
+    "model:unpin",
+    "model:write",
+    "routing:audit",
+    "routing:dry_run",
+    "routing:health",
+    "routing:profile:manage",
+    "routing:profile:view",
+    "routing:select",
+    "scheduler:execute",
+    "scheduler:read",
+    "scheduler:write",
+    "security:evil_mode",
+    "security:read",
+    "security:write",
+    "training:delete",
+    "training:execute",
+    "training:read",
+    "training:write",
+    "training_data:delete",
+    "training_data:read",
+    "training_data:write"
+  ],
+  "roles": {
+    "super_admin": {
+      "description": "Highest privilege role with unrestricted access",
+      "inherits_from": "admin",
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:evil_mode",
+        "security:read",
+        "security:write",
+        "training:delete",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "admin": {
+      "description": "Platform administrator",
+      "inherits_from": null,
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:read",
+        "security:write",
+        "training:delete",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "trainer": {
+      "description": "Training specialist with model and data management access",
+      "inherits_from": null,
+      "permissions": [
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:info",
+        "model:read",
+        "model:write",
+        "scheduler:read",
+        "scheduler:write",
+        "training:execute",
+        "training:read",
+        "training:write",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "analyst": {
+      "description": "Read focused analyst role",
+      "inherits_from": null,
+      "permissions": [
+        "audit:read",
+        "data:export",
+        "data:read",
+        "model:info",
+        "model:read",
+        "scheduler:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    "user": {
+      "description": "Standard platform user",
+      "inherits_from": null,
+      "permissions": [
+        "data:read",
+        "model:info",
+        "model:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    "readonly": {
+      "description": "Read only visibility",
+      "inherits_from": null,
+      "permissions": [
+        "model:info",
+        "model:read",
+        "training:read"
+      ]
+    },
+    "model_manager": {
+      "description": "Operational model management",
+      "inherits_from": null,
+      "permissions": [
+        "model:compatibility:check",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:read",
+        "model:remove",
+        "model:unpin",
+        "model:write"
+      ]
+    },
+    "data_steward": {
+      "description": "Manage datasets and training corpora",
+      "inherits_from": null,
+      "permissions": [
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "routing_admin": {
+      "description": "Full routing administration",
+      "inherits_from": null,
+      "permissions": [
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select"
+      ]
+    },
+    "routing_operator": {
+      "description": "Operational routing control",
+      "inherits_from": null,
+      "permissions": [
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:view",
+        "routing:select"
+      ]
+    },
+    "routing_auditor": {
+      "description": "Read only routing insights",
+      "inherits_from": null,
+      "permissions": [
+        "routing:audit",
+        "routing:health",
+        "routing:profile:view"
+      ]
+    },
+    "guest": {
+      "description": "Unauthenticated users with minimal access",
+      "inherits_from": null,
+      "permissions": [
+        "model:info"
+      ]
+    },
+    "security_audit": {
+      "description": "Security and compliance monitoring",
+      "inherits_from": "analyst",
+      "permissions": [
+        "audit:read",
+        "data:export",
+        "data:read",
+        "model:info",
+        "model:read",
+        "security:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    "support_agent": {
+      "description": "Customer support capabilities",
+      "inherits_from": "user",
+      "permissions": [
+        "data:read",
+        "model:info",
+        "model:read",
+        "training:read",
+        "training_data:read"
+      ]
+    },
+    "content_manager": {
+      "description": "Manage content and documentation",
+      "inherits_from": "data_steward",
+      "permissions": [
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "data_admin": {
+      "description": "Full data administration",
+      "inherits_from": "admin",
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "data:delete",
+        "data:export",
+        "data:read",
+        "data:write",
+        "model:info",
+        "model:read",
+        "training:delete",
+        "training:read",
+        "training:write",
+        "training_data:delete",
+        "training_data:read",
+        "training_data:write"
+      ]
+    },
+    "model_admin": {
+      "description": "Full model administration",
+      "inherits_from": "admin",
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "model:compatibility:check",
+        "model:delete",
+        "model:deploy",
+        "model:download",
+        "model:ensure",
+        "model:gc",
+        "model:health:check",
+        "model:info",
+        "model:license:accept",
+        "model:license:manage",
+        "model:license:view",
+        "model:list",
+        "model:pin",
+        "model:quota:manage",
+        "model:read",
+        "model:registry:read",
+        "model:registry:write",
+        "model:remove",
+        "model:unpin",
+        "model:write",
+        "training:execute",
+        "training:read",
+        "training:write"
+      ]
+    },
+    "security_admin": {
+      "description": "Security administration",
+      "inherits_from": "admin",
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "security:evil_mode",
+        "security:read",
+        "security:write"
+      ]
+    },
+    "system_admin": {
+      "description": "System-wide administration",
+      "inherits_from": "admin",
+      "permissions": [
+        "admin:read",
+        "admin:system",
+        "admin:write",
+        "audit:read",
+        "routing:audit",
+        "routing:dry_run",
+        "routing:health",
+        "routing:profile:manage",
+        "routing:profile:view",
+        "routing:select",
+        "scheduler:execute",
+        "scheduler:read",
+        "scheduler:write",
+        "security:read",
+        "security:write"
+      ]
+    }
+  }
+}

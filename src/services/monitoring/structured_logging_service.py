@@ -12,7 +12,17 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import traceback
 
-from .internal.logging_impl import LoggingBackend
+try:
+    from services.monitoring.internal.logging_impl import LoggingBackend
+except ImportError:
+    class LoggingBackend:  # type: ignore[too-few-public-methods]
+        """Fallback logging backend placeholder."""
+
+        def emit(self, _entry):
+            return None
+
+        def close(self) -> None:
+            return None
 
 
 @dataclass

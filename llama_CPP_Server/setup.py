@@ -153,12 +153,38 @@ class SetupWizard:
             
             for path in alternative_paths:
                 if path.exists():
-                    karen_models_path = path / "llama-cpp"
+                    # Check if path already ends with "llama-cpp" to avoid duplication
+                    if path.name == "llama-cpp":
+                        karen_models_path = path
+                    else:
+                        karen_models_path = path / "llama-cpp"
                     break
         
         recommended_dirs.append(("KAREN models directory", str(karen_models_path)))
         
         return recommended_dirs
+    
+    def _discover_available_models(self, model_dir: str) -> List[str]:
+        """Discover available GGUF models in the specified directory"""
+        available_models = []
+        model_path = Path(model_dir)
+        
+        if not model_path.exists():
+            return available_models
+        
+        # Scan for .gguf files (case-insensitive)
+        for file in model_path.glob("**/*.gguf"):
+            available_models.append(str(file))
+        
+        # Also scan for .GGUF files (uppercase)
+        for file in model_path.glob("**/*.GGUF"):
+            if str(file) not in available_models:
+                available_models.append(str(file))
+        
+        # Sort models by filename
+        available_models.sort()
+        
+        return available_models
     
     def _clear_screen(self) -> None:
         """Clear the terminal screen"""
@@ -308,9 +334,34 @@ class SetupWizard:
                 Path(model_dir).mkdir(parents=True, exist_ok=True)
                 print(f"Created directory: {model_dir}")
         
+        # Scan for available models
+        available_models = self._discover_available_models(model_dir)
+        
         # Default model
         current_default = self.config.get("models", {}).get("default_model")
-        default_model = self._get_input("Default model (leave empty for none)", current_default)
+        
+        if available_models:
+            print(f"\nFound {len(available_models)} model(s) in {model_dir}:")
+            for i, model_path in enumerate(available_models, 1):
+                model_name = Path(model_path).name
+                print(f"  {i}. {model_name}")
+            print(f"  {len(available_models) + 1}. None (leave blank)")
+            print()
+            
+            choice = self._get_input(
+                "Select default model",
+                str(len(available_models) + 1),
+                [str(i) for i in range(1, len(available_models) + 2)]
+            )
+            
+            if choice == str(len(available_models) + 1):
+                default_model = None
+            else:
+                default_model = str(available_models[int(choice) - 1])
+        else:
+            print(f"\nNo models found in {model_dir}")
+            default_model = self._get_input("Default model (leave empty for none)", current_default)
+        
         self._set_config_value("models.default_model", default_model if default_model else None)
         
         # Auto-load default model

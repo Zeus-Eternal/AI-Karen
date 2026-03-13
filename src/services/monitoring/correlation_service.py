@@ -47,9 +47,39 @@ class CorrelationContext:
 
 
 class CorrelationService:
-    """
-    Service for tracking operations across multiple services with correlation IDs.
-    """
+    """Correlation service for tracking request IDs across service calls."""
+    
+    current_correlation_id: Optional[str] = None
+    """Service for tracking operations across multiple services with correlation IDs."""
+    
+    @classmethod
+    def set_correlation_id(cls, correlation_id: str) -> None:
+        """Set the current correlation ID for tracking."""
+        cls.current_correlation_id = correlation_id
+    
+    @classmethod
+    def get_correlation_tracker(cls) -> 'CorrelationService':
+        """Get the correlation tracker instance."""
+        return get_correlation_service()
+    
+    def start_trace(self, correlation_id: str, operation_type: str, metadata: Dict[str, Any]) -> None:
+        """Start tracing an operation."""
+        self.start_operation(
+            operation_type=operation_type,
+            correlation_id=correlation_id,
+            metadata=metadata
+        )
+    
+    def end_trace(self, correlation_id: str, status: str, metadata: Dict[str, Any]) -> None:
+        """End tracing an operation."""
+        success = status == "success"
+        error_message = metadata.get("error") if not success else None
+        self.complete_operation(
+            correlation_id=correlation_id,
+            success=success,
+            error_message=error_message,
+            result_metadata=metadata
+        )
     
     def __init__(self):
         """Initialize correlation service."""

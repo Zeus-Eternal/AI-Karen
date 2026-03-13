@@ -11,7 +11,14 @@ from dataclasses import dataclass
 from collections import defaultdict, deque
 import threading
 
-from .internal.metrics_adapters import MetricsBackend
+try:
+    from services.monitoring.internal.metrics_adapters import MetricsBackend
+except ImportError:
+    class MetricsBackend:  # type: ignore[too-few-public-methods]
+        """Fallback metrics backend placeholder."""
+
+        def close(self) -> None:
+            return None
 
 
 @dataclass

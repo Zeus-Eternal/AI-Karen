@@ -1,7 +1,9 @@
 """
-FastAPI routes for file attachment and multimedia support.
+Enhanced FastAPI routes for file attachment with AG-UI and hook integration.
 """
 
+import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from tempfile import SpooledTemporaryFile
 
@@ -13,6 +15,7 @@ from ai_karen_engine.chat.file_attachment_service import (
     FileUploadResponse,
     ProcessingStatus,
 )
+from ai_karen_engine.chat.hook_enabled_file_service import get_hook_enabled_file_service
 from ai_karen_engine.chat.multimedia_service import (
     MediaProcessingRequest,
     MediaProcessingResponse,
@@ -33,6 +36,7 @@ APIRouter, File, Form, HTTPException, Query, UploadFile, responses = import_fast
     "APIRouter", "File", "Form", "HTTPException", "Query", "UploadFile", "responses"
 )
 StreamingResponse = responses.StreamingResponse
+JSONResponse = responses.JSONResponse
 BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = get_logger(__name__)
@@ -42,7 +46,6 @@ router = APIRouter(tags=["file-attachments"])
 # Initialize services
 file_service = FileAttachmentService()
 multimedia_service = MultimediaService()
-
 
 # Request/Response Models
 class FileUploadMetadata(BaseModel):

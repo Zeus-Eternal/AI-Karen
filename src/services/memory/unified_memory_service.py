@@ -24,13 +24,13 @@ from ai_karen_engine.database.memory_manager import (
     MemoryManager,
     MemoryQuery,
 )
-from src.services.memory_policy import DecayTier, MemoryPolicyManager
-from src.services.memory_writeback import (
+from services.memory.internal.memory_policy import DecayTier, MemoryPolicyManager
+from services.memory.internal.memory_writeback import (
     InteractionType,
     MemoryWritebackSystem,
     ShardUsageType,
 )
-from src.services.structured_logging import PIIRedactor
+from services.memory.internal.structured_logging import PIIRedactor
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 logger = logging.getLogger(__name__)

@@ -385,7 +385,16 @@ class TokenManager:
         return token, payload
     
     async def validate_token(self, token: str) -> Tuple[TokenStatus, Optional[Dict[str, Any]]]:
-        """Validate JWT token and return status with payload."""
+        """
+        Centralized JWT token validation method.
+        Validates token signature, expiration, and blacklist status.
+        
+        Args:
+            token: JWT token to validate
+            
+        Returns:
+            Tuple of (TokenStatus, payload_dict)
+        """
         try:
             # Decode token without verification first to get JTI for blacklist check
             unverified_payload = jwt.decode(token, options={"verify_signature": False})
@@ -400,8 +409,8 @@ class TokenManager:
             # Verify token signature and expiration
             # Note: We don't verify audience to maintain compatibility
             payload = jwt.decode(
-                token, 
-                self.secret_key, 
+                token,
+                self.secret_key,
                 algorithms=[self.algorithm],
                 options={"verify_aud": False}
             )
@@ -409,6 +418,7 @@ class TokenManager:
             # Additional validation for refresh tokens
             if payload.get("token_type") == TokenType.REFRESH.value:
                 if not self._validate_refresh_token(payload):
+                    logger.warning(f"Refresh token {jti} validation failed")
                     return TokenStatus.INVALID, None
             
             logger.debug(f"Token {jti} validated successfully")

@@ -20,14 +20,14 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.models.web_api_error_responses import WebAPIErrorCode
-from src.services.llm_router import ProviderHealth
-from src.services.provider_health_monitor import (
-    get_health_monitor, 
+from services.memory.llm_router import ProviderHealth
+from services.memory.internal.provider_health_monitor import (
+    get_health_monitor,
     ProviderHealthInfo,
-    HealthStatus
+    HealthStatus,
 )
 from ai_karen_engine.core.cache import get_response_cache, get_request_deduplicator
-from src.services.audit_logging import get_audit_logger
+from services.memory.internal.audit_logging import get_audit_logger
 
 logger = logging.getLogger(__name__)
 

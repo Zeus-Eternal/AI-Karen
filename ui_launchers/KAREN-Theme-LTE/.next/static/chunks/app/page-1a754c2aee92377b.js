@@ -1,0 +1,1 @@
+(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[974],{1686:(e,s,r)=>{Promise.resolve().then(r.bind(r,9547))},9547:(e,s,r)=>{"use strict";r.r(s),r.d(s,{default:()=>c});var t=r(63);function c(){(0,t.redirect)("/chat")}}},e=>{e.O(0,[96,358],()=>e(e.s=1686)),_N_E=e.O()}]);

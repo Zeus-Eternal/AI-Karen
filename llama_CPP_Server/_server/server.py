@@ -75,13 +75,19 @@ async def lifespan(app: FastAPI):
     backup_manager = BackupManager(config_path)
     
     # Initialize backend
-    model_path = Path(config_manager.get("model.path", "models/llama-2-7b.Q4_K_M.gguf"))
+    # Try to get model path from config, fallback to default
+    default_model = config_manager.get("models.default_model")
+    if not default_model:
+        # Try legacy key
+        default_model = config_manager.get("model.path")
+    
+    model_path = Path(default_model) if default_model else Path("../models/llama-cpp/phi-3-mini-4k-instruct-q4.gguf")
     if not model_path.exists():
         logger.warning(f"Model path {model_path} does not exist, using stub backend")
     
-    threads = config_manager.get("server.threads", 4)
-    low_vram = config_manager.get("server.low_vram", False)
-    n_ctx = config_manager.get("server.n_ctx", 4096)
+    threads = config_manager.get("performance.num_threads", 4)
+    low_vram = config_manager.get("performance.low_vram", False)
+    n_ctx = config_manager.get("performance.context_window", 4096)
     
     backend = LocalLlamaBackend(model_path, threads, low_vram, n_ctx)
     
@@ -364,10 +370,10 @@ async def load_model(
         
         # Update configuration
         if config_manager:
-            config_manager.set("model.path", str(model_path))
-            config_manager.set("server.threads", threads)
-            config_manager.set("server.low_vram", low_vram)
-            config_manager.set("server.n_ctx", n_ctx)
+            config_manager.set("models.default_model", str(model_path))
+            config_manager.set("performance.num_threads", threads)
+            config_manager.set("performance.low_vram", low_vram)
+            config_manager.set("performance.context_window", n_ctx)
             if hasattr(config_manager, 'save'):
                 config_manager.save()
         

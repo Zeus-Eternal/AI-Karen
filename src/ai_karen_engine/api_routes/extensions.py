@@ -7,24 +7,19 @@ try:
     from ai_karen_engine.extension_host.models import ExtensionStatusAPI
     from ai_karen_engine.utils.dependency_checks import import_fastapi
 except ImportError:
-    # Define dummy classes if imports fail
-    class ExtensionStatusAPI:
-        def __init__(self, name, version, status, loaded_at=None, error_message=None):
-            self.name = name
-            self.version = version
-            self.status = status
-            self.loaded_at = loaded_at
-            self.error_message = error_message
-    
+    # Fallback when extension host is unavailable; still use real FastAPI if installed
+    from ai_karen_engine.utils.dependency_checks import import_fastapi
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
+
+    class ExtensionStatusAPI(BaseModel):
+        name: str
+        version: str
+        status: str
+        loaded_at: Any | None = Field(default=None)
+        error_message: str | None = Field(default=None)
+
     def get_extension_manager():
         return None
-    
-    def import_fastapi(*args):
-        # Return dummy objects if FastAPI is not available
-        class Dummy:
-            def __init__(self, *args, **kwargs):
-                pass
-        return tuple([Dummy() for _ in args])
 
 APIRouter, Depends, HTTPException = import_fastapi(
     "APIRouter", "Depends", "HTTPException"
@@ -32,9 +27,18 @@ APIRouter, Depends, HTTPException = import_fastapi(
 
 router = APIRouter()
 
+# Import authentication dependencies
+try:
+    from src.auth.auth_middleware import get_current_user
+    AUTH_AVAILABLE = True
+except ImportError:
+    AUTH_AVAILABLE = False
+    async def get_current_user():
+        return None
+
 
 @router.get("/", response_model=Dict[str, Any])
-async def list_extensions_root():
+async def list_extensions_root(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """List all extensions and their status (root endpoint)."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -83,8 +87,8 @@ async def list_extensions_root():
     }
 
 
-@router.get("/list", response_model=List[ExtensionStatusAPI])
-async def list_extensions():
+@router.get("/list", response_model=List[Dict[str, Any]])
+async def list_extensions(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """List all extensions and their status."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -109,7 +113,7 @@ async def list_extensions():
 
 
 @router.get("/{extension_name}")
-async def get_extension_status(extension_name: str):
+async def get_extension_status(extension_name: str, current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Get detailed status of a specific extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -126,7 +130,7 @@ async def get_extension_status(extension_name: str):
 
 
 @router.post("/{extension_name}/load")
-async def load_extension(extension_name: str):
+async def load_extension(extension_name: str, current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Load an extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -146,7 +150,7 @@ async def load_extension(extension_name: str):
 
 
 @router.post("/{extension_name}/unload")
-async def unload_extension(extension_name: str):
+async def unload_extension(extension_name: str, current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Unload an extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -163,7 +167,7 @@ async def unload_extension(extension_name: str):
 
 
 @router.post("/{extension_name}/reload")
-async def reload_extension(extension_name: str):
+async def reload_extension(extension_name: str, current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Reload an extension (for development)."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -183,7 +187,7 @@ async def reload_extension(extension_name: str):
 
 
 @router.get("/discover")
-async def discover_extensions():
+async def discover_extensions(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Discover available extensions in the extensions directory."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -213,7 +217,7 @@ async def discover_extensions():
 
 
 @router.get("/registry/summary")
-async def get_registry_summary():
+async def get_registry_summary(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Get extension registry summary."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -226,7 +230,7 @@ async def get_registry_summary():
 
 
 @router.get("/health")
-async def get_extensions_health():
+async def get_extensions_health(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
     """Get overall health summary for extensions."""
     extension_manager = get_extension_manager()
     if not extension_manager:

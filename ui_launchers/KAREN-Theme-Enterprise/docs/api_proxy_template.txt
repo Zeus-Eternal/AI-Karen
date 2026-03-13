@@ -1,0 +1,200 @@
+/**
+ * Secure API Proxy Route Template
+ * 
+ * This template shows how to securely proxy API requests to the backend
+ * without exposing API keys on the client side.
+ * 
+ * CRITICAL SECURITY NOTES:
+ * 1. API keys are NEVER exposed to the client (no NEXT_PUBLIC_ prefix)
+ * 2. All authentication happens server-side
+ * 3. Rate limiting is applied
+ * 4. Request validation is performed
+ * 5. Proper error handling prevents information leakage
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitCheck } from '@/lib/rate-limit';
+
+// Types
+type ProxyRequest = {
+  endpoint: string;
+  method?: string;
+  body?: unknown;
+};
+
+/**
+ * GET /api/proxy - Secure proxy to backend API
+ * 
+ * Example client-side usage:
+ * const response = await fetch('/api/proxy?endpoint=/users');
+ * const data = await response.json();
+ */
+export async function GET(request: NextRequest) {
+  // 1. Rate limiting
+  const rateLimitResult = await rateLimitCheck(request);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429 }
+    );
+  }
+
+  // 2. Extract endpoint from query params
+  const { searchParams } = new URL(request.url);
+  const endpoint = searchParams.get('endpoint');
+
+  // 3. Validate endpoint
+  if (!endpoint) {
+    return NextResponse.json(
+      { error: 'Endpoint parameter required' },
+      { status: 400 }
+    );
+  }
+
+  // 4. Whitelist allowed endpoints (prevent SSRF attacks)
+  const allowedEndpoints = [
+    '/users',
+    '/documents',
+    '/workflows',
+    '/analytics'
+  ];
+
+  if (!allowedEndpoints.some(allowed => endpoint.startsWith(allowed))) {
+    return NextResponse.json(
+      { error: 'Endpoint not allowed' },
+      { status: 403 }
+    );
+  }
+
+  // 5. Get backend URL from environment (server-side only)
+  const backendUrl = process.env.KAREN_BACKEND_URL;
+  if (!backendUrl) {
+    return NextResponse.json(
+      { error: 'Backend not configured' },
+      { status: 500 }
+    );
+  }
+
+  // 6. Make request to backend with server-side API key
+  try {
+    const response = await fetch(`${backendUrl}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.KAREN_API_KEY}`,
+        'X-Forwarded-For': request.headers.get('x-forwarded-for') || 'unknown',
+        'X-Request-ID': crypto.randomUUID(),
+      },
+      // Add timeout
+      signal: AbortSignal.timeout(30000),
+    });
+
+    // 7. Check response
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Backend request failed' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    // 8. Return response
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    });
+
+  } catch (error) {
+    // 9. Error handling (don't leak internal errors)
+    console.error('Proxy error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/proxy - Secure proxy for POST requests
+ * 
+ * Example client-side usage:
+ * const response = await fetch('/api/proxy', {
+ *   method: 'POST',
+ *   headers: { 'Content-Type': 'application/json' },
+ *   body: JSON.stringify({
+ *     endpoint: '/users',
+ *     body: { name: 'John' }
+ *   })
+ * });
+ */
+export async function POST(request: NextRequest) {
+  // Rate limiting
+  const rateLimitResult = await rateLimitCheck(request);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429 }
+    );
+  }
+
+  try {
+    // Parse and validate request body
+    const body = await request.json() as ProxyRequest;
+
+    if (!body.endpoint) {
+      return NextResponse.json(
+        { error: 'Endpoint required' },
+        { status: 400 }
+      );
+    }
+
+    // Whitelist allowed endpoints
+    const allowedEndpoints = ['/users', '/documents', '/workflows'];
+    if (!allowedEndpoints.some(allowed => body.endpoint.startsWith(allowed))) {
+      return NextResponse.json(
+        { error: 'Endpoint not allowed' },
+        { status: 403 }
+      );
+    }
+
+    // Get backend URL
+    const backendUrl = process.env.KAREN_BACKEND_URL;
+    if (!backendUrl) {
+      return NextResponse.json(
+        { error: 'Backend not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Make request to backend
+    const response = await fetch(`${backendUrl}${body.endpoint}`, {
+      method: body.method || 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.KAREN_API_KEY}`,
+        'X-Request-ID': crypto.randomUUID(),
+      },
+      body: JSON.stringify(body.body),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    const data = await response.json();
+
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+      },
+    });
+
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

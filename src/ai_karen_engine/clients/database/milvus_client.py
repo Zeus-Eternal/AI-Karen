@@ -30,8 +30,8 @@ class MilvusClient:
         self,
         collection: str = "persona_embeddings",
         dim: int = 384,
-        host: str = "localhost",
-        port: str = "19530",
+        host: str = "ai-karen-milvus",
+        port: str = "19531",
         pool_size: int = 5,
     ):
         self.collection_name = collection

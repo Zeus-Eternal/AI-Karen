@@ -166,8 +166,8 @@ class ProductionSettings(BaseSettings):
     vector_index_name: str = Field(
         "karen_chat_memory", description="Milvus/Vectordb index name"
     )
-    milvus_host: str = Field("localhost", description="Milvus host")
-    milvus_port: int = Field(19530, description="Milvus port")
+    milvus_host: str = Field("ai-karen-milvus", description="Milvus host")
+    milvus_port: int = Field(19531, description="Milvus port")
 
     # Authentication
     auth: ProductionAuthSettings = ProductionAuthSettings()

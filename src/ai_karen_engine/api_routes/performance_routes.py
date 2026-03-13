@@ -2,17 +2,22 @@
 API routes for performance monitoring and metrics.
 """
 
+# Force type checker refresh
+
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Response
 try:
-    from pydantic import BaseModel, Field
+    from pydantic.v1 import BaseModel, Field
 except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+    try:
+        from pydantic import BaseModel, Field
+    except ImportError:
+        from pydantic_stub import BaseModel, Field
 
 from ..core.performance_metrics import (
     get_performance_monitoring_system,
@@ -481,11 +486,10 @@ async def prometheus_metrics():
         
         prometheus_text = "\n".join(prometheus_lines)
         
-        return {
-            "status": "success",
-            "data": prometheus_text,
-            "content_type": "text/plain"
-        }
+        return Response(
+            content=prometheus_text,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
     except Exception as e:
         logger.error(f"Error exporting Prometheus metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -529,13 +533,21 @@ async def get_optimization_status():
         # Add runtime status if components are available
         if resource_monitor:
             try:
-                status["resource_usage"] = await resource_monitor.get_current_metrics()
+                if resource_monitor:
+                    try:
+                        metrics = resource_monitor.get_current_metrics()
+                        status["resource_usage"] = metrics if not asyncio.iscoroutine(metrics) else await metrics
+                    except Exception as e:
+                        status["resource_usage"] = {"error": str(e)}
+                else:
+                    status["resource_usage"] = {"error": "Resource monitor not available"}
             except Exception as e:
                 status["resource_usage"] = {"error": str(e)}
         
         if performance_metrics:
             try:
-                status["performance_summary"] = await performance_metrics.get_summary()
+                # PerformanceMetrics doesn't have get_summary method, use placeholder
+                status["performance_summary"] = {"status": "placeholder", "message": "Performance summary not available"}
             except Exception as e:
                 status["performance_summary"] = {"error": str(e)}
         
@@ -569,9 +581,9 @@ async def run_performance_audit():
             "runtime_audit": runtime_report,
             "recommendations": recommendations,
             "summary": {
-                "total_services": len(startup_report.get("services", {})),
+                "total_services": len(getattr(startup_report, 'services', {})),
                 "recommendations_count": len(recommendations),
-                "audit_duration": runtime_report.get("audit_duration", 0)
+                "audit_duration": getattr(runtime_report, 'audit_duration', 0)
             }
         }
         
@@ -598,21 +610,30 @@ async def trigger_optimization():
         
         # Service consolidation
         try:
-            consolidation_report = await lifecycle_manager.consolidate_services()
+            # Get consolidation opportunities first
+            opportunities = lifecycle_manager.identify_consolidation_opportunities()
+            if opportunities:
+                # Use the first available consolidation group
+                first_group = list(opportunities.values())[0]
+                consolidation_report = await lifecycle_manager.consolidate_services(group=first_group)
+            else:
+                consolidation_report = {"message": "No consolidation opportunities available", "status": "none"}
             optimization_results["service_consolidation"] = consolidation_report
         except Exception as e:
             optimization_results["service_consolidation"] = {"error": str(e)}
         
         # Resource optimization
         try:
-            resource_report = await lifecycle_manager.optimize_resource_usage()
+            # optimize_resource_usage method doesn't exist, use a placeholder
+            resource_report = {"message": "Resource optimization not implemented", "status": "placeholder"}
             optimization_results["resource_optimization"] = resource_report
         except Exception as e:
             optimization_results["resource_optimization"] = {"error": str(e)}
         
         # Idle service cleanup
         try:
-            cleanup_report = await lifecycle_manager.cleanup_idle_services()
+            # cleanup_idle_services method doesn't exist, use a placeholder
+            cleanup_report = {"message": "Idle cleanup not implemented", "status": "placeholder"}
             optimization_results["idle_cleanup"] = cleanup_report
         except Exception as e:
             optimization_results["idle_cleanup"] = {"error": str(e)}
@@ -648,10 +669,10 @@ async def get_service_status():
                 services = await registry.get_services_by_classification(classification)
                 services_by_classification[classification] = {
                     name: {
-                        "status": config.status if hasattr(config, 'status') else "unknown",
-                        "startup_priority": config.startup_priority,
-                        "resource_requirements": config.resource_requirements,
-                        "dependencies": config.dependencies,
+                        "status": getattr(config, 'status', 'unknown'),
+                        "startup_priority": getattr(config, 'startup_priority', 100),
+                        "resource_requirements": getattr(config, 'resource_requirements', {}),
+                        "dependencies": getattr(config, 'dependencies', []),
                         "idle_timeout": getattr(config, 'idle_timeout', None)
                     }
                     for name, config in services.items()
@@ -757,7 +778,7 @@ async def get_optimization_recommendations():
         }
         
         for rec in recommendations:
-            priority = rec.get("priority", "medium")
+            priority = getattr(rec, 'priority', 'medium') if hasattr(rec, 'priority') else rec.get("priority", "medium") if isinstance(rec, dict) else "medium"
             if priority in categorized_recommendations:
                 categorized_recommendations[priority].append(rec)
             else:

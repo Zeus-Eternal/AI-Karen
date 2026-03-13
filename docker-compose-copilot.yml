@@ -1,0 +1,405 @@
+# Docker Compose for CoPilot Architecture Deployment
+# This file defines the services required for CoPilot deployment
+
+
+
+services:
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL (CoPilot Database)
+  # ──────────────────────────────────────────────────────────────────────────────
+  postgres-copilot:
+    container_name: ai-karen-copilot-postgres
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_copilot_data:/var/lib/postgresql/data
+      - ./data/migrations/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Redis (CoPilot Cache and Session Store)
+  # ──────────────────────────────────────────────────────────────────────────────
+  redis-copilot:
+    container_name: ai-karen-copilot-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_copilot_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Elasticsearch (CoPilot Search and Analytics)
+  # ──────────────────────────────────────────────────────────────────────────────
+  elasticsearch-copilot:
+    container_name: ai-karen-copilot-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_copilot_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Milvus Vector DB (CoPilot Memory and Context)
+  # ──────────────────────────────────────────────────────────────────────────────
+  milvus-etcd-copilot:
+    container_name: ai-karen-copilot-milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: unless-stopped
+    command: >
+      sh -c "
+        chmod 700 /etcd 2>/dev/null || true &&
+        etcd --config-file /etc/etcd/etcd.conf.yml
+      "
+    volumes:
+      - etcd_copilot_data:/etcd
+      - ./docker/etcd.conf.yml:/etc/etcd/etcd.conf.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "etcdctl endpoint health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ai-karen-copilot-net
+
+  milvus-minio-copilot:
+    container_name: ai-karen-copilot-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: minio server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # MinIO API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_copilot_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ai-karen-copilot-net
+
+  milvus-copilot:
+    container_name: ai-karen-copilot-milvus
+    image: milvusdb/milvus:v2.4.8
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    depends_on:
+      milvus-etcd-copilot:
+        condition: service_healthy
+      milvus-minio-copilot:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd-copilot:2379
+      MINIO_ADDRESS: milvus-minio-copilot:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY}
+      DEPLOY_MODE: standalone
+    ports:
+      - "19530:19530"   # gRPC API
+      - "9091:9091"     # HTTP (health)
+      - "19121:19121"   # Prometheus exporter
+    volumes:
+      - milvus_copilot_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c '</dev/tcp/localhost/19530' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 300s
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Prometheus Monitoring (CoPilot Metrics)
+  # ──────────────────────────────────────────────────────────────────────────────
+  prometheus-copilot:
+    container_name: ai-karen-copilot-prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - ./monitoring/prometheus-copilot.yml:/etc/prometheus/prometheus-copilot.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Grafana Dashboard (CoPilot Monitoring)
+  # ──────────────────────────────────────────────────────────────────────────────
+  grafana-copilot:
+    container_name: ai-karen-copilot-grafana
+    image: grafana/grafana:9.5.2
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_PROVISIONING_PATH=/etc/grafana/provisioning
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_copilot_data:/var/lib/grafana
+      - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
+      - ./monitoring/dashboards/model-orchestrator:/etc/grafana/provisioning/dashboards/model-orchestrator
+      - ./monitoring/dashboards/llamacpp-runtime:/etc/grafana/provisioning/dashboards/llamacpp-runtime
+      - ./monitoring/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
+      - ./monitoring/dashboards/copilot:/etc/grafana/provisioning/dashboards/copilot
+    depends_on:
+      - prometheus-copilot
+      - elasticsearch-copilot
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # FastAPI Backend with CoPilot Integration
+  # ──────────────────────────────────────────────────────────────────────────────
+  api-copilot:
+    container_name: ai-karen-copilot-api
+    build:
+      context: .
+      target: ${PROFILE:-runtime}
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.resource-optimized
+    environment:
+      # Runtime mode for production
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      AUTH_MODE: "hybrid"
+      
+      # Production optimizations
+      KARI_FAST_STARTUP: "false"
+      WARMUP_LLM: "true"
+      KARI_DEFER_ROUTER_WIRING: "false"
+      AUTH_ALLOW_DEV_LOGIN: "false"
+      
+      # Redis connection
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis-copilot:6379/0"
+      REDIS_HOST: "redis-copilot"
+      REDIS_PORT: "6379"
+      
+      # Security hardening
+      ENABLE_SECURITY_ANALYSIS: "true"
+      AUTH_ENABLE_RATE_LIMITING: "true"
+      KAREN_ENABLE_HEALTH_CHECKS: "true"
+      KARI_SKIP_STARTUP_CHECK: "false"
+      KARI_SKIP_AUTO_INIT: "false"
+      ALLOW_PUBLIC_COPILOT: "false"
+      
+      # Database connections
+      DATABASE_URL: "postgresql://karen_user:${POSTGRES_PASSWORD}@postgres-copilot:5432/${POSTGRES_DB}"
+      POSTGRES_URL: "postgresql+asyncpg://karen_user:${POSTGRES_PASSWORD}@postgres-copilot:5432/${POSTGRES_DB}"
+      AUTH_DATABASE_URL: "postgresql+asyncpg://karen_user:${POSTGRES_PASSWORD}@postgres-copilot:5432/${POSTGRES_DB}"
+      DB_HOST: "postgres-copilot"
+      DB_PORT: "5432"
+      DB_USER: "${POSTGRES_USER}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: "${POSTGRES_DB}"
+      
+      # Service connections
+      ELASTICSEARCH_HOST: "elasticsearch-copilot"
+      ELASTICSEARCH_PORT: "9200"
+      MILVUS_HOST: "milvus-copilot"
+      MILVUS_PORT: "19530"
+      VECTOR_DB_HOST: "milvus-copilot"
+      VECTOR_DB_PORT: "19530"
+      
+      # Database services
+      KARI_ENABLE_VECTOR_DB: "true"
+      KARI_ENABLE_ELASTICSEARCH: "true"
+      KARI_ENABLE_DUCKDB: "true"
+      MILVUS_HEALTH_WAIT_SECONDS: "180"
+      MILVUS_HEALTH_HOST: "milvus-copilot"
+      MILVUS_HEALTH_PORT: "9091"
+      MILVUS_HEALTH_PATH: "/healthz"
+      
+      # Authentication and security
+      AUTH_RATE_LIMIT_STORAGE: "redis"
+      AUTH_RATE_LIMIT_REDIS_URL: "${REDIS_URL}"
+      AUTH_MAX_FAILED_ATTEMPTS: "5"
+      AUTH_LOCKOUT_DURATION_MINUTES: "15"
+      AUTH_RATE_LIMIT_WINDOW_MINUTES: "1"
+      AUTH_RATE_LIMIT_MAX_REQUESTS: "60"
+      AUTH_ALERT_COOLDOWN_MINUTES: "30"
+      AUTH_LOG_LEVEL: "WARNING"
+      AUTH_ENABLE_TWO_FACTOR_AUTH: "true"
+      AUTH_ENABLE_SESSION_VALIDATION: "true"
+      
+      # NLP and AI settings
+      SPACY_DOWNLOAD_MISSING: "false"
+      TRANSFORMERS_OFFLINE: "true"
+      HF_HUB_OFFLINE: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      KARI_ENABLE_DEGRADED_HELPERS: "0"
+      
+      # Model Orchestrator Plugin Configuration
+      PLUGIN_DIR: "/app/plugin_marketplace"
+      MODELS_ROOT: "/app/models"
+      CONFIG_PATH: "/app/config"
+      MODEL_ORCHESTRATOR_ENABLED: "true"
+      MODEL_ORCHESTRATOR_MAX_STORAGE_GB: "100"
+      MODEL_ORCHESTRATOR_ENABLE_METRICS: "true"
+      MODEL_ORCHESTRATOR_ENABLE_RBAC: "true"
+      MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
+      
+      # CoPilot-specific settings
+      COPILOT_ENABLED: "true"
+      COPILOT_HEALTH_CHECK_ENABLED: "true"
+      COPILOT_HEALTH_CHECK_INTERVAL: "30"
+      COPILOT_ENABLE_STREAMING: "true"
+      COPILOT_ENABLE_INTERACTIVE_ELEMENTS: "true"
+      COPILOT_ENABLE_EXTENSIONS: "true"
+      COPILOT_ENABLE_MEMORY_INTEGRATION: "true"
+      COPILOT_ENABLE_RESPONSE_FORMATTING: "true"
+      COPILOT_ENABLE_THREAD_MANAGEMENT: "true"
+      COPILOT_ENABLE_SESSION_MANAGEMENT: "true"
+      
+    ports:
+      - "8000:8000"
+      - "9092:9091"  # Model orchestrator metrics port
+      - "9093:9093"  # CoPilot metrics port
+    command:
+      - sh
+      - -c
+      - python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools --workers 4
+    volumes:
+      - "./:/app:rw"
+      - "./models:/app/models:rw"
+      - ./config:/app/config:ro
+      - logs_copilot_data:/app/logs
+      - backup_copilot_data:/app/backups
+      - "${HOME}/.cache/huggingface/hub:/root/.cache/huggingface/hub:ro"
+    depends_on:
+      postgres-copilot:
+        condition: service_healthy
+      elasticsearch-copilot:
+        condition: service_healthy
+      redis-copilot:
+        condition: service_healthy
+      milvus-copilot:
+        condition: service_healthy
+      prometheus-copilot:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 480s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    mem_limit: 4g
+    mem_reservation: 1g
+    memswap_limit: 4g
+    cpus: 2.0
+    networks:
+      - ai-karen-copilot-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Web UI (CoPilot Frontend)
+  # ──────────────────────────────────────────────────────────────────────────────
+  web-copilot:
+    container_name: ai-karen-copilot-web
+    image: node:20-alpine
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DEBUG: -tailwindcss
+      NODE_OPTIONS: --max-old-space-size=4096 --no-warnings
+      KAREN_BACKEND_URL: http://api-copilot:8000
+      NEXT_PUBLIC_KAREN_BACKEND_URL: https://your-domain.com
+      NEXT_PUBLIC_COPILOT_ENABLED: "true"
+      NEXT_PUBLIC_COPILOT_VERSION: "1.0.0"
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./ui_launchers/KAREN-Theme-Default:/app
+      - ./.env.local:/app/.env.local:ro
+      - node_modules_copilot_cache:/app/node_modules
+    command: sh -c "rm -rf /app/node_modules/.cache && npm ci --only=production && npm run build && npx next start -p 8010"
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+    depends_on:
+      api-copilot:
+        condition: service_healthy
+    networks:
+      - ai-karen-copilot-net
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Named Volumes
+# ──────────────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_copilot_data:
+  es_copilot_data:
+  redis_copilot_data:
+  etcd_copilot_data:
+  minio_copilot_data:
+  milvus_copilot_data:
+  grafana_copilot_data:
+  logs_copilot_data:
+  backup_copilot_data:
+  node_modules_copilot_cache:
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Custom Network
+# ──────────────────────────────────────────────────────────────────────────────
+networks:
+  ai-karen-copilot-net:
+    driver: bridge

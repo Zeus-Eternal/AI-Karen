@@ -18,12 +18,20 @@ from dataclasses import dataclass
 from enum import Enum
 import threading
 
-from ...internal.model_discovery_engine import (
-    ModelDiscoveryEngine, ModelInfo, ModelType, ModalityType, ModelCategory,
-    ModelSpecialization, ModelStatus
+from services.memory.internal.model_discovery_engine import (
+    ModelDiscoveryEngine,
+    ModelInfo,
+    ModelType,
+    ModalityType,
+    ModelCategory,
+    ModelSpecialization,
+    ModelStatus,
 )
-from ...internal.model_validation_system import (
-    ModelValidationSystem, ValidationLevel, ValidationResult, ValidationReport
+from services.memory.internal.model_validation_system import (
+    ModelValidationSystem,
+    ValidationLevel,
+    ValidationResult,
+    ValidationReport,
 )
 
 logger = logging.getLogger("kari.model_discovery_service")

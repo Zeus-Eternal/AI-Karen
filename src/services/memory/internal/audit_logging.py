@@ -13,18 +13,18 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 
-from src.services.structured_logging import (
+from services.memory.internal.structured_logging import (
     get_structured_logging_service,
     get_security_logger,
     SecurityEvent,
     SecurityEventType,
-    PIIRedactor
+    PIIRedactor,
 )
 from ai_karen_engine.core.logging.logger import get_logger
-from src.services.audit_deduplication import (
+from services.memory.internal.audit_deduplication import (
     get_audit_deduplication_service,
     EventType,
-    EventKey
+    EventKey,
 )
 
 

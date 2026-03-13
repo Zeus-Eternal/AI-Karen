@@ -1,0 +1,21 @@
+{
+  "provider": "llamacpp",
+  "model": "llama-2-7b-chat",
+  "base_url": "http://localhost:8080",
+  "temperature": 0.7,
+  "max_tokens": 2048,
+  "timeout": 45,
+  "max_retries": 2,
+  "local_development": {
+    "enable_debug": true,
+    "log_requests": true,
+    "cache_responses": false,
+    "mock_mode": false
+  },
+  "performance_tuning": {
+    "batch_size": 256,
+    "context_length": 2048,
+    "gpu_layers": 20,
+    "threads": 4
+  }
+}

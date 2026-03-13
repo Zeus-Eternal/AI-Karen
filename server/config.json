@@ -1,0 +1,20 @@
+{
+  "app_name": "AI Karen Engine",
+  "version": "0.4.0",
+  "environment": "development",
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "models": {
+    "default_provider": "transformers",
+    "model_dir": "models",
+    "cache_enabled": true
+  },
+  "features": {
+    "extensions_enabled": true,
+    "plugins_enabled": true,
+    "memory_system_enabled": true,
+    "copilotkit_enabled": false
+  }
+}

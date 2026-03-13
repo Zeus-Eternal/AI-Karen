@@ -1,0 +1,251 @@
+/**
+ * Rate Limiting Utility for Next.js API Routes
+ * 
+ * Provides in-memory rate limiting (for development/single-instance)
+ * and Redis-based rate limiting (for production/multi-instance).
+ * 
+ * IMPORTANT: In production with multiple server instances,
+ * use Redis-based rate limiting for consistency.
+ */
+
+import { NextRequest } from 'next/server';
+
+// Rate limit configuration
+export interface RateLimitConfig {
+  maxRequests: number;
+  windowMs: number;
+}
+
+// Rate limit result
+export interface RateLimitResult {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  resetTime: number;
+}
+
+// In-memory rate limit store (for development)
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+// Cleanup expired records every minute
+if (typeof window === 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of rateLimitStore.entries()) {
+      if (now > record.resetTime) {
+        rateLimitStore.delete(key);
+      }
+    }
+  }, 60000);
+}
+
+/**
+ * Get client identifier from request
+ */
+export function getClientIdentifier(request: NextRequest): string {
+  // Try to get real IP from headers (behind reverse proxy)
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip');
+  const cfConnectingIp = request.headers.get('cf-connecting-ip'); // Cloudflare
+  
+  const ip = forwarded 
+    ? forwarded.split(',')[0].trim()
+    : realIp || cfConnectingIp || request.ip || 'unknown';
+  
+  // Add user agent to prevent IP sharing attacks
+  const userAgent = request.headers.get('user-agent') || 'unknown';
+  
+  return `${ip}:${userAgent}`;
+}
+
+/**
+ * In-memory rate limiter (development/single-instance)
+ */
+export function rateLimitCheck(
+  request: NextRequest,
+  config: Partial<RateLimitConfig> = {}
+): RateLimitResult {
+  const maxRequests = config.maxRequests || 100;
+  const windowMs = config.windowMs || 60000; // 1 minute
+  
+  const identifier = getClientIdentifier(request);
+  const now = Date.now();
+  
+  const record = rateLimitStore.get(identifier);
+  
+  if (!record || now > record.resetTime) {
+    // Create new rate limit window
+    const newRecord: RateLimitRecord = {
+      count: 1,
+      resetTime: now + windowMs
+    };
+    rateLimitStore.set(identifier, newRecord);
+    
+    return {
+      success: true,
+      limit: maxRequests,
+      remaining: maxRequests - 1,
+      resetTime: newRecord.resetTime
+    };
+  }
+  
+  // Check if limit exceeded
+  if (record.count >= maxRequests) {
+    return {
+      success: false,
+      limit: maxRequests,
+      remaining: 0,
+      resetTime: record.resetTime
+    };
+  }
+  
+  // Increment counter
+  record.count++;
+  rateLimitStore.set(identifier, record);
+  
+  return {
+    success: true,
+    limit: maxRequests,
+    remaining: maxRequests - record.count,
+    resetTime: record.resetTime
+  };
+}
+
+/**
+ * Redis-based rate limiter (production/multi-instance)
+ * 
+ * Requires: ioredis package
+ * Install: npm install ioredis
+ * 
+ * Example usage:
+ * import Redis from 'ioredis';
+ * const redis = new Redis(process.env.REDIS_URL);
+ * 
+ * const result = await redisRateLimitCheck(redis, request);
+ */
+export async function redisRateLimitCheck(
+  redis: any, // ioredis instance
+  request: NextRequest,
+  config: Partial<RateLimitConfig> = {}
+): Promise<RateLimitResult> {
+  const maxRequests = config.maxRequests || 100;
+  const windowMs = config.windowMs || 60000;
+  
+  const identifier = getClientIdentifier(request);
+  const key = `ratelimit:${identifier}`;
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  
+  // Use Redis sorted set for sliding window
+  const pipeline = redis.pipeline();
+  
+  // Remove old entries
+  pipeline.zremrangebyscore(key, 0, windowStart);
+  
+  // Count current requests
+  pipeline.zcard(key);
+  
+  // Add current request
+  pipeline.zadd(key, now, `${now}:${Math.random()}`);
+  
+  // Set expiry
+  pipeline.expire(key, Math.ceil(windowMs / 1000));
+  
+  const results = await pipeline.exec();
+  const count = (results?.[1]?.[1] as number) || 0;
+  
+  if (count >= maxRequests) {
+    // Get reset time (oldest entry)
+    const oldest = await redis.zrange(key, 0, 0, 'WITHSCORES');
+    const resetTime = oldest?.[1] ? parseInt(oldest[1]) + windowMs : now + windowMs;
+    
+    return {
+      success: false,
+      limit: maxRequests,
+      remaining: 0,
+      resetTime
+    };
+  }
+  
+  return {
+    success: true,
+    limit: maxRequests,
+    remaining: maxRequests - count - 1,
+    resetTime: now + windowMs
+  };
+}
+
+/**
+ * Rate limit middleware factory
+ * 
+ * Usage in API routes:
+ * import { createRateLimitMiddleware } from '@/lib/rate-limit';
+ * 
+ * export async function GET(request: NextRequest) {
+ *   const rateLimit = await createRateLimitMiddleware(request, {
+ *     maxRequests: 10,
+ *     windowMs: 60000
+ *   });
+ *   
+ *   if (!rateLimit.success) {
+ *     return NextResponse.json(
+ *       { error: 'Too many requests' },
+ *       { 
+ *         status: 429,
+ *         headers: {
+ *           'X-RateLimit-Limit': rateLimit.limit.toString(),
+ *           'X-RateLimit-Remaining': '0',
+ *           'X-RateLimit-Reset': new Date(rateLimit.resetTime).toISOString(),
+ *           'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString()
+ *         }
+ *       }
+ *     );
+ *   }
+ *   
+ *   // Handle request...
+ * }
+ */
+export async function createRateLimitMiddleware(
+  request: NextRequest,
+  config?: Partial<RateLimitConfig>
+): Promise<RateLimitResult> {
+  // Check if Redis is available
+  if (process.env.REDIS_URL) {
+    try {
+      // Dynamically import Redis only when needed
+      const Redis = (await import('ioredis')).default;
+      const redis = new Redis(process.env.REDIS_URL);
+      const result = await redisRateLimitCheck(redis, request, config);
+      await redis.quit();
+      return result;
+    } catch (error) {
+      console.error('Redis rate limit error, falling back to in-memory:', error);
+      // Fall back to in-memory
+    }
+  }
+  
+  // Use in-memory rate limiting
+  return rateLimitCheck(request, config);
+}
+
+/**
+ * Rate limit presets for different use cases
+ */
+export const RateLimitPresets = {
+  // Strict rate limit for sensitive operations (login, password reset)
+  strict: { maxRequests: 5, windowMs: 60000 }, // 5 requests per minute
+  
+  // Standard rate limit for API routes
+  standard: { maxRequests: 100, windowMs: 60000 }, // 100 requests per minute
+  
+  // Lenient rate limit for public endpoints
+  lenient: { maxRequests: 1000, windowMs: 60000 }, // 1000 requests per minute
+  
+  // Burst rate limit for batch operations
+  burst: { maxRequests: 50, windowMs: 10000 }, // 50 requests per 10 seconds
+};

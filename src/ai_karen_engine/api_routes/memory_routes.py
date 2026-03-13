@@ -20,28 +20,32 @@ from ai_karen_engine.api_routes.unified_schemas import (
     FieldError,
     ValidationUtils,
 )
-from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService, PIIRedactor
-from ai_karen_engine.services.monitoring.metrics_service import MetricsService
-from ai_karen_engine.services.monitoring.structured_logging_service import StructuredLoggingService
-from ai_karen_engine.services.monitoring.correlation_service import CorrelationService
+from services.memory.unified_memory_service import UnifiedMemoryService, PIIRedactor
+from services.monitoring.metrics_service import MetricsService
+from services.monitoring.structured_logging_service import StructuredLoggingService
+from services.monitoring.correlation_service import CorrelationService
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 logger = logging.getLogger(__name__)
 
 # Graceful imports with fallback mechanisms
 try:
-    from ai_karen_engine.services.memory.unified_memory_service import (
+    from services.memory.unified_memory_service import (
         MemoryType,
         UISource,
         WebUIMemoryQuery,
         WebUIMemoryService,
     )
-    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
+    from services.memory.unified_memory_service import UnifiedMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
     logger.warning("Memory service not available, using fallback")
     MEMORY_SERVICE_AVAILABLE = False
+    MemoryType = None  # type: ignore
+    UISource = None  # type: ignore
+    WebUIMemoryQuery = None  # type: ignore
+    WebUIMemoryService = None  # type: ignore
 
 try:
     from ai_karen_engine.auth.rbac_middleware import get_current_user  # type: ignore
@@ -51,9 +55,9 @@ except ImportError:  # pragma: no cover - defensive
     RBAC_AVAILABLE = False
 
 try:
-    from ai_karen_engine.services.monitoring.metrics_service import get_metrics_service, MetricsService
-    from ai_karen_engine.services.monitoring.structured_logging_service import StructuredLoggingService
-    from ai_karen_engine.services.monitoring.correlation_service import CorrelationService
+    from services.monitoring.metrics_service import get_metrics_service, MetricsService
+    from services.monitoring.structured_logging_service import StructuredLoggingService
+    from services.monitoring.correlation_service import CorrelationService
 
     METRICS_AVAILABLE = True
 except ImportError:
@@ -274,12 +278,13 @@ async def memory_search(request: MemQuery, http_request: Request):
 
     # Set correlation ID in context for propagation
     if CORRELATION_AVAILABLE:
+        from src.services.monitoring.correlation_service import CorrelationService
         CorrelationService.set_correlation_id(correlation_id)
 
         # Start trace tracking
-        from ai_karen_engine.services.monitoring.correlation_service import get_correlation_tracker
+        from src.services.monitoring.correlation_service import CorrelationService
 
-        tracker = get_correlation_tracker()
+        tracker = CorrelationService.get_correlation_tracker()
         tracker.start_trace(
             correlation_id,
             "memory_search",

@@ -27,6 +27,12 @@ class MetricsManager:
         try:
             from prometheus_client import REGISTRY, Counter, Histogram, Gauge
             self._prometheus_available = True
+            
+            # FIX: Disable multiprocess mode to prevent hanging on registry initialization
+            import os
+            if not os.environ.get('PROMETHEUS_MULTIPROC_DIR'):
+                os.environ['PROMETHEUS_MULTIPROC_DIR'] = '/tmp/prometheus_disabled'
+            
             self._registry = REGISTRY
             self._counter_class = Counter
             self._histogram_class = Histogram

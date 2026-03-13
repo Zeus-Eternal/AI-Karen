@@ -235,13 +235,50 @@ async def conversation_processing(
             context["llm_preferences"] = request.llm_preferences
             logger.info(f"Using LLM preferences: {request.llm_preferences}")
 
+        # Extract user settings from nested user_settings dict for FlowInput compatibility
+        # Frontend sends these nested in user_settings, but FlowInput expects them as top-level fields
+        user_settings_dict = request.user_settings or {}
+        personality_tone = user_settings_dict.get("personality_tone")
+        personality_verbosity = user_settings_dict.get("personality_verbosity")
+        memory_depth = user_settings_dict.get("memory_depth")
+
+        # Map frontend enum values to backend enum values if needed
+        # Frontend personality_tone: ['friendly', 'professional', 'casual']
+        # Backend PersonalityTone: ['neutral', 'friendly', 'formal', 'humorous']
+        tone_mapping = {
+            "friendly": "friendly",
+            "professional": "formal",
+            "casual": "friendly",
+        }
+        if personality_tone:
+            personality_tone = tone_mapping.get(personality_tone, personality_tone)
+
+        # Frontend memory_depth: ['minimal', 'medium', 'comprehensive']
+        # Backend MemoryDepth: ['short', 'medium', 'long']
+        depth_mapping = {
+            "minimal": "short",
+            "medium": "medium",
+            "comprehensive": "long",
+        }
+        if memory_depth:
+            memory_depth = depth_mapping.get(memory_depth, memory_depth)
+
         flow_input = build_flow_input(
             prompt=request.prompt,
             conversation_history=request.conversation_history,
             user_settings=request.user_settings,
             context=context,
             session_id=request.session_id,
+            user_id="anonymous",
         )
+
+        # Set the top-level FlowInput fields for personality and memory settings
+        if personality_tone:
+            flow_input.personality_tone = personality_tone
+        if personality_verbosity:
+            flow_input.personality_verbosity = personality_verbosity
+        if memory_depth:
+            flow_input.memory_depth = memory_depth
 
         # Process conversation flow with LLM preferences
         start_time = datetime.utcnow()

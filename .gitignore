@@ -136,3 +136,14 @@ data/users.json
 /src/ai_karen_engine/services/__tests__
 /tests
 /ui_launchers/KAREN-Theme-Default/out/_next
+ui_launchers/KAREN-Theme-Default/out/_next
+/.tools
+/.tools
+/.goose
+/.tools
+.tools/
+.virEnv
+server/models/transformers
+ui_launchers/defaultApp/node_modules
+ui_launchers/KAREN-Theme-Enterprise/node_modules
+ui_launchers/KAREN-Theme-LTE/node_modules

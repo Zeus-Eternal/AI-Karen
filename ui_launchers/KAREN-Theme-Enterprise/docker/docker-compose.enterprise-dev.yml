@@ -1,0 +1,51 @@
+# docker-compose.enterprise-dev.yml
+# Development mode configuration for KAREN-Theme-Enterprise UI
+# Uses node:20-bullseye with hot-reload instead of building a production image
+
+services:
+  # ──────────────────────────────────────────────────────────────────────
+  # Enterprise Theme UI (Development Mode with Hot-Reload)
+  # ──────────────────────────────────────────────────────────────────────
+  enterprise-ui:
+    image: node:20-bullseye
+    container_name: karen-enterprise-ui
+    working_dir: /app
+    restart: unless-stopped
+    ports:
+      - "9002:9002"  # Changed from 3000 to avoid conflict; matches npm dev script
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      # Server-side (inside container) calls API service directly
+      - KAREN_BACKEND_URL=http://api:8000
+      # Client-side (browser) calls backend via localhost
+      - NEXT_PUBLIC_KAREN_BACKEND_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      # Mount the entire UI directory for hot-reload
+      - ./ui_launchers/KAREN-Theme-Enterprise:/app
+      # Don't mount node_modules as a volume - use the existing one
+      # Mount config directory
+      - ./config:/app/config:ro
+    command: >
+      bash -c "
+        echo 'Using existing node_modules...' &&
+        echo 'Starting development server on port 9002...' &&
+        npm run dev
+      "
+    networks:
+      - ai-karen-net
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+# Volumes
+# enterprise-ui-node-modules volume removed - using existing node_modules in source directory

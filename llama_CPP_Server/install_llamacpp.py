@@ -45,6 +45,10 @@ class LlamaCppInstaller:
     def __init__(self):
         self.system_info = self._get_system_info()
         
+        # Initialize virtual environment paths
+        self.venv_python = None
+        self.venv_pip = None
+        
         # Initialize configuration manager
         if CONFIG_MANAGER_AVAILABLE:
             self.config_manager = ConfigManager()
@@ -114,7 +118,7 @@ class LlamaCppInstaller:
     
     def _get_pip_executable(self) -> str:
         """Get the pip executable to use"""
-        if self.use_venv:
+        if self.use_venv and self.venv_pip:
             return self.venv_pip
         elif self._check_pip_available():
             return f"{sys.executable} -m pip"
@@ -319,7 +323,7 @@ class LlamaCppInstaller:
         
         try:
             # If we're using a virtual environment, use its Python executable
-            if self.use_venv:
+            if self.use_venv and self.venv_python:
                 # Run the test in the virtual environment
                 test_script = f"""
 import sys

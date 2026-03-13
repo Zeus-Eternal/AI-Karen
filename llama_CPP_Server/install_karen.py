@@ -489,6 +489,11 @@ Categories=Utility;Application;
         """Run final checks to ensure installation is complete"""
         print("Running final checks...")
         
+        # Check if config exists
+        if self.config is None:
+            print("Error: Configuration not initialized.")
+            return False
+        
         # Check if config file exists
         if not self.config_path.exists():
             print("Error: Configuration file not found.")

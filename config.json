@@ -1,100 +1,7 @@
 {
-  "environment": "local",
-  "debug": false,
-  "database": {
-    "host": "localhost",
-    "port": 5432,
-    "database": "ai_karen",
-    "username": "postgres",
-    "password": "",
-    "pool_size": 10,
-    "max_overflow": 20,
-    "pool_timeout": 30,
-    "pool_recycle": 3600,
-    "ssl_mode": "prefer"
-  },
-  "redis": {
-    "host": "localhost",
-    "port": 6380,
-    "database": 0,
-    "password": "JEmvDv4I17iRY2lJbmWuJOkL",
-    "max_connections": 10,
-    "socket_timeout": 5,
-    "socket_connect_timeout": 5,
-    "retry_on_timeout": true
-  },
-  "vector_db": {
-    "provider": "milvus",
-    "host": "localhost",
-    "port": 19530,
-    "collection_name": "ai_karen_memories",
-    "dimension": 1536,
-    "metric_type": "COSINE",
-    "index_type": "IVF_FLAT",
-    "nlist": 1024
-  },
-  "llm": {
-    "provider": "llamacpp",
-    "model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "api_key": null,
-    "base_url": null,
-    "temperature": 0.7,
-    "max_tokens": 2048,
-    "timeout": 30,
-    "max_retries": 3
-  },
-  "services": {
-    "ai_orchestrator": {},
-    "memory_service": {},
-    "conversation_service": {},
-    "plugin_service": {},
-    "tool_service": {},
-    "analytics_service": {}
-  },
-  "security": {
-    "jwt_secret": "dev-jwt-secret-change-in-production",
-    "jwt_algorithm": "HS256",
-    "jwt_expiration": 3600,
-    "cors_origins": [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:8000",
-      "http://127.0.0.1:8000",
-      "http://localhost:8010",
-      "http://127.0.0.1:8010",
-      "http://localhost:8020",
-      "http://127.0.0.1:8020"
-    ],
-    "rate_limit_requests": 100,
-    "rate_limit_window": 60,
-    "enable_auth": true,
-    "enable_rate_limiting": true
-  },
-  "monitoring": {
-    "enable_metrics": true,
-    "enable_tracing": false,
-    "enable_logging": true,
-    "log_level": "INFO",
-    "metrics_port": 8080,
-    "health_check_interval": 30,
-    "prometheus_enabled": true
-  },
-  "web_ui": {
-    "enable_web_ui_features": true,
-    "session_timeout": 3600,
-    "max_conversation_history": 1000,
-    "enable_proactive_suggestions": true,
-    "enable_memory_integration": true,
-    "ui_sources": [
-      "web",
-      "desktop"
-    ]
-  },
-  "default_embedding_model": "sentence-transformers/distilbert-base-nli-stsb-mean-tokens",
-  "spacy_model": "en_core_web_sm",
   "active_user": "default",
   "theme": "dark",
-  "llm_model": "Phi-3-mini-4k-instruct-q4.gguf",
+  "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
   "memory": {
     "enabled": true,
     "provider": "local",
@@ -105,45 +12,57 @@
   "ui": {
     "show_debug_info": false
   },
-  "user_profiles": {
-    "profiles": [
-      {
-        "id": "default",
-        "name": "Default",
-        "assignments": {
-          "chat": {
-            "provider": "openai",
-            "model": "gpt-4o-mini",
-            "parameters": {}
-          },
-          "code": {
-            "provider": "deepseek",
-            "model": "deepseek-coder",
-            "parameters": {}
-          },
-          "reasoning": {
-            "provider": "openai",
-            "model": "gpt-4o",
-            "parameters": {}
-          },
-          "summarization": {
-            "provider": "llamacpp",
-            "model": "Phi-3-mini-4k-instruct-q4.gguf",
-            "parameters": {}
-          }
-        },
-        "fallback_chain": [
-          "openai",
-          "deepseek",
-          "llamacpp",
-          "huggingface",
-          "gemini"
+  "security": {
+    "secret_key": "E6r87Ri6sPkfziBmYexUxC0zpLk30aOiFMypiGuDeCI",
+    "encryption_key": "ZaugJaabB0k63XmMU2Oh46D5QdavMEsDkMYuzQ37gIM=",
+    "users": {
+      "admin": {
+        "password_hash": "$2b$12$cb0EUmQnsmvhOu/Q2FffmOpWPUENudbGFHMndxbTGn6jLxOHapOAm",
+        "role": "admin",
+        "permissions": [
+          "read",
+          "write",
+          "delete",
+          "admin",
+          "model_manage",
+          "system_config",
+          "user_manage"
         ],
-        "is_active": true,
-        "updated_at": "2025-09-23T14:06:23.445351"
+        "created_at": "2025-12-15T15:10:52.984900",
+        "last_login": null,
+        "login_attempts": 0,
+        "locked_until": null,
+        "api_keys": [],
+        "refresh_tokens": [],
+        "active": true
       }
-    ],
-    "active_profile": "default"
+    },
+    "api_keys": {}
   },
-  "active_profile": "default"
+  "performance_adaptive_router": {
+    "enabled": true,
+    "enable_adaptive_routing": true,
+    "enable_predictive_routing": true,
+    "enable_ml_optimization": true,
+    "metrics_collection_interval": 5.0,
+    "performance_history_size": 1000,
+    "anomaly_detection_enabled": true,
+    "anomaly_threshold": 2.0,
+    "routing_update_interval": 30.0,
+    "strategy_switch_threshold": 0.2,
+    "load_balancing_enabled": true,
+    "max_concurrent_routes": 10,
+    "ml_model_update_interval": 300.0,
+    "prediction_confidence_threshold": 0.7,
+    "min_training_samples": 100,
+    "auto_optimization_enabled": true,
+    "optimization_interval": 600.0,
+    "performance_degradation_threshold": 0.15,
+    "analytics_history_size": 5000,
+    "enable_performance_dashboard": true,
+    "report_generation_interval": 3600.0,
+    "integrate_with_fallback_manager": true,
+    "integrate_with_health_monitor": true,
+    "integrate_with_provider_switcher": true
+  }
 }

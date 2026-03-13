@@ -12,6 +12,7 @@ import warnings
 import sys
 import importlib
 import inspect
+import time
 from typing import Any, Dict, Optional, Type, Callable, Union, List
 from types import ModuleType
 from dataclasses import dataclass, field
@@ -93,15 +94,15 @@ class CompatibilityImportManager:
             
             # Plugin mappings organized by category
             "examples": {
-                "ai_karen_engine.plugins.hello_world": "plugins_hub.examples.hello_world",
-                "ai_karen_engine.plugins.sandbox_fail": "plugins_hub.examples.sandbox_fail",
+                "ai_karen_engine.plugins.hello_world": "src.services.tools.registry",
+                "ai_karen_engine.plugins.sandbox_fail": "src.services.tools.registry",
             },
             "integrations": {
-                "ai_karen_engine.plugins.llm_manager": "plugins_hub.ai.llm_manager",
-                "ai_karen_engine.plugins.weather_query": "plugins_hub.integrations.weather_query",
+                "ai_karen_engine.plugins.llm_manager": "src.services.models.llm_router",
+                "ai_karen_engine.plugins.weather_query": "src.services.infra.unified_infra_service",
             },
             "ai": {
-                "ai_karen_engine.plugins.llm_services": "plugins_hub.ai.llm_services",
+                "ai_karen_engine.plugins.llm_services": "src.services.models.llm_router",
             }
         }
     

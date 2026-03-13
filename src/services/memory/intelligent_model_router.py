@@ -19,13 +19,15 @@ from enum import Enum
 from pathlib import Path
 import json
 
-from src.services.model_discovery_engine import (
-    ModelDiscoveryEngine, ModelInfo, ModelType, ModalityType, ModelCategory
+from services.memory.internal.model_discovery_engine import (
+    ModelDiscoveryEngine,
+    ModelInfo,
+    ModelType,
+    ModalityType,
+    ModelCategory,
 )
-from src.services.provider_registry import (
-    get_provider_registry_service, ProviderCapability
-)
-from src.services.llm_router import LLMRouter, ChatRequest, RoutingPolicy
+from services.memory.provider_registry import get_provider_registry_service, ProviderCapability
+from services.memory.llm_router import LLMRouter, ChatRequest, RoutingPolicy
 from ai_karen_engine.integrations.llm_router import IntelligentLLMRouter, RoutingRequest, TaskType
 from ai_karen_engine.integrations.registry import get_registry
 

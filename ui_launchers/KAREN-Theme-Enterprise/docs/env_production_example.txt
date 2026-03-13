@@ -1,0 +1,85 @@
+# ============================================================
+# KAREN Enterprise UI - Production Environment Configuration
+# ============================================================
+# WARNING: Never commit actual production credentials to git!
+# Copy this file to .env.production and fill in actual values
+# ============================================================
+
+# ------------------------------------------------------------
+# Application Configuration
+# ------------------------------------------------------------
+NODE_ENV=production
+PORT=3000
+
+# Backend API URL (REQUIRED - must be explicitly set)
+KAREN_BACKEND_URL=https://api.yourdomain.com
+
+# Allowed CORS origins (comma-separated, REQUIRED for production)
+# Example: https://yourdomain.com,https://app.yourdomain.com
+ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+
+# ------------------------------------------------------------
+# API Authentication (Server-side only)
+# ------------------------------------------------------------
+# CRITICAL: Never use NEXT_PUBLIC_ prefix for API keys!
+# API keys are only used server-side via Next.js API routes
+KAREN_API_KEY=your_production_api_key_here
+
+# JWT Secret for session management (generate with: openssl rand -base64 32)
+JWT_SECRET=your_jwt_secret_here_min_32_characters
+
+# Session configuration
+SESSION_MAX_AGE=86400000
+SESSION_SECURE=true
+SESSION_HTTPONLY=true
+SESSION_SAME_SITE=lax
+
+# ------------------------------------------------------------
+# Database Configuration (if using direct database access)
+# ------------------------------------------------------------
+# DATABASE_URL=postgresql://user:password@host:5432/database
+
+# Redis configuration (optional - for caching)
+# REDIS_URL=redis://user:password@host:6379
+
+# ------------------------------------------------------------
+# External Services
+# ------------------------------------------------------------
+# CopilotKit Configuration (if using AI features)
+COPILOTKIT_API_URL=https://api.copilotkit.ai
+COPILOTKIT_API_KEY=your_copilotkit_api_key
+
+# OpenAI API (if using GPT models)
+# OPENAI_API_KEY=your_openai_api_key
+
+# ------------------------------------------------------------
+# Feature Flags
+# ------------------------------------------------------------
+NEXT_PUBLIC_ENABLE_DEVELOPER_TOOLS=false
+NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+
+# ------------------------------------------------------------
+# Logging & Monitoring
+# ------------------------------------------------------------
+LOG_LEVEL=info
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+SENTRY_ENVIRONMENT=production
+
+# ------------------------------------------------------------
+# Rate Limiting
+# ------------------------------------------------------------
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW_MS=60000
+
+# ============================================================
+# IMPORTANT SECURITY NOTES
+# ============================================================
+# 1. Never use NEXT_PUBLIC_ prefix for sensitive data
+# 2. Always use strong, unique passwords and secrets
+# 3. Rotate credentials regularly
+# 4. Enable all security headers
+# 5. Configure proper CORS origins
+# 6. Enable HTTPS only in production
+# 7. Set up proper logging and monitoring
+# ============================================================

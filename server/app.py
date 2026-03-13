@@ -28,12 +28,13 @@ from .startup import create_lifespan, register_startup_tasks
 from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
+from .security import validate_environment_security
 
 logger = logging.getLogger("kari")
 
 # Extension system integration
 try:
-    from src.extensions.core.integration import initialize_extensions
+    from ai_karen_engine.extension_host.factory import initialize_extensions_for_production as initialize_extensions
     EXTENSIONS_AVAILABLE = True
 except ImportError:
     EXTENSIONS_AVAILABLE = False
@@ -47,6 +48,20 @@ PLUGIN_MAP = {}
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
     
+    # Run security policy validation before continuing
+    # This protects against missing secrets before the server starts.
+    validation = validate_environment_security()
+    if validation['overall_status'] != 'secure':
+        invalid_secrets = [
+            key for key, result in validation['secrets_validation'].items() if not result['valid']
+        ]
+        logger.critical(
+            "Environment security validation failed: %s. Invalid secrets: %s",
+            validation['overall_status'],
+            invalid_secrets or "None (check policy constraints)"
+        )
+        raise RuntimeError("Environment security validation failed; check server logs for details.")
+
     # Load configuration (environment loading is handled in config module)
     settings = Settings()
     environment = settings.environment.lower()
@@ -164,28 +179,11 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"Extension health monitoring shutdown error: {e}")
     
-    # Add compatibility aliases for copilot
-    try:
-        from ai_karen_engine.api_routes.copilot_routes import (
-            copilot_assist,  # type: ignore
-            copilot_health,  # type: ignore
-        )
-        # Accept POST (primary), plus OPTIONS for simple checks
-        app.add_api_route(
-            "/copilot/assist", copilot_assist, methods=["POST", "OPTIONS"], tags=["copilot-compat"]
-        )
-        # Health alias for convenience
-        app.add_api_route(
-            "/copilot/health", copilot_health, methods=["GET"], tags=["copilot-compat"]
-        )
-        # Log presence of alias for quick diagnosis
-        try:
-            alias_present = any(getattr(r, "path", "") == "/copilot/assist" for r in app.routes)
-            logger.info(f"Copilot legacy alias registered: {alias_present}")
-        except Exception:
-            pass
-    except Exception as e:
-        logger.warning(f"Copilot legacy alias not registered: {e}")
+    # Note: Copilot routes are now handled through server/routers.py
+    # The copilot_router is included with prefix="/api/copilot" which creates
+    # the proper /api/copilot/assist endpoint with authentication handled by the middleware
+    # This avoids duplicate route registration and ensures consistent authentication handling
+    logger.info("Copilot routes handled through router system")
 
     # Proactively register copilot routing actions
     try:

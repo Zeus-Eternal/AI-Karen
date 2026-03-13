@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from src.services.plugin_registry import (
+from services.memory.plugin_registry import (
     PluginRegistry,
     PluginMetadata,
     PluginStatus,
@@ -19,7 +19,7 @@ from src.services.plugin_registry import (
     get_plugin_registry,
     initialize_plugin_registry,
 )
-from src.services.plugin_execution import (
+from services.memory.internal.plugin_execution import (
     PluginExecutionEngine,
     ExecutionRequest,
     ExecutionResult,

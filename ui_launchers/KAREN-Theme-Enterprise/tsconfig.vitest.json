@@ -1,0 +1,41 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "module": "ESNext",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ag-grid-community/*": ["./node_modules/ag-grid-community/*"],
+      "@ag-charts-community/*": ["./node_modules/ag-charts-community/*"],
+      "@root-config/*": ["../../config/*"]
+    }
+  },
+  "include": [
+    "vitest.config.ts",
+    "config/vitest.d.ts",
+    "config/vitest.setup.ts",
+    "src/**/*.{test,spec}.{ts,tsx}",
+    "src/**/__tests__/**/*.{ts,tsx}"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next",
+    "coverage"
+  ]
+}

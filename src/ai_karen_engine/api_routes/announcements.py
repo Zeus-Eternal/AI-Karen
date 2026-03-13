@@ -1,25 +1,15 @@
 from datetime import datetime
 from typing import List
 
-from ai_karen_engine.fastapi_stub import APIRouter as _StubAPIRouter
-from ai_karen_engine.pydantic_stub import BaseModel as _StubBaseModel
-
-APIRouter = _StubAPIRouter
-BaseModel = _StubBaseModel
-
 try:
-    from fastapi import APIRouter as FastAPIAPIRouter
+    from fastapi import APIRouter
 except ImportError:
-    pass
-else:
-    APIRouter = FastAPIAPIRouter
+    from ai_karen_engine.fastapi_stub import APIRouter
 
-try:
-    from pydantic import BaseModel as PydanticBaseModel
-except ImportError:
-    pass
-else:
-    BaseModel = PydanticBaseModel
+from ai_karen_engine.utils.dependency_checks import import_pydantic
+
+# Import Pydantic models
+BaseModel, = import_pydantic("BaseModel")
 
 router = APIRouter()
 
