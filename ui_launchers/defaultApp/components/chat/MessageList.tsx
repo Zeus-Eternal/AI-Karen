@@ -5,12 +5,11 @@
 
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ComponentProps } from 'react'
 import { User, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { Message } from '@/types/chat'
 
 interface MessageListProps {
@@ -112,7 +111,7 @@ function MessageBubble({ message }: { message: Message }) {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ className, children, ...props }: any) {
+              code({ className, children }: ComponentProps<'code'>) {
                 const match = /language-(\w+)/.exec(className || '')
                 const language = match ? match[1] : ''
                 const inline = !className
@@ -120,11 +119,9 @@ function MessageBubble({ message }: { message: Message }) {
                 return !inline && language ? (
                   <div className="relative group">
                     <SyntaxHighlighter
-                      style={oneDark}
                       language={language}
                       PreTag="div"
                       className="rounded-lg"
-                      {...props}
                     >
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
@@ -139,7 +136,6 @@ function MessageBubble({ message }: { message: Message }) {
                 ) : (
                   <code
                     className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                    {...props}
                   >
                     {children}
                   </code>

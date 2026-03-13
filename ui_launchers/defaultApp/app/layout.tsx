@@ -1,27 +1,19 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "AI-Karen - Intelligent Chat Interface",
-  description: "A modern AI chat interface powered by AI-Karen orchestration platform",
-};
+  title: 'AI-Karen - Intelligent Chat Interface',
+  description: 'A modern AI chat interface powered by AI-Karen orchestration platform',
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
-  );
+  )
 }

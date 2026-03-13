@@ -3,8 +3,12 @@
  * Handles all communication with the AI-Karen backend
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000'
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10)
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY
 
 export class ApiError extends Error {
   constructor(
@@ -17,39 +21,57 @@ export class ApiError extends Error {
   }
 }
 
+export interface AuthUser {
+  id: string
+  username: string
+  email?: string
+  roles?: string[]
+}
+
 /**
  * Get authentication token from localStorage or cookies
  */
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null
-  
-  // Check localStorage first
+
   const token = localStorage.getItem('auth_token')
   if (token) return token
-  
-  // Check cookies
+
   const cookies = document.cookie.split(';')
-  const authCookie = cookies.find(c => c.trim().startsWith('auth_token='))
-  return authCookie?.split('=')[1] || null
+  const authCookie = cookies.find((cookie) => cookie.trim().startsWith('auth_token='))
+  return authCookie ? decodeURIComponent(authCookie.split('=')[1] || '') : null
+}
+
+function setAuthToken(token: string): void {
+  if (typeof window === 'undefined') return
+
+  localStorage.setItem('auth_token', token)
+  document.cookie = `auth_token=${encodeURIComponent(token)}; path=/; SameSite=Lax`
+}
+
+function clearAuthToken(): void {
+  if (typeof window === 'undefined') return
+
+  localStorage.removeItem('auth_token')
+  document.cookie = 'auth_token=; Max-Age=0; path=/; SameSite=Lax'
 }
 
 /**
  * Base API client with error handling and authentication
  */
-async function apiRequest(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<Response> {
+async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const url = `${BACKEND_URL}${endpoint}`
   const token = getAuthToken()
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...(options.headers as Record<string, string> | undefined),
   }
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`
+  } else if (API_KEY) {
+    headers.Authorization = `Bearer ${API_KEY}`
   }
 
   const controller = new AbortController()
@@ -59,24 +81,28 @@ async function apiRequest(
     const response = await fetch(url, {
       ...options,
       headers,
-      signal: controller.signal,
+      signal: options.signal ?? controller.signal,
     })
 
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      let errorDetails
+      let errorDetails: unknown
       try {
         errorDetails = await response.json()
       } catch {
         errorDetails = await response.text()
       }
 
-      throw new ApiError(
-        errorDetails?.message || `HTTP ${response.status}: ${response.statusText}`,
-        response.status,
-        errorDetails
-      )
+      const message =
+        typeof errorDetails === 'object' &&
+        errorDetails !== null &&
+        'message' in errorDetails &&
+        typeof (errorDetails as { message?: unknown }).message === 'string'
+          ? (errorDetails as { message: string }).message
+          : `HTTP ${response.status}: ${response.statusText}`
+
+      throw new ApiError(message, response.status, errorDetails)
     }
 
     return response
@@ -84,25 +110,62 @@ async function apiRequest(
     clearTimeout(timeoutId)
 
     if (error instanceof ApiError) throw error
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       throw new ApiError('Request timeout', 408)
     }
 
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
-      0
-    )
+    throw new ApiError(error instanceof Error ? error.message : 'Network error', 0)
   }
 }
 
-/**
- * API client with typed methods for all endpoints
- */
 export const apiClient = {
-  /**
-   * Send a message to the AI
-   */
+  getBackendUrl(): string {
+    return BACKEND_URL
+  },
+
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+
+  async login(username: string, password: string): Promise<{ token: string; user?: AuthUser }> {
+    const response = await apiRequest('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    })
+
+    const data = (await response.json()) as {
+      token?: string
+      access_token?: string
+      user?: AuthUser
+    }
+
+    const token = data.token || data.access_token
+    if (!token) {
+      throw new ApiError('Login response missing token', 500, data)
+    }
+
+    setAuthToken(token)
+    return { token, user: data.user }
+  },
+
+  async getCurrentUser(): Promise<AuthUser | null> {
+    try {
+      const response = await apiRequest('/api/auth/me', { method: 'GET' })
+      return (await response.json()) as AuthUser
+    } catch {
+      return null
+    }
+  },
+
+  async healthCheck(): Promise<Record<string, unknown>> {
+    const response = await apiRequest('/api/health', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    return (await response.json()) as Record<string, unknown>
+  },
+
   async sendMessage(
     conversationId: string,
     message: string,
@@ -122,9 +185,6 @@ export const apiClient = {
     })
   },
 
-  /**
-   * Stream a message response using Server-Sent Events
-   */
   async streamMessage(
     conversationId: string,
     message: string,
@@ -135,17 +195,18 @@ export const apiClient = {
       onMetadata?: (metadata: Record<string, unknown>) => void
       onError?: (error: string) => void
       onDone?: () => void
+      signal?: AbortSignal
     }
   ): Promise<void> {
     const token = getAuthToken()
     const url = new URL(`${BACKEND_URL}/api/chat/send`)
-    
+
     const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'Accept': 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
+        Accept: 'text/event-stream',
       },
       body: JSON.stringify({
         conversationId,
@@ -153,6 +214,7 @@ export const apiClient = {
         stream: true,
         ...options,
       }),
+      signal: options?.signal,
     })
 
     if (!response.ok) {
@@ -180,7 +242,7 @@ export const apiClient = {
 
       for (const line of lines) {
         if (!line.trim() || !line.startsWith('data: ')) continue
-        
+
         const data = line.slice(6).trim()
         if (data === '[DONE]') {
           options?.onDone?.()
@@ -188,14 +250,19 @@ export const apiClient = {
         }
 
         try {
-          const parsed = JSON.parse(data)
-          
+          const parsed = JSON.parse(data) as {
+            type?: string
+            content?: string
+            metadata?: Record<string, unknown>
+            error?: string
+          }
+
           if (parsed.type === 'token' && parsed.content) {
             options?.onChunk?.(parsed.content)
           } else if (parsed.type === 'metadata') {
-            options?.onMetadata?.(parsed.metadata)
+            options?.onMetadata?.(parsed.metadata || {})
           } else if (parsed.type === 'error') {
-            options?.onError?.(parsed.error)
+            options?.onError?.(parsed.error || 'Unknown stream error')
           }
         } catch {
           // Ignore invalid JSON
@@ -204,27 +271,18 @@ export const apiClient = {
     }
   },
 
-  /**
-   * Get all conversations
-   */
   async getConversations(): Promise<Response> {
     return apiRequest('/api/conversations', {
       method: 'GET',
     })
   },
 
-  /**
-   * Get a single conversation by ID
-   */
   async getConversation(conversationId: string): Promise<Response> {
     return apiRequest(`/api/conversations/${conversationId}`, {
       method: 'GET',
     })
   },
 
-  /**
-   * Create a new conversation
-   */
   async createConversation(title?: string): Promise<Response> {
     return apiRequest('/api/conversations', {
       method: 'POST',
@@ -232,9 +290,6 @@ export const apiClient = {
     })
   },
 
-  /**
-   * Update conversation title or metadata
-   */
   async updateConversation(
     conversationId: string,
     updates: { title?: string; tags?: string[] }
@@ -245,27 +300,18 @@ export const apiClient = {
     })
   },
 
-  /**
-   * Delete a conversation
-   */
   async deleteConversation(conversationId: string): Promise<Response> {
     return apiRequest(`/api/conversations/${conversationId}`, {
       method: 'DELETE',
     })
   },
 
-  /**
-   * Search conversations
-   */
   async searchConversations(query: string): Promise<Response> {
     return apiRequest(`/api/conversations/search?q=${encodeURIComponent(query)}`, {
       method: 'GET',
     })
   },
 
-  /**
-   * Get messages for a conversation
-   */
   async getMessages(conversationId: string): Promise<Response> {
     return apiRequest(`/api/conversations/${conversationId}/messages`, {
       method: 'GET',

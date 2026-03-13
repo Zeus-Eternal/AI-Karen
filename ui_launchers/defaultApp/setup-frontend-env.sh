@@ -10,7 +10,7 @@ echo ""
 # Create .env.local file
 cat > .env.local << 'ENVEOF'
 # Backend API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 
 # Optional: Enable debug mode for development
 # NEXT_PUBLIC_DEBUG=true
