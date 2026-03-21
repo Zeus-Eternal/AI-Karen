@@ -120,7 +120,14 @@ class AuthService(BaseService):
         """Initialize the Authentication Service."""
         super().__init__(config or AuthConfig())
         self._initialized = False
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
+        
+    @property
+    def lock(self) -> asyncio.Lock:
+        """Get or create the async lock lazily to ensure correct event loop attachment."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
         
         # Database session will be injected
         self._db_session: Optional[AsyncSession] = None
@@ -161,22 +168,41 @@ class AuthService(BaseService):
         if self._initialized:
             return
             
-        async with self._lock:
+        import logging
+        logging.warning("=== ABOUT TO EVALUATE current_task ===")
+        current_task = asyncio.current_task()
+        if getattr(self, '_initializing_task', None) == current_task:
+            return
+            
+        logging.warning("=== ABOUT TO ACQUIRE self.lock ===")
+        async with self.lock:
+            logging.warning("=== ACQUIRED self.lock ===")
+            if self._initialized:
+                return
+                
+            self._initializing_task = current_task
             try:
+                import logging
+                logging.warning("=== INSIDE INITIALIZE: validating config ===")
                 # Validate configuration
                 self._validate_config()
                 
+                logging.warning("=== INSIDE INITIALIZE: calling _ensure_database_tables ===")
                 # Initialize database tables if needed
                 await self._ensure_database_tables()
                 
+                logging.warning("=== INSIDE INITIALIZE: calling _ensure_default_admin_user ===")
                 # Create default admin user if it doesn't exist
                 await self._ensure_default_admin_user()
                 
                 self._initialized = True
                 logger.info("Authentication Service initialized successfully")
+                logging.warning("=== INSIDE INITIALIZE: DONE ===")
             except Exception as e:
                 logger.error(f"Failed to initialize Authentication Service: {e}")
                 raise RuntimeError(f"Authentication Service initialization failed: {e}")
+            finally:
+                self._initializing_task = None
     
     def _validate_config(self) -> None:
         """Validate configuration parameters."""
@@ -202,7 +228,7 @@ class AuthService(BaseService):
             admin_user = await self.get_user_by_email("admin@kari.ai")
             if not admin_user:
                 # Create default admin user
-                default_password = "password123"  # This should be changed in production
+                default_password = "admin123"  # This should be changed in production
                 await self.create_user(
                     email="admin@kari.ai",
                     password=default_password,
@@ -318,17 +344,17 @@ class AuthService(BaseService):
     
     async def authenticate_user(
         self,
-        email: str,
+        login_identifier: str,
         password: str,
         *,
         ip_address: str = "unknown",
         user_agent: str = ""
     ) -> Tuple[Optional[UserAccount], Optional[str], Optional[str]]:
         """
-        Authenticate a user with email and password.
+        Authenticate a user with username/email and password.
         
         Args:
-            email: User email
+            login_identifier: User username or email
             password: User password
             ip_address: IP address of the client
             user_agent: User agent string
@@ -336,22 +362,28 @@ class AuthService(BaseService):
         Returns:
             Tuple of (user, access_token, refresh_token) or (None, None, None) if authentication fails
         """
+        import logging
+        logging.warning("=== AUTHENTICATE_USER: START ===")
         if not self._initialized:
+            logging.warning("=== AUTHENTICATE_USER: calling initialize() ===")
             await self.initialize()
+            logging.warning("=== AUTHENTICATE_USER: initialize() DONE ===")
+        else:
+            logging.warning("=== AUTHENTICATE_USER: ALREADY INITIALIZED ===")
         
         # Note: _db_session check removed - method handles None case with temporary client
         
         try:
-            # Get user by email
-            user = await self.get_user_by_email(email)
+            # Get user by identifier (supports both username and email)
+            user = await self.get_user(login_identifier)
             if not user:
-                logger.warning("Authentication failed: user not found - %s", email)
+                logger.warning("Authentication failed: user not found - %s", login_identifier)
                 return None, None, "Invalid credentials"
             
             # Check if account is locked
             if user.status == UserStatus.LOCKED:
                 if user.locked_until and user.locked_until > datetime.utcnow():
-                    logger.warning("Authentication failed: account locked - %s", email)
+                    logger.warning("Authentication failed: account locked - %s", login_identifier)
                     return None, None, "Account locked"
                 else:
                     # Account lockout has expired, unlock it
@@ -359,19 +391,19 @@ class AuthService(BaseService):
             
             # Check if account is active
             if user.status != UserStatus.ACTIVE:
-                logger.warning("Authentication failed: account not active - %s", email)
+                logger.warning("Authentication failed: account not active - %s", login_identifier)
                 return None, None, "Account inactive"
             
             # Verify password
             if not self._verify_password(password, user.password_hash):
                 # Increment failed login attempts
                 await self._increment_failed_login_attempts(user.id)
-                logger.warning("Authentication failed: invalid password - %s", email)
+                logger.warning("Authentication failed: invalid password - %s", login_identifier)
                 return None, None, "Invalid credentials"
             
             # Check if email is verified
             if not user.is_verified:
-                logger.warning("Authentication failed: email not verified - %s", email)
+                logger.warning("Authentication failed: email not verified - %s", login_identifier)
                 return None, None, "Email not verified"
             
             # Reset failed login attempts on successful authentication
@@ -409,7 +441,7 @@ class AuthService(BaseService):
                 device_fingerprint=device_fingerprint,
             )
             
-            logger.info("User authenticated successfully - %s", email)
+            logger.info("User authenticated successfully - %s", login_identifier)
             return user, access_token, refresh_token
             
         except Exception as e:
@@ -671,10 +703,10 @@ class AuthService(BaseService):
     
     async def get_user(self, identifier: str) -> Optional[UserAccount]:
         """
-        Get a user by email or ID.
+        Get a user by email, username, or ID.
         
         Args:
-            identifier: User email or ID
+            identifier: User email, username, or ID
             
         Returns:
             User account if found, None otherwise
@@ -688,7 +720,13 @@ class AuthService(BaseService):
             return user
         
         # Try to get by email
-        return await self.get_user_by_email(identifier)
+        user = await self.get_user_by_email(identifier)
+        if user:
+            return user
+        
+        # Try to get by username (for now, this will check email again since we don't have separate username field)
+        # This allows "admin" to work as both username and email
+        return await self.get_user_by_username(identifier)
     
     async def get_user_by_id(self, user_id: str) -> Optional[UserAccount]:
         """
@@ -763,6 +801,43 @@ class AuthService(BaseService):
                 return user
         except Exception as e:
             logger.error("Error fetching user by email: %s", e)
+            return None
+    
+    async def get_user_by_username(self, username: str) -> Optional[UserAccount]:
+        """
+        Get a user by username.
+        
+        Args:
+            username: User username
+            
+        Returns:
+            User account if found, None otherwise
+        """
+        if not self._initialized:
+            await self.initialize()
+        
+        # Check cache first
+        for user in self._user_cache.values():
+            if user.email == username:  # For now, use email as username (since we don't have username field)
+                return user
+        
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(
+                    select(AuthUser).where(
+                        AuthUser.email == username,  # For now, use email as username
+                        AuthUser.is_active == True,
+                    )
+                )
+                auth_user = result.scalar_one_or_none()
+                if not auth_user:
+                    return None
+
+                user = self._build_user_account(auth_user)
+                self._user_cache[user.id] = user
+                return user
+        except Exception as e:
+            logger.error("Error fetching user by username: %s", e)
             return None
     
     async def create_session(

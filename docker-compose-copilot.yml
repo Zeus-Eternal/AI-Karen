@@ -366,7 +366,7 @@ services:
     ports:
       - "8010:8010"
     volumes:
-      - ./ui_launchers/KAREN-Theme-Default:/app
+      - ./ui_launchers/KAREN-Theme-LTE:/app
       - ./.env.local:/app/.env.local:ro
       - node_modules_copilot_cache:/app/node_modules
     command: sh -c "rm -rf /app/node_modules/.cache && npm ci --only=production && npm run build && npx next start -p 8010"

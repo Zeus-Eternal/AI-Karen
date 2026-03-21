@@ -84,9 +84,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # Include request body if configured
         if self.include_request_body and request.method in ["POST", "PUT", "PATCH"]:
             try:
-                body = await request.body()
-                if body:
-                    request_info["body"] = body.decode('utf-8')[:1000]  # Limit body size
+                # body = await request.body()
+                # if body:
+                #     request_info["body"] = body.decode('utf-8')[:1000]  # Limit body size
+                request_info["body"] = "<body logging disabled to prevent request hang>"
             except Exception as e:
                 request_info["body_error"] = str(e)
         

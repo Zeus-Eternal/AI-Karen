@@ -239,7 +239,7 @@ class LLMRegistry:
     def _setup_registry_watcher(self):
         """Set up file system watcher for registry changes."""
         if not WATCHDOG_AVAILABLE:
-            logger.warning("watchdog not available, registry auto-update disabled")
+            logger.info("watchdog not available, registry auto-update disabled")
             self._observer = None
             return
             

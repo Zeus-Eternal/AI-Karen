@@ -10,13 +10,13 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 try:
     from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from ..auth.models import UserData
+from ..auth.session import get_current_user as get_authenticated_user
 from ..auth.rbac_middleware import get_rbac_manager
 from ..services import AuthService
 from ..core.services.base import ServiceConfig
@@ -81,6 +81,32 @@ class UserResponse(BaseModel):
     preferences: Dict[str, Any]
 
 
+class UpdateProfileRequest(BaseModel):
+    """Update the current user's profile."""
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = Field(default=None, min_length=1)
+    preferences: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode='after')
+    def validate_payload(self):
+        if self.email is None and self.full_name is None and self.preferences is None:
+            raise ValueError("At least one profile field must be provided")
+        return self
+
+
+class ChangePasswordRequest(BaseModel):
+    """Change the current user's password."""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=1)
+    confirm_password: str = Field(..., min_length=1)
+
+    @model_validator(mode='after')
+    def validate_passwords(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("New password and confirmation do not match")
+        return self
+
+
 # Initialize service with default configuration
 # Use model_construct to bypass Pydantic validation for required fields
 from ai_karen_engine.services.auth_service import AuthConfig
@@ -90,23 +116,8 @@ auth_config = AuthConfig.model_construct(
 )
 auth_service = AuthService(config=auth_config)
 
-# Security scheme
-security = HTTPBearer()
-
 # Router - prefix is empty since routes already include /auth/ prefix
 router = APIRouter(prefix="", tags=["authentication"])
-
-
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Get current authenticated user."""
-    user = await auth_service.validate_token(credentials.credentials)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
 
 
 def get_client_ip(request: Request) -> str:
@@ -137,6 +148,27 @@ def _serialize_permissions(user_payload: Dict[str, Any]) -> List[str]:
         for permission in rbac_manager.get_user_permissions(user)
     }
     return sorted(permissions)
+
+
+def _serialize_user_response(user: Any) -> Dict[str, Any]:
+    """Normalize a user-like object into the public response shape."""
+
+    user_id = str(getattr(user, "id", None) or getattr(user, "user_id", ""))
+    created_at = getattr(user, "created_at", None)
+    last_login = getattr(user, "last_login", None)
+    tenant_id = getattr(user, "tenant_id", "default")
+
+    return {
+        "user_id": user_id,
+        "email": getattr(user, "email", ""),
+        "full_name": getattr(user, "full_name", "") or "",
+        "roles": list(getattr(user, "roles", []) or []),
+        "is_active": getattr(user, "status", None).value == "active" if getattr(user, "status", None) else getattr(user, "is_active", True),
+        "created_at": created_at.isoformat() if created_at else datetime.now(timezone.utc).isoformat(),
+        "last_login": last_login.isoformat() if last_login else None,
+        "tenant_id": str(tenant_id) if tenant_id is not None else "default",
+        "preferences": dict(getattr(user, "preferences", {}) or {}),
+    }
 
 
 # Startup/shutdown handlers commented out to prevent blocking during app startup
@@ -243,11 +275,11 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
         
         # Return login response
         user_data = {
-            "user_id": user.user_id,
+            "user_id": user.id,
             "email": user.email,
             "full_name": user.full_name,
             "roles": user.roles,
-            "is_active": user.is_active,
+            "is_active": user.status.value == "active",
             "tenant_id": user.tenant_id,
             "preferences": user.preferences
         }
@@ -259,7 +291,7 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": auth_service.access_token_expire_minutes * 60,
+            "expires_in": auth_service.config.access_token_expire_minutes * 60,
             "user": user_data,
             "permissions": permissions,
             "message": "First admin user created and authenticated successfully"
@@ -282,18 +314,34 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     """Authenticate user and return tokens."""
+    import logging
+    logging.warning("==== LOGIN ENDPOINT HIT ====")
     ip_address = get_client_ip(http_request)
     user_agent = get_user_agent(http_request)
     
     # Determine login identifier (email or username)
     login_identifier = request.email or request.username
     
-    user, access_token, refresh_token_or_error = await auth_service.authenticate_user(
-        email=login_identifier,  # auth_service can handle both email and username
-        password=request.password,
+    logging.warning(f"=== LOGIN: auth_service type is {type(auth_service)} ===")
+    logging.warning("=== LOGIN: calling auth_service.authenticate_user ===")
+    import asyncio
+    logging.warning("=== LOGIN: yielding to event loop ===")
+    await asyncio.sleep(0)
+    logging.warning("=== LOGIN: event loop yielded successfully ===")
+    
+    import logging
+    logging.warning("=== LOGIN: creating coroutine ===")
+    coro = auth_service.authenticate_user(
+        login_identifier,  # positional string
+        request.password,  # positional string
         ip_address=ip_address,
         user_agent=user_agent
     )
+    logging.warning(f"=== LOGIN: created coroutine: {type(coro)} ===")
+    
+    logging.warning("=== LOGIN: awaiting coroutine ===")
+    user, access_token, refresh_token_or_error = await coro
+    logging.warning("=== LOGIN: auth_service.authenticate_user RETURNED ===")
     
     if not user:
         # refresh_token_or_error contains error message
@@ -305,11 +353,11 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     
     # Prepare user data
     user_data = {
-        "user_id": user.user_id,
+        "user_id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "roles": user.roles,
-        "is_active": user.is_active,
+        "is_active": user.status.value == "active",
         "tenant_id": user.tenant_id,
         "preferences": user.preferences,
         "last_login": user.last_login.isoformat() if user.last_login else None
@@ -322,7 +370,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "access_token": access_token,
         "refresh_token": refresh_token_or_error,  # This is refresh_token on success
         "token_type": "bearer",
-        "expires_in": auth_service.access_token_expire_minutes * 60,
+        "expires_in": auth_service.config.access_token_expire_minutes * 60,
         "user": user_data,
         "permissions": permissions
     }
@@ -338,7 +386,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     response.set_cookie(
         key="kari_session",
         value=access_token,
-        max_age=auth_service.access_token_expire_minutes * 60,  # Convert to seconds
+        max_age=auth_service.config.access_token_expire_minutes * 60,  # Convert to seconds
         httponly=True,  # Prevent JavaScript access (XSS protection)
         secure=is_secure,  # Only send over HTTPS in production
         samesite="lax",  # CSRF protection while allowing navigation
@@ -349,7 +397,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
 
 
 @router.post("/auth/refresh")
-async def refresh_token(request: RefreshTokenRequest) -> JSONResponse:
+async def refresh_token(request: RefreshTokenRequest, http_request: Request) -> JSONResponse:
     """Refresh access token using refresh token."""
     access_token, error = await auth_service.refresh_access_token(request.refresh_token)
     
@@ -363,32 +411,42 @@ async def refresh_token(request: RefreshTokenRequest) -> JSONResponse:
     response_data = {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": auth_service.access_token_expire_minutes * 60
+        "expires_in": auth_service.config.access_token_expire_minutes * 60
     }
-    
-    return JSONResponse(content=response_data)
+
+    response = JSONResponse(content=response_data)
+    response.set_cookie(
+        key="kari_session",
+        value=access_token,
+        max_age=auth_service.config.access_token_expire_minutes * 60,
+        httponly=True,
+        secure=http_request.url.scheme == "https",
+        samesite="lax",
+        path="/",
+    )
+
+    return response
 
 
 @router.post("/auth/logout")
-async def logout(request: RefreshTokenRequest, current_user=Depends(get_current_user)) -> JSONResponse:
+async def logout(
+    request: RefreshTokenRequest,
+    current_user=Depends(get_authenticated_user),
+) -> JSONResponse:
     """Logout user by invalidating refresh token."""
     await auth_service.logout(request.refresh_token)
-    
-    return JSONResponse(content={"detail": "Successfully logged out"})
+
+    response = JSONResponse(content={"detail": "Successfully logged out"})
+    response.delete_cookie("kari_session", path="/")
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return response
 
 
 @router.get("/auth/validate-session")
-async def validate_session(current_user=Depends(get_current_user)) -> Dict[str, Any]:
+async def validate_session(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Validate current session and return user information."""
-    user_payload = {
-        "user_id": current_user.user_id,
-        "email": current_user.email,
-        "full_name": current_user.full_name,
-        "roles": current_user.roles,
-        "is_active": current_user.is_active,
-        "tenant_id": current_user.tenant_id,
-        "preferences": current_user.preferences,
-    }
+    user_payload = _serialize_user_response(current_user)
     permissions = _serialize_permissions(user_payload)
     user_payload["permissions"] = permissions
     return {
@@ -402,27 +460,71 @@ async def validate_session(current_user=Depends(get_current_user)) -> Dict[str, 
 
 
 @router.get("/auth/me", response_model=UserResponse)
-async def get_current_user_info(current_user=Depends(get_current_user)) -> Dict[str, Any]:
+async def get_current_user_info(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Get current user information."""
-    return {
-        "user_id": current_user.user_id,
-        "email": current_user.email,
-        "full_name": current_user.full_name,
-        "roles": current_user.roles,
-        "is_active": current_user.is_active,
-        "created_at": current_user.created_at.isoformat(),
-        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
-        "tenant_id": current_user.tenant_id,
-        "preferences": current_user.preferences,
-        "authenticated": True,
-        "last_active": datetime.now(timezone.utc).isoformat()
-    }
+    response = _serialize_user_response(current_user)
+    response["authenticated"] = True
+    response["last_active"] = datetime.now(timezone.utc).isoformat()
+    return response
+
+
+@router.put("/auth/me", response_model=UserResponse)
+async def update_current_user_info(
+    request: UpdateProfileRequest,
+    current_user=Depends(get_authenticated_user),
+) -> Dict[str, Any]:
+    """Update current user information."""
+
+    current_user_id = str(getattr(current_user, "id", None) or getattr(current_user, "user_id", ""))
+
+    updated_user, error = await auth_service.update_user_profile(
+        current_user_id,
+        email=str(request.email) if request.email is not None else None,
+        full_name=request.full_name,
+        preferences=request.preferences,
+    )
+
+    if not updated_user:
+        status_code = status.HTTP_400_BAD_REQUEST
+        if error == "User not found":
+            status_code = status.HTTP_404_NOT_FOUND
+        elif error == "User with this email already exists":
+            status_code = status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=status_code, detail=error or "Failed to update profile")
+
+    return _serialize_user_response(updated_user)
+
+
+@router.post("/auth/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user=Depends(get_authenticated_user),
+) -> Dict[str, str]:
+    """Change the current user's password."""
+
+    current_user_id = str(getattr(current_user, "id", None) or getattr(current_user, "user_id", ""))
+
+    error = await auth_service.change_user_password(
+        current_user_id,
+        request.current_password,
+        request.new_password,
+    )
+
+    if error:
+        status_code = status.HTTP_400_BAD_REQUEST
+        if error == "Current password is incorrect":
+            status_code = status.HTTP_401_UNAUTHORIZED
+        elif error == "User not found":
+            status_code = status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=status_code, detail=error)
+
+    return {"detail": "Password updated successfully"}
 
 
 @router.post("/auth/create-user", response_model=UserResponse)
 async def create_user(
     request: CreateUserRequest,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_authenticated_user)
 ) -> JSONResponse:
     """Create a new user (admin only)."""
     # Check if current user has admin privileges
@@ -446,11 +548,11 @@ async def create_user(
         )
     
     user_data = {
-        "user_id": user.user_id,
+        "user_id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "roles": user.roles,
-        "is_active": user.is_active,
+        "is_active": user.status.value == "active",
         "created_at": user.created_at.isoformat(),
         "last_login": None,
         "tenant_id": user.tenant_id,

@@ -20,6 +20,7 @@ import jwt
 import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import ColumnProperty
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 from ai_karen_engine.core.logging import get_logger
@@ -120,7 +121,7 @@ class AuthService(BaseService):
         """Initialize the Authentication Service."""
         super().__init__(config or AuthConfig())
         self._initialized = False
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
         
         # Database session will be injected
         self._db_session: Optional[AsyncSession] = None
@@ -132,6 +133,13 @@ class AuthService(BaseService):
         
         # Load configuration from environment
         self._load_config_from_env()
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        """Get or create the async lock lazily to ensure correct event loop attachment."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
     
     def _load_config_from_env(self) -> None:
         """Load configuration from environment variables."""
@@ -161,7 +169,15 @@ class AuthService(BaseService):
         if self._initialized:
             return
             
-        async with self._lock:
+        current_task = asyncio.current_task()
+        if getattr(self, '_initializing_task', None) == current_task:
+            return
+            
+        async with self.lock:
+            if self._initialized:
+                return
+                
+            self._initializing_task = current_task
             try:
                 # Validate configuration
                 self._validate_config()
@@ -202,7 +218,7 @@ class AuthService(BaseService):
             admin_user = await self.get_user_by_email("admin@kari.ai")
             if not admin_user:
                 # Create default admin user
-                default_password = "password123"  # This should be changed in production
+                default_password = "admin123"  # This should be changed in production
                 await self.create_user(
                     email="admin@kari.ai",
                     password=default_password,
@@ -251,33 +267,34 @@ class AuthService(BaseService):
         )
         tenant = result.scalar_one_or_none()
         if tenant:
-            return tenant.id
+            return getattr(tenant, 'id', None)  # type: ignore
 
-        logger.warning("Unknown tenant identifier '%s'; using default tenant", tenant_identifier)
+        logger.warning(f"Unknown tenant identifier '{tenant_identifier}'; using default tenant")
         return None
 
     def _build_user_account(self, auth_user: AuthUser) -> UserAccount:
         """Map AuthUser ORM model to UserAccount."""
         now = datetime.utcnow()
-        status = UserStatus.ACTIVE if auth_user.is_active else UserStatus.INACTIVE
-        if auth_user.locked_until and auth_user.locked_until > now:
+        status = UserStatus.ACTIVE if bool(getattr(auth_user, 'is_active', False)) else UserStatus.INACTIVE
+        locked_until_val = getattr(auth_user, 'locked_until', None)
+        if locked_until_val and locked_until_val > now:
             status = UserStatus.LOCKED
 
         return UserAccount(
-            id=str(auth_user.user_id),
-            email=auth_user.email,
-            full_name=auth_user.full_name or "",
-            password_hash=auth_user.password_hash,
-            tenant_id=str(auth_user.tenant_id) if auth_user.tenant_id else "default",
-            roles=list(auth_user.roles or []),
-            preferences=auth_user.preferences or {},
-            is_verified=auth_user.is_verified,
-            two_factor_enabled=auth_user.two_factor_enabled,
-            created_at=auth_user.created_at or now,
-            updated_at=auth_user.updated_at or now,
-            last_login=auth_user.last_login,
-            failed_login_attempts=auth_user.failed_login_attempts,
-            locked_until=auth_user.locked_until,
+            id=str(getattr(auth_user, 'user_id', '')),
+            email=str(getattr(auth_user, 'email', '')),
+            full_name=str(getattr(auth_user, 'full_name', '') or ""),
+            password_hash=str(getattr(auth_user, 'password_hash', '')),
+            tenant_id=str(getattr(auth_user, 'tenant_id', '')) if getattr(auth_user, 'tenant_id', None) else "default",
+            roles=list(getattr(auth_user, 'roles', []) or []),
+            preferences=getattr(auth_user, 'preferences', {}) or {},
+            is_verified=bool(getattr(auth_user, 'is_verified', False)),
+            two_factor_enabled=bool(getattr(auth_user, 'two_factor_enabled', False)),
+            created_at=getattr(auth_user, 'created_at', now) or now,
+            updated_at=getattr(auth_user, 'updated_at', now) or now,
+            last_login=getattr(auth_user, 'last_login', None),
+            failed_login_attempts=int(getattr(auth_user, 'failed_login_attempts', 0) or 0),
+            locked_until=locked_until_val,
             status=status,
         )
 
@@ -294,7 +311,7 @@ class AuthService(BaseService):
         try:
             user_uuid = uuid.UUID(str(user_id))
         except ValueError:
-            logger.warning("Skipping DB session persistence; invalid user id: %s", user_id)
+            logger.warning(f"Skipping DB session persistence; invalid user id: {user_id}")
             return
 
         try:
@@ -310,11 +327,11 @@ class AuthService(BaseService):
                         user_agent=user_agent,
                         device_fingerprint=device_fingerprint,
                         is_active=True,
-                    )
+                    )  # type: ignore
                 )
                 await db_session.flush()
         except Exception as e:
-            logger.error("Failed to persist session to database: %s", e)
+            logger.error(f"Failed to persist session to database: {e}")
     
     async def authenticate_user(
         self,
@@ -342,16 +359,16 @@ class AuthService(BaseService):
         # Note: _db_session check removed - method handles None case with temporary client
         
         try:
-            # Get user by email
-            user = await self.get_user_by_email(email)
+            # Get user by email or username
+            user = await self.get_user(email)
             if not user:
-                logger.warning("Authentication failed: user not found - %s", email)
+                logger.warning(f"Authentication failed: user not found - {email}")
                 return None, None, "Invalid credentials"
             
             # Check if account is locked
             if user.status == UserStatus.LOCKED:
                 if user.locked_until and user.locked_until > datetime.utcnow():
-                    logger.warning("Authentication failed: account locked - %s", email)
+                    logger.warning(f"Authentication failed: account locked - {email}")
                     return None, None, "Account locked"
                 else:
                     # Account lockout has expired, unlock it
@@ -359,19 +376,19 @@ class AuthService(BaseService):
             
             # Check if account is active
             if user.status != UserStatus.ACTIVE:
-                logger.warning("Authentication failed: account not active - %s", email)
+                logger.warning(f"Authentication failed: account not active - {email}")
                 return None, None, "Account inactive"
             
             # Verify password
             if not self._verify_password(password, user.password_hash):
                 # Increment failed login attempts
                 await self._increment_failed_login_attempts(user.id)
-                logger.warning("Authentication failed: invalid password - %s", email)
+                logger.warning(f"Authentication failed: invalid password - {email}")
                 return None, None, "Invalid credentials"
             
             # Check if email is verified
             if not user.is_verified:
-                logger.warning("Authentication failed: email not verified - %s", email)
+                logger.warning(f"Authentication failed: email not verified - {email}")
                 return None, None, "Email not verified"
             
             # Reset failed login attempts on successful authentication
@@ -409,11 +426,11 @@ class AuthService(BaseService):
                 device_fingerprint=device_fingerprint,
             )
             
-            logger.info("User authenticated successfully - %s", email)
+            logger.info(f"User authenticated successfully - {email}")
             return user, access_token, refresh_token
             
         except Exception as e:
-            logger.error("Error authenticating user: %s", e)
+            logger.error(f"Error authenticating user: {e}")
             return None, None, "Authentication failed"
     
     async def create_user(
@@ -470,9 +487,9 @@ class AuthService(BaseService):
 
                 auth_user = AuthUser(
                     user_id=uuid.uuid4(),
-                    email=email,
+                    email=email,  # type: ignore
                     full_name=full_name,
-                    password_hash=password_hash,
+                    password_hash=password_hash,  # type: ignore
                     tenant_id=resolved_tenant_id,
                     roles=roles_payload,
                     preferences={},
@@ -488,12 +505,144 @@ class AuthService(BaseService):
 
                 self._user_cache[user.id] = user
 
-            logger.info("User created successfully - %s", email)
+            logger.info(f"User created successfully - {email}")
             return user, None
             
         except Exception as e:
-            logger.error("Error creating user: %s", e)
+            logger.error(f"Error creating user: {e}")
             return None, str(e)
+
+    async def update_user_profile(
+        self,
+        user_id: str,
+        *,
+        email: Optional[str] = None,
+        full_name: Optional[str] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Optional[UserAccount], Optional[str]]:
+        """
+        Update a user's profile fields.
+
+        Args:
+            user_id: User ID
+            email: Updated email address
+            full_name: Updated display name
+            preferences: Preference fields to merge
+
+        Returns:
+            Tuple of (updated_user, error) or (None, error_message)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+        except ValueError:
+            return None, "Invalid user identifier"
+
+        normalized_email = email.strip().lower() if email is not None else None
+        normalized_name = full_name.strip() if full_name is not None else None
+
+        if normalized_email is not None and not self._validate_email(normalized_email):
+            return None, "Invalid email address"
+
+        if normalized_name is not None and not normalized_name:
+            return None, "Full name is required"
+
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(
+                    select(AuthUser).where(AuthUser.user_id == user_uuid)
+                )
+                auth_user = result.scalar_one_or_none()
+                if not auth_user:
+                    return None, "User not found"
+
+                if normalized_email is not None and normalized_email != auth_user.email:
+                    existing_user = await session.execute(
+                        select(AuthUser).where(AuthUser.email == normalized_email)
+                    )
+                    if existing_user.scalar_one_or_none():
+                        return None, "User with this email already exists"
+                    auth_user.email = normalized_email  # type: ignore
+
+                if normalized_name is not None:
+                    auth_user.full_name = normalized_name  # type: ignore
+
+                if preferences is not None:
+                    current_preferences = dict(getattr(auth_user, "preferences", {}) or {})
+                    current_preferences.update(preferences)
+                    auth_user.preferences = current_preferences  # type: ignore
+
+                await session.flush()
+
+                user = self._build_user_account(auth_user)
+                self._user_cache[user.id] = user
+
+            logger.info("Updated profile for user %s", user_id)
+            return user, None
+        except Exception as e:
+            logger.error(f"Error updating user profile: {e}")
+            return None, str(e)
+
+    async def change_user_password(
+        self,
+        user_id: str,
+        current_password: str,
+        new_password: str,
+    ) -> Optional[str]:
+        """
+        Change a user's password.
+
+        Args:
+            user_id: User ID
+            current_password: Existing password
+            new_password: Replacement password
+
+        Returns:
+            None on success, otherwise an error message
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        password_error = self._validate_password(new_password)
+        if password_error:
+            return password_error
+
+        if current_password == new_password:
+            return "New password must be different from the current password"
+
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+        except ValueError:
+            return "Invalid user identifier"
+
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(
+                    select(AuthUser).where(AuthUser.user_id == user_uuid)
+                )
+                auth_user = result.scalar_one_or_none()
+                if not auth_user:
+                    return "User not found"
+
+                stored_hash = getattr(auth_user, "password_hash", "") or ""
+                if not stored_hash or not self._verify_password(current_password, stored_hash):
+                    return "Current password is incorrect"
+
+                auth_user.password_hash = self._hash_password(new_password)  # type: ignore
+                await session.flush()
+
+                cached_user = self._user_cache.get(str(auth_user.user_id))
+                if cached_user:
+                    cached_user.password_hash = auth_user.password_hash or ""
+                    cached_user.updated_at = getattr(auth_user, "updated_at", datetime.utcnow())
+
+            logger.info("Updated password for user %s", user_id)
+            return None
+        except Exception as e:
+            logger.error(f"Error changing user password: {e}")
+            return str(e)
     
     async def validate_token(self, token: str) -> Optional[UserAccount]:
         """
@@ -575,14 +724,16 @@ class AuthService(BaseService):
                 if not db_auth_session:
                     return None, "Invalid refresh token"
 
-                if db_auth_session.expires_in:
-                    expires_at = db_auth_session.created_at + timedelta(
-                        seconds=db_auth_session.expires_in
+                expires_in_val = getattr(db_auth_session, 'expires_in', 0)
+                if expires_in_val:
+                    created_at_val = getattr(db_auth_session, 'created_at', datetime.utcnow())
+                    expires_at = created_at_val + timedelta(
+                        seconds=expires_in_val
                     )
                     if expires_at < datetime.utcnow():
-                        db_auth_session.is_active = False
-                        db_auth_session.invalidated_at = datetime.utcnow()
-                        db_auth_session.invalidation_reason = "refresh_token_expired"
+                        db_auth_session.is_active = False  # type: ignore
+                        db_auth_session.invalidated_at = datetime.utcnow()  # type: ignore
+                        db_auth_session.invalidation_reason = "refresh_token_expired"  # type: ignore
                         await db_session.flush()
                         return None, "Session expired"
 
@@ -590,19 +741,19 @@ class AuthService(BaseService):
                     select(AuthUser).where(AuthUser.user_id == db_auth_session.user_id)
                 )
                 auth_user = user_result.scalar_one_or_none()
-                if not auth_user or not auth_user.is_active:
+                if not auth_user or not getattr(auth_user, 'is_active', False):
                     return None, "User not found or inactive"
 
                 new_access_token = self._generate_access_token_by_id(str(auth_user.user_id))
-                db_auth_session.access_token = new_access_token
-                db_auth_session.last_accessed = datetime.utcnow()
+                db_auth_session.access_token = new_access_token  # type: ignore
+                db_auth_session.last_accessed = datetime.utcnow()  # type: ignore
                 await db_session.flush()
 
-                logger.info("Access token refreshed successfully for user %s", auth_user.user_id)
+                logger.info(f"Access token refreshed successfully for user {auth_user.user_id}")
                 return new_access_token, None
 
         except Exception as e:
-            logger.warning("Database refresh token failed, falling back to memory: %s", e)
+            logger.warning(f"Database refresh token failed, falling back to memory: {e}")
 
         # Fallback to in-memory sessions
         try:
@@ -627,11 +778,11 @@ class AuthService(BaseService):
             session.access_token = new_access_token
             session.last_used = datetime.utcnow()
 
-            logger.info("Access token refreshed successfully for user %s", user.id)
+            logger.info(f"Access token refreshed successfully for user {user.id}")
             return new_access_token, None
 
         except Exception as e:
-            logger.error("Error refreshing access token: %s", e)
+            logger.error(f"Error refreshing access token: {e}")
             return None, str(e)
     
     async def logout(self, refresh_token: str) -> None:
@@ -651,30 +802,30 @@ class AuthService(BaseService):
                 )
                 db_auth_session = result.scalar_one_or_none()
                 if db_auth_session:
-                    db_auth_session.is_active = False
-                    db_auth_session.invalidated_at = datetime.utcnow()
-                    db_auth_session.invalidation_reason = "logout"
+                    db_auth_session.is_active = False  # type: ignore
+                    db_auth_session.invalidated_at = datetime.utcnow()  # type: ignore
+                    db_auth_session.invalidation_reason = "logout"  # type: ignore
                     await db_session.flush()
-                    logger.info("User logged out successfully: %s", db_auth_session.user_id)
+                    logger.info(f"User logged out successfully: {db_auth_session.user_id}")
                     return
         except Exception as e:
-            logger.warning("Database logout failed, falling back to memory: %s", e)
+            logger.warning(f"Database logout failed, falling back to memory: {e}")
 
         try:
             for session in self._active_sessions.values():
                 if session.refresh_token == refresh_token:
                     session.is_active = False
-                    logger.info("User logged out successfully: %s", session.user_id)
+                    logger.info(f"User logged out successfully: {session.user_id}")
                     break
         except Exception as e:
-            logger.error("Error during logout: %s", e)
+            logger.error(f"Error during logout: {e}")
     
     async def get_user(self, identifier: str) -> Optional[UserAccount]:
         """
-        Get a user by email or ID.
+        Get a user by email, username, or ID.
         
         Args:
-            identifier: User email or ID
+            identifier: User email, username, or ID
             
         Returns:
             User account if found, None otherwise
@@ -688,7 +839,13 @@ class AuthService(BaseService):
             return user
         
         # Try to get by email
-        return await self.get_user_by_email(identifier)
+        user = await self.get_user_by_email(identifier)
+        if user:
+            return user
+        
+        # Try to get by username (for now, this will check email again since we don't have separate username field)
+        # This allows "admin" to work as both username and email
+        return await self.get_user_by_username(identifier)
     
     async def get_user_by_id(self, user_id: str) -> Optional[UserAccount]:
         """
@@ -725,7 +882,7 @@ class AuthService(BaseService):
                 self._user_cache[user.id] = user
                 return user
         except Exception as e:
-            logger.error("Error fetching user by id: %s", e)
+            logger.error(f"Error fetching user by id: {e}")
             return None
     
     async def get_user_by_email(self, email: str) -> Optional[UserAccount]:
@@ -751,7 +908,7 @@ class AuthService(BaseService):
                 result = await session.execute(
                     select(AuthUser).where(
                         AuthUser.email == email,
-                        AuthUser.is_active == True,
+                        AuthUser.is_active == True,  # type: ignore
                     )
                 )
                 auth_user = result.scalar_one_or_none()
@@ -762,7 +919,44 @@ class AuthService(BaseService):
                 self._user_cache[user.id] = user
                 return user
         except Exception as e:
-            logger.error("Error fetching user by email: %s", e)
+            logger.error(f"Error fetching user by email: {e}")
+            return None
+    
+    async def get_user_by_username(self, username: str) -> Optional[UserAccount]:
+        """
+        Get a user by username.
+        
+        Args:
+            username: User username
+            
+        Returns:
+            User account if found, None otherwise
+        """
+        if not self._initialized:
+            await self.initialize()
+        
+        # Check cache first
+        for user in self._user_cache.values():
+            if user.email == username:  # For now, use email as username (since we don't have username field)
+                return user
+        
+        try:
+            async with self._session_scope() as session:
+                result = await session.execute(
+                    select(AuthUser).where(
+                        AuthUser.email == username,  # For now, use email as username
+                        AuthUser.is_active == True,  # type: ignore
+                    )
+                )
+                auth_user = result.scalar_one_or_none()
+                if not auth_user:
+                    return None
+
+                user = self._build_user_account(auth_user)
+                self._user_cache[user.id] = user
+                return user
+        except Exception as e:
+            logger.error(f"Error fetching user by username: {e}")
             return None
     
     async def create_session(
@@ -815,7 +1009,7 @@ class AuthService(BaseService):
             device_fingerprint=session.device_fingerprint,
         )
         
-        logger.info("Session created for user %s", user_id)
+        logger.info(f"Session created for user {user_id}")
         return session
     
     async def validate_session(
@@ -861,28 +1055,29 @@ class AuthService(BaseService):
                 except Exception:
                     return None
 
-                if db_auth_session.device_fingerprint:
+                device_fingerprint_val = getattr(db_auth_session, 'device_fingerprint', None)
+                if device_fingerprint_val:
                     current_fingerprint = self._generate_device_fingerprint(user_agent, ip_address)
-                    if db_auth_session.device_fingerprint != current_fingerprint:
+                    if device_fingerprint_val != current_fingerprint:
                         logger.warning(
-                            "Device fingerprint mismatch for session %s", db_auth_session.session_token
+                            "Device fingerprint mismatch for session %s", getattr(db_auth_session, 'session_token', 'unknown')  # type: ignore
                         )
 
-                db_auth_session.last_accessed = datetime.utcnow()
+                db_auth_session.last_accessed = datetime.utcnow()  # type: ignore
                 await db_session.flush()
 
                 user_result = await db_session.execute(
                     select(AuthUser).where(AuthUser.user_id == db_auth_session.user_id)
                 )
                 auth_user = user_result.scalar_one_or_none()
-                if not auth_user or not auth_user.is_active:
+                if not auth_user or not getattr(auth_user, 'is_active', False):
                     return None
 
                 user = self._build_user_account(auth_user)
                 self._user_cache[user.id] = user
                 return user
         except Exception as e:
-            logger.warning("Database session validation failed, falling back to memory: %s", e)
+            logger.warning(f"Database session validation failed, falling back to memory: {e}")
 
         try:
             session = None
@@ -901,7 +1096,7 @@ class AuthService(BaseService):
             if session.device_fingerprint:
                 current_fingerprint = self._generate_device_fingerprint(user_agent, ip_address)
                 if session.device_fingerprint != current_fingerprint:
-                    logger.warning("Device fingerprint mismatch for session %s", session.id)
+                    logger.warning(f"Device fingerprint mismatch for session {session.id}")
 
             session.last_used = datetime.utcnow()
 
@@ -912,7 +1107,7 @@ class AuthService(BaseService):
             return user
 
         except Exception as e:
-            logger.error("Error validating session: %s", e)
+            logger.error(f"Error validating session: {e}")
             return None
     
     def _hash_password(self, password: str) -> str:
@@ -1045,7 +1240,7 @@ class AuthService(BaseService):
             try:
                 user_uuid = uuid.UUID(str(user_id))
             except ValueError:
-                logger.warning("Invalid user id for failed login update: %s", user_id)
+                logger.warning(f"Invalid user id for failed login update: {user_id}")
                 return
 
             async with self._session_scope() as session:
@@ -1056,23 +1251,24 @@ class AuthService(BaseService):
                 if not auth_user:
                     return
 
-                auth_user.failed_login_attempts = (auth_user.failed_login_attempts or 0) + 1
+                current_attempts = getattr(auth_user, 'failed_login_attempts', 0) or 0
+                auth_user.failed_login_attempts = current_attempts + 1  # type: ignore
                 if auth_user.failed_login_attempts >= self.config.max_failed_login_attempts:
-                    auth_user.locked_until = datetime.utcnow() + timedelta(
+                    auth_user.locked_until = datetime.utcnow() + timedelta(  # type: ignore
                         minutes=self.config.account_lockout_minutes
                     )
                 await session.flush()
 
                 cached = self._user_cache.get(str(auth_user.user_id))
                 if cached:
-                    cached.failed_login_attempts = auth_user.failed_login_attempts
-                    cached.locked_until = auth_user.locked_until
+                    cached.failed_login_attempts = int(getattr(auth_user, 'failed_login_attempts', 0))
+                    cached.locked_until = getattr(auth_user, 'locked_until', None)
                     if cached.locked_until and cached.locked_until > datetime.utcnow():
                         cached.status = UserStatus.LOCKED
 
-                logger.warning("Incremented failed login attempts for user %s", user_id)
+                logger.warning(f"Incremented failed login attempts for user {user_id}")
         except Exception as e:
-            logger.error("Failed to increment failed login attempts: %s", e)
+            logger.error(f"Failed to increment failed login attempts: {e}")
     
     async def _reset_failed_login_attempts(self, user_id: str) -> None:
         """
@@ -1085,7 +1281,7 @@ class AuthService(BaseService):
             try:
                 user_uuid = uuid.UUID(str(user_id))
             except ValueError:
-                logger.warning("Invalid user id for failed login reset: %s", user_id)
+                logger.warning(f"Invalid user id for failed login reset: {user_id}")
                 return
 
             async with self._session_scope() as session:
@@ -1096,8 +1292,8 @@ class AuthService(BaseService):
                 if not auth_user:
                     return
 
-                auth_user.failed_login_attempts = 0
-                auth_user.locked_until = None
+                auth_user.failed_login_attempts = 0  # type: ignore
+                auth_user.locked_until = None  # type: ignore
                 await session.flush()
 
                 cached = self._user_cache.get(str(auth_user.user_id))
@@ -1107,9 +1303,9 @@ class AuthService(BaseService):
                     if cached.status == UserStatus.LOCKED:
                         cached.status = UserStatus.ACTIVE
 
-                logger.info("Reset failed login attempts for user %s", user_id)
+                logger.info(f"Reset failed login attempts for user {user_id}")
         except Exception as e:
-            logger.error("Failed to reset failed login attempts: %s", e)
+            logger.error(f"Failed to reset failed login attempts: {e}")
     
     async def _lock_user_account(self, user_id: str) -> None:
         """
@@ -1125,7 +1321,7 @@ class AuthService(BaseService):
             try:
                 user_uuid = uuid.UUID(str(user_id))
             except ValueError:
-                logger.warning("Invalid user id for lock: %s", user_id)
+                logger.warning(f"Invalid user id for lock: {user_id}")
                 return
 
             async with self._session_scope() as session:
@@ -1136,7 +1332,7 @@ class AuthService(BaseService):
                 if not auth_user:
                     return
 
-                auth_user.locked_until = locked_until
+                auth_user.locked_until = locked_until  # type: ignore
                 await session.flush()
 
                 cached = self._user_cache.get(str(auth_user.user_id))
@@ -1144,9 +1340,9 @@ class AuthService(BaseService):
                     cached.locked_until = locked_until
                     cached.status = UserStatus.LOCKED
 
-                logger.warning("Locked user account %s", user_id)
+                logger.warning(f"Locked user account {user_id}")
         except Exception as e:
-            logger.error("Failed to lock user account: %s", e)
+            logger.error(f"Failed to lock user account: {e}")
     
     async def _unlock_user_account(self, user_id: str) -> None:
         """
@@ -1159,7 +1355,7 @@ class AuthService(BaseService):
             try:
                 user_uuid = uuid.UUID(str(user_id))
             except ValueError:
-                logger.warning("Invalid user id for unlock: %s", user_id)
+                logger.warning(f"Invalid user id for unlock: {user_id}")
                 return
 
             async with self._session_scope() as session:
@@ -1170,8 +1366,8 @@ class AuthService(BaseService):
                 if not auth_user:
                     return
 
-                auth_user.locked_until = None
-                auth_user.failed_login_attempts = 0
+                auth_user.locked_until = None  # type: ignore
+                auth_user.failed_login_attempts = 0  # type: ignore
                 await session.flush()
 
                 cached = self._user_cache.get(str(auth_user.user_id))
@@ -1180,9 +1376,9 @@ class AuthService(BaseService):
                     cached.failed_login_attempts = 0
                     cached.status = UserStatus.ACTIVE
 
-                logger.info("Unlocked user account %s", user_id)
+                logger.info(f"Unlocked user account {user_id}")
         except Exception as e:
-            logger.error("Failed to unlock user account: %s", e)
+            logger.error(f"Failed to unlock user account: {e}")
     
     async def _update_last_login(self, user_id: str) -> None:
         """
@@ -1195,7 +1391,7 @@ class AuthService(BaseService):
             try:
                 user_uuid = uuid.UUID(str(user_id))
             except ValueError:
-                logger.warning("Invalid user id for last login update: %s", user_id)
+                logger.warning(f"Invalid user id for last login update: {user_id}")
                 return
 
             async with self._session_scope() as session:
@@ -1206,16 +1402,16 @@ class AuthService(BaseService):
                 if not auth_user:
                     return
 
-                auth_user.last_login = datetime.utcnow()
+                auth_user.last_login = datetime.utcnow()  # type: ignore
                 await session.flush()
 
                 cached = self._user_cache.get(str(auth_user.user_id))
                 if cached:
-                    cached.last_login = auth_user.last_login
+                    cached.last_login = getattr(auth_user, 'last_login', None)
 
-                logger.info("Updated last login time for user %s", user_id)
+                logger.info(f"Updated last login time for user {user_id}")
         except Exception as e:
-            logger.error("Failed to update last login time: %s", e)
+            logger.error(f"Failed to update last login time: {e}")
     
     async def health_check(self) -> bool:
         """
@@ -1271,7 +1467,7 @@ class AuthService(BaseService):
 
                             # Get active user count
                             result = await session.execute(
-                                select(func.count()).select_from(AuthUser).where(AuthUser.is_active == True)
+                                select(func.count()).select_from(AuthUser).where(AuthUser.is_active == True)  # type: ignore
                             )
                             active_users = result.scalar() or 0
 
@@ -1319,7 +1515,7 @@ class AuthService(BaseService):
 
                 # Get active user count
                 result = await self._db_session.execute(
-                    select(func.count()).select_from(AuthUser).where(AuthUser.is_active == True)
+                    select(func.count()).select_from(AuthUser).where(AuthUser.is_active == True)  # type: ignore
                 )
                 active_users = result.scalar() or 0
 

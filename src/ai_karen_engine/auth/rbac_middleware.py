@@ -132,6 +132,171 @@ def _all_permissions() -> Set[Permission]:
     return {permission for permission in Permission}
 
 
+def _permissions_except(*excluded: Permission) -> Set[Permission]:
+    excluded_set = set(excluded)
+    return {permission for permission in Permission if permission not in excluded_set}
+
+
+def _default_role_entries() -> Dict[str, Dict[str, Any]]:
+    return {
+        Role.SUPER_ADMIN.value: {
+            "description": "Full system access",
+            "permissions": ["*"],
+        },
+        Role.ADMIN.value: {
+            "description": "Administrative access across the platform",
+            "permissions": sorted(
+                permission.value
+                for permission in _permissions_except(Permission.SECURITY_EVIL_MODE)
+            ),
+        },
+        Role.TRAINER.value: {
+            "description": "Training and experimentation operator",
+            "inherits_from": Role.USER.value,
+            "permissions": [
+                Permission.EDIT.value,
+                Permission.COMMAND.value,
+                Permission.TRAINING_WRITE.value,
+                Permission.TRAINING_EXECUTE.value,
+                Permission.TRAINING_DATA_READ.value,
+                Permission.TRAINING_DATA_WRITE.value,
+                Permission.MODEL_WRITE.value,
+                Permission.MODEL_DEPLOY.value,
+                Permission.MODEL_DOWNLOAD.value,
+                Permission.MODEL_ENSURE.value,
+                Permission.DATA_WRITE.value,
+                Permission.SCHEDULER_READ.value,
+                Permission.SCHEDULER_WRITE.value,
+            ],
+        },
+        Role.ANALYST.value: {
+            "description": "Read-focused analyst access",
+            "inherits_from": Role.USER.value,
+            "permissions": [
+                Permission.AUDIT_READ.value,
+                Permission.DATA_EXPORT.value,
+                Permission.ROUTING_PROFILE_VIEW.value,
+            ],
+        },
+        Role.USER.value: {
+            "description": "Standard user access",
+            "inherits_from": Role.READONLY.value,
+            "permissions": [
+                Permission.BROWSER.value,
+                Permission.DATA_READ.value,
+            ],
+        },
+        Role.READONLY.value: {
+            "description": "Minimal read-only access",
+            "permissions": [
+                Permission.READ.value,
+                Permission.TRAINING_READ.value,
+                Permission.MODEL_READ.value,
+                Permission.MODEL_LIST.value,
+                Permission.MODEL_INFO.value,
+            ],
+        },
+        Role.MODEL_MANAGER.value: {
+            "description": "Model lifecycle management",
+            "inherits_from": Role.USER.value,
+            "permissions": [
+                Permission.EDIT.value,
+                Permission.COMMAND.value,
+                Permission.MCP.value,
+                Permission.MODEL_WRITE.value,
+                Permission.MODEL_DELETE.value,
+                Permission.MODEL_DEPLOY.value,
+                Permission.MODEL_DOWNLOAD.value,
+                Permission.MODEL_REMOVE.value,
+                Permission.MODEL_ENSURE.value,
+                Permission.MODEL_GC.value,
+                Permission.MODEL_REGISTRY_READ.value,
+                Permission.MODEL_REGISTRY_WRITE.value,
+                Permission.MODEL_HEALTH_CHECK.value,
+                Permission.MODEL_COMPATIBILITY_CHECK.value,
+                Permission.MODEL_LICENSE_VIEW.value,
+                Permission.MODEL_LICENSE_ACCEPT.value,
+                Permission.MODEL_LICENSE_MANAGE.value,
+                Permission.MODEL_PIN.value,
+                Permission.MODEL_UNPIN.value,
+                Permission.MODEL_QUOTA_MANAGE.value,
+            ],
+        },
+        Role.DATA_STEWARD.value: {
+            "description": "Data stewardship and governance",
+            "inherits_from": Role.USER.value,
+            "permissions": [
+                Permission.EDIT.value,
+                Permission.DATA_WRITE.value,
+                Permission.DATA_DELETE.value,
+                Permission.DATA_EXPORT.value,
+                Permission.TRAINING_DATA_READ.value,
+                Permission.TRAINING_DATA_WRITE.value,
+                Permission.TRAINING_DATA_DELETE.value,
+                Permission.SECURITY_READ.value,
+            ],
+        },
+        Role.ROUTING_ADMIN.value: {
+            "description": "Routing administration",
+            "inherits_from": Role.ROUTING_OPERATOR.value,
+            "permissions": [
+                Permission.EDIT.value,
+                Permission.ADMIN_READ.value,
+                Permission.ROUTING_PROFILE_MANAGE.value,
+                Permission.ROUTING_AUDIT.value,
+            ],
+        },
+        Role.ROUTING_OPERATOR.value: {
+            "description": "Routing operations",
+            "inherits_from": Role.USER.value,
+            "permissions": [
+                Permission.COMMAND.value,
+                Permission.ROUTING_SELECT.value,
+                Permission.ROUTING_PROFILE_VIEW.value,
+                Permission.ROUTING_HEALTH.value,
+                Permission.ROUTING_DRY_RUN.value,
+            ],
+        },
+        Role.ROUTING_AUDITOR.value: {
+            "description": "Routing audit access",
+            "inherits_from": Role.READONLY.value,
+            "permissions": [
+                Permission.BROWSER.value,
+                Permission.AUDIT_READ.value,
+                Permission.ROUTING_PROFILE_VIEW.value,
+                Permission.ROUTING_HEALTH.value,
+                Permission.ROUTING_AUDIT.value,
+            ],
+        },
+    }
+
+
+def _normalize_role_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    if isinstance(config.get("roles"), dict):
+        return config["roles"]
+
+    legacy = config.get("role_permissions")
+    if not isinstance(legacy, dict):
+        return {}
+
+    normalized: Dict[str, Any] = {}
+    for role_name, entry in legacy.items():
+        if not isinstance(entry, dict):
+            continue
+
+        raw_permissions = entry.get("permissions", [])
+        if raw_permissions == ["all"]:
+            raw_permissions = ["*"]
+
+        normalized[role_name] = {
+            "description": entry.get("description", role_name),
+            "permissions": raw_permissions,
+            "inherits_from": entry.get("inherits_from"),
+        }
+
+    return normalized
+
+
 @lru_cache()
 def _load_permissions_config() -> Dict[str, Any]:
     """Load the canonical permission map shared with the frontend."""
@@ -158,10 +323,11 @@ def _load_permissions_config() -> Dict[str, Any]:
                 return json.load(handle)
 
     tried = ", ".join(str(path) for path in candidates if path)
-    raise RuntimeError(
-        "Missing permissions configuration (looked for permissions.json near repository root "
-        f"or via KARI_PERMISSIONS_CONFIG). Tried: {tried}"
+    logger.warning(
+        "Missing permissions configuration; using built-in RBAC defaults. Tried: %s",
+        tried,
     )
+    return {}
 
 
 def _resolve_permission_names(raw_permissions: Iterable[str]) -> Set[Permission]:
@@ -176,16 +342,15 @@ def _resolve_permission_names(raw_permissions: Iterable[str]) -> Set[Permission]
 
 def _build_role_permissions() -> Dict[Role, RolePermissions]:
     config = _load_permissions_config()
-    role_config: Dict[str, Any] = config.get("roles", {})
+    role_config = _normalize_role_config(config)
+    default_role_config = _default_role_entries()
     role_permissions: Dict[Role, RolePermissions] = {}
 
     for role in Role:
-        entry = role_config.get(role.value)
-        if entry is None:
-            logger.debug("No permission configuration found for role '%s'", role.value)
-            continue
+        entry = role_config.get(role.value) or {}
+        default_entry = default_role_config.get(role.value, {})
 
-        inherits_from = entry.get("inherits_from")
+        inherits_from = entry.get("inherits_from", default_entry.get("inherits_from"))
         inherited_role: Optional[Role] = None
         if inherits_from:
             try:
@@ -197,16 +362,22 @@ def _build_role_permissions() -> Dict[Role, RolePermissions]:
                     role.value,
                 )
 
-        raw_permissions = entry.get("permissions", [])
-        if isinstance(raw_permissions, list) and raw_permissions == ["*"]:
+        raw_permissions = entry.get("permissions", default_entry.get("permissions", []))
+        if isinstance(raw_permissions, list) and raw_permissions in (["*"], ["all"]):
             permissions = _all_permissions()
         else:
             permissions = _resolve_permission_names(raw_permissions)
+            if raw_permissions and not permissions and default_entry.get("permissions"):
+                logger.warning(
+                    "No recognized permissions configured for role '%s'; using built-in defaults",
+                    role.value,
+                )
+                permissions = _resolve_permission_names(default_entry["permissions"])
 
         role_permissions[role] = RolePermissions(
             role=role,
             permissions=permissions,
-            description=str(entry.get("description", role.value)),
+            description=str(entry.get("description", default_entry.get("description", role.value))),
             inherits_from=inherited_role,
         )
 

@@ -128,12 +128,7 @@ class HookMiddleware(BaseHTTPMiddleware):
             # Try to read body (for POST/PUT requests)
             body = None
             if request.method in ["POST", "PUT", "PATCH"]:
-                try:
-                    body = await request.body()
-                    if body:
-                        body = body.decode("utf-8")
-                except Exception:
-                    body = None
+                body = "<body reading disabled to prevent request hang>"
 
             return {
                 "request_id": request_id,

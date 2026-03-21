@@ -258,7 +258,7 @@ class EnhancedAuthService(BaseService):
             admin_user = await self.get_user_by_email("admin@kari.ai")
             if not admin_user:
                 # Create default admin user
-                default_password = "password123"  # This should be changed in production
+                default_password = "admin123"  # This should be changed in production
                 await self.create_user(
                     email="admin@kari.ai",
                     password=default_password,

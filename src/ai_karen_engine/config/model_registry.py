@@ -9,6 +9,44 @@ logger = logging.getLogger(__name__)
 
 # === Dynamic Model Providers ===
 
+
+def _is_production_environment() -> bool:
+    """Return True when running in a production-like environment."""
+    env = (
+        os.getenv("KARI_ENV")
+        or os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("KARI_ENVIRONMENT")
+        or "development"
+    ).strip().lower()
+    return env in {"production", "prod"}
+
+
+def _resolve_lmstudio_endpoint(endpoint: str | None) -> tuple[str | None, bool]:
+    """Resolve LM Studio endpoint and whether it was explicitly configured."""
+    if endpoint:
+        return endpoint, True
+
+    configured_endpoint = (os.getenv("LMSTUDIO_ENDPOINT") or "").strip()
+    if configured_endpoint:
+        return configured_endpoint, True
+
+    # Production should not probe localhost implicitly.
+    if _is_production_environment():
+        return None, False
+
+    return "http://localhost:1234/v1/models", False
+
+
+def _is_lmstudio_enabled() -> bool:
+    """Return True when LM Studio integration is explicitly enabled."""
+    explicit_flag = (os.getenv("KARI_ENABLE_LMSTUDIO") or os.getenv("LMSTUDIO_ENABLED") or "").strip().lower()
+    if explicit_flag:
+        return explicit_flag in {"1", "true", "yes", "on"}
+
+    # Explicit endpoint configuration implies intentional LM Studio usage.
+    return bool((os.getenv("LMSTUDIO_ENDPOINT") or "").strip())
+
 def list_llama_cpp_models(models_dir=None):
     """
     Scan for GGUF/llama.cpp compatible models
@@ -116,7 +154,7 @@ def list_transformers_models(registry_path: Path | None = None) -> List[str]:
     entries = _load_model_registry_entries("transformers", registry_path)
 
     declared_names = [entry.get("name", "").strip() for entry in entries if entry.get("name")]
-    declared_paths = [entry.get("path") for entry in entries if entry.get("path")]
+    declared_paths = [str(path) for entry in entries for path in [entry.get("path")] if isinstance(path, str) and path.strip()]
 
     fallback_dir = os.getenv("KARI_TRANSFORMERS_DIR", "models/transformers")
     paths_to_scan = declared_paths + [fallback_dir]
@@ -153,17 +191,29 @@ def list_gemini_models() -> List[str]:
 
 def list_lmstudio_models(endpoint: str | None = None, registry_path: Path | None = None) -> List[str]:
     """Discover models exposed by an LM Studio server and the local registry."""
-    endpoint = endpoint or os.getenv("LMSTUDIO_ENDPOINT", "http://localhost:1234/v1/models")
+    endpoint, explicit_endpoint = _resolve_lmstudio_endpoint(endpoint)
+    lmstudio_enabled = explicit_endpoint or _is_lmstudio_enabled()
+
+    if not lmstudio_enabled:
+        logger.debug(
+            "LM Studio provider disabled (optional third-party). "
+            "Set KARI_ENABLE_LMSTUDIO=true or LMSTUDIO_ENDPOINT to enable discovery."
+        )
+        return []
+
     timeout = float(os.getenv("LMSTUDIO_DISCOVERY_TIMEOUT", "3.0"))
     models: List[str] = []
 
-    try:
-        import requests
-    except ImportError as exc:  # pragma: no cover - production dependency
-        logger.error("requests library is required for LM Studio discovery: %s", exc)
-        requests = None
+    if endpoint:
+        try:
+            import requests
+        except ImportError as exc:  # pragma: no cover - production dependency
+            logger.error("requests library is required for LM Studio discovery: %s", exc)
+            requests = None
 
-    if requests:
+        if not requests:
+            return []
+
         try:
             response = requests.get(endpoint, timeout=timeout)
             response.raise_for_status()
@@ -184,7 +234,14 @@ def list_lmstudio_models(endpoint: str | None = None, registry_path: Path | None
 
             logger.info("Discovered %d LM Studio models from %s", len(models), endpoint)
         except Exception as exc:  # Broad catch to include JSON decode and request errors
-            logger.warning("Failed to query LM Studio endpoint %s: %s", endpoint, exc)
+            if explicit_endpoint:
+                logger.warning("Failed to query LM Studio endpoint %s: %s", endpoint, exc)
+            else:
+                logger.debug("Failed to query default LM Studio endpoint %s: %s", endpoint, exc)
+    elif not endpoint:
+        logger.debug(
+            "LM Studio endpoint discovery skipped: no explicit LMSTUDIO_ENDPOINT configured in production environment"
+        )
 
     if not models:
         registry_entries = _load_model_registry_entries("lmstudio", registry_path)
@@ -192,7 +249,10 @@ def list_lmstudio_models(endpoint: str | None = None, registry_path: Path | None
 
     unique_models = sorted({model for model in models if model})
     if not unique_models:
-        logger.info("No LM Studio models detected from endpoint %s or registry", endpoint)
+        if endpoint:
+            logger.debug("No LM Studio models detected from endpoint %s or registry", endpoint)
+        else:
+            logger.debug("No LM Studio models detected from registry; endpoint probing is disabled")
 
     return unique_models
 

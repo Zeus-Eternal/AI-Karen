@@ -71,7 +71,7 @@ class GeminiProvider(LLMProviderBase):
             
         except ImportError:
             self.initialization_error = "Google Generative AI package not installed. Install with: pip install google-generativeai"
-            logger.error(self.initialization_error)
+            logger.warning(self.initialization_error)
         except Exception as ex:
             self.initialization_error = f"Gemini client initialization failed: {ex}"
             logger.error(self.initialization_error)
