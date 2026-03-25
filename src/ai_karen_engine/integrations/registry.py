@@ -1264,8 +1264,8 @@ class LLMRegistry:
             if CoreHelpersRuntime and CoreHelpersRuntime.is_available():
                 core_helpers_spec = RuntimeSpec(
                     name="core_helpers",
-                    description="Lightweight models for degraded mode (TinyLLaMA, DistilBERT, spaCy)",
-                    family=["tinyllama", "distilbert"],
+                    description="Lightweight models for degraded mode (default model, DistilBERT, spaCy)",
+                    family=["small_llm", "distilbert"],
                     supports=["gguf", "safetensors"],
                     requires_gpu=False,
                     memory_efficient=True,

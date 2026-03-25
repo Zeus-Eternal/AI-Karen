@@ -1,6 +1,6 @@
 {
-  "provider": "local",
-  "model": "llama3.2:latest",
+  "provider": "llama-cpp",
+  "model": "Phi-3-mini-4k-instruct-q4.gguf",
   "api_key": "",
   "use_memory": true,
   "context_length": 512,
@@ -37,5 +37,27 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "test-model"
+  "last_selected_model": "test-model",
+  "model_providers": {
+    "zai": {
+      "last_model": "glm-5",
+      "base_url": "https://api.z.ai/api/paas/v4"
+    },
+    "llama-cpp": {
+      "last_model": "Phi-3-mini-4k-instruct-q4.gguf",
+      "base_url": "http://localhost:8080/v1"
+    },
+    "openai": {
+      "last_model": "gpt-4o",
+      "base_url": "https://api.openai.com/v1"
+    },
+    "mistral": {
+      "last_model": "mistral-large-latest",
+      "base_url": "https://api.mistral.ai/v1"
+    },
+    "anthropic": {
+      "last_model": "claude-sonnet-4-20250514",
+      "base_url": "https://api.anthropic.com/v1"
+    }
+  }
 }

@@ -41,24 +41,6 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> UserData:
     """FastAPI dependency that resolves the authenticated user."""
-
-    token: str | None = None
-    if credentials and credentials.scheme.lower() == "bearer":
-        token = credentials.credentials
-
-    if token:
-        try:
-            from src.auth.auth_service import get_auth_service, user_account_to_dict
-
-            service = await get_auth_service()
-            user = await service.validate_token(token)
-            if user:
-                return UserData.ensure(user_account_to_dict(user))
-        except HTTPException:
-            raise
-        except Exception:  # pragma: no cover - defensive logging
-            logger.exception("Failed to validate bearer token; falling back to session cookie")
-
     payload = await _authenticate_request(request)
     return UserData.ensure(payload)
 

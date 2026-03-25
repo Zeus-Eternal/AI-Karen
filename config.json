@@ -1,7 +1,29 @@
 {
   "active_user": "default",
   "theme": "dark",
-  "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+  "llm": {
+    "default_provider": "llamacpp",
+    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+    "models_dir": "models",
+    "fallback_chain": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+    "provider_defaults": {
+      "openai": "gpt-4o-mini",
+      "deepseek": "deepseek-chat",
+      "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+      "gemini": "gemini-1.5-flash",
+      "huggingface": "microsoft/DialoGPT-large"
+    },
+    "task_assignments": {
+      "chat": { "provider": "openai", "model": "gpt-4o-mini" },
+      "code": { "provider": "deepseek", "model": "deepseek-coder" },
+      "reasoning": { "provider": "openai", "model": "gpt-4o" },
+      "summarization": { "provider": "llamacpp", "model": "Phi-3-mini-4k-instruct-q4.gguf" }
+    },
+    "temperature": 0.7,
+    "max_tokens": 2048,
+    "timeout": 30,
+    "max_retries": 3
+  },
   "memory": {
     "enabled": true,
     "provider": "local",
@@ -64,5 +86,46 @@
     "integrate_with_fallback_manager": true,
     "integrate_with_health_monitor": true,
     "integrate_with_provider_switcher": true
-  }
+  },
+  "user_profiles": {
+    "profiles": [
+      {
+        "id": "default",
+        "name": "Default",
+        "assignments": {
+          "chat": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "parameters": {}
+          },
+          "code": {
+            "provider": "deepseek",
+            "model": "deepseek-coder",
+            "parameters": {}
+          },
+          "reasoning": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "parameters": {}
+          },
+          "summarization": {
+            "provider": "llamacpp",
+            "model": "Phi-3-mini-4k-instruct-q4.gguf",
+            "parameters": {}
+          }
+        },
+        "fallback_chain": [
+          "openai",
+          "deepseek",
+          "llamacpp",
+          "huggingface",
+          "gemini"
+        ],
+        "is_active": true,
+        "updated_at": "2025-09-23T14:06:23.445351"
+      }
+    ],
+    "active_profile": "default"
+  },
+  "active_profile": "default"
 }

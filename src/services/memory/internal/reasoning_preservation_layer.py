@@ -2,7 +2,7 @@
 Reasoning Preservation Layer
 
 This layer ensures that existing reasoning logic (DecisionEngine, FlowManager, 
-TinyLlama scaffolding, etc.) is preserved while adding intelligent model routing
+lightweight model scaffolding, etc.) is preserved while adding intelligent model routing
 and optimization capabilities.
 
 Requirements implemented: 8.1, 8.2, 8.3, 8.4
@@ -38,7 +38,7 @@ class ReasoningComponent(Enum):
     """Types of reasoning components to preserve."""
     DECISION_ENGINE = "decision_engine"
     FLOW_MANAGER = "flow_manager"
-    SCAFFOLDING_SERVICE = "scaffolding_service"  # Renamed from TINYLLAMA_SCAFFOLDING
+    SCAFFOLDING_SERVICE = "scaffolding_service"  # Renamed from model-specific scaffolding
     PROFILE_MANAGER = "profile_manager"
     INTENT_ANALYSIS = "intent_analysis"
     MEMORY_INTEGRATION = "memory_integration"
@@ -116,7 +116,7 @@ class ReasoningPreservationLayer:
         # Preservation flags
         self.preserve_decision_engine = True
         self.preserve_flow_manager = True
-        self.preserve_tinyllama_scaffolding = True
+        self.preserve_scaffolding_service = True
         self.preserve_profile_routing = True
         self.preserve_memory_integration = True
         self.preserve_personality_application = True
@@ -178,32 +178,32 @@ class ReasoningPreservationLayer:
             logger.error(f"Failed to wrap FlowManager: {e}")
             return flow_manager
     
-    def wrap_tinyllama_service(self, tinyllama_service: Any) -> Any:
+    def wrap_scaffolding_service(self, scaffolding_service: Any) -> Any:
         """
         Wrap scaffolding service while preserving reasoning scaffolding functionality.
         
-        This now works with the intelligent scaffolding service instead of dedicated TinyLlama.
+        This now works with the intelligent scaffolding service.
         Maintains fast reasoning scaffolding and outline generation capabilities through
         intelligent model selection rather than a hardcoded model.
         """
-        if not self.preserve_tinyllama_scaffolding:
-            return tinyllama_service
+        if not self.preserve_scaffolding_service:
+            return scaffolding_service
         
         try:
             wrapper_class = self._create_component_wrapper(
-                tinyllama_service.__class__,
+                scaffolding_service.__class__,
                 ReasoningComponent.SCAFFOLDING_SERVICE
             )
             
-            wrapper = wrapper_class(tinyllama_service, self)
-            self.wrapped_components["tinyllama_service"] = wrapper
+            wrapper = wrapper_class(scaffolding_service, self)
+            self.wrapped_components["scaffolding_service"] = wrapper
             
-            logger.info("TinyLlama service wrapped with preservation layer")
+            logger.info("Scaffolding service wrapped with preservation layer")
             return wrapper
             
         except Exception as e:
-            logger.error(f"Failed to wrap TinyLlama service: {e}")
-            return tinyllama_service
+            logger.error(f"Failed to wrap scaffolding service: {e}")
+            return scaffolding_service
     
     def wrap_profile_manager(self, profile_manager: Any) -> Any:
         """
@@ -632,7 +632,7 @@ class ReasoningPreservationLayer:
                 "preservation_flags": {
                     "decision_engine": self.preserve_decision_engine,
                     "flow_manager": self.preserve_flow_manager,
-                    "tinyllama_scaffolding": self.preserve_tinyllama_scaffolding,
+                    "scaffolding_service": self.preserve_scaffolding_service,
                     "profile_routing": self.preserve_profile_routing,
                     "memory_integration": self.preserve_memory_integration,
                     "personality_application": self.preserve_personality_application
@@ -665,8 +665,8 @@ class ReasoningPreservationLayer:
             self.preserve_decision_engine = flags["decision_engine"]
         if "flow_manager" in flags:
             self.preserve_flow_manager = flags["flow_manager"]
-        if "tinyllama_scaffolding" in flags:
-            self.preserve_tinyllama_scaffolding = flags["tinyllama_scaffolding"]
+        if "scaffolding_service" in flags:
+            self.preserve_scaffolding_service = flags["scaffolding_service"]
         if "profile_routing" in flags:
             self.preserve_profile_routing = flags["profile_routing"]
         if "memory_integration" in flags:
@@ -697,8 +697,8 @@ def preserve_reasoning_component(component: Any, component_type: ReasoningCompon
         return layer.wrap_decision_engine(component)
     elif component_type == ReasoningComponent.FLOW_MANAGER:
         return layer.wrap_flow_manager(component)
-    elif component_type == ReasoningComponent.TINYLLAMA_SCAFFOLDING:
-        return layer.wrap_tinyllama_service(component)
+    elif component_type == ReasoningComponent.SCAFFOLDING_SERVICE:
+        return layer.wrap_scaffolding_service(component)
     elif component_type == ReasoningComponent.PROFILE_MANAGER:
         return layer.wrap_profile_manager(component)
     else:

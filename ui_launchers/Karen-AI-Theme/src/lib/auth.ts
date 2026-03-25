@@ -88,6 +88,36 @@ class AuthService {
     this.clearBrowserCookie(this.LEGACY_REFRESH_COOKIE_NAME);
   }
 
+  private async getErrorMessage(response: Response, fallback: string): Promise<string> {
+    try {
+      const errorData = await response.json();
+
+      if (typeof errorData?.detail === 'string' && errorData.detail.trim()) {
+        return errorData.detail;
+      }
+
+      if (Array.isArray(errorData?.detail) && errorData.detail.length > 0) {
+        return errorData.detail
+          .map((issue: Record<string, unknown>) => {
+            if (typeof issue?.msg === 'string' && issue.msg.trim()) {
+              return issue.msg;
+            }
+            return null;
+          })
+          .filter((message: string | null): message is string => Boolean(message))
+          .join(', ') || fallback;
+      }
+
+      if (typeof errorData?.message === 'string' && errorData.message.trim()) {
+        return errorData.message;
+      }
+    } catch {
+      // Fall back to the provided default message when the response is not JSON.
+    }
+
+    return fallback;
+  }
+
   /**
    * Login user with credentials
    */
@@ -103,8 +133,7 @@ class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
-        throw new Error(errorData.detail || 'Login failed');
+        throw new Error(await this.getErrorMessage(response, 'Login failed'));
       }
 
       const data: LoginResponse = await response.json();

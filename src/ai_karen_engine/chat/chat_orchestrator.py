@@ -32,6 +32,7 @@ from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor, InstructionContext, InstructionScope
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
+from ai_karen_engine.chat.response_formatter import PrettyOutputLayer, ResponseContext as FormatterContext
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
@@ -180,6 +181,7 @@ class ChatOrchestrator:
         self.tool_integration_service = tool_integration_service
         self.instruction_processor = instruction_processor or InstructionProcessor()
         self.context_integrator = context_integrator or ContextIntegrator()
+        self.output_layer = PrettyOutputLayer()
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
         self.enable_monitoring = enable_monitoring
@@ -247,6 +249,17 @@ class ChatOrchestrator:
                 },
             )
 
+    def _add_local_prefix(self, prompt: str, provider: Optional[str]) -> str:
+        """Add Assistant: prefix for local models to prevent truncation."""
+        if not provider:
+            return prompt
+            
+        local_providers = ["llamacpp", "local", "nano-vllm", "small_language_model", "transformers"]
+        if any(p in provider.lower() for p in local_providers):
+            if not prompt.rstrip().endswith("Assistant:"):
+                return prompt.rstrip() + "\n\nAssistant: "
+        return prompt
+
     def _build_llm_metadata(
         self,
         result: Union["LLMRouteResult", SimpleNamespace],
@@ -259,23 +272,109 @@ class ChatOrchestrator:
             "source": source,
             "provider": getattr(result, "provider", None),
             "model_id": getattr(result, "model_id", None),
+            "model_name": getattr(result, "model_name", None) or self._get_model_display_name(getattr(result, "model_id", None)),
             "tags": list(getattr(result, "tags", []) or []),
             "is_degraded": bool(getattr(result, "is_degraded", False)),
             "attempted_models": list(getattr(result, "attempted_models", []) or []),
+            "generation_date": datetime.now().isoformat(),
         }
 
         failure_reason = getattr(result, "failure_reason", None)
         if failure_reason:
             metadata["failure_reason"] = failure_reason
 
+        # Extract duration and usage information
+        # Case 1: result is LLMRouteResult (has .metadata dict)
+        # Case 2: result is already a processed metadata dict/SimpleNamespace (has top-level fields)
+        duration = None
+        usage = None
+        finish_reason = None
+        
         extra = getattr(result, "metadata", None)
-        if extra:
-            metadata["extra"] = dict(extra)
+        if isinstance(extra, dict):
+            duration = extra.get("duration")
+            usage = extra.get("usage")
+            finish_reason = (usage or {}).get("finish_reason") if isinstance(usage, dict) else None
+            metadata["routing_confidence"] = extra.get("routing_confidence", 0.0)
+            metadata["routing_rationale"] = extra.get("routing_rationale")
+            metadata["routing_strategy"] = extra.get("routing_strategy")
+        else:
+            # Fallback to top-level attributes
+            duration = getattr(result, "duration", None)
+            usage = getattr(result, "usage", None)
+            finish_reason = getattr(result, "finish_reason", None)
+            if not finish_reason and isinstance(usage, dict):
+                finish_reason = usage.get("finish_reason")
+            
+            # Check for routing fields on SimpleNamespace or object
+            metadata["routing_confidence"] = getattr(result, "routing_confidence", 0.0)
+            metadata["routing_rationale"] = getattr(result, "routing_rationale", None)
+            metadata["routing_strategy"] = getattr(result, "routing_strategy", None)
+
+        if duration is not None or usage is not None:
+            metadata.update({
+                "duration": duration,
+                "usage": usage,
+                "finish_reason": finish_reason
+            })
+            
+            # Calculate tokens per second if missing
+            if duration and isinstance(usage, dict):
+                comp_tokens = usage.get("completion_tokens") or usage.get("total_tokens", 0)
+                if comp_tokens and duration > 0:
+                    metadata["tokens_per_second"] = round(comp_tokens / duration, 2)
+        
+        # Also copy existing tokens_per_second if present
+        if not metadata.get("tokens_per_second"):
+            if hasattr(result, "tokens_per_second"):
+                metadata["tokens_per_second"] = getattr(result, "tokens_per_second")
+            elif isinstance(extra, dict) and "tokens_per_second" in extra:
+                metadata["tokens_per_second"] = extra["tokens_per_second"]
 
         if additional:
             metadata.update(additional)
 
         return metadata
+
+    def _get_model_display_name(self, model_id: Optional[str]) -> Optional[str]:
+        """Return a human-friendly name for a given model ID."""
+        if not model_id:
+            return None
+        
+        # Mapping of common IDs to friendly names
+        mapping = {
+            "phi-3-mini-4k-instruct-q4.gguf": "Phi-3 Mini",
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf": "TinyLlama 1.1B",
+            "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf": "TinyLlama 1.1B v2",
+            "gemini-1.5-pro": "Gemini 1.5 Pro",
+            "gemini-1.5-flash": "Gemini 1.5 Flash",
+            "claude-3-opus-20240229": "Claude 3 Opus",
+            "claude-3-sonnet-20240229": "Claude 3 Sonnet",
+            "claude-3-haiku-20240307": "Claude 3 Haiku",
+            "gpt-4o": "GPT-4o",
+            "gpt-4-turbo": "GPT-4 Turbo",
+        }
+        
+        if model_id in mapping:
+            return mapping[model_id]
+        
+        # Fallback: prettify the ID
+        name = model_id
+        if name.endswith(".gguf"):
+            name = name[:-5]
+        
+        # Replace common separators with spaces and title case
+        name = name.replace("-", " ").replace("_", " ").replace("/", " / ")
+        words = name.split()
+        
+        # Keep some words uppercase
+        upper_words = {"llm", "ai", "gpt", "api", "url", "id", "cls", "r1"}
+        processed_words = [
+            w.upper() if w.lower() in upper_words else w.capitalize()
+            for w in words
+        ]
+        
+        return " ".join(processed_words)
 
     async def process_message(
         self,
@@ -1035,6 +1134,24 @@ class ChatOrchestrator:
                 if context.cancel_event.is_set():
                     raise asyncio.CancelledError()
 
+                # --- STEP 7: PRETTY OUTPUT LAYER ---
+                try:
+                    formatter_ctx = FormatterContext(
+                        user_query=request.message,
+                        response_content=ai_response,
+                        session_data={"correlation_id": context.correlation_id}
+                    )
+                    formatted_result = self.output_layer.format_response(ai_response, formatter_ctx)
+                    ai_response = formatted_result.get("content", ai_response)
+                    
+                    # Merge formatting metadata into llm_metadata for transparency
+                    if "metadata" in formatted_result:
+                        llm_metadata["output_formatting"] = formatted_result["metadata"]
+                        llm_metadata["output_layout"] = formatted_result.get("layout_type")
+                        llm_metadata["output_profile"] = formatted_result.get("output_profile")
+                except Exception as format_err:
+                    logger.warning(f"Formatting layer failed to style the response: {format_err}")
+
                 return ProcessingResult(
                     success=True,
                     response=ai_response,
@@ -1265,7 +1382,7 @@ class ChatOrchestrator:
             "preferred_llm_provider", "local"
         )
         user_model_choice = processing_context.metadata.get(
-            "preferred_model", "tinyllama-1.1b"
+            "preferred_model", ""
         )
 
         attempt_log: List[Dict[str, Any]] = []
@@ -1367,7 +1484,11 @@ class ChatOrchestrator:
     ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
         from ai_karen_engine.llm_orchestrator import get_orchestrator
-
+        
+        # Safety defaults for exception handling
+        model_id = None
+        provider = None
+        
         orchestrator = get_orchestrator()
         attempt_entry: Dict[str, Any] = {
             "stage": "user_preference",
@@ -1376,39 +1497,67 @@ class ChatOrchestrator:
         }
         attempt_log.append(attempt_entry)
 
-        model_id = f"{provider}:{model}"
-        model_info = orchestrator.registry.get(model_id)
+        # Try different model ID patterns to match the registry
+        potential_ids = [f"{provider}:{model}", f"local:{model}", model if ":" in model else None]
+        model_info = None
+        target_id = None
+        
+        for pid in filter(None, potential_ids):
+            model_info = orchestrator.registry.get(pid)
+            if model_info:
+                target_id = pid
+                break
+                
         if not model_info:
             attempt_entry["status"] = "unavailable"
+            attempt_entry["error"] = f"Model {provider}:{model} not found in registry"
             return None
 
         try:
-            route_result = orchestrator.route(
-                enhanced_prompt, skill="conversation", return_metadata=True
+            # For local models, apply prefix to prevent truncation/hallucination
+            enhanced_prompt = self._add_local_prefix(enhanced_prompt, provider)
+
+            # Use run_in_executor to avoid blocking the event loop with synchronous router calls
+            loop = asyncio.get_event_loop()
+            route_result = await loop.run_in_executor(
+                None,
+                lambda: orchestrator.route(
+                    enhanced_prompt, 
+                    skill="conversation", 
+                    return_metadata=True,
+                    provider=provider,
+                    model=model
+                )
             )
             self._ensure_llm_response_is_valid(
-                route_result, f"user preference {model_id}"
+                route_result, f"user preference {provider}:{model}"
             )
 
             metadata = self._build_llm_metadata(
                 route_result,
                 "user_preference",
-                additional={"preferred_model": model_id},
+                additional={"preferred_model": f"{provider}:{model}"},
             )
             response_text = route_result.content
 
             if self._is_code_related_message(message):
-                code_suggestions = await orchestrator.get_code_suggestions(
-                    message,
-                    language=self._detect_programming_language(message),
+                code_suggestions = await loop.run_in_executor(
+                    None,
+                    lambda: orchestrator.get_code_suggestions(
+                        message,
+                        language=self._detect_programming_language(message),
+                    )
                 )
                 if code_suggestions:
-                    copilot_result = orchestrator.route_with_copilotkit(
-                        enhanced_prompt,
-                        context=integrated_context.to_dict()
-                        if integrated_context
-                        else {},
-                        return_metadata=True,
+                    copilot_result = await loop.run_in_executor(
+                        None,
+                        lambda: orchestrator.route_with_copilotkit(
+                            enhanced_prompt,
+                            context=integrated_context.to_dict()
+                            if integrated_context
+                            else {},
+                            return_metadata=True,
+                        )
                     )
                     self._ensure_llm_response_is_valid(
                         copilot_result, "copilotkit code suggestions"
@@ -1489,13 +1638,15 @@ class ChatOrchestrator:
         from ai_karen_engine.llm_orchestrator import get_orchestrator
 
         orchestrator = get_orchestrator()
-        default_providers = [
-            "local:tinyllama-1.1b",
-            "openai:gpt-3.5-turbo",
-            "gemini:gemini-1.5-flash",
-            "deepseek:deepseek-chat",
-            "huggingface:microsoft/DialoGPT-large",
-        ]
+        # Build default providers from central config
+        from ai_karen_engine.config.config_manager import get_fallback_chain, get_default_model
+        _chain = get_fallback_chain()
+        default_providers = []
+        _provider_prefix = {"llamacpp": "local"}
+        for _p in _chain:
+            _prefix = _provider_prefix.get(_p, _p)
+            _model = get_default_model(_p)
+            default_providers.append(f"{_prefix}:{_model}")
 
         for provider_model in default_providers:
             attempt_entry: Dict[str, Any] = {
@@ -1518,8 +1669,19 @@ class ChatOrchestrator:
                 continue
 
             try:
-                route_result = await orchestrator.enhanced_route(
-                    enhanced_prompt, skill="conversation", return_metadata=True
+                # Match provider for prefixing logic
+                provider_name = model_id.split(":", 1)[0]
+                local_prompt = self._add_local_prefix(enhanced_prompt, provider_name)
+
+                # enhanced_route is async def but calls sync _route_request internally
+                route_result = await loop.run_in_executor(
+                    None,
+                    lambda: orchestrator.route(
+                        local_prompt, 
+                        skill="conversation", 
+                        return_metadata=True,
+                        mode="enhanced"
+                    )
                 )
                 self._ensure_llm_response_is_valid(
                     route_result, f"system default {model_id}"
@@ -1567,8 +1729,19 @@ class ChatOrchestrator:
         }
         attempt_log.append(attempt_entry)
         try:
-            route_result = orchestrator.route(
-                enhanced_prompt, skill="conversation", return_metadata=True
+            # We don't know the provider yet, so we apply the prefix just in case it picks local
+            # or rely on the router to handle it if we pass it down. 
+            # But here we apply a generic Assistant: prefix if not present.
+            if not enhanced_prompt.rstrip().endswith("Assistant:"):
+                 enhanced_prompt = enhanced_prompt.rstrip() + "\n\nAssistant: "
+
+            # Use run_in_executor for the synchronous router call
+            loop = asyncio.get_event_loop()
+            route_result = await loop.run_in_executor(
+                None,
+                lambda: orchestrator.route(
+                    enhanced_prompt, skill="conversation", return_metadata=True
+                )
             )
             self._ensure_llm_response_is_valid(
                 route_result, "system default registry auto selection"
@@ -1741,19 +1914,29 @@ class ChatOrchestrator:
                         logger.warning("Failed to load %s", gguf_file.name)
                         continue
 
+                    # Apply Assistant: prefix for local model guidance
+                    local_prompt = self._add_local_prefix(enhanced_prompt, "llamacpp")
+                    
+                    t0 = time.time()
                     response = runtime.generate(
-                        prompt=enhanced_prompt,
-                        max_tokens=128,
+                        prompt=local_prompt,
+                        max_tokens=256,
                         temperature=0.7,
                         stream=False,
                     )
 
                     if response and response.strip():
+                        duration = time.time() - t0
+                        usage = runtime.last_usage if hasattr(runtime, "last_usage") else {}
                         metadata = {
                             "provider": "llamacpp",
                             "model_id": f"llamacpp:{gguf_file.stem}",
                             "model_path": str(gguf_file),
                             "tags": ["local", "offline"],
+                            "metadata": {
+                                "duration": duration,
+                                "usage": usage,
+                            }
                         }
                         logger.info(
                             "✅ Successfully used llama-cpp model: %s", gguf_file.name
@@ -1803,14 +1986,18 @@ class ChatOrchestrator:
                     if tokenizer.pad_token is None:
                         tokenizer.pad_token = tokenizer.eos_token
 
+                    # Apply Assistant: prefix for local model guidance
+                    local_prompt = self._add_local_prefix(enhanced_prompt, "transformers")
+                    
                     inputs = tokenizer.encode(
-                        enhanced_prompt,
+                        local_prompt,
                         return_tensors="pt",
                         max_length=512,
                         truncation=True,
                     )
 
                     import torch
+                    t0 = time.time()
 
                     with torch.no_grad():
                         outputs = model.generate(
@@ -1830,10 +2017,21 @@ class ChatOrchestrator:
                         response = response[len(enhanced_prompt) :].strip()
 
                     if response:
+                        duration = time.time() - t0
+                        prompt_tokens = inputs.shape[1]
+                        completion_tokens = outputs.shape[1] - prompt_tokens
                         metadata = {
                             "provider": "transformers",
                             "model_id": f"transformers:{model_dir.name}",
                             "tags": ["local", "offline"],
+                            "metadata": {
+                                "duration": duration,
+                                "usage": {
+                                    "prompt_tokens": prompt_tokens,
+                                    "completion_tokens": completion_tokens,
+                                    "total_tokens": prompt_tokens + completion_tokens,
+                                }
+                            }
                         }
                         logger.info(
                             "✅ Successfully used transformers model: %s",
@@ -1965,7 +2163,15 @@ class ChatOrchestrator:
             if integrated_context.supporting_context:
                 prompt_parts.insert(-1, f"ADDITIONAL INFO:\n{integrated_context.supporting_context}")
         
-        return "\n\n".join(prompt_parts)
+        # Add response prefix if specifically using a local model and it's not already there
+        # This is primarily for the fallback paths where we might not have the prefix yet.
+        # But we'll be careful not to double it.
+        # If no instructions are provided, add a default persona to guide local models
+        if not active_instructions and not prompt_parts[0].startswith("SYSTEM:"):
+            prompt_parts.insert(0, "SYSTEM: You are Karen, a helpful and intelligent AI assistant. Provide concise and accurate responses.")
+
+        final_prompt = "\n\n".join(prompt_parts)
+        return final_prompt
     
     async def _generate_enhanced_fallback_response(
         self,

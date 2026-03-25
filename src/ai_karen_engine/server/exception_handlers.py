@@ -6,6 +6,7 @@ JSON serialization of datetime objects and other non-serializable types.
 """
 
 import logging
+import json
 from datetime import datetime
 from typing import Any, Dict
 
@@ -14,6 +15,15 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ai_karen_engine.server.json_encoder import custom_json_dumps
+
+try:
+    from src.auth.auth_middleware import AuthenticationError
+except ImportError:
+    # Fallback for environments where auth is not available
+    class AuthenticationError(Exception):
+        def __init__(self, message, status_code=401):
+            self.message = message
+            self.status_code = status_code
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +199,48 @@ async def custom_general_exception_handler(
         )
 
 
+async def custom_authentication_exception_handler(
+    request: Request, exc: AuthenticationError
+) -> JSONResponse:
+    """
+    Custom authentication exception handler.
+
+    Args:
+        request: The request object
+        exc: The AuthenticationError
+
+    Returns:
+        JSONResponse with authentication error details
+    """
+    logger.warning(
+        f"Authentication error on {request.method} {request.url.path}: {exc.message}"
+    )
+
+    content = {
+        "detail": exc.message,
+        "timestamp": datetime.utcnow().isoformat(),
+        "path": str(request.url.path),
+        "method": request.method,
+    }
+
+    try:
+        json_content = custom_json_dumps(content)
+        return JSONResponse(
+            status_code=getattr(exc, "status_code", 401),
+            content=json.loads(json_content)
+        )
+    except Exception as json_error:
+        logger.error(f"Failed to serialize authentication error response: {json_error}")
+
+        return JSONResponse(
+            status_code=getattr(exc, "status_code", 401),
+            content={
+                "detail": exc.message,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+
 def setup_exception_handlers(app) -> None:
     """
     Setup custom exception handlers for the FastAPI app.
@@ -208,6 +260,7 @@ def setup_exception_handlers(app) -> None:
     app.add_exception_handler(
         RequestValidationError, custom_validation_exception_handler
     )
+    app.add_exception_handler(AuthenticationError, custom_authentication_exception_handler)
     app.add_exception_handler(Exception, custom_general_exception_handler)
 
     logger.info("Custom exception handlers registered")

@@ -693,8 +693,8 @@ class ModelStore:
             "phi": ["phi", "phi-2", "phi-3"],
             "gemma": ["gemma"],
             "codellama": ["codellama", "code-llama"],
-            "tinyllama": ["tinyllama", "tiny-llama"],
-            "bert": ["bert", "distilbert"],
+            "small_llm": ["tinyllama", "tiny-llama", "phi-3-mini", "phi3-mini", "default-lightweight-model", "default-instruct-model", "default-base-model"],
+            "bert": ["bert", "distilbert", "default-nlp-model", "default-classifier-model"],
             "gpt": ["gpt", "dialogpt"]
         }
         

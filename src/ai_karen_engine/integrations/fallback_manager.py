@@ -7,7 +7,7 @@ degraded mode activation, and recovery monitoring for the LLM routing system.
 Key Features:
 - Intelligent fallback chain construction based on provider health and capabilities
 - Local provider prioritization when cloud providers fail
-- Degraded mode activation with core helpers (TinyLLaMA, DistilBERT, spaCy)
+- Degraded mode activation with core helpers (default model, DistilBERT, spaCy)
 - Recovery monitoring and automatic switching back to preferred providers
 - Comprehensive logging and failure pattern analysis
 """
@@ -330,7 +330,7 @@ class FallbackManager:
             decision = RouteDecision(
                 provider="core_helpers",
                 runtime="core_helpers",
-                model_id="tinyllama+distilbert+spacy",
+                model_id="core_helpers",
                 reason="Degraded mode activated - all providers failed",
                 confidence=0.3,  # Low confidence for degraded mode
                 fallback_chain=[],
@@ -345,7 +345,7 @@ class FallbackManager:
                 original_provider="unknown",
                 fallback_provider="core_helpers",
                 original_model=None,
-                fallback_model="tinyllama+distilbert+spacy",
+                fallback_model="core_helpers",
                 reason=FallbackReason.PROVIDER_UNAVAILABLE,
                 strategy=FallbackStrategy.EMERGENCY_DEGRADED,
                 success=True,
@@ -671,7 +671,7 @@ class FallbackManager:
                 degraded_attempt = FallbackAttempt(
                     provider="core_helpers",
                     runtime="core_helpers",
-                    model="tinyllama+distilbert+spacy",
+                    model="core_helpers",
                     timestamp=datetime.now(),
                     success=True,
                     confidence=0.3
@@ -682,7 +682,7 @@ class FallbackManager:
                     success=True,
                     used_provider="core_helpers",
                     used_runtime="core_helpers",
-                    used_model="tinyllama+distilbert+spacy",
+                    used_model="core_helpers",
                     attempts=attempts,
                     final_error=None,
                     degraded_mode_activated=True,

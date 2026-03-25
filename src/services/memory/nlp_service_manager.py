@@ -148,7 +148,7 @@ class NLPServiceManager:
         """Generate embeddings for multiple texts in batches."""
         return await self.distilbert_service.batch_embeddings(texts, batch_size)
     
-    # TinyLlama service methods
+    # Small Language Model service methods
     async def generate_scaffold(
         self,
         text: str,

@@ -29,6 +29,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api")
+
+
 class ProviderType(str, Enum):
     """LLM provider types"""
     LOCAL = "local"
@@ -226,6 +229,7 @@ class LLMProviderConfigManager:
         # Create default configurations if none exist
         if not self._providers:
             self._create_default_configurations()
+        self._create_additional_default_configurations()
     
     # ---------- Configuration Management ----------
     
@@ -786,6 +790,455 @@ class LLMProviderConfigManager:
         # Note: Ollama provider removed; use llama.cpp local provider instead.
         
         logger.info("Created default LLM provider configurations")
+
+    def _create_additional_default_configurations(self) -> None:
+        """Create any additional default providers that are not already configured."""
+
+        additional_configs = [
+            ProviderConfig(
+                name="anthropic",
+                display_name="Anthropic Claude",
+                description="Anthropic Claude models via the Messages API",
+                provider_type=ProviderType.REMOTE,
+                priority=78,
+                endpoint=ProviderEndpoint(
+                    base_url="https://api.anthropic.com/v1",
+                    chat_endpoint="/messages",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="ANTHROPIC_API_KEY",
+                    api_key_header="x-api-key",
+                    api_key_prefix="",
+                    custom_headers={"anthropic-version": "2023-06-01"},
+                    validation_endpoint="/models",
+                ),
+                models=[
+                    ProviderModel(
+                        id="claude-sonnet-4-20250514",
+                        name="Claude Sonnet 4",
+                        family="claude",
+                        capabilities={"text", "vision", "reasoning", "tool_use"},
+                        context_length=200000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                        supports_vision=True,
+                    ),
+                    ProviderModel(
+                        id="claude-opus-4-1-20250805",
+                        name="Claude Opus 4.1",
+                        family="claude",
+                        capabilities={"text", "vision", "reasoning", "tool_use"},
+                        context_length=200000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                        supports_vision=True,
+                    ),
+                    ProviderModel(
+                        id="claude-3-5-haiku-latest",
+                        name="Claude 3.5 Haiku",
+                        family="claude",
+                        capabilities={"text", "vision"},
+                        context_length=200000,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                        supports_vision=True,
+                    ),
+                ],
+                default_model="claude-sonnet-4-20250514",
+                capabilities={"streaming", "vision", "tool_use", "reasoning"},
+                limits=ProviderLimits(
+                    concurrent_requests=5,
+                    max_context_length=200000,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="mistral",
+                display_name="Mistral AI",
+                description="Mistral AI hosted models and code models",
+                provider_type=ProviderType.REMOTE,
+                priority=74,
+                endpoint=ProviderEndpoint(
+                    base_url="https://api.mistral.ai/v1",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                    embeddings_endpoint="/embeddings",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="MISTRAL_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                    validation_endpoint="/models",
+                ),
+                models=[
+                    ProviderModel(
+                        id="mistral-large-latest",
+                        name="Mistral Large Latest",
+                        family="mistral",
+                        capabilities={"text", "reasoning", "tool_use"},
+                        context_length=128000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="mistral-medium-latest",
+                        name="Mistral Medium Latest",
+                        family="mistral",
+                        capabilities={"text", "reasoning", "tool_use"},
+                        context_length=128000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="codestral-latest",
+                        name="Codestral Latest",
+                        family="codestral",
+                        capabilities={"code", "text"},
+                        context_length=256000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="mistral-medium-latest",
+                capabilities={"streaming", "code", "reasoning", "embeddings"},
+                limits=ProviderLimits(
+                    concurrent_requests=5,
+                    max_context_length=256000,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="groq",
+                display_name="Groq",
+                description="Groq low-latency OpenAI-compatible inference",
+                provider_type=ProviderType.REMOTE,
+                priority=73,
+                endpoint=ProviderEndpoint(
+                    base_url="https://api.groq.com/openai/v1",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="GROQ_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                    validation_endpoint="/models",
+                ),
+                models=[
+                    ProviderModel(
+                        id="llama-3.3-70b-versatile",
+                        name="Llama 3.3 70B Versatile",
+                        family="llama",
+                        capabilities={"text", "tool_use"},
+                        context_length=131072,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="llama-3.1-8b-instant",
+                        name="Llama 3.1 8B Instant",
+                        family="llama",
+                        capabilities={"text", "tool_use"},
+                        context_length=131072,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="mixtral-8x7b-32768",
+                        name="Mixtral 8x7B 32K",
+                        family="mixtral",
+                        capabilities={"text"},
+                        context_length=32768,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="llama-3.1-8b-instant",
+                capabilities={"streaming", "tool_use", "low_latency"},
+                limits=ProviderLimits(
+                    concurrent_requests=10,
+                    max_context_length=131072,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="xai",
+                display_name="xAI",
+                description="xAI Grok models via the Inference API",
+                provider_type=ProviderType.REMOTE,
+                priority=72,
+                endpoint=ProviderEndpoint(
+                    base_url="https://api.x.ai/v1",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="XAI_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                    validation_endpoint="/models",
+                ),
+                models=[
+                    ProviderModel(
+                        id="grok-4",
+                        name="Grok 4",
+                        family="grok",
+                        capabilities={"text", "reasoning", "tool_use"},
+                        context_length=256000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="grok-4.20-reasoning",
+                        name="Grok 4.20 Reasoning",
+                        family="grok",
+                        capabilities={"text", "reasoning", "tool_use"},
+                        context_length=256000,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="grok-code-fast-1",
+                        name="Grok Code Fast 1",
+                        family="grok-code",
+                        capabilities={"code", "text"},
+                        context_length=131072,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="grok-4",
+                capabilities={"streaming", "reasoning", "tool_use", "code"},
+                limits=ProviderLimits(
+                    concurrent_requests=10,
+                    max_context_length=256000,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="qwen",
+                display_name="Qwen",
+                description="Alibaba Cloud Model Studio Qwen models in OpenAI-compatible mode",
+                provider_type=ProviderType.REMOTE,
+                priority=71,
+                endpoint=ProviderEndpoint(
+                    base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="QWEN_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                ),
+                models=[
+                    ProviderModel(
+                        id="qwen-max-latest",
+                        name="Qwen Max Latest",
+                        family="qwen",
+                        capabilities={"text", "reasoning", "tool_use"},
+                        context_length=32768,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="qwen-plus-latest",
+                        name="Qwen Plus Latest",
+                        family="qwen",
+                        capabilities={"text", "tool_use"},
+                        context_length=32768,
+                        max_tokens=8192,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="qwen-turbo-latest",
+                        name="Qwen Turbo Latest",
+                        family="qwen",
+                        capabilities={"text"},
+                        context_length=8192,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="qwen-plus-latest",
+                capabilities={"streaming", "reasoning", "tool_use"},
+                limits=ProviderLimits(
+                    concurrent_requests=5,
+                    max_context_length=32768,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="zai",
+                display_name="Z.ai",
+                description="Z.ai GLM models via the official PaaS chat completions API",
+                provider_type=ProviderType.REMOTE,
+                priority=70,
+                endpoint=ProviderEndpoint(
+                    base_url="https://api.z.ai/api/paas/v4",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.API_KEY,
+                    api_key_env_var="ZAI_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                ),
+                models=[
+                    ProviderModel(
+                        id="glm-5",
+                        name="GLM-5",
+                        family="glm",
+                        capabilities={"text", "reasoning", "tool_use", "web_search"},
+                        context_length=131072,
+                        max_tokens=131072,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="glm-4.7",
+                        name="GLM-4.7",
+                        family="glm",
+                        capabilities={"text", "code", "tool_use"},
+                        context_length=131072,
+                        max_tokens=131072,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
+                        id="glm-4.5-air",
+                        name="GLM-4.5 Air",
+                        family="glm",
+                        capabilities={"text", "code"},
+                        context_length=96000,
+                        max_tokens=96000,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="glm-5",
+                capabilities={"streaming", "reasoning", "tool_use", "web_search", "code"},
+                limits=ProviderLimits(
+                    concurrent_requests=5,
+                    max_context_length=131072,
+                    max_output_tokens=131072,
+                ),
+            ),
+            ProviderConfig(
+                name="ollama",
+                display_name="Ollama",
+                description="Local Ollama server for running and pulling models",
+                provider_type=ProviderType.LOCAL,
+                priority=68,
+                endpoint=ProviderEndpoint(
+                    base_url=DEFAULT_OLLAMA_BASE_URL,
+                    chat_endpoint="/chat",
+                    models_endpoint="/tags",
+                ),
+                authentication=ProviderAuthentication(type=AuthenticationType.NONE),
+                models=[],
+                default_model="",
+                capabilities={"local_execution", "model_download"},
+                limits=ProviderLimits(
+                    concurrent_requests=2,
+                    max_context_length=131072,
+                    max_output_tokens=8192,
+                ),
+            ),
+            ProviderConfig(
+                name="llama-cpp",
+                display_name="llama.cpp",
+                description="Local GGUF execution via llama.cpp or a compatible local server",
+                provider_type=ProviderType.LOCAL,
+                priority=67,
+                endpoint=ProviderEndpoint(
+                    base_url="http://localhost:8080/v1",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(type=AuthenticationType.NONE),
+                models=[
+                    ProviderModel(
+                        id="auto-detect-gguf",
+                        name="Auto-detect local GGUF",
+                        family="llama",
+                        capabilities={"text", "local"},
+                        context_length=8192,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="auto-detect-gguf",
+                capabilities={"local_execution", "gguf"},
+                limits=ProviderLimits(
+                    concurrent_requests=1,
+                    max_context_length=32768,
+                    max_output_tokens=4096,
+                ),
+            ),
+            ProviderConfig(
+                name="custom",
+                display_name="Custom",
+                description="Bring-your-own provider using a custom OpenAI-compatible or vendor endpoint",
+                provider_type=ProviderType.HYBRID,
+                priority=60,
+                endpoint=ProviderEndpoint(
+                    base_url="",
+                    chat_endpoint="/chat/completions",
+                    models_endpoint="/models",
+                ),
+                authentication=ProviderAuthentication(
+                    type=AuthenticationType.CUSTOM,
+                    api_key_env_var="CUSTOM_LLM_API_KEY",
+                    api_key_header="Authorization",
+                    api_key_prefix="Bearer",
+                ),
+                models=[
+                    ProviderModel(
+                        id="custom-model",
+                        name="Custom Model",
+                        family="custom",
+                        capabilities={"text"},
+                        context_length=32768,
+                        max_tokens=4096,
+                        supports_streaming=True,
+                    ),
+                ],
+                default_model="custom-model",
+                capabilities={"custom_endpoint"},
+                limits=ProviderLimits(
+                    concurrent_requests=5,
+                    max_context_length=32768,
+                    max_output_tokens=4096,
+                ),
+            ),
+        ]
+
+        created = 0
+        for config in additional_configs:
+            if config.name in self._providers:
+                continue
+            self.add_provider(config)
+            created += 1
+
+        if created:
+            logger.info("Created %s additional default LLM provider configurations", created)
     
     # ---------- Utility Methods ----------
     

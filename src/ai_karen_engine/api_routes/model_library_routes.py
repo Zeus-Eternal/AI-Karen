@@ -397,7 +397,7 @@ async def get_available_models(
                         mid = str(entry.get("id") or entry.get("name") or "").strip()
                         # Skip empty names, directory entries, or cache directories
                         if (not mid or mid in seen_ids or 
-                            mid in ["", "metadata_cache", "downloads", "llama-cpp", "transformers", "TinyLlama"] or
+                            mid in ["", "metadata_cache", "downloads", "llama-cpp", "transformers"] or
                             mid.startswith("./models/")):
                             continue
                         seen_ids.add(mid)

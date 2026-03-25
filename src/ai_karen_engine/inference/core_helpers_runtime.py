@@ -2,7 +2,7 @@
 Core Helpers Runtime Implementation
 
 This module provides the CoreHelpersRuntime class for degraded mode operation
-using lightweight models like TinyLLaMA, DistilBERT, and spaCy for basic functionality.
+using lightweight models like the default model, DistilBERT, and spaCy for basic functionality.
 """
 
 import logging
@@ -46,7 +46,7 @@ class CoreHelpersRuntime:
     
     This runtime provides basic functionality when primary models are unavailable,
     using a combination of lightweight models for different tasks:
-    - TinyLLaMA for basic text generation
+    - Default model for basic text generation
     - DistilBERT for embeddings and classification
     - spaCy for NLP tasks (tokenization, NER, etc.)
     
@@ -61,7 +61,7 @@ class CoreHelpersRuntime:
     
     def __init__(
         self,
-        text_model: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        text_model: str = "default-text-model",  # Fallback; overridden by config
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         spacy_model: str = "en_core_web_sm",
         device: str = "cpu",
@@ -534,7 +534,7 @@ class CoreHelpersRuntime:
     def supports_family(family_name: str) -> bool:
         """Check if runtime supports a specific model family."""
         # Core helpers support lightweight models
-        supported_families = ["tinyllama", "distilbert", "minilm"]
+        supported_families = ["small_llm", "distilbert", "minilm"]
         return family_name.lower() in supported_families
     
     @staticmethod

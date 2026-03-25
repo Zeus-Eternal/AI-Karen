@@ -31,7 +31,7 @@ export default function SettingsDialog({ inSheet = false }: SettingsDialogProps)
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Application Settings</h2>
             <p className="text-sm text-muted-foreground">
-              Customize Karen AI's behavior, personal knowledge, notifications, and more. Your preferences are saved locally in your browser.
+              Customize Karen AI&apos;s behavior, personal knowledge, notifications, and model configuration. Settings are applied through Karen&apos;s current persistence and backend integrations.
             </p>
           </div>
           <Separator />

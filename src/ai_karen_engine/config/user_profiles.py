@@ -215,7 +215,7 @@ class UserProfilesManager:
                 "chat": ModelAssignment("chat", "openai", "gpt-4o-mini"),
                 "code": ModelAssignment("code", "deepseek", "deepseek-coder"),
                 "reasoning": ModelAssignment("reasoning", "openai", "gpt-4o"),
-                "summarization": ModelAssignment("summarization", "llamacpp", "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"),
+                "summarization": ModelAssignment("summarization", "llamacpp", "auto"),
             },
             is_active=True,
         )

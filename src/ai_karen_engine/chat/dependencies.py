@@ -47,8 +47,4 @@ def get_chat_orchestrator_dependency():
     return get_chat_orchestrator()
 
 
-def get_chat_hub_dependency():
-    """FastAPI dependency for ChatHub."""
-    from ai_karen_engine.chat.factory import get_chat_hub
-    return get_chat_hub()
 

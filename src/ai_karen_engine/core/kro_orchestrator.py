@@ -174,7 +174,7 @@ class HelperModels:
     """Core helper models for augmenting main LLM."""
 
     def __init__(self):
-        self.tiny_llama = None
+        self.default_model_provider = None
         self.distilbert = None
         self.spacy = None
         self._initialized = False
@@ -185,10 +185,10 @@ class HelperModels:
             return
 
         try:
-            # Initialize TinyLlama for scaffolding
+            # Initialize default model for scaffolding
             from ai_karen_engine.integrations.llm_registry import get_registry
             registry = get_registry()
-            self.tiny_llama = registry.get_provider("llamacpp")
+            self.default_model_provider = registry.get_provider("llamacpp")
 
             # Initialize DistilBERT for classification
             from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
@@ -336,7 +336,7 @@ class KROOrchestrator:
     Responsibilities:
     1. Plan minimal path to correct answer
     2. Route requests to appropriate models via KIRE
-    3. Coordinate helper models (TinyLlama, DistilBERT, spaCy)
+    3. Coordinate helper models (default model, DistilBERT, spaCy)
     4. Implement graceful degradation
     5. Generate dynamic prompt suggestions
     6. Maintain comprehensive observability
@@ -867,12 +867,12 @@ Provide a clear, concise, and actionable answer."""
             "user_id": user_id,
         })
 
-        # Use TinyLlama if available
+        # Use default model if available
         degraded_text = "I apologize, but I'm currently operating in degraded mode due to system issues. "
 
         try:
-            if self.helpers.tiny_llama:
-                # Use TinyLlama for basic response
+            if self.helpers.default_model_provider:
+                # Use default model for basic response
                 degraded_text += "I can still help with basic queries. Please try rephrasing your question."
             else:
                 degraded_text += "Please try again shortly or contact support."

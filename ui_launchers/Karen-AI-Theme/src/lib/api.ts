@@ -1,8 +1,9 @@
 // API service for HTTP requests
 const API_BASE_URL =
-  typeof window === 'undefined'
-    ? process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
-    : '';
+  process.env.NEXT_PUBLIC_KAREN_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window === 'undefined' ? 'http://localhost:8000' : '');
+
 
 export class ApiError extends Error {
   status: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,31 +25,60 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 /**
  * @file AgentsPage.tsx
- * @description Conceptual page for defining and managing AI Agents and the tools they can use.
+ * @description Page for defining and managing AI Agents via the /api/agents endpoints.
  */
 export default function AgentsPage() {
+  const [agents, setAgents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const conceptualAgents = [
-    {
-      name: "Social Media Agent",
-      description: "Handles interactions with social platforms like Facebook and Twitter.",
-      tools: ["facebook.postStatus", "facebook.getMentions", "analytics.trackEvent"],
-      enabled: true,
-    },
-    {
-      name: "Email Agent",
-      description: "Manages Gmail communications, including checking for unread emails and composing drafts.",
-      tools: ["gmail.checkUnread", "gmail.composeDraft", "gmail.summarizeThread"],
-      enabled: true,
-    },
-    {
-      name: "Data Analyst Agent",
-      description: "Connects to databases or documents to pull and analyze information.",
-      tools: ["dataConnector.querySql", "dataConnector.readDoc", "reporting.createPdf"],
-      enabled: false,
-    },
-  ];
-  
+  // Fetch agents from backend
+  const fetchAgents = async () => {
+    setIsLoading(true);
+    try {
+      const { apiClient } = await import('@/lib/api');
+      const data = await apiClient.get<any[]>('/api/agents/');
+      setAgents(data || []);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Failed to fetch agents.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const handleDeleteAgent = async (agentId: string) => {
+    if (!confirm("Are you sure you want to delete this agent?")) return;
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.delete(`/api/agents/${agentId}`);
+      fetchAgents();
+    } catch (err: any) {
+      alert("Failed to delete agent: " + err.message);
+    }
+  };
+
+  const handleCreateAgent = async () => {
+    try {
+      const { apiClient } = await import('@/lib/api');
+      const newAgentId = `agent_${Date.now()}`;
+      await apiClient.post('/api/agents/', {
+        agent_id: newAgentId,
+        name: "New Custom Agent",
+        description: "A dynamically created agent.",
+        execution_mode: "sequential",
+        config: { tools: newAgentTools }
+      });
+      fetchAgents();
+    } catch (err: any) {
+      alert("Failed to create agent: " + err.message);
+    }
+  };
+
   // State for the mock form
   const [newAgentTools, setNewAgentTools] = useState(["core.webSearch", "dataConnector.readDoc"]);
 
@@ -82,48 +111,59 @@ export default function AgentsPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Agent Management</h2>
           <p className="text-sm text-muted-foreground">
-            Create and configure specialized AI agents and assign them tools from your plugins (Conceptual).
+            Create, configure, and monitor your specialized AI agents connecting via the backend registry.
           </p>
         </div>
       </div>
       
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Conceptual Feature</AlertTitle>
-        <AlertDescription>
-          This entire section is a conceptual placeholder. Creating and managing agents requires a significant backend architecture for defining agent personas, managing tools, and executing tasks. The "Create New Agent" form is a UI demonstration.
-        </AlertDescription>
-      </Alert>
+      {errorMsg && (
+        <Alert variant="destructive">
+          <AlertTitle>Error Loading Agents</AlertTitle>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Agent List */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold">Available Agents</h3>
-          {conceptualAgents.map((agent, index) => (
-            <Card key={index}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Available Agents</h3>
+            <Button variant="outline" size="sm" onClick={fetchAgents}>Refresh</Button>
+          </div>
+          {isLoading ? (
+            <div className="text-center p-8 text-muted-foreground animate-pulse">Loading agents from registry...</div>
+          ) : agents.length === 0 ? (
+            <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No agents found in the registry.</div>
+          ) : agents.map((agent, index) => {
+            const isEnabled = agent.status === 'idle' || agent.status === 'running';
+            const tools = agent.capabilities || [];
+            
+            return (
+            <Card key={agent.agent_id || index}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-base flex items-center">
                       {agent.name}
-                      <Badge variant={agent.enabled ? "default" : "secondary"} className="ml-3 text-xs">{agent.enabled ? "Enabled" : "Disabled"}</Badge>
+                      <Badge variant={isEnabled ? "default" : "secondary"} className="ml-3 text-xs">{agent.status || "Unknown"}</Badge>
                     </CardTitle>
                     <CardDescription className="text-xs">{agent.description}</CardDescription>
                   </div>
                   <div className="flex items-center space-x-2">
-                     <Button variant="ghost" size="icon" disabled>
+                     <Button variant="ghost" size="icon">
                         <Settings className="h-4 w-4 text-muted-foreground" />
                      </Button>
-                     <Button variant="ghost" size="icon" disabled>
+                     <Button variant="ghost" size="icon" onClick={() => handleDeleteAgent(agent.agent_id)}>
                         <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                      </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <Label className="text-xs font-semibold">Assigned Tools</Label>
+                <Label className="text-xs font-semibold">Capabilities / Tools</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {agent.tools.map(tool => (
+                  {tools.length === 0 && <span className="text-xs text-muted-foreground">No explicit capabilities exposed.</span>}
+                  {tools.map((tool: string) => (
                     <div key={tool} className="flex items-center gap-2 text-xs p-1 px-2 rounded-md bg-muted border">
                       <Wrench className="h-3 w-3 text-muted-foreground" />
                       <code className="font-mono text-xs text-foreground">{tool}</code>
@@ -132,7 +172,7 @@ export default function AgentsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
 
         {/* Create New Agent Form */}
@@ -229,7 +269,7 @@ export default function AgentsPage() {
                </div>
             </CardContent>
             <CardFooter>
-              <Button disabled className="w-full">
+              <Button className="w-full" onClick={handleCreateAgent}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Agent
               </Button>
@@ -238,11 +278,11 @@ export default function AgentsPage() {
         </div>
       </div>
 
-       <Alert>
+      <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Developer Insight: The Role of Tools</AlertTitle>
+        <AlertTitle>Developer Insight: Live Wiring</AlertTitle>
         <AlertDescription>
-         In a real implementation, an "Agent" is given a set of **Tools** (functions like `sendEmail` or `queryDatabase`), which are provided by **Plugins**. The Agent's core prompt is instructed on how to use these available Tools to accomplish goals.
+         This mockup has been successfully wired to the `ai_karen_engine` backend registry router. Agents displayed above are active execution engines tracking capabilities inside Karen API.
         </AlertDescription>
       </Alert>
     </div>

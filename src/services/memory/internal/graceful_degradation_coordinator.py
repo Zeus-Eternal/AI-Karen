@@ -242,8 +242,15 @@ class GracefulDegradationCoordinator:
             available_models = []
             unavailable_models = []
             
-            # Simulate model availability check
-            test_models = ["tinyllama", "gpt-3.5-turbo", "claude-3-haiku"]
+            # Use dynamic models for health check
+            test_models = ["gpt-3.5-turbo", "claude-3-haiku"]
+            try:
+                from ai_karen_engine.config.config_manager import get_config
+                config = get_config()
+                test_models.insert(0, config.llm.default_lightweight_model_id)
+            except Exception:
+                test_models.insert(0, "default-lightweight-model")
+
             for model_id in test_models:
                 health_check = await self.model_availability.check_model_availability(model_id)
                 if health_check.status == ModelAvailabilityStatus.AVAILABLE:

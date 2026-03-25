@@ -1,57 +1,39 @@
 """
 Pretty Output Layer (Global Response Formatter) for Karen's AI system.
 
-This module provides configurable formatting for AI responses with support for
-different output profiles and layout types. It integrates with existing
-response formatting systems while maintaining a headless/API-first design.
+This module provides comprehensive, production-grade response formatting with support for:
+- Multiple output profiles (Plain, Pretty, Dev Doc, Minimal, Verbose, etc.)
+- Content type detection integration
+- Syntax highlighting integration
+- Responsive formatting adaptation
+- Theme-aware formatting
+- Accessibility features
+- Streaming support
+- Metadata enrichment
+- Pydantic models for API integration
 """
 
-from enum import Enum
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Tuple
 import logging
-import re
 import time
+import re
+import json
 import traceback
+import hashlib
+from typing import Dict, Any, Optional, List, Tuple, Union
+from datetime import datetime
+from dataclasses import dataclass, field
+
+# Import shared models
+from .response_formatting_models import (
+    OutputProfile, LayoutType, ContentType, DisplayContext, ThemeMode,
+    AccessibilityLevel, StreamingState, LayoutHint, ResponseMetadata,
+    FormattingPreferences, ResponseContext, StreamingChunk, FormattingResult,
+    BaseModel, Field, validator, SyntaxHighlightConfig
+)
 
 logger = logging.getLogger(__name__)
 
-
-class OutputProfile(Enum):
-    """Output profile enumeration."""
-    PLAIN = "plain"
-    PRETTY = "pretty"
-    DEV_DOC = "dev_doc"
-
-
-class LayoutType(Enum):
-    """Layout type enumeration."""
-    DEFAULT = "default"
-    MENU = "menu"
-    MOVIE_LIST = "movie_list"
-    BULLET_LIST = "bullet_list"
-    SYSTEM_STATUS = "system_status"
-
-
-@dataclass
-class LayoutHint:
-    """Layout hint for formatting decisions."""
-    layout_type: LayoutType
-    confidence: float = 1.0
-    parameters: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class ResponseContext:
-    """Context information for response formatting."""
-    user_query: str
-    response_content: str
-    user_preferences: Dict[str, Any] = field(default_factory=dict)
-    session_data: Dict[str, Any] = field(default_factory=dict)
-    theme_context: Dict[str, Any] = field(default_factory=dict)
-    detected_content_type: Optional[str] = None
-    confidence_score: float = 0.0
-
+# --- Configuration & Specialized Models ---
 
 @dataclass
 class FormattingConfig:
@@ -61,974 +43,395 @@ class FormattingConfig:
     enable_markdown: bool = True
     enable_sections: bool = True
     enable_highlights: bool = True
-    max_content_length: int = 10000
+    enable_syntax_highlighting: bool = True
+    enable_responsive_formatting: bool = True
+    enable_accessibility_features: bool = True
+    enable_theme_support: bool = True
+    max_content_length: int = 20000
     safe_mode: bool = True
+    cache_enabled: bool = True
+    performance_monitoring: bool = True
 
+
+# --- Pydantic Models for API ---
+
+class FormattingRequest(BaseModel):
+    """Request model for formatting API."""
+    content: str
+    output_profile: Optional[str] = None
+    layout_type: Optional[str] = None
+    display_context: Optional[str] = "desktop"
+    theme_mode: Optional[str] = "auto"
+    accessibility_level: Optional[str] = "basic"
+    user_preferences: Dict[str, Any] = Field(default_factory=dict)
+    session_data: Dict[str, Any] = Field(default_factory=dict)
+
+class FormattingResponse(BaseModel):
+    """Response model for formatting API."""
+    formatted_content: str
+    content_type: str
+    layout_type: str
+    output_profile: str
+    metadata: Dict[str, Any]
+    accessibility_features: List[str] = Field(default_factory=list)
+    interactive_elements: List[str] = Field(default_factory=list)
+    theme_requirements: List[str] = Field(default_factory=list)
+    css_classes: List[str] = Field(default_factory=list)
+    processing_time: float
+    confidence_score: float
+
+class StreamingFormattingResponse(BaseModel):
+    """Response model for streaming formatting API."""
+    chunk_id: int
+    formatted_content: str
+    state: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    is_final: bool = False
+    progress: float = 0.0
+
+# --- Core Formatter ---
 
 class PrettyOutputLayer:
     """
-    Pretty Output Layer for formatting AI responses.
-    
-    This class provides configurable formatting for AI responses with support for
-    different output profiles and layout types. It integrates with existing
-    response formatting systems while maintaining a headless/API-first design.
+    Unified Pretty Output Layer for formatting AI responses.
+    Consolidates legacy PrettyOutputLayer and EnhancedResponseFormatter.
     """
     
     def __init__(self, config: Optional[FormattingConfig] = None):
-        """
-        Initialize the Pretty Output Layer.
+        self.config = config or FormattingConfig()
+        self._interactive_elements_enabled = True
         
-        Args:
-            config: Configuration for formatting behavior
-        """
-        try:
-            self.config = config or FormattingConfig()
-            self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-            
-            # Performance metrics
-            self._performance_metrics = {
-                "format_calls": 0,
-                "layout_detection_time": 0.0,
-                "formatting_time": 0.0,
-                "errors": 0
-            }
-            
-            # Initialize layout detectors
-            self._layout_detectors = {
-                LayoutType.MENU: self._detect_menu_layout,
-                LayoutType.MOVIE_LIST: self._detect_movie_list_layout,
-                LayoutType.BULLET_LIST: self._detect_bullet_list_layout,
-                LayoutType.SYSTEM_STATUS: self._detect_system_status_layout,
-            }
-            
-            # Initialize layout formatters
-            self._layout_formatters = {
-                LayoutType.DEFAULT: self._format_default_layout,
-                LayoutType.MENU: self._format_menu_layout,
-                LayoutType.MOVIE_LIST: self._format_movie_list_layout,
-                LayoutType.BULLET_LIST: self._format_bullet_list_layout,
-                LayoutType.SYSTEM_STATUS: self._format_system_status_layout,
-            }
-            
-            # Initialize profile formatters
-            self._profile_formatters = {
-                OutputProfile.PLAIN: self._apply_plain_profile,
-                OutputProfile.PRETTY: self._apply_pretty_profile,
-                OutputProfile.DEV_DOC: self._apply_dev_doc_profile,
-            }
-            
-            # Initialize interactive elements (disabled by default)
-            self._interactive_elements_enabled = False
-            
-            self.logger.info(f"PrettyOutputLayer initialized with profile: {self.config.output_profile.value}")
-            
-        except Exception as e:
-            self.logger.error(f"Error initializing PrettyOutputLayer: {e}")
-            self.logger.debug(traceback.format_exc())
-            raise
-    
-    def set_output_profile(self, profile: OutputProfile) -> None:
-        """
-        Set the output profile for formatting.
+        # Subsystems (lazy initialized)
+        self.content_detector = None
+        self.syntax_highlighter = None
+        self.responsive_formatter = None
         
-        Args:
-            profile: The output profile to use
-        """
-        if not isinstance(profile, OutputProfile):
-            raise ValueError(f"Invalid output profile: {profile}")
+        # Performance metrics
+        self._performance_metrics = {
+            "format_calls": 0,
+            "layout_detection_time": 0.0,
+            "formatting_time": 0.0,
+            "errors": 0,
+            "cache_hits": 0,
+            "cache_misses": 0
+        }
         
-        old_profile = self.config.output_profile.value
-        self.config.output_profile = profile
+        # Cache for formatted results
+        self._format_cache = {}
+        self._cache_max_size = 500
         
-        self.logger.info(f"Output profile changed from {old_profile} to {profile.value}")
-    
-    def get_output_profile(self) -> OutputProfile:
-        """
-        Get the current output profile.
+        # Layout Detectors & Formatters
+        self._init_layout_registry()
+        self._init_profile_registry()
         
-        Returns:
-            The current output profile
-        """
-        return self.config.output_profile
-    
-    def force_layout_type(self, layout_type: LayoutType) -> None:
-        """
-        Force the use of a specific layout type.
+        logger.info(f"PrettyOutputLayer consolidated instance initialized with profile: {self.config.output_profile.value}")
+
+    def _init_layout_registry(self):
+        """Initialize registry of layout-specific detectors and formatters."""
+        self._layout_detectors = {
+            LayoutType.MENU: self._detect_menu_layout,
+            LayoutType.MOVIE_LIST: self._detect_movie_list_layout,
+            LayoutType.BULLET_LIST: self._detect_bullet_list_layout,
+            LayoutType.SYSTEM_STATUS: self._detect_system_status_layout,
+        }
+        self._layout_formatters = {
+            LayoutType.DEFAULT: self._format_default_layout,
+            LayoutType.MENU: self._format_menu_layout,
+            LayoutType.MOVIE_LIST: self._format_movie_list_layout,
+            LayoutType.BULLET_LIST: self._format_bullet_list_layout,
+            LayoutType.SYSTEM_STATUS: self._format_system_status_layout,
+        }
+
+    def _init_profile_registry(self):
+        """Initialize registry of profile-specific formatters."""
+        self._profile_formatters = {
+            OutputProfile.PLAIN: self._apply_plain_profile,
+            OutputProfile.PRETTY: self._apply_pretty_profile,
+            OutputProfile.DEV_DOC: self._apply_dev_doc_profile,
+            OutputProfile.MINIMAL: self._apply_minimal_profile,
+            OutputProfile.VERBOSE: self._apply_verbose_profile,
+            OutputProfile.ACCESSIBLE: self._apply_accessible_profile,
+            OutputProfile.TECHNICAL: self._apply_technical_profile,
+            OutputProfile.CONVERSATIONAL: self._apply_conversational_profile,
+        }
+
+    async def _ensure_subsystems(self):
+        """Lazy load and initialize subsystems."""
+        if not self.content_detector:
+            try:
+                from .content_type_detector import get_content_detector
+                self.content_detector = get_content_detector()
+            except Exception as e:
+                logger.warning(f"Could not load content_detector: {e}")
         
-        Args:
-            layout_type: The layout type to force
-        """
-        if not isinstance(layout_type, LayoutType):
-            raise ValueError(f"Invalid layout type: {layout_type}")
-        
-        self.config.default_layout = layout_type
-        self.logger.info(f"Layout type forced to: {layout_type.value}")
-    
-    def reset_layout_detection(self) -> None:
-        """
-        Reset to automatic layout detection.
-        """
-        self.config.default_layout = LayoutType.DEFAULT
-        self.logger.info("Layout detection reset to automatic")
-    
-    def enable_interactive_elements(self, enabled: bool = True) -> None:
-        """
-        Enable or disable interactive elements in formatted output.
-        
-        Args:
-            enabled: Whether to enable interactive elements
-        """
-        try:
-            # Add interactive elements configuration to the class
-            self._interactive_elements_enabled = enabled
-            self.logger.info(f"Interactive elements {'enabled' if enabled else 'disabled'}")
-        except Exception as e:
-            self.logger.error(f"Error setting interactive elements: {e}")
-            self.logger.debug(traceback.format_exc())
-    
-    def get_performance_metrics(self) -> Dict[str, Any]:
-        """
-        Get performance metrics for the Pretty Output Layer.
-        
-        Returns:
-            Dictionary containing performance metrics
-        """
-        try:
-            avg_layout_time = (
-                self._performance_metrics["layout_detection_time"] /
-                max(self._performance_metrics["format_calls"], 1)
-            )
-            avg_format_time = (
-                self._performance_metrics["formatting_time"] /
-                max(self._performance_metrics["format_calls"], 1)
-            )
-            
-            return {
-                "format_calls": self._performance_metrics["format_calls"],
-                "total_layout_detection_time": self._performance_metrics["layout_detection_time"],
-                "total_formatting_time": self._performance_metrics["formatting_time"],
-                "average_layout_detection_time": avg_layout_time,
-                "average_formatting_time": avg_format_time,
-                "errors": self._performance_metrics["errors"],
-                "error_rate": (
-                    self._performance_metrics["errors"] /
-                    max(self._performance_metrics["format_calls"], 1)
-                )
-            }
-        except Exception as e:
-            self.logger.error(f"Error getting performance metrics: {e}")
-            return {"error": str(e)}
-    
-    def reset_performance_metrics(self) -> None:
-        """
-        Reset performance metrics.
-        """
-        try:
-            self._performance_metrics = {
-                "format_calls": 0,
-                "layout_detection_time": 0.0,
-                "formatting_time": 0.0,
-                "errors": 0
-            }
-            self.logger.info("Performance metrics reset")
-        except Exception as e:
-            self.logger.error(f"Error resetting performance metrics: {e}")
-    
-    def add_interactive_element(self, element_type: str, content: str, **kwargs) -> str:
-        """
-        Add an interactive element to the content.
-        
-        Args:
-            element_type: Type of interactive element (button, link, etc.)
-            content: Content for the element
-            **kwargs: Additional parameters for the element
-            
-        Returns:
-            Formatted interactive element
-        """
-        try:
-            if not getattr(self, '_interactive_elements_enabled', False):
-                self.logger.debug("Interactive elements disabled, returning content as-is")
-                return content
-            
-            self.logger.debug(f"Adding interactive element of type: {element_type}")
-            
-            # Format based on element type
-            if element_type == "button":
-                action = kwargs.get("action", "")
-                formatted = f"[{content}]({action})"
-                self.logger.debug(f"Formatted button element: {formatted}")
-                return formatted
-            elif element_type == "link":
-                url = kwargs.get("url", "")
-                formatted = f"[{content}]({url})"
-                self.logger.debug(f"Formatted link element: {formatted}")
-                return formatted
-            elif element_type == "menu":
-                options = kwargs.get("options", [])
-                formatted_options = "\n".join([f"• {option}" for option in options])
-                formatted = f"{content}\n{formatted_options}"
-                self.logger.debug(f"Formatted menu element with {len(options)} options")
-                return formatted
-            else:
-                # Unknown element type, return as-is
-                self.logger.warning(f"Unknown interactive element type: {element_type}")
-                return content
+        if not self.syntax_highlighter:
+            try:
+                from .syntax_highlighter import get_syntax_highlighter
+                self.syntax_highlighter = get_syntax_highlighter()
+            except Exception as e:
+                logger.warning(f"Could not load syntax_highlighter: {e}")
                 
-        except Exception as e:
-            self.logger.error(f"Error adding interactive element: {e}")
-            self.logger.debug(traceback.format_exc())
-            # Return original content on error
-            return content
-    
-    def format_response(
+        if not self.responsive_formatter:
+            try:
+                from .responsive_formatter import get_responsive_formatter
+                self.responsive_formatter = get_responsive_formatter()
+            except Exception as e:
+                logger.warning(f"Could not load responsive_formatter: {e}")
+
+    # --- Public API ---
+
+    async def format_response(
         self,
         response_content: str,
         context: ResponseContext
     ) -> Dict[str, Any]:
-        """
-        Format a response using the configured output profile and detected layout.
-        
-        Args:
-            response_content: The raw response content to format
-            context: Context information for formatting
-            
-        Returns:
-            Dictionary containing formatted response and metadata
-        """
+        """Primary entry point for formatting a response."""
         start_time = time.time()
         self._performance_metrics["format_calls"] += 1
         
         try:
-            # Log input details
-            self.logger.debug(
-                f"Formatting response: content_length={len(response_content)}, "
-                f"profile={self.config.output_profile.value}, "
-                f"safe_mode={self.config.safe_mode}"
-            )
+            await self._ensure_subsystems()
             
-            # Apply safety checks
+            # Check Cache
+            cache_key = self._generate_cache_key(response_content, context)
+            if self.config.cache_enabled and cache_key in self._format_cache:
+                self._performance_metrics["cache_hits"] += 1
+                return self._format_cache[cache_key]
+            
+            self._performance_metrics["cache_misses"] += 1
+
+            # 1. Sanitize & Truncate
             if self.config.safe_mode:
-                try:
-                    response_content = self._sanitize_content(response_content)
-                except Exception as e:
-                    self.logger.warning(f"Error during content sanitization: {e}")
-                    # Continue with original content if sanitization fails
+                response_content = self._sanitize_content(response_content)
             
-            # Truncate if needed
             original_length = len(response_content)
             if original_length > self.config.max_content_length:
                 response_content = response_content[:self.config.max_content_length] + "... [truncated]"
-                self.logger.info(f"Content truncated from {original_length} to {len(response_content)} characters")
+
+            # 2. Content Type Detection
+            detected_type = ContentType.TEXT
+            confidence = 0.5
+            layout_hint = LayoutHint(layout_type=self.config.default_layout)
             
-            # Detect layout with timing
-            layout_start = time.time()
-            try:
+            if self.content_detector:
+                detection = await self.content_detector.detect_content_type(
+                    response_content,
+                    user_query=context.user_query
+                )
+                detected_type = self._map_to_content_type_enum(detection.content_type)
+                confidence = detection.confidence
+                if hasattr(detection, 'layout_hint') and detection.layout_hint:
+                    layout_hint = LayoutHint(
+                        layout_type=self._map_to_layout_type_enum(detection.layout_hint.layout_type),
+                        confidence=detection.layout_hint.confidence,
+                        parameters=detection.layout_hint.parameters if hasattr(detection.layout_hint, 'parameters') else {}
+                    )
+
+            # 3. Layout Detection (Fallback)
+            if layout_hint.layout_type == LayoutType.DEFAULT:
                 layout_hint = self._detect_layout(response_content, context)
-                layout_time = time.time() - layout_start
-                self._performance_metrics["layout_detection_time"] += layout_time
-                self.logger.debug(f"Layout detection completed in {layout_time:.4f}s: {layout_hint.layout_type.value}")
-            except Exception as e:
-                self.logger.error(f"Error during layout detection: {e}")
-                self.logger.debug(traceback.format_exc())
-                # Use default layout as fallback
-                layout_hint = LayoutHint(layout_type=LayoutType.DEFAULT, confidence=0.0)
-            
-            # Format based on layout with timing
-            format_start = time.time()
-            try:
-                formatted_content = self._format_by_layout(
-                    response_content, layout_hint, context
-                )
-                format_time = time.time() - format_start
-                self._performance_metrics["formatting_time"] += format_time
-                self.logger.debug(f"Layout formatting completed in {format_time:.4f}s")
-            except Exception as e:
-                self.logger.error(f"Error during layout formatting: {e}")
-                self.logger.debug(traceback.format_exc())
-                formatted_content = response_content  # Use original content as fallback
-            
-            # Apply profile formatting with timing
-            profile_start = time.time()
-            try:
-                formatted_content = self._apply_profile_formatting(
-                    formatted_content, context
-                )
-                profile_time = time.time() - profile_start
-                self.logger.debug(f"Profile formatting completed in {profile_time:.4f}s")
-            except Exception as e:
-                self.logger.error(f"Error during profile formatting: {e}")
-                self.logger.debug(traceback.format_exc())
-                # Continue with content as-is if profile formatting fails
-            
-            # Build response
-            total_time = time.time() - start_time
-            response = {
+
+            # 4. Preliminary Layout Formatting
+            formatted_content = self._format_by_layout(response_content, layout_hint, context)
+
+            # 5. Syntax Highlighting
+            if (self.config.enable_syntax_highlighting and self.syntax_highlighter and 
+                detected_type in [ContentType.CODE, ContentType.PYTHON, ContentType.JAVASCRIPT]):
+                try:
+                    highlight_result = await self.syntax_highlighter.highlight_code(
+                        formatted_content, 
+                        SyntaxHighlightConfig(language=detected_type.value)
+                    )
+                    formatted_content = getattr(highlight_result, 'highlighted_content', formatted_content)
+                except Exception as e:
+                    logger.warning(f"Highlighting failed: {e}")
+
+            # 6. Responsive Formatting
+            css_classes = []
+            accessibility_features = []
+            if self.config.enable_responsive_formatting and self.responsive_formatter:
+                try:
+                    from .responsive_formatter import ResponsiveConfig
+                    resp_result = await self.responsive_formatter.format_responsive(
+                        formatted_content, 
+                        ResponsiveConfig(display_context=context.display_context),
+                        layout_hint.layout_type
+                    )
+                    formatted_content = resp_result.get('content', formatted_content)
+                    css_classes = resp_result.get('css_classes', [])
+                    accessibility_features = resp_result.get('accessibility_adaptations', [])
+                except Exception as e:
+                    logger.warning(f"Responsive formatting failed: {e}")
+
+            # 7. Profile Specific Formatting
+            formatted_content = await self._apply_profile_formatting(formatted_content, context)
+
+            # 8. Theme and Accessibility Wrappers
+            if self.config.enable_theme_support:
+                formatted_content = self._apply_theme_wrappers(formatted_content, context)
+            if self.config.enable_accessibility_features:
+                formatted_content = self._apply_accessibility_wrappers(formatted_content, context)
+
+            # Build Result
+            proc_time = time.time() - start_time
+            final_output = {
                 "content": formatted_content,
                 "layout_type": layout_hint.layout_type.value,
                 "output_profile": self.config.output_profile.value,
                 "metadata": {
-                    "layout_confidence": layout_hint.confidence,
-                    "layout_parameters": layout_hint.parameters,
-                    "content_length": len(response_content),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "processing_time": proc_time,
+                    "content_length": len(formatted_content),
                     "original_length": original_length,
-                    "formatting_applied": True,
-                    "processing_time": total_time,
+                    "confidence_score": confidence,
+                    "layout_confidence": layout_hint.confidence,
+                    "content_type_detected": detected_type.value,
+                    "theme_used": context.theme_mode.value,
+                    "accessibility_features": accessibility_features,
+                    "formatting_applied": True
                 }
             }
             
-            self.logger.info(
-                f"Formatted response with layout: {layout_hint.layout_type.value}, "
-                f"profile: {self.config.output_profile.value} in {total_time:.4f}s"
-            )
+            if self.config.cache_enabled:
+                self._cache_result(cache_key, final_output)
             
-            return response
-            
+            return final_output
+
         except Exception as e:
             self._performance_metrics["errors"] += 1
-            total_time = time.time() - start_time
-            self.logger.error(f"Error formatting response: {e}")
-            self.logger.debug(traceback.format_exc())
-            
-            # Return basic formatted response on error
+            logger.error(f"Formatting failed: {e}\n{traceback.format_exc()}")
             return {
                 "content": response_content,
                 "layout_type": LayoutType.DEFAULT.value,
-                "output_profile": OutputProfile.PLAIN.value,
-                "metadata": {
-                    "layout_confidence": 0.0,
-                    "layout_parameters": {},
-                    "content_length": len(response_content),
-                    "formatting_applied": False,
-                    "error": str(e),
-                    "processing_time": total_time,
-                }
+                "output_profile": self.config.output_profile.value,
+                "metadata": {"error": str(e), "formatting_applied": False, "processing_time": time.time() - start_time}
             }
-    
-    def _detect_layout(self, content: str, context: ResponseContext) -> LayoutHint:
-        """
-        Detect the most appropriate layout for the content.
-        
-        Args:
-            content: The content to analyze
-            context: Context information
-            
-        Returns:
-            LayoutHint with detected layout type and confidence
-        """
-        try:
-            # Log input details
-            lines_count = len(content.split('\n'))
-            self.logger.debug(
-                f"Detecting layout for content: length={len(content)}, "
-                f"lines={lines_count}"
-            )
-            
-            # If a specific layout is forced, use it
-            if self.config.default_layout != LayoutType.DEFAULT:
-                self.logger.debug(f"Using forced layout: {self.config.default_layout.value}")
-                return LayoutHint(
-                    layout_type=self.config.default_layout,
-                    confidence=1.0,
-                    parameters={"forced": True}
-                )
-            
-            best_layout = LayoutType.DEFAULT
-            best_confidence = 0.0
-            best_parameters = {}
-            detector_errors = []
-            
-            # Try each layout detector
-            for layout_type, detector in self._layout_detectors.items():
-                try:
-                    self.logger.debug(f"Running {layout_type.value} detector")
-                    hint = detector(content, context)
-                    
-                    if hint.confidence > best_confidence:
-                        best_layout = layout_type
-                        best_confidence = hint.confidence
-                        best_parameters = hint.parameters
-                        self.logger.debug(
-                            f"New best layout: {layout_type.value} with confidence {hint.confidence}"
-                        )
-                except Exception as e:
-                    error_msg = f"Error in layout detector for {layout_type.value}: {e}"
-                    self.logger.warning(error_msg)
-                    detector_errors.append(error_msg)
-                    self.logger.debug(traceback.format_exc())
-            
-            # Log detector errors if any
-            if detector_errors:
-                self.logger.warning(f"Layout detector errors: {'; '.join(detector_errors)}")
-            
-            # Use default layout if confidence is too low
-            if best_confidence < 0.3:
-                self.logger.debug(f"Confidence too low ({best_confidence}), using default layout")
-                best_layout = LayoutType.DEFAULT
-                best_confidence = 0.5
-                best_parameters = {}
-            
-            result = LayoutHint(
-                layout_type=best_layout,
-                confidence=best_confidence,
-                parameters=best_parameters
-            )
-            
-            self.logger.debug(
-                f"Layout detection result: {best_layout.value} with confidence {best_confidence}"
-            )
-            
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"Error in layout detection: {e}")
-            self.logger.debug(traceback.format_exc())
-            # Return default layout as fallback
-            return LayoutHint(
-                layout_type=LayoutType.DEFAULT,
-                confidence=0.0,
-                parameters={"error": str(e)}
-            )
-    
-    def _format_by_layout(
+
+    async def format_streaming_chunk(
         self,
-        content: str,
-        layout_hint: LayoutHint,
+        chunk: StreamingChunk,
         context: ResponseContext
-    ) -> str:
-        """
-        Format content based on the detected layout.
-        
-        Args:
-            content: The content to format
-            layout_hint: Layout detection result
-            context: Context information
-            
-        Returns:
-            Content formatted according to the layout
-        """
+    ) -> StreamingChunk:
+        """Format a single chunk in a stream."""
         try:
-            self.logger.debug(
-                f"Formatting by layout: {layout_hint.layout_type.value}, "
-                f"confidence: {layout_hint.confidence}"
-            )
+            chunk_content = chunk.content
+            if self.config.output_profile == OutputProfile.PLAIN:
+                chunk_content = self._sanitize_content(chunk_content)
             
-            formatter = self._layout_formatters.get(layout_hint.layout_type)
-            if not formatter:
-                self.logger.warning(f"No formatter for layout: {layout_hint.layout_type.value}")
-                return content
-            
-            try:
-                formatted_content = formatter(content, layout_hint.parameters, context)
-                self.logger.debug(
-                    f"Successfully formatted content with {layout_hint.layout_type.value} layout"
-                )
-                return formatted_content
-            except Exception as e:
-                self.logger.error(f"Error formatting with {layout_hint.layout_type.value}: {e}")
-                self.logger.debug(traceback.format_exc())
-                return content
-                
+            chunk.content = chunk_content
+            chunk.formatting_applied = True
+            return chunk
         except Exception as e:
-            self.logger.error(f"Unexpected error in _format_by_layout: {e}")
-            self.logger.debug(traceback.format_exc())
-            return content
-    
-    def _apply_profile_formatting(self, content: str, context: ResponseContext) -> str:
-        """
-        Apply output profile formatting to the content.
-        
-        Args:
-            content: The content to format
-            context: Context information
-            
-        Returns:
-            Content formatted according to the output profile
-        """
-        try:
-            self.logger.debug(f"Applying profile formatting: {self.config.output_profile.value}")
-            
-            formatter = self._profile_formatters.get(self.config.output_profile)
-            if not formatter:
-                self.logger.warning(f"No formatter for profile: {self.config.output_profile.value}")
-                return content
-            
-            try:
-                formatted_content = formatter(content, context)
-                self.logger.debug(
-                    f"Successfully applied {self.config.output_profile.value} profile formatting"
-                )
-                return formatted_content
-            except Exception as e:
-                self.logger.error(f"Error applying profile {self.config.output_profile.value}: {e}")
-                self.logger.debug(traceback.format_exc())
-                return content
-                
-        except Exception as e:
-            self.logger.error(f"Unexpected error in _apply_profile_formatting: {e}")
-            self.logger.debug(traceback.format_exc())
-            return content
-    
+            logger.warning(f"Streaming chunk formatting failed: {e}")
+            return chunk
+
+    # --- Helper Logic ---
+
     def _sanitize_content(self, content: str) -> str:
-        """
-        Sanitize content for safe rendering.
-        
-        Args:
-            content: The content to sanitize
-            
-        Returns:
-            Sanitized content
-        """
-        try:
-            if not content:
-                return ""
-                
-            original_length = len(content)
-            self.logger.debug(f"Sanitizing content of length {original_length}")
-            
-            # Basic HTML tag removal
-            content = re.sub(r'<[^>]+>', '', content)
-            
-            # Normalize excessive whitespace
-            content = re.sub(r'\n{3,}', '\n\n', content)
-            content = re.sub(r' {2,}', ' ', content)
-            
-            sanitized_content = content.strip()
-            
-            if len(sanitized_content) != original_length:
-                self.logger.debug(
-                    f"Content sanitized: {original_length} -> {len(sanitized_content)} characters"
-                )
-            
-            return sanitized_content
-            
-        except Exception as e:
-            self.logger.error(f"Error sanitizing content: {e}")
-            self.logger.debug(traceback.format_exc())
-            # Return original content if sanitization fails
-            return content if content else ""
-    
-    # Layout Detectors
-    
-    def _detect_menu_layout(self, content: str, context: ResponseContext) -> LayoutHint:
-        """Detect if content should be formatted as a menu."""
-        try:
-            # Look for option patterns
-            option_patterns = [
-                r'^\s*\d+\.\s+.+',  # Numbered options
-                r'^\s*[-*+]\s+.+',  # Bullet options
-                r'^\s*[A-Z][a-z]*:\s+.+',  # Labeled options
-            ]
-            
-            lines = content.split('\n')
-            option_count = 0
-            
-            for line in lines:
-                for pattern in option_patterns:
-                    if re.match(pattern, line, re.MULTILINE):
-                        option_count += 1
-                        break
-            
-            # Calculate confidence based on option density
-            total_lines = len([line for line in lines if line.strip()])
-            confidence = min(option_count / max(total_lines, 1), 1.0)
-            
-            self.logger.debug(
-                f"Menu layout detection: {option_count} options in {total_lines} lines, "
-                f"confidence: {confidence}"
-            )
-            
-            # Consider it a menu if at least 30% of lines are options
-            if confidence >= 0.3:
-                return LayoutHint(
-                    layout_type=LayoutType.MENU,
-                    confidence=confidence,
-                    parameters={"option_count": option_count}
-                )
-            
-            return LayoutHint(layout_type=LayoutType.MENU, confidence=0.0)
-            
-        except Exception as e:
-            self.logger.error(f"Error in menu layout detection: {e}")
-            self.logger.debug(traceback.format_exc())
-            return LayoutHint(layout_type=LayoutType.MENU, confidence=0.0)
-    
-    def _detect_movie_list_layout(self, content: str, context: ResponseContext) -> LayoutHint:
-        """Detect if content should be formatted as a movie list."""
-        try:
-            # Look for movie-related keywords
-            movie_keywords = [
-                'movie', 'film', 'director', 'starring', 'genre', 'rating',
-                'release date', 'duration', 'watch', 'cinema'
-            ]
-            
-            # Check for movie patterns
-            movie_patterns = [
-                r'.*\(\d{4}\).*',  # Year in parentheses
-                r'.*\*\*.*\*\*.*',  # Bold titles
-                r'.*Director:.*',
-                r'.*Starring:.*',
-            ]
-            
-            content_lower = content.lower()
-            keyword_score = sum(1 for keyword in movie_keywords if keyword in content_lower)
-            pattern_score = sum(1 for pattern in movie_patterns if re.search(pattern, content, re.IGNORECASE))
-            
-            # Calculate confidence
-            max_score = len(movie_keywords) + len(movie_patterns)
-            confidence = min((keyword_score + pattern_score) / max(max_score, 1), 1.0)
-            
-            self.logger.debug(
-                f"Movie list layout detection: keyword_score={keyword_score}, "
-                f"pattern_score={pattern_score}, confidence={confidence}"
-            )
-            
-            # Consider it a movie list if confidence is at least 0.4
-            if confidence >= 0.4:
-                return LayoutHint(
-                    layout_type=LayoutType.MOVIE_LIST,
-                    confidence=confidence,
-                    parameters={"keyword_score": keyword_score, "pattern_score": pattern_score}
-                )
-            
-            return LayoutHint(layout_type=LayoutType.MOVIE_LIST, confidence=0.0)
-            
-        except Exception as e:
-            self.logger.error(f"Error in movie list layout detection: {e}")
-            self.logger.debug(traceback.format_exc())
-            return LayoutHint(layout_type=LayoutType.MOVIE_LIST, confidence=0.0)
-    
-    def _detect_bullet_list_layout(self, content: str, context: ResponseContext) -> LayoutHint:
-        """Detect if content should be formatted as a bullet list."""
-        try:
-            lines = content.split('\n')
-            bullet_count = 0
-            
-            # Count bullet points
-            for line in lines:
-                if re.match(r'^\s*[-*+]\s+', line):
-                    bullet_count += 1
-            
-            # Calculate confidence based on bullet density
-            total_lines = len([line for line in lines if line.strip()])
-            confidence = min(bullet_count / max(total_lines, 1), 1.0)
-            
-            self.logger.debug(
-                f"Bullet list layout detection: {bullet_count} bullets in {total_lines} lines, "
-                f"confidence: {confidence}"
-            )
-            
-            # Consider it a bullet list if at least 40% of lines are bullets
-            if confidence >= 0.4:
-                return LayoutHint(
-                    layout_type=LayoutType.BULLET_LIST,
-                    confidence=confidence,
-                    parameters={"bullet_count": bullet_count}
-                )
-            
-            return LayoutHint(layout_type=LayoutType.BULLET_LIST, confidence=0.0)
-            
-        except Exception as e:
-            self.logger.error(f"Error in bullet list layout detection: {e}")
-            self.logger.debug(traceback.format_exc())
-            return LayoutHint(layout_type=LayoutType.BULLET_LIST, confidence=0.0)
-    
-    def _detect_system_status_layout(self, content: str, context: ResponseContext) -> LayoutHint:
-        """Detect if content should be formatted as system status."""
-        try:
-            # Look for system status keywords
-            status_keywords = [
-                'status', 'system', 'service', 'online', 'offline', 'error',
-                'warning', 'critical', 'healthy', 'unhealthy', 'running', 'stopped'
-            ]
-            
-            # Look for status patterns
-            status_patterns = [
-                r'.*Status:.*',
-                r'.*Service:.*',
-                r'.*State:.*',
-                r'.*\[.*\].*',  # Status in brackets
-            ]
-            
-            content_lower = content.lower()
-            keyword_score = sum(1 for keyword in status_keywords if keyword in content_lower)
-            pattern_score = sum(1 for pattern in status_patterns if re.search(pattern, content, re.IGNORECASE))
-            
-            # Calculate confidence
-            max_score = len(status_keywords) + len(status_patterns)
-            confidence = min((keyword_score + pattern_score) / max(max_score, 1), 1.0)
-            
-            self.logger.debug(
-                f"System status layout detection: keyword_score={keyword_score}, "
-                f"pattern_score={pattern_score}, confidence={confidence}"
-            )
-            
-            # Consider it system status if confidence is at least 0.3
-            if confidence >= 0.3:
-                return LayoutHint(
-                    layout_type=LayoutType.SYSTEM_STATUS,
-                    confidence=confidence,
-                    parameters={"keyword_score": keyword_score, "pattern_score": pattern_score}
-                )
-            
-            return LayoutHint(layout_type=LayoutType.SYSTEM_STATUS, confidence=0.0)
-            
-        except Exception as e:
-            self.logger.error(f"Error in system status layout detection: {e}")
-            self.logger.debug(traceback.format_exc())
-            return LayoutHint(layout_type=LayoutType.SYSTEM_STATUS, confidence=0.0)
-    
-    # Layout Formatters
-    
-    def _format_default_layout(self, content: str, parameters: Dict[str, Any], context: ResponseContext) -> str:
-        """Format content using the default layout."""
-        if not self.config.enable_markdown:
-            return content
-        
-        # Apply basic markdown formatting
-        formatted = self._format_paragraphs(content)
-        formatted = self._format_headings(formatted)
-        formatted = self._format_code_blocks(formatted)
-        
-        return formatted
-    
-    def _format_menu_layout(self, content: str, parameters: Dict[str, Any], context: ResponseContext) -> str:
-        """Format content as a menu."""
-        if not self.config.enable_markdown:
-            return content
-        
-        lines = content.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                formatted_lines.append('')
-                continue
-            
-            # Format options
-            if re.match(r'^\d+\.\s+', line):
-                # Numbered option
-                formatted_lines.append(f"**{line}**")
-            elif re.match(r'^[-*+]\s+', line):
-                # Bullet option
-                formatted_lines.append(f"• {line[1:].strip()}")
-            elif re.match(r'^[A-Z][a-z]*:\s+', line):
-                # Labeled option
-                formatted_lines.append(f"**{line}**")
-            else:
-                # Regular content
-                formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
-    
-    def _format_movie_list_layout(self, content: str, parameters: Dict[str, Any], context: ResponseContext) -> str:
-        """Format content as a movie list."""
-        if not self.config.enable_markdown:
-            return content
-        
-        # Extract movie entries (simplified approach)
-        entries = re.split(r'\n\s*\n', content)
-        formatted_entries = []
-        
-        for entry in entries:
-            entry = entry.strip()
-            if not entry:
-                continue
-            
-            # Try to extract title, year, and description
-            title_match = re.search(r'^\*\*(.+?)\*\*', entry)
-            if title_match:
-                title = title_match.group(1)
-                rest = entry[title_match.end():].strip()
-                
-                # Try to extract year
-                year_match = re.search(r'\((\d{4})\)', rest)
-                year = year_match.group(1) if year_match else ''
-                
-                # Format as a movie card
-                formatted_entry = f"**{title}** {year}\n\n{rest}"
-                formatted_entries.append(formatted_entry)
-            else:
-                # Keep as-is if no clear structure
-                formatted_entries.append(entry)
-        
-        return '\n\n---\n\n'.join(formatted_entries)
-    
-    def _format_bullet_list_layout(self, content: str, parameters: Dict[str, Any], context: ResponseContext) -> str:
-        """Format content as a bullet list."""
-        if not self.config.enable_markdown:
-            return content
-        
-        lines = content.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                formatted_lines.append('')
-                continue
-            
-            # Format bullets
-            if re.match(r'^[-*+]\s+', line):
-                formatted_lines.append(f"• {line[1:].strip()}")
-            elif re.match(r'^\d+\.\s+', line):
-                # Convert numbered lists to bullets for consistency
-                formatted_lines.append(f"• {line.split('.', 1)[1].strip()}")
-            else:
-                # Regular content
-                formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
-    
-    def _format_system_status_layout(self, content: str, parameters: Dict[str, Any], context: ResponseContext) -> str:
-        """Format content as system status."""
-        if not self.config.enable_markdown:
-            return content
-        
-        lines = content.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                formatted_lines.append('')
-                continue
-            
-            # Look for status indicators
-            if any(keyword in line.lower() for keyword in ['online', 'healthy', 'running', 'ok']):
-                formatted_lines.append(f"✅ {line}")
-            elif any(keyword in line.lower() for keyword in ['offline', 'unhealthy', 'stopped', 'error']):
-                formatted_lines.append(f"❌ {line}")
-            elif any(keyword in line.lower() for keyword in ['warning', 'caution']):
-                formatted_lines.append(f"⚠️ {line}")
-            else:
-                formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
-    
-    # Profile Formatters
-    
-    def _apply_plain_profile(self, content: str, context: ResponseContext) -> str:
-        """Apply plain profile formatting (minimal formatting)."""
-        # Remove markdown formatting
-        content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)  # Bold
-        content = re.sub(r'`(.+?)`', r'\1', content)  # Code
-        content = re.sub(r'#{1,6}\s*', '', content)  # Headings
-        
-        # Clean up extra whitespace
-        content = re.sub(r'\n{3,}', '\n\n', content)
-        
+        if not content: return ""
+        content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'on\w+\s*=', '', content, flags=re.IGNORECASE)
         return content.strip()
-    
-    def _apply_pretty_profile(self, content: str, context: ResponseContext) -> str:
-        """Apply pretty profile formatting (enhanced formatting)."""
-        if not self.config.enable_markdown:
-            return content
-        
-        # Apply enhanced formatting
-        content = self._format_paragraphs(content)
-        content = self._format_headings(content)
-        content = self._format_code_blocks(content)
-        content = self._format_highlights(content)
-        
-        if self.config.enable_sections:
-            content = self._format_sections(content)
-        
+
+    def _detect_layout(self, content: str, context: ResponseContext) -> LayoutHint:
+        best_layout = LayoutType.DEFAULT
+        best_confidence = 0.0
+        for l_type, detector in self._layout_detectors.items():
+            hint = detector(content, context)
+            if hint.confidence > best_confidence:
+                best_layout = l_type
+                best_confidence = hint.confidence
+        return LayoutHint(layout_type=best_layout, confidence=best_confidence) if best_confidence > 0.3 else LayoutHint(layout_type=LayoutType.DEFAULT)
+
+    def _format_by_layout(self, content: str, hint: LayoutHint, context: ResponseContext) -> str:
+        formatter = self._layout_formatters.get(hint.layout_type, self._format_default_layout)
+        return formatter(content, hint.parameters, context)
+
+    async def _apply_profile_formatting(self, content: str, context: ResponseContext) -> str:
+        formatter = self._profile_formatters.get(self.config.output_profile, self._apply_pretty_profile)
+        return formatter(content, context)
+
+    # --- Layout Implementations ---
+    def _detect_menu_layout(self, content: str, context: ResponseContext) -> LayoutHint:
+        # Menus often have numbered options with trailing dots or parentheses
+        count = len(re.findall(r'^\s*\d+\.\s+', content, re.MULTILINE))
+        lines = len([l for l in content.split('\n') if l.strip()])
+        confidence = count/max(lines, 1) if lines > 0 else 0
+        return LayoutHint(LayoutType.MENU, confidence)
+
+    def _detect_movie_list_layout(self, content: str, context: ResponseContext) -> LayoutHint:
+        k = ['director', 'starring', 'genre', 'rating', 'release', 'film']
+        s = sum(1 for kw in k if kw in content.lower())
+        return LayoutHint(LayoutType.MOVIE_LIST, min(s/len(k), 1.0))
+
+    def _detect_bullet_list_layout(self, content: str, context: ResponseContext) -> LayoutHint:
+        c = len(re.findall(r'^\s*[-*+]\s+', content, re.MULTILINE))
+        l = len(content.split('\n'))
+        return LayoutHint(LayoutType.BULLET_LIST, min(c/max(l,1), 1.0))
+
+    def _detect_system_status_layout(self, content: str, context: ResponseContext) -> LayoutHint:
+        k = ['status', 'online', 'active', 'cpu', 'memory', 'disk']
+        s = sum(1 for kw in k if kw in content.lower())
+        return LayoutHint(LayoutType.SYSTEM_STATUS, min(s/len(k),1.0))
+
+    def _format_default_layout(self, content: str, params: dict, context: ResponseContext) -> str: return content
+    def _format_menu_layout(self, content: str, params: dict, context: ResponseContext) -> str: return f'<div class="ui-menu">\n{content}\n</div>'
+    def _format_movie_list_layout(self, content: str, params: dict, context: ResponseContext) -> str: return f'<div class="ui-movie-list">\n{content}\n</div>'
+    def _format_bullet_list_layout(self, content: str, params: dict, context: ResponseContext) -> str: return content
+    def _format_system_status_layout(self, content: str, params: dict, context: ResponseContext) -> str: return f'<div class="ui-system-status">\n{content}\n</div>'
+
+    # --- Profile Implementations ---
+    def _apply_plain_profile(self, content: str, context: ResponseContext) -> str:
+        content = re.sub(r'#{1,6}\s*', '', content)
+        content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
+        content = re.sub(r'\*(.+?)\*', r'\1', content)
+        return content.strip()
+
+    def _apply_pretty_profile(self, content: str, context: ResponseContext) -> str: return content
+    def _apply_dev_doc_profile(self, content: str, context: ResponseContext) -> str: return f"### Technical Response\n{content}"
+    def _apply_minimal_profile(self, content: str, context: ResponseContext) -> str: return content.replace('\n\n', '\n').strip()
+    def _apply_verbose_profile(self, content: str, context: ResponseContext) -> str: return f"Detailed Response:\n{content}\n[Words: {len(content.split())}]"
+    def _apply_accessible_profile(self, content: str, context: ResponseContext) -> str: return f'<section aria-label="AI response">{content}</section>'
+    def _apply_technical_profile(self, content: str, context: ResponseContext) -> str: return f"```technical\n{content}\n```"
+    def _apply_conversational_profile(self, content: str, context: ResponseContext) -> str: return f"Here's what I found: {content}"
+
+    # --- Wrappers ---
+    def _apply_theme_wrappers(self, content: str, context: ResponseContext) -> str:
+        if context.theme_mode == ThemeMode.DARK: return f'<div class="theme-dark">{content}</div>'
         return content
-    
-    def _apply_dev_doc_profile(self, content: str, context: ResponseContext) -> str:
-        """Apply developer documentation profile formatting."""
-        if not self.config.enable_markdown:
-            return content
-        
-        # Apply developer-specific formatting
-        content = self._format_paragraphs(content)
-        content = self._format_headings(content)
-        content = self._format_code_blocks(content)
-        content = self._format_code_blocks_enhanced(content)
-        content = self._format_highlights(content)
-        
-        if self.config.enable_sections:
-            content = self._format_sections(content)
-        
-        # Add developer-specific elements
-        content = self._add_code_annotations(content)
-        content = self._add_api_references(content)
-        
+    def _apply_accessibility_wrappers(self, content: str, context: ResponseContext) -> str:
+        if context.accessibility_level != AccessibilityLevel.BASIC:
+            return f'<div role="article" class="acc-{context.accessibility_level.value}">{content}</div>'
         return content
-    
-    # Helper Methods
-    
-    def _format_paragraphs(self, content: str) -> str:
-        """Format paragraphs with proper spacing."""
-        # Split into paragraphs
-        paragraphs = re.split(r'\n\s*\n', content)
-        
-        # Format each paragraph
-        formatted_paragraphs = []
-        for para in paragraphs:
-            para = para.strip()
-            if para:
-                formatted_paragraphs.append(para)
-        
-        # Join with double line breaks
-        return '\n\n'.join(formatted_paragraphs)
-    
-    def _format_headings(self, content: str) -> str:
-        """Format headings consistently."""
-        lines = content.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            # Convert various heading formats to markdown
-            if re.match(r'^[A-Z][A-Z0-9\s\/&\-\(\)]+:$', line.strip()):
-                # Title case with colon
-                formatted_lines.append(f"## {line.strip()}")
-            elif re.match(r'^#+\s+', line):
-                # Already markdown heading
-                formatted_lines.append(line)
-            else:
-                formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
-    
-    def _format_code_blocks(self, content: str) -> str:
-        """Format code blocks."""
-        # Simple code block formatting
-        # More advanced formatting would be in the dev_doc profile
-        return content
-    
-    def _format_code_blocks_enhanced(self, content: str) -> str:
-        """Format code blocks with enhanced features."""
-        # Add line numbers if not present
-        # Add syntax highlighting hints
-        # Add copy button hints
-        return content
-    
-    def _format_highlights(self, content: str) -> str:
-        """Format highlighted content."""
-        # Convert **bold** to markdown bold
-        # Convert *italic* to markdown italic
-        # Convert `code` to markdown code
-        return content
-    
-    def _format_sections(self, content: str) -> str:
-        """Format content sections."""
-        # Add horizontal rules between sections
-        # Add section anchors
-        return content
-    
-    def _add_code_annotations(self, content: str) -> str:
-        """Add code annotations for developer profile."""
-        # Add TODO comments
-        # Add FIXME comments
-        # Add NOTE comments
-        return content
-    
-    def _add_api_references(self, content: str) -> str:
-        """Add API references for developer profile."""
-        # Link API methods
-        # Link class names
-        # Link parameters
-        return content
+
+    # --- Utilities ---
+    def _generate_cache_key(self, content: str, context: ResponseContext) -> str:
+        key_data = f"{content}:{context.user_query}:{self.config.output_profile.value}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+
+    def _cache_result(self, key: str, result: Any):
+        if len(self._format_cache) > self._cache_max_size:
+            self._format_cache.pop(next(iter(self._format_cache)))
+        self._format_cache[key] = result
+
+    def _map_to_content_type_enum(self, value: Any) -> ContentType:
+        if isinstance(value, ContentType): return value
+        try: return ContentType(str(value).lower())
+        except: return ContentType.TEXT
+
+    def _map_to_layout_type_enum(self, value: Any) -> LayoutType:
+        if isinstance(value, LayoutType): return value
+        try: return LayoutType(str(value).lower())
+        except: return LayoutType.DEFAULT
+
+    # Compatibility methods
+    def set_output_profile(self, profile: Union[OutputProfile, str]) -> None:
+        if isinstance(profile, str): profile = OutputProfile(profile.lower())
+        self.config.output_profile = profile
+    def get_output_profile(self) -> OutputProfile: return self.config.output_profile
+    def force_layout_type(self, layout_type: Union[LayoutType, str]) -> None:
+        if isinstance(layout_type, str): layout_type = LayoutType(layout_type.lower())
+        self.config.default_layout = layout_type
+    def reset_layout_detection(self) -> None: self.config.default_layout = LayoutType.DEFAULT
+    def enable_interactive_elements(self, enabled: bool = True) -> None: self._interactive_elements_enabled = enabled
+    def get_performance_metrics(self) -> Dict[str, Any]: return self._performance_metrics

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Enhanced degraded mode system with core helper models (TinyLLaMA + DistilBERT + spaCy)."""
+"""Enhanced degraded mode system with core helper models (default model + DistilBERT + spaCy)."""
 
 import asyncio
 import logging
@@ -41,8 +41,8 @@ class DegradedModeStatus:
     core_helpers_available: Dict[str, bool]
 
 
-class TinyLlamaHelper:
-    """Enhanced TinyLlama helper with better text processing capabilities."""
+class DefaultModelHelper:
+    """Enhanced default model helper with better text processing capabilities."""
 
     def __init__(self):
         self.templates = {
@@ -87,10 +87,11 @@ class DegradedModeManager:
         # Allow operators to tune the final degraded fallback surface without
         # having to modify source.  These values are used when other routers
         # request a provider/model tuple during catastrophic provider failure.
-        self._fallback_provider = os.getenv("KARI_DEGRADED_PROVIDER", "llamacpp")
+        from ai_karen_engine.config.config_manager import get_default_model, get_default_provider
+        self._fallback_provider = os.getenv("KARI_DEGRADED_PROVIDER", get_default_provider())
         self._fallback_model = os.getenv(
             "KARI_DEGRADED_MODEL",
-            "tinyllama-1.1b-chat",
+            get_default_model(),
         )
 
         self.status = DegradedModeStatus(
@@ -104,7 +105,7 @@ class DegradedModeManager:
         )
         
         # Initialize core helpers
-        self.tiny_llama = TinyLlamaHelper()
+        self.default_model_helper = DefaultModelHelper()
         self.distilbert_service = None
         self.spacy_service = None
         self.embedding_manager = None
@@ -122,7 +123,7 @@ class DegradedModeManager:
         # or offline environments this blocks degraded-mode activation for tens
         # of seconds while the libraries retry network requests.  To keep the
         # platform responsive we default to a "minimal" degraded mode that only
-        # uses the lightweight TinyLlama heuristics unless explicitly enabled.
+        # uses the lightweight default model heuristics unless explicitly enabled.
         enable_heavy_helpers = (
             os.getenv("KARI_ENABLE_DEGRADED_HELPERS", "").lower()
             in {"1", "true", "yes"}
@@ -173,8 +174,8 @@ class DegradedModeManager:
                 logger.warning(f"Failed to initialize NLP service: {e}")
                 self.status.core_helpers_available["nlp"] = False
 
-        # TinyLlama is always available as it's a simple fallback
-        self.status.core_helpers_available["tiny_llama"] = True
+        # Default model helper is always available as it's a simple fallback
+        self.status.core_helpers_available["default_model"] = True
 
     def get_fallback_provider(self) -> Tuple[str, str]:
         """Return the provider/model tuple exposed to external routers."""
@@ -240,8 +241,8 @@ class DegradedModeManager:
         start_time = time.time()
         
         try:
-            # Use TinyLlama for basic response scaffolding
-            scaffold = self.tiny_llama.generate_scaffold(user_input)
+            # Use default model helper for basic response scaffolding
+            scaffold = self.default_model_helper.generate_scaffold(user_input)
             
             # Enhance with available services
             entities = []
@@ -389,7 +390,7 @@ class DegradedModeManager:
             except Exception:
                 health_summary["core_helpers"]["spacy"] = {"error": "health_check_failed"}
         
-        health_summary["core_helpers"]["tiny_llama"] = {"is_healthy": True, "fallback_mode": False}
+        health_summary["core_helpers"]["default_model"] = {"is_healthy": True, "fallback_mode": False}
         
         return health_summary
 

@@ -62,6 +62,10 @@ class BaseAuthMiddleware:
         """Check rate limiting for user actions"""
         raise NotImplementedError("Subclasses must implement _check_rate_limit")
 
+    async def authenticate_request(self, request: Request) -> Dict[str, Any]:
+        """Authenticate a request asynchronously for dependency compatibility."""
+        raise NotImplementedError("Subclasses must implement authenticate_request")
+
 class SecureAuthMiddleware(BaseAuthMiddleware):
     """
     Secure authentication middleware with comprehensive JWT validation
@@ -715,6 +719,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             path.startswith("/api/health/database/test") or  # Include database test endpoints
             path.startswith("/api/health/database/monitor") or  # Include database monitor endpoints
             path.startswith("/api/health/degraded-mode") or  # Include degraded mode endpoints
+            path.startswith("/api/settings/model") or  # Let route-level auth handle cookie-or-bearer model settings
             path.startswith("/api/memory/search") or  # Allow memory search for development
             path.startswith("/api/memory/commit") or  # Allow memory commit for development
             path.startswith("/api/ai/conversation-processing") or  # Allow AI processing for development
@@ -803,6 +808,92 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             raise
         except Exception as e:
             logger.error(f"Error getting current user: {e}")
+            raise AuthenticationError("Failed to authenticate user")
+
+    async def authenticate_request(self, request: Request) -> Dict[str, Any]:
+        """
+        Async authentication bridge used by newer dependency helpers.
+
+        Supports the existing development bypass, bearer-token auth, and the
+        HttpOnly ``kari_session`` cookie set by the production auth routes.
+        """
+        try:
+            skip_auth_header = request.headers.get("X-Skip-Auth")
+            dev_mode_header = request.headers.get("X-Development-Mode")
+            if skip_auth_header == "dev" and dev_mode_header == "true":
+                return self.get_current_user(request)
+
+            authorization = request.headers.get("Authorization", "")
+            if authorization.startswith("Bearer "):
+                token = authorization[7:].strip()
+                if not token:
+                    raise AuthenticationError("Missing bearer token")
+                token_result = self.verify_token(token)
+                if token_result["status"] == TokenStatus.VALID:
+                    payload = token_result["payload"]
+                    return {
+                        "user_id": payload["sub"],
+                        "email": payload.get("email"),
+                        "user_type": payload.get("user_type", "user"),
+                        "permissions": payload.get("permissions", []),
+                        "token_id": payload.get("token_id"),
+                    }
+
+                from src.auth.auth_service import get_auth_service, user_account_to_dict
+
+                auth_service = await get_auth_service()
+                user = await auth_service.validate_token(token)
+                if not user:
+                    raise AuthenticationError(
+                        f"Invalid token: {token_result.get('error', 'verification failed')}"
+                    )
+
+                user_data = user_account_to_dict(user)
+                user_data.setdefault("user_id", user.id)
+                user_data.setdefault("user_type", "user")
+                user_data.setdefault("permissions", [])
+                return user_data
+
+            session_token = request.cookies.get("kari_session") or request.cookies.get("access_token")
+            if session_token:
+                token_result = self.verify_token(session_token)
+                if token_result["status"] == TokenStatus.VALID:
+                    payload = token_result["payload"]
+                    return {
+                        "user_id": payload["sub"],
+                        "email": payload.get("email"),
+                        "user_type": payload.get("user_type", "user"),
+                        "permissions": payload.get("permissions", []),
+                        "token_id": payload.get("token_id"),
+                    }
+
+                from src.auth.auth_service import get_auth_service, user_account_to_dict
+
+                auth_service = await get_auth_service()
+                client_ip = request.client.host if request.client else "unknown"
+                user_agent = request.headers.get("User-Agent", "")
+                user = await auth_service.validate_session(
+                    session_token,
+                    ip_address=client_ip,
+                    user_agent=user_agent,
+                )
+                if not user:
+                    raise AuthenticationError(
+                        f"Invalid session: {token_result.get('error', 'verification failed')}"
+                    )
+
+                user_data = user_account_to_dict(user)
+                user_data.setdefault("user_id", user.id)
+                user_data.setdefault("user_type", "user")
+                user_data.setdefault("permissions", [])
+                return user_data
+
+            return self.get_current_user(request)
+
+        except AuthenticationError:
+            raise
+        except Exception as e:
+            logger.error(f"Error authenticating request: {e}")
             raise AuthenticationError("Failed to authenticate user")
 
 # Global middleware instance

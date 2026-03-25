@@ -70,6 +70,7 @@ from ai_karen_engine.api_routes.provider_routes import router as provider_router
 from ai_karen_engine.api_routes.provider_routes import public_router as provider_public_router
 from ai_karen_engine.api_routes.profile_routes import router as profile_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
+from ai_karen_engine.api_routes.model_settings_routes import router as model_settings_router
 from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
 from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
 from ai_karen_engine.api_routes.health import router as health_router
@@ -255,6 +256,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(user_preferences_router, tags=["user-preferences"])
     app.include_router(user_data_router, prefix="/api", tags=["user-data"])
     app.include_router(settings_router)
+    app.include_router(model_settings_router, prefix="/api", tags=["model-settings"])
     
     # Multi-modal and AI enhancement routes
     if MULTIMODAL_AVAILABLE:

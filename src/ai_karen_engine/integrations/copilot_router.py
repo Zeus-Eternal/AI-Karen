@@ -577,7 +577,7 @@ class CopilotLLMRouter(IntelligentLLMRouter):
         
         if "local" in error.lower() and "not available" in error.lower():
             suggestions.append("Check local providers: Ensure llama.cpp runtime is configured")
-            suggestions.append("Install local GGUF models under models/llama-cpp; see docs for TinyLlama v2")
+            suggestions.append("Install local GGUF models under models/llama-cpp; see docs for supported models")
         
         if context.privacy_level == PrivacyLevel.CONFIDENTIAL:
             suggestions.append("Confidential data requires local providers only")

@@ -368,9 +368,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         from pathlib import Path
 
         models_dir = Path("models")
-        tinyllama_available = (
-            models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
-        ).exists()
+        default_model_available = any(
+            (models_dir / "llama-cpp").glob("*.gguf")
+        ) if (models_dir / "llama-cpp").exists() else False
 
         spacy_available = False
         try:  # pragma: no cover - optional dependency
@@ -399,19 +399,19 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             from pathlib import Path
 
             models_dir = Path("models")
-            tinyllama_available = (
-                models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
-            ).exists()
+            default_model_available = any(
+                (models_dir / "llama-cpp").glob("*.gguf")
+            ) if (models_dir / "llama-cpp").exists() else False
 
             import spacy  # type: ignore
 
             _ = spacy.load("en_core_web_sm")  # type: ignore[attr-defined]
             spacy_available = True
         except Exception:
-            tinyllama_available = False
+            default_model_available = False
             spacy_available = False
 
-        if not (tinyllama_available or spacy_available):
+        if not (default_model_available or spacy_available):
             degraded_components.append("ai_providers")
             failed_providers = ["unknown"]
 
@@ -427,9 +427,9 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         from pathlib import Path
 
         models_dir = Path("models")
-        tinyllama_file_available = (
-            models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
-        ).exists()
+        default_model_file_available = any(
+            (models_dir / "llama-cpp").glob("*.gguf")
+        ) if (models_dir / "llama-cpp").exists() else False
 
         spacy_online = False
         try:  # pragma: no cover - optional dependency
@@ -466,7 +466,7 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
 
         core_helpers_available = {
             "local_nlp": spacy_online,
-            "local_llm_file": tinyllama_file_available,
+            "local_llm_file": default_model_file_available,
             "llm_orchestrator_models": llm_orchestrator_models,
             "remote_providers": remote_providers_available,
             "llamacpp_working_models": local_capabilities.get("llamacpp_models", 0),

@@ -59,10 +59,13 @@ class ModelSelectionAlgorithm:
             "huggingface",   # HuggingFace fallback
         ])
         
-        self.hard_final_fallback = self.config.get("hard_final_fallback", {
-            "provider": "llamacpp",
-            "model": "tinyllama-1.1b-chat"
-        })
+        self.hard_final_fallback = self.config.get("hard_final_fallback", None)
+        if not self.hard_final_fallback:
+            from ai_karen_engine.config.config_manager import get_default_model, get_default_provider
+            self.hard_final_fallback = {
+                "provider": get_default_provider(),
+                "model": get_default_model()
+            }
         
         # Fail-fast configuration
         self.health_check_timeout = self.config.get("health_check_timeout", 5.0)  # seconds
@@ -275,16 +278,9 @@ class ModelSelectionAlgorithm:
             if provider_info and provider_info.default_model:
                 return provider_info.default_model
             
-            # Fallback to hardcoded defaults
-            default_models = {
-                "llamacpp": "tinyllama-1.1b-chat",
-                "transformers": "distilbert-base-uncased",
-                "openai": "gpt-3.5-turbo",
-                "gemini": "gemini-1.5-pro",
-                "deepseek": "deepseek-chat",
-                "huggingface": "distilbert-base-uncased"
-            }
-            
+            # Fallback to centralized config defaults
+            from ai_karen_engine.config.config_manager import get_provider_defaults
+            default_models = get_provider_defaults()
             return default_models.get(provider)
             
         except Exception as e:

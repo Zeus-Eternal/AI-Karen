@@ -29,33 +29,31 @@ type SequenceTask = {
 
 /**
  * @file SequencesPage.tsx
- * @description Conceptual page for creating and managing multi-step task sequences (workflows).
+ * @description Page for creating and managing multi-step Jobs (formerly Sequences) via /api/automation/jobs.
  */
 export default function SequencesPage() {
+  const [jobs, setJobs] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [errorMsg, setErrorMsg] = React.useState("");
 
-  const conceptualSequences = [
-    {
-      name: "Weekly Blog Post Workflow",
-      description: "Researches a topic, writes a draft, creates an image, and stages it for review.",
-      tasks: [
-        { name: "Web Research", agent: "Research Agent" },
-        { name: "Write Article Draft", agent: "Writing Agent" },
-        { name: "Generate Header Image", agent: "Image Agent" },
-        { name: "Save as Draft in CMS", agent: "CMS Agent" },
-      ],
-      trigger: "Cron: Every Monday at 9 AM",
-    },
-    {
-      name: "Social Media Engagement",
-      description: "Fetches recent mentions and drafts replies for approval.",
-       tasks: [
-        { name: "Fetch Facebook Mentions", agent: "Social Media Agent" },
-        { name: "Analyze Sentiment", agent: "Data Analyst Agent" },
-        { name: "Draft Replies", agent: "Social Media Agent" },
-      ],
-      trigger: "Manual Run",
-    },
-  ];
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    try {
+      const { apiClient } = await import('@/lib/api');
+      const data = await apiClient.get<any[]>('/api/automation/jobs/');
+      setJobs(data || []);
+      setErrorMsg("");
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Failed to fetch jobs.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchJobs();
+  }, []);
 
   const definedTasks = [
     { name: "Generate Weekly Sales Report", description: "Queries the sales database and formats it into a PDF." },
@@ -67,7 +65,7 @@ export default function SequencesPage() {
   ];
   
   // State for the mock form
-  const [newSequenceTasks, setNewSequenceTasks] = React.useState<SequenceTask[]>([
+  const [newJobTasks, setNewJobTasks] = React.useState<SequenceTask[]>([
       { name: "Web Research", instructions: "{'topic': 'Latest AI advancements'}" },
       { name: "Write Article Draft", instructions: "Use a formal tone, 500 words." },
   ]);
@@ -76,14 +74,14 @@ export default function SequencesPage() {
   const [editingConfig, setEditingConfig] = React.useState<{ taskName: string; instructions: string; onSave: (newInstructions: string) => void; } | null>(null);
   const [tempInstructions, setTempInstructions] = React.useState("");
 
-  const handleAddTaskToSequence = (taskName: string) => {
-    if (!newSequenceTasks.some(task => task.name === taskName)) {
-      setNewSequenceTasks([...newSequenceTasks, { name: taskName, instructions: '' }]);
+  const handleAddTaskToJob = (taskName: string) => {
+    if (!newJobTasks.some(task => task.name === taskName)) {
+      setNewJobTasks([...newJobTasks, { name: taskName, instructions: '' }]);
     }
   };
 
-  const handleRemoveTaskFromSequence = (taskName: string) => {
-    setNewSequenceTasks(newSequenceTasks.filter(task => task.name !== taskName));
+  const handleRemoveTaskFromJob = (taskName: string) => {
+    setNewJobTasks(newJobTasks.filter(task => task.name !== taskName));
   };
   
   const openInstructionEditor = (taskName: string, instructions: string, onSave: (newInstructions: string) => void) => {
@@ -98,6 +96,42 @@ export default function SequencesPage() {
     }
   };
 
+  const handleDeleteJob = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this job?")) return;
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.delete(`/api/automation/jobs/${id}`);
+      fetchJobs();
+    } catch (err: any) {
+      alert("Failed to delete job: " + err.message);
+    }
+  };
+
+  const handleExecuteJob = async (id: string) => {
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.post(`/api/automation/jobs/${id}/execute`, {});
+      alert("Job execution started.");
+    } catch (err: any) {
+      alert("Failed to execute job: " + err.message);
+    }
+  };
+
+  const handleCreateJob = async () => {
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.post('/api/automation/jobs/', {
+        name: "New Custom Job",
+        description: "A dynamically generated job workflow.",
+        tasks: newJobTasks.map(t => ({ name: t.name, agent: "Configured Agent", instructions: t.instructions })),
+        trigger: "Manual Run"
+      });
+      fetchJobs();
+    } catch (err: any) {
+      alert("Failed to create job: " + err.message);
+    }
+  };
+
 
   return (
     <>
@@ -105,41 +139,48 @@ export default function SequencesPage() {
         <div className="flex items-center space-x-3">
           <Workflow className="h-8 w-8 text-primary" />
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Task Sequences</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">Jobs</h2>
             <p className="text-sm text-muted-foreground">
-              Chain tasks together to orchestrate multiple agents in powerful workflows (Conceptual).
+              Chain tasks together to orchestrate multiple agents in powerful workflows.
             </p>
           </div>
         </div>
         
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Conceptual Feature</AlertTitle>
-          <AlertDescription>
-            This entire section is a conceptual placeholder. Implementing task sequencing requires a sophisticated backend workflow engine to manage state, pass outputs from one task to the input of the next, and handle errors.
-          </AlertDescription>
-        </Alert>
+        {errorMsg && (
+          <Alert variant="destructive">
+            <AlertTitle>Error Loading Jobs</AlertTitle>
+            <AlertDescription>{errorMsg}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sequence List */}
+          {/* Job List */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-semibold">Defined Sequences</h3>
-            {conceptualSequences.map((sequence, index) => (
-              <Card key={index}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Defined Jobs</h3>
+              <Button variant="outline" size="sm" onClick={fetchJobs}>Refresh</Button>
+            </div>
+            
+            {isLoading ? (
+              <div className="text-center p-8 text-muted-foreground animate-pulse">Loading jobs from backend...</div>
+            ) : jobs.length === 0 ? (
+              <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No jobs defined yet.</div>
+            ) : jobs.map((job: any, index: number) => (
+              <Card key={job.id || index}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-base">{sequence.name}</CardTitle>
-                      <CardDescription className="text-xs">{sequence.description}</CardDescription>
+                      <CardTitle className="text-base">{job.name}</CardTitle>
+                      <CardDescription className="text-xs">{job.description}</CardDescription>
                     </div>
                     <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon" onClick={() => handleExecuteJob(job.id)}>
                           <Play className="h-4 w-4 text-muted-foreground hover:text-green-500" />
                         </Button>
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon">
                           <Edit className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteJob(job.id)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                         </Button>
                     </div>
@@ -148,7 +189,7 @@ export default function SequencesPage() {
                 <CardContent>
                   <Label className="text-xs font-semibold">Task & Agent Chain</Label>
                   <div className="relative flex flex-wrap items-start gap-x-2 gap-y-4 mt-3 text-sm">
-                    {sequence.tasks.map((task, i) => (
+                    {job.tasks && job.tasks.map((task: any, i: number) => (
                       <React.Fragment key={i}>
                         <div className="flex flex-col items-center text-center gap-1.5">
                           <Badge variant="secondary" className="px-3 py-1 text-xs">{task.name}</Badge>
@@ -157,7 +198,7 @@ export default function SequencesPage() {
                               <span>{task.agent}</span>
                           </div>
                         </div>
-                        {i < sequence.tasks.length - 1 && (
+                        {i < job.tasks.length - 1 && (
                           <div className="mt-2.5 h-px w-6 bg-border -mx-1" />
                         )}
                       </React.Fragment>
@@ -165,46 +206,46 @@ export default function SequencesPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="text-xs text-muted-foreground pt-4">
-                  Trigger: {sequence.trigger}
+                  Trigger: {job.trigger}
                 </CardFooter>
               </Card>
             ))}
           </div>
 
-          {/* Create New Sequence Form */}
+          {/* Create New Job Form */}
           <div className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardHeader>
-                <CardTitle className="flex items-center"><FilePlus2 className="mr-2 h-5 w-5"/>Create New Sequence</CardTitle>
+                <CardTitle className="flex items-center"><FilePlus2 className="mr-2 h-5 w-5"/>Create New Job</CardTitle>
                 <CardDescription>Build a workflow by chaining tasks.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                    <Label htmlFor="seq-name">Sequence Name</Label>
-                    <Input id="seq-name" placeholder="e.g., Daily Content Pipeline" disabled />
+                    <Label htmlFor="job-name">Job Name</Label>
+                    <Input id="job-name" placeholder="e.g., Daily Content Pipeline" disabled />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor="seq-desc">Description</Label>
-                    <Textarea id="seq-desc" placeholder="Describe the goal of this sequence." rows={2} disabled />
+                    <Label htmlFor="job-desc">Description</Label>
+                    <Textarea id="job-desc" placeholder="Describe the goal of this job." rows={2} disabled />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Add Tasks to the Chain</Label>
                   <div className="p-3 border rounded-md h-64 overflow-y-auto space-y-2 bg-muted/30">
-                      {newSequenceTasks.length === 0 ? (
-                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in sequence. Click "Add Task" to begin.</p>
+                      {newJobTasks.length === 0 ? (
+                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in job. Click "Add Task" to begin.</p>
                       ) : (
-                          newSequenceTasks.map((task, index) => (
+                          newJobTasks.map((task, index) => (
                           <div key={task.name} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
                               <GripVertical className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm flex-1">{task.name}</span>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openInstructionEditor(task.name, task.instructions || '', (newInstructions) => {
-                                const updatedTasks = [...newSequenceTasks];
+                                const updatedTasks = [...newJobTasks];
                                 updatedTasks[index].instructions = newInstructions;
-                                setNewSequenceTasks(updatedTasks);
+                                setNewJobTasks(updatedTasks);
                               })}>
                                 <Settings className="h-4 w-4 text-muted-foreground hover:text-primary"/>
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveTaskFromSequence(task.name)}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveTaskFromJob(task.name)}>
                                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive"/>
                               </Button>
                           </div>
@@ -220,7 +261,7 @@ export default function SequencesPage() {
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add Task to Sequence</DialogTitle>
+                            <DialogTitle>Add Task to Job</DialogTitle>
                             <DialogDescription>
                                 Select a pre-defined task to add to the chain. You can configure it after adding.
                             </DialogDescription>
@@ -238,8 +279,8 @@ export default function SequencesPage() {
                                     </div>
                                     <Button 
                                     size="sm"
-                                    onClick={() => handleAddTaskToSequence(task.name)}
-                                    disabled={newSequenceTasks.some(t => t.name === task.name)}
+                                    onClick={() => handleAddTaskToJob(task.name)}
+                                    disabled={newJobTasks.some(t => t.name === task.name)}
                                     variant="secondary"
                                     >
                                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -259,9 +300,9 @@ export default function SequencesPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button disabled className="w-full">
+                <Button className="w-full" onClick={handleCreateJob}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Save Sequence
+                  Save Job
                 </Button>
               </CardFooter>
             </Card>
@@ -270,9 +311,9 @@ export default function SequencesPage() {
 
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Developer Insight: How Sequences Work</AlertTitle>
+          <AlertTitle>Developer Insight: Live Wiring</AlertTitle>
           <AlertDescription>
-            A "Sequence" would be managed by a workflow engine. This could be a Genkit flow that orchestrates other flows (each representing a Task). The output of Task A (e.g., a research document) would be passed as the input to Task B (e.g., an article writer). This requires careful schema definition for inputs and outputs of each task to ensure they are compatible.
+            This dashboard is officially wired up to the AI Karen Backend `/api/automation/jobs` endpoint. Jobs created above persist into memory and can be executed dynamically.
           </AlertDescription>
         </Alert>
       </div>
@@ -283,7 +324,7 @@ export default function SequencesPage() {
           <DialogHeader>
             <DialogTitle>Configure Step: <span className="text-primary">{editingConfig?.taskName}</span></DialogTitle>
             <DialogDescription>
-              Provide specific instructions or parameters for this task, just for this step in the sequence. This will override the task's default instructions.
+              Provide specific instructions or parameters for this task, just for this step in the job. This will override the task's default instructions.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

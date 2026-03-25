@@ -205,7 +205,7 @@ class OptimizationIntegrationOrchestrator:
                     self.reasoning_preservation_layer.configure_preservation(
                         decision_engine=new_config.reasoning_preservation.preserve_decision_engine,
                         flow_manager=new_config.reasoning_preservation.preserve_flow_manager,
-                        tinyllama_scaffolding=new_config.reasoning_preservation.preserve_tinyllama_scaffolding,
+                        scaffolding_service=new_config.reasoning_preservation.preserve_scaffolding_service,
                         profile_routing=new_config.reasoning_preservation.preserve_profile_routing,
                         memory_integration=new_config.reasoning_preservation.preserve_memory_integration,
                         personality_application=new_config.reasoning_preservation.preserve_personality_application
@@ -280,7 +280,7 @@ class OptimizationIntegrationOrchestrator:
                 self.logger.info("Integrating Intelligent Scaffolding Service with optimization...")
                 
                 # Wrap with reasoning preservation layer
-                wrapped_scaffolding = self.reasoning_preservation_layer.wrap_tinyllama_service(scaffolding_service)
+                wrapped_scaffolding = self.reasoning_preservation_layer.wrap_scaffolding_service(scaffolding_service)
                 
                 # Integrate with cache system
                 cached_scaffolding = await self.cache_system.integrate_with_small_language_model_service(wrapped_scaffolding)
@@ -301,7 +301,7 @@ class OptimizationIntegrationOrchestrator:
                 from src.services.intelligent_scaffolding_service import get_intelligent_scaffolding_service
                 
                 default_scaffolding = get_intelligent_scaffolding_service()
-                wrapped_scaffolding = self.reasoning_preservation_layer.wrap_tinyllama_service(default_scaffolding)
+                wrapped_scaffolding = self.reasoning_preservation_layer.wrap_scaffolding_service(default_scaffolding)
                 cached_scaffolding = await self.cache_system.integrate_with_small_language_model_service(wrapped_scaffolding)
                 
                 integrated_components["scaffolding_service"] = cached_scaffolding

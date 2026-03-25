@@ -51,7 +51,7 @@ def list_llama_cpp_models(models_dir=None):
     """
     Scan for GGUF/llama.cpp compatible models
     """
-    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "models")
+    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "models/llama-cpp")
     supported_ext = {".gguf", ".bin"}
     models = []
 
@@ -88,7 +88,9 @@ def list_llama_cpp_models(models_dir=None):
         # Search recursively for model files
         for file in models_path.rglob("*"):
             if file.is_file() and file.suffix in supported_ext:
-                models.append(file.stem)
+                # Skip zero-size or invalid files
+                if file.stat().st_size > 1000:
+                    models.append(file.stem)
                 
         # If no models found, suggest initialization
         if not models:
@@ -277,7 +279,7 @@ def list_groq_models():
 # === Final Aggregation ===
 
 MODEL_PROVIDERS = {
-    "llama-cpp": list_llama_cpp_models("models"),
+    "llama-cpp": list_llama_cpp_models("models/llama-cpp"),
     "lmstudio": list_lmstudio_models(),
     "gemini": list_gemini_models(),
     "anthropic": list_anthropic_models(),

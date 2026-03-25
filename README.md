@@ -212,6 +212,14 @@ python create_tables.py
 python create_admin_user.py  # follow prompts
 ```
 
+To run Ollama inside the Docker stack instead of relying on a host install:
+
+```bash
+docker compose --profile ollama up -d
+```
+
+That gives the API container a stable in-network Ollama endpoint at `http://ollama:11434` and avoids the common host-loopback and browser CORS issues from host-installed Ollama.
+
 #### Choose Your Startup Mode
 
 AI-Karen provides two startup scripts optimized for different use cases:

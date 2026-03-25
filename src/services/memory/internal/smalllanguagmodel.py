@@ -27,7 +27,16 @@ except ImportError:
     # Create a basic config if not available
     class SmallLanguageModelConfig:
         def __init__(self, **kwargs):
-            self.model_name = kwargs.get("model_name", "tinyllama-1.1b-chat")
+            # Get dynamic lightweight model for fallback
+            model_name = "default-lightweight-model"
+            try:
+                from ai_karen_engine.config.config_manager import get_config
+                config = get_config()
+                model_name = config.llm.default_lightweight_model_id
+            except Exception:
+                model_name = os.getenv("SMALL_LANGUAGE_MODEL_NAME", "default-lightweight-model")
+
+            self.model_name = kwargs.get("model_name", model_name)
             self.max_tokens = kwargs.get("max_tokens", 150)
             self.temperature = kwargs.get("temperature", 0.7)
             self.enable_fallback = kwargs.get("enable_fallback", True)
@@ -804,7 +813,7 @@ class SmallLanguageModelService:
             f"{self.config.model_name}_{self.config.temperature}_{self.config.max_tokens}".encode()
         ).hexdigest()[:8]
         text_hash = hashlib.md5(text.encode()).hexdigest()
-        return f"tinyllama:{config_hash}:{text_hash}"
+        return f"slm:{config_hash}:{text_hash}"
     
     def get_health_status(self) -> LiteHealthStatus:
         """Get current health status of the service."""

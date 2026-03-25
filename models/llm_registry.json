@@ -7,9 +7,9 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "healthy",
-    "last_health_check": 1758943842.023017,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1774232209.7442677,
+    "error_message": "maximum recursion depth exceeded"
   },
   {
     "name": "openai",
@@ -72,6 +72,18 @@
     "error_message": null
   },
   {
+    "name": "fallback",
+    "provider_class": "FallbackProvider",
+    "description": "Deterministic offline fallback provider",
+    "supports_streaming": false,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "kari-fallback-v1",
+    "health_status": "healthy",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
     "name": "custom_copilotkit",
     "provider_class": "CopilotKitProvider",
     "description": "Custom CopilotKit instance",
@@ -84,14 +96,26 @@
     "error_message": null
   },
   {
-    "name": "fallback",
-    "provider_class": "FallbackProvider",
-    "description": "Deterministic offline fallback provider",
-    "supports_streaming": false,
-    "supports_embeddings": true,
+    "name": "nanovllm",
+    "provider_class": "NanoVLLMProvider",
+    "description": "Blazing fast local native execution via Nano-vLLM",
+    "supports_streaming": true,
+    "supports_embeddings": false,
     "requires_api_key": false,
-    "default_model": "kari-fallback-v1",
-    "health_status": "healthy",
+    "default_model": "Qwen/Qwen3-0.6B",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "sdcpp",
+    "provider_class": "SDCPPProvider",
+    "description": "Local low-VRAM image generation via stable-diffusion.cpp",
+    "supports_streaming": false,
+    "supports_embeddings": false,
+    "requires_api_key": false,
+    "default_model": "v1-5-pruned-emaonly.safetensors",
+    "health_status": "unknown",
     "last_health_check": null,
     "error_message": null
   }

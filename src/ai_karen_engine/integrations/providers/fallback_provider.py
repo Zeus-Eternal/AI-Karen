@@ -58,7 +58,10 @@ class FallbackProvider(LLMProviderBase):
             Dictionary mapping model types to their paths
         """
         models = {}
-        base_path = Path("/mnt/development/KIRO/AI-Karen/models")
+        base_path = Path(os.getenv("MODELS_ROOT", "models"))
+        if not base_path.is_absolute():
+            # Resolve relative to app root if possible
+            base_path = Path(os.getcwd()) / base_path
         
         # Check for llama-cpp models
         llama_path = base_path / "llama-cpp"
@@ -86,6 +89,8 @@ class FallbackProvider(LLMProviderBase):
         logger.info(f"Discovered {len(models)} local models: {list(models.keys())}")
         return models
     
+    # Removed _llamacpp_runtimes as it's now handled by LlamaCppRuntime singleton
+
     def _try_local_llamacpp(self, prompt: str, **kwargs: Any) -> Optional[str]:
         """Try to use local llama-cpp model for generation.
         
@@ -99,33 +104,47 @@ class FallbackProvider(LLMProviderBase):
             logger.debug("No local llama-cpp models found")
             return None
         
-        # Try each model (prefer smaller models for speed)
-        for model_name, model_path in sorted(llama_models.items(), 
-                                           key=lambda x: Path(x[1]).stat().st_size):
+        # Determine model attempt order
+        requested_model = kwargs.get("model")
+        attempt_order = []
+        
+        # 1. First priority: Specifically requested model
+        if requested_model:
+            # Check for exact match or extension-stripped match
+            for m_name, m_path in llama_models.items():
+                if m_name == requested_model or m_name == f"llamacpp_{requested_model}":
+                    attempt_order.append((m_name, m_path))
+                    break
+        
+        # 2. Rest of the models (sorted by size, prefer smaller for speed)
+        remaining = [
+            (name, path) for name, path in llama_models.items() 
+            if (name, path) not in attempt_order
+        ]
+        attempt_order.extend(sorted(remaining, key=lambda x: Path(x[1]).stat().st_size))
+        
+        # Try each model in order
+        for model_name, model_path in attempt_order:
             try:
                 from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
                 
-                logger.info(f"Attempting to use local model: {model_name}")
+                # Get global singleton runtime
+                runtime = LlamaCppRuntime.get_instance(
+                    n_ctx=1024,
+                    n_batch=512,
+                    n_threads=2
+                )
                 
-                # Initialize runtime if not already done
-                if not hasattr(self, '_llamacpp_runtimes'):
-                    self._llamacpp_runtimes = {}
-                
-                # Create or get cached runtime
-                if model_name not in self._llamacpp_runtimes:
-                    runtime = LlamaCppRuntime(
-                        model_path=model_path,
-                        n_ctx=2048,
-                        n_batch=512,
-                        n_threads=4
-                    )
+                # Load model if not already loaded or different
+                if not runtime.is_loaded() or runtime.model_path != model_path:
+                    logger.info(f"Loading local model into shared runtime: {model_name}")
                     if not runtime.load_model(model_path):
                         logger.warning(f"Failed to load model: {model_name}")
                         continue
-                    self._llamacpp_runtimes[model_name] = runtime
+                else:
+                    logger.debug(f"Using already loaded model in shared runtime: {model_name}")
                 
                 # Generate response
-                runtime = self._llamacpp_runtimes[model_name]
                 response = runtime.generate(
                     prompt,
                     max_tokens=256,
@@ -144,6 +163,9 @@ class FallbackProvider(LLMProviderBase):
         
         return None
     
+    # Shared cache for transformers runtimes across instances to prevent OOM
+    _transformers_runtimes: Dict[str, Any] = {}
+
     def _try_local_transformers(self, prompt: str, **kwargs: Any) -> Optional[str]:
         """Try to use local transformers model for generation.
         
@@ -157,24 +179,38 @@ class FallbackProvider(LLMProviderBase):
             logger.debug("No local transformers models found")
             return None
         
-        # Prefer specific chat models
-        preferred_order = ["DialoGPT", "gpt2", "deepseek", "tinyllama"]
+        # Determine model attempt order
+        requested_model = kwargs.get("model")
+        attempt_order = []
         
-        for model_name in sorted(transformer_models.keys(), 
-                                key=lambda x: any(p in x.lower() for p in preferred_order),
-                                reverse=True):
-            model_path = transformer_models[model_name]
+        # 1. First priority: Specifically requested model
+        if requested_model:
+            for m_name, m_path in transformer_models.items():
+                if m_name == requested_model or m_name == f"transformers_{requested_model}":
+                    attempt_order.append((m_name, m_path))
+                    break
+        
+        # 2. Rest of the models by preferred order
+        preferred_order = ["DialoGPT", "gpt2", "deepseek", "default_model"]
+        remaining = [
+            (name, path) for name, path in transformer_models.items()
+            if (name, path) not in attempt_order
+        ]
+        
+        remaining_sorted = sorted(
+            remaining, 
+            key=lambda x: any(p in x[0].lower() for p in preferred_order),
+            reverse=True
+        )
+        attempt_order.extend(remaining_sorted)
+        
+        for model_name, model_path in attempt_order:
             try:
                 from ai_karen_engine.inference.transformers_runtime import TransformersRuntime
                 
-                logger.info(f"Attempting to use transformers model: {model_name}")
-                
-                # Initialize runtime if not already done
-                if not hasattr(self, '_transformers_runtimes'):
-                    self._transformers_runtimes = {}
-                
-                # Create or get cached runtime
-                if model_name not in self._transformers_runtimes:
+                # Check shared cache
+                if model_name not in FallbackProvider._transformers_runtimes:
+                    logger.info(f"Initializing new transformers model: {model_name}")
                     runtime = TransformersRuntime(
                         model_path=model_path,
                         device="cpu",  # Use CPU for compatibility
@@ -183,10 +219,12 @@ class FallbackProvider(LLMProviderBase):
                     if not runtime.load_model(model_path):
                         logger.warning(f"Failed to load transformers model: {model_name}")
                         continue
-                    self._transformers_runtimes[model_name] = runtime
+                    FallbackProvider._transformers_runtimes[model_name] = runtime
+                else:
+                    logger.debug(f"Using cached transformers model: {model_name}")
                 
                 # Generate response
-                runtime = self._transformers_runtimes[model_name]
+                runtime = FallbackProvider._transformers_runtimes[model_name]
                 response = runtime.generate(
                     prompt,
                     max_tokens=150,
@@ -250,7 +288,8 @@ class FallbackProvider(LLMProviderBase):
 
         start = datetime.utcnow()
         error_details = []
-        
+        logger.info(f"FallbackProvider invoked. Prompt length: {len(prompt)}")
+
         # Step 1: Try registered llamacpp provider
         try:
             from ai_karen_engine.integrations.llm_registry import get_registry
@@ -267,7 +306,7 @@ class FallbackProvider(LLMProviderBase):
             error_details.append(f"Registered llamacpp: {str(e)}")
             logger.debug(f"Registered llamacpp provider failed: {e}")
         
-        # Step 2: Try local llama-cpp models directly
+        # Step 3: Try local llama-cpp models directly
         try:
             logger.info("Attempting to use local llama-cpp models")
             local_llama_response = self._try_local_llamacpp(prompt, **kwargs)
@@ -278,7 +317,7 @@ class FallbackProvider(LLMProviderBase):
             error_details.append(f"Local llama-cpp: {str(e)}")
             logger.debug(f"Local llama-cpp failed: {e}")
         
-        # Step 3: Try local transformers models
+        # Step 4: Try local transformers models
         try:
             logger.info("Attempting to use local transformers models")
             transformers_response = self._try_local_transformers(prompt, **kwargs)
@@ -289,7 +328,7 @@ class FallbackProvider(LLMProviderBase):
             error_details.append(f"Local transformers: {str(e)}")
             logger.debug(f"Local transformers failed: {e}")
         
-        # Step 4: Intelligent deterministic fallback based on errors
+        # Step 5: Intelligent deterministic fallback based on errors
         logger.warning(f"All model attempts failed. Using intelligent fallback. Errors: {error_details}")
         return self._intelligent_fallback(prompt, start, error_details, **kwargs)
     

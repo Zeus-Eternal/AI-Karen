@@ -40,8 +40,11 @@ import {
 import { Separator } from '@/components/ui/separator';
 import ChatInterface from '@/components/chat/ChatInterface';
 import CommsCenterPage from '@/components/comms/CommsCenterPage';
+import AdminSettingsPage from '@/components/admin/AdminSettingsPage';
+import ModelSettings from '@/components/settings/ModelSettings';
+import { Shield, Settings2 } from 'lucide-react';
 
-type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDataConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview' | 'automationOverview' | 'agents' | 'tasks' | 'sequences' | 'cronJobs' | 'account';
+type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDataConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview' | 'automationOverview' | 'agents' | 'tasks' | 'sequences' | 'cronJobs' | 'account' | 'admin' | 'modelSettings';
 
 export default function DashboardPage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
@@ -116,6 +119,26 @@ export default function DashboardPage() {
                     Comms Center
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                   <SidebarMenuButton
+                    onClick={() => setActiveMainView('admin')}
+                    isActive={activeMainView === 'admin'}
+                    className="w-full text-rose-500/80 hover:text-rose-500 transition-colors"
+                  >
+                    <Shield />
+                    Admin Settings
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                   <SidebarMenuButton
+                    onClick={() => setActiveMainView('modelSettings')}
+                    isActive={activeMainView === 'modelSettings'}
+                    className="w-full text-amber-500/80 hover:text-amber-500 transition-colors"
+                  >
+                    <Settings2 />
+                    Model Config
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
 
               <Separator className="my-2" />
@@ -160,7 +183,7 @@ export default function DashboardPage() {
                         className="w-full"
                       >
                         <Workflow />
-                        Sequences
+                        Jobs
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
@@ -281,6 +304,12 @@ export default function DashboardPage() {
               {activeMainView === 'cronJobs' && <CronJobsPage />}
               {activeMainView === 'commsCenter' && <CommsCenterPage />}
               {activeMainView === 'account' && <AccountPage />}
+              {activeMainView === 'admin' && <AdminSettingsPage />}
+              {activeMainView === 'modelSettings' && (
+                <div className="max-w-4xl mx-auto w-full">
+                  <ModelSettings />
+                </div>
+              )}
             </main>
           </SidebarInset>
         </div>

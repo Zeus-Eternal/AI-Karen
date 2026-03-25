@@ -23,7 +23,7 @@ class LlamaCppProvider(LLMProviderBase):
     def __init__(
         self,
         model_path: Optional[str] = None,
-        n_ctx: int = 2048,
+        n_ctx: int = 1024,  # Matching new memory-safe default
         n_batch: int = 512,
         n_gpu_layers: int = 0,
         n_threads: Optional[int] = None,
@@ -41,7 +41,7 @@ class LlamaCppProvider(LLMProviderBase):
         
         # Initialize runtime
         try:
-            self.runtime = LlamaCppRuntime(
+            self.runtime = LlamaCppRuntime.get_instance(
                 model_path=model_path,
                 **self.runtime_kwargs
             )
@@ -60,7 +60,7 @@ class LlamaCppProvider(LLMProviderBase):
         Preference order:
           1) Any local llama-cpp model from Model Library registry (validated path)
           2) Largest valid .gguf under models/llama-cpp
-          3) Auto-download a TinyLlama predefined model (if allowed), then load
+          3) Auto-download the default predefined model (if allowed), then load
         """
         allow_model_library = (
             os.getenv("AI_KAREN_ENABLE_MODEL_LIBRARY", "")
@@ -123,7 +123,7 @@ class LlamaCppProvider(LLMProviderBase):
         except Exception as e:
             logger.debug(f"Directory scan failed: {e}")
 
-        # 3) Auto-download TinyLlama if allowed
+        # 3) Auto-download default model if allowed
         allow_download = (
             os.getenv("KARI_AUTO_DOWNLOAD_LLM", "false")
             .lower()
@@ -134,7 +134,12 @@ class LlamaCppProvider(LLMProviderBase):
                 from ai_karen_engine.services.model_library_service import ModelLibraryService
 
                 lib = ModelLibraryService()
-                preferred = ["tinyllama-1.1b-chat-q4", "tinyllama-1.1b-instruct-q4"]
+                try:
+                    from ai_karen_engine.config.config_manager import get_default_model
+                    _dm = get_default_model("llamacpp") or "Phi-3-mini-4k-instruct-q4.gguf"
+                except Exception:
+                    _dm = "Phi-3-mini-4k-instruct-q4.gguf"
+                preferred = [_dm.replace(".gguf", "")]
                 for model_id in preferred:
                     task = lib.download_model(model_id)
                     if not task:
@@ -165,6 +170,11 @@ class LlamaCppProvider(LLMProviderBase):
         raise GenerationFailed(
             "No valid local GGUF model found. Place a model under models/llama-cpp/ or set model_path explicitly."
         )
+
+    @property
+    def last_usage(self) -> Dict[str, Any]:
+        """Return the last generation usage from the runtime."""
+        return getattr(self.runtime, "last_usage", {})
     
     def generate_text(self, prompt: str, **kwargs) -> str:
         """Generate text using LlamaCppRuntime."""
@@ -271,13 +281,22 @@ class LlamaCppProvider(LLMProviderBase):
     
     def get_models(self) -> List[str]:
         """Get list of available GGUF models with enhanced scanning."""
+        # Recursion guard to prevent infinite loops during initialization
+        if getattr(self, "_scanning_models", False):
+            return self._scan_local_models()
+            
+        self._scanning_models = True
         models = []
         
         try:
             # Try to get models from Model Library service
-            from ai_karen_engine.services.model_library_service import ModelLibraryService
-            model_library = ModelLibraryService()
-            available_models = model_library.get_available_models()
+            try:
+                from ai_karen_engine.services.model_library_service import ModelLibraryService
+                model_library = ModelLibraryService()
+                available_models = model_library.get_available_models()
+            except Exception as lib_err:
+                logger.debug(f"Inner Model Library access failed: {lib_err}")
+                available_models = []
             
             # Filter for llama-cpp compatible models
             for model_info in available_models:
@@ -288,6 +307,8 @@ class LlamaCppProvider(LLMProviderBase):
             
         except Exception as e:
             logger.warning(f"Failed to get models from Model Library: {e}")
+        finally:
+            self._scanning_models = False
         
         # Enhanced directory scan with validation
         scanned_models = self._scan_local_models()
@@ -310,8 +331,13 @@ class LlamaCppProvider(LLMProviderBase):
         # Return predefined models as fallback if none found
         if not unique_models:
             logger.warning("No local GGUF models found, returning fallback list")
+            try:
+                from ai_karen_engine.config.config_manager import get_default_model
+                _dm = get_default_model("llamacpp") or "Phi-3-mini-4k-instruct-q4.gguf"
+            except Exception:
+                _dm = "Phi-3-mini-4k-instruct-q4.gguf"
             return [
-                "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                _dm,
                 "llama-2-7b-chat.Q4_K_M.gguf",
                 "llama-2-13b-chat.Q4_K_M.gguf",
                 "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
@@ -323,12 +349,9 @@ class LlamaCppProvider(LLMProviderBase):
         """Scan local directories for GGUF models with validation."""
         models = []
         
-        # Scan multiple potential directories
+        # Scan specific llama-cpp directory
         scan_dirs = [
             Path("models/llama-cpp"),
-            Path("models"),
-            Path("./models"),
-            Path("../models"),
         ]
         
         for models_dir in scan_dirs:
@@ -888,7 +911,7 @@ class LlamaCppProvider(LLMProviderBase):
                 family_score = 30
             elif "mistral" in name_lower:
                 family_score = 25
-            elif "tinyllama" in name_lower:
+            elif "phi" in name_lower:
                 family_score = 20
             
             return (size_score + quant_score + family_score, model_name)

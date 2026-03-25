@@ -123,7 +123,7 @@ class ReasoningPreservationConfig:
     """Configuration for reasoning preservation."""
     preserve_decision_engine: bool = True
     preserve_flow_manager: bool = True
-    preserve_tinyllama_scaffolding: bool = True
+    preserve_scaffolding_service: bool = True
     preserve_profile_routing: bool = True
     preserve_memory_integration: bool = True
     preserve_personality_application: bool = True
@@ -542,7 +542,7 @@ class OptimizationConfigurationManager:
                     "reasoning_preservation": {
                         "decision_engine": self.config.reasoning_preservation.preserve_decision_engine,
                         "flow_manager": self.config.reasoning_preservation.preserve_flow_manager,
-                        "tinyllama_scaffolding": self.config.reasoning_preservation.preserve_tinyllama_scaffolding,
+                        "scaffolding_service": self.config.reasoning_preservation.preserve_scaffolding_service,
                         "profile_routing": self.config.reasoning_preservation.preserve_profile_routing
                     },
                     "validation_status": len(self.validate_configuration()) == 0,

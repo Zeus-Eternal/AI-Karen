@@ -65,7 +65,8 @@ except ImportError:
     class DegradedMode:
         @staticmethod
         def get_fallback_provider() -> tuple[str, str]:
-            return "llamacpp", "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
+            from ai_karen_engine.config.config_manager import get_default_model
+            return "llamacpp", get_default_model("llamacpp")
 
 
 class KIRERouter:
@@ -291,7 +292,8 @@ class KIRERouter:
                 reason_segments.append("embedding capability -> huggingface transformers")
         elif inferred_task == "summarization" and provider != "llamacpp":
             if await ProviderHealth.is_healthy("llamacpp"):
-                provider, model = "llamacpp", "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
+                from ai_karen_engine.config.config_manager import get_default_model
+                provider, model = "llamacpp", get_default_model("llamacpp")
                 reason_segments.append("summarization uses llamacpp low-latency")
 
         # Health gate on chosen provider
@@ -340,15 +342,10 @@ class KIRERouter:
         return provider, model, "; ".join(reason_segments), base_confidence
     
     def _default_model(self, provider: str) -> str:
-        """Get default model for provider."""
-        defaults = {
-            "openai": "gpt-4o-mini",
-            "deepseek": "deepseek-chat",
-            "llamacpp": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-            "gemini": "gemini-1.5-flash",
-            "huggingface": "microsoft/DialoGPT-large"
-        }
-        return defaults.get(provider, "auto")
+        """Get default model for provider from central config."""
+        from ai_karen_engine.config.config_manager import get_default_model, get_provider_defaults
+        defaults = get_provider_defaults()
+        return defaults.get(provider, get_default_model(provider))
     
     def _generate_cache_key(self, request: RouteRequest) -> str:
         """Generate cache key for routing request."""

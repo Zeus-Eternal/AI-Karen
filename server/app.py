@@ -29,6 +29,7 @@ from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
 from .security import validate_environment_security
+from ai_karen_engine.server.exception_handlers import setup_exception_handlers
 
 logger = logging.getLogger("kari")
 
@@ -96,6 +97,9 @@ def create_app() -> FastAPI:
     
     # Configure middleware
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)
+    
+    # Setup custom exception handlers
+    setup_exception_handlers(app)
     
     # Optionally defer router wiring to speed up initial readiness in dev
     # Default to immediate wiring so critical routes (e.g. auth) are available
@@ -279,7 +283,7 @@ def create_app() -> FastAPI:
                 
                 model_status = {
                     "local_models": len(gguf_models) + len(bin_models),
-                    "fallback_available": (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
+                    "fallback_available": len(gguf_models) > 0
                 }
             except Exception:
                 model_status = {"local_models": 0, "fallback_available": False}

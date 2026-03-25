@@ -2543,7 +2543,7 @@ class DownloadJobResponse(BaseModel):
 
 # Predefined model URLs for local features (no API key required)
 CURATED_MODELS = {
-    "tinyllama": {
+    "default-lightweight-model": {
         "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
         "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
         "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
@@ -2603,7 +2603,7 @@ async def get_curated_models():
                 "size_human": _format_bytes(model_info["size"]),
                 "locally_available": locally_available,
                 "download_url": model_info["url"],
-                "recommended": model_key == "tinyllama"  # Recommend smallest for testing
+                "recommended": model_key == "phi3-mini"  # Recommend default model
             })
         
         return {

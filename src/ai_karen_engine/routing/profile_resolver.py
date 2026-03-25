@@ -41,12 +41,21 @@ if not _PROFILE_SRC:
         _PROFILE_SRC = "none"
 
 
-DEFAULT_ASSIGNMENTS: Dict[str, ModelAssignment] = {
-    "chat": ModelAssignment(task_type="chat", provider="openai", model="gpt-4o-mini"),
-    "code": ModelAssignment(task_type="code", provider="deepseek", model="deepseek-coder"),
-    "reasoning": ModelAssignment(task_type="reasoning", provider="openai", model="gpt-4o"),
-    "summarization": ModelAssignment(task_type="summarization", provider="llamacpp", model="tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"),
-}
+def _build_default_assignments() -> Dict[str, ModelAssignment]:
+    """Build default assignments from centralized config."""
+    from ai_karen_engine.config.config_manager import get_task_assignment
+    defaults = {}
+    for task_type in ("chat", "code", "reasoning", "summarization"):
+        cfg = get_task_assignment(task_type)
+        defaults[task_type] = ModelAssignment(
+            task_type=task_type,
+            provider=cfg["provider"],
+            model=cfg["model"],
+        )
+    return defaults
+
+
+DEFAULT_ASSIGNMENTS: Dict[str, ModelAssignment] = _build_default_assignments()
 
 
 class ProfileResolver:

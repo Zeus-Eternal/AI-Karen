@@ -77,7 +77,8 @@ class ModelAvailabilityHandler:
         # Fallback model registry organized by modality
         self.fallback_registry: Dict[ModalityType, List[str]] = {
             ModalityType.TEXT: [
-                "tinyllama-1.1b-chat",
+                "default-lightweight-model",
+                "default-instruct-model",
                 "gpt-3.5-turbo",
                 "claude-3-haiku",
                 "llama-2-7b-chat"

@@ -33,13 +33,16 @@ class SystemInitializer:
         self.config_dir = Path("config")
         
         # Default models to download/setup (only if not already present)
+        # Model name comes from centralized config
+        from ai_karen_engine.config.config_manager import get_default_model
+        _default_gguf = get_default_model("llamacpp")
         self.default_models = {
             "llama-cpp": [
                 {
-                    "name": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-                    "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                    "name": _default_gguf,
+                    "url": f"https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/{_default_gguf}",
                     "size_mb": 669,
-                    "description": "Small efficient model for basic tasks"
+                    "description": "Default local GGUF model for basic tasks"
                 }
             ],
             "transformers": [

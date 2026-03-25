@@ -67,8 +67,8 @@ export default function LoginPage() {
     }
   };
 
-  const toggleLoginMode = () => {
-    setLoginMode(loginMode === 'email' ? 'username' : 'email');
+  const selectLoginMode = (mode: 'email' | 'username') => {
+    setLoginMode(mode);
     setFormData((prev: typeof formData) => ({
       ...prev,
       email: '',
@@ -105,7 +105,7 @@ export default function LoginPage() {
                     ? 'bg-primary text-primary-foreground border-primary' 
                     : 'bg-muted text-muted-foreground border-muted hover:bg-muted/80'
                 }`}
-                onClick={toggleLoginMode}
+                onClick={() => selectLoginMode('email')}
               >
                 Email
               </button>
@@ -116,7 +116,7 @@ export default function LoginPage() {
                     ? 'bg-primary text-primary-foreground border-primary' 
                     : 'bg-muted text-muted-foreground border-muted hover:bg-muted/80'
                 }`}
-                onClick={toggleLoginMode}
+                onClick={() => selectLoginMode('username')}
               >
                 Username
               </button>

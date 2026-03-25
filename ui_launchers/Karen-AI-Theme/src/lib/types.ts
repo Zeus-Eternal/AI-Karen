@@ -13,6 +13,9 @@ export interface ChatMessage {
   aiData?: AiData;
   imageDataUri?: string; 
   shouldAutoPlay?: boolean;
+  structuredContent?: Record<string, any>;
+  actions?: any[];
+  metadata?: Record<string, any>;
 }
 
 // Settings types

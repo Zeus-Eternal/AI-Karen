@@ -246,12 +246,12 @@ class EnhancedModelRegistry:
     def _initialize_predefined_models(self):
         """Initialize predefined model configurations."""
         self.predefined_models.update({
-            "tinyllama-1.1b-chat-q4": {
-                "id": "tinyllama-1.1b-chat-q4",
-                "name": "TinyLlama 1.1B Chat Q4_K_M",
+            "default-lightweight-model": {
+                "id": "default-lightweight-model",
+                "name": "Default Lightweight Chat Model",
                 "provider": "llama-cpp",
                 "size": 669000000,
-                "description": "A compact 1.1B parameter language model optimized for chat applications with Q4_K_M quantization for efficient inference.",
+                "description": "A compact language model optimized for chat applications with Q4_K_M quantization for efficient inference.",
                 "capabilities": ["text-generation", "chat", "local-inference", "low-memory"],
                 "metadata": {
                     "parameters": "1.1B",
@@ -275,12 +275,12 @@ class EnhancedModelRegistry:
                     "mirrors": []
                 }
             },
-            "tinyllama-1.1b-instruct-q4": {
-                "id": "tinyllama-1.1b-instruct-q4",
-                "name": "TinyLlama 1.1B Instruct Q4_K_M",
+            "default-instruct-model": {
+                "id": "default-instruct-model",
+                "name": "Default Lightweight Instruct Model",
                 "provider": "llama-cpp",
                 "size": 669000000,
-                "description": "TinyLlama model fine-tuned for instruction following with Q4_K_M quantization.",
+                "description": "Lightweight model fine-tuned for instruction following with Q4_K_M quantization.",
                 "capabilities": ["text-generation", "instruction-following", "local-inference", "low-memory"],
                 "metadata": {
                     "parameters": "1.1B",

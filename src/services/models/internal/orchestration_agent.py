@@ -91,9 +91,16 @@ class OrchestrationAgent:
         ])
         
         # Hard final fallback model - last resort before degraded mode
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            cfg = get_config()
+            default_lightweight = cfg.llm.default_lightweight_model_id
+        except Exception:
+            default_lightweight = "default-lightweight-model"
+
         self.hard_final_fallback = self.config.get("hard_final_fallback", {
             "provider": "llamacpp",
-            "model": "tinyllama-1.1b-chat"
+            "model": default_lightweight
         })
         
         # User preference validation settings

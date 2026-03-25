@@ -7,7 +7,6 @@ import logging
 from typing import Optional
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, RetryConfig
-from ai_karen_engine.chat.chat_hub import ChatHub
 from ai_karen_engine.chat.memory_processor import MemoryProcessor
 from ai_karen_engine.chat.file_attachment_service import FileAttachmentService
 from ai_karen_engine.chat.multimedia_service import MultimediaService
@@ -222,39 +221,6 @@ class ChatServiceFactory:
         logger.info("Chat orchestrator created successfully with all services wired")
         return orchestrator
 
-    def create_chat_hub(self) -> ChatHub:
-        """
-        Create and configure chat hub.
-
-        Returns:
-            Fully configured ChatHub instance
-        """
-        try:
-            from ai_karen_engine.llm_orchestrator import get_orchestrator
-
-            # Get LLM orchestrator for routing
-            llm_orchestrator = get_orchestrator()
-
-            # Create chat hub
-            chat_hub = ChatHub(router=llm_orchestrator)
-
-            self._services['chat_hub'] = chat_hub
-            logger.info("Chat hub created successfully")
-            return chat_hub
-
-        except Exception as e:
-            logger.error(f"Failed to create chat hub: {e}")
-            # Create with minimal fallback router
-            from ai_karen_engine.chat.chat_hub import NeuroVault
-
-            class FallbackRouter:
-                def generate_reply(self, text: str) -> str:
-                    return f"Echo: {text} (fallback mode)"
-
-            chat_hub = ChatHub(router=FallbackRouter())
-            self._services['chat_hub'] = chat_hub
-            logger.warning("Chat hub created with fallback router")
-            return chat_hub
 
     def create_stream_processor(self) -> StreamProcessor:
         """Create and configure stream processor."""
@@ -298,7 +264,6 @@ class ChatServiceFactory:
 
         # Create services in dependency order
         self.create_chat_orchestrator()
-        self.create_chat_hub()
         self.create_stream_processor()
         self.create_websocket_gateway()
 
@@ -353,20 +318,6 @@ def get_chat_orchestrator() -> ChatOrchestrator:
     return orchestrator
 
 
-def get_chat_hub() -> ChatHub:
-    """
-    Get or create global chat hub.
-
-    Returns:
-        ChatHub instance
-    """
-    factory = get_chat_service_factory()
-    hub = factory.get_service('chat_hub')
-
-    if hub is None:
-        hub = factory.create_chat_hub()
-
-    return hub
 
 
 __all__ = [
@@ -374,5 +325,4 @@ __all__ = [
     'ChatServiceFactory',
     'get_chat_service_factory',
     'get_chat_orchestrator',
-    'get_chat_hub',
 ]

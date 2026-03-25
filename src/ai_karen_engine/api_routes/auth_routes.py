@@ -351,7 +351,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Prepare user data
+    logging.warning("=== LOGIN: preparing user data ===")
     user_data = {
         "user_id": user.id,
         "email": user.email,
@@ -362,9 +362,12 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "preferences": user.preferences,
         "last_login": user.last_login.isoformat() if user.last_login else None
     }
+    logging.warning("=== LOGIN: user data prepared ===")
     
+    logging.warning("=== LOGIN: serializing permissions ===")
     permissions = _serialize_permissions(user_data)
     user_data["permissions"] = permissions
+    logging.warning(f"=== LOGIN: permissions serialized: {len(permissions)} items ===")
 
     response_data = {
         "access_token": access_token,
@@ -374,9 +377,12 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "user": user_data,
         "permissions": permissions
     }
+    logging.warning("=== LOGIN: response data prepared ===")
 
     # Create response and set HttpOnly cookie for enhanced security
+    logging.warning("=== LOGIN: creating JSONResponse ===")
     response = JSONResponse(content=response_data)
+    logging.warning("=== LOGIN: JSONResponse created ===")
 
     # Determine if we should use secure cookies (HTTPS only)
     is_secure = http_request.url.scheme == "https"
@@ -563,7 +569,7 @@ async def create_user(
 
 
 @router.get("/auth/stats", response_model=None)
-async def get_auth_stats(current_user=Depends(get_current_user)) -> Dict[str, Any]:
+async def get_auth_stats(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Get authentication statistics (admin only)."""
     # Check if current user has admin privileges
     if "admin" not in current_user.roles and "super_admin" not in current_user.roles:
@@ -577,7 +583,7 @@ async def get_auth_stats(current_user=Depends(get_current_user)) -> Dict[str, An
 
 
 @router.get("/auth/security/context")
-async def get_security_context(current_user=Depends(get_current_user)) -> Dict[str, Any]:
+async def get_security_context(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Get security context for authenticated user."""
     return {
         "userRoles": current_user.get("roles", []),

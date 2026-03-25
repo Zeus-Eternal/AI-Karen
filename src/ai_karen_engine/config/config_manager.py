@@ -9,8 +9,10 @@ import os
 import json
 import threading
 import shutil
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Union
 from pathlib import Path
+from enum import Enum
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
 import logging
 
@@ -18,18 +20,207 @@ CONFIG_PATH = Path(os.getenv("KARI_CONFIG_FILE", "config.json")).absolute()
 BACKUP_PATH = CONFIG_PATH.with_suffix(".bak")
 LOCK = threading.RLock()
 
+
+# --- Dataclass Definitions (Consolidated from core.config_manager) ---
+
+class Environment(str, Enum):
+    """Environment enumeration."""
+
+    DEVELOPMENT = "development"
+    STAGING = "staging"
+    PRODUCTION = "production"
+    LOCAL = "local"
+
+
+@dataclass
+class DatabaseConfig:
+    """Database configuration."""
+
+    host: str = "localhost"
+    port: int = 5432
+    database: str = "ai_karen"
+    username: str = "postgres"
+    password: str = ""
+    pool_size: int = 10
+    max_overflow: int = 20
+    pool_timeout: int = 30
+    pool_recycle: int = 3600
+    ssl_mode: str = "prefer"
+
+
+@dataclass
+class RedisConfig:
+    """Redis configuration."""
+
+    host: str = "localhost"
+    port: int = 6379
+    database: int = 0
+    password: Optional[str] = None
+    max_connections: int = 10
+    socket_timeout: int = 5
+    socket_connect_timeout: int = 5
+    retry_on_timeout: bool = True
+
+
+@dataclass
+class VectorDBConfig:
+    """Vector database configuration."""
+
+    provider: str = "milvus"  # milvus, pinecone, weaviate
+    host: str = "ai-karen-milvus"
+    port: int = 19531
+    collection_name: str = "ai_karen_memories"
+    dimension: int = 1536
+    metric_type: str = "COSINE"
+    index_type: str = "IVF_FLAT"
+    nlist: int = 1024
+
+
+@dataclass
+class LLMConfig:
+    """LLM configuration."""
+
+    default_provider: str = "llamacpp"
+    default_model: str = "Phi-3-mini-4k-instruct-q4.gguf"
+    default_lightweight_model_id: str = "Phi-3-mini-4k-instruct-q4.gguf"
+    default_nlp_model_id: str = "distilbert-base-uncased"
+    default_classifier_model_id: str = "default-classifier-model"
+    models_dir: str = "models"
+    fallback_chain: List[str] = field(
+        default_factory=lambda: ["llamacpp", "openai", "gemini", "deepseek", "huggingface"]
+    )
+    provider_defaults: Dict[str, str] = field(
+        default_factory=lambda: {
+            "openai": "gpt-4o-mini",
+            "deepseek": "deepseek-chat",
+            "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+            "gemini": "gemini-1.5-flash",
+            "huggingface": "microsoft/DialoGPT-large",
+        }
+    )
+    task_assignments: Dict[str, Dict[str, str]] = field(
+        default_factory=lambda: {
+            "chat": {"provider": "openai", "model": "gpt-4o-mini"},
+            "code": {"provider": "deepseek", "model": "deepseek-coder"},
+            "reasoning": {"provider": "openai", "model": "gpt-4o"},
+            "summarization": {"provider": "llamacpp", "model": "Phi-3-mini-4k-instruct-q4.gguf"},
+        }
+    )
+    temperature: float = 0.7
+    max_tokens: int = 2048
+    timeout: int = 30
+    max_retries: int = 3
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+
+
+@dataclass
+class ServiceConfig:
+    """Service-specific configuration."""
+
+    ai_orchestrator: Dict[str, Any] = field(default_factory=dict)
+    memory_service: Dict[str, Any] = field(default_factory=dict)
+    conversation_service: Dict[str, Any] = field(default_factory=dict)
+    plugin_service: Dict[str, Any] = field(default_factory=dict)
+    tool_service: Dict[str, Any] = field(default_factory=dict)
+    analytics_service: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SecurityConfig:
+    """Security configuration."""
+
+    jwt_secret: str = "your-secret-key"
+    jwt_algorithm: str = "HS256"
+    jwt_expiration: int = 3600  # seconds
+    cors_origins: List[str] = field(default_factory=lambda: ["*"])
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60  # seconds
+    enable_auth: bool = True
+    enable_rate_limiting: bool = True
+
+
+@dataclass
+class MonitoringConfig:
+    """Monitoring and observability configuration."""
+
+    enable_metrics: bool = True
+    enable_tracing: bool = False
+    enable_logging: bool = True
+    log_level: str = "INFO"
+    metrics_port: int = 8080
+    health_check_interval: int = 30
+    prometheus_enabled: bool = True
+
+
+@dataclass
+class WebUIConfig:
+    """Web UI integration configuration."""
+
+    enable_web_ui_features: bool = True
+    session_timeout: int = 3600  # seconds
+    max_conversation_history: int = 1000
+    enable_proactive_suggestions: bool = True
+    enable_memory_integration: bool = True
+    ui_sources: List[str] = field(
+        default_factory=lambda: ["web", "desktop", "api"]
+    )
+
+
+@dataclass
+class AIKarenConfig:
+    """Main AI Karen configuration."""
+
+    environment: Environment = Environment.LOCAL
+    debug: bool = False
+    active_user: str = "default"
+    theme: str = "dark"
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    redis: RedisConfig = field(default_factory=RedisConfig)
+    vector_db: VectorDBConfig = field(default_factory=VectorDBConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
+    services: ServiceConfig = field(default_factory=ServiceConfig)
+    security: SecurityConfig = field(default_factory=SecurityConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+    web_ui: WebUIConfig = field(default_factory=WebUIConfig)
+    default_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    spacy_model: str = "en_core_web_sm"
+    event_bus: str = "memory"
+    ui: Dict[str, Any] = field(default_factory=lambda: {"show_debug_info": False})
+
+
+# --- Default Config Dict (for backward compatibility) ---
+
 DEFAULT_CONFIG = {
     "active_user": "default",
     "theme": "dark",
-    "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-    "llm_provider": "llamacpp",
-    "llm_providers": {
-        "enabled": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
-        "fallback_hierarchy": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+    "llm": {
         "default_provider": "llamacpp",
-        "auto_discovery": True,
-        "health_check_interval": 300
+        "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+        "default_lightweight_model_id": "Phi-3-mini-4k-instruct-q4.gguf",
+        "default_nlp_model_id": "distilbert-base-uncased",
+        "default_classifier_model_id": "default-classifier-model",
+        "models_dir": "models",
+        "fallback_chain": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+        "provider_defaults": {
+            "openai": "gpt-4o-mini",
+            "deepseek": "deepseek-chat",
+            "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+            "gemini": "gemini-1.5-flash",
+            "huggingface": "microsoft/DialoGPT-large",
+        },
+        "task_assignments": {
+            "chat": {"provider": "openai", "model": "gpt-4o-mini"},
+            "code": {"provider": "deepseek", "model": "deepseek-coder"},
+            "reasoning": {"provider": "openai", "model": "gpt-4o"},
+            "summarization": {"provider": "llamacpp", "model": "Phi-3-mini-4k-instruct-q4.gguf"},
+        },
+        "temperature": 0.7,
+        "max_tokens": 2048,
+        "timeout": 30,
+        "max_retries": 3,
     },
+    "spacy_model": "en_core_web_sm",
     "memory": {
         "enabled": True,
         "provider": "local",
@@ -115,6 +306,62 @@ def load_config() -> Dict[str, Any]:
         notify_observers(cfg)
         return cfg
 
+
+def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
+    """Create a typed configuration object from a dictionary."""
+    data = config_dict.copy()
+
+    if "database" in data:
+        data["database"] = DatabaseConfig(**data["database"])
+    if "redis" in data:
+        data["redis"] = RedisConfig(**data["redis"])
+    if "vector_db" in data:
+        data["vector_db"] = VectorDBConfig(**data["vector_db"])
+    
+    if "llm" in data:
+        llm_data = data["llm"].copy()
+        # Handle the case where some keys might be missing in older config files
+        data["llm"] = LLMConfig(**llm_data)
+
+    if "services" in data:
+        data["services"] = ServiceConfig(**data["services"])
+    if "security" in data:
+        data["security"] = SecurityConfig(**data["security"])
+    if "monitoring" in data:
+        data["monitoring"] = MonitoringConfig(**data["monitoring"])
+    if "web_ui" in data:
+        data["web_ui"] = WebUIConfig(**data["web_ui"])
+
+    # Convert environment string to enum
+    if "environment" in data and isinstance(data["environment"], str):
+        try:
+            data["environment"] = Environment(data["environment"].lower())
+        except ValueError:
+            data["environment"] = Environment.LOCAL
+
+    return AIKarenConfig(**data)
+
+
+_cached_config_obj: Optional[AIKarenConfig] = None
+
+def get_config() -> AIKarenConfig:
+    """Get the current configuration as a typed object."""
+    global _cached_config_obj
+    with LOCK:
+        if _cached_config_obj is None:
+            cfg_dict = load_config()
+            _cached_config_obj = _create_config_object(cfg_dict)
+        return _cached_config_obj
+
+
+def reload():
+    """Reload configuration and clear cache."""
+    global _cached_config_obj
+    with LOCK:
+        _cached_config_obj = None
+        return get_config()
+
+
 def save_config(cfg: Dict[str, Any]):
     with LOCK:
         atomic_write(CONFIG_PATH, cfg)
@@ -157,11 +404,65 @@ def backup(): backup_config()
 def restore(): restore_config()
 def register(cb: Callable[[Dict[str, Any]], None]): register_observer(cb)
 
+
+# ---- Centralized LLM Config Helpers ----
+
+def get_llm_config() -> Dict[str, Any]:
+    """Get the full LLM configuration section."""
+    cfg = load_config()
+    return cfg.get("llm", DEFAULT_CONFIG["llm"])
+
+
+def get_default_model(provider: str = "") -> str:
+    """Get the default model for a provider, or the system default.
+
+    Args:
+        provider: Optional provider name (e.g. 'llamacpp', 'openai').
+                  If None, returns the system-wide default model.
+    """
+    llm = get_llm_config()
+    if provider:
+        return llm.get("provider_defaults", {}).get(provider, llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf"))
+    return llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf")
+
+
+def get_default_provider() -> str:
+    """Get the default LLM provider."""
+    return get_llm_config().get("default_provider", "llamacpp")
+
+
+def get_provider_defaults() -> Dict[str, str]:
+    """Get the mapping of provider -> default model."""
+    return get_llm_config().get("provider_defaults", {})
+
+
+def get_fallback_chain() -> list:
+    """Get the ordered fallback chain of providers."""
+    return get_llm_config().get("fallback_chain", ["llamacpp", "openai", "gemini", "deepseek", "huggingface"])
+
+
+def get_task_assignment(task_type: str) -> Dict[str, str]:
+    """Get the provider/model assignment for a specific task type.
+
+    Returns a dict with 'provider' and 'model' keys.
+    """
+    llm = get_llm_config()
+    assignments = llm.get("task_assignments", {})
+    if task_type in assignments:
+        return assignments[task_type]
+    # Fallback to system defaults
+    return {"provider": llm.get("default_provider", "llamacpp"), "model": llm.get("default_model", "Phi-3-mini-4k-instruct-q4.gguf")}
+
+
 __all__ = [
     "load_config", "save_config", "update_config", "get_config_value", "set_config_value",
     "reset_config", "backup_config", "restore_config", "register_observer",
     "get", "set", "load", "save", "update", "reset", "backup", "restore", "register",
-    "config_manager"
+    "get_llm_config", "get_default_model", "get_default_provider",
+    "get_provider_defaults", "get_fallback_chain", "get_task_assignment",
+    "config_manager", "get_config", "reload", "AIKarenConfig", "LLMConfig",
+    "DatabaseConfig", "RedisConfig", "VectorDBConfig", "ServiceConfig",
+    "SecurityConfig", "MonitoringConfig", "WebUIConfig", "Environment"
 ]
 
 # Create a simple config manager instance for backward compatibility

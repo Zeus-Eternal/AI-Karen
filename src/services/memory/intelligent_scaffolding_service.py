@@ -1,7 +1,7 @@
 """
 Intelligent Scaffolding Service
 
-Replaces the dedicated TinyLlama service with a flexible scaffolding service
+Replaces dedicated model-specific services with a flexible scaffolding service
 that uses the model discovery and routing system to select the best available
 model for fast reasoning scaffolding tasks.
 
@@ -55,7 +55,7 @@ class IntelligentScaffoldingService:
     Intelligent scaffolding service that uses model discovery and routing
     to select the best available model for fast reasoning scaffolding tasks.
     
-    This replaces the dedicated TinyLlama service with a more flexible approach.
+    This replaces dedicated model-specific services with a more flexible approach.
     """
     
     def __init__(self, config: Optional[ScaffoldingConfig] = None):
@@ -87,7 +87,7 @@ class IntelligentScaffoldingService:
         """
         Generate scaffolding using the best available model for the task.
         
-        This replaces the TinyLlama-specific scaffolding with intelligent model selection.
+        This replaces model-specific scaffolding with intelligent model selection.
         """
         start_time = time.time()
         

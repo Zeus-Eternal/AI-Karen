@@ -30,7 +30,7 @@ class PipelineConfig:
     # Model Selection Configuration
     max_context_tokens: int = 8192
     local_only: bool = True  # Cloud is optional acceleration
-    local_model_preference: str = "local:tinyllama-1.1b"
+    local_model_preference: str = "local:auto"
     cloud_routing_threshold: int = 4096  # Use cloud for large contexts when enabled
     
     # Memory Configuration

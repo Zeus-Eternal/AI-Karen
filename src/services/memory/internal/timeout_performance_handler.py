@@ -508,8 +508,16 @@ class TimeoutPerformanceHandler:
         """Find a better performing model for the given issue."""
         # This would integrate with the model availability handler
         # For now, return a simple fallback
+        # Get dynamic lightweight model for fallback
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            default_lightweight = config.llm.default_lightweight_model_id
+        except Exception:
+            default_lightweight = "default-lightweight-model"
+
         fallback_models = [
-            "tinyllama-1.1b-chat",
+            default_lightweight,
             "gpt-3.5-turbo",
             "claude-3-haiku"
         ]

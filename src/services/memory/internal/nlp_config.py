@@ -16,14 +16,12 @@ class SpacyConfig(BaseModel):
     """Configuration for spaCy service."""
     
     def __init__(self, **data):
-        # Get model name from configuration manager or fallback to environment/default
-        model_name = "en_core_web_sm"
         try:
-            from ai_karen_engine.core.config_manager import get_config
+            from ai_karen_engine.config.config_manager import get_config
             config = get_config()
             model_name = config.spacy_model
         except Exception:
-            # Fallback to environment variable or default
+            # Fallback to environment variable or hardcoded system default
             model_name = os.getenv("SPACY_MODEL", "en_core_web_sm")
         
         # Set defaults - enable parser for dependency parsing as required by task 3.2
@@ -55,8 +53,15 @@ class DistilBertConfig(BaseModel):
     
     def __init__(self, **data):
         # Set defaults
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            model_name = config.llm.default_nlp_model_id
+        except Exception:
+            model_name = os.getenv("TRANSFORMER_MODEL", "distilbert-base-uncased")
+
         defaults = {
-            "model_name": os.getenv("TRANSFORMER_MODEL", "distilbert-base-uncased"),
+            "model_name": model_name,
             "max_length": 512,
             "batch_size": 32,
             "enable_gpu": os.getenv("DISTILBERT_ENABLE_GPU", "false").lower() in ("1", "true", "yes"),
@@ -69,7 +74,7 @@ class DistilBertConfig(BaseModel):
         defaults.update(data)
         super().__init__(**defaults)
     
-    model_name: str = "distilbert-base-uncased"
+    model_name: str = "default-nlp-model"
     max_length: int = 512
     batch_size: int = 32
     enable_gpu: bool = False
@@ -86,8 +91,16 @@ class SmallLanguageModelConfig(BaseModel):
     
     def __init__(self, **data):
         # Set defaults
+        model_name = "default-lightweight-model"
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            model_name = config.llm.default_lightweight_model_id
+        except Exception:
+            model_name = os.getenv("SMALL_LANGUAGE_MODEL_NAME", "default-lightweight-model")
+
         defaults = {
-            "model_name": os.getenv("SMALL_LANGUAGE_MODEL_NAME", "tinyllama-1.1b-chat"),
+            "model_name": model_name,
             "max_tokens": 150,
             "temperature": 0.7,
             "enable_fallback": True,
@@ -100,7 +113,7 @@ class SmallLanguageModelConfig(BaseModel):
         defaults.update(data)
         super().__init__(**defaults)
     
-    model_name: str = "tinyllama-1.1b-chat"
+    model_name: str = "default-lightweight-model"
     max_tokens: int = 150
     temperature: float = 0.7
     enable_fallback: bool = True

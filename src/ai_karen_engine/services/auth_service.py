@@ -85,9 +85,10 @@ class Session:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
 class AuthConfig(ServiceConfig):
     """Authentication configuration."""
+    name: str = "auth_service"
+    version: str = "1.0.0"
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
@@ -99,13 +100,6 @@ class AuthConfig(ServiceConfig):
     session_timeout_hours: int = 24
     enable_two_factor: bool = True
     bcrypt_rounds: int = 12
-    
-    def __post_init__(self):
-        """Initialize ServiceConfig fields."""
-        if not hasattr(self, 'name') or not self.name:
-            self.name = "auth_service"
-        if not hasattr(self, 'version') or not self.version:
-            self.version = "1.0.0"
 
 
 class AuthService(BaseService):
@@ -122,13 +116,6 @@ class AuthService(BaseService):
         self._initialized = False
         self._lock: Optional[asyncio.Lock] = None
         
-    @property
-    def lock(self) -> asyncio.Lock:
-        """Get or create the async lock lazily to ensure correct event loop attachment."""
-        if self._lock is None:
-            self._lock = asyncio.Lock()
-        return self._lock
-        
         # Database session will be injected
         self._db_session: Optional[AsyncSession] = None
         self._db_client: Optional[MultiTenantPostgresClient] = None
@@ -139,6 +126,13 @@ class AuthService(BaseService):
         
         # Load configuration from environment
         self._load_config_from_env()
+    
+    @property
+    def lock(self) -> asyncio.Lock:
+        """Get or create the async lock lazily to ensure correct event loop attachment."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
     
     def _load_config_from_env(self) -> None:
         """Load configuration from environment variables."""
@@ -816,26 +810,34 @@ class AuthService(BaseService):
         if not self._initialized:
             await self.initialize()
         
+        normalized_username = username.strip().lower()
+        if not normalized_username:
+            return None
+
         # Check cache first
         for user in self._user_cache.values():
-            if user.email == username:  # For now, use email as username (since we don't have username field)
+            email = (user.email or "").strip().lower()
+            if email == normalized_username:
+                return user
+            if email.split("@", 1)[0] == normalized_username:
                 return user
         
         try:
             async with self._session_scope() as session:
                 result = await session.execute(
                     select(AuthUser).where(
-                        AuthUser.email == username,  # For now, use email as username
                         AuthUser.is_active == True,
                     )
                 )
-                auth_user = result.scalar_one_or_none()
-                if not auth_user:
-                    return None
+                auth_users = result.scalars().all()
+                for auth_user in auth_users:
+                    email = (getattr(auth_user, "email", "") or "").strip().lower()
+                    if email == normalized_username or email.split("@", 1)[0] == normalized_username:
+                        user = self._build_user_account(auth_user)
+                        self._user_cache[user.id] = user
+                        return user
 
-                user = self._build_user_account(auth_user)
-                self._user_cache[user.id] = user
-                return user
+                return None
         except Exception as e:
             logger.error("Error fetching user by username: %s", e)
             return None

@@ -278,6 +278,37 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────
+  # Ollama (OPTIONAL - recommended local model path for Docker installs)
+  # Starts only with --profile ollama
+  # ──────────────────────────────────────────────────────────────────────
+  ollama:
+    container_name: ai-karen-ollama
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles:
+      - ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./models/ollama:/root/.ollama
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:11434/api/tags >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+        reservations:
+          memory: 2G
+    networks:
+      - ai-karen-net
+
+  # ──────────────────────────────────────────────────────────────────────
   # Prometheus Monitoring
   # ──────────────────────────────────────────────────────────────────────
   prometheus:
@@ -467,6 +498,7 @@ services:
       MODEL_ORCHESTRATOR_ENABLE_METRICS: "true"
       MODEL_ORCHESTRATOR_ENABLE_RBAC: "true"
       MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434/api}"
     ports:
       - "8000:8000"
       - "9092:9091"  # Model orchestrator metrics port
@@ -490,6 +522,8 @@ services:
       - "./models/transformers:/root/.cache/huggingface/hub:rw"
       # Local transformers models cache
       - "./models/transformers:/app/cache/transformers:rw"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -545,6 +579,8 @@ services:
     volumes:
       - ./ui_launchers/Karen-AI-Theme:/app
       - ./.env.local:/app/.env.local:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: >
       sh -c "
         rm -rf /app/node_modules/.cache &&

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,43 +30,32 @@ type SubAgent = {
 
 /**
  * @file TasksPage.tsx
- * @description Conceptual page for defining and managing Tasks for AI agents to perform.
+ * @description Page for defining and managing Tasks for AI agents via /api/tasks.
  */
 export default function TasksPage() {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const conceptualTasks = [
-     {
-      name: "Generate Weekly Sales Report",
-      description: "Queries the sales database, analyzes the data, and formats it into a PDF report.",
-      primaryAgent: "Data Analyst Agent",
-      primaryAgentInstructions: "{'sales_period': 'last_7_days', 'output_format': 'summary_table'}",
-      subAgents: [
-        { name: "PDF Generation Agent", instructions: "{'template': 'weekly_sales_report', 'filename': 'Weekly_Sales.pdf'}" }
-      ],
-      lastRun: "2024-07-26 17:00 UTC",
-      status: "Failed",
-    },
-    {
-      name: "Post Daily Facebook Summary",
-      description: "Generates a summary of yesterday's news and posts it to the main Facebook page.",
-      primaryAgent: "Social Media Agent",
-      primaryAgentInstructions: "Post the summary to the 'Main Page' with #DailyBriefing.",
-      subAgents: [
-        { name: "Writing Agent", instructions: "Summarize the news in a professional tone, max 280 characters." }
-      ],
-      lastRun: "2024-07-29 08:00 UTC",
-      status: "Success",
-    },
-    {
-      name: "Check Urgent Emails",
-      description: "Scans Gmail for unread emails from 'boss@example.com' or with 'URGENT' in the subject.",
-      primaryAgent: "Email Agent",
-      primaryAgentInstructions: "Only check for emails within the last 24 hours.",
-      subAgents: [],
-      lastRun: "2024-07-29 11:00 UTC",
-      status: "Success",
-    },
-  ];
+  const fetchTasks = async () => {
+    setIsLoading(true);
+    try {
+      const { apiClient } = await import('@/lib/api');
+      const data = await apiClient.get<any[]>('/api/tasks/');
+      setTasks(data || []);
+      setErrorMsg("");
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Failed to fetch tasks.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
   
   // State for the mock form
   const [newPrimaryAgent, setNewPrimaryAgent] = useState<string>("");
@@ -103,6 +92,47 @@ export default function TasksPage() {
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm("Are you sure you want to delete this task?")) return;
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.delete(`/api/tasks/${taskId}`);
+      fetchTasks();
+    } catch (err: any) {
+      alert("Failed to delete task: " + err.message);
+    }
+  };
+
+  const handleExecuteTask = async (taskId: string) => {
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.post(`/api/tasks/${taskId}/execute`, {});
+      fetchTasks();
+    } catch (err: any) {
+      alert("Failed to execute task: " + err.message);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!newPrimaryAgent) {
+      alert("Please select a primary agent first.");
+      return;
+    }
+    try {
+      const { apiClient } = await import('@/lib/api');
+      await apiClient.post('/api/tasks/', {
+        name: "New Custom Task",
+        description: "A dynamically generated task.",
+        primaryAgent: newPrimaryAgent,
+        primaryAgentInstructions: newPrimaryAgentInstructions,
+        subAgents: newSubAgents
+      });
+      fetchTasks();
+    } catch (err: any) {
+      alert("Failed to create task: " + err.message);
+    }
+  };
+
 
   return (
     <TooltipProvider>
@@ -112,18 +142,17 @@ export default function TasksPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Task Management</h2>
           <p className="text-sm text-muted-foreground">
-            Define specific, single-objective tasks for your agents (Conceptual).
+            Define specific, single-objective tasks for your agents and monitor execution.
           </p>
         </div>
       </div>
       
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Conceptual Feature</AlertTitle>
-        <AlertDescription>
-          This page is a conceptual placeholder. Task management requires backend logic to define task parameters, associate them with agents, and handle execution and logging. The form below is a UI demonstration.
-        </AlertDescription>
-      </Alert>
+      {errorMsg && (
+        <Alert variant="destructive">
+          <AlertTitle>Error Loading Tasks</AlertTitle>
+          <AlertDescription>{errorMsg}</AlertDescription>
+        </Alert>
+      )}
 
         <Alert>
             <Users className="h-4 w-4" />
@@ -136,9 +165,17 @@ export default function TasksPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Task List */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold">Defined Tasks</h3>
-           {conceptualTasks.map((task, index) => (
-            <Card key={index}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Defined Tasks</h3>
+            <Button variant="outline" size="sm" onClick={fetchTasks}>Refresh</Button>
+          </div>
+          
+          {isLoading ? (
+            <div className="text-center p-8 text-muted-foreground animate-pulse">Loading tasks from backend...</div>
+          ) : tasks.length === 0 ? (
+            <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No tasks defined yet.</div>
+          ) : tasks.map((task: any, index: number) => (
+            <Card key={task.id || index}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
@@ -146,13 +183,13 @@ export default function TasksPage() {
                         <CardDescription className="text-xs">{task.description}</CardDescription>
                     </div>
                     <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon" onClick={() => handleExecuteTask(task.id)}>
                             <Play className="h-4 w-4 text-muted-foreground hover:text-green-500" />
                         </Button>
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon">
                             <Settings className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="icon" disabled>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)}>
                             <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                         </Button>
                     </div>
@@ -175,16 +212,16 @@ export default function TasksPage() {
                             </Tooltip>
                         )}
                     </div>
-                    {task.subAgents.length > 0 && (
+                    {task.subAgents && task.subAgents.length > 0 && (
                         <div className="flex items-center gap-2">
                             <Users className="h-4 w-4" />
-                            <span>Sub-Agents: <strong className="font-semibold text-foreground">{task.subAgents.map(sa => sa.name).join(', ')}</strong></span>
+                            <span>Sub-Agents: <strong className="font-semibold text-foreground">{task.subAgents.map((sa: any) => sa.name).join(', ')}</strong></span>
                         </div>
                     )}
                 </div>
                 <div className="flex items-center justify-between pt-1">
-                    <span>Last Run: {task.lastRun}</span>
-                    <Badge variant={task.status === "Success" ? "default" : "destructive"}>{task.status}</Badge>
+                    <span>Last Run: {task.lastRun || "Never"}</span>
+                    <Badge variant={task.status === "Success" ? "default" : (task.status === "Pending" ? "secondary" : "destructive")}>{task.status}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -204,9 +241,9 @@ export default function TasksPage() {
                   <Input id="task-name" placeholder="e.g., Summarize Morning News" disabled />
                </div>
                <div className="space-y-1.5">
-                  <Label htmlFor="task-primary-agent">Assign Primary Agent</Label>
+                   <Label htmlFor="task-primary-agent">Assign Primary Agent</Label>
                    <div className="flex items-center space-x-2">
-                     <Select value={newPrimaryAgent} onValueChange={setNewPrimaryAgent} disabled>
+                     <Select value={newPrimaryAgent} onValueChange={setNewPrimaryAgent}>
                         <SelectTrigger id="task-primary-agent">
                           <SelectValue placeholder="Select a primary agent" />
                         </SelectTrigger>
@@ -294,7 +331,7 @@ export default function TasksPage() {
                 </div>
             </CardContent>
             <CardFooter>
-              <Button disabled className="w-full">
+              <Button className="w-full" onClick={handleCreateTask}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Task
               </Button>
@@ -304,9 +341,9 @@ export default function TasksPage() {
       </div>
        <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Developer Insight</AlertTitle>
+        <AlertTitle>Developer Insight: Live Wiring</AlertTitle>
         <AlertDescription>
-          A "Task" could be a database record storing the primary agent, a list of sub-agents, and a structured set of instructions (like JSON) for each. Executing a task would involve invoking the primary agent's main flow, providing it with its own instructions and the list of available sub-agents and their specific instructions, allowing it to delegate accordingly.
+          This dashboard is officially wired up to the AI Karen Backend `/api/tasks` endpoint. Tasks created above persist into memory and can be evaluated dynamically.
         </AlertDescription>
       </Alert>
 

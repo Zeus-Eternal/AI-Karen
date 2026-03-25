@@ -302,11 +302,17 @@ class OptimizedLLMService:
         # Start background tasks
         self._start_background_tasks()
     
-    def _get_default_configs(self) -> List[ModelConfig]:
-        """Get default model configurations"""
+        # Use dynamic lightweight model for local default
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            default_lightweight = config.llm.default_lightweight_model_id
+        except Exception:
+            default_lightweight = "default-lightweight-model"
+
         return [
             ModelConfig(
-                name="llamacpp:tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                name=f"llamacpp:{default_lightweight}-v2.0.Q4_K_M.gguf",
                 provider="llamacpp",
                 model_type=ModelType.LOCAL,
                 warmup_strategy=WarmupStrategy.EAGER,

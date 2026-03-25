@@ -74,7 +74,7 @@ def create_local_only_orchestrator(
     config = PipelineConfig(
         local_only=True,
         enable_copilotkit=False,  # Disable for pure local operation
-        local_model_preference="local:tinyllama-1.1b"
+        local_model_preference="local:auto"
     )
     
     return create_response_orchestrator(user_id, tenant_id, config)

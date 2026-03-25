@@ -2,7 +2,7 @@
 Generic Small Language Model Service for dynamic model configuration and selection.
 
 This service provides a unified interface for working with different small language models
-including TinyLlama and other compatible models. It dynamically selects the best model
+including default lightweight models and other compatible models. It dynamically selects the best model
 based on system resources and can automatically download suitable models if needed.
 """
 
@@ -33,7 +33,13 @@ except ImportError:
     # Create a basic config if not available
     class SmallLanguageModelConfig:
         def __init__(self, **kwargs):
-            self.model_name = kwargs.get("model_name", "tinyllama-1.1b-chat")
+            try:
+                from ai_karen_engine.config.config_manager import get_config
+                config = get_config()
+                default_model = config.llm.default_lightweight_model_id
+            except Exception:
+                default_model = "default-lightweight-model"
+            self.model_name = kwargs.get("model_name", default_model)
             self.max_tokens = kwargs.get("max_tokens", 150)
             self.temperature = kwargs.get("temperature", 0.7)
             self.enable_fallback = kwargs.get("enable_fallback", True)
@@ -164,9 +170,9 @@ class SmallLanguageModelService:
     
     # Registry of known models with their properties
     MODEL_REGISTRY = {
-        "tinyllama-1.1b-chat": ModelInfo(
-            name="tinyllama-1.1b-chat",
-            description="TinyLlama 1.1B parameter chat model",
+        "default-lightweight-model": ModelInfo(
+            name="default-lightweight-model",
+            description="Default lightweight chat model",
             file_size=670000000,  # ~670MB
             ram_required=2000000000,  # ~2GB RAM
             parameters="1.1B",
@@ -174,9 +180,9 @@ class SmallLanguageModelService:
             download_url="https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/resolve/main/tinyllama-1.1b-chat.Q4_K_M.gguf",
             is_default=True
         ),
-        "tinyllama-1.1b": ModelInfo(
-            name="tinyllama-1.1b",
-            description="TinyLlama 1.1B parameter base model",
+        "default-base-model": ModelInfo(
+            name="default-base-model",
+            description="Default base model with 1.1B parameters",
             file_size=670000000,  # ~670MB
             ram_required=2000000000,  # ~2GB RAM
             parameters="1.1B",

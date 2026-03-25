@@ -115,8 +115,15 @@ class ErrorRecoverySystem:
         }
         
         # Available fallback models by modality
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            default_lightweight = config.llm.default_lightweight_model_id
+        except Exception:
+            default_lightweight = "default-lightweight-model"
+
         self.fallback_models: Dict[ModalityType, List[str]] = {
-            ModalityType.TEXT: ["tinyllama", "gpt-3.5-turbo", "claude-3-haiku"],
+            ModalityType.TEXT: [default_lightweight, "gpt-3.5-turbo", "claude-3-haiku"],
             ModalityType.IMAGE: ["clip", "blip-2"],
             ModalityType.AUDIO: ["whisper-tiny"],
             ModalityType.VIDEO: ["clip"]

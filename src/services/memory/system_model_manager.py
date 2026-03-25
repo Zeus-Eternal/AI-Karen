@@ -3,8 +3,8 @@ System Model Manager
 
 Manages configuration and monitoring for system models including:
 - llama-cpp models (GGUF format)
-- distilbert-base-uncased (transformer model)
-- basic_cls (classification model)
+- default-nlp-model (transformer model)
+- default-classifier-model (classification model)
 
 This service provides:
 - Model status monitoring and health checks
@@ -119,31 +119,43 @@ class SystemModelManager:
         self.config_dir = self.models_dir / "configs"
         self.config_dir.mkdir(exist_ok=True)
         
+        # Get dynamic lightweight model info
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            config = get_config()
+            default_lightweight = config.llm.default_lightweight_model_id
+            default_nlp = config.llm.default_nlp_model_id
+            default_classifier = config.llm.default_classifier_model_id
+        except Exception:
+            default_lightweight = "default-lightweight-model"
+            default_nlp = "default-nlp-model"
+            default_classifier = "default-classifier-model"
+
         # System model definitions
         self.system_models = {
-            "llama-cpp": {
-                "name": "Tiny LLaMA",
+            "default-lightweight-model": {
+                "name": "Default Lightweight Model",
                 "family": "llama",
                 "format": "gguf",
-                "path": self.models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                "path": self.models_dir / "llama-cpp" / f"{default_lightweight}-v2.0.Q4_K_M.gguf",
                 "config_class": LlamaCppConfig,
                 "capabilities": ["text-generation", "chat", "local-inference"],
                 "runtime_compatibility": ["llama-cpp"]
             },
-            "distilbert-base-uncased": {
-                "name": "DistilBERT Base Uncased",
+            "default-nlp-model": {
+                "name": "Default NLP Model",
                 "family": "bert",
                 "format": "safetensors",
-                "path": self.models_dir / "distilbert-base-uncased",
+                "path": self.models_dir / "nlp" / default_nlp,
                 "config_class": TransformerConfig,
                 "capabilities": ["text-classification", "embeddings", "feature-extraction"],
                 "runtime_compatibility": ["transformers", "pytorch"]
             },
-            "basic_cls": {
-                "name": "Basic Classifier",
+            "default-classifier-model": {
+                "name": "Default Classifier Model",
                 "family": "sklearn",
                 "format": "joblib",
-                "path": self.models_dir / "basic_cls",
+                "path": self.models_dir / "classifiers" / default_classifier,
                 "config_class": BasicClsConfig,
                 "capabilities": ["text-classification", "intent-detection"],
                 "runtime_compatibility": ["sklearn", "joblib"]
@@ -249,11 +261,11 @@ class SystemModelManager:
         
         # Determine parameters based on model
         parameters = None
-        if model_id == "llama-cpp":
+        if model_id == "default-lightweight-model":
             parameters = "1.1B"
-        elif model_id == "distilbert-base-uncased":
+        elif model_id == "default-nlp-model":
             parameters = "66M"
-        elif model_id == "basic_cls":
+        elif model_id == "default-classifier-model":
             parameters = "Variable"
         
         return ModelStatus(
@@ -308,11 +320,11 @@ class SystemModelManager:
     def _validate_configuration(self, model_id: str, config) -> Dict[str, Any]:
         """Validate model configuration against hardware constraints."""
         try:
-            if model_id == "llama-cpp":
+            if model_id == "default-lightweight-model":
                 return self._validate_llama_cpp_config(config)
-            elif model_id == "distilbert-base-uncased":
+            elif model_id == "default-nlp-model":
                 return self._validate_transformer_config(config)
-            elif model_id == "basic_cls":
+            elif model_id == "default-classifier-model":
                 return self._validate_basic_cls_config(config)
             
             return {"valid": True}
@@ -534,19 +546,19 @@ class SystemModelManager:
                 }
             }
             
-            if model_id == "llama-cpp":
+            if model_id == "default-lightweight-model":
                 recommendations.update({
                     "recommended_threads": min(cpu_count, 8),
                     "recommended_gpu_layers": 32 if gpu_available and gpu_memory_gb >= 4 else 0,
                     "recommended_context_length": 4096 if memory_gb >= 16 else 2048,
                     "recommended_batch_size": 1024 if memory_gb >= 16 else 512
                 })
-            elif model_id == "distilbert-base-uncased":
+            elif model_id == "default-nlp-model":
                 transformer_recommendations = self._get_transformer_recommendations(
                     memory_gb, gpu_available, gpu_memory_gb, gpu_count, bf16_supported
                 )
                 recommendations.update(transformer_recommendations)
-            elif model_id == "basic_cls":
+            elif model_id == "default-classifier-model":
                 recommendations.update({
                     "recommended_max_features": min(50000, int(memory_gb * 5000)),
                     "recommended_ngram_range": (1, 2) if memory_gb >= 8 else (1, 1)

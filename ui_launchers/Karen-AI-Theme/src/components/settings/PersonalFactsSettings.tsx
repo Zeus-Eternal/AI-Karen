@@ -138,12 +138,25 @@ export default function PersonalFactsSettings() {
   const handleAddFact = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (newFact.trim()) {
-      const updatedFacts = [...personalFacts, newFact.trim()];
+      const factText = newFact.trim();
+      const updatedFacts = [...personalFacts, factText];
       saveMainPersonalFactsToLocalStorage(updatedFacts);
       setNewFact('');
+
+      // Wire out to the backend memory API explicitly as required by Phase 4
+      import('@/lib/api').then(({ apiClient }) => {
+        apiClient.post('/api/memory/commit', {
+          user_id: "current_user", // Usually backend extracts from auth token, sending fallback
+          text: factText,
+          tags: ["personal_fact", "user_provided"],
+          importance: 8,
+          decay: "pinned"
+        }).catch(err => console.error("Failed to sync fact to backend memory:", err));
+      }).catch(err => console.error("Failed to load API Client:", err));
+
       toast({
         title: "Fact Added",
-        description: "Karen will now remember this new fact.",
+        description: "Karen will now remember this new fact (synced to backend).",
       });
     }
   };

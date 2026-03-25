@@ -139,13 +139,16 @@ class AssistRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=8000)
     top_k: int = Field(6, ge=1, le=50)
     context: Dict[str, Any] = Field(default_factory=dict)
+    preferred_llm_provider: Optional[str] = None
+    preferred_model: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class AssistResponse(BaseModel):
     answer: str
-    context: List[ContextHit] = Field(default_factory=list)
+    structured_content: Dict[str, Any] = Field(default_factory=dict)
     actions: List[SuggestedAction] = Field(default_factory=list)
-    timings: Dict[str, float]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     correlation_id: str
 
 
@@ -411,9 +414,9 @@ async def copilot_start_action_get(action: str, http_request: Request):
     req = StartActionRequest(action=action, payload={}, context={})
     return await copilot_start_action(req, http_request)
 
-@router.post("/assist")
+@router.post("/assist", response_model=AssistResponse)
 async def copilot_assist(
-    request: dict,
+    request: AssistRequest,
     http_request: Request,
     chat_orchestrator = Depends(get_chat_orchestrator),
 ):
@@ -421,47 +424,29 @@ async def copilot_assist(
     _ensure_routing_actions_registered()
     start_time = time.time()
     correlation_id = get_correlation_id(http_request) or f"copilot_{int(time.time())}"
+    is_degraded = False
     
-    # Extract and validate required fields
+    # Get user context from request state (set by our authentication wrapper)
+    user_context = None
     try:
-        # Get user context from request state (set by our authentication wrapper)
+        user_context = getattr(http_request.state, "user", None)
+    except AttributeError:
         user_context = None
-        try:
-            user_context = getattr(http_request.state, 'user', None)
-        except AttributeError:
-            # Fallback for development mode
-            pass
-        
-        # Use authenticated user_id if available, otherwise fall back to request user_id
-        authenticated_user_id = None
-        if user_context:
-            authenticated_user_id = user_context.get("user_id")
-        
-        user_id = request.get("user_id", authenticated_user_id or "anonymous")
-        message = request.get("message", "")
-        org_id = request.get("org_id")
-        top_k = request.get("top_k", 6)
-        
-        if not message:
-            return {
-                "answer": "I need a message to assist you with. Please provide your question or request.",
-                "context": [],
-                "actions": [],
-                "timings": {"total_ms": (time.time() - start_time) * 1000},
-                "correlation_id": correlation_id
-            }
-    except Exception as e:
-        return {
-            "answer": "I encountered an issue processing your request. Please check your input format.",
-            "context": [],
-            "actions": [],
-            "timings": {"total_ms": (time.time() - start_time) * 1000},
-            "correlation_id": correlation_id
-        }
+
+    # Use authenticated user_id if available, otherwise fall back to request user_id
+    authenticated_user_id = user_context.get("user_id") if user_context else None
+    user_id = authenticated_user_id or request.user_id or "anonymous"
+    message = request.message
+    org_id = request.org_id
+    top_k = request.top_k
+    preferred_llm_provider = request.preferred_llm_provider
+    preferred_model = request.preferred_model
+    session_id = request.session_id
     
     # Initialize response components
     context_hits = []
     suggested_actions = []
+    structured_content = {}
     answer = "I'm processing your request..."
     timings = {"start": start_time}
 
@@ -497,27 +482,83 @@ async def copilot_assist(
                     if not status_is_healthy:
                         unhealthy.append(svc)
             if unhealthy:
-                total_time = (time.time() - start_time) * 1000
-                return {
-                    "answer": (
-                        "Running in degraded mode: core services are temporarily unavailable "
-                        f"({', '.join(unhealthy)}). I can still provide basic assistance."
-                    ),
-                    "context": [],
-                    "actions": [
-                        {
-                            "type": "add_task",
-                            "params": {"task": f"Retry after services recover: {message[:40]}..."},
-                            "confidence": 0.6,
-                            "description": "Retry this request once services are healthy"
-                        }
-                    ],
-                    "timings": {"total_ms": total_time, "degraded_mode": True},
-                    "correlation_id": correlation_id,
-                }
+                logger.warning(
+                    "Health gate failed for services: %s. Entering degraded mode.",
+                    ", ".join(unhealthy),
+                    extra={"correlation_id": correlation_id}
+                )
+                is_degraded = True
+                # Inject a system note so the LLM is aware of the context if it manages to succeed
+                message = f"SYSTEM WARNING: Core services ({', '.join(unhealthy)}) are offline. Proceed in degraded mode.\nUser Request: {message}"
     except Exception:
         # Health gate failures should never block the main flow
         pass
+
+    # If the health gate already flagged degraded mode, skip the full orchestrator
+    # (which depends on the database) and try the local model directly.
+    if is_degraded:
+        logger.info(
+            "Health gate flagged degraded mode – trying local model directly",
+            extra={"correlation_id": correlation_id},
+        )
+        # Extract the original user message from the injected system warning
+        user_msg = message
+        if "User Request:" in user_msg:
+            user_msg = user_msg.split("User Request:", 1)[-1].strip()
+
+        degraded_cause = "Core backend services (database) are temporarily unavailable."
+
+        # Try the local model via FallbackProvider (uses the already-loaded
+        # registered llamacpp provider from the global registry).
+        try:
+            from ai_karen_engine.integrations.providers.fallback_provider import FallbackProvider
+            import asyncio
+
+            _fb = FallbackProvider()
+            loop = asyncio.get_event_loop()
+            local_answer = await loop.run_in_executor(
+                None, lambda: _fb.generate_text(user_msg)
+            )
+
+            if local_answer and isinstance(local_answer, str) and local_answer.strip():
+                answer = local_answer
+                logger.info("Local model responded in degraded mode", extra={"correlation_id": correlation_id})
+            else:
+                raise ValueError("Local model returned empty response")
+        except Exception as local_e:
+            logger.warning("Local model failed in degraded mode: %s", local_e, extra={"correlation_id": correlation_id})
+            answer = (
+                f"I'm currently unable to generate a full AI response. "
+                f"Please check your infrastructure and try again shortly."
+            )
+
+        total_time = (time.time() - start_time) * 1000
+        timings["total_ms"] = total_time
+        return {
+            "answer": answer,
+            "structured_content": structured_content,
+            "actions": suggested_actions,
+            "metadata": {
+                "timings": timings,
+                "context": context_hits,
+                "degraded_mode": True,
+                "degraded_cause": degraded_cause,
+                "llm": {
+                    "provider": "system",
+                    "model_id": "degraded-fallback",
+                    "model_name": "System Fallback",
+                    "source": "health_gate",
+                    "is_degraded": True,
+                    "duration": total_time / 1000,
+                    "usage": getattr(_fb, "last_usage", {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4}),
+                },
+                "orchestrator": {
+                    "used_fallback": True,
+                    "context_used": False,
+                },
+            },
+            "correlation_id": correlation_id,
+        }
 
     # Try to get real AI response using the injected chat orchestrator
     llm_start = time.time()
@@ -531,62 +572,75 @@ async def copilot_assist(
         chat_request = ChatRequest(
             message=message,
             user_id=actual_user_id,
-            conversation_id=f"copilot_{correlation_id}",
-            session_id=correlation_id,
+            conversation_id=session_id or f"copilot_{correlation_id}",
+            session_id=session_id or correlation_id,
             stream=False,
             include_context=True,
             metadata={
                 "source": "copilot_assist", 
                 "org_id": org_id,
-                "platform": "copilot"
+                "platform": "copilot",
+                "request_context": request.context,
+                "preferred_llm_provider": preferred_llm_provider,
+                "preferred_model": preferred_model,
             }
         )
         
         # Process the message through the injected chat orchestrator with a hard timeout
         # to prevent the frontend proxy from hitting its 120s abort.
         import asyncio
+        response = None
         try:
             response = await asyncio.wait_for(
                 chat_orchestrator.process_message(chat_request),
                 timeout=float(os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "45")),  # default 45s
             )
         except asyncio.TimeoutError:
-            # Return a graceful timeout response instead of hanging
-            total_time = (time.time() - start_time) * 1000
-            return {
-                "answer": (
-                    "The AI is taking longer than expected to respond. "
-                    "I paused the request to keep the app responsive. "
-                    "Try again with a shorter prompt or a simpler request."
-                ),
-                "context": [],
-                "actions": [
-                    {
-                        "type": "add_task",
-                        "params": {"task": f"Retry: {message[:40]}..."},
-                        "confidence": 0.6,
-                        "description": "Retry this request shortly"
-                    }
-                ],
-                "timings": {"total_ms": total_time, "timeout": True},
-                "correlation_id": correlation_id,
-            }
+            # Let the outer except Exception handler deal with this so the
+            # FallbackProvider is invoked instead of returning a canned string.
+            timeout_secs = os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "45")
+            raise RuntimeError(
+                f"Primary AI provider timed out after {timeout_secs}s. "
+                "The request was cancelled to keep the application responsive."
+            )
         
         # Handle the response properly based on ChatOrchestrator response structure
         if response:
             # The ChatOrchestrator returns a response object with a 'response' attribute
             if hasattr(response, 'response') and response.response:
                 answer = response.response
-                print(f"SUCCESS: Got AI response: {answer[:100]}...")
+                logger.info("Copilot assist produced orchestrator response", extra={"correlation_id": correlation_id})
             elif hasattr(response, 'content') and response.content:
                 answer = response.content
-                print(f"SUCCESS: Got AI content: {answer[:100]}...")
+                logger.info("Copilot assist produced content response", extra={"correlation_id": correlation_id})
             elif isinstance(response, str):
                 answer = response
-                print(f"SUCCESS: Got string response: {answer[:100]}...")
+                logger.info("Copilot assist produced string response", extra={"correlation_id": correlation_id})
             else:
-                print(f"WARNING: Unexpected response format: {type(response)} - {response}")
-                answer = f"I processed your message '{message}' but encountered an unexpected response format. Let me help you anyway - what specific aspect would you like me to focus on?"
+                logger.warning(
+                    "Unexpected copilot response format: %s",
+                    type(response),
+                    extra={"correlation_id": correlation_id},
+                )
+                answer = "The AI returned an unexpected response format. Please try again."
+            
+            # Map enriched metadata and formatting layer outputs to response envelope
+            llm_metadata = {}
+            if hasattr(response, 'metadata') and response.metadata:
+                metadata_payload = response.metadata
+                # Use the 'llm' nested object if it exists (from ChatOrchestrator)
+                llm_metadata = metadata_payload.get('llm', {}) if isinstance(metadata_payload, dict) else {}
+                
+                # If 'llm' is empty but metadata_payload has 'provider', use metadata_payload as llm_metadata
+                if not llm_metadata and isinstance(metadata_payload, dict) and 'provider' in metadata_payload:
+                    llm_metadata = metadata_payload
+                
+                if 'output_formatting' in llm_metadata:
+                    structured_content['formatting'] = llm_metadata['output_formatting']
+                if 'output_layout' in llm_metadata:
+                    structured_content['layout_type'] = llm_metadata['output_layout']
+                if 'output_profile' in llm_metadata:
+                    structured_content['output_profile'] = llm_metadata['output_profile']
             
             # Extract context from memory processor if available
             if hasattr(response, 'context_data') and response.context_data:
@@ -647,71 +701,73 @@ async def copilot_assist(
         
     except Exception as e:
         timings["llm_error"] = str(e)
-        print(f"AI service error: {e}")
-        
-        # Try a simpler approach - use basic LLM service directly
-        try:
-            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
-            
-            # Try to get a simple response from the LLM service
-            if hasattr(nlp_service_manager, 'get_llm_response'):
-                simple_response = await nlp_service_manager.get_llm_response(message)
-                if simple_response:
-                    answer = simple_response
-                    print(f"SUCCESS: Got simple LLM response: {answer[:100]}...")
-                else:
-                    raise Exception("No response from simple LLM")
-            else:
-                raise Exception("No simple LLM method available")
-                
-        except Exception as simple_e:
-            print(f"Simple LLM also failed: {simple_e}")
-            
-            # Final fallback - but make it more intelligent and less template-like
-            message_lower = message.lower()
-            
-            # Create more dynamic, contextual responses
-            if any(word in message_lower for word in ["explain", "what is", "how does", "tell me about"]):
-                topic = message.replace("explain", "").replace("what is", "").replace("how does", "").replace("tell me about", "").strip()
-                answer = f"I'd be happy to explain {topic}. This is a complex topic that involves several key concepts. Let me break it down for you:\n\n1. Core principles and fundamentals\n2. How it works in practice\n3. Common applications and use cases\n4. Benefits and considerations\n\nWould you like me to dive deeper into any specific aspect of {topic}?"
-                
-            elif any(word in message_lower for word in ["code", "debug", "error", "fix", "programming"]):
-                answer = f"I can help you with your coding challenge: '{message}'. Here's my systematic approach:\n\n1. **Identify the Issue**: Let's first understand what's happening\n2. **Check Common Causes**: Syntax, imports, data types, logic flow\n3. **Debug Strategy**: Use logging, breakpoints, or print statements\n4. **Test Solutions**: Implement fixes incrementally\n\nWhat specific error or behavior are you seeing? Share your code and I'll provide targeted guidance."
-                
-            elif any(word in message_lower for word in ["hi", "hello", "hey"]):
-                answer = "Hello! I'm your AI assistant, ready to help you tackle any challenge. I can assist with:\n\n• **Code & Development**: Debugging, architecture, best practices\n• **Explanations**: Breaking down complex concepts\n• **Analysis**: Data interpretation, problem-solving\n• **Planning**: Project structure, task organization\n\nWhat would you like to work on today?"
-                
-            elif any(word in message_lower for word in ["help", "assist", "support"]):
-                answer = f"I'm here to help with '{message}'. I can provide comprehensive assistance including detailed explanations, step-by-step guidance, code examples, and practical solutions. What specific aspect would you like me to focus on first?"
-                
-            else:
-                # More dynamic general response
-                answer = f"I understand you're asking about '{message}'. This is an interesting topic that I can help you explore. Let me provide some insights and guidance based on what you're looking for.\n\nTo give you the most helpful response, could you tell me:\n• What specific aspect interests you most?\n• Are you looking for practical steps or conceptual understanding?\n• Do you have any particular context or use case in mind?\n\nI'm ready to dive deep into this topic with you!"
-        
-        # Add more intelligent actions based on content
-        if any(word in message_lower for word in ["learn", "study", "understand", "explain"]):
-            suggested_actions.append({
-                "type": "export_note",
-                "params": {"title": f"Learning: {message[:30]}...", "content": answer},
-                "confidence": 0.8,
-                "description": "Save this explanation for future reference"
-            })
-        
-        if any(word in message_lower for word in ["code", "debug", "programming"]):
-            suggested_actions.append({
-                "type": "open_doc",
-                "params": {"doc_type": "coding_guide", "topic": "debugging"},
-                "confidence": 0.9,
-                "description": "Open coding best practices guide"
-            })
-        
-        # Always add a follow-up task
+        logger.error(
+            "Copilot assist failed to obtain a verified LLM response: %s",
+            e,
+            extra={"correlation_id": correlation_id},
+        )
+        is_degraded = True
+
+        # ----- Intelligent Fallback: instant deterministic response -----
+        # Instead of calling another slow model (which could take 70s+ and
+        # re-trigger the timeout), we produce an immediate, context-aware
+        # response that informs the user about the failure and still
+        # attempts to be helpful.
+        error_snippet = str(e)[:200]
+        user_msg = message
+
+        # Strip the SYSTEM WARNING prefix if we injected it via health gate
+        if "User Request:" in user_msg:
+            user_msg = user_msg.split("User Request:", 1)[-1].strip()
+
+        # Classify the failure and build a helpful response
+        error_lower = error_snippet.lower()
+        if "timeout" in error_lower or "timed out" in error_lower:
+            cause = "The primary AI provider timed out while generating a response."
+            suggestion = "Try a shorter or simpler prompt, or switch to a different provider in Settings."
+        elif "api key" in error_lower or "auth" in error_lower or "401" in error_lower:
+            cause = "Authentication with the AI provider failed."
+            suggestion = "Check your API key in Application Settings → Model Configuration."
+        elif "connection" in error_lower or "network" in error_lower or "connect" in error_lower:
+            cause = "Could not connect to the AI provider."
+            suggestion = "Check your network connection and the provider's base URL in Settings."
+        elif "rate limit" in error_lower or "429" in error_lower:
+            cause = "The AI provider is rate-limiting requests."
+            suggestion = "Wait a moment before trying again, or switch to a different provider."
+        else:
+            cause = f"The AI provider encountered an error: {error_snippet[:100]}"
+            suggestion = "Try again shortly, or switch to a different provider in Settings."
+
+        answer = (
+            f"⚠️ **Karen is operating in degraded mode.**\n\n"
+            f"**Cause:** {cause}\n\n"
+            f"**Your question:** \"{user_msg[:120]}{'...' if len(user_msg) > 120 else ''}\"\n\n"
+            f"I'm unable to generate a full AI response right now, but I've logged your request. "
+            f"{suggestion}\n\n"
+            f"_This notification will only appear once per session._"
+        )
+        logger.info("Produced instant degraded-mode response", extra={"correlation_id": correlation_id})
+
         suggested_actions.append({
             "type": "add_task",
-            "params": {"task": f"Continue discussion: {message[:40]}..."},
+            "params": {"task": f"Retry: {user_msg[:40]}..."},
             "confidence": 0.7,
-            "description": "Track this conversation for follow-up"
+            "description": "Retry this request once the AI provider is healthy"
         })
+
+        # Ensure llm_metadata is populated even in degraded mode so the
+        # frontend can always display model information in the chat bubble.
+        if not llm_metadata:
+            llm_metadata = {
+                "provider": "fallback",
+                "model_id": "degraded-fallback",
+                "model_name": "Emergency Fallback",
+                "source": "error_handler",
+                "is_degraded": True,
+                "duration": (time.time() - llm_start),
+                "failure_reason": error_snippet[:100],
+                "usage": {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4},
+            }
     
     # Calculate final timing
     total_time = (time.time() - start_time) * 1000
@@ -719,9 +775,18 @@ async def copilot_assist(
     
     return {
         "answer": answer,
-        "context": context_hits,
+        "structured_content": structured_content,
         "actions": suggested_actions,
-        "timings": timings,
+        "metadata": {
+            "timings": timings,
+            "context": context_hits,
+            "degraded_mode": is_degraded,
+            "llm": llm_metadata,
+            "orchestrator": {
+                "used_fallback": response.metadata.get("used_fallback", False) if response and hasattr(response, 'metadata') and isinstance(response.metadata, dict) else False,
+                "context_used": response.metadata.get("context_used", False) if response and hasattr(response, 'metadata') and isinstance(response.metadata, dict) else False,
+            }
+        },
         "correlation_id": correlation_id
     }
 

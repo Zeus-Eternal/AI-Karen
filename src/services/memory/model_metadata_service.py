@@ -3,7 +3,7 @@ Model Metadata Service
 
 Provides comprehensive model metadata management including:
 - Caching mechanism for remote metadata
-- Predefined model configurations with TinyLlama examples
+- Predefined model configurations with lightweight LLM examples
 - Technical specifications and capabilities management
 - Performance metrics and compatibility information
 
@@ -82,12 +82,12 @@ class ModelMetadataService:
     def _initialize_predefined_models(self) -> Dict[str, Dict[str, Any]]:
         """Initialize predefined model configurations with comprehensive metadata."""
         return {
-            "tinyllama-1.1b-chat-q4": {
-                "id": "tinyllama-1.1b-chat-q4",
-                "name": "TinyLlama 1.1B Chat Q4_K_M",
+            "default-lightweight-model": {
+                "id": "default-lightweight-model",
+                "name": "Default Lightweight Chat Model",
                 "provider": "llama-cpp",
                 "size": 669000000,
-                "description": "A compact 1.1B parameter language model optimized for chat applications with Q4_K_M quantization for efficient inference.",
+                "description": "A compact language model optimized for chat applications with efficient quantization for fast local inference.",
                 "capabilities": ["text-generation", "chat", "local-inference", "low-memory"],
                 "metadata": ModelMetadata(
                     parameters="1.1B",
@@ -95,9 +95,9 @@ class ModelMetadataService:
                     memory_requirement="~1GB",
                     context_length=2048,
                     license="Apache 2.0",
-                    tags=["chat", "small", "efficient", "quantized"],
+                    tags=["chat", "small", "efficient", "quantized", "default"],
                     architecture="Llama",
-                    training_data="SlimPajama, Starcoderdata",
+                    training_data="General purpose datasets",
                     performance_metrics={
                         "inference_speed": "fast",
                         "memory_efficiency": "high",
@@ -138,12 +138,12 @@ class ModelMetadataService:
                     "mirrors": []
                 }
             },
-            "tinyllama-1.1b-instruct-q4": {
-                "id": "tinyllama-1.1b-instruct-q4",
-                "name": "TinyLlama 1.1B Instruct Q4_K_M",
+            "default-instruct-model": {
+                "id": "default-instruct-model",
+                "name": "Default Instruct Model",
                 "provider": "llama-cpp",
                 "size": 669000000,
-                "description": "TinyLlama model fine-tuned for instruction following with Q4_K_M quantization.",
+                "description": "A compact model fine-tuned for instruction following with efficient quantization.",
                 "capabilities": ["text-generation", "instruction-following", "local-inference", "low-memory"],
                 "metadata": ModelMetadata(
                     parameters="1.1B",
@@ -151,9 +151,9 @@ class ModelMetadataService:
                     memory_requirement="~1GB",
                     context_length=2048,
                     license="Apache 2.0",
-                    tags=["instruct", "small", "efficient", "quantized"],
+                    tags=["instruct", "small", "efficient", "quantized", "default"],
                     architecture="Llama",
-                    training_data="SlimPajama, Starcoderdata + Instruction tuning",
+                    training_data="General purpose instruction datasets",
                     performance_metrics={
                         "inference_speed": "fast",
                         "memory_efficiency": "high",

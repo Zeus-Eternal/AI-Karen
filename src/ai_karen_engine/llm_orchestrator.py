@@ -234,6 +234,7 @@ class LLMRouteResult:
     content: str
     model_id: Optional[str]
     provider: Optional[str]
+    model_name: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     is_degraded: bool = False
     attempted_models: List[str] = field(default_factory=list)
@@ -245,6 +246,7 @@ class LLMRouteResult:
 
         data: Dict[str, Any] = {
             "model_id": self.model_id,
+            "model_name": self.model_name,
             "provider": self.provider,
             "tags": list(self.tags),
             "is_degraded": self.is_degraded,
@@ -254,8 +256,14 @@ class LLMRouteResult:
             data["attempted_models"] = list(self.attempted_models)
         if self.failure_reason:
             data["failure_reason"] = self.failure_reason
+        
+        # Flatten metadata into the main dictionary
         if self.metadata:
-            data["extra"] = dict(self.metadata)
+            for k, v in self.metadata.items():
+                if k not in data:
+                    data[k] = v
+                else:
+                    data[f"meta_{k}"] = v
 
         return data
 
@@ -587,7 +595,14 @@ class LLMOrchestrator:
             
             self._setup_watchdog()
             self._initialized = True
-            self._preload_providers()
+            
+            # Start preloading in a background thread to avoid blocking the event loop
+            preload_thread = threading.Thread(
+                target=self._preload_providers_safe, 
+                daemon=True, 
+                name="orchestrator-preloader"
+            )
+            preload_thread.start()
             
             # Start performance monitoring in a background thread
             import threading
@@ -623,6 +638,15 @@ class LLMOrchestrator:
                 if not self.registry.verify(model_id):
                     logger.warning(f"Model integrity check failed: {model_id}")
                     del self.registry._models[model_id]
+
+    def _preload_providers_safe(self) -> None:
+        """Safe wrapper for preloading to catch and log errors."""
+        try:
+            logger.info("Starting background provider preloading")
+            self._preload_providers()
+            logger.info("Background provider preloading completed")
+        except Exception as e:
+            logger.error(f"Background preloading failed: {e}")
 
     def _preload_providers(self) -> None:
         """Initialize providers at startup and warm their caches."""
@@ -831,7 +855,8 @@ class LLMOrchestrator:
                     
                     # Register the SmallLanguageModelService
                     slm_provider = SmallLanguageModelProvider()
-                    model_id = "small_language_model:tinyllama"
+                    from ai_karen_engine.config.config_manager import get_default_model
+                    model_id = f"small_language_model:{get_default_model('llamacpp') or 'default'}"
                     capabilities = ["scaffolding", "outlining", "summarization", "text", "generic"]
                     self.registry.register(model_id, slm_provider, capabilities, weight=5, tags=["small-language-model", "local"])
                     logger.info(f"Successfully registered SmallLanguageModelService: {model_id}")
@@ -1003,12 +1028,29 @@ class LLMOrchestrator:
         attempted_models: List[str] = []
         last_error: Optional[Exception] = None
         preferred_models: Deque[str] = deque()
+        routing_decision: Any = None
 
         if mode == "copilotkit":
             with self.registry._lock:
                 for mid, info in self.registry._models.items():
                     if "copilotkit" in mid.lower() and self._model_ready(mid, info):
                         preferred_models.append(mid)
+
+        # Explicit model preference from kwargs (User Selection)
+        pref_provider = kwargs.get("provider")
+        pref_model = kwargs.get("model")
+        if pref_provider and pref_model:
+            # Try both name-based and ID-based matching
+            potential_ids = [
+                f"{pref_provider}:{pref_model}",
+                f"local:{pref_model}",
+                pref_model if ":" in pref_model else None
+            ]
+            for pid in filter(None, potential_ids):
+                if pid in self.registry._models:
+                    preferred_models.appendleft(pid)
+                    logger.info(f"Routing: Prioritizing user-selected model {pid}")
+                    break
 
         # Use PerformanceAdaptiveRouter for intelligent routing if available
         use_performance_router = (
@@ -1017,6 +1059,7 @@ class LLMOrchestrator:
             not preferred_models  # Don't override explicit copilotkit preference
         )
 
+        start_time = time.time()
         while True:
             if preferred_models:
                 candidate_id = preferred_models.popleft()
@@ -1140,6 +1183,9 @@ class LLMOrchestrator:
                     model_id.split(":", 1)[0] if ":" in model_id else model_id
                 )
 
+                duration = time.time() - start_time
+                usage = getattr(model.model, "last_usage", {})
+
                 return LLMRouteResult(
                     content=response_text,
                     model_id=model_id,
@@ -1151,6 +1197,11 @@ class LLMOrchestrator:
                         "mode": mode,
                         "skill": skill,
                         "context_provided": bool(context),
+                        "usage": usage,
+                        "duration": duration,
+                        "routing_confidence": getattr(routing_decision, 'confidence', 0.0) if routing_decision else 0.0,
+                        "routing_rationale": getattr(routing_decision, 'rationale', None) if routing_decision else None,
+                        "routing_strategy": getattr(routing_decision.strategy, 'value', str(routing_decision.strategy)) if routing_decision and hasattr(routing_decision, 'strategy') else None,
                     },
                 )
             except CircuitOpenError as circuit_error:
@@ -1232,6 +1283,7 @@ class LLMOrchestrator:
             last_error,
             mode,
             skill,
+            routing_decision=routing_decision,
         )
 
     def _execute_model(
@@ -1659,6 +1711,7 @@ class LLMOrchestrator:
         last_error: Optional[Exception],
         mode: str,
         skill: Optional[str],
+        routing_decision: Any = None,
     ) -> LLMRouteResult:
         """Generate a graceful degraded response when all providers fail."""
 
@@ -1707,13 +1760,17 @@ class LLMOrchestrator:
                 """
             ).strip()
             try:
+                fallback_start = time.time()
                 response = fallback_model.model.generate_text(fallback_prompt)
+                fallback_duration = time.time() - fallback_start
+                usage = getattr(fallback_model.model, "last_usage", {})
+                
                 self._log_request_event(
                     "fallback_success",
                     fallback_id,
                     prompt,
                     mode="degraded",
-                    metadata={"original_models": attempted},
+                    metadata={"original_models": attempted, "duration": fallback_duration},
                 )
                 return LLMRouteResult(
                     content=response,
@@ -1731,6 +1788,10 @@ class LLMOrchestrator:
                         "mode": mode,
                         "skill": skill,
                         "fallback_type": "model",
+                        "usage": usage,
+                        "duration": fallback_duration,
+                        "routing_confidence": getattr(routing_decision, 'confidence', 0.0) if routing_decision else 0.0,
+                        "routing_rationale": getattr(routing_decision, 'rationale', None) if routing_decision else None,
                     },
                 )
             except Exception as fallback_error:

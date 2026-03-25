@@ -57,10 +57,33 @@ class LlamaCppRuntime:
     - Streaming and non-streaming inference modes
     """
     
+    _instance: Optional['LlamaCppRuntime'] = None
+    _singleton_lock = threading.Lock()
+
+    @classmethod
+    def get_instance(cls, **kwargs) -> 'LlamaCppRuntime':
+        """
+        Get or create the global LlamaCppRuntime singleton.
+        
+        Args:
+            **kwargs: Initialization parameters if creating a new instance
+            
+        Returns:
+            The global LlamaCppRuntime instance
+        """
+        with cls._singleton_lock:
+            if cls._instance is None:
+                logger.info("Initializing global LlamaCppRuntime singleton")
+                cls._instance = cls(**kwargs)
+            elif kwargs:
+                # Optionally update parameters if specified, though usually we want consistency
+                logger.debug("LlamaCppRuntime singleton already exists, ignoring new kwargs")
+            return cls._instance
+
     def __init__(
         self,
         model_path: Optional[str] = None,
-        n_ctx: int = 2048,
+        n_ctx: int = 1024,  # Reduced default context for memory safety
         n_batch: int = 512,
         n_gpu_layers: int = 0,
         n_threads: Optional[int] = None,
@@ -95,7 +118,7 @@ class LlamaCppRuntime:
             env_threads = int(os.getenv("LLAMA_THREADS", "0"))
         except ValueError:
             env_threads = 0
-        self.n_threads = n_threads or (env_threads if env_threads > 0 else (os.cpu_count() or 1))
+        self.n_threads = n_threads or (env_threads if env_threads > 0 else 4)
         self.use_mmap = use_mmap
         # Enable mlock via env if requested
         env_mlock = os.getenv("LLAMA_MLOCK", "false").lower() in ("1", "true", "yes")
@@ -108,6 +131,7 @@ class LlamaCppRuntime:
         self._loaded = False
         self._load_time: Optional[float] = None
         self._memory_usage: Optional[int] = None
+        self.last_usage: Dict[str, Any] = {}
         
         # Load model if path provided
         if model_path:
@@ -186,12 +210,18 @@ class LlamaCppRuntime:
                 
             except Exception as e:
                 logger.error(f"Failed to load model {model_path}: {e}")
-                # Attempt automatic recovery for known TinyLlama fallback model
+                # Attempt automatic recovery for known default model
                 try:
                     filename = Path(model_path).name
                     auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
-                    if auto_fix and "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf" in filename:
-                        logger.warning("Attempting to re-download TinyLlama GGUF due to load failure...")
+                    # Get default model info from config
+                    try:
+                        from ai_karen_engine.config.config_manager import get_default_model
+                        _default_model = get_default_model("llamacpp") or "Phi-3-mini-4k-instruct-q4.gguf"
+                    except Exception:
+                        _default_model = "Phi-3-mini-4k-instruct-q4.gguf"
+                    if auto_fix and _default_model.lower() in filename.lower():
+                        logger.warning(f"Attempting to re-download default model ({_default_model}) due to load failure...")
                         # Move corrupt file aside first
                         try:
                             p = Path(model_path)
@@ -212,9 +242,11 @@ class LlamaCppRuntime:
                             from huggingface_hub import hf_hub_download  # type: ignore
                             target_dir = str(Path(model_path).parent)
                             token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+                            # Derive repo_id from default model filename pattern
+                            _repo_id = "microsoft/Phi-3-mini-4k-instruct-gguf"
                             hf_hub_download(
-                                repo_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
-                                filename="tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                                repo_id=_repo_id,
+                                filename=_default_model,
                                 local_dir=target_dir,
                                 local_dir_use_symlinks=False,
                                 force_download=True,
@@ -230,9 +262,8 @@ class LlamaCppRuntime:
                             try:
                                 import requests  # type: ignore
                                 url = (
-                                    "https://huggingface.co/"
-                                    "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/"
-                                    "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf?download=1"
+                                    f"https://huggingface.co/{_repo_id}/resolve/main/"
+                                    f"{_default_model}?download=1"
                                 )
                                 tmp_path = str(Path(model_path).with_suffix(".tmp"))
                                 with requests.get(url, stream=True, timeout=120) as r:
@@ -358,6 +389,7 @@ class LlamaCppRuntime:
         response = self._model(prompt, **params)
         
         if isinstance(response, dict) and "choices" in response:
+            self.last_usage = response.get("usage", {})
             return response["choices"][0]["text"]
         elif isinstance(response, str):
             return response
@@ -580,7 +612,7 @@ class LlamaCppRuntime:
         """Check if runtime supports a specific model family."""
         supported_families = [
             "llama", "mistral", "qwen", "phi", "gemma", "codellama",
-            "tinyllama", "vicuna", "alpaca", "orca"
+            "small_llm", "vicuna", "alpaca", "orca"
         ]
         return family_name.lower() in supported_families
 

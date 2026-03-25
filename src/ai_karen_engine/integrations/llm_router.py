@@ -1270,7 +1270,7 @@ class IntelligentLLMRouter:
         return RouteDecision(
             provider="core_helpers",
             runtime="core_helpers",
-            model_id="tinyllama+distilbert+spacy",
+            model_id="core_helpers",
             reason="Degraded mode - all other options failed",
             confidence=0.2,
             fallback_chain=[],
@@ -1938,7 +1938,7 @@ class IntelligentLLMRouter:
         result["viable"] = True
         result["decision"] = {
             "provider": "core_helpers",
-            "model": "tinyllama+distilbert+spacy",
+            "model": "core_helpers",
             "runtime": "core_helpers",
         }
         
