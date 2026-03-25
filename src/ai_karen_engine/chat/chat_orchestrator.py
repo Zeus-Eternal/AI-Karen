@@ -36,6 +36,7 @@ from ai_karen_engine.chat.response_formatter import PrettyOutputLayer, ResponseC
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
+from auth.auth_service import get_auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,8 @@ class ChatOrchestrator:
         context_integrator: Optional[ContextIntegrator] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
-        enable_monitoring: bool = True
+        enable_monitoring: bool = True,
+        auth_service: Optional[Any] = None
     ):
         self.memory_processor = memory_processor
         self.file_attachment_service = file_attachment_service
@@ -181,6 +183,7 @@ class ChatOrchestrator:
         self.tool_integration_service = tool_integration_service
         self.instruction_processor = instruction_processor or InstructionProcessor()
         self.context_integrator = context_integrator or ContextIntegrator()
+        self.auth_service = auth_service
         self.output_layer = PrettyOutputLayer()
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
@@ -298,6 +301,7 @@ class ChatOrchestrator:
             metadata["routing_confidence"] = extra.get("routing_confidence", 0.0)
             metadata["routing_rationale"] = extra.get("routing_rationale")
             metadata["routing_strategy"] = extra.get("routing_strategy")
+            metadata["confidence_score"] = extra.get("confidence_score", 0.0)
         else:
             # Fallback to top-level attributes
             duration = getattr(result, "duration", None)
@@ -310,6 +314,7 @@ class ChatOrchestrator:
             metadata["routing_confidence"] = getattr(result, "routing_confidence", 0.0)
             metadata["routing_rationale"] = getattr(result, "routing_rationale", None)
             metadata["routing_strategy"] = getattr(result, "routing_strategy", None)
+            metadata["confidence_score"] = getattr(result, "confidence_score", 0.0)
 
         if duration is not None or usage is not None:
             metadata.update({
@@ -1374,7 +1379,7 @@ class ChatOrchestrator:
 
         # Build enhanced prompt with instructions and context
         enhanced_prompt = await self._build_enhanced_prompt(
-            message, integrated_context, active_instructions
+            message, processing_context.user_id, integrated_context, active_instructions
         )
 
         # Preferred provider/model from request metadata
@@ -1400,6 +1405,7 @@ class ChatOrchestrator:
                 parsed_message,
                 integrated_context,
                 active_instructions,
+                processing_context,
                 user_llm_choice,
                 user_model_choice,
                 attempt_log,
@@ -1426,6 +1432,7 @@ class ChatOrchestrator:
                 parsed_message,
                 integrated_context,
                 active_instructions,
+                processing_context,
                 attempt_log,
             )
             if system_result:
@@ -1445,6 +1452,7 @@ class ChatOrchestrator:
                 parsed_message,
                 integrated_context,
                 active_instructions,
+                processing_context,
                 attempt_log,
             )
             if local_result:
@@ -1478,8 +1486,9 @@ class ChatOrchestrator:
         parsed_message: ParsedMessage,
         integrated_context: Optional[Any],
         active_instructions: List[Any],
-        provider: str,
-        model: str,
+        processing_context: ProcessingContext,
+        user_llm_choice: str,
+        user_model_choice: str,
         attempt_log: List[Dict[str, Any]],
     ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
@@ -1487,18 +1496,17 @@ class ChatOrchestrator:
         
         # Safety defaults for exception handling
         model_id = None
-        provider = None
         
         orchestrator = get_orchestrator()
         attempt_entry: Dict[str, Any] = {
             "stage": "user_preference",
-            "provider": provider,
-            "model": model,
+            "provider": user_llm_choice,
+            "model": user_model_choice,
         }
         attempt_log.append(attempt_entry)
-
+        
         # Try different model ID patterns to match the registry
-        potential_ids = [f"{provider}:{model}", f"local:{model}", model if ":" in model else None]
+        potential_ids = [f"{user_llm_choice}:{user_model_choice}", f"local:{user_model_choice}", user_model_choice if ":" in user_model_choice else None]
         model_info = None
         target_id = None
         
@@ -1510,12 +1518,13 @@ class ChatOrchestrator:
                 
         if not model_info:
             attempt_entry["status"] = "unavailable"
-            attempt_entry["error"] = f"Model {provider}:{model} not found in registry"
+            attempt_entry["error"] = f"Model {user_llm_choice}:{user_model_choice} not found in registry"
             return None
 
         try:
             # For local models, apply prefix to prevent truncation/hallucination
-            enhanced_prompt = self._add_local_prefix(enhanced_prompt, provider)
+            # Note: _build_chat_messages handles this more robustly for modern SLMs
+            enhanced_prompt = self._add_local_prefix(enhanced_prompt, user_llm_choice)
 
             # Use run_in_executor to avoid blocking the event loop with synchronous router calls
             loop = asyncio.get_event_loop()
@@ -1525,18 +1534,18 @@ class ChatOrchestrator:
                     enhanced_prompt, 
                     skill="conversation", 
                     return_metadata=True,
-                    provider=provider,
-                    model=model
+                    provider=user_llm_choice,
+                    model=user_model_choice
                 )
             )
             self._ensure_llm_response_is_valid(
-                route_result, f"user preference {provider}:{model}"
+                route_result, f"user preference {user_llm_choice}:{user_model_choice}"
             )
 
             metadata = self._build_llm_metadata(
                 route_result,
                 "user_preference",
-                additional={"preferred_model": f"{provider}:{model}"},
+                additional={"preferred_model": f"{user_llm_choice}:{user_model_choice}"},
             )
             response_text = route_result.content
 
@@ -1609,8 +1618,8 @@ class ChatOrchestrator:
             attempt_entry.update(
                 {
                     "status": "rejected",
-                    "model_id": model_id,
-                    "provider": provider,
+                    "model_id": target_id,
+                    "provider": user_llm_choice,
                 }
             )
             raise
@@ -1618,8 +1627,8 @@ class ChatOrchestrator:
             attempt_entry.update(
                 {
                     "status": "error",
-                    "model_id": model_id,
-                    "provider": provider,
+                    "model_id": target_id,
+                    "provider": user_llm_choice,
                     "error": str(exc),
                 }
             )
@@ -1632,6 +1641,7 @@ class ChatOrchestrator:
         parsed_message: ParsedMessage,
         integrated_context: Optional[Any],
         active_instructions: List[Any],
+        processing_context: ProcessingContext,
         attempt_log: List[Dict[str, Any]],
     ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
@@ -1776,6 +1786,7 @@ class ChatOrchestrator:
         parsed_message: ParsedMessage,
         integrated_context: Optional[Any],
         active_instructions: List[Any],
+        processing_context: ProcessingContext,
         attempt_log: List[Dict[str, Any]],
     ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
@@ -1783,7 +1794,13 @@ class ChatOrchestrator:
 
         attempt_entry = {"stage": "local_fallback", "candidate": "llamacpp"}
         attempt_log.append(attempt_entry)
-        llama_result = await self._try_llamacpp_models(enhanced_prompt, message)
+        llama_result = await self._try_llamacpp_models(
+            enhanced_prompt, 
+            message, 
+            integrated_context, 
+            active_instructions, 
+            processing_context
+        )
         if llama_result:
             response_text, raw_metadata = llama_result
             result_ns = SimpleNamespace(
@@ -1879,7 +1896,12 @@ class ChatOrchestrator:
         return None
 
     async def _try_llamacpp_models(
-        self, enhanced_prompt: str, message: str
+        self, 
+        enhanced_prompt: str, 
+        message: str, 
+        integrated_context: Optional[Any],
+        active_instructions: List[Any],
+        processing_context: ProcessingContext
     ) -> Optional[Tuple[str, Dict[str, Any]]]:
 
         try:
@@ -1914,12 +1936,18 @@ class ChatOrchestrator:
                         logger.warning("Failed to load %s", gguf_file.name)
                         continue
 
-                    # Apply Assistant: prefix for local model guidance
-                    local_prompt = self._add_local_prefix(enhanced_prompt, "llamacpp")
+                    # Build structured messages for the chat template
+                    messages = await self._build_chat_messages(
+                        message, 
+                        processing_context.user_id, 
+                        integrated_context, 
+                        active_instructions
+                    )
                     
                     t0 = time.time()
-                    response = runtime.generate(
-                        prompt=local_prompt,
+                    # Use the new chat method to leverage intrinsic GGUF templates
+                    response = runtime.chat(
+                        messages=messages,
                         max_tokens=256,
                         temperature=0.7,
                         stream=False,
@@ -1936,6 +1964,7 @@ class ChatOrchestrator:
                             "metadata": {
                                 "duration": duration,
                                 "usage": usage,
+                                "confidence_score": 0.75
                             }
                         }
                         logger.info(
@@ -2030,7 +2059,8 @@ class ChatOrchestrator:
                                     "prompt_tokens": prompt_tokens,
                                     "completion_tokens": completion_tokens,
                                     "total_tokens": prompt_tokens + completion_tokens,
-                                }
+                                },
+                                "confidence_score": 0.75
                             }
                         }
                         logger.info(
@@ -2130,20 +2160,97 @@ class ChatOrchestrator:
             logger.debug(f"spaCy intelligent response failed: {e}")
             return None
     
+    async def _build_chat_messages(
+        self,
+        message: str,
+        user_id: str,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any]
+    ) -> List[Dict[str, str]]:
+        """Build structured chat messages with identity and context."""
+        messages = []
+        system_parts = []
+
+        # Inject User Identity if available
+        if self.auth_service and user_id:
+            try:
+                user_info = await self.auth_service.get_user(user_id)
+                if user_info:
+                    # UserAccount is a dataclass, use getattr instead of .get()
+                    full_name = getattr(user_info, "full_name", None) or getattr(user_info, "email", "").split("@")[0] or "User"
+                    system_parts.append(f"User Identity: You are speaking to {full_name}.")
+                    logger.debug(f"Injected user identity for: {full_name}")
+                elif user_id == "frontend_user":
+                    # Fallback for the default frontend anonymous user
+                    system_parts.append("User Identity: You are speaking to Zeus.")
+                    logger.debug("Injected default user identity: Zeus")
+            except Exception as e:
+                logger.warning(f"Failed to fetch user identity for prompting: {e}")
+
+        # Add default persona if no instructions
+        if not active_instructions:
+            system_parts.append("You are Karen, a helpful and intelligent AI assistant. Provide concise and accurate responses.")
+
+        # Add integrated context to system prompt
+        if integrated_context:
+            if integrated_context.primary_context:
+                system_parts.append(f"CONTEXT:\n{integrated_context.primary_context}")
+            if integrated_context.supporting_context:
+                system_parts.append(f"ADDITIONAL INFO:\n{integrated_context.supporting_context}")
+
+        if system_parts:
+            messages.append({"role": "system", "content": "\n\n".join(system_parts)})
+
+        # Add user message
+        if active_instructions:
+             instruction_context = InstructionContext(
+                user_id=user_id,
+                conversation_id="",
+                active_instructions=active_instructions
+            )
+             enhanced_user_message = await self.instruction_processor.apply_instructions_to_prompt(
+                message, active_instructions, instruction_context
+            )
+             messages.append({"role": "user", "content": enhanced_user_message})
+        else:
+            messages.append({"role": "user", "content": message})
+
+        return messages
+
     async def _build_enhanced_prompt(
         self,
         message: str,
+        user_id: str,
         integrated_context: Optional[Any],
         active_instructions: List[Any]
     ) -> str:
         """Build enhanced prompt with instructions and context."""
         prompt_parts = []
-        
+
+        # Inject User Identity if available
+        user_identity_added = False
+        if self.auth_service and user_id:
+            try:
+                user_info = await self.auth_service.get_user(user_id)
+                if user_info:
+                    # UserAccount is a dataclass, use getattr instead of .get()
+                    full_name = getattr(user_info, "full_name", None) or getattr(user_info, "email", "").split("@")[0] or "User"
+                    prompt_parts.append(f"SYSTEM: User Identity: You are speaking to {full_name}.")
+                    user_identity_added = True
+                    logger.debug(f"Injected user identity for: {full_name}")
+                elif user_id == "frontend_user":
+                    # Fallback for the default frontend anonymous user
+                    prompt_parts.append("SYSTEM: User Identity: You are speaking to Zeus.")
+                    user_identity_added = True
+                    logger.debug("Injected default user identity: Zeus")
+            except Exception as e:
+                logger.warning(f"Failed to fetch user identity for prompting: {e}")
+
         # Add active instructions to prompt
         if active_instructions:
             # Create instruction context for prompt enhancement
             instruction_context = InstructionContext(
-                user_id="",  # Will be filled by caller
+                user_id=user_id,
                 conversation_id="",  # Will be filled by caller
                 active_instructions=active_instructions
             )
@@ -2167,7 +2274,7 @@ class ChatOrchestrator:
         # This is primarily for the fallback paths where we might not have the prefix yet.
         # But we'll be careful not to double it.
         # If no instructions are provided, add a default persona to guide local models
-        if not active_instructions and not prompt_parts[0].startswith("SYSTEM:"):
+        if not active_instructions and not any(p.startswith("SYSTEM: You are Karen") for p in prompt_parts):
             prompt_parts.insert(0, "SYSTEM: You are Karen, a helpful and intelligent AI assistant. Provide concise and accurate responses.")
 
         final_prompt = "\n\n".join(prompt_parts)

@@ -1765,20 +1765,24 @@ class LLMOrchestrator:
                 fallback_duration = time.time() - fallback_start
                 usage = getattr(fallback_model.model, "last_usage", {})
                 
+                # Use specific model ID and confidence from fallback provider if available
+                actual_model_id = usage.get("model_id", fallback_id)
+                response_confidence = usage.get("confidence", 0.35)
+                
                 self._log_request_event(
                     "fallback_success",
-                    fallback_id,
+                    actual_model_id,
                     prompt,
                     mode="degraded",
                     metadata={"original_models": attempted, "duration": fallback_duration},
                 )
                 return LLMRouteResult(
                     content=response,
-                    model_id=fallback_id,
+                    model_id=actual_model_id,
                     provider=(
-                        fallback_id.split(":", 1)[0]
-                        if ":" in fallback_id
-                        else fallback_id
+                        actual_model_id.split(":", 1)[0]
+                        if ":" in actual_model_id
+                        else fallback_id.split(":", 1)[0]
                     ),
                     tags=list(fallback_model.tags),
                     is_degraded=True,
@@ -1791,7 +1795,8 @@ class LLMOrchestrator:
                         "usage": usage,
                         "duration": fallback_duration,
                         "routing_confidence": getattr(routing_decision, 'confidence', 0.0) if routing_decision else 0.0,
-                        "routing_rationale": getattr(routing_decision, 'rationale', None) if routing_decision else None,
+                        "routing_rationale": getattr(routing_decision, 'rationale', None) if routing_decision else "System fallback active",
+                        "confidence_score": response_confidence,
                     },
                 )
             except Exception as fallback_error:

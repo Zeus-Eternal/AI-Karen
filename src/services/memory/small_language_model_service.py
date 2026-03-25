@@ -717,7 +717,7 @@ class SmallLanguageModelService:
         """Generate scaffolding using the loaded model with enhanced prompts."""
         # Create appropriate prompt based on scaffold type with enhanced context awareness
         if scaffold_type == "reasoning":
-            prompt = f"Create a brief step-by-step reasoning outline for: {text}\n\nReasoning steps:"
+            prompt = f"### Instruction:\n{text}\n\n### Response:\n"
         elif scaffold_type == "structure":
             prompt = f"Structure following content into logical sections: {text}\n\nStructure:"
         elif scaffold_type == "conversation":

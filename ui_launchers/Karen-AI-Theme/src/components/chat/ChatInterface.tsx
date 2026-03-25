@@ -11,6 +11,7 @@ import { getSuggestedStarter } from '@/app/actions';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/lib/useAuth';
 
 declare global {
   interface Window {
@@ -20,6 +21,12 @@ declare global {
 }
 
 export default function ChatInterface() {
+  const sessionIdRef = useRef(
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `chat_${crypto.randomUUID()}`
+      : `chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  );
+  const { user, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -64,6 +71,14 @@ export default function ChatInterface() {
     metadata?: Record<string, any>;
     correlation_id?: string;
   };
+
+  const recentMessages = messages
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .slice(-6)
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
   
   useEffect(() => {
     setMessages([
@@ -200,12 +215,26 @@ export default function ChatInterface() {
 
     try {
       const response = await apiClient.post<AssistResponse>('/api/copilot/assist', {
-        user_id: 'anonymous',
+        user_id: user?.user_id || 'anonymous',
         message: userMessage.content,
         top_k: 6,
+        context: isAuthenticated && user
+          ? {
+              authenticated_user: {
+                user_id: user.user_id,
+                email: user.email,
+                full_name: user.full_name,
+                tenant_id: user.tenant_id,
+                roles: user.roles,
+              },
+              recent_messages: recentMessages,
+            }
+          : {
+              recent_messages: recentMessages,
+            },
         preferred_llm_provider: selectedProvider || undefined,
         preferred_model: selectedModel || undefined,
-        session_id: 'default_session',
+        session_id: sessionIdRef.current,
       });
 
       const assistantMessage: ChatMessage = {
@@ -245,7 +274,7 @@ export default function ChatInterface() {
       setIsLoading(false);
     }
 
-  }, [input, isLoading, selectedProvider, selectedModel, toast]); 
+  }, [input, isAuthenticated, isLoading, messages, recentMessages, selectedProvider, selectedModel, toast, user]); 
 
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;

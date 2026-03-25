@@ -33,10 +33,51 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   const handleCopy = useCallback(() => {
     if (!message.content) return;
-    navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    
+    // Check if navigator.clipboard is available
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(message.content)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy using navigator.clipboard: ', err);
+          // Fallback if needed
+          copyToClipboardFallback(message.content);
+        });
+    } else {
+      // Direct fallback
+      copyToClipboardFallback(message.content);
+    }
   }, [message.content]);
+
+  // Helper for clipboard fallback
+  const copyToClipboardFallback = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Ensure it's not visible but part of the DOM
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err) {
+      console.error('Fallback copy failed: ', err);
+    }
+    
+    document.body.removeChild(textArea);
+  };
 
   const handleFeedback = (type: 'up' | 'down') => {
     setFeedback(feedback === type ? null : type);

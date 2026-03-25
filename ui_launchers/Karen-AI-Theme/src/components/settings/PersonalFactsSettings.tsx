@@ -44,9 +44,7 @@ export default function PersonalFactsSettings() {
           personalFacts: Array.isArray(parsedSettings.personalFacts)
             ? parsedSettings.personalFacts
             : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsedSettings.ttsVoiceURI === undefined
-            ? parsedSettings.ttsVoiceURI
-            : parsedSettings.ttsVoiceURI,
+          ttsVoiceURI: parsedSettings.ttsVoiceURI ?? null,
           customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
             ? parsedSettings.customPersonaInstructions
             : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
@@ -55,8 +53,8 @@ export default function PersonalFactsSettings() {
             : DEFAULT_KAREN_SETTINGS.activeListenMode,
           temperatureUnit: parsedSettings.temperatureUnit || DEFAULT_KAREN_SETTINGS.temperatureUnit,
           weatherService: parsedSettings.weatherService || DEFAULT_KAREN_SETTINGS.weatherService,
-          weatherApiKey: parsedSettings.weatherApiKey === undefined ? parsedSettings.weatherApiKey : parsedSettings.weatherApiKey,
-          defaultWeatherLocation: parsedSettings.defaultWeatherLocation === undefined ? parsedSettings.defaultWeatherLocation : parsedSettings.defaultWeatherLocation,
+          weatherApiKey: parsedSettings.weatherApiKey ?? null,
+          defaultWeatherLocation: parsedSettings.defaultWeatherLocation ?? null,
         };
          if (storedSettingsStr !== JSON.stringify(fullSettings)) {
             localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(fullSettings));

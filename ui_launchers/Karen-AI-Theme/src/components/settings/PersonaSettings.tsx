@@ -75,9 +75,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
           personalFacts: Array.isArray(parsedSettings.personalFacts)
             ? parsedSettings.personalFacts
             : DEFAULT_KAREN_SETTINGS.personalFacts,
-          ttsVoiceURI: parsedSettings.ttsVoiceURI === undefined
-            ? parsedSettings.ttsVoiceURI
-            : parsedSettings.ttsVoiceURI,
+          ttsVoiceURI: parsedSettings.ttsVoiceURI ?? null,
           customPersonaInstructions: typeof parsedSettings.customPersonaInstructions === 'string'
             ? parsedSettings.customPersonaInstructions
             : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
@@ -113,7 +111,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
             ...parsed,
             notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
             personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-            ttsVoiceURI: parsed.ttsVoiceURI === undefined ? parsed.ttsVoiceURI : parsed.ttsVoiceURI,
+            ttsVoiceURI: parsed.ttsVoiceURI ?? null,
             memoryDepth: parsed.memoryDepth || DEFAULT_KAREN_SETTINGS.memoryDepth,
             personalityTone: parsed.personalityTone || DEFAULT_KAREN_SETTINGS.personalityTone,
             personalityVerbosity: parsed.personalityVerbosity || DEFAULT_KAREN_SETTINGS.personalityVerbosity,

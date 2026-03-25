@@ -47,10 +47,14 @@ class ContentTypeDetector:
             'python': [r'^\s*(def|class|import|from)\s+\w+', r'^\s*if\s+.*:\s*$', r'#.*$'],
             'javascript': [r'^\s*(function|const|let|var)\s+\w+', r'^\s*if\s*\(.*\)\s*\{', r'//.*$'],
             'json': [r'^\s*\{', r'^\s*\[', r'^\s*".*"\s*:'],
-            'xml': [r'^\s*<\?xml', r'^\s*<[^/>]+>', r'^\s*</[^>]+>'],
+            'xml': [r'^\s*<\?xml', r'^\s*<[^/>]+>', r'^\s*</[^>]+>', r'<\w+[^>]*>'],
             'yaml': [r'^\s*\w+\s*:', r'^\s*-\s+', r'^\s*#.*$'],
             'sql': [r'^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\s+', r'^\s*FROM\s+'],
-            'html': [r'^\s*<!DOCTYPE\s+html>', r'^\s*<html', r'^\s*<div'],
+            'html': [
+                r'^\s*<!DOCTYPE\s+html>', r'^\s*<html', r'^\s*<div', 
+                r'^\s*<link', r'^\s*<meta', r'^\s*<title', r'^\s*<body',
+                r'href=', r'src=', r'rel="shortcut icon"'
+            ],
             'css': [r'^\s*\.[\w-]+\s*\{', r'^\s*#[\w-]+\s*\{', r'^\s*\w+\s*:\s*.*;'],
         }
         self.generic_code_patterns = [r'^\s*\w+\s*\([^)]*\)\s*\{', r'^\s*[{}]\s*$', r'^\s*".*"$']
@@ -170,13 +174,37 @@ class ContentTypeDetector:
     def _select_best_result(self, results, query, hints, display):
         valid = [r for r in results if r[1] > 0]
         if not valid: return ContentType.TEXT, 0.0, {}
+        
+        # Sort by confidence
         valid.sort(key=lambda x: x[1], reverse=True)
-        return valid[0]
+        
+        # Heuristic: Prefer specific language/data types over generic TEXT/CODE if confidence is reasonable
+        best = valid[0]
+        generic_types = {ContentType.TEXT, ContentType.CODE, ContentType.MARKDOWN}
+        
+        if best[0] in generic_types:
+            for r in valid[1:]:
+                # If we have a specific language/data type with >20% confidence, prefer it
+                if r[0] not in generic_types and r[1] > 0.2:
+                    return r
+                    
+        return best
 
     def _generate_layout_hint(self, result, display):
         content_type, confidence, metadata = result
-        layout_mapping = {ContentType.CODE: LayoutType.CODE_BLOCK, ContentType.DATA_TABLE: LayoutType.TABLE,
-                         ContentType.LIST: LayoutType.BULLET_LIST, ContentType.MENU: LayoutType.MENU, ContentType.STEPS: LayoutType.STEPS}
+        layout_mapping = {
+            ContentType.CODE: LayoutType.CODE_BLOCK, 
+            ContentType.HTML: LayoutType.CODE_BLOCK,
+            ContentType.XML: LayoutType.CODE_BLOCK,
+            ContentType.PYTHON: LayoutType.CODE_BLOCK,
+            ContentType.JAVASCRIPT: LayoutType.CODE_BLOCK,
+            ContentType.CSS: LayoutType.CODE_BLOCK,
+            ContentType.JSON: LayoutType.CODE_BLOCK,
+            ContentType.DATA_TABLE: LayoutType.TABLE,
+            ContentType.LIST: LayoutType.BULLET_LIST, 
+            ContentType.MENU: LayoutType.MENU, 
+            ContentType.STEPS: LayoutType.STEPS
+        }
         return LayoutHint(layout_type=layout_mapping.get(content_type, LayoutType.DEFAULT), confidence=confidence, parameters=metadata)
 
     def _update_detection_stats(self, result):

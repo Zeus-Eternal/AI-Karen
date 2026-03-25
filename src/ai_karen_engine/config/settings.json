@@ -1,12 +1,12 @@
 {
-  "provider": "llama-cpp",
-  "model": "Phi-3-mini-4k-instruct-q4.gguf",
+  "provider": "zai",
+  "model": "glm-5",
   "api_key": "",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": false,
+    "copilot_cloud_enabled": true,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },

@@ -140,6 +140,9 @@ class PrettyOutputLayer:
             LayoutType.MOVIE_LIST: self._format_movie_list_layout,
             LayoutType.BULLET_LIST: self._format_bullet_list_layout,
             LayoutType.SYSTEM_STATUS: self._format_system_status_layout,
+            LayoutType.CODE_BLOCK: self._format_code_block_layout,
+            LayoutType.TABLE: self._format_table_layout,
+            LayoutType.STEPS: self._format_steps_layout,
         }
 
     def _init_profile_registry(self):
@@ -379,6 +382,48 @@ class PrettyOutputLayer:
     def _format_movie_list_layout(self, content: str, params: dict, context: ResponseContext) -> str: return f'<div class="ui-movie-list">\n{content}\n</div>'
     def _format_bullet_list_layout(self, content: str, params: dict, context: ResponseContext) -> str: return content
     def _format_system_status_layout(self, content: str, params: dict, context: ResponseContext) -> str: return f'<div class="ui-system-status">\n{content}\n</div>'
+    
+    def _format_code_block_layout(self, content: str, params: dict, context: ResponseContext) -> str:
+        """Format content as a code block, adding markdown triple backticks if missing."""
+        if '```' in content:
+            return content
+            
+        language = params.get('language', 'text')
+        
+        # Map specific types to markdown language identifiers
+        lang_map = {
+            ContentType.HTML: 'html',
+            ContentType.PYTHON: 'python',
+            ContentType.JAVASCRIPT: 'javascript',
+            ContentType.JSON: 'json',
+            ContentType.XML: 'xml',
+            ContentType.CSS: 'css',
+            ContentType.SQL: 'sql',
+            ContentType.YAML: 'yaml',
+            'html': 'html',
+            'python': 'python',
+            'javascript': 'javascript',
+            'js': 'javascript',
+            'json': 'json',
+            'xml': 'xml',
+            'yaml': 'yaml',
+            'css': 'css',
+            'sql': 'sql'
+        }
+        
+        # Determine the language identifier for backticks
+        lang_id = lang_map.get(language, 'text')
+        if not isinstance(lang_id, str):
+            # Fallback if it's an enum but not in map (shouldn't happen with updated map)
+            lang_id = getattr(language, 'value', str(language))
+        
+        return f"```{lang_id}\n{content.strip()}\n```"
+
+    def _format_table_layout(self, content: str, params: dict, context: ResponseContext) -> str:
+        return f'<div class="ui-table-container">\n{content}\n</div>'
+
+    def _format_steps_layout(self, content: str, params: dict, context: ResponseContext) -> str:
+        return f'<div class="ui-steps-container">\n{content}\n</div>'
 
     # --- Profile Implementations ---
     def _apply_plain_profile(self, content: str, context: ResponseContext) -> str:

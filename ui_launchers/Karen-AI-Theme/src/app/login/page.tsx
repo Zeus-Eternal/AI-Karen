@@ -17,8 +17,9 @@ import { useAuth } from "@/lib/useAuth";
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { PublicWrapper } from "@/components/PublicWrapper";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading, error } = useAuth();
@@ -199,5 +200,17 @@ export default function LoginPage() {
       </Card>
       </div>
     </PublicWrapper>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-background text-muted-foreground animate-pulse">
+        Initializing login...
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

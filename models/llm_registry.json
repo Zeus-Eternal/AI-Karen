@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "unhealthy",
-    "last_health_check": 1774232209.7442677,
+    "last_health_check": 1774412627.0663974,
     "error_message": "maximum recursion depth exceeded"
   },
   {

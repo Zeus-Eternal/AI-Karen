@@ -91,9 +91,12 @@ class FallbackProvider(LLMProviderBase):
     
     # Removed _llamacpp_runtimes as it's now handled by LlamaCppRuntime singleton
 
-    def _try_local_llamacpp(self, prompt: str, **kwargs: Any) -> Optional[str]:
+    def _try_local_llamacpp(self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any) -> Optional[str]:
         """Try to use local llama-cpp model for generation.
         
+        Args:
+            messages: Prompt string or list of chat messages
+            
         Returns:
             Generated text or None if failed
         """
@@ -145,16 +148,29 @@ class FallbackProvider(LLMProviderBase):
                     logger.debug(f"Using already loaded model in shared runtime: {model_name}")
                 
                 # Generate response
-                response = runtime.generate(
-                    prompt,
-                    max_tokens=256,
-                    temperature=0.7,
-                    top_p=0.9,
-                    stop=["\n\n", "Human:", "User:"]
-                )
+                if isinstance(messages, list):
+                    logger.info(f"Generating chat with {len(messages)} messages using {model_name}")
+                    response = runtime.chat(
+                        messages,
+                        max_tokens=256,
+                        temperature=0.7,
+                        top_p=0.9,
+                        stop=["\n\n", "Human:", "User:"]
+                    )
+                else:
+                    logger.info(f"Generating completion for prompt (len={len(messages)}) using {model_name}")
+                    response = runtime.generate(
+                        messages,
+                        max_tokens=256,
+                        temperature=0.7,
+                        top_p=0.9,
+                        stop=["\n\n", "Human:", "User:"]
+                    )
                 
                 if response and len(response.strip()) > 0:
                     logger.info(f"Successfully generated response using {model_name}")
+                    # Store current model name for record_success
+                    self._current_model_id = model_name
                     return response
                 
             except Exception as e:
@@ -235,6 +251,8 @@ class FallbackProvider(LLMProviderBase):
                 
                 if response and len(response.strip()) > 0:
                     logger.info(f"Successfully generated response using {model_name}")
+                    # Store current model name for record_success
+                    self._current_model_id = model_name
                     return response
                 
             except Exception as e:
@@ -276,9 +294,13 @@ class FallbackProvider(LLMProviderBase):
 
     # ------------------------------------------------------------------
     # LLMProviderBase interface
-    def generate_text(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
+    def generate_text(self, prompt: Union[str, List[Dict[str, str]]], **kwargs: Any) -> str:  # type: ignore[override]
         """Intelligent fallback with local model support.
         
+        Args:
+            prompt: Either a prompt string or a list of messages (OpenAI format).
+            **kwargs: Additional parameters.
+            
         Fallback hierarchy:
         1. Try registered llamacpp provider (if available)
         2. Try local llama-cpp models directly
@@ -288,7 +310,16 @@ class FallbackProvider(LLMProviderBase):
 
         start = datetime.utcnow()
         error_details = []
-        logger.info(f"FallbackProvider invoked. Prompt length: {len(prompt)}")
+        
+        # Determine log identity
+        if isinstance(prompt, list):
+            log_desc = f"list of {len(prompt)} messages"
+            prompt_str = prompt[-1].get("content", "") if prompt else ""
+        else:
+            log_desc = f"prompt length {len(prompt)}"
+            prompt_str = prompt
+            
+        logger.info(f"FallbackProvider invoked with {log_desc}")
 
         # Step 1: Try registered llamacpp provider
         try:
@@ -298,10 +329,22 @@ class FallbackProvider(LLMProviderBase):
             
             if llamacpp_provider:
                 logger.info("Attempting to use registered llamacpp provider")
-                real_response = llamacpp_provider.generate_text(prompt, **kwargs)
+                real_response = None
+
+                if isinstance(prompt, list):
+                    runtime = getattr(llamacpp_provider, "runtime", None)
+                    if runtime and hasattr(runtime, "chat"):
+                        real_response = runtime.chat(prompt, **kwargs)
+                    elif hasattr(llamacpp_provider, "generate_chat"):
+                        real_response = llamacpp_provider.generate_chat(prompt, **kwargs)  # type: ignore[attr-defined]
+                    elif hasattr(llamacpp_provider, "generate_response"):
+                        real_response = llamacpp_provider.generate_response(prompt, **kwargs)  # type: ignore[attr-defined]
+                else:
+                    real_response = llamacpp_provider.generate_text(prompt, **kwargs)
+                    
                 if real_response and len(real_response.strip()) > 0:
                     logger.info("✓ Successfully used registered llamacpp provider")
-                    return self._record_success(real_response, start, "registered_llamacpp")
+                    return self._record_success(real_response, start, "registered_llamacpp", model_id="llamacpp:local")
         except Exception as e:
             error_details.append(f"Registered llamacpp: {str(e)}")
             logger.debug(f"Registered llamacpp provider failed: {e}")
@@ -312,27 +355,28 @@ class FallbackProvider(LLMProviderBase):
             local_llama_response = self._try_local_llamacpp(prompt, **kwargs)
             if local_llama_response:
                 logger.info("✓ Successfully used local llama-cpp model")
-                return self._record_success(local_llama_response, start, "local_llamacpp")
+                return self._record_success(local_llama_response, start, "local_llamacpp", model_id=getattr(self, '_current_model_id', 'local:llamacpp'))
         except Exception as e:
             error_details.append(f"Local llama-cpp: {str(e)}")
             logger.debug(f"Local llama-cpp failed: {e}")
         
         # Step 4: Try local transformers models
-        try:
-            logger.info("Attempting to use local transformers models")
-            transformers_response = self._try_local_transformers(prompt, **kwargs)
-            if transformers_response:
-                logger.info("✓ Successfully used local transformers model")
-                return self._record_success(transformers_response, start, "local_transformers")
-        except Exception as e:
-            error_details.append(f"Local transformers: {str(e)}")
-            logger.debug(f"Local transformers failed: {e}")
+        if not isinstance(prompt, list):
+            try:
+                logger.info("Attempting to use local transformers models")
+                transformers_response = self._try_local_transformers(prompt, **kwargs)
+                if transformers_response:
+                    logger.info("✓ Successfully used local transformers model")
+                    return self._record_success(transformers_response, start, "local_transformers", model_id=getattr(self, '_current_model_id', 'local:transformers'))
+            except Exception as e:
+                error_details.append(f"Local transformers: {str(e)}")
+                logger.debug(f"Local transformers failed: {e}")
         
         # Step 5: Intelligent deterministic fallback based on errors
         logger.warning(f"All model attempts failed. Using intelligent fallback. Errors: {error_details}")
-        return self._intelligent_fallback(prompt, start, error_details, **kwargs)
+        return self._intelligent_fallback(prompt_str, start, error_details, **kwargs)
     
-    def _record_success(self, response: str, start: datetime, source: str) -> str:
+    def _record_success(self, response: str, start: datetime, source: str, model_id: Optional[str] = None) -> str:
         """Record successful generation metrics."""
         duration = (datetime.utcnow() - start).total_seconds()
         token_estimate = max(1, len(response.split()))
@@ -343,6 +387,8 @@ class FallbackProvider(LLMProviderBase):
             "total_tokens": token_estimate * 2,
             "cost": 0.0,
             "source": source,
+            "model_id": model_id or source,
+            "confidence": 0.75, # High confidence for real local models
         }
         
         record_llm_metric("generate_text", duration, True, source)
@@ -413,7 +459,9 @@ The system is working to restore full AI capabilities."""
             "completion_tokens": max(1, len(message.split()) // 2),
             "total_tokens": token_estimate + max(1, len(message.split()) // 2),
             "cost": 0.0,
-            "source": "intelligent_fallback",
+            "source": f"{error_type}_fallback",
+            "model_id": "fallback:intelligent",
+            "confidence": 0.35, # Conservative confidence for deterministic fallback
             "error_type": error_type,
         }
 
@@ -436,11 +484,18 @@ The system is working to restore full AI capabilities."""
     # The orchestrator prefers providers exposing ``generate_response`` (and
     # sometimes ``enhanced_generate_response``) so mirror ``generate_text`` to
     # keep compatibility with richer providers without duplicating logic.
-    def generate_response(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
-        return self.generate_text(prompt, **kwargs)
+    def generate_response(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:  # type: ignore[override]
+        """Generate response from chat messages."""
+        return self.generate_text(messages, **kwargs)
 
-    def enhanced_generate_response(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
-        return self.generate_text(prompt, **kwargs)
+    def generate_chat(self, messages: List[Dict[str, str]], **kwargs: Any) -> str:
+        """Alias for generate_response to maintain compatibility."""
+        return self.generate_text(messages, **kwargs)
+
+    def enhanced_generate_response(self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any) -> str:  # type: ignore[override]
+        if isinstance(messages, str):
+            return self.generate_text(messages, **kwargs)
+        return self.generate_text(messages, **kwargs)
 
     def stream_generate(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Provide a very small streaming-compatible generator."""
@@ -513,4 +568,3 @@ The system is working to restore full AI capabilities."""
 
 
 __all__ = ["FallbackProvider"]
-

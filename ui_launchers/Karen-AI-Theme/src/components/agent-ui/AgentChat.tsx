@@ -71,10 +71,11 @@ export function AgentChat({ agent, className = '', onClose }: AgentChatProps) {
               <div key={msg.id} className={msg.isLoading ? "opacity-70 animate-pulse" : ""}>
                 <MessageBubble 
                   message={{
+                    id: msg.id,
                     role: msg.role,
                     content: msg.content,
+                    timestamp: new Date(msg.timestamp),
                     structuredContent: msg.structured_content,
-                    // If your message types eventually expand to include images, map here.
                   }} 
                 />
               </div>

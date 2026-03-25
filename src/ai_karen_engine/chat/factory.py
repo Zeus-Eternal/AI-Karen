@@ -202,6 +202,21 @@ class ChatServiceFactory:
             exponential_backoff=True
         )
 
+        # Get auth service
+        from auth.auth_service import get_auth_service
+        import asyncio
+        
+        try:
+            # Check if we have a running loop
+            loop = asyncio.get_running_loop()
+            auth_service = loop.run_until_complete(get_auth_service()) if not loop.is_running() else None
+            # If loop is running, we might need a different approach, 
+            # but for factory initialization it's usually fine or we just use the getter inside orchestrator.
+            # Actually, the orchestrator can call the getter itself if it's async.
+        except RuntimeError:
+            from auth.auth_service import get_auth_service_sync
+            auth_service = get_auth_service_sync()
+
         # Create orchestrator with all services
         orchestrator = ChatOrchestrator(
             memory_processor=memory_processor,
@@ -213,7 +228,8 @@ class ChatServiceFactory:
             context_integrator=context_integrator,
             retry_config=retry_config,
             timeout_seconds=self.config.timeout_seconds,
-            enable_monitoring=self.config.enable_monitoring
+            enable_monitoring=self.config.enable_monitoring,
+            auth_service=auth_service
         )
 
         self._services['chat_orchestrator'] = orchestrator

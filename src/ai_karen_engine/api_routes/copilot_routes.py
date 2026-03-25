@@ -1,6 +1,7 @@
 import asyncio
 import os
 import logging
+import re
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -108,6 +109,79 @@ def _get_connection_health_manager():
         return None, _FallbackServiceStatus
 
 
+def _resolve_display_name(user_context: Optional[Dict[str, Any]], request_context: Dict[str, Any]) -> Optional[str]:
+    authenticated_user = request_context.get("authenticated_user", {}) if isinstance(request_context, dict) else {}
+
+    for candidate in (
+        authenticated_user.get("full_name"),
+        authenticated_user.get("email"),
+        user_context.get("full_name") if user_context else None,
+        user_context.get("email") if user_context else None,
+    ):
+        if not candidate or not isinstance(candidate, str):
+            continue
+        cleaned = candidate.strip()
+        if not cleaned:
+            continue
+        if "@" in cleaned:
+            cleaned = cleaned.split("@", 1)[0]
+        return cleaned
+
+    return None
+
+
+def _find_recent_name(request_context: Dict[str, Any]) -> Optional[str]:
+    recent_messages = request_context.get("recent_messages", []) if isinstance(request_context, dict) else []
+    if not isinstance(recent_messages, list):
+        return None
+
+    patterns = [
+        r"\bmy name is\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
+        r"\bi am\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
+        r"\bcall me\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
+        r"\bthe name is\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
+    ]
+
+    for item in reversed(recent_messages):
+        if not isinstance(item, dict) or item.get("role") != "user":
+            continue
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        for pattern in patterns:
+            match = re.search(pattern, content, flags=re.IGNORECASE)
+            if match:
+                candidate = match.group(1).strip(" .,!?:;")
+                if candidate:
+                    return candidate
+
+    return None
+
+
+def _build_degraded_direct_answer(
+    user_message: str,
+    *,
+    user_context: Optional[Dict[str, Any]],
+    request_context: Dict[str, Any],
+) -> Optional[str]:
+    normalized = " ".join(user_message.lower().split())
+    now = datetime.now().astimezone()
+
+    if any(phrase in normalized for phrase in ("what's my name", "whats my name", "what is my name")):
+        known_name = _find_recent_name(request_context) or _resolve_display_name(user_context, request_context)
+        if known_name:
+            return f"Your name is {known_name}."
+        return "I don't have your name yet in this degraded session."
+
+    if "what's the date" in normalized or "whats the date" in normalized or "what is the date" in normalized or normalized == "date":
+        return f"Today's date is {now.strftime('%A, %B %d, %Y')}."
+
+    if "what time" in normalized or "what's the time" in normalized or "whats the time" in normalized or normalized == "time":
+        return f"The current time is {now.strftime('%-I:%M %p %Z')}."
+
+    return None
+
+
 class ContextHit(BaseModel):
     id: str
     text: str
@@ -169,6 +243,7 @@ def get_chat_orchestrator():
     from ai_karen_engine.database.client import MultiTenantPostgresClient
     from ai_karen_engine.core.milvus_client import MilvusClient
     from ai_karen_engine.core import default_models
+    from src.auth.auth_service import AuthService as PromptAuthService
 
     try:
         # Initialize required components for memory manager
@@ -203,7 +278,10 @@ def get_chat_orchestrator():
         distilbert_service=nlp_service_manager.distilbert_service,
         memory_manager=memory_manager,
     )
-    return ChatOrchestrator(memory_processor=memory_processor)
+    return ChatOrchestrator(
+        memory_processor=memory_processor,
+        auth_service=PromptAuthService(),
+    )
 
 
 class StartActionRequest(BaseModel):
@@ -507,6 +585,75 @@ async def copilot_assist(
             user_msg = user_msg.split("User Request:", 1)[-1].strip()
 
         degraded_cause = "Core backend services (database) are temporarily unavailable."
+        request_context = request.context if isinstance(request.context, dict) else {}
+        display_name = _resolve_display_name(user_context, request_context)
+        direct_answer = _build_degraded_direct_answer(
+            user_msg,
+            user_context=user_context,
+            request_context=request_context,
+        )
+
+        if direct_answer:
+            total_time = (time.time() - start_time) * 1000
+            timings["total_ms"] = total_time
+            return {
+                "answer": direct_answer,
+                "structured_content": structured_content,
+                "actions": suggested_actions,
+                "metadata": {
+                    "timings": timings,
+                    "context": context_hits,
+                    "degraded_mode": True,
+                    "degraded_cause": degraded_cause,
+                    "llm": {
+                        "provider": "system",
+                        "model_id": "degraded-direct-answer",
+                        "model_name": "Deterministic Degraded Answer",
+                        "source": "health_gate_direct",
+                        "is_degraded": True,
+                        "duration": total_time / 1000,
+                        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                        "confidence_score": 1.0,
+                        "routing_confidence": 1.0,
+                        "routing_rationale": "Used deterministic degraded-mode answer for a grounded identity/date/time request.",
+                    },
+                    "orchestrator": {
+                        "used_fallback": True,
+                        "context_used": bool(request_context.get("recent_messages")),
+                    },
+                },
+                "correlation_id": correlation_id,
+            }
+
+        # Create a basic message list for the fallback provider to ensure 
+        # proper template application (prevents hallucinations).
+        system_prompt_parts = [
+            "You are Karen, an intelligent AI assistant built as an extension of Zeus-Eternal.",
+            "Your personality is helpful, professional, and precise.",
+            "Acknowledge when you are operating in degraded mode if relevant, but prioritize answering the user's question.",
+            f"Current date and time: {datetime.now().astimezone().strftime('%A, %B %d, %Y %I:%M %p %Z')}.",
+        ]
+        if display_name:
+            system_prompt_parts.append(f"User Identity: You are speaking to {display_name}.")
+
+        fallback_messages = [
+            {
+                "role": "system", 
+                "content": " ".join(system_prompt_parts),
+            },
+        ]
+
+        recent_messages = request_context.get("recent_messages", [])
+        if isinstance(recent_messages, list):
+            for item in recent_messages[-6:]:
+                if not isinstance(item, dict):
+                    continue
+                role = item.get("role")
+                content = str(item.get("content", "")).strip()
+                if role in {"user", "assistant"} and content:
+                    fallback_messages.append({"role": role, "content": content})
+
+        fallback_messages.append({"role": "user", "content": user_msg})
 
         # Try the local model via FallbackProvider (uses the already-loaded
         # registered llamacpp provider from the global registry).
@@ -517,7 +664,7 @@ async def copilot_assist(
             _fb = FallbackProvider()
             loop = asyncio.get_event_loop()
             local_answer = await loop.run_in_executor(
-                None, lambda: _fb.generate_text(user_msg)
+                None, lambda: _fb.generate_response(messages=fallback_messages)
             )
 
             if local_answer and isinstance(local_answer, str) and local_answer.strip():
@@ -534,6 +681,11 @@ async def copilot_assist(
 
         total_time = (time.time() - start_time) * 1000
         timings["total_ms"] = total_time
+        # Extract metadata from fallback provider
+        usage = getattr(_fb, "last_usage", {})
+        fb_model_id = usage.get("model_id", "degraded-fallback")
+        fb_confidence = usage.get("confidence", 0.35)
+        
         return {
             "answer": answer,
             "structured_content": structured_content,
@@ -545,12 +697,15 @@ async def copilot_assist(
                 "degraded_cause": degraded_cause,
                 "llm": {
                     "provider": "system",
-                    "model_id": "degraded-fallback",
-                    "model_name": "System Fallback",
-                    "source": "health_gate",
+                    "model_id": fb_model_id,
+                    "model_name": fb_model_id.replace("fallback:", "").replace("_", " ").title(),
+                    "source": "health_gate_fallback",
                     "is_degraded": True,
                     "duration": total_time / 1000,
-                    "usage": getattr(_fb, "last_usage", {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4}),
+                    "usage": usage,
+                    "confidence_score": fb_confidence,
+                    "routing_confidence": 0.0,
+                    "routing_rationale": f"Health check failed: {degraded_cause or 'system unhealthy'}"
                 },
                 "orchestrator": {
                     "used_fallback": True,
@@ -758,15 +913,23 @@ async def copilot_assist(
         # Ensure llm_metadata is populated even in degraded mode so the
         # frontend can always display model information in the chat bubble.
         if not llm_metadata:
+            # Try to get usage from fallback provider if it was used
+            usage = getattr(_fb, "last_usage", {})
+            fb_model_id = usage.get("model_id", "degraded-fallback")
+            fb_confidence = usage.get("confidence", 0.35)
+            
             llm_metadata = {
                 "provider": "fallback",
-                "model_id": "degraded-fallback",
-                "model_name": "Emergency Fallback",
-                "source": "error_handler",
+                "model_id": fb_model_id,
+                "model_name": fb_model_id.replace("fallback:", "").replace("_", " ").title(),
+                "source": "runtime_error_fallback",
                 "is_degraded": True,
                 "duration": (time.time() - llm_start),
                 "failure_reason": error_snippet[:100],
-                "usage": {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4},
+                "usage": usage or {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4},
+                "confidence_score": fb_confidence,
+                "routing_confidence": 0.0,
+                "routing_rationale": f"Orchestrator error: {error_snippet[:50]}..."
             }
     
     # Calculate final timing

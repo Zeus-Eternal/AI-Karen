@@ -11,6 +11,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
+import jinja2
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +185,6 @@ class LlamaCppRuntime:
                     "n_batch": self.n_batch,
                     "n_gpu_layers": self.n_gpu_layers,
                     "n_threads": self.n_threads,
-                    "use_mmap": self.use_mmap,
                     "use_mlock": self.use_mlock,
                     "verbose": self.verbose,
                     **self.kwargs,
@@ -196,7 +196,6 @@ class LlamaCppRuntime:
                 
                 # Create llama.cpp instance
                 self._model = Llama(**params)
-                
                 self.model_path = model_path
                 self._loaded = True
                 self._load_time = time.time() - start_time
@@ -362,13 +361,19 @@ class LlamaCppRuntime:
         
         with self._lock:
             try:
+                # Define default stop sequences to prevent hallucinated turns
+                default_stop = ["User:", "Assistant:", "<|user|>", "<|assistant|>", "<|end|>", "</s>", "\n\nUser:", "\n\nAssistant:"]
+                
+                # Combine provided stop sequences with defaults, ensuring no duplicates
+                combined_stop = list(set((stop or []) + default_stop))
+                
                 generation_params = {
                     "max_tokens": max_tokens,
                     "temperature": temperature,
                     "top_p": top_p,
                     "top_k": top_k,
                     "repeat_penalty": repeat_penalty,
-                    "stop": stop or [],
+                    "stop": combined_stop,
                     "stream": stream,
                     **kwargs
                 }
@@ -383,7 +388,176 @@ class LlamaCppRuntime:
             except Exception as e:
                 logger.error(f"Generation failed: {e}")
                 raise
-    
+
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int = 256,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = 40,
+        repeat_penalty: float = 1.1,
+        stop: Optional[List[str]] = None,
+        stream: bool = False,
+        **kwargs
+    ) -> Union[str, Iterator[str]]:
+        """
+        Generate chat response from messages.
+        
+        Args:
+            messages: List of chat messages (OpenAI format)
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            top_p: Nucleus sampling parameter
+            top_k: Top-k sampling parameter
+            repeat_penalty: Repetition penalty
+            stop: Stop sequences
+            stream: Whether to stream tokens
+            **kwargs: Additional parameters
+            
+        Returns:
+            Generated text or iterator
+        """
+        if not self.is_loaded():
+            raise RuntimeError("No model loaded. Call load_model() first.")
+            
+        with self._lock:
+            try:
+                # Basic stop sequences that might not be in the template but help prevent run-on
+                default_stop = ["User:", "Assistant:", "<|user|>", "<|assistant|>", "<|end|>", "</s>"]
+                combined_stop = list(set((stop or []) + default_stop))
+                
+                chat_params = {
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "top_k": top_k,
+                    "repeat_penalty": repeat_penalty,
+                    "stop": combined_stop,
+                    "stream": stream,
+                    **kwargs
+                }
+
+                # Check if we should use a manual template fallback if 'auto' is unreliable
+                formatted_prompt = self._apply_universal_chat_template(messages)
+                
+                if formatted_prompt:
+                    print("!!! UNIVERSAL TEMPLATE SUCCESS !!!", flush=True)
+                    logger.info("Universal Template: SUCCESS. Using manually formatted prompt.")
+                    # For manually formatted prompts, we use generate() on the string
+                    return self.generate(
+                        prompt=formatted_prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        repeat_penalty=repeat_penalty,
+                        stop=combined_stop,
+                        stream=stream,
+                        **kwargs
+                    )
+                else:
+                    print("!!! UNIVERSAL TEMPLATE FAILED - FALLING BACK !!!", flush=True)
+
+                if stream:
+                    return self._stream_chat(messages, **chat_params)
+                else:
+                    return self._complete_chat(messages, **chat_params)
+            except Exception as e:
+                logger.error(f"Chat completion failed: {e}")
+                raise
+
+    def _apply_universal_chat_template(self, messages: List[Dict[str, str]]) -> Optional[str]:
+        """
+        Reasoning-based template application. 
+        Attempts to find the model's intrinsic template in GGUF metadata.
+        """
+        try:
+            model = self._model
+            if not model:
+                return None
+                
+            # Most modern GGUFs have a 'tokenizer.chat_template' in metadata
+            template = None
+            metadata = getattr(self._model, 'metadata', {})
+            print(f"!!! LLAMACPP METADATA: {metadata} !!!", flush=True)
+            if metadata:
+                template = metadata.get("tokenizer.chat_template")
+            
+            if not template:
+                # Reasoning-based fallback: check architecture metadata
+                arch = metadata.get("general.architecture")
+                print(f"!!! LLAMACPP ARCH: {arch} !!!", flush=True)
+                if arch == "phi3":
+                    logger.info("Reasoning: Phi-3 architecture detected, using Instruct fallback template")
+                    template = "{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') %}{{'<|user|>' + '\n' + message['content'] + '<|end|>' + '\n' + '<|assistant|>' + '\n'}}{% elif (message['role'] == 'assistant') %}{{message['content'] + '<|end|>' + '\n'}}{% elif (message['role'] == 'system') %}{{'<|system|>' + '\n' + message['content'] + '<|end|>' + '\n'}}{% endif %}{% endfor %}"
+                elif arch == "llama":
+                    logger.info("Reasoning: Llama architecture detected, using Llama-3 fallback template")
+                    template = "{% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] | trim + '<|eot_id|>'}}{% endfor %}{% if add_generation_prompt %}{{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}{% endif %}"
+                
+            if not template:
+                logger.warning("Reasoning FAILURE: No intrinsic or architecture-based chat template found")
+                return None
+
+            try:
+                # Pre-process messages: if the template doesn't support 'system', 
+                # merge it into the first user message.
+                processed_messages = list(messages)
+                has_system_support = "role" in template and "system" in template
+                
+                # Check for explicit system role support in common templates
+                if not has_system_support:
+                    system_msg = next((m for m in messages if m["role"] == "system"), None)
+                    if system_msg:
+                        # Find the first user message to merge into
+                        new_messages: List[Dict[str, str]] = []
+                        merged = False
+                        for msg in messages:
+                            if msg["role"] == "user" and not merged:
+                                # Prepend system content to user content
+                                new_messages.append({
+                                    "role": "user",
+                                    "content": f"{system_msg['content']}\n\n{msg['content']}"
+                                })
+                                merged = True
+                            elif msg["role"] != "system":
+                                new_messages.append(msg)
+                        
+                        if merged:
+                            processed_messages = new_messages
+                                
+                # Render the template with the provided (or processed) messages
+                rendered = jinja2.Template(template).render(
+                    messages=processed_messages, 
+                    add_generation_prompt=True
+                )
+                return rendered
+            except Exception as jinja_err:
+                logger.warning(f"Failed to render intrinsic template: {jinja_err}")
+                return None
+        except Exception as e:
+            logger.debug(f"Template discovery failed: {e}")
+            return None
+
+    def _complete_chat(self, messages: List[Dict[str, str]], **params) -> str:
+        """Complete chat response."""
+        response = self._model.create_chat_completion(messages=messages, **params)
+        
+        if isinstance(response, dict) and "choices" in response:
+            self.last_usage = response.get("usage", {})
+            return response["choices"][0]["message"]["content"]
+        return str(response)
+
+    def _stream_chat(self, messages: List[Dict[str, str]], **params) -> Iterator[str]:
+        """Stream chat response."""
+        params["stream"] = True
+        for chunk in self._model.create_chat_completion(messages=messages, **params):
+            if isinstance(chunk, dict):
+                if "choices" in chunk and chunk["choices"]:
+                    choice = chunk["choices"][0]
+                    if "delta" in choice and "content" in choice["delta"]:
+                        yield choice["delta"]["content"]
+
     def _complete_generate(self, prompt: str, **params) -> str:
         """Generate complete response (non-streaming)."""
         response = self._model(prompt, **params)
