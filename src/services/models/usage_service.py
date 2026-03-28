@@ -30,7 +30,8 @@ class UsageService:
                     .first()
                 )
                 if record:
-                    record.value += amount
+                    current_value = int(record.value or 0)
+                    setattr(record, "value", current_value + amount)
                 else:
                     session.add(
                         UsageCounter(

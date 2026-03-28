@@ -66,18 +66,26 @@ except Exception:
 
 # Use RedisConnectionManager for proper health monitoring and degraded mode
 try:
-    from ai_karen_engine.services.redis_connection_manager import (
+    from services.memory.redis_connection_manager import (
         RedisConnectionManager,
         get_redis_manager,
         initialize_redis_manager
     )
     REDIS_MANAGER_AVAILABLE = True
 except ImportError:
-    RedisConnectionManager = None
-    get_redis_manager = None
-    initialize_redis_manager = None
-    REDIS_MANAGER_AVAILABLE = False
-    logger.warning("[MemoryManager] RedisConnectionManager not available")
+    try:
+        from ai_karen_engine.services.redis_connection_manager import (
+            RedisConnectionManager,
+            get_redis_manager,
+            initialize_redis_manager
+        )
+        REDIS_MANAGER_AVAILABLE = True
+    except ImportError:
+        RedisConnectionManager = None
+        get_redis_manager = None
+        initialize_redis_manager = None
+        REDIS_MANAGER_AVAILABLE = False
+        logger.warning("[MemoryManager] RedisConnectionManager not available")
 
 # Redis manager instance (replaces basic redis_client)
 redis_manager: Optional[RedisConnectionManager] = None

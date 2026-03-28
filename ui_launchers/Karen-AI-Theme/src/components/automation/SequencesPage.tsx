@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,17 +33,25 @@ type SequenceTask = {
  * @description Page for creating and managing multi-step Jobs (formerly Sequences) via /api/automation/jobs.
  */
 export default function SequencesPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [jobs, setJobs] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState("");
 
   const fetchJobs = async () => {
+    if (!isAuthenticated) {
+      setJobs([]);
+      setErrorMsg("Sign in to manage jobs.");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setErrorMsg("");
     try {
       const { apiClient } = await import('@/lib/api');
       const data = await apiClient.get<any[]>('/api/automation/jobs/');
       setJobs(data || []);
-      setErrorMsg("");
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Failed to fetch jobs.');
@@ -52,8 +61,11 @@ export default function SequencesPage() {
   };
 
   React.useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
     fetchJobs();
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
   const definedTasks = [
     { name: "Generate Weekly Sales Report", description: "Queries the sales database and formats it into a PDF." },
@@ -97,6 +109,10 @@ export default function SequencesPage() {
   };
 
   const handleDeleteJob = async (id: string) => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage jobs.");
+      return;
+    }
     if (!confirm("Are you sure you want to delete this job?")) return;
     try {
       const { apiClient } = await import('@/lib/api');
@@ -108,6 +124,10 @@ export default function SequencesPage() {
   };
 
   const handleExecuteJob = async (id: string) => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage jobs.");
+      return;
+    }
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/automation/jobs/${id}/execute`, {});
@@ -118,6 +138,10 @@ export default function SequencesPage() {
   };
 
   const handleCreateJob = async () => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage jobs.");
+      return;
+    }
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post('/api/automation/jobs/', {
@@ -158,10 +182,12 @@ export default function SequencesPage() {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Defined Jobs</h3>
-              <Button variant="outline" size="sm" onClick={fetchJobs}>Refresh</Button>
+              <Button variant="outline" size="sm" onClick={fetchJobs} disabled={isAuthLoading || !isAuthenticated}>Refresh</Button>
             </div>
             
-            {isLoading ? (
+            {isAuthLoading ? (
+              <div className="text-center p-8 text-muted-foreground animate-pulse">Restoring your session...</div>
+            ) : isLoading ? (
               <div className="text-center p-8 text-muted-foreground animate-pulse">Loading jobs from backend...</div>
             ) : jobs.length === 0 ? (
               <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No jobs defined yet.</div>

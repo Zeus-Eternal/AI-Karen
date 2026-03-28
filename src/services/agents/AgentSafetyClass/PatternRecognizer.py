@@ -7,7 +7,7 @@ including pattern detection, classification, and analysis.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import defaultdict
 
@@ -282,7 +282,7 @@ class PatternRecognizer(BaseService):
         self,
         pattern_id: str,
         description: str,
-        condition_func: callable,
+        condition_func: Callable[[Dict[str, Any]], bool],
         severity: RiskLevel = RiskLevel.LOW_RISK,
         category: str = "custom"
     ) -> bool:

@@ -64,8 +64,8 @@ class SettingsManager:
     def _get_default_settings(self) -> Dict[str, Any]:
         """Get default settings configuration."""
         return {
-            "provider": "local",
-            "model": "llama3.2:latest",
+            "provider": "llama-cpp",
+            "model": "Phi-3-mini-4k-instruct-q4.gguf",
             "api_key": "",
             "use_memory": True,
             "context_length": 512,

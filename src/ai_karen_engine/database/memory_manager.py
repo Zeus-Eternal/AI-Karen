@@ -31,8 +31,7 @@ from ai_karen_engine.database.models import TenantMemoryItem
 
 # Optional metrics
 try:
-    from ai_karen_engine.services.monitoring.unified_monitoring_service import UnifiedMonitoringService
-    from ai_karen_engine.services.monitoring.internal.metrics_service import MetricsService
+    from services.monitoring.metrics_service import MetricsService
     get_metrics_service = MetricsService if MetricsService else None
 except Exception:  # pragma: no cover
     get_metrics_service = None  # type: ignore[assignment]
@@ -168,6 +167,9 @@ class MemoryManager:
         self.fallback_scan_limit = int(
             os.getenv("KARI_MEMORY_FALLBACK_SCAN_LIMIT", "500")
         )
+        self.fallback_similarity_threshold = float(
+            os.getenv("KARI_MEMORY_FALLBACK_SIMILARITY_THRESHOLD", "0.35")
+        )
 
         # Metrics
         self._metrics = (
@@ -268,7 +270,7 @@ class MemoryManager:
                     kind=kind,
                     content=content,
                     embedding=embedding.tolist(),  # keep for local/fallback similarity
-                    metadata=metadata or {},
+                    item_metadata=metadata or {},
                     created_at=datetime.utcnow(),
                 )
                 session.add(record)
@@ -661,7 +663,7 @@ class MemoryManager:
                     item = MemoryItem(
                         id=str(row.id),
                         content=row.content,
-                        metadata=row.metadata or {},
+                        metadata=row.item_metadata or {},
                         scope=row.scope,
                         kind=row.kind,
                         timestamp=(
@@ -909,7 +911,7 @@ class MemoryManager:
                     select(
                         TenantMemoryItem.id,
                         TenantMemoryItem.embedding,
-                        TenantMemoryItem.metadata,
+                        TenantMemoryItem.item_metadata,
                         TenantMemoryItem.created_at,
                         TenantMemoryItem.scope,
                         TenantMemoryItem.kind,
@@ -922,7 +924,12 @@ class MemoryManager:
 
             ids: List[str] = []
             sims: Dict[str, float] = {}
+            ranked_candidates: List[Tuple[str, float]] = []
             q_norm = np.linalg.norm(q_emb) + 1e-9
+            effective_threshold = min(
+                query.similarity_threshold,
+                self.fallback_similarity_threshold,
+            )
 
             # Pre-filter by metadata if provided (cheap dict checks)
             md_filter = self._build_metadata_filter(query) or {}
@@ -940,12 +947,22 @@ class MemoryManager:
                     continue
                 v_norm = np.linalg.norm(v) + 1e-9
                 cos = float(np.dot(q_emb, v) / (q_norm * v_norm))
+                sid = str(mid)
+                ranked_candidates.append((sid, cos))
 
                 # similarity threshold: in local fallback treat threshold as cosine floor
-                if cos >= query.similarity_threshold:
-                    sid = str(mid)
+                if cos >= effective_threshold:
                     ids.append(sid)
                     sims[sid] = cos
+
+            if not ids and ranked_candidates:
+                fallback_hits = sorted(
+                    ranked_candidates,
+                    key=lambda item: item[1],
+                    reverse=True,
+                )[: max(1, query.top_k * 2)]
+                ids = [sid for sid, _score in fallback_hits if _score > 0.0]
+                sims = {sid: score for sid, score in fallback_hits if score > 0.0}
 
             # Keep top 2x for downstream filters/sorting, preserve similarity dict
             if len(ids) > query.top_k * 2:

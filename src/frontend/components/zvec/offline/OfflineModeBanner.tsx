@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Wifi, 
-  WifiOf, 
+  WifiOff, 
   RefreshCw, 
   CheckCircle, 
   AlertTriangle,
@@ -72,7 +72,7 @@ export const OfflineModeBanner: React.FC<OfflineModeBannerProps> = ({
         toast({
           title: 'Offline Mode Activated',
           description: 'You can continue using AI-Karen with local features. Your changes will sync when connection is restored.',
-          variant: 'warning',
+          variant: 'default',
           duration: 5000,
         });
       } else if (!data.is_offline && data.queue_size && data.queue_size > 0) {
@@ -170,7 +170,7 @@ export const OfflineModeBanner: React.FC<OfflineModeBannerProps> = ({
         {/* Icon */}
         <div className={`${isOffline ? 'text-yellow-600' : 'text-blue-600'}`}>
           {isOffline ? (
-            <WifiOf className="h-5 w-5 animate-pulse" />
+            <WifiOff className="h-5 w-5 animate-pulse" />
           ) : (
             <Wifi className="h-5 w-5" />
           )}

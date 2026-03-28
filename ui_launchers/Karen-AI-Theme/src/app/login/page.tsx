@@ -39,10 +39,10 @@ function LoginForm() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isLoading && isAuthenticated) {
       router.replace(nextPath);
     }
-  }, [isAuthenticated, nextPath, router]);
+  }, [isAuthenticated, isLoading, nextPath, router]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

@@ -468,11 +468,11 @@ class ContextShare:
 @dataclass
 class ContextAccessLog:
     """Access log entry for context entries."""
-    log_id: str
     context_id: str
     user_id: str
     action: str  # read, write, share, delete, search
     access_level: ContextAccessLevel
+    log_id: str = ""
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     success: bool = True

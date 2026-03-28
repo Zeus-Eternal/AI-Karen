@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Zvec-LangChain VectorStore Adapter
 
@@ -27,20 +29,34 @@ Example:
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
-# LangChain imports
-try:
+@dataclass
+class _FallbackDocument:
+    page_content: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+if TYPE_CHECKING:
+    from langchain_core.documents import Document as LangChainDocument
     from langchain_core.embeddings import Embeddings
-    from langchain_core.vectorstores import VectorStore
-    from langchain_core.documents import Document
+    from langchain_core.vectorstores import VectorStore as VectorStoreBase
+else:
+    class VectorStoreBase:
+        """Fallback base when LangChain is unavailable."""
+
+    class Embeddings:
+        """Fallback embeddings type when LangChain is unavailable."""
+
+    LangChainDocument = _FallbackDocument
+
+
+try:
+    import langchain_core  # type: ignore
     HAS_LANGCHAIN = True
 except ImportError:
     HAS_LANGCHAIN = False
-    Embeddings = object  # type: ignore
-    VectorStore = object  # type: ignore
-    Document = object  # type: ignore
 
 # Zvec imports
 try:
@@ -48,12 +64,12 @@ try:
     HAS_ZVEC_CLIENT = True
 except ImportError:
     HAS_ZVEC_CLIENT = False
-    ZvecClient = None  # type: ignore
+    ZvecClient = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
 
-class ZvecVectorStore(VectorStore):
+class ZvecVectorStore(VectorStoreBase):
     """
     LangChain VectorStore interface for Zvec.
     
@@ -103,7 +119,11 @@ class ZvecVectorStore(VectorStore):
         self.user_id = user_id or "default"
         
         # Initialize Zvec client
-        self.client = ZvecClient(
+        client_cls = ZvecClient
+        if client_cls is None:
+            raise ImportError("ZvecClient not found. Ensure zvec_client.py is available")
+
+        self.client = client_cls(
             db_path=db_path,
             collections={
                 collection_name: {
@@ -206,7 +226,7 @@ class ZvecVectorStore(VectorStore):
         query: str,
         k: int = 4,
         **kwargs: Any
-    ) -> List[Document]:
+    ) -> List[LangChainDocument]:
         """
         Semantic search using query string.
         
@@ -237,7 +257,7 @@ class ZvecVectorStore(VectorStore):
             text = metadata.pop("text", "")
             
             documents.append(
-                Document(
+                LangChainDocument(
                     page_content=text,
                     metadata={
                         "score": result.get("score", 0.0),
@@ -245,7 +265,7 @@ class ZvecVectorStore(VectorStore):
                     }
                 )
             )
-        
+
         logger.debug(f"Similarity search returned {len(documents)} documents")
         return documents
     
@@ -254,7 +274,7 @@ class ZvecVectorStore(VectorStore):
         query: str,
         k: int = 4,
         **kwargs: Any
-    ) -> List[Tuple[Document, float]]:
+    ) -> List[Tuple[LangChainDocument, float]]:
         """
         Semantic search with scores.
         
@@ -287,7 +307,7 @@ class ZvecVectorStore(VectorStore):
             
             documents_with_scores.append(
                 (
-                    Document(
+                    LangChainDocument(
                         page_content=text,
                         metadata=metadata
                     ),

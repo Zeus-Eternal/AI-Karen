@@ -385,19 +385,18 @@ services:
     env_file:
       - .env
     environment:
-      # Runtime mode for development (relaxes RBAC + auth strictness)
-      ENVIRONMENT: "development"
-      DEBUG: "true"
+      # Runtime mode for production-like behavior
+      ENVIRONMENT: "production"
+      DEBUG: "false"
       AUTH_MODE: "hybrid"
       # Set PYTHONPATH to include src directory for proper module imports
       PYTHONPATH: "/app:/app/src:$PYTHONPATH"
-      # Speed up dev boot: don't block readiness on heavy init
-      KARI_FAST_STARTUP: "true"
+      # Do not skip production-style initialization
+      KARI_FAST_STARTUP: "false"
       WARMUP_LLM: "false"
       # Disable deferred router wiring to ensure auth routes are loaded
       KARI_DEFER_ROUTER_WIRING: "false"
-      # Enable dev login endpoint for local development
-      AUTH_ALLOW_DEV_LOGIN: "true"
+      AUTH_ALLOW_DEV_LOGIN: "false"
       
       # Memory service configuration
       KARI_ENABLE_MEMORY_SERVICE: "true"
@@ -424,11 +423,11 @@ services:
       # Recommended hardening for production
       ENABLE_SECURITY_ANALYSIS: "true"
       AUTH_ENABLE_RATE_LIMITING: "true"
+      ENABLE_RATE_LIMITING: "true"
       KAREN_ENABLE_HEALTH_CHECKS: "true"
       KARI_SKIP_STARTUP_CHECK: "false"
       KARI_SKIP_AUTO_INIT: "false"
-      # Allow unauthenticated Copilot requests (local/demo only)
-      ALLOW_PUBLIC_COPILOT: "true"
+      ALLOW_PUBLIC_COPILOT: "false"
 
       # Use service hostnames for in-network connectivity
       DATABASE_URL: "postgresql://karen_user:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
@@ -573,7 +572,6 @@ services:
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
       # Client-side (browser) should call the backend directly
-      NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8000
     ports:
       - "8010:8010"
     volumes:
@@ -583,6 +581,7 @@ services:
       - "host.docker.internal:host-gateway"
     command: >
       sh -c "
+        rm -rf /app/.next &&
         rm -rf /app/node_modules/.cache &&
         npm config set loglevel error &&
         if [ -f /app/node_modules/.install_complete ]; then

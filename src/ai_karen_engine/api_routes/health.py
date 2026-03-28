@@ -7,6 +7,8 @@ correlation-aware logging, and circuit breaker support.
 """
 
 import time
+import subprocess
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -80,6 +82,120 @@ def _collect_health(manager: ConnectionHealthManager) -> Dict[str, Any]:
         except Exception as exc:  # pragma: no cover - defensive
             services[name] = {"status": "unknown", "error": str(exc)}
     return services
+
+
+def _check_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, Any]:
+    """Inspect local NLP asset availability without mutating the environment."""
+    nltk_resources = {
+        "punkt": False,
+        "stopwords": False,
+        "wordnet": False,
+    }
+    spacy_installed = False
+    spacy_model_installed = False
+    nltk_installed = False
+
+    try:
+        import spacy
+
+        spacy_installed = True
+        try:
+            spacy.load(model_name)
+            spacy_model_installed = True
+        except Exception:
+            spacy_model_installed = False
+    except Exception:
+        spacy_installed = False
+
+    try:
+        import nltk
+
+        nltk_installed = True
+        resource_map = {
+            "punkt": "tokenizers/punkt",
+            "stopwords": "corpora/stopwords",
+            "wordnet": "corpora/wordnet",
+        }
+        for name, resource_path in resource_map.items():
+            try:
+                nltk.data.find(resource_path)
+                nltk_resources[name] = True
+            except LookupError:
+                nltk_resources[name] = False
+    except Exception:
+        nltk_installed = False
+
+    runtime_downloads_enabled = str(
+        __import__("os").getenv("KARI_ENABLE_NLTK_DOWNLOADS", "false")
+    ).lower() == "true"
+
+    return {
+        "spacy_installed": spacy_installed,
+        "spacy_model_name": model_name,
+        "spacy_model_installed": spacy_model_installed,
+        "nltk_installed": nltk_installed,
+        "nltk_resources": nltk_resources,
+        "runtime_downloads_enabled": runtime_downloads_enabled,
+        "ready": spacy_model_installed and nltk_installed and all(nltk_resources.values()),
+    }
+
+
+async def _install_nlp_assets(model_name: str = "en_core_web_sm") -> Dict[str, Any]:
+    """Attempt to install missing NLP assets on demand."""
+    actions: List[Dict[str, Any]] = []
+
+    try:
+        import spacy
+
+        try:
+            spacy.load(model_name)
+            actions.append({"asset": f"spacy:{model_name}", "status": "already_present"})
+        except Exception:
+            result = subprocess.run(
+                [sys.executable, "-m", "spacy", "download", model_name],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            actions.append(
+                {
+                    "asset": f"spacy:{model_name}",
+                    "status": "installed" if result.returncode == 0 else "failed",
+                    "detail": (result.stdout or result.stderr).strip()[-500:],
+                }
+            )
+    except Exception as exc:
+        actions.append({"asset": f"spacy:{model_name}", "status": "failed", "detail": str(exc)})
+
+    try:
+        import nltk
+
+        resource_map = {
+            "punkt": "tokenizers/punkt",
+            "stopwords": "corpora/stopwords",
+            "wordnet": "corpora/wordnet",
+        }
+        for name, resource_path in resource_map.items():
+            try:
+                nltk.data.find(resource_path)
+                actions.append({"asset": f"nltk:{name}", "status": "already_present"})
+            except LookupError:
+                ok = nltk.download(name, quiet=True)
+                actions.append(
+                    {
+                        "asset": f"nltk:{name}",
+                        "status": "installed" if ok else "failed",
+                    }
+                )
+    except Exception as exc:
+        actions.append({"asset": "nltk", "status": "failed", "detail": str(exc)})
+
+    status = _check_nlp_assets(model_name)
+    return {
+        "actions": actions,
+        "status": status,
+        "success": status["ready"],
+    }
 
 
 @router.get("")
@@ -159,6 +275,7 @@ async def overall_health(request: Request) -> Dict[str, Any]:
     return {
         "status": overall,
         "services": services,
+        "nlp_assets": _check_nlp_assets(),
         "extension_system": extension_health,
         "timestamp": time.time(),
         "correlation_id": correlation_id,
@@ -760,6 +877,18 @@ async def individual_extension_health(extension_name: str, request: Request) -> 
             "timestamp": time.time(),
             "check_duration_ms": duration_ms
         }
+
+
+@router.get("/nlp-assets")
+async def nlp_assets_health() -> Dict[str, Any]:
+    """Return NLP asset availability for admin setup workflows."""
+    return _check_nlp_assets()
+
+
+@router.post("/nlp-assets/install")
+async def install_nlp_assets() -> Dict[str, Any]:
+    """Attempt to install missing NLP assets on demand."""
+    return await _install_nlp_assets()
 
 
 @router.get("/{service_name}")

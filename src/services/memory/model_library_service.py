@@ -231,26 +231,26 @@ class ModelMetadataService:
                 "id": "default-lightweight-model",
                 "name": "Default Lightweight Chat Model",
                 "provider": "llama-cpp",
-                "size": 669000000,  # ~669MB
-                "description": "A compact language model optimized for chat applications with efficient quantization for fast local inference.",
+                "size": 520000000,  # ~520MB
+                "description": "A compact Qwen3 language model optimized for chat applications with efficient quantization for fast local inference.",
                 "capabilities": ["text-generation", "chat", "local-inference", "low-memory"],
                 "metadata": ModelMetadata(
-                    parameters="1.1B",
+                    parameters="0.6B",
                     quantization="Q4_K_M",
                     memory_requirement="~1GB",
-                    context_length=2048,
+                    context_length=32768,
                     license="Apache 2.0",
                     tags=["chat", "small", "efficient", "quantized", "default"],
-                    architecture="Llama",
-                    training_data="General purpose datasets",
+                    architecture="Qwen3",
+                    training_data="Qwen pretraining and instruction-tuning corpus",
                     performance_metrics={
                         "inference_speed": "fast",
                         "memory_efficiency": "high",
                         "quality_score": "good"
                     }
                 ),
-                "download_url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-                "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                "download_url": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf",
+                "filename": "Qwen3-0.6B-Q4_K_M.gguf",
                 "checksum": "sha256:placeholder_checksum_for_validation"
             },
             "default-instruct-model": {

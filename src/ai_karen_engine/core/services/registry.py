@@ -202,3 +202,13 @@ _registry = ServiceRegistry()
 def get_registry() -> ServiceRegistry:
     """Get the global service registry instance."""
     return _registry
+
+
+# Clear aliases for the DI/discovery registry to distinguish it from the
+# runtime service registry in ai_karen_engine.core.service_registry.
+ServiceMetadataRegistry = ServiceRegistry
+
+
+def get_metadata_registry() -> ServiceMetadataRegistry:
+    """Get the global metadata/discovery registry instance."""
+    return _registry

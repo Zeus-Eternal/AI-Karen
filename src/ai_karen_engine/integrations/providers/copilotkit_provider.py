@@ -43,6 +43,9 @@ class CopilotKitProvider(BaseLLMProvider, HookMixin):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
+        self._hook_manager = None
+        self._hook_enabled = True
+        self._hook_logger = logging.getLogger(f"{self.__class__.__name__}.hooks")
         self.provider_name = "copilotkit"
         self.api_key = config.get("api_key")
         self.base_url = config.get("base_url", "https://api.copilotkit.ai")
@@ -75,8 +78,13 @@ class CopilotKitProvider(BaseLLMProvider, HookMixin):
                 logger.debug("CopilotKit API key not configured - using fallback mode")
             self.client = None
 
-        # Register hooks
-        asyncio.create_task(self._register_copilot_hooks())
+        # Register hooks only when an event loop is available.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("No running loop available; CopilotKit hooks will register lazily")
+        else:
+            loop.create_task(self._register_copilot_hooks())
 
     def _init_copilot_client(self):
         """Initialize CopilotKit client."""

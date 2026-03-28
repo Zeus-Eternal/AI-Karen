@@ -173,6 +173,14 @@ class ClassifiedServiceRegistry(ServiceRegistry):
         self.classified_services[service_name] = ClassifiedServiceInfo(config=config)
         
         logger.info(f"Registered classified service: {service_name} ({config.classification.value})")
+
+    def get_all_services(self) -> List[str]:
+        """Return all registered runtime service names."""
+        return list(self._services.keys())
+
+    async def suspend_service(self, service_name: str) -> None:
+        """Public wrapper for suspending a classified service."""
+        await self._suspend_service(service_name)
     
     async def start_essential_services(self) -> Dict[str, ServiceStatus]:
         """

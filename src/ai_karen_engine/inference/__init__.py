@@ -4,7 +4,6 @@ Inference Engine
 Production-ready inference system with support for multiple runtimes:
 - llama.cpp: GGUF models with CPU/GPU support
 - Transformers: HuggingFace safetensors models
-- vLLM: High-performance GPU inference
 - Core Helpers: Utility models
 
 Features:
@@ -26,11 +25,6 @@ except ImportError:
     TransformersRuntime = None
 
 try:
-    from .vllm_runtime import VLLMRuntime
-except ImportError:
-    VLLMRuntime = None
-
-try:
     from .core_helpers_runtime import CoreHelpersRuntime
 except ImportError:
     CoreHelpersRuntime = None
@@ -48,7 +42,6 @@ from .factory import (
     get_inference_service_factory,
     get_llamacpp_runtime,
     get_transformers_runtime,
-    get_vllm_runtime,
     get_model_store,
 )
 
@@ -56,7 +49,6 @@ from .factory import (
 from .dependencies import (
     get_llamacpp_runtime_dependency,
     get_transformers_runtime_dependency,
-    get_vllm_runtime_dependency,
     get_model_store_dependency,
     get_inference_factory_dependency,
     get_inference_health_check,
@@ -68,7 +60,6 @@ __all__ = [
     # Runtimes
     "LlamaCppRuntime",
     "TransformersRuntime",
-    "VLLMRuntime",
     "CoreHelpersRuntime",
     # Model Store
     "ModelStore",
@@ -79,12 +70,10 @@ __all__ = [
     # Factory convenience functions
     "get_llamacpp_runtime",
     "get_transformers_runtime",
-    "get_vllm_runtime",
     "get_model_store",
     # Dependencies (FastAPI)
     "get_llamacpp_runtime_dependency",
     "get_transformers_runtime_dependency",
-    "get_vllm_runtime_dependency",
     "get_model_store_dependency",
     "get_inference_factory_dependency",
     "get_inference_health_check",

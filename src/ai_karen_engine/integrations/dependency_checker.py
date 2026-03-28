@@ -171,17 +171,6 @@ class DependencyChecker:
                     ),
                 ]
             },
-            "superkent": {
-                "required": [
-                    DependencyInfo(
-                        name="requests",
-                        import_name="requests",
-                        install_command="pip install requests",
-                        description="HTTP client for SuperKent server"
-                    ),
-                ],
-                "optional": []
-            },
         }
         
         # Fallback provider hierarchy
@@ -189,9 +178,8 @@ class DependencyChecker:
             "openai": ["gemini", "deepseek", "huggingface", "local"],
             "gemini": ["openai", "deepseek", "huggingface", "local"],
             "deepseek": ["openai", "gemini", "huggingface", "local"],
-            "huggingface": ["local", "superkent"],
-            "local": ["superkent", "huggingface"],
-            "superkent": ["local", "huggingface"],
+            "huggingface": ["local"],
+            "local": ["huggingface"],
         }
     
     def check_all_dependencies(self) -> SystemDependencyReport:
@@ -427,7 +415,7 @@ class DependencyChecker:
         
         # Provider-specific recommendations
         cloud_providers = ["openai", "gemini", "deepseek"]
-        local_providers = ["huggingface", "local", "superkent"]
+        local_providers = ["huggingface", "local"]
         
         ready_cloud = sum(1 for p in cloud_providers if report.provider_status.get(p, {}).all_dependencies_met)
         ready_local = sum(1 for p in local_providers if report.provider_status.get(p, {}).all_dependencies_met)

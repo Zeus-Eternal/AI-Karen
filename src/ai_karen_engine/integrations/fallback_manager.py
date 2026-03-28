@@ -641,8 +641,6 @@ class FallbackManager:
         """Estimate latency for provider/runtime."""
         if provider in ["openai", "gemini", "deepseek"]:
             return 1.5
-        elif runtime == "vllm":
-            return 0.5
         elif runtime == "transformers":
             return 2.0
         elif runtime == "llama.cpp":

@@ -116,6 +116,7 @@ class ContextManagementIntegration:
             allowed_extensions=self.config.get("allowed_extensions"),
             scan_for_malware=self.config.get("scan_for_malware", True),
             extract_text=self.config.get("extract_text", True),
+            db_client=self.database_client,
         )
         
         # Initialize preprocessor
@@ -125,6 +126,8 @@ class ContextManagementIntegration:
             max_summary_length=self.config.get("max_summary_length", 500),
             enable_entity_extraction=self.config.get("enable_entity_extraction", True),
             enable_summarization=self.config.get("enable_summarization", True),
+            spacy_model_name=self.config.get("spacy_model_name", "en_core_web_sm"),
+            allow_runtime_nltk_downloads=self.config.get("allow_runtime_nltk_downloads"),
         )
         
         # Initialize relevance scorer
@@ -140,10 +143,8 @@ class ContextManagementIntegration:
     async def _register_routes(self) -> None:
         """Register Context Management routes with FastAPI app."""
         if self.app:
-            # Include context router with proper dependencies
             self.app.include_router(
                 context_router,
-                prefix="/api/context",
                 tags=["context-management"],
                 dependencies=[
                     # Add authentication dependency if available

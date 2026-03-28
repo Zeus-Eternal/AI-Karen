@@ -22,7 +22,9 @@ from enum import Enum
 from .internal.agent_schemas import AgentTask, AgentResponse, AgentDefinition
 from .agent_orchestrator import AgentOrchestrator
 from .adapters.deepagents_adapter import DeepAgentsAdapter
+from .adapters.langchain_adapter import LangChainAdapter
 from .adapters.langgraph_adapter import LangGraphAdapter
+from .bridges.karen_langchain_bridge import KarenLangChainBridge
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 class AgentExecutionMode(str, Enum):
     """Agent execution mode enumeration."""
     NATIVE = "native"
+    LANGCHAIN = "langchain"
     DEEPAGENTS = "deepagents"
     LANGGRAPH = "langgraph"
 
@@ -47,6 +50,8 @@ class AgentIntegrationService:
         self,
         config: Optional[Dict[str, Any]] = None,
         agent_orchestrator: Optional[AgentOrchestrator] = None,
+        langchain_adapter: Optional[LangChainAdapter] = None,
+        karen_langchain_bridge: Optional[KarenLangChainBridge] = None,
         deepagents_adapter: Optional[DeepAgentsAdapter] = None,
         langgraph_adapter: Optional[LangGraphAdapter] = None
     ):
@@ -61,6 +66,8 @@ class AgentIntegrationService:
         """
         self.config = config or {}
         self.agent_orchestrator = agent_orchestrator
+        self.langchain_adapter = langchain_adapter
+        self.karen_langchain_bridge = karen_langchain_bridge
         self.deepagents_adapter = deepagents_adapter
         self.langgraph_adapter = langgraph_adapter
         
@@ -71,6 +78,7 @@ class AgentIntegrationService:
         # Mode-specific configurations
         self._mode_configs = {
             AgentExecutionMode.NATIVE: self.config.get("native_config", {}),
+            AgentExecutionMode.LANGCHAIN: self.config.get("langchain_config", {}),
             AgentExecutionMode.DEEPAGENTS: self.config.get("deepagents_config", {}),
             AgentExecutionMode.LANGGRAPH: self.config.get("langgraph_config", {})
         }
@@ -86,6 +94,12 @@ class AgentIntegrationService:
         # Performance metrics
         self._mode_performance_metrics = {
             AgentExecutionMode.NATIVE: {
+                "execution_count": 0,
+                "average_execution_time": 0.0,
+                "success_rate": 0.0,
+                "total_execution_time": 0.0
+            },
+            AgentExecutionMode.LANGCHAIN: {
                 "execution_count": 0,
                 "average_execution_time": 0.0,
                 "success_rate": 0.0,
@@ -117,7 +131,17 @@ class AgentIntegrationService:
                 config=self.config.get("orchestrator_config", {})
             )
             await self.agent_orchestrator.initialize()
-        
+
+        if not self.langchain_adapter and self._mode_configs[AgentExecutionMode.LANGCHAIN]:
+            self.langchain_adapter = LangChainAdapter(
+                config=self._mode_configs[AgentExecutionMode.LANGCHAIN]
+            )
+
+        if not self.karen_langchain_bridge and self.langchain_adapter:
+            self.karen_langchain_bridge = KarenLangChainBridge(
+                config=self._mode_configs[AgentExecutionMode.LANGCHAIN]
+            )
+
         # Initialize DeepAgents adapter if not provided
         if not self.deepagents_adapter and self._mode_configs[AgentExecutionMode.DEEPAGENTS]:
             self.deepagents_adapter = DeepAgentsAdapter(
@@ -161,6 +185,8 @@ class AgentIntegrationService:
             
             if execution_mode == AgentExecutionMode.NATIVE:
                 response = await self._execute_native_mode(task, agent_definition)
+            elif execution_mode == AgentExecutionMode.LANGCHAIN:
+                response = await self._execute_langchain_mode(task, agent_definition)
             elif execution_mode == AgentExecutionMode.DEEPAGENTS:
                 response = await self._execute_deepagents_mode(task, agent_definition)
             elif execution_mode == AgentExecutionMode.LANGGRAPH:
@@ -219,6 +245,18 @@ class AgentIntegrationService:
         # Apply selection criteria
         criteria = self._mode_selection_criteria
         
+        # Prefer LangGraph for explicit graph/workflow tasks.
+        if (task_characteristics.get("requires_graph_execution", False) or
+            task_characteristics.get("length", 0) > criteria["task_length_threshold"]):
+            if self.langgraph_adapter:
+                logger.debug(f"Selected LangGraph mode for task {task.task_id}")
+                return AgentExecutionMode.LANGGRAPH
+
+        # Prefer LangChain for conversational/tool-oriented tasks when available.
+        if self.karen_langchain_bridge and not task_characteristics.get("requires_graph_execution", False):
+            logger.debug(f"Selected LangChain mode for task {task.task_id}")
+            return AgentExecutionMode.LANGCHAIN
+
         # Check if task requires DeepAgents mode
         if (task_characteristics.get("complexity", 0) > criteria["task_complexity_threshold"] or
             task_characteristics.get("reasoning_required", 0) > criteria["reasoning_required_threshold"] or
@@ -228,15 +266,6 @@ class AgentIntegrationService:
             if self.deepagents_adapter:
                 logger.debug(f"Selected DeepAgents mode for task {task.task_id}")
                 return AgentExecutionMode.DEEPAGENTS
-        
-        # Check if task requires LangGraph mode
-        if (task_characteristics.get("requires_graph_execution", False) or
-            task_characteristics.get("length", 0) > criteria["task_length_threshold"]):
-            
-            # Check if LangGraph adapter is available
-            if self.langgraph_adapter:
-                logger.debug(f"Selected LangGraph mode for task {task.task_id}")
-                return AgentExecutionMode.LANGGRAPH
         
         # Default to native mode
         logger.debug(f"Selected native mode for task {task.task_id}")
@@ -388,6 +417,29 @@ class AgentIntegrationService:
         )
         
         return response
+
+    async def _execute_langchain_mode(
+        self,
+        task: AgentTask,
+        agent_definition: Optional[AgentDefinition] = None
+    ) -> AgentResponse:
+        """
+        Execute a task using LangChain mode via the Karen bridge.
+        """
+        if not self.karen_langchain_bridge:
+            raise ValueError("LangChain bridge not available for LangChain mode execution")
+
+        if agent_definition and task.agent_id:
+            agent_exists = self.karen_langchain_bridge.get_agent(task.agent_id)
+            if not agent_exists:
+                await self.karen_langchain_bridge.create_agent(
+                    agent_definition=agent_definition
+                )
+
+        return await self.karen_langchain_bridge.execute_agent(
+            agent_id=task.agent_id,
+            task=task
+        )
     
     async def _execute_langgraph_mode(
         self,

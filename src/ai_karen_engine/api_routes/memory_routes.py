@@ -20,23 +20,26 @@ from ai_karen_engine.api_routes.unified_schemas import (
     FieldError,
     ValidationUtils,
 )
-from services.memory.unified_memory_service import UnifiedMemoryService, PIIRedactor
+from services.memory.unified_memory_service import PIIRedactor
 from services.monitoring.metrics_service import MetricsService
 from services.monitoring.structured_logging_service import StructuredLoggingService
-from services.monitoring.correlation_service import CorrelationService
+from services.monitoring.correlation_service import (
+    CorrelationService,
+    create_correlation_logger,
+)
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 logger = logging.getLogger(__name__)
+_metrics_service: Optional[MetricsService] = None
 
 # Graceful imports with fallback mechanisms
 try:
-    from services.memory.unified_memory_service import (
+    from services.memory.memory_service import (
         MemoryType,
         UISource,
         WebUIMemoryQuery,
         WebUIMemoryService,
     )
-    from services.memory.unified_memory_service import UnifiedMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
@@ -54,15 +57,7 @@ except ImportError:  # pragma: no cover - defensive
     logger.warning("RBAC middleware unavailable; memory routes will operate without role enforcement")
     RBAC_AVAILABLE = False
 
-try:
-    from services.monitoring.metrics_service import get_metrics_service, MetricsService
-    from services.monitoring.structured_logging_service import StructuredLoggingService
-    from services.monitoring.correlation_service import CorrelationService
-
-    METRICS_AVAILABLE = True
-except ImportError:
-    logger.warning("Metrics service not available, using fallback")
-    METRICS_AVAILABLE = False
+METRICS_AVAILABLE = True
 
 
 # Unified request/response models according to design spec
@@ -151,28 +146,18 @@ class MemDeleteResponse(ISO8601Model):
 # Create router
 router = APIRouter(tags=["memory"])
 
-try:
-    from ai_karen_engine.services.monitoring.correlation_service import (
-        CorrelationService,
-        create_correlation_logger,
-    )
+CORRELATION_AVAILABLE = True
+logger = create_correlation_logger(__name__)
 
-    CORRELATION_AVAILABLE = True
-    # Use correlation-aware logger
-    logger = create_correlation_logger(__name__)
-except ImportError:
-    logger.warning("Correlation service not available, using fallback")
-    CORRELATION_AVAILABLE = False
+STRUCTURED_LOGGING_AVAILABLE = True
 
-try:
-    from ai_karen_engine.services.monitoring.structured_logging_service import (
-        get_structured_logging_service,
-    )
 
-    STRUCTURED_LOGGING_AVAILABLE = True
-except ImportError:
-    logger.warning("Structured logging not available, using fallback")
-    STRUCTURED_LOGGING_AVAILABLE = False
+def _get_metrics_service() -> MetricsService:
+    """Return a process-local metrics service instance."""
+    global _metrics_service
+    if _metrics_service is None:
+        _metrics_service = MetricsService({})
+    return _metrics_service
 
 
 def get_correlation_id(request: Request) -> str:
@@ -238,18 +223,26 @@ def record_metrics(
         return
 
     try:
-        metrics_service = get_metrics_service()
-
-        if operation == "commit":
-            metrics_service.record_memory_commit(
-                status, decay_tier, user_id, org_id, correlation_id
-            )
-        else:
-            metrics_service.record_memory_query(
-                operation, status, user_id, org_id, correlation_id
-            )
-
-        # Vector latency is recorded via timing context manager
+        metrics_service = _get_metrics_service()
+        metric_name = (
+            "memory.commit.duration_seconds"
+            if operation == "commit"
+            else "memory.query.duration_seconds"
+        )
+        metrics_service.record(
+            metric_name,
+            duration,
+            tags={
+                "operation": operation,
+                "status": status,
+                "decay_tier": decay_tier or "",
+            },
+            metadata={
+                "user_id": user_id,
+                "org_id": org_id,
+                "correlation_id": correlation_id or "",
+            },
+        )
 
     except Exception as e:
         logger.warning(f"Metrics recording failed: {e}")
@@ -278,12 +271,9 @@ async def memory_search(request: MemQuery, http_request: Request):
 
     # Set correlation ID in context for propagation
     if CORRELATION_AVAILABLE:
-        from src.services.monitoring.correlation_service import CorrelationService
         CorrelationService.set_correlation_id(correlation_id)
 
         # Start trace tracking
-        from src.services.monitoring.correlation_service import CorrelationService
-
         tracker = CorrelationService.get_correlation_tracker()
         tracker.start_trace(
             correlation_id,

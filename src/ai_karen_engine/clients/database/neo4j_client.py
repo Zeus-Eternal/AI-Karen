@@ -3,15 +3,65 @@ KnowledgeGraphClient (Neo4j): Handles all knowledge graph ops for Kari AI.
 - Entity/concept nodes, property bags, edges (typed relationships), and concept queries.
 - Uses py2neo, local Docker Neo4j recommended.
 """
+# pyright: reportMissingImports=false
+# cspell:ignore py2neo
 
-from py2neo import Graph, Node, Relationship, NodeMatcher, RelationshipMatcher
 import logging
+from typing import Any, Dict, Iterator, List, Optional, Protocol, cast
+
+
+class _MatchResultProtocol(Protocol):
+    def first(self) -> Any: ...
+    def __iter__(self) -> Iterator[Any]: ...
+
+
+class _GraphProtocol(Protocol):
+    def push(self, entity: Any) -> None: ...
+    def create(self, entity: Any) -> None: ...
+    def delete(self, entity: Any) -> None: ...
+    def separate(self, relationship: Any) -> None: ...
+    def run(self, cypher: str, **params: Any) -> Iterator[Dict[str, Any]]: ...
+
+
+class _NodeMatcherProtocol(Protocol):
+    def match(self, label: str, **kwargs: Any) -> _MatchResultProtocol: ...
+
+
+class _RelationshipMatcherProtocol(Protocol):
+    def match(self, nodes: tuple[Any, Any], r_type: str) -> _MatchResultProtocol: ...
+
+try:
+    from py2neo import Graph, Node, Relationship, NodeMatcher, RelationshipMatcher  # type: ignore
+    _PY2NEO_AVAILABLE = True
+except ImportError:
+    _PY2NEO_AVAILABLE = False
+
+    class Graph:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ImportError("py2neo is not installed")
+
+    class Node(dict):  # type: ignore[no-redef]
+        pass
+
+    class Relationship(dict):  # type: ignore[no-redef]
+        pass
+
+    class NodeMatcher:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ImportError("py2neo is not installed")
+
+    class RelationshipMatcher:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ImportError("py2neo is not installed")
 
 class KnowledgeGraphClient:
     def __init__(self, uri="bolt://localhost:7687", user="neo4j", password="changeme"):
-        self.graph = Graph(uri, auth=(user, password))
-        self.matcher = NodeMatcher(self.graph)
-        self.rel_matcher = RelationshipMatcher(self.graph)
+        if not _PY2NEO_AVAILABLE:
+            raise ImportError("py2neo is not installed")
+        graph = Graph(uri, auth=(user, password))
+        self.graph = cast(_GraphProtocol, graph)
+        self.matcher = cast(_NodeMatcherProtocol, NodeMatcher(graph))
+        self.rel_matcher = cast(_RelationshipMatcherProtocol, RelationshipMatcher(graph))
 
     # --- NODE CRUD ---
     def upsert_node(self, label, properties):
@@ -47,7 +97,7 @@ class KnowledgeGraphClient:
                     rel[k] = v
                 self.graph.push(rel)
         else:
-            rel = Relationship(node1, rel_type, node2, **(rel_props or {}))
+            rel = cast(Any, Relationship)(node1, rel_type, node2, **(rel_props or {}))
             self.graph.create(rel)
         return rel
 

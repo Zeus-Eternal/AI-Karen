@@ -153,14 +153,14 @@ class RoutingPolicyManager:
             },
             
             task_runtime_map={
-                TaskType.CHAT: "vllm",
-                TaskType.CODE: "vllm",
-                TaskType.REASONING: "vllm", 
-                TaskType.EMBEDDING: "vllm",
-                TaskType.SUMMARIZATION: "vllm",
-                TaskType.TRANSLATION: "vllm",
-                TaskType.CREATIVE: "vllm",
-                TaskType.ANALYSIS: "vllm",
+                TaskType.CHAT: "transformers",
+                TaskType.CODE: "transformers",
+                TaskType.REASONING: "transformers",
+                TaskType.EMBEDDING: "transformers",
+                TaskType.SUMMARIZATION: "transformers",
+                TaskType.TRANSLATION: "transformers",
+                TaskType.CREATIVE: "transformers",
+                TaskType.ANALYSIS: "transformers",
             },
             
             privacy_provider_map={
@@ -171,8 +171,8 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["vllm", "transformers", "llama.cpp", "core_helpers"],
-                PrivacyLevel.INTERNAL: ["vllm", "transformers", "llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
+                PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
                 PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
             },
@@ -184,13 +184,13 @@ class RoutingPolicyManager:
             },
             
             performance_runtime_map={
-                PerformanceRequirement.INTERACTIVE: "vllm",
-                PerformanceRequirement.BATCH: "vllm",
+                PerformanceRequirement.INTERACTIVE: "transformers",
+                PerformanceRequirement.BATCH: "transformers",
                 PerformanceRequirement.BACKGROUND: "transformers",
             },
             
             fallback_providers=["local", "huggingface"],
-            fallback_runtimes=["vllm", "transformers", "llama.cpp"],
+            fallback_runtimes=["transformers", "llama.cpp"],
             
             privacy_weight=0.1,
             performance_weight=0.6,
@@ -234,7 +234,7 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["llama.cpp", "transformers", "vllm", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["llama.cpp", "transformers", "core_helpers"],
                 PrivacyLevel.INTERNAL: ["llama.cpp", "transformers", "core_helpers"],
                 PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
@@ -279,13 +279,13 @@ class RoutingPolicyManager:
             },
             
             task_runtime_map={
-                TaskType.CHAT: "vllm",
+                TaskType.CHAT: "transformers",
                 TaskType.CODE: "transformers",
-                TaskType.REASONING: "vllm", 
+                TaskType.REASONING: "transformers",
                 TaskType.EMBEDDING: "transformers",
                 TaskType.SUMMARIZATION: "llama.cpp",
                 TaskType.TRANSLATION: "transformers",
-                TaskType.CREATIVE: "vllm",
+                TaskType.CREATIVE: "transformers",
                 TaskType.ANALYSIS: "transformers",
             },
             
@@ -297,7 +297,7 @@ class RoutingPolicyManager:
             },
             
             privacy_runtime_map={
-                PrivacyLevel.PUBLIC: ["vllm", "transformers", "llama.cpp", "core_helpers"],
+                PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
                 PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
                 PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
                 PrivacyLevel.RESTRICTED: ["core_helpers"],
@@ -310,7 +310,7 @@ class RoutingPolicyManager:
             },
             
             performance_runtime_map={
-                PerformanceRequirement.INTERACTIVE: "vllm",
+                PerformanceRequirement.INTERACTIVE: "transformers",
                 PerformanceRequirement.BATCH: "transformers",
                 PerformanceRequirement.BACKGROUND: "llama.cpp",
             },
@@ -383,7 +383,7 @@ class RoutingPolicyManager:
                     description="Use fast models for testing scenarios",
                     conditions={"metadata.testing": True},
                     provider_preference="openai",
-                    runtime_preference="vllm",
+                    runtime_preference="transformers",
                     confidence_boost=0.2,
                     priority=75,
                 ),

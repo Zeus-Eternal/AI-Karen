@@ -7,6 +7,7 @@ Replaces mock examples with real working profile logic.
 
 import json
 import logging
+import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -87,7 +88,7 @@ class ProfileManager:
         Args:
             profiles_path: Path to profiles JSON file
         """
-        self.profiles_path = profiles_path or Path("config/llm_profiles.json")
+        self.profiles_path = self._resolve_profiles_path(profiles_path)
         self._profiles: Dict[str, LLMProfile] = {}
         self._active_profile: Optional[str] = None
         self._registry = get_registry()
@@ -125,6 +126,32 @@ class ProfileManager:
                 self._create_default_profiles()
         else:
             self._create_default_profiles()
+
+    @staticmethod
+    def _resolve_profiles_path(profiles_path: Optional[Path]) -> Path:
+        """Pick a writable profile path for local and container deployments."""
+        if profiles_path is not None:
+            return profiles_path
+
+        configured_path = os.getenv("KARI_LLM_PROFILES_PATH")
+        if configured_path:
+            return Path(configured_path)
+
+        default_path = Path("config/llm_profiles.json")
+        try:
+            default_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(default_path, "a", encoding="utf-8"):
+                pass
+            return default_path
+        except OSError:
+            fallback_path = Path("/tmp/ai-karen/llm_profiles.json")
+            fallback_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.warning(
+                "Profiles path %s is not writable; using %s instead",
+                default_path,
+                fallback_path,
+            )
+            return fallback_path
     
     def _save_profiles(self) -> None:
         """Save profiles to JSON file."""
@@ -133,9 +160,11 @@ class ProfileManager:
                 "active_profile": self._active_profile,
                 "profiles": [self._serialize_profile(profile) for profile in self._profiles.values()]
             }
-            
-            with open(self.profiles_path, 'w') as f:
+
+            temp_path = self.profiles_path.with_suffix(".tmp")
+            with open(temp_path, 'w') as f:
                 json.dump(data, f, indent=2)
+            temp_path.replace(self.profiles_path)
                 
             logger.info(f"Saved {len(self._profiles)} profiles to {self.profiles_path}")
             

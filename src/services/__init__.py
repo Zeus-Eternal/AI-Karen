@@ -26,9 +26,10 @@ Import Rules:
 - Internal modules are private to the domain and never imported externally
 """
 
-from pathlib import Path
 import importlib
 import sys
+from pathlib import Path
+from typing import Any
 
 # Extend the package search path so legacy imports like services.nlp_service_manager
 # resolve modules that live inside domain subpackages (e.g., services/memory/*).
@@ -47,16 +48,6 @@ for _subdir in _pkg_dir.iterdir():
             # If a domain module fails to load, skip aliasing to avoid import-time crashes
             continue
 
-# Import key facades for convenience
-from services.memory.unified_memory_service import UnifiedMemoryService
-# Import AuthService and UserRole from the correct location
-# Use absolute import from ai_karen_engine.services.auth_service
-from ai_karen_engine.services.auth_service import AuthService, UserRole
-from services.models.model_orchestrator_service import ModelOrchestratorService
-from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from services.agents.agent_orchestrator import AgentOrchestrator
-from services.extensions.extension_registry import ExtensionRegistry
-
 __all__ = [
     "UnifiedMemoryService",
     "AuthService",
@@ -66,3 +57,32 @@ __all__ = [
     "AgentOrchestrator",
     "ExtensionRegistry",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily load facade exports to avoid package-level import cycles."""
+    if name == "UnifiedMemoryService":
+        from services.memory.unified_memory_service import UnifiedMemoryService
+
+        return UnifiedMemoryService
+    if name in {"AuthService", "UserRole"}:
+        from ai_karen_engine.services.auth_service import AuthService, UserRole
+
+        return {"AuthService": AuthService, "UserRole": UserRole}[name]
+    if name == "ModelOrchestratorService":
+        from services.models.model_orchestrator_service import ModelOrchestratorService
+
+        return ModelOrchestratorService
+    if name == "AIOrchestrator":
+        from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+
+        return AIOrchestrator
+    if name == "AgentOrchestrator":
+        from services.agents.agent_orchestrator import AgentOrchestrator
+
+        return AgentOrchestrator
+    if name == "ExtensionRegistry":
+        from services.extensions.extension_registry import ExtensionRegistry
+
+        return ExtensionRegistry
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

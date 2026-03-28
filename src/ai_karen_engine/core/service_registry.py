@@ -497,22 +497,20 @@ class ServiceRegistry:
                 elif service_class_name == 'AIOrchestrator':
                     instance = AIOrchestrator(service_config)
                 elif service_class_name == 'WebUIMemoryService':
-                    # Create a simple fallback memory service for now to avoid complex dependencies
+                    # Wire the shared memory alias to the real production Web UI memory service.
                     try:
-                        class SimpleMemoryService:
-                            def __init__(self):
-                                self.initialized = True
-                            
-                            async def initialize(self):
-                                logger.info("SimpleMemoryService initialized")
-                            
-                            def load_config(self):
-                                return {"environment": "simple", "debug": True}
-                        
-                        instance = SimpleMemoryService()
-                        logger.info("Created simple fallback memory service")
+                        from ai_karen_engine.core.embedding_manager import EmbeddingManager
+                        from ai_karen_engine.core.milvus_client import MilvusClient
+                        from ai_karen_engine.database.client import MultiTenantPostgresClient
+
+                        instance = WebUIMemoryService(
+                            db_client=MultiTenantPostgresClient(),
+                            milvus_client=MilvusClient(),
+                            embedding_manager=EmbeddingManager(),
+                        )
+                        logger.info("Created production WebUIMemoryService")
                     except Exception as e:
-                        logger.error(f"Failed to create SimpleMemoryService: {e}")
+                        logger.error(f"Failed to create WebUIMemoryService: {e}")
                         instance = None
                 elif service_class_name == 'UnifiedMemoryService':
                     # UnifiedMemoryService can be initialized directly

@@ -1,18 +1,40 @@
 import asyncio
 import os
 import logging
-import re
 import time
+import uuid
+from functools import lru_cache
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, cast
 
 from fastapi import APIRouter, Request, HTTPException, Depends
-try:
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+if TYPE_CHECKING:
     from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+else:
+    from ai_karen_engine.pydantic_stub import (
+        BaseModel as BaseModel,
+        ConfigDict as ConfigDict,
+        Field as Field,
+    )
+
+    try:
+        from pydantic import (
+            BaseModel as BaseModel,
+            ConfigDict as ConfigDict,
+            Field as Field,
+        )
+    except ImportError:
+        pass
 
 logger = logging.getLogger(__name__)
+
+from ai_karen_engine.chat.identity_context import (
+    build_user_identity_line,
+    extract_recent_name,
+    is_identity_lookup,
+    resolve_display_name,
+)
 
 # Mount under /api/copilot when included with the global /api prefix
 # No prefix here since it's already mounted at /api/copilot in routers.py
@@ -23,6 +45,37 @@ router = APIRouter(tags=["copilot"])
 # transformers, SQLAlchemy). We defer registration until a request needs
 # it to keep unit tests and health checks lightweight.
 _routing_actions_ready = False
+
+
+def _is_production_env() -> bool:
+    env = os.getenv("ENVIRONMENT", os.getenv("KARI_ENV", "development")).lower()
+    return env in ("production", "prod")
+
+
+def _allow_copilot_degraded_response() -> bool:
+    value = os.getenv("COPILOT_ALLOW_DEGRADED_RESPONSE", "true").lower()
+    return value in ("1", "true", "yes", "on")
+
+
+def _get_saved_model_selection() -> tuple[str, Optional[str]]:
+    """Resolve the persisted provider/model selection from local settings."""
+
+    try:
+        from services.memory.settings_manager import get_settings_manager
+
+        settings = get_settings_manager()
+        provider = str(settings.get_setting("provider", "llama-cpp") or "llama-cpp").strip()
+        model = settings.get_setting("model")
+        model_value = str(model).strip() if model else None
+
+        aliases = {
+            "local": "llamacpp",
+            "llama-cpp": "llamacpp",
+            "llama_cpp": "llamacpp",
+        }
+        return aliases.get(provider.lower(), provider.lower()), model_value
+    except Exception:
+        return "llamacpp", None
 
 
 def _ensure_routing_actions_registered() -> None:
@@ -80,6 +133,11 @@ def _get_audit_logger():
         return None
 
 
+class _AuditLoggerProtocol(Protocol):
+    async def log_event(self, *args: Any, **kwargs: Any) -> Any:
+        ...
+
+
 def _get_predictor_registry():
     """Return the predictor registry with graceful fallback."""
 
@@ -99,7 +157,7 @@ def _get_connection_health_manager():
     """Lazily import the connection health manager components."""
 
     try:
-        from ai_karen_engine.services.connection_health_manager import (
+        from services.memory.connection_health_manager import (
             get_connection_health_manager as _getter,
             ServiceStatus as _status,
         )
@@ -109,66 +167,34 @@ def _get_connection_health_manager():
         return None, _FallbackServiceStatus
 
 
-def _resolve_display_name(user_context: Optional[Dict[str, Any]], request_context: Dict[str, Any]) -> Optional[str]:
-    authenticated_user = request_context.get("authenticated_user", {}) if isinstance(request_context, dict) else {}
-
-    for candidate in (
-        authenticated_user.get("full_name"),
-        authenticated_user.get("email"),
-        user_context.get("full_name") if user_context else None,
-        user_context.get("email") if user_context else None,
-    ):
-        if not candidate or not isinstance(candidate, str):
-            continue
-        cleaned = candidate.strip()
-        if not cleaned:
-            continue
-        if "@" in cleaned:
-            cleaned = cleaned.split("@", 1)[0]
-        return cleaned
-
-    return None
+async def _log_audit_event(**kwargs: Any) -> None:
+    """Best-effort audit logging with compatibility for partial shims."""
+    try:
+        audit_logger = cast(Optional[_AuditLoggerProtocol], _get_audit_logger())
+        if audit_logger is not None:
+            await audit_logger.log_event(**kwargs)
+    except Exception:
+        pass
 
 
-def _find_recent_name(request_context: Dict[str, Any]) -> Optional[str]:
-    recent_messages = request_context.get("recent_messages", []) if isinstance(request_context, dict) else []
-    if not isinstance(recent_messages, list):
-        return None
-
-    patterns = [
-        r"\bmy name is\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
-        r"\bi am\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
-        r"\bcall me\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
-        r"\bthe name is\s+([A-Za-z][A-Za-z0-9_\- ]{0,40})",
-    ]
-
-    for item in reversed(recent_messages):
-        if not isinstance(item, dict) or item.get("role") != "user":
-            continue
-        content = str(item.get("content", "")).strip()
-        if not content:
-            continue
-        for pattern in patterns:
-            match = re.search(pattern, content, flags=re.IGNORECASE)
-            if match:
-                candidate = match.group(1).strip(" .,!?:;")
-                if candidate:
-                    return candidate
-
-    return None
-
-
-def _build_degraded_direct_answer(
+async def _build_degraded_direct_answer(
     user_message: str,
     *,
+    auth_service: Optional[Any],
+    user_id: Optional[str],
     user_context: Optional[Dict[str, Any]],
     request_context: Dict[str, Any],
 ) -> Optional[str]:
     normalized = " ".join(user_message.lower().split())
     now = datetime.now().astimezone()
 
-    if any(phrase in normalized for phrase in ("what's my name", "whats my name", "what is my name")):
-        known_name = _find_recent_name(request_context) or _resolve_display_name(user_context, request_context)
+    if is_identity_lookup(normalized):
+        known_name = extract_recent_name(request_context) or await resolve_display_name(
+            auth_service=auth_service,
+            user_id=user_id,
+            user_context=user_context,
+            request_context=request_context,
+        )
         if known_name:
             return f"Your name is {known_name}."
         return "I don't have your name yet in this degraded session."
@@ -180,6 +206,119 @@ def _build_degraded_direct_answer(
         return f"The current time is {now.strftime('%-I:%M %p %Z')}."
 
     return None
+
+
+def _is_first_turn(request_context: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(request_context, dict):
+        return True
+
+    recent_messages = request_context.get("recent_messages", [])
+    if not isinstance(recent_messages, list):
+        return True
+
+    meaningful_messages = 0
+    for item in recent_messages:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("content", "")).strip():
+            meaningful_messages += 1
+
+    return meaningful_messages == 0
+
+
+def _classify_provider_failure(error_message: str) -> Dict[str, Any]:
+    """Classify provider/runtime failures for user-facing fallback messaging."""
+
+    snippet = str(error_message or "").strip()
+    lowered = snippet.lower()
+
+    safety_markers = (
+        "content failed safety evaluation",
+        "blocked by safety",
+        "safety filter",
+        "safety filters",
+        "safety policy",
+        "content blocked",
+        "moderation",
+        "policy violation",
+    )
+    if any(marker in lowered for marker in safety_markers):
+        return {
+            "category": "safety_blocked",
+            "is_degraded": False,
+            "cause": "The AI provider blocked this request under its safety policy.",
+            "suggestion": "Try rephrasing the request or asking for a safer, higher-level version.",
+            "quote_user_request": False,
+        }
+
+    if "timeout" in lowered or "timed out" in lowered:
+        return {
+            "category": "timeout",
+            "is_degraded": True,
+            "cause": "The primary AI provider timed out while generating a response.",
+            "suggestion": "Try a shorter or simpler prompt, or switch to a different provider in Settings.",
+            "quote_user_request": True,
+        }
+
+    if "api key" in lowered or "auth" in lowered or "401" in lowered:
+        return {
+            "category": "authentication_error",
+            "is_degraded": True,
+            "cause": "Authentication with the AI provider failed.",
+            "suggestion": "Check your API key in Application Settings -> Model Configuration.",
+            "quote_user_request": True,
+        }
+
+    if "connection" in lowered or "network" in lowered or "connect" in lowered:
+        return {
+            "category": "connection_error",
+            "is_degraded": True,
+            "cause": "Could not connect to the AI provider.",
+            "suggestion": "Check your network connection and the provider's base URL in Settings.",
+            "quote_user_request": True,
+        }
+
+    if "rate limit" in lowered or "429" in lowered:
+        return {
+            "category": "rate_limited",
+            "is_degraded": True,
+            "cause": "The AI provider is rate-limiting requests.",
+            "suggestion": "Wait a moment before trying again, or switch to a different provider.",
+            "quote_user_request": True,
+        }
+
+    return {
+        "category": "provider_error",
+        "is_degraded": True,
+        "cause": f"The AI provider encountered an error: {snippet[:100]}",
+        "suggestion": "Try again shortly, or switch to a different provider in Settings.",
+        "quote_user_request": True,
+    }
+
+
+def _normalize_session_id(session_id: Optional[str]) -> str:
+    """Return a UUID session id for downstream memory/orchestration services."""
+
+    raw = str(session_id or "").strip()
+    if not raw:
+        return str(uuid.uuid4())
+
+    candidates = [raw]
+    if raw.startswith("chat_"):
+        candidates.append(raw[len("chat_"):])
+
+    for candidate in candidates:
+        try:
+            return str(uuid.UUID(candidate))
+        except Exception:
+            continue
+
+    generated = str(uuid.uuid4())
+    logger.warning("Invalid session_id received for copilot assist; generated replacement.", extra={
+        "provided_session_id": raw,
+        "normalized_session_id": generated,
+    })
+    return generated
 
 
 class ContextHit(BaseModel):
@@ -230,58 +369,67 @@ def get_correlation_id(request: Request) -> str:
     return request.headers.get("X-Correlation-Id", "")
 
 
-from functools import lru_cache
+def _json_safe(value: Any) -> Any:
+    """Convert response metadata into JSON-safe primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return str(value)
 
-# Add the same orchestrator dependency as chat_runtime.py
+
 @lru_cache
-def get_chat_orchestrator():
-    """Return a cached ChatOrchestrator instance - same as chat_runtime.py"""
-    from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
-    from ai_karen_engine.chat.memory_processor import MemoryProcessor
-    from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
-    from ai_karen_engine.database.memory_manager import MemoryManager
-    from ai_karen_engine.database.client import MultiTenantPostgresClient
-    from ai_karen_engine.core.milvus_client import MilvusClient
-    from ai_karen_engine.core import default_models
-    from src.auth.auth_service import AuthService as PromptAuthService
+def get_langgraph_orchestrator():
+    """Return the shared LangGraph orchestrator used by the production orchestration API."""
+    from ai_karen_engine.core.langgraph_orchestrator import get_default_orchestrator
 
+    return get_default_orchestrator()
+
+
+@lru_cache
+def get_prompt_auth_service():
+    """Return the lightweight auth service used for identity-aware degraded replies."""
     try:
-        # Initialize required components for memory manager
-        db_client = MultiTenantPostgresClient()
-        milvus_client = MilvusClient()
-        
-        # Load embedding manager (async operation handled gracefully)
+        from auth.auth_service import AuthService as PromptAuthService
+        return PromptAuthService()
+    except Exception:
         try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                embedding_manager = None
-            else:
-                loop.run_until_complete(default_models.load_default_models())
-                embedding_manager = default_models.get_embedding_manager()
-        except Exception as e:
-            logger.warning(f"Failed to load embedding manager: {e}")
-            embedding_manager = None
-        
-        # Create memory manager instance
-        memory_manager = MemoryManager(
-            db_client=db_client,
-            milvus_client=milvus_client,
-            embedding_manager=embedding_manager
-        )
-    except Exception as e:
-        logger.warning(f"Failed to create memory manager: {e}")
-        memory_manager = None
+            from src.auth.auth_service import AuthService as PromptAuthService
+            return PromptAuthService()
+        except Exception:
+            logger.warning("Prompt auth service unavailable; continuing without identity auth support.")
+            return None
 
-    memory_processor = MemoryProcessor(
-        spacy_service=nlp_service_manager.spacy_service,
-        distilbert_service=nlp_service_manager.distilbert_service,
-        memory_manager=memory_manager,
-    )
-    return ChatOrchestrator(
-        memory_processor=memory_processor,
-        auth_service=PromptAuthService(),
-    )
+
+def _build_orchestration_messages(
+    request_context: Optional[Dict[str, Any]],
+    user_message: str,
+) -> List[Any]:
+    """Build LangChain messages from recent UI history plus the current turn."""
+    messages: List[Any] = []
+
+    recent_messages = request_context.get("recent_messages", []) if isinstance(request_context, dict) else []
+    if isinstance(recent_messages, list):
+        for item in recent_messages[-6:]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", "")).strip().lower()
+            content = str(item.get("content", "")).strip()
+            if not content:
+                continue
+            if role == "assistant":
+                messages.append(AIMessage(content=content))
+            elif role == "system":
+                messages.append(SystemMessage(content=content))
+            else:
+                messages.append(HumanMessage(content=content))
+
+    messages.append(HumanMessage(content=user_message))
+    return messages
 
 
 class StartActionRequest(BaseModel):
@@ -337,11 +485,11 @@ async def copilot_start_action(
 
     # Resolve user context: prefer provided; otherwise permissive in dev/bypass
     if user_ctx is None:
-        import os
-        env = os.getenv("ENVIRONMENT", os.getenv("KARI_ENV", "development")).lower()
         auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
         allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
-        if allow_public or auth_mode == "bypass" or env in ("development", "dev", "local", "test", "testing"):
+        if not _is_production_env() and (
+            allow_public or auth_mode == "bypass"
+        ):
             user_ctx = {"user_id": "anonymous", "roles": ["admin"], "scopes": ["chat:write"]}
         else:
             try:
@@ -349,6 +497,8 @@ async def copilot_start_action(
                 user_ctx = await _resolve_user_context(http_request)
             except Exception:
                 # If strict mode, deny
+                raise HTTPException(status_code=401, detail="Unauthorized")
+            if user_ctx is None:
                 raise HTTPException(status_code=401, detail="Unauthorized")
 
     # RBAC: basic scope check; allow admin or chat:write by default
@@ -364,19 +514,14 @@ async def copilot_start_action(
         pass
 
     # Audit: action started
-    try:
-        audit_logger = _get_audit_logger()
-        if audit_logger:
-            await audit_logger.log_event(
-                event_type="copilot.action.started",
-                user_id=user_ctx.get("user_id"),
-                session_id=user_ctx.get("session_id"),
-                correlation_id=correlation_id,
-                details={"action": req.action, "payload_keys": list(req.payload.keys())},
-                surface="copilot",
-            )
-    except Exception:
-        pass
+    await _log_audit_event(
+        event_type="copilot.action.started",
+        user_id=user_ctx.get("user_id"),
+        session_id=user_ctx.get("session_id"),
+        correlation_id=correlation_id,
+        details={"action": req.action, "payload_keys": list(req.payload.keys())},
+        surface="copilot",
+    )
 
     # Dispatch to predictor registry
     registry = _get_predictor_registry()
@@ -445,38 +590,28 @@ async def copilot_start_action(
             output = handler(*args)
 
         # Audit: action completed
-        try:
-            audit_logger = _get_audit_logger()
-            if audit_logger:
-                await audit_logger.log_event(
-                    event_type="copilot.action.completed",
-                    user_id=user_ctx.get("user_id"),
-                    session_id=user_ctx.get("session_id"),
-                    correlation_id=correlation_id,
-                    details={"action": req.action, "success": True},
-                    surface="copilot",
-                )
-        except Exception:
-            pass
+        await _log_audit_event(
+            event_type="copilot.action.completed",
+            user_id=user_ctx.get("user_id"),
+            session_id=user_ctx.get("session_id"),
+            correlation_id=correlation_id,
+            details={"action": req.action, "success": True},
+            surface="copilot",
+        )
 
         return StartActionResponse(status="ok", output=output or {}, correlation_id=correlation_id)
     except Exception as e:
         # Audit: action failed
-        try:
-            audit_logger = _get_audit_logger()
-            if audit_logger:
-                await audit_logger.log_event(
-                    event_type="copilot.action.failed",
-                    user_id=user_ctx.get("user_id"),
-                    session_id=user_ctx.get("session_id"),
-                    correlation_id=correlation_id,
-                    details={"action": req.action, "error": str(e)},
-                    surface="copilot",
-                    success=False,
-                    error_message=str(e),
-                )
-        except Exception:
-            pass
+        await _log_audit_event(
+            event_type="copilot.action.failed",
+            user_id=user_ctx.get("user_id"),
+            session_id=user_ctx.get("session_id"),
+            correlation_id=correlation_id,
+            details={"action": req.action, "error": str(e)},
+            surface="copilot",
+            success=False,
+            error_message=str(e),
+        )
         raise HTTPException(status_code=500, detail=f"Action failed: {e}")
 
 
@@ -489,14 +624,14 @@ async def copilot_start_action_get(action: str, http_request: Request):
     Keeps legacy or misconfigured clients working without 404s.
     """
     _ensure_routing_actions_registered()
-    req = StartActionRequest(action=action, payload={}, context={})
-    return await copilot_start_action(req, http_request)
+    return await copilot_start_action(http_request=http_request)
 
 @router.post("/assist", response_model=AssistResponse)
 async def copilot_assist(
     request: AssistRequest,
     http_request: Request,
-    chat_orchestrator = Depends(get_chat_orchestrator),
+    orchestrator = Depends(get_langgraph_orchestrator),
+    auth_service = Depends(get_prompt_auth_service),
 ):
     """Production-ready copilot assist endpoint with real AI integration."""
     _ensure_routing_actions_registered()
@@ -517,18 +652,39 @@ async def copilot_assist(
     message = request.message
     org_id = request.org_id
     top_k = request.top_k
-    preferred_llm_provider = request.preferred_llm_provider
-    preferred_model = request.preferred_model
-    session_id = request.session_id
-    
+    saved_provider, saved_model = _get_saved_model_selection()
+    preferred_llm_provider = str(request.preferred_llm_provider or saved_provider or "llamacpp").strip()
+    preferred_model = request.preferred_model or saved_model
+    session_id = _normalize_session_id(request.session_id)
+    allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
+    auth_context = {
+        # This route already admitted the request. Preserve authenticated context
+        # when available, otherwise grant limited anonymous chat access instead
+        # of letting the orchestration auth gate reject the request a second time.
+        "allow_anonymous": bool(user_context is None),
+        "public_copilot_enabled": allow_public_copilot,
+        "request_user_id": request.user_id,
+    }
+    if isinstance(user_context, dict):
+        auth_context["user_context"] = _json_safe(user_context)
+        access_token = user_context.get("access_token") or user_context.get("token")
+        if access_token:
+            auth_context["access_token"] = access_token
+
     # Initialize response components
     context_hits = []
     suggested_actions = []
     structured_content = {}
     answer = "I'm processing your request..."
-    timings = {"start": start_time}
+    timings: Dict[str, Any] = {"start": start_time}
+    llm_metadata: Dict[str, Any] = {}
+    response: Optional[Any] = None
+    response_metadata: Optional[Dict[str, Any]] = None
+    _fb = None
+    degraded_cause: Optional[str] = None
 
-    # Health gate: short-circuit to degraded mode if critical services are unavailable
+    # Health gate: advisory signal for degraded conditions. Do not short-circuit
+    # the response path unless later execution actually fails.
     try:
         if os.getenv("COPILOT_ASSIST_HEALTH_GATE", "true").lower() in ("1", "true", "yes"):
             mgr, status_cls = _get_connection_health_manager()
@@ -560,14 +716,17 @@ async def copilot_assist(
                     if not status_is_healthy:
                         unhealthy.append(svc)
             if unhealthy:
+                if _is_production_env() and not _allow_copilot_degraded_response():
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"Critical services unavailable: {', '.join(unhealthy)}",
+                    )
                 logger.warning(
-                    "Health gate failed for services: %s. Entering degraded mode.",
+                    "Health gate failed for services: %s. Continuing with orchestrator/local routing before degrading.",
                     ", ".join(unhealthy),
                     extra={"correlation_id": correlation_id}
                 )
-                is_degraded = True
-                # Inject a system note so the LLM is aware of the context if it manages to succeed
-                message = f"SYSTEM WARNING: Core services ({', '.join(unhealthy)}) are offline. Proceed in degraded mode.\nUser Request: {message}"
+                degraded_cause = f"Core backend services ({', '.join(unhealthy)}) are temporarily unavailable."
     except Exception:
         # Health gate failures should never block the main flow
         pass
@@ -584,11 +743,19 @@ async def copilot_assist(
         if "User Request:" in user_msg:
             user_msg = user_msg.split("User Request:", 1)[-1].strip()
 
-        degraded_cause = "Core backend services (database) are temporarily unavailable."
+        degraded_cause = degraded_cause or "Core backend services are temporarily unavailable."
         request_context = request.context if isinstance(request.context, dict) else {}
-        display_name = _resolve_display_name(user_context, request_context)
-        direct_answer = _build_degraded_direct_answer(
+        is_first_turn = _is_first_turn(request_context)
+        display_name = await resolve_display_name(
+            auth_service=auth_service,
+            user_id=user_id,
+            user_context=user_context,
+            request_context=request_context,
+        )
+        direct_answer = await _build_degraded_direct_answer(
             user_msg,
+            auth_service=auth_service,
+            user_id=user_id,
             user_context=user_context,
             request_context=request_context,
         )
@@ -628,13 +795,19 @@ async def copilot_assist(
         # Create a basic message list for the fallback provider to ensure 
         # proper template application (prevents hallucinations).
         system_prompt_parts = [
-            "You are Karen, an intelligent AI assistant built as an extension of Zeus-Eternal.",
+            "You are Karen, an intelligent AI assistant built by Zeus-Eternal with love.",
             "Your personality is helpful, professional, and precise.",
-            "Acknowledge when you are operating in degraded mode if relevant, but prioritize answering the user's question.",
+            "You are currently operating in degraded mode because some core backend services are unavailable.",
+            "Do not claim that systems are fully operational, normal, healthy, or functioning normally.",
+            "Be truthful that you are in degraded mode when answering.",
+            "If this is the first turn, greet the user briefly before answering.",
+            "If you know the user's display name, use it naturally in the greeting.",
+            "Keep the degraded-mode acknowledgement brief and then answer the user's request directly.",
             f"Current date and time: {datetime.now().astimezone().strftime('%A, %B %d, %Y %I:%M %p %Z')}.",
+            f"First turn in conversation: {'yes' if is_first_turn else 'no'}.",
         ]
         if display_name:
-            system_prompt_parts.append(f"User Identity: You are speaking to {display_name}.")
+            system_prompt_parts.append(build_user_identity_line(display_name))
 
         fallback_messages = [
             {
@@ -655,36 +828,20 @@ async def copilot_assist(
 
         fallback_messages.append({"role": "user", "content": user_msg})
 
-        # Try the local model via FallbackProvider (uses the already-loaded
-        # registered llamacpp provider from the global registry).
-        try:
-            from ai_karen_engine.integrations.providers.fallback_provider import FallbackProvider
-            import asyncio
-
-            _fb = FallbackProvider()
-            loop = asyncio.get_event_loop()
-            local_answer = await loop.run_in_executor(
-                None, lambda: _fb.generate_response(messages=fallback_messages)
-            )
-
-            if local_answer and isinstance(local_answer, str) and local_answer.strip():
-                answer = local_answer
-                logger.info("Local model responded in degraded mode", extra={"correlation_id": correlation_id})
-            else:
-                raise ValueError("Local model returned empty response")
-        except Exception as local_e:
-            logger.warning("Local model failed in degraded mode: %s", local_e, extra={"correlation_id": correlation_id})
-            answer = (
-                f"I'm currently unable to generate a full AI response. "
-                f"Please check your infrastructure and try again shortly."
-            )
+        greeting = f"Hi {display_name}. " if is_first_turn and display_name else ("Hi. " if is_first_turn else "")
+        answer = (
+            f"{greeting}I'm in degraded mode right now because core backend services are unavailable. "
+            f"I received your request and can keep the conversation moving, but I can't safely run the full response pipeline yet. "
+            f"Please try again shortly once the core services recover."
+        )
+        logger.info("Produced deterministic health-gate degraded response", extra={"correlation_id": correlation_id})
 
         total_time = (time.time() - start_time) * 1000
         timings["total_ms"] = total_time
         # Extract metadata from fallback provider
-        usage = getattr(_fb, "last_usage", {})
-        fb_model_id = usage.get("model_id", "degraded-fallback")
-        fb_confidence = usage.get("confidence", 0.35)
+        usage = {"prompt_tokens": 0, "completion_tokens": len(answer) // 4, "total_tokens": len(answer) // 4}
+        fb_model_id = "degraded-direct-fallback"
+        fb_confidence = 0.5
         
         return {
             "answer": answer,
@@ -699,7 +856,7 @@ async def copilot_assist(
                     "provider": "system",
                     "model_id": fb_model_id,
                     "model_name": fb_model_id.replace("fallback:", "").replace("_", " ").title(),
-                    "source": "health_gate_fallback",
+                    "source": "health_gate_direct",
                     "is_degraded": True,
                     "duration": total_time / 1000,
                     "usage": usage,
@@ -718,105 +875,94 @@ async def copilot_assist(
     # Try to get real AI response using the injected chat orchestrator
     llm_start = time.time()
     try:
-        from ai_karen_engine.chat.chat_orchestrator import ChatRequest
-        
-        # Use the user_id from request (no user_context dependency)
-        actual_user_id = user_id
-        
-        # Create proper ChatRequest using the same pattern as chat_runtime.py
-        chat_request = ChatRequest(
-            message=message,
-            user_id=actual_user_id,
-            conversation_id=session_id or f"copilot_{correlation_id}",
-            session_id=session_id or correlation_id,
-            stream=False,
-            include_context=True,
-            metadata={
-                "source": "copilot_assist", 
-                "org_id": org_id,
-                "platform": "copilot",
-                "request_context": request.context,
-                "preferred_llm_provider": preferred_llm_provider,
-                "preferred_model": preferred_model,
-            }
-        )
-        
-        # Process the message through the injected chat orchestrator with a hard timeout
+        orchestration_messages = _build_orchestration_messages(request.context, message)
+
+        # Process through the shared LangGraph orchestrator with a hard timeout
         # to prevent the frontend proxy from hitting its 120s abort.
-        import asyncio
-        response = None
         try:
+            assist_timeout_seconds = float(
+                os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "45")
+            )
             response = await asyncio.wait_for(
-                chat_orchestrator.process_message(chat_request),
-                timeout=float(os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "45")),  # default 45s
+                orchestrator.process(
+                    messages=orchestration_messages,
+                    user_id=user_id,
+                    session_id=session_id or correlation_id,
+                    config={
+                        "source": "copilot_assist",
+                        "org_id": org_id,
+                        "platform": "copilot",
+                        "streaming_enabled": False,
+                        "request_context": request.context,
+                        "auth_context": auth_context,
+                        "preferred_llm_provider": preferred_llm_provider,
+                        "preferred_model": preferred_model,
+                    },
+                ),
+                timeout=assist_timeout_seconds,
             )
         except asyncio.TimeoutError:
             # Let the outer except Exception handler deal with this so the
             # FallbackProvider is invoked instead of returning a canned string.
-            timeout_secs = os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "45")
+            timeout_secs = os.getenv("COPILOT_ASSIST_TIMEOUT_SECONDS", "90")
             raise RuntimeError(
                 f"Primary AI provider timed out after {timeout_secs}s. "
                 "The request was cancelled to keep the application responsive."
             )
         
-        # Handle the response properly based on ChatOrchestrator response structure
-        if response:
-            # The ChatOrchestrator returns a response object with a 'response' attribute
-            if hasattr(response, 'response') and response.response:
-                answer = response.response
-                logger.info("Copilot assist produced orchestrator response", extra={"correlation_id": correlation_id})
-            elif hasattr(response, 'content') and response.content:
-                answer = response.content
-                logger.info("Copilot assist produced content response", extra={"correlation_id": correlation_id})
-            elif isinstance(response, str):
-                answer = response
-                logger.info("Copilot assist produced string response", extra={"correlation_id": correlation_id})
-            else:
-                logger.warning(
-                    "Unexpected copilot response format: %s",
-                    type(response),
-                    extra={"correlation_id": correlation_id},
-                )
-                answer = "The AI returned an unexpected response format. Please try again."
-            
-            # Map enriched metadata and formatting layer outputs to response envelope
-            llm_metadata = {}
-            if hasattr(response, 'metadata') and response.metadata:
-                metadata_payload = response.metadata
-                # Use the 'llm' nested object if it exists (from ChatOrchestrator)
-                llm_metadata = metadata_payload.get('llm', {}) if isinstance(metadata_payload, dict) else {}
-                
-                # If 'llm' is empty but metadata_payload has 'provider', use metadata_payload as llm_metadata
-                if not llm_metadata and isinstance(metadata_payload, dict) and 'provider' in metadata_payload:
-                    llm_metadata = metadata_payload
-                
-                if 'output_formatting' in llm_metadata:
-                    structured_content['formatting'] = llm_metadata['output_formatting']
-                if 'output_layout' in llm_metadata:
-                    structured_content['layout_type'] = llm_metadata['output_layout']
-                if 'output_profile' in llm_metadata:
-                    structured_content['output_profile'] = llm_metadata['output_profile']
-            
-            # Extract context from memory processor if available
-            if hasattr(response, 'context_data') and response.context_data:
-                for idx, context_item in enumerate(response.context_data[:top_k]):
-                    context_hit = {
-                        "id": f"memory_{idx}_{int(time.time())}",
-                        "text": str(context_item)[:500],
-                        "preview": str(context_item)[:200] + "..." if len(str(context_item)) > 200 else str(context_item),
-                        "score": 0.8,  # Default score since we don't have specific scoring
-                        "tags": ["ai_generated", "relevant"],
-                        "recency": "recent",
-                        "meta": {},
-                        "importance": 7,
-                        "decay_tier": "short",
-                        "created_at": datetime.now().isoformat(),
-                        "updated_at": None,
-                        "user_id": user_id,
-                        "org_id": org_id
-                    }
-                    context_hits.append(context_hit)
-            
+        # Handle the response using the LangGraph orchestration state structure
+        if isinstance(response, dict):
+            answer = str(response.get("response") or "").strip()
+            response_metadata = cast(Optional[Dict[str, Any]], response.get("response_metadata"))
+            if not answer:
+                response_errors = response.get("errors")
+                response_warnings = response.get("warnings")
+                if isinstance(response_errors, list) and response_errors:
+                    raise RuntimeError(str(response_errors[-1]))
+                if isinstance(response_warnings, list) and response_warnings:
+                    raise RuntimeError(str(response_warnings[-1]))
+                raise RuntimeError("No response returned.")
+            logger.info("Copilot assist produced LangGraph orchestrator response", extra={"correlation_id": correlation_id})
+
+            metadata_provider = response_metadata.get("provider") if isinstance(response_metadata, dict) else None
+            metadata_model = response_metadata.get("model") if isinstance(response_metadata, dict) else None
+            selected_provider = str(response.get("selected_provider") or metadata_provider or "fallback")
+            selected_model = str(response.get("selected_model") or metadata_model or "unknown")
+            llm_metadata = {
+                "provider": selected_provider,
+                "model_id": selected_model,
+                "model_name": selected_model.replace("_", " ").title(),
+                "source": "langgraph_orchestrator",
+                "is_degraded": selected_provider == "fallback",
+                "duration": (time.time() - llm_start),
+                "usage": {},
+                "confidence_score": 0.75 if selected_provider != "fallback" else 0.35,
+                "routing_confidence": 0.0,
+                "routing_rationale": response.get("routing_reason") or "LangGraph orchestration route",
+            }
+
+            memory_context = response.get("memory_context")
+            if isinstance(memory_context, dict):
+                summary = memory_context.get("context_summary")
+                if summary:
+                    context_hits.append(
+                        {
+                            "id": f"context_{int(time.time())}",
+                            "text": str(summary)[:500],
+                            "preview": str(summary)[:200] + "..." if len(str(summary)) > 200 else str(summary),
+                            "score": 0.8,
+                            "tags": ["langgraph", "memory_context"],
+                            "recency": "recent",
+                            "meta": _json_safe(memory_context),
+                            "importance": 7,
+                            "decay_tier": "short",
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": None,
+                            "user_id": user_id,
+                            "org_id": org_id,
+                        }
+                    )
+
             # Generate intelligent actions based on the response and message content
             message_lower = message.lower()
             if any(word in message_lower for word in ["code", "debug", "error", "fix", "programming"]):
@@ -851,6 +997,8 @@ async def copilot_assist(
                     "confidence": 0.6,
                     "description": "Export this response as a note"
                 })
+        else:
+            raise RuntimeError("Unexpected orchestration response.")
         
         timings["llm_generation_ms"] = (time.time() - llm_start) * 1000
         
@@ -861,76 +1009,144 @@ async def copilot_assist(
             e,
             extra={"correlation_id": correlation_id},
         )
-        is_degraded = True
+        if _is_production_env() and not _allow_copilot_degraded_response():
+            raise HTTPException(
+                status_code=503,
+                detail="Copilot provider unavailable",
+            ) from e
+        fallback_answer: Optional[str] = None
+        fallback_usage: Dict[str, Any] = {}
+        fallback_model_id = "degraded-fallback"
+        fallback_provider_name = "fallback"
+        fallback_reason = str(e)[:200]
+        failure_info = _classify_provider_failure(fallback_reason)
+        is_degraded = bool(failure_info["is_degraded"])
 
-        # ----- Intelligent Fallback: instant deterministic response -----
-        # Instead of calling another slow model (which could take 70s+ and
-        # re-trigger the timeout), we produce an immediate, context-aware
-        # response that informs the user about the failure and still
-        # attempts to be helpful.
-        error_snippet = str(e)[:200]
-        user_msg = message
+        try:
+            from ai_karen_engine.config.config_manager import (
+                get_default_model,
+                get_default_provider,
+            )
+            from ai_karen_engine.integrations.providers.fallback_provider import (
+                FallbackProvider,
+            )
 
-        # Strip the SYSTEM WARNING prefix if we injected it via health gate
-        if "User Request:" in user_msg:
-            user_msg = user_msg.split("User Request:", 1)[-1].strip()
+            configured_provider = str(preferred_llm_provider or get_default_provider() or "llamacpp").strip()
+            configured_provider = "llamacpp" if configured_provider == "local" else configured_provider
+            configured_model = str(
+                preferred_model
+                or get_default_model("llamacpp" if configured_provider == "llamacpp" else configured_provider)
+                or get_default_model()
+            ).strip()
 
-        # Classify the failure and build a helpful response
-        error_lower = error_snippet.lower()
-        if "timeout" in error_lower or "timed out" in error_lower:
-            cause = "The primary AI provider timed out while generating a response."
-            suggestion = "Try a shorter or simpler prompt, or switch to a different provider in Settings."
-        elif "api key" in error_lower or "auth" in error_lower or "401" in error_lower:
-            cause = "Authentication with the AI provider failed."
-            suggestion = "Check your API key in Application Settings → Model Configuration."
-        elif "connection" in error_lower or "network" in error_lower or "connect" in error_lower:
-            cause = "Could not connect to the AI provider."
-            suggestion = "Check your network connection and the provider's base URL in Settings."
-        elif "rate limit" in error_lower or "429" in error_lower:
-            cause = "The AI provider is rate-limiting requests."
-            suggestion = "Wait a moment before trying again, or switch to a different provider."
-        else:
-            cause = f"The AI provider encountered an error: {error_snippet[:100]}"
-            suggestion = "Try again shortly, or switch to a different provider in Settings."
+            fallback_messages = _build_orchestration_messages(request.context, message)
+            _fb = FallbackProvider(model=configured_model)
+            fallback_answer = str(
+                _fb.generate_text(
+                    fallback_messages,
+                    model=configured_model,
+                    provider=configured_provider,
+                )
+            ).strip()
+            fallback_usage = cast(Dict[str, Any], getattr(_fb, "last_usage", {}) or {})
+            fallback_model_id = str(fallback_usage.get("model_id") or configured_model or fallback_model_id)
+            fallback_provider_name = str(fallback_usage.get("source") or configured_provider or fallback_provider_name)
 
-        answer = (
-            f"⚠️ **Karen is operating in degraded mode.**\n\n"
-            f"**Cause:** {cause}\n\n"
-            f"**Your question:** \"{user_msg[:120]}{'...' if len(user_msg) > 120 else ''}\"\n\n"
-            f"I'm unable to generate a full AI response right now, but I've logged your request. "
-            f"{suggestion}\n\n"
-            f"_This notification will only appear once per session._"
-        )
-        logger.info("Produced instant degraded-mode response", extra={"correlation_id": correlation_id})
+            if fallback_answer:
+                answer = fallback_answer
+                llm_metadata = {
+                    "provider": configured_provider,
+                    "model_id": fallback_model_id,
+                    "model_name": fallback_model_id.replace("fallback:", "").replace("_", " ").title(),
+                    "source": "configured_fallback_provider",
+                    "is_degraded": True,
+                    "duration": (time.time() - llm_start),
+                    "failure_reason": fallback_reason,
+                    "usage": fallback_usage or {
+                        "total_tokens": len(answer) // 4,
+                        "prompt_tokens": 0,
+                        "completion_tokens": len(answer) // 4,
+                    },
+                    "confidence_score": float(fallback_usage.get("confidence", 0.5)),
+                    "routing_confidence": 0.0,
+                    "routing_rationale": (
+                        f"Primary orchestration failed; used configured fallback model "
+                        f"{configured_model} via {configured_provider}."
+                    ),
+                }
+                logger.info(
+                    "Copilot assist used configured fallback model",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "configured_provider": configured_provider,
+                        "configured_model": configured_model,
+                        "resolved_model_id": fallback_model_id,
+                    },
+                )
+        except Exception as fallback_exc:
+            logger.warning(
+                "Configured fallback provider failed after orchestration error: %s",
+                fallback_exc,
+                extra={"correlation_id": correlation_id},
+            )
 
-        suggested_actions.append({
-            "type": "add_task",
-            "params": {"task": f"Retry: {user_msg[:40]}..."},
-            "confidence": 0.7,
-            "description": "Retry this request once the AI provider is healthy"
-        })
+        if not fallback_answer:
+            # ----- Final deterministic fallback only if configured fallback also failed -----
+            error_snippet = str(e)[:200]
+            user_msg = message
 
-        # Ensure llm_metadata is populated even in degraded mode so the
-        # frontend can always display model information in the chat bubble.
-        if not llm_metadata:
-            # Try to get usage from fallback provider if it was used
-            usage = getattr(_fb, "last_usage", {})
-            fb_model_id = usage.get("model_id", "degraded-fallback")
-            fb_confidence = usage.get("confidence", 0.35)
-            
-            llm_metadata = {
-                "provider": "fallback",
-                "model_id": fb_model_id,
-                "model_name": fb_model_id.replace("fallback:", "").replace("_", " ").title(),
-                "source": "runtime_error_fallback",
-                "is_degraded": True,
-                "duration": (time.time() - llm_start),
-                "failure_reason": error_snippet[:100],
-                "usage": usage or {"total_tokens": len(answer) // 4, "prompt_tokens": 0, "completion_tokens": len(answer) // 4},
-                "confidence_score": fb_confidence,
-                "routing_confidence": 0.0,
-                "routing_rationale": f"Orchestrator error: {error_snippet[:50]}..."
-            }
+            if "User Request:" in user_msg:
+                user_msg = user_msg.split("User Request:", 1)[-1].strip()
+
+            cause = str(failure_info["cause"])
+            suggestion = str(failure_info["suggestion"])
+            if failure_info["category"] == "safety_blocked":
+                answer = (
+                    "Karen couldn't complete that request because the AI provider blocked it under its safety policy.\n\n"
+                    "I can still help with a safer rewrite, a higher-level summary, or a narrower technical question.\n\n"
+                    f"{suggestion}"
+                )
+            else:
+                quoted_request = (
+                    f"Your question: \"{user_msg[:120]}{'...' if len(user_msg) > 120 else ''}\"\n\n"
+                    if failure_info["quote_user_request"]
+                    else ""
+                )
+                answer = (
+                    f"Karen is operating in degraded mode.\n\n"
+                    f"Cause: {cause}\n\n"
+                    f"{quoted_request}"
+                    f"I'm unable to generate a full AI response right now, but I've logged your request. "
+                    f"{suggestion}"
+                )
+            logger.info("Produced final deterministic degraded response", extra={"correlation_id": correlation_id})
+
+            suggested_actions.append({
+                "type": "add_task",
+                "params": {"task": f"Retry: {user_msg[:40]}..."},
+                "confidence": 0.7,
+                "description": "Retry this request once the AI provider is healthy"
+            })
+
+            if not llm_metadata:
+                llm_metadata = {
+                    "provider": "fallback",
+                    "model_id": fallback_model_id,
+                    "model_name": fallback_model_id.replace("fallback:", "").replace("_", " ").title(),
+                    "source": "runtime_error_fallback",
+                    "is_degraded": bool(failure_info["is_degraded"]),
+                    "failure_category": failure_info["category"],
+                    "duration": (time.time() - llm_start),
+                    "failure_reason": error_snippet[:100],
+                    "usage": fallback_usage or {
+                        "total_tokens": len(answer) // 4,
+                        "prompt_tokens": 0,
+                        "completion_tokens": len(answer) // 4,
+                    },
+                    "confidence_score": float(fallback_usage.get("confidence", 0.35)),
+                    "routing_confidence": 0.0,
+                    "routing_rationale": f"Orchestrator error: {error_snippet[:50]}...",
+                }
     
     # Calculate final timing
     total_time = (time.time() - start_time) * 1000
@@ -938,16 +1154,17 @@ async def copilot_assist(
     
     return {
         "answer": answer,
-        "structured_content": structured_content,
-        "actions": suggested_actions,
+        "structured_content": _json_safe(structured_content),
+        "actions": _json_safe(suggested_actions),
         "metadata": {
-            "timings": timings,
-            "context": context_hits,
+            "timings": _json_safe(timings),
+            "context": _json_safe(context_hits),
             "degraded_mode": is_degraded,
-            "llm": llm_metadata,
+            "failure_category": llm_metadata.get("failure_category") if isinstance(llm_metadata, dict) else None,
+            "llm": _json_safe(llm_metadata),
             "orchestrator": {
-                "used_fallback": response.metadata.get("used_fallback", False) if response and hasattr(response, 'metadata') and isinstance(response.metadata, dict) else False,
-                "context_used": response.metadata.get("context_used", False) if response and hasattr(response, 'metadata') and isinstance(response.metadata, dict) else False,
+                "used_fallback": response_metadata.get("used_fallback", False) if isinstance(response_metadata, dict) else False,
+                "context_used": response_metadata.get("context_used", False) if isinstance(response_metadata, dict) else False,
             }
         },
         "correlation_id": correlation_id

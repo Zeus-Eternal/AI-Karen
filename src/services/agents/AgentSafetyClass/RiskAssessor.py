@@ -8,7 +8,7 @@ including risk calculation, analysis, and reporting.
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig

@@ -9,23 +9,27 @@ auth_gate → safety_gate → memory_fetch → intent_detect → planner →
 router_select → tool_exec → response_synth → approval_gate → memory_write
 """
 
-from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal, Deque, Tuple
+from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal, Deque, Tuple, cast
 from dataclasses import dataclass, field, replace, asdict
 import asyncio
 from collections import deque
 import logging
+import os
 from datetime import datetime, timezone
 import uuid
 
-from auth.auth_service import AuthService, get_auth_service, user_account_to_dict
-from ai_karen_engine.services.ai_orchestrator.context_manager import ContextManager
-from ai_karen_engine.services.ai_orchestrator.decision_engine import DecisionEngine
+from src.auth.auth_service import AuthService, get_auth_service, user_account_to_dict
+from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent
+from ai_karen_engine.core.response.analyzer import SpacyAnalyzer, AnalysisContext
+from ai_karen_engine.core.reasoning.synthesis import (
+    MetacognitiveMonitor,
+)
 from ai_karen_engine.services.distilbert_service import DistilBertService, SafetyResult
 from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter
-from ai_karen_engine.services.profile_manager import Guardrails, ProfileManager
+from services.profile_manager import Guardrails, ProfileManager
 from ai_karen_engine.services.tool_service import ToolInput, ToolOutput, ToolService
 from ai_karen_engine.models.shared_types import ToolType
-from ai_karen_engine.services.memory_service import MemoryType, UISource
+from services.memory_service import MemoryType, UISource, WebUIMemoryService
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
@@ -34,6 +38,223 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_core.tools import BaseTool
 
 logger = logging.getLogger(__name__)
+
+
+class ContextManager:
+    """Thin adapter over the current memory/context stack for LangGraph."""
+
+    def __init__(self, memory_service: Optional[Any] = None):
+        self.memory_service = memory_service
+
+    async def build_context(
+        self,
+        *,
+        user_id: str,
+        session_id: Optional[str],
+        prompt: str,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        user_settings: Optional[Dict[str, Any]] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        context: Dict[str, Any] = {
+            "user_id": user_id,
+            "session_id": session_id,
+            "prompt": prompt,
+            "conversation_history": conversation_history or [],
+            "user_settings": user_settings or {},
+            "memories": memories or [],
+        }
+
+        memory_service = self.memory_service
+        if memory_service is not None and hasattr(memory_service, "build_context"):
+            try:
+                retrieved_context = await memory_service.build_context(
+                    tenant_id=user_id,
+                    query=prompt,
+                    user_id=user_id,
+                    session_id=session_id,
+                    conversation_id=session_id,
+                )
+                if isinstance(retrieved_context, dict):
+                    context.update(retrieved_context)
+            except TypeError:
+                logger.debug("Memory service build_context signature mismatch; using local context adapter")
+            except Exception as exc:
+                logger.warning("Context build fallback triggered: %s", exc)
+
+        return context
+
+    def clear_context_cache(self) -> None:
+        """Compatibility no-op for legacy orchestrator cleanup."""
+        return None
+
+
+class DecisionEngine:
+    """Adapter exposing the legacy intent-analysis surface via the reasoning stack."""
+
+    def __init__(
+        self,
+        analyzer: Optional[SpacyAnalyzer] = None,
+        classifier: Optional[DistilBertService] = None,
+    ):
+        self._analyzer = analyzer or SpacyAnalyzer()
+        self._classifier = classifier or DistilBertService()
+        self._metacognition = MetacognitiveMonitor()
+
+    @staticmethod
+    def _suggest_tools(intent: str) -> List[str]:
+        mapping = {
+            "greeting": [],
+            "weather_query": ["weather"],
+            "time_query": ["time"],
+            "book_query": ["search_books"],
+            "information_retrieval": ["search_memory"],
+            "technical_question": ["search_docs"],
+            "debug_error": ["search_logs"],
+            "documentation": ["search_docs"],
+            "troubleshoot": ["search_logs"],
+            "system_config": ["search_docs"],
+        }
+        return mapping.get(intent, [])
+
+    @staticmethod
+    def _normalize_cortex_intent(cortex_intent: str, analyzer_intent: str) -> str:
+        normalized = (cortex_intent or "").strip().lower()
+        if normalized in {"", "unknown", "general", "general_assist"}:
+            return analyzer_intent
+
+        cortex_to_response = {
+            "greeting": "casual_chat",
+            "search": "information_retrieval",
+            "memory": "information_retrieval",
+            "diagnostics": "troubleshoot",
+            "system_status": "system_config",
+            "audit_log": "documentation",
+            "logout": "casual_chat",
+            "routing.select": "system_config",
+            "routing.profile": "system_config",
+            "admin_panel": "system_config",
+        }
+        return cortex_to_response.get(normalized, normalized)
+
+    @staticmethod
+    def _normalize_classifier_intent(classifier_intent: str, analyzer_intent: str) -> str:
+        normalized = (classifier_intent or "").strip().lower()
+        if normalized in {"", "unknown"}:
+            return analyzer_intent
+
+        classifier_to_response = {
+            "information_seeking": "information_retrieval",
+            "task_completion": "how_to_guide",
+            "problem_solving": "troubleshoot",
+            "creative_assistance": "creative_task",
+            "decision_making": "business_advice",
+            "social_interaction": "casual_chat",
+        }
+        return classifier_to_response.get(normalized, analyzer_intent)
+
+    async def analyze_intent(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        result = await self._analyzer.analyze_comprehensive(
+            prompt,
+            context=AnalysisContext(
+                user_id=str((context or {}).get("user_id") or "") or None,
+                session_id=str((context or {}).get("session_id") or "") or None,
+                interaction_history=cast(List[Dict[str, Any]], (context or {}).get("conversation_history") or []),
+                system_capabilities=cast(Dict[str, Any], context or {}),
+            ),
+        )
+        context_dict = context or {}
+        cortex_intent, cortex_meta = resolve_routing_intent(prompt, context_dict)
+        analyzer_intent = result.intent.primary_intent.value
+        cortex_confidence = 0.0
+        if isinstance(cortex_meta, dict):
+            raw_confidence = cortex_meta.get("confidence")
+            if isinstance(raw_confidence, (int, float)):
+                cortex_confidence = float(raw_confidence)
+
+        classifier_intent = "unknown"
+        classifier_confidence = 0.0
+        classifier_entities: List[Dict[str, Any]] = []
+        try:
+            classifier_result = await self._classifier.detect_intent(prompt)
+            classifier_intent = classifier_result.intent
+            classifier_confidence = classifier_result.confidence
+            classifier_entities = classifier_result.entities
+        except Exception as exc:
+            logger.debug("DistilBERT intent classification unavailable: %s", exc)
+
+        if cortex_intent and cortex_intent.lower() not in {"unknown", ""}:
+            primary_intent = self._normalize_cortex_intent(cortex_intent, analyzer_intent)
+        else:
+            primary_intent = self._normalize_classifier_intent(classifier_intent, analyzer_intent)
+
+        reasoning_state = self._metacognition.monitor_reasoning_process(
+            query=prompt,
+            current_output=primary_intent,
+            context=[
+                str(context_dict.get("context_summary", "")),
+            ] if context else None,
+        )
+        strategy = self._metacognition.select_strategy(
+            query=prompt,
+            task_type=primary_intent,
+            current_state=reasoning_state,
+        )
+        raw_entities = result.entities.get("entities", []) if isinstance(result.entities, dict) else []
+
+        normalized_entities: List[Dict[str, Any]] = []
+        for entity in raw_entities:
+            if isinstance(entity, dict):
+                normalized_entities.append(entity)
+            elif hasattr(entity, "text"):
+                normalized_entities.append(
+                    {
+                        "type": getattr(entity, "label_", "unknown"),
+                        "value": getattr(entity, "text", ""),
+                    }
+                )
+        for entity in classifier_entities:
+            if isinstance(entity, dict):
+                normalized_entities.append(entity)
+
+        return {
+            "primary_intent": primary_intent,
+            "intent": primary_intent,
+            "confidence": max(
+                result.intent.confidence,
+                classifier_confidence,
+                cortex_confidence,
+                reasoning_state.confidence,
+            ),
+            "suggested_tools": self._suggest_tools(primary_intent),
+            "entities": normalized_entities,
+            "requires_clarification": result.intent.confidence < 0.45 or bool(reasoning_state.knowledge_gaps),
+            "sentiment": result.sentiment.primary_sentiment.value,
+            "persona_recommendation": result.persona_recommendation,
+            "metadata": {
+                **result.metadata,
+                "intent_source": "cortex+response_analyzer",
+                "cortex_intent": cortex_intent,
+                "cortex_meta": cortex_meta,
+                "classifier_intent": classifier_intent,
+                "classifier_confidence": classifier_confidence,
+                "analyzer_intent": analyzer_intent,
+                "analyzer_confidence": result.intent.confidence,
+                "reasoning_trace": [
+                    f"intent={primary_intent}",
+                    f"cortex={cortex_intent}",
+                    f"strategy={strategy.value}",
+                    f"state={reasoning_state.cognitive_state.value}",
+                ],
+                "strategy_used": strategy.value,
+                "quality_score": reasoning_state.performance_estimate,
+                "knowledge_gaps": reasoning_state.knowledge_gaps,
+                "metacognitive_state": reasoning_state.cognitive_state.value,
+                "reasoning_confidence": reasoning_state.confidence,
+                "reasoning_certainty": reasoning_state.certainty,
+            },
+            "context": context or {},
+        }
 
 
 class OrchestrationState(TypedDict):
@@ -89,6 +310,7 @@ class OrchestrationState(TypedDict):
     # Streaming Support
     streaming_enabled: Optional[bool]
     stream_chunks: Optional[List[str]]
+    request_config: Optional[Dict[str, Any]]
 
 
 @dataclass
@@ -232,8 +454,13 @@ class LangGraphOrchestrator:
         except Exception as exc:  # pragma: no cover - optional dependency
             if not self._memory_resolution_failed:
                 logger.warning("Memory service unavailable: %s", exc)
-            self._memory_resolution_failed = True
-            self._memory_service = None
+            try:
+                self._memory_service = WebUIMemoryService()
+                logger.info("Fell back to direct WebUIMemoryService initialization")
+            except Exception as fallback_exc:  # pragma: no cover - optional dependency
+                logger.warning("Direct memory service fallback unavailable: %s", fallback_exc)
+                self._memory_resolution_failed = True
+                self._memory_service = None
 
         return self._memory_service
 
@@ -382,10 +609,12 @@ class LangGraphOrchestrator:
             user_profile = self._serialize_user_account(user)
 
             # Fall back to legacy behaviour when auth service is unavailable
-            if user_profile is None and state.get("user_id") and not service:
-                warnings.append(
-                    "Auth service unavailable; granting limited chat access"
-                )
+            allow_anonymous = bool(auth_context.get("allow_anonymous"))
+            if user_profile is None and state.get("user_id") and (not service or allow_anonymous):
+                if allow_anonymous:
+                    warnings.append("Anonymous copilot access enabled; granting limited chat access")
+                else:
+                    warnings.append("Auth service unavailable; granting limited chat access")
                 user_profile = {
                     "user_id": state["user_id"],
                     "email": state.get("user_id"),
@@ -542,6 +771,19 @@ class LangGraphOrchestrator:
             state["intent_analysis"] = analysis
             state["detected_intent"] = analysis.get("primary_intent", analysis.get("intent", "unknown"))
             state["intent_confidence"] = analysis.get("confidence", 0.0)
+            reasoning_metadata = analysis.get("metadata", {}) if isinstance(analysis, dict) else {}
+            if reasoning_metadata:
+                state.setdefault("warnings", []).extend(
+                    [
+                        warning
+                        for warning in [
+                            f"Reasoning identified knowledge gaps: {', '.join(reasoning_metadata.get('knowledge_gaps', [])[:3])}"
+                            if reasoning_metadata.get("knowledge_gaps")
+                            else None
+                        ]
+                        if warning
+                    ]
+                )
 
             suggested_tools = analysis.get("suggested_tools", []) or []
             entities = analysis.get("entities", []) or []
@@ -672,6 +914,31 @@ class LangGraphOrchestrator:
                 if profile and getattr(profile, "provider_preferences", None)
                 else {}
             )
+            request_config = state.get("request_config") or {}
+            if isinstance(request_config, dict):
+                preferred_provider = request_config.get("preferred_llm_provider")
+                preferred_model = request_config.get("preferred_model")
+                if preferred_provider and not provider_preferences.get("preferred_llm_provider"):
+                    provider_preferences["preferred_llm_provider"] = preferred_provider
+                if preferred_model and not provider_preferences.get("preferred_model"):
+                    provider_preferences["preferred_model"] = preferred_model
+            explicit_preferred_provider = (
+                request_config.get("preferred_llm_provider")
+                if isinstance(request_config, dict)
+                else None
+            )
+            explicit_preferred_model = (
+                request_config.get("preferred_model")
+                if isinstance(request_config, dict)
+                else None
+            )
+            preferred_model_name: Optional[str] = None
+            if explicit_preferred_model:
+                preferred_model_name = str(explicit_preferred_model)
+            elif not explicit_preferred_provider:
+                profile_chat_preference = provider_preferences.get("chat")
+                if profile_chat_preference:
+                    preferred_model_name = str(profile_chat_preference)
 
             request = ChatRequest(
                 message=conversation_history[-1]["content"],
@@ -683,7 +950,7 @@ class LangGraphOrchestrator:
                 tools=[call["tool"] for call in tool_calls],
                 memory_context=memory_context.get("context_summary"),
                 user_preferences=provider_preferences,
-                preferred_model=provider_preferences.get("chat"),
+                preferred_model=preferred_model_name,
                 conversation_id=state.get("session_id"),
                 stream=bool(state.get("streaming_enabled")),
             )
@@ -819,7 +1086,11 @@ class LangGraphOrchestrator:
                 request,
                 user_preferences=provider_preferences,
             ):
-                chunks.append(chunk)
+                if chunk is None:
+                    continue
+                normalized_chunk = str(chunk).strip()
+                if normalized_chunk:
+                    chunks.append(normalized_chunk)
 
             if not chunks:
                 chunks.append(
@@ -834,6 +1105,11 @@ class LangGraphOrchestrator:
                 "model": state.get("selected_model", "unknown"),
                 "tool_results": len(tool_results),
                 "chunks": len(chunks),
+                "reasoning": (
+                    state.get("intent_analysis", {}).get("metadata", {})
+                    if isinstance(state.get("intent_analysis"), dict)
+                    else {}
+                ),
             }
 
             if state.get("streaming_enabled"):
@@ -885,7 +1161,13 @@ class LangGraphOrchestrator:
         logger.info("Memory write processing")
         
         try:
-            memory_service = await self._resolve_memory_service()
+            memory_write_timeout = float(
+                os.getenv("LANGGRAPH_MEMORY_WRITE_TIMEOUT_SECONDS", "2.0")
+            )
+            memory_service = await asyncio.wait_for(
+                self._resolve_memory_service(),
+                timeout=memory_write_timeout,
+            )
             if not memory_service or not hasattr(memory_service, "store_web_ui_memory"):
                 state.setdefault("warnings", []).append(
                     "Memory service unavailable; skipping persistence"
@@ -908,20 +1190,28 @@ class LangGraphOrchestrator:
                 "safety": state.get("safety_evaluation"),
             }
 
-            await memory_service.store_web_ui_memory(
-                tenant_id=tenant_id,
-                content=response,
-                user_id=user_id,
-                ui_source=UISource.API,
-                session_id=session_id,
-                conversation_id=session_id,
-                memory_type=MemoryType.CONVERSATION,
-                tags=["conversation", state.get("detected_intent", "general_chat")],
-                importance_score=5,
-                ai_generated=True,
-                metadata=metadata,
+            await asyncio.wait_for(
+                memory_service.store_web_ui_memory(
+                    tenant_id=tenant_id,
+                    content=response,
+                    user_id=user_id,
+                    ui_source=UISource.API,
+                    session_id=session_id,
+                    conversation_id=session_id,
+                    memory_type=MemoryType.CONVERSATION,
+                    tags=["conversation", state.get("detected_intent", "general_chat")],
+                    importance_score=5,
+                    ai_generated=True,
+                    metadata=metadata,
+                ),
+                timeout=memory_write_timeout,
             )
 
+        except asyncio.TimeoutError:
+            logger.warning("Memory write timed out; skipping persistence")
+            state.setdefault("warnings", []).append(
+                "Memory write timed out; skipping persistence"
+            )
         except Exception as e:
             logger.error(f"Memory write error: {e}")
             state["errors"].append(f"Memory write error: {str(e)}")
@@ -1160,6 +1450,8 @@ class LangGraphOrchestrator:
             session_id = f"{user_id}_{datetime.now(timezone.utc).isoformat()}"
             
         # Initialize state
+        runtime_config = config or {}
+
         initial_state: OrchestrationState = {
             "messages": messages,
             "user_id": user_id,
@@ -1167,7 +1459,7 @@ class LangGraphOrchestrator:
             "tenant_id": None,
             "auth_status": None,
             "user_permissions": None,
-            "auth_context": {},
+            "auth_context": cast(Dict[str, Any], runtime_config.get("auth_context") or {}),
             "user_profile": None,
             "safety_status": None,
             "safety_flags": None,
@@ -1191,8 +1483,9 @@ class LangGraphOrchestrator:
             "approval_reason": None,
             "errors": [],
             "warnings": [],
-            "streaming_enabled": self.config.streaming_enabled,
-            "stream_chunks": None
+            "streaming_enabled": bool(runtime_config.get("streaming_enabled", self.config.streaming_enabled)),
+            "stream_chunks": None,
+            "request_config": runtime_config,
         }
         
         start_time = datetime.now(timezone.utc)
@@ -1238,6 +1531,8 @@ class LangGraphOrchestrator:
             session_id = f"{user_id}_{datetime.now(timezone.utc).isoformat()}"
             
         # Initialize state (same as process method)
+        runtime_config = config or {}
+
         initial_state: OrchestrationState = {
             "messages": messages,
             "user_id": user_id,
@@ -1245,7 +1540,7 @@ class LangGraphOrchestrator:
             "tenant_id": None,
             "auth_status": None,
             "user_permissions": None,
-            "auth_context": {},
+            "auth_context": cast(Dict[str, Any], runtime_config.get("auth_context") or {}),
             "user_profile": None,
             "safety_status": None,
             "safety_flags": None,
@@ -1269,8 +1564,9 @@ class LangGraphOrchestrator:
             "approval_reason": None,
             "errors": [],
             "warnings": [],
-            "streaming_enabled": True,
-            "stream_chunks": []
+            "streaming_enabled": bool(runtime_config.get("streaming_enabled", True)),
+            "stream_chunks": [],
+            "request_config": runtime_config,
         }
         
         start_time = datetime.now(timezone.utc)

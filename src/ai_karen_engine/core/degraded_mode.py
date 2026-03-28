@@ -111,9 +111,35 @@ class DegradedModeManager:
         self.embedding_manager = None
         self.nlp_service = None
         self.metrics_service = get_metrics_manager()
+        self._copilot_request_metric = self.metrics_service.register_counter(
+            "kari_degraded_mode_events_total",
+            "Degraded mode lifecycle and alert events",
+            ["event_type"],
+        )
+        self._llm_latency_metric = self.metrics_service.register_histogram(
+            "kari_degraded_mode_latency_seconds",
+            "Degraded mode response latency",
+            ["provider", "model", "status"],
+        )
         
         # Initialize services
         self._initialize_services()
+
+    def _record_copilot_event(self, event_type: str) -> None:
+        try:
+            self._copilot_request_metric.labels(event_type=event_type).inc()
+        except Exception as e:
+            logger.debug(f"Failed to record degraded mode event metric: {e}")
+
+    def _record_llm_latency(self, duration_seconds: float, *, provider: str, model: str, status: str) -> None:
+        try:
+            self._llm_latency_metric.labels(
+                provider=provider,
+                model=model,
+                status=status,
+            ).observe(duration_seconds)
+        except Exception as e:
+            logger.debug(f"Failed to record degraded mode latency metric: {e}")
 
     def _initialize_services(self):
         """Initialize core helper services with fallback handling."""
@@ -192,7 +218,7 @@ class DegradedModeManager:
             logger.warning(f"Degraded mode activated: {reason.value}, failed providers: {failed_providers}")
             
             # Record metrics
-            self.metrics_service.record_copilot_request("degraded_mode_activated")
+            self._record_copilot_event("degraded_mode_activated")
             
             # Send admin alert
             self._send_admin_alert("activated", reason, failed_providers)
@@ -212,7 +238,7 @@ class DegradedModeManager:
             logger.info(f"Degraded mode deactivated after {duration:.1f} seconds")
             
             # Record metrics
-            self.metrics_service.record_copilot_request("degraded_mode_deactivated")
+            self._record_copilot_event("degraded_mode_deactivated")
             
             # Send admin alert
             self._send_admin_alert("deactivated", None, [])
@@ -232,7 +258,7 @@ class DegradedModeManager:
         # For now, we'll implement a simple recovery mechanism
         
         # Record recovery attempt
-        self.metrics_service.record_copilot_request("degraded_mode_recovery_attempt")
+        self._record_copilot_event("degraded_mode_recovery_attempt")
         
         return False  # Recovery logic would be implemented here
 
@@ -281,7 +307,8 @@ class DegradedModeManager:
             response_parts = [scaffold]
             
             if entities:
-                response_parts.append(f"\nDetected entities: {', '.join(entities)}")
+                entity_labels = [str(entity) for entity in entities if entity]
+                response_parts.append(f"\nDetected entities: {', '.join(entity_labels)}")
             
             response_parts.append(f"\nIntent: {intent}")
             response_parts.append(f"Sentiment: {sentiment}")
@@ -305,7 +332,7 @@ class DegradedModeManager:
             }
             
             # Record metrics
-            self.metrics_service.record_llm_latency(
+            self._record_llm_latency(
                 time.time() - start_time,
                 provider="degraded_mode",
                 model="core_helpers",
@@ -327,7 +354,7 @@ class DegradedModeManager:
                 "processing_time": time.time() - start_time
             }
             
-            self.metrics_service.record_llm_latency(
+            self._record_llm_latency(
                 time.time() - start_time,
                 provider="degraded_mode",
                 model="ultra_fallback",
@@ -359,10 +386,7 @@ class DegradedModeManager:
             )
             
             # Record in metrics for alerting systems
-            self.metrics_service.record_copilot_request(
-                f"admin_alert_degraded_mode_{event_type}",
-                correlation_id=f"degraded_mode_{int(time.time())}"
-            )
+            self._record_copilot_event(f"admin_alert_degraded_mode_{event_type}")
             
         except Exception as e:
             logger.error(f"Failed to send admin alert: {e}")

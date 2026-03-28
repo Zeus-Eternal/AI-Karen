@@ -1,4 +1,4 @@
-"""Simplified migration manager using consolidated SQL schema."""
+"""Simplified migration manager using ordered SQL schema files."""
 
 import logging
 import os
@@ -7,13 +7,17 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
+from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.models import Tenant
 
 logger = logging.getLogger(__name__)
 
-# Single consolidated migration file
-SCHEMA_MIGRATIONS: List[str] = ["001_agui_chat_core.sql"]
+# Ordered SQL migration files
+SCHEMA_MIGRATIONS: List[str] = [
+    "001_agui_chat_core.sql",
+    "002_context_management.sql",
+]
 
 
 class MigrationManager:
@@ -30,6 +34,8 @@ class MigrationManager:
         self.migration_files = SCHEMA_MIGRATIONS
 
     def _build_database_url(self) -> str:
+        if getattr(settings, "database_url", None):
+            return settings.database_url
         host = os.getenv("POSTGRES_HOST", "localhost")
         port = os.getenv("POSTGRES_PORT", "5432")
         user = os.getenv("POSTGRES_USER", "postgres")
@@ -54,18 +60,60 @@ class MigrationManager:
     # Migration operations
     # ------------------------------------------------------------------
     def run_migrations(self, revision: str = "head") -> bool:
-        """Apply the consolidated SQL migration to the database."""
+        """Apply any pending SQL migrations to the database."""
         try:
             with self.client.engine.begin() as conn:
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS schema_migrations (
+                            version TEXT PRIMARY KEY,
+                            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """
+                    )
+                )
+                applied = {
+                    row[0]
+                    for row in conn.execute(
+                        text("SELECT version FROM schema_migrations")
+                    ).fetchall()
+                }
+                applied = self._bootstrap_existing_schema(conn, applied)
                 for filename in self.migration_files:
+                    if filename in applied:
+                        continue
                     path = Path(self.migrations_dir) / filename
                     sql = path.read_text()
                     conn.execute(text(sql))
-            logger.info("Applied consolidated schema migration")
+                    conn.execute(
+                        text(
+                            "INSERT INTO schema_migrations (version) VALUES (:version)"
+                        ),
+                        {"version": filename},
+                    )
+            logger.info("Applied pending schema migrations")
             return True
         except Exception as e:  # pragma: no cover - database errors
             logger.error(f"Failed to run migrations: {e}")
             return False
+
+    def _bootstrap_existing_schema(self, conn: Any, applied: set[str]) -> set[str]:
+        """Mark legacy baseline migrations as applied when their tables already exist."""
+        if "001_agui_chat_core.sql" not in applied:
+            auth_users_exists = conn.execute(
+                text("SELECT to_regclass('public.auth_users')")
+            ).scalar()
+            if auth_users_exists:
+                conn.execute(
+                    text(
+                        "INSERT INTO schema_migrations (version) VALUES (:version) ON CONFLICT DO NOTHING"
+                    ),
+                    {"version": "001_agui_chat_core.sql"},
+                )
+                applied = set(applied)
+                applied.add("001_agui_chat_core.sql")
+        return applied
 
     def rollback_migration(self, revision: str) -> bool:
         """Rollback is not supported with consolidated migrations."""
@@ -73,15 +121,22 @@ class MigrationManager:
         return False
 
     def get_migration_history(self) -> List[Dict[str, Any]]:
-        """Return the revision history for the consolidated schema."""
-        return [
-            {
-                "revision": "001",
-                "down_revision": None,
-                "message": "agui_chat_core",
-                "is_current": True,
-            }
-        ]
+        """Return the revision history for the SQL migration files."""
+        history: List[Dict[str, Any]] = []
+        previous: Optional[str] = None
+        for filename in self.migration_files:
+            revision = filename.split("_", 1)[0]
+            message = filename[len(revision) + 1 : -4]
+            history.append(
+                {
+                    "revision": revision,
+                    "down_revision": previous,
+                    "message": message,
+                    "is_current": filename == self.migration_files[-1],
+                }
+            )
+            previous = revision
+        return history
 
     # ------------------------------------------------------------------
     # Status helpers
@@ -92,18 +147,37 @@ class MigrationManager:
             "database_url": self.database_url.split("@")[-1],
             "migrations_dir": self.migrations_dir,
             "alembic_initialized": True,
-            "current_revision": "001",
+            "current_revision": self.migration_files[-1].split("_", 1)[0],
             "pending_migrations": 0,
             "tenant_count": 0,
             "health": "unknown",
         }
 
         try:  # pragma: no cover - requires database
-            with self.client.get_sync_session() as session:
+            with self.client.session_scope() as session:
                 status["tenant_count"] = session.query(Tenant).count()
+                session.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS schema_migrations (
+                            version TEXT PRIMARY KEY,
+                            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """
+                    )
+                )
+                applied = {
+                    row[0]
+                    for row in session.execute(
+                        text("SELECT version FROM schema_migrations")
+                    ).fetchall()
+                }
+                applied = self._bootstrap_existing_schema(session, applied)
+                status["pending_migrations"] = len(
+                    [f for f in self.migration_files if f not in applied]
+                )
 
-            health_result = self.client.health_check()
-            status["health"] = health_result["status"]
+            status["health"] = "healthy" if self.client.health_check() else "unhealthy"
         except Exception as e:  # pragma: no cover - database errors
             status["error"] = str(e)
             logger.error(f"Failed to get database status: {e}")
@@ -112,4 +186,3 @@ class MigrationManager:
 
 
 __all__ = ["MigrationManager", "SCHEMA_MIGRATIONS"]
-

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Authentication Service for Karen AI Theme
  * 
@@ -62,16 +64,99 @@ export interface AuthResponse {
 }
 
 class AuthService {
-  private readonly API_BASE_URL: string;
+  private readonly SAME_ORIGIN_API_BASE_URL = '';
+  private readonly DIRECT_BROWSER_BACKEND_PORT = '8000';
   private readonly SESSION_COOKIE_NAME = 'kari_session';
   private readonly LEGACY_ACCESS_COOKIE_NAME = 'access_token';
   private readonly LEGACY_REFRESH_COOKIE_NAME = 'refresh_token';
+  private readonly SESSION_MARKER_KEY = 'kari_session_expected';
+  private readonly REQUEST_TIMEOUT_MS = 15000;
 
-  constructor() {
-    this.API_BASE_URL =
-      typeof window === 'undefined'
-        ? process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
-        : '';
+  private async fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Request timed out after ${this.REQUEST_TIMEOUT_MS}ms`);
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  private getConfiguredBackendUrl(): string {
+    if (typeof window !== 'undefined') {
+      const configuredBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+      if (configuredBaseUrl) {
+        return configuredBaseUrl;
+      }
+
+      const { protocol, hostname, port } = window.location;
+      if (!hostname || port === this.DIRECT_BROWSER_BACKEND_PORT) {
+        return '';
+      }
+
+      return `${protocol}//${hostname}:${this.DIRECT_BROWSER_BACKEND_PORT}`;
+    }
+
+    return (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
+  }
+
+  private getPreferredBaseUrl(): string {
+    if (typeof window === 'undefined') {
+      return this.getConfiguredBackendUrl();
+    }
+    return this.SAME_ORIGIN_API_BASE_URL;
+  }
+
+  private getFallbackBaseUrl(preferredBaseUrl: string): string {
+    if (typeof window !== 'undefined') {
+      return '';
+    }
+
+    const configuredBackendUrl = this.getConfiguredBackendUrl();
+    return preferredBaseUrl === this.SAME_ORIGIN_API_BASE_URL
+      ? configuredBackendUrl
+      : this.SAME_ORIGIN_API_BASE_URL;
+  }
+
+  private buildUrl(baseUrl: string, endpoint: string): string {
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    if (typeof window !== 'undefined') {
+      return baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+    }
+
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+
+    return `${baseUrl}${normalizedEndpoint}`;
+  }
+
+  private shouldRetryWithSameOrigin(error: unknown): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      (
+        error instanceof TypeError ||
+        (error instanceof Error && /timed out/i.test(error.message))
+      )
+    );
+  }
+
+  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      Boolean(fallbackBaseUrl) &&
+      response.status >= 500
+    );
   }
 
   private clearBrowserCookie(name: string): void {
@@ -86,6 +171,30 @@ class AuthService {
     this.clearBrowserCookie(this.SESSION_COOKIE_NAME);
     this.clearBrowserCookie(this.LEGACY_ACCESS_COOKIE_NAME);
     this.clearBrowserCookie(this.LEGACY_REFRESH_COOKIE_NAME);
+  }
+
+  private hasSessionMarker(): boolean {
+    try {
+      return localStorage.getItem(this.SESSION_MARKER_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private setSessionMarker(): void {
+    try {
+      localStorage.setItem(this.SESSION_MARKER_KEY, 'true');
+    } catch {
+      // Ignore storage issues and continue.
+    }
+  }
+
+  private clearSessionMarker(): void {
+    try {
+      localStorage.removeItem(this.SESSION_MARKER_KEY);
+    } catch {
+      // Ignore storage issues and continue.
+    }
   }
 
   private async getErrorMessage(response: Response, fallback: string): Promise<string> {
@@ -123,14 +232,32 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(credentials),
-      });
+      const sendLogin = async (baseUrl: string): Promise<Response> =>
+        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/login'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(credentials),
+        });
+
+      const preferredBaseUrl = this.getPreferredBaseUrl();
+      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+      let response: Response;
+      try {
+        response = await sendLogin(preferredBaseUrl);
+      } catch (error) {
+        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+          throw error;
+        }
+        response = await sendLogin(fallbackBaseUrl);
+      }
+
+      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+        response = await sendLogin(fallbackBaseUrl);
+      }
 
       if (!response.ok) {
         throw new Error(await this.getErrorMessage(response, 'Login failed'));
@@ -142,6 +269,7 @@ class AuthService {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
+      this.setSessionMarker();
 
       // The backend owns the production session cookie. Clear legacy client cookies
       // so the app relies on the authenticated backend session instead.
@@ -163,15 +291,31 @@ class AuthService {
       const refreshToken = localStorage.getItem('refresh_token');
       const accessToken = localStorage.getItem('access_token');
       if (refreshToken) {
-        await fetch(`${this.API_BASE_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          credentials: 'include',
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
+        const sendLogout = async (baseUrl: string): Promise<Response> =>
+          this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/logout'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            },
+            credentials: 'include',
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+
+        const preferredBaseUrl = this.getPreferredBaseUrl();
+        const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+        try {
+          const response = await sendLogout(preferredBaseUrl);
+          if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+            await sendLogout(fallbackBaseUrl);
+          }
+        } catch (error) {
+          if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+            throw error;
+          }
+          await sendLogout(fallbackBaseUrl);
+        }
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -181,6 +325,7 @@ class AuthService {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_data');
+      this.clearSessionMarker();
 
       this.clearClientCookies();
     }
@@ -196,14 +341,32 @@ class AuthService {
         throw new Error('No refresh token available');
       }
 
-      const response = await fetch(`${this.API_BASE_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
+      const sendRefresh = async (baseUrl: string): Promise<Response> =>
+        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/refresh'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+      const preferredBaseUrl = this.getPreferredBaseUrl();
+      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+      let response: Response;
+      try {
+        response = await sendRefresh(preferredBaseUrl);
+      } catch (error) {
+        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+          throw error;
+        }
+        response = await sendRefresh(fallbackBaseUrl);
+      }
+
+      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+        response = await sendRefresh(fallbackBaseUrl);
+      }
 
       if (!response.ok) {
         throw new Error('Token refresh failed');
@@ -313,41 +476,83 @@ class AuthService {
   async validateSession(): Promise<boolean> {
     try {
       const accessToken = this.getAccessToken();
-      if (!accessToken) {
+      const refreshToken = this.getRefreshToken();
+      const currentUser = this.getCurrentUser();
+      const hasSessionMarker = this.hasSessionMarker();
+
+      if (!accessToken && !refreshToken && !currentUser && !hasSessionMarker) {
         return false;
       }
 
-      const response = await fetch(`${this.API_BASE_URL}/api/auth/validate-session`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      });
+      const requestHeaders: Record<string, string> = {};
+      if (accessToken) {
+        requestHeaders.Authorization = `Bearer ${accessToken}`;
+      }
+
+      const sendValidate = async (baseUrl: string, headers: Record<string, string>): Promise<Response> =>
+        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/validate-session'), {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+        });
+
+      const preferredBaseUrl = this.getPreferredBaseUrl();
+      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+      let response: Response;
+      try {
+        response = await sendValidate(preferredBaseUrl, requestHeaders);
+      } catch (error) {
+        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+          throw error;
+        }
+        response = await sendValidate(fallbackBaseUrl, requestHeaders);
+      }
+
+      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+        response = await sendValidate(fallbackBaseUrl, requestHeaders);
+      }
 
       if (!response.ok) {
-        // Try to refresh token if validation fails
+        // Try to refresh token if validation fails and we have a refresh token available.
         try {
+          if (!refreshToken) {
+            return false;
+          }
           await this.refreshToken();
           // Retry validation with new token
-          const newResponse = await fetch(`${this.API_BASE_URL}/api/auth/validate-session`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${this.getAccessToken()}`,
-            },
-            credentials: 'include',
-          });
+          const refreshedHeaders: Record<string, string> = {};
+          const refreshedAccessToken = this.getAccessToken();
+          if (refreshedAccessToken) {
+            refreshedHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
+          }
+
+          let newResponse: Response;
+          try {
+            newResponse = await sendValidate(preferredBaseUrl, refreshedHeaders);
+          } catch (error) {
+            if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+              throw error;
+            }
+            newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
+          }
+          if (this.shouldRetryWithDirectBackend(newResponse, fallbackBaseUrl)) {
+            newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
+          }
           if (!newResponse.ok) {
+            this.clearSessionMarker();
             return false;
           }
 
           const refreshedSession = await newResponse.json();
           if (refreshedSession?.user) {
             localStorage.setItem('user_data', JSON.stringify(refreshedSession.user));
+            this.setSessionMarker();
           }
 
           return true;
         } catch (refreshError) {
+          this.clearSessionMarker();
           return false;
         }
       }
@@ -355,6 +560,7 @@ class AuthService {
       const session = await response.json();
       if (session?.user) {
         localStorage.setItem('user_data', JSON.stringify(session.user));
+        this.setSessionMarker();
       }
 
       return true;
@@ -371,6 +577,7 @@ class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
+    this.clearSessionMarker();
 
     this.clearClientCookies();
   }

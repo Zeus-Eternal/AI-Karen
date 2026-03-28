@@ -127,7 +127,7 @@ class StreamMetricsResponse(BaseModel):
 def get_chat_orchestrator() -> ChatOrchestrator:
     """Create or return the chat orchestrator instance."""
     from ai_karen_engine.chat.memory_processor import MemoryProcessor
-    from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+    from services.memory.nlp_service_manager import nlp_service_manager
     from ai_karen_engine.database.memory_manager import MemoryManager
     from ai_karen_engine.database.client import MultiTenantPostgresClient
     from ai_karen_engine.core.milvus_client import MilvusClient

@@ -548,7 +548,7 @@ class DownloadTaskManager:
     def get_statistics(self) -> Dict[str, Any]:
         """Get download task statistics."""
         with self._lock:
-            stats = {
+            stats: Dict[str, Any] = {
                 'total_tasks': len(self.tasks),
                 'pending_tasks': len([t for t in self.tasks.values() if t.status == TaskStatus.PENDING]),
                 'queued_tasks': len([t for t in self.tasks.values() if t.status == TaskStatus.QUEUED]),

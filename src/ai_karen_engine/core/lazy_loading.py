@@ -8,7 +8,6 @@ import logging
 import os
 import threading
 import time
-import weakref
 from typing import Dict, Any, Optional, Set, TypeVar, Generic, Callable
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
@@ -200,17 +199,31 @@ class ResourceManager:
     
     def __init__(
         self,
-        max_memory_mb: float = 2048,
-        max_cpu_percent: float = 80.0,
+        max_memory_mb: Optional[float] = None,
+        max_cpu_percent: Optional[float] = None,
         check_interval: float = 30.0
     ):
-        self.max_memory_mb = max_memory_mb
-        self.max_cpu_percent = max_cpu_percent
         self.check_interval = check_interval
+        self._memory_ratio = self._get_env_float("KAREN_MAX_MEMORY_RATIO", 0.85)
+        self._memory_reserve_mb = self._get_env_float("KAREN_MEMORY_RESERVE_MB", 1024.0)
+        self._minimum_memory_mb = self._get_env_float("KAREN_MIN_MEMORY_MB", 1536.0)
+        self._cpu_threshold_auto = self._get_env_float("KAREN_CPU_AUTO_THRESHOLD_PERCENT", 85.0)
+        self._limit_log_delta_mb = self._get_env_float("KAREN_RESOURCE_LIMIT_LOG_DELTA_MB", 256.0)
+        self.max_memory_mb = max_memory_mb or self._detect_memory_threshold_mb()
+        self.max_cpu_percent = max_cpu_percent or self._detect_cpu_threshold_percent()
         
         self._services: Dict[str, LazyService] = {}
         self._monitoring_task: Optional[asyncio.Task] = None
         self._enabled = True
+        self._warning_cooldown_seconds = float(
+            os.getenv("KAREN_RESOURCE_WARNING_COOLDOWN_SECONDS", "300")
+        )
+        self._last_warning_at: Optional[float] = None
+        self._last_warning_level: Optional[tuple[int, int]] = None
+        self._last_logged_limits: tuple[float, float] = (
+            self.max_memory_mb,
+            self.max_cpu_percent,
+        )
     
     def register_service(self, service: LazyService) -> None:
         """Register a service for resource monitoring."""
@@ -241,6 +254,7 @@ class ResourceManager:
         while self._enabled:
             try:
                 await asyncio.sleep(self.check_interval)
+                self._refresh_dynamic_limits()
                 
                 # Get current resource usage
                 memory_usage = await self._get_memory_usage()
@@ -248,13 +262,128 @@ class ResourceManager:
                 
                 # Check if cleanup is needed
                 if memory_usage > self.max_memory_mb or cpu_usage > self.max_cpu_percent:
-                    logger.warning(f"🚨 Resource limits exceeded - Memory: {memory_usage:.1f}MB, CPU: {cpu_usage:.1f}%")
+                    if self._should_emit_warning(memory_usage, cpu_usage):
+                        logger.warning(
+                            "🚨 Resource limits exceeded - Memory: %.1fMB / %.1fMB, CPU: %.1f%% / %.1f%%",
+                            memory_usage,
+                            self.max_memory_mb,
+                            cpu_usage,
+                            self.max_cpu_percent,
+                        )
                     await self._cleanup_idle_services()
                 
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error in resource monitoring: {e}")
+
+    def _get_env_float(self, name: str, default: float) -> float:
+        """Parse float configuration with fallback."""
+        raw_value = os.getenv(name, "").strip()
+        if not raw_value:
+            return default
+        try:
+            return float(raw_value)
+        except ValueError:
+            logger.warning("Invalid %s=%s; using default %.2f", name, raw_value, default)
+            return default
+
+    def _is_auto_env(self, name: str) -> bool:
+        """Check if an environment setting should use dynamic detection."""
+        return os.getenv(name, "").strip().lower() in {"", "auto", "dynamic"}
+
+    def _detect_memory_threshold_mb(self) -> float:
+        """Detect a sane memory threshold from cgroup/system limits."""
+        env_value = os.getenv("KAREN_MAX_MEMORY_MB", "").strip().lower()
+        if env_value and env_value not in {"auto", "dynamic"}:
+            try:
+                return float(env_value)
+            except ValueError:
+                logger.warning("Invalid KAREN_MAX_MEMORY_MB=%s; using dynamic detection", env_value)
+
+        limit_mb = self._detect_memory_limit_mb()
+        reserve_adjusted_mb = max(0.0, limit_mb - self._memory_reserve_mb)
+        ratio_adjusted_mb = limit_mb * self._memory_ratio
+        adaptive_threshold_mb = min(ratio_adjusted_mb, reserve_adjusted_mb) if reserve_adjusted_mb else ratio_adjusted_mb
+        return max(self._minimum_memory_mb, adaptive_threshold_mb)
+
+    def _detect_cpu_threshold_percent(self) -> float:
+        """Detect a CPU threshold with support for explicit overrides."""
+        env_value = os.getenv("KAREN_MAX_CPU_PERCENT", "").strip().lower()
+        if env_value and env_value not in {"auto", "dynamic"}:
+            try:
+                return float(env_value)
+            except ValueError:
+                logger.warning("Invalid KAREN_MAX_CPU_PERCENT=%s; using dynamic detection", env_value)
+        return min(95.0, max(70.0, self._cpu_threshold_auto))
+
+    def _detect_memory_limit_mb(self) -> float:
+        """Detect memory limit from cgroup or host memory."""
+        cgroup_candidates = (
+            "/sys/fs/cgroup/memory.max",
+            "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+        )
+        for path in cgroup_candidates:
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    raw = handle.read().strip()
+                if not raw or raw == "max":
+                    continue
+                limit_bytes = int(raw)
+                # Ignore bogus "no real limit" values.
+                if limit_bytes <= 0 or limit_bytes >= 1 << 60:
+                    continue
+                return limit_bytes / 1024 / 1024
+            except Exception:
+                continue
+
+        try:
+            import psutil
+
+            return psutil.virtual_memory().total / 1024 / 1024
+        except ImportError:
+            return 2048.0
+
+    def _refresh_dynamic_limits(self) -> None:
+        """Refresh dynamic thresholds when auto mode is enabled."""
+        previous_limits = (self.max_memory_mb, self.max_cpu_percent)
+
+        if self._is_auto_env("KAREN_MAX_MEMORY_MB"):
+            self.max_memory_mb = self._detect_memory_threshold_mb()
+        if self._is_auto_env("KAREN_MAX_CPU_PERCENT"):
+            self.max_cpu_percent = self._detect_cpu_threshold_percent()
+
+        memory_delta = abs(self.max_memory_mb - self._last_logged_limits[0])
+        cpu_delta = abs(self.max_cpu_percent - self._last_logged_limits[1])
+        if memory_delta >= self._limit_log_delta_mb or cpu_delta >= 5.0:
+            logger.info(
+                "Adjusted resource limits dynamically - Memory: %.1fMB -> %.1fMB, CPU: %.1f%% -> %.1f%%",
+                previous_limits[0],
+                self.max_memory_mb,
+                previous_limits[1],
+                self.max_cpu_percent,
+            )
+            self._last_logged_limits = (self.max_memory_mb, self.max_cpu_percent)
+
+    def _should_emit_warning(self, memory_usage: float, cpu_usage: float) -> bool:
+        """Avoid warning spam for the same steady-state pressure level."""
+        now = time.time()
+        level = (
+            int(memory_usage // 256),
+            int(cpu_usage // 10),
+        )
+        if self._last_warning_at is None:
+            self._last_warning_at = now
+            self._last_warning_level = level
+            return True
+        if level != self._last_warning_level:
+            self._last_warning_at = now
+            self._last_warning_level = level
+            return True
+        if now - self._last_warning_at >= self._warning_cooldown_seconds:
+            self._last_warning_at = now
+            return True
+        return False
     
     async def _get_memory_usage(self) -> float:
         """Get current memory usage in MB."""
@@ -272,11 +401,31 @@ class ResourceManager:
             return psutil.cpu_percent(interval=1)
         except ImportError:
             return 0.0
+
+    def _compute_idle_cleanup_threshold(
+        self,
+        memory_usage: float,
+        cpu_usage: float,
+    ) -> float:
+        """Scale idle cleanup aggressiveness with current pressure."""
+        memory_ratio = memory_usage / self.max_memory_mb if self.max_memory_mb > 0 else 0.0
+        cpu_ratio = cpu_usage / self.max_cpu_percent if self.max_cpu_percent > 0 else 0.0
+        severity = max(memory_ratio, cpu_ratio)
+        if severity >= 1.50:
+            return 15.0
+        if severity >= 1.25:
+            return 30.0
+        if severity >= 1.10:
+            return 45.0
+        return 60.0
     
     async def _cleanup_idle_services(self) -> None:
         """Cleanup idle services based on priority and usage."""
         # Sort services by priority (low priority first) and last used time
         services_to_cleanup = []
+        memory_usage = await self._get_memory_usage()
+        cpu_usage = await self._get_cpu_usage()
+        idle_cleanup_threshold = self._compute_idle_cleanup_threshold(memory_usage, cpu_usage)
         
         for service in self._services.values():
             if service.is_initialized:
@@ -289,7 +438,7 @@ class ResourceManager:
         # Cleanup services until resources are under limits
         cleaned_count = 0
         for service, idle_time in services_to_cleanup:
-            if idle_time > 60:  # Only cleanup services idle for more than 1 minute - balanced approach
+            if idle_time > idle_cleanup_threshold:
                 await service.cleanup()
                 cleaned_count += 1
                 
@@ -301,7 +450,11 @@ class ResourceManager:
                     break
         
         if cleaned_count > 0:
-            logger.info(f"🧹 Cleaned up {cleaned_count} idle services to free resources")
+            logger.info(
+                "🧹 Cleaned up %d idle services to free resources (idle threshold %.0fs)",
+                cleaned_count,
+                idle_cleanup_threshold,
+            )
 
 
 class LazyServiceRegistry:
@@ -311,9 +464,11 @@ class LazyServiceRegistry:
     
     def __init__(self):
         self._services: Dict[str, LazyService] = {}
-        # Configure resource manager with balanced limits
-        max_memory = float(os.getenv("KAREN_MAX_MEMORY_MB", "1536"))  # Default 1.5GB - balanced approach
-        max_cpu = float(os.getenv("KAREN_MAX_CPU_PERCENT", "60.0"))   # Default 60% - less aggressive
+        # Configure resource manager with dynamic defaults unless explicitly overridden.
+        raw_max_memory = os.getenv("KAREN_MAX_MEMORY_MB", "auto").strip().lower()
+        raw_max_cpu = os.getenv("KAREN_MAX_CPU_PERCENT", "auto").strip().lower()
+        max_memory = None if raw_max_memory in {"", "auto", "dynamic"} else float(raw_max_memory)
+        max_cpu = None if raw_max_cpu in {"", "auto", "dynamic"} else float(raw_max_cpu)
         check_interval = float(os.getenv("KAREN_RESOURCE_CHECK_INTERVAL", "30.0"))  # Check every 30s - less frequent
         
         self._resource_manager = ResourceManager(

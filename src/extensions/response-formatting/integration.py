@@ -408,7 +408,7 @@ class ResponseFormattingIntegration:
             
             # Test NLP integration
             try:
-                from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+                from services.memory.nlp_service_manager import nlp_service_manager
                 if not nlp_service_manager.is_ready():
                     validation_results['nlp_integration'] = False
                     validation_results['errors'].append("NLP services not ready")

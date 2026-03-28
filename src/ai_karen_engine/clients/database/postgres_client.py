@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Protocol, cast
 import uuid
 
 try:
@@ -15,9 +15,21 @@ except Exception:  # pragma: no cover - optional dependency
     psycopg = None
     _PSYCOPG_AVAILABLE = False
 
+
+class _MultiTenantPostgresClientProtocol(Protocol):
+    def __init__(self, database_url: Optional[str] = None, **kwargs: Any) -> None: ...
+    def create_tenant_schema(self, tenant_id: str) -> bool: ...
+    def drop_tenant_schema(self, tenant_id: str) -> bool: ...
+    def tenant_schema_exists(self, tenant_id: str) -> bool: ...
+    def get_tenant_stats(self, tenant_id: str) -> Dict[str, Any]: ...
+    def execute_tenant_query(
+        self, query: str, tenant_id: str, params: Optional[Any] = None
+    ) -> Any: ...
+
 # Import the new multi-tenant client
 try:
-    from ai_karen_engine.database.client import MultiTenantPostgresClient
+    from ai_karen_engine.database.client import MultiTenantPostgresClient as _MultiTenantPostgresClient
+    MultiTenantPostgresClient = cast(type[_MultiTenantPostgresClientProtocol], _MultiTenantPostgresClient)
     _MULTITENANT_AVAILABLE = True
 except ImportError:
     MultiTenantPostgresClient = None
@@ -35,10 +47,12 @@ class PostgresClient:
         self.enable_multitenant = enable_multitenant and _MULTITENANT_AVAILABLE and not use_sqlite
         
         # Initialize multi-tenant client if available
-        self.multitenant_client = None
+        self.multitenant_client: Optional[_MultiTenantPostgresClientProtocol] = None
         if self.enable_multitenant:
             try:
                 database_url = self._build_database_url(dsn)
+                if MultiTenantPostgresClient is None:
+                    raise RuntimeError("Multi-tenant PostgreSQL client is unavailable")
                 self.multitenant_client = MultiTenantPostgresClient(database_url)
                 logger.info("Multi-tenant PostgreSQL client initialized")
             except Exception as e:
@@ -60,6 +74,8 @@ class PostgresClient:
                     os.getenv("POSTGRES_PORT", "5432"),
                 )
             )
+            if psycopg is None:
+                raise RuntimeError("psycopg is unavailable")
             self.conn = psycopg.connect(pg_dsn, autocommit=True)
         self._ensure_table()
     
@@ -102,7 +118,7 @@ class PostgresClient:
     # ------------------------------------------------------------------
     def _execute(self, sql: str, params: Optional[List[Any]] = None, fetch: bool = False) -> List[tuple]:
         cur = self.conn.cursor()
-        cur.execute(sql, params or [])
+        cur.execute(cast(Any, sql), params or [])
         rows = cur.fetchall() if fetch else []
         self.conn.commit()
         cur.close()
@@ -187,7 +203,7 @@ class PostgresClient:
         )
         sql += "?" if self.use_sqlite else "%s"
         sql += " AND tenant_id = " + ("?" if self.use_sqlite else "%s")
-        params = [user_id, tenant_id]
+        params: List[Any] = [user_id, tenant_id]
         sql += " ORDER BY timestamp DESC LIMIT "
         sql += "?" if self.use_sqlite else "%s"
         params.append(limit)
@@ -234,6 +250,8 @@ class PostgresClient:
             return False
         
         try:
+            if self.multitenant_client is None:
+                return False
             return self.multitenant_client.create_tenant_schema(tenant_id)
         except Exception as e:
             logger.error(f"Failed to setup tenant {tenant_id}: {e}")
@@ -253,6 +271,8 @@ class PostgresClient:
             return False
         
         try:
+            if self.multitenant_client is None:
+                return False
             return self.multitenant_client.drop_tenant_schema(tenant_id)
         except Exception as e:
             logger.error(f"Failed to teardown tenant {tenant_id}: {e}")
@@ -271,6 +291,8 @@ class PostgresClient:
             return False
         
         try:
+            if self.multitenant_client is None:
+                return False
             return self.multitenant_client.tenant_schema_exists(tenant_id)
         except Exception as e:
             logger.error(f"Failed to check tenant {tenant_id}: {e}")
@@ -289,6 +311,8 @@ class PostgresClient:
             return {"error": "Multi-tenant support not available"}
         
         try:
+            if self.multitenant_client is None:
+                return {"error": "Multi-tenant client unavailable"}
             return self.multitenant_client.get_tenant_stats(tenant_id)
         except Exception as e:
             logger.error(f"Failed to get tenant stats for {tenant_id}: {e}")
@@ -312,7 +336,8 @@ class PostgresClient:
         """
         if not self.enable_multitenant:
             raise RuntimeError("Multi-tenant support not available")
-        
+        if self.multitenant_client is None:
+            raise RuntimeError("Multi-tenant client unavailable")
         return self.multitenant_client.execute_tenant_query(query, tenant_id, params)
     
     def upsert_tenant_memory(
@@ -342,6 +367,8 @@ class PostgresClient:
                     content=EXCLUDED.content, metadata=EXCLUDED.metadata,
                     created_at=EXCLUDED.created_at
                 """
+                if self.multitenant_client is None:
+                    raise RuntimeError("Multi-tenant client unavailable")
                 self.multitenant_client.execute_tenant_query(
                     sql, tenant_id,
                     [str(vector_id), user_id, session_id, query, data_json, timestamp]
@@ -353,7 +380,7 @@ class PostgresClient:
         # Fall back to legacy method
         self.upsert_memory(vector_id, tenant_id, user_id, session_id, query, result, timestamp)
     
-    def get_multitenant_client(self) -> Optional[MultiTenantPostgresClient]:
+    def get_multitenant_client(self) -> Optional[_MultiTenantPostgresClientProtocol]:
         """Get the underlying multi-tenant client.
         
         Returns:

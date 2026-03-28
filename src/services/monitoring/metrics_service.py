@@ -21,6 +21,9 @@ except ImportError:
             return None
 
 
+_metrics_service: Optional["MetricsService"] = None
+
+
 @dataclass
 class Metric:
     """A metric data point."""
@@ -47,18 +50,18 @@ class MetricsService:
     and querying capabilities.
     """
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
         Initialize the Metrics Service.
         
         Args:
             config: Configuration for metrics
         """
-        self.config = config
+        self.config = config or {}
         self.logger = logging.getLogger(__name__)
         
         # Metrics configuration
-        self.metrics_config = MetricConfig(**config.get("metrics", {}))
+        self.metrics_config = MetricConfig(**self.config.get("metrics", {}))
         
         # Metrics storage
         self.metrics: Dict[str, deque] = defaultdict(lambda: deque(
@@ -372,3 +375,11 @@ class MetricsService:
                 backend.close()
             except Exception as e:
                 self.logger.error(f"Error closing metrics backend: {e}")
+
+
+def get_metrics_service(config: Optional[Dict[str, Any]] = None) -> MetricsService:
+    """Return the process-local metrics service singleton."""
+    global _metrics_service
+    if _metrics_service is None:
+        _metrics_service = MetricsService(config or {})
+    return _metrics_service

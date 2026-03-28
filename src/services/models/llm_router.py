@@ -25,8 +25,8 @@ class RouteRequest:
     """A request for routing."""
     prompt: str
     model_type: str
-    requirements: Dict[str, Any] = None
-    context: Dict[str, Any] = None
+    requirements: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -151,6 +151,9 @@ class LLMRouter:
             if load < lowest_load:
                 lowest_load = load
                 best_provider = provider_id
+
+        if best_provider is None:
+            raise ValueError("No provider selected for load-balanced routing")
         
         # Get model for provider
         model_id = self._get_model_for_provider(best_provider, request.model_type)
@@ -179,6 +182,9 @@ class LLMRouter:
             if cost < lowest_cost:
                 lowest_cost = cost
                 best_provider = provider_id
+
+        if best_provider is None:
+            raise ValueError("No provider selected for cost-optimized routing")
         
         # Get model for provider
         model_id = self._get_model_for_provider(best_provider, request.model_type)
@@ -207,6 +213,9 @@ class LLMRouter:
             if performance > best_performance:
                 best_performance = performance
                 best_provider = provider_id
+
+        if best_provider is None:
+            raise ValueError("No provider selected for performance-optimized routing")
         
         # Get model for provider
         model_id = self._get_model_for_provider(best_provider, request.model_type)

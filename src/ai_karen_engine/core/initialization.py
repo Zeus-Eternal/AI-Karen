@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any, Callable
 import json
 import urllib.request
 import urllib.error
@@ -32,19 +32,8 @@ class SystemInitializer:
         self.data_dir = Path("data")
         self.config_dir = Path("config")
         
-        # Default models to download/setup (only if not already present)
-        # Model name comes from centralized config
-        from ai_karen_engine.config.config_manager import get_default_model
-        _default_gguf = get_default_model("llamacpp")
         self.default_models = {
-            "llama-cpp": [
-                {
-                    "name": _default_gguf,
-                    "url": f"https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/{_default_gguf}",
-                    "size_mb": 669,
-                    "description": "Default local GGUF model for basic tasks"
-                }
-            ],
+            "llama-cpp": self._get_default_llama_cpp_models(),
             "transformers": [
                 "gpt2",  # Will be downloaded via transformers library if not present
                 # "distilbert-base-uncased" - already available in models/
@@ -68,13 +57,45 @@ class SystemInitializer:
         ]
         
         # Required config files
-        self.required_configs = {
+        self.required_configs: Dict[str, Callable[[], Any]] = {
             "config.json": self._get_default_config,
             "model_registry.json": self._get_default_model_registry,
             "config/llm_profiles.yml": self._get_default_llm_profiles,
             "config/memory.yml": self._get_default_memory_config,
             "config/security_config.yml": self._get_default_security_config,
         }
+
+    def _get_default_llama_cpp_models(self) -> List[Dict[str, Any]]:
+        """Load default llama.cpp model definitions from config files."""
+        config_path = self.config_dir / "llamacpp" / "config.json"
+
+        model_path: Optional[str] = None
+        download_url: Optional[str] = None
+        size_mb: Optional[int] = None
+        description = "Default local GGUF model"
+
+        try:
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                model_path = cfg.get("model_path")
+                download_url = cfg.get("download_url")
+                size_mb = cfg.get("size_mb")
+                description = cfg.get("description", description)
+        except Exception as exc:
+            self.logger.warning(f"⚠️ Failed to load llama.cpp config from {config_path}: {exc}")
+
+        if not model_path:
+            from ai_karen_engine.config.config_manager import get_default_model
+            model_path = get_default_model("llamacpp")
+
+        model_name = Path(str(model_path)).name
+        return [{
+            "name": model_name,
+            "url": download_url,
+            "size_mb": size_mb,
+            "description": description,
+        }]
     
     async def initialize_system(self, force_reinstall: bool = False) -> Dict[str, bool]:
         """
@@ -280,10 +301,19 @@ class SystemInitializer:
                 continue
             
             try:
-                self.logger.info(f"📥 Downloading model: {model_info['name']} ({model_info['size_mb']}MB)")
+                model_url = model_info.get("url")
+                if not model_url:
+                    self.logger.info(
+                        f"ℹ️ No download URL configured for model {model_info['name']} - skipping automatic download"
+                    )
+                    continue
+
+                size_mb = model_info.get("size_mb")
+                size_label = f" ({size_mb}MB)" if size_mb else ""
+                self.logger.info(f"📥 Downloading model: {model_info['name']}{size_label}")
                 
                 # Download with progress
-                await self._download_file_with_progress(model_info["url"], model_path)
+                await self._download_file_with_progress(model_url, model_path)
                 
                 self.logger.info(f"✅ Downloaded model: {model_info['name']}")
                 
@@ -403,7 +433,7 @@ class SystemInitializer:
             return False
     
     # Configuration generators
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> Dict[str, Any]:
         """Generate default config.json."""
         return {
             "app_name": "AI Karen Engine",

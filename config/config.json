@@ -71,6 +71,7 @@
   },
   "web_ui": {
     "enable_web_ui_features": true,
+    "launcher_path": "ui_launchers/Karen-AI-Theme",
     "session_timeout": 3600,
     "max_conversation_history": 1000,
     "enable_proactive_suggestions": true,

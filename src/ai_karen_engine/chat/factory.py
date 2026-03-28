@@ -69,7 +69,7 @@ class ChatServiceFactory:
             return None
 
         try:
-            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+            from services.memory.nlp_service_manager import nlp_service_manager
             from ai_karen_engine.clients.database.milvus_client import MilvusClient
 
             # Initialize production chat memory

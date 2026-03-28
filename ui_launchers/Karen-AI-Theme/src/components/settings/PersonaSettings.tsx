@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { KarenSettings } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
@@ -12,6 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Save, RotateCcw, Drama, Sailboat, Scroll } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api';
+import { useAuth } from '@/lib/useAuth';
+import { authService } from '@/lib/auth';
 
 interface PersonaSettingsProps {
   inSheet?: boolean;
@@ -25,7 +29,9 @@ interface PersonaSettingsProps {
  */
 export default function PersonaSettings({ inSheet = false }: PersonaSettingsProps) {
   const [instructions, setInstructions] = useState<string>(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
+  const [preferredAddressName, setPreferredAddressName] = useState('');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const personaTemplates = [
     {
@@ -88,6 +94,11 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
         localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(DEFAULT_KAREN_SETTINGS));
       }
       setInstructions(fullSettings.customPersonaInstructions);
+      setPreferredAddressName(
+        typeof user?.preferences?.preferred_address_name === 'string'
+          ? user.preferences.preferred_address_name
+          : ''
+      );
     } catch (error) {
       console.error("Failed to load custom persona instructions from localStorage:", error);
       setInstructions(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
@@ -97,7 +108,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
         console.error("Failed to save default settings to localStorage after error in PersonaSettings:", lsError);
       }
     }
-  }, []);
+  }, [user]);
 
   const savePersonaInstructionsToLocalStorage = (newInstructions: string) => {
     try {
@@ -158,6 +169,57 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
     savePersonaInstructionsToLocalStorage(instructions);
   };
 
+  const handleSavePreferredAddress = async () => {
+    const normalized = preferredAddressName.trim();
+    if (!user || !normalized) {
+      return;
+    }
+
+    try {
+      const nextPreferences = {
+        ...(user.preferences || {}),
+        preferred_address_name: normalized,
+      };
+
+      const updatedUser = await apiClient.put<{
+        user_id: string;
+        email: string;
+        full_name: string;
+        roles: string[];
+        is_active: boolean;
+        created_at?: string;
+        last_login?: string | null;
+        tenant_id: string;
+        preferences: Record<string, any>;
+      }>('/api/auth/me', {
+        preferences: nextPreferences,
+      });
+
+      authService.updateCurrentUser({
+        preferences: updatedUser.preferences || nextPreferences,
+      });
+
+      await apiClient.post('/api/memory/commit', {
+        user_id: user.user_id,
+        text: `The user prefers to be addressed as ${normalized}.`,
+        tags: ['personal_fact', 'preferred_name', 'user_preference'],
+        importance: 9,
+        decay: 'pinned',
+      }).catch(() => undefined);
+
+      toast({
+        title: 'Preferred name saved',
+        description: `Karen will address you as ${normalized}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Save failed',
+        description: 'Karen could not save your preferred form of address.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleResetToDefault = () => {
     const defaultInstructions = DEFAULT_KAREN_SETTINGS.customPersonaInstructions;
     setInstructions(defaultInstructions);
@@ -203,6 +265,25 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
         <Separator />
         
         <div className="space-y-4 mt-6">
+          <div className="space-y-2">
+            <Label htmlFor="preferred-address-name" className="font-semibold text-base">Preferred Form Of Address</Label>
+            <Input
+              id="preferred-address-name"
+              value={preferredAddressName}
+              onChange={(e) => setPreferredAddressName(e.target.value)}
+              placeholder="e.g., Zeus"
+              className="text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Karen uses this when greeting you and stores it for future conversations through your account preferences and personal knowledge memory.
+            </p>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={handleSavePreferredAddress} disabled={!preferredAddressName.trim() || !user}>
+                <Save className="mr-2 h-4 w-4" /> Save Preferred Name
+              </Button>
+            </div>
+          </div>
+
           <Label htmlFor="custom-instructions" className="mb-2 block font-semibold text-base">Core Instructions Editor</Label>
           <Textarea
             id="custom-instructions"

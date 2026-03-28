@@ -1,5 +1,46 @@
 import apiClient from '../api';
 
+type BackendExecutionMode = 'native' | 'langgraph' | 'deep_agents';
+type BackendAgentStatus =
+  | 'initializing'
+  | 'idle'
+  | 'processing'
+  | 'streaming'
+  | 'error'
+  | 'terminated';
+
+interface BackendAgentInfo {
+  agent_id: string;
+  name: string;
+  description: string;
+  execution_mode: BackendExecutionMode;
+  status: BackendAgentStatus;
+  capabilities: string[];
+  config: Record<string, any>;
+  metrics: Record<string, any>;
+  created_at: string;
+  last_activity?: string | null;
+  version: string;
+  is_healthy: boolean;
+  is_available: boolean;
+}
+
+interface BackendAgentExecuteResponse {
+  request_id: string;
+  agent_id: string;
+  execution_mode: BackendExecutionMode;
+  response: string;
+  processing_time: number;
+  metadata: Record<string, any>;
+  confidence?: number | null;
+  warnings: string[];
+  error?: {
+    code: string;
+    message: string;
+    details?: Record<string, any>;
+  } | null;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -7,6 +48,9 @@ export interface Agent {
   status: 'online' | 'offline' | 'busy';
   avatar?: string;
   capabilities: string[];
+  executionMode?: BackendExecutionMode;
+  isHealthy?: boolean;
+  isAvailable?: boolean;
 }
 
 export interface StructuredContent {
@@ -41,49 +85,68 @@ export interface AgentResponse {
   correlation_id: string;
 }
 
+function mapBackendStatus(status: BackendAgentStatus, isAvailable: boolean): Agent['status'] {
+  if (status === 'processing' || status === 'streaming') {
+    return 'busy';
+  }
+  if (status === 'idle' && isAvailable) {
+    return 'online';
+  }
+  return 'offline';
+}
+
+function toAgent(info: BackendAgentInfo): Agent {
+  return {
+    id: info.agent_id,
+    name: info.name,
+    description: info.description || `${info.execution_mode} agent`,
+    status: mapBackendStatus(info.status, info.is_available),
+    capabilities: info.capabilities || [],
+    executionMode: info.execution_mode,
+    isHealthy: info.is_healthy,
+    isAvailable: info.is_available,
+  };
+}
+
 export class AgentUIService {
-  /**
-   * Fetch available agents from the backend registry.
-   * Currently, we'll mock this or map it to models if a dedicated endpoint doesn't exist yet.
-   */
   async getAgents(): Promise<Agent[]> {
-    try {
-      // If there's an endpoint for agents/models, we'd call it here.
-      // For now, returning a static default Agent representing Karen.
-      return [
-        {
-          id: 'karen-default',
-          name: 'Karen AI',
-          description: 'Your intelligent copilot.',
-          status: 'online',
-          capabilities: ['chat', 'code', 'vision'],
-        }
-      ];
-    } catch (error) {
-      console.error('Failed to fetch agents:', error);
-      return [];
-    }
+    const agents = await apiClient.get<BackendAgentInfo[]>('/api/agents/');
+    return (agents || []).map(toAgent);
   }
 
-  /**
-   * Send a message to the unified copilot assist endpoint.
-   */
   async sendMessage(
     agentId: string,
     message: string,
     sessionId?: string,
-    context?: Record<string, any>
+    context?: Record<string, any>,
+    executionMode: BackendExecutionMode = 'native'
   ): Promise<AgentResponse> {
-    const payload = {
-      user_id: 'frontend_user', // Will be overridden back-end if auth is present
-      message: message,
-      preferred_model: agentId === 'karen-default' ? undefined : agentId,
+    const response = await apiClient.post<BackendAgentExecuteResponse>('/api/agents/execute', {
+      message,
+      execution_mode: executionMode,
+      agent_id: agentId,
       session_id: sessionId,
       context: context || {},
-      top_k: 6
-    };
+      conversation_history: [],
+      capabilities_required: [],
+      enable_streaming: false,
+    });
 
-    return await apiClient.post<AgentResponse>('/api/copilot/assist', payload);
+    if (response.error?.message) {
+      throw new Error(response.error.message);
+    }
+
+    return {
+      answer: response.response,
+      structured_content: {},
+      actions: [],
+      metadata: {
+        ...response.metadata,
+        execution_mode: response.execution_mode,
+        processing_time: response.processing_time,
+      },
+      correlation_id: response.request_id,
+    };
   }
 }
 

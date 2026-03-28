@@ -8,8 +8,16 @@ from cryptography.fernet import Fernet
 
 log = logging.getLogger(__name__)
 
+
+def _is_production_env() -> bool:
+    env = os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or "development"
+    return env.lower() in ("production", "prod")
+
+
 ENCRYPTION_KEY = os.getenv("KARI_JOB_ENC_KEY")
 if not ENCRYPTION_KEY:
+    if _is_production_env():
+        raise RuntimeError("KARI_JOB_ENC_KEY must be set in production")
     ENCRYPTION_KEY = Fernet.generate_key()
     log.warning(
         "KARI_JOB_ENC_KEY not set; generated ephemeral key for development." \

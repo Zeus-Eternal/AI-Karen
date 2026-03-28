@@ -1,12 +1,12 @@
 {
-  "provider": "zai",
-  "model": "glm-5",
+  "provider": "llama-cpp",
+  "model": "Phi-3-mini-4k-instruct-q4",
   "api_key": "",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": true,
+    "copilot_cloud_enabled": false,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -37,14 +37,14 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "test-model",
+  "last_selected_model": "Phi-3-mini-4k-instruct-q4.gguf",
   "model_providers": {
     "zai": {
       "last_model": "glm-5",
       "base_url": "https://api.z.ai/api/paas/v4"
     },
     "llama-cpp": {
-      "last_model": "Phi-3-mini-4k-instruct-q4.gguf",
+      "last_model": "Phi-3-mini-4k-instruct-q4",
       "base_url": "http://localhost:8080/v1"
     },
     "openai": {

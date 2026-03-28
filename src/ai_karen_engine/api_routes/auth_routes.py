@@ -120,6 +120,14 @@ auth_service = AuthService(config=auth_config)
 router = APIRouter(prefix="", tags=["authentication"])
 
 
+async def _get_authenticated_user_from_request(request: Request):
+    """Prefer the middleware-resolved user already attached to the request."""
+    request_user = getattr(request.state, "user", None)
+    if request_user:
+        return request_user
+    return await get_authenticated_user(request)
+
+
 def get_client_ip(request: Request) -> str:
     """Get client IP address from request."""
     forwarded_for = request.headers.get("X-Forwarded-For")
@@ -314,34 +322,19 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     """Authenticate user and return tokens."""
-    import logging
-    logging.warning("==== LOGIN ENDPOINT HIT ====")
     ip_address = get_client_ip(http_request)
     user_agent = get_user_agent(http_request)
     
     # Determine login identifier (email or username)
     login_identifier = request.email or request.username
     
-    logging.warning(f"=== LOGIN: auth_service type is {type(auth_service)} ===")
-    logging.warning("=== LOGIN: calling auth_service.authenticate_user ===")
-    import asyncio
-    logging.warning("=== LOGIN: yielding to event loop ===")
-    await asyncio.sleep(0)
-    logging.warning("=== LOGIN: event loop yielded successfully ===")
-    
-    import logging
-    logging.warning("=== LOGIN: creating coroutine ===")
     coro = auth_service.authenticate_user(
         login_identifier,  # positional string
         request.password,  # positional string
         ip_address=ip_address,
         user_agent=user_agent
     )
-    logging.warning(f"=== LOGIN: created coroutine: {type(coro)} ===")
-    
-    logging.warning("=== LOGIN: awaiting coroutine ===")
     user, access_token, refresh_token_or_error = await coro
-    logging.warning("=== LOGIN: auth_service.authenticate_user RETURNED ===")
     
     if not user:
         # refresh_token_or_error contains error message
@@ -351,7 +344,6 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    logging.warning("=== LOGIN: preparing user data ===")
     user_data = {
         "user_id": user.id,
         "email": user.email,
@@ -362,12 +354,8 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "preferences": user.preferences,
         "last_login": user.last_login.isoformat() if user.last_login else None
     }
-    logging.warning("=== LOGIN: user data prepared ===")
-    
-    logging.warning("=== LOGIN: serializing permissions ===")
     permissions = _serialize_permissions(user_data)
     user_data["permissions"] = permissions
-    logging.warning(f"=== LOGIN: permissions serialized: {len(permissions)} items ===")
 
     response_data = {
         "access_token": access_token,
@@ -377,12 +365,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "user": user_data,
         "permissions": permissions
     }
-    logging.warning("=== LOGIN: response data prepared ===")
-
-    # Create response and set HttpOnly cookie for enhanced security
-    logging.warning("=== LOGIN: creating JSONResponse ===")
     response = JSONResponse(content=response_data)
-    logging.warning("=== LOGIN: JSONResponse created ===")
 
     # Determine if we should use secure cookies (HTTPS only)
     is_secure = http_request.url.scheme == "https"
@@ -437,7 +420,7 @@ async def refresh_token(request: RefreshTokenRequest, http_request: Request) -> 
 @router.post("/auth/logout")
 async def logout(
     request: RefreshTokenRequest,
-    current_user=Depends(get_authenticated_user),
+    current_user=Depends(_get_authenticated_user_from_request),
 ) -> JSONResponse:
     """Logout user by invalidating refresh token."""
     await auth_service.logout(request.refresh_token)
@@ -450,7 +433,7 @@ async def logout(
 
 
 @router.get("/auth/validate-session")
-async def validate_session(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def validate_session(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
     """Validate current session and return user information."""
     user_payload = _serialize_user_response(current_user)
     permissions = _serialize_permissions(user_payload)
@@ -466,7 +449,7 @@ async def validate_session(current_user=Depends(get_authenticated_user)) -> Dict
 
 
 @router.get("/auth/me", response_model=UserResponse)
-async def get_current_user_info(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def get_current_user_info(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
     """Get current user information."""
     response = _serialize_user_response(current_user)
     response["authenticated"] = True
@@ -477,7 +460,7 @@ async def get_current_user_info(current_user=Depends(get_authenticated_user)) ->
 @router.put("/auth/me", response_model=UserResponse)
 async def update_current_user_info(
     request: UpdateProfileRequest,
-    current_user=Depends(get_authenticated_user),
+    current_user=Depends(_get_authenticated_user_from_request),
 ) -> Dict[str, Any]:
     """Update current user information."""
 
@@ -504,7 +487,7 @@ async def update_current_user_info(
 @router.post("/auth/change-password")
 async def change_password(
     request: ChangePasswordRequest,
-    current_user=Depends(get_authenticated_user),
+    current_user=Depends(_get_authenticated_user_from_request),
 ) -> Dict[str, str]:
     """Change the current user's password."""
 

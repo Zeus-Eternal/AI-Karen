@@ -1,13 +1,21 @@
+import path from 'path';
 import type {NextConfig} from 'next';
 
 const backendBaseUrl =
   process.env.KAREN_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_KAREN_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8000';
+  'http://api:8000';
+
+const allowedDevOrigins = [
+  'localhost',
+  '127.0.0.1',
+  '172.21.0.11',
+  '172.21.0.12',
+];
 
 const nextConfig: NextConfig = {
   /* config options here */
+  outputFileTracingRoot: path.resolve(__dirname, '../..'),
+  allowedDevOrigins,
   typescript: {
     ignoreBuildErrors: true,
   },

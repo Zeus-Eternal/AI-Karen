@@ -4,7 +4,7 @@ COLLECTION_NAME = "case_memory_vectors"
 DIM = 768  # align with your EmbeddingManager default (e.g., MPNet/E5)
 
 def up(host: str = "milvus", port: str = "19530"):
-    connections.connect("default", host=host, port=port)
+    _connection = connections.connect(alias="default", host=host, port=port)
     if utility.has_collection(COLLECTION_NAME):
         return
     fields = [
@@ -20,6 +20,6 @@ def up(host: str = "milvus", port: str = "19530"):
     coll.load()
 
 def down(host: str = "milvus", port: str = "19530"):
-    connections.connect("default", host=host, port=port)
+    _connection = connections.connect(alias="default", host=host, port=port)
     if utility.has_collection(COLLECTION_NAME):
         utility.drop_collection(COLLECTION_NAME)

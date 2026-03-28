@@ -35,8 +35,11 @@ async def dispatch_webhook(
             events = hook.events or []
             if event not in events:
                 continue
+            hook_url = str(hook.url or "").strip()
+            if not hook_url:
+                continue
             try:
-                await http_client.post(hook.url, json={"event": event, "payload": payload})
+                await http_client.post(hook_url, json={"event": event, "payload": payload})
             except Exception as exc:  # pragma: no cover - network issues
                 logger.warning(
                     "Webhook dispatch failed", exc_info=True, extra={"webhook_id": hook.webhook_id}

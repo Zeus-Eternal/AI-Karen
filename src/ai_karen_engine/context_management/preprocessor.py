@@ -6,6 +6,7 @@ summarization, and content analysis for context entries.
 """
 
 import logging
+import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -35,6 +36,8 @@ class ContextPreprocessor:
         max_summary_length: int = 500,
         enable_entity_extraction: bool = True,
         enable_summarization: bool = True,
+        spacy_model_name: str = "en_core_web_sm",
+        allow_runtime_nltk_downloads: Optional[bool] = None,
     ):
         """
         Initialize context preprocessor.
@@ -51,6 +54,16 @@ class ContextPreprocessor:
         self.max_summary_length = max_summary_length
         self.enable_entity_extraction = enable_entity_extraction
         self.enable_summarization = enable_summarization
+        self.spacy_model_name = spacy_model_name
+        self.allow_runtime_nltk_downloads = (
+            str(os.getenv("KARI_ENABLE_NLTK_DOWNLOADS", "false")).lower() == "true"
+            if allow_runtime_nltk_downloads is None
+            else allow_runtime_nltk_downloads
+        )
+        self.nlp = None
+        self.stop_words = set()
+        self.lemmatizer = None
+        self.word_tokenize = None
         
         # Initialize NLP components if available
         self._initialize_nlp_components()
@@ -62,11 +75,11 @@ class ContextPreprocessor:
         try:
             # Try to initialize spaCy
             import spacy
-            self.nlp = spacy.load("en_core_web_sm")
-            logger.info("spaCy NLP model loaded")
+            self.nlp = spacy.load(self.spacy_model_name)
+            logger.info("spaCy NLP model loaded: %s", self.spacy_model_name)
         except (ImportError, OSError):
             self.nlp = None
-            logger.warning("spaCy not available, using basic preprocessing")
+            logger.warning("spaCy model unavailable, using basic preprocessing")
         
         try:
             # Try to initialize NLTK
@@ -75,30 +88,35 @@ class ContextPreprocessor:
             from nltk.tokenize import word_tokenize
             from nltk.stem import WordNetLemmatizer
             
-            # Download required NLTK data
-            try:
-                nltk.data.find('tokenizers/punkt')
-            except LookupError:
-                nltk.download('punkt', quiet=True)
-            
-            try:
-                nltk.data.find('corpora/stopwords')
-            except LookupError:
-                nltk.download('stopwords', quiet=True)
-            
-            try:
-                nltk.data.find('corpora/wordnet')
-            except LookupError:
-                nltk.download('wordnet', quiet=True)
+            required_resources = (
+                ("tokenizers/punkt", "punkt"),
+                ("corpora/stopwords", "stopwords"),
+                ("corpora/wordnet", "wordnet"),
+            )
+            missing_resources = []
+            for resource_path, resource_name in required_resources:
+                try:
+                    nltk.data.find(resource_path)
+                except LookupError:
+                    missing_resources.append(resource_name)
+
+            if missing_resources and self.allow_runtime_nltk_downloads:
+                for resource_name in missing_resources:
+                    nltk.download(resource_name, quiet=True)
+                missing_resources = []
+
+            if missing_resources:
+                logger.warning(
+                    "NLTK resources missing (%s); using basic tokenization fallback",
+                    ", ".join(missing_resources),
+                )
+                return
             
             self.stop_words = set(stopwords.words('english'))
             self.lemmatizer = WordNetLemmatizer()
             self.word_tokenize = word_tokenize
             logger.info("NLTK components loaded")
         except ImportError:
-            self.stop_words = set()
-            self.lemmatizer = None
-            self.word_tokenize = None
             logger.warning("NLTK not available, using basic tokenization")
 
     async def preprocess_context(
@@ -717,6 +735,8 @@ class ContextPreprocessor:
             "max_summary_length": self.max_summary_length,
             "enable_entity_extraction": self.enable_entity_extraction,
             "enable_summarization": self.enable_summarization,
+            "spacy_model_name": self.spacy_model_name,
+            "allow_runtime_nltk_downloads": self.allow_runtime_nltk_downloads,
             "nlp_available": self.nlp is not None,
             "nltk_available": self.word_tokenize is not None,
         }

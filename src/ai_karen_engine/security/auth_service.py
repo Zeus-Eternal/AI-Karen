@@ -181,8 +181,17 @@ class EnhancedAuthService(BaseService):
     
     def _load_config_from_env(self) -> None:
         """Load configuration from environment variables."""
+        auth_secret = (
+            os.getenv("AUTH_JWT_SECRET_KEY")
+            or os.getenv("AUTH_SECRET_KEY")
+            or os.getenv("JWT_SECRET_KEY")
+            or os.getenv("JWT_SECRET")
+            or os.getenv("SECRET_KEY")
+        )
+        if auth_secret:
+            self.config.jwt_secret_key = auth_secret
+
         env_mappings = {
-            "AUTH_JWT_SECRET_KEY": "jwt_secret_key",
             "AUTH_JWT_ALGORITHM": "jwt_algorithm",
             "AUTH_ACCESS_TOKEN_EXPIRE_MINUTES": "access_token_expire_minutes",
             "AUTH_REFRESH_TOKEN_EXPIRE_DAYS": "refresh_token_expire_days",
@@ -654,7 +663,8 @@ class EnhancedAuthService(BaseService):
             payload = jwt.decode(
                 token,
                 self.config.jwt_secret_key,
-                algorithms=[self.config.jwt_algorithm]
+                algorithms=[self.config.jwt_algorithm],
+                options={"verify_aud": False}
             )
             
             # Check if token is expired
@@ -912,7 +922,8 @@ class EnhancedAuthService(BaseService):
             payload = jwt.decode(
                 token,
                 self.config.jwt_secret_key,
-                algorithms=[self.config.jwt_algorithm]
+                algorithms=[self.config.jwt_algorithm],
+                options={"verify_aud": False}
             )
             
             if payload.get("sub") != test_user_id:

@@ -6,8 +6,10 @@ Enhanced with model orchestrator integration, schema validation, and integrity v
 """
 
 import hashlib
+import inspect
 import json
 import logging
+import os
 import shutil
 import time
 from dataclasses import asdict, dataclass
@@ -118,7 +120,14 @@ if WATCHDOG_AVAILABLE:
                 try:
                     # Reload registry and update LLM settings
                     self.registry._load_registry()
-                    asyncio.create_task(self.registry.update_llm_settings())
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        self.logger.debug(
+                            "No running event loop available for registry update; deferred"
+                        )
+                    else:
+                        loop.create_task(self.registry.update_llm_settings())
                 except Exception as ex:
                     self.logger.error(f"Failed to handle registry change: {ex}")
 else:
@@ -150,6 +159,7 @@ class LLMRegistry:
         self._priorities: List[str] = [
             "llamacpp",
             "openai",
+            "zai",
             "gemini",
             "deepseek",
             "huggingface",
@@ -529,6 +539,15 @@ class LLMRegistry:
                 "default_model": "gpt-3.5-turbo",
             },
             {
+                "name": "zai",
+                "provider_class": "OpenAIProvider",
+                "description": "Z.ai models via OpenAI-compatible API",
+                "supports_streaming": True,
+                "supports_embeddings": False,
+                "requires_api_key": True,
+                "default_model": "glm-5",
+            },
+            {
                 "name": "gemini",
                 "provider_class": "GeminiProvider",
                 "description": "Google Gemini models via API",
@@ -655,8 +674,10 @@ class LLMRegistry:
             # Convert registrations to list of dicts
             data = [asdict(reg) for reg in self._registrations.values()]
 
-            with open(self.registry_path, "w") as f:
+            temp_path = self.registry_path.with_suffix(".tmp")
+            with open(temp_path, "w") as f:
                 json.dump(data, f, indent=2)
+            temp_path.replace(self.registry_path)
 
         except Exception as ex:
             logger.error(f"Could not save registry to {self.registry_path}: {ex}")
@@ -723,6 +744,8 @@ class LLMRegistry:
                 if "model" not in init_kwargs and registration.default_model:
                     init_kwargs["model"] = registration.default_model
 
+                init_kwargs = self._apply_saved_provider_settings(name, init_kwargs)
+
                 # Translate llamacpp model id to a concrete model_path when possible
                 if name == "llamacpp":
                     # If a specific GGUF model was selected, resolve to a verified file path
@@ -735,7 +758,21 @@ class LLMRegistry:
                             logger.error(f"Unable to resolve verified GGUF for model_id '{model_id}'")
                             return None
 
-                provider = provider_class(**init_kwargs)
+                if registration.provider_class == "CopilotKitProvider":
+                    model_name = init_kwargs.get("model") or registration.default_model
+                    provider_config = {
+                        "model": model_name,
+                        "base_url": init_kwargs.get("base_url"),
+                        "api_key": init_kwargs.get("api_key"),
+                    }
+                    if model_name:
+                        provider_config["models"] = {
+                            "completion": model_name,
+                            "chat": model_name,
+                        }
+                    provider = provider_class(provider_config)
+                else:
+                    provider = provider_class(**init_kwargs)
                 self._providers[cache_key] = provider
 
                 logger.info(f"Created provider instance: {name} (model={init_kwargs.get('model')})")
@@ -753,14 +790,70 @@ class LLMRegistry:
                 except Exception:
                     logger.debug("Failed to persist registry after provider error", exc_info=True)
 
-            if name != "fallback" and "fallback" in self._registrations:
-                logger.warning(
-                    "Falling back to deterministic provider due to '%s' instantiation failure",
-                    name,
-                )
-                return self.get_provider("fallback")
-
         return None
+
+    def _apply_saved_provider_settings(self, name: str, init_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Augment provider init args from persisted provider config and local secrets."""
+
+        resolved = dict(init_kwargs)
+
+        try:
+            from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+            from services.models.secret_manager import get_secret_manager
+        except Exception:
+            return resolved
+
+        provider_config = get_provider_config_manager().get_provider(name)
+        if not provider_config:
+            return resolved
+
+        if "base_url" not in resolved and provider_config.endpoint and provider_config.endpoint.base_url:
+            resolved["base_url"] = provider_config.endpoint.base_url
+
+        if "timeout" not in resolved and provider_config.endpoint and provider_config.endpoint.timeout:
+            resolved["timeout"] = provider_config.endpoint.timeout
+
+        if "max_retries" not in resolved and provider_config.endpoint:
+            resolved["max_retries"] = provider_config.endpoint.max_retries
+
+        if "api_key" not in resolved:
+            api_key = None
+            env_var = provider_config.authentication.api_key_env_var
+            if env_var:
+                secret_manager = get_secret_manager()
+                api_key = secret_manager.get_secret(env_var) or os.getenv(env_var)
+            if api_key:
+                resolved["api_key"] = api_key
+
+        if name == "huggingface":
+            if "api_key" in resolved and "api_token" not in resolved:
+                resolved["api_token"] = resolved.pop("api_key")
+            if "base_url" in resolved and "inference_endpoint" not in resolved:
+                resolved["inference_endpoint"] = resolved.pop("base_url")
+
+        provider_class_name = self._registrations.get(name).provider_class if name in self._registrations else None
+        provider_class = self._get_provider_class(provider_class_name) if provider_class_name else None
+        if provider_class is None:
+            return resolved
+
+        try:
+            signature = inspect.signature(provider_class.__init__)
+        except (TypeError, ValueError):
+            return resolved
+
+        accepts_var_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in signature.parameters.values()
+        )
+        if accepts_var_kwargs:
+            return resolved
+
+        accepted = {
+            parameter_name
+            for parameter_name in signature.parameters.keys()
+            if parameter_name != "self"
+        }
+        return {key: value for key, value in resolved.items() if key in accepted}
 
     # -----------------------------
     # KIRE routing integration
@@ -859,8 +952,13 @@ class LLMRegistry:
     def _resolve_llamacpp_model_path_by_id(self, model_id: str) -> Optional[str]:
         """Resolve a llama.cpp model_id to a verified local GGUF file path."""
         try:
+            normalized_model_id = str(model_id).strip()
+            normalized_stem = Path(normalized_model_id).stem
+
             # Prefer model registry entry
-            entry_key = self._find_model_entry_key_by_id(model_id)
+            entry_key = self._find_model_entry_key_by_id(normalized_model_id)
+            if entry_key is None and normalized_stem != normalized_model_id:
+                entry_key = self._find_model_entry_key_by_id(normalized_stem)
             if entry_key:
                 entry = self._model_entries[entry_key]
                 if entry.library == "llama-cpp":
@@ -876,9 +974,20 @@ class LLMRegistry:
                         except Exception:
                             return str(p)
             # Fallback: look in models/llama-cpp for matching filename
-            candidate = Path("models/llama-cpp") / model_id
-            if self._is_probably_valid_gguf(candidate):
-                return str(candidate)
+            search_dir = Path("models/llama-cpp")
+            direct_candidates = [
+                search_dir / normalized_model_id,
+                search_dir / normalized_stem,
+                search_dir / f"{normalized_stem}.gguf",
+            ]
+            for candidate in direct_candidates:
+                if self._is_probably_valid_gguf(candidate):
+                    return str(candidate)
+
+            if search_dir.exists():
+                for candidate in search_dir.glob("*.gguf"):
+                    if candidate.stem == normalized_stem and self._is_probably_valid_gguf(candidate):
+                        return str(candidate)
         except Exception:
             pass
         return None

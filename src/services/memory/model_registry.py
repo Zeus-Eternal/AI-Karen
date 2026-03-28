@@ -250,18 +250,18 @@ class EnhancedModelRegistry:
                 "id": "default-lightweight-model",
                 "name": "Default Lightweight Chat Model",
                 "provider": "llama-cpp",
-                "size": 669000000,
-                "description": "A compact language model optimized for chat applications with Q4_K_M quantization for efficient inference.",
+                "size": 520000000,
+                "description": "A compact Qwen3 language model optimized for chat applications with Q4_K_M quantization for efficient inference.",
                 "capabilities": ["text-generation", "chat", "local-inference", "low-memory"],
                 "metadata": {
-                    "parameters": "1.1B",
+                    "parameters": "0.6B",
                     "quantization": "Q4_K_M",
                     "memory_requirement": "~1GB",
-                    "context_length": 2048,
+                    "context_length": 32768,
                     "license": "Apache 2.0",
                     "tags": ["chat", "small", "efficient", "quantized"],
-                    "architecture": "Llama",
-                    "training_data": "SlimPajama, Starcoderdata",
+                    "architecture": "Qwen3",
+                    "training_data": "Qwen pretraining and instruction-tuning corpus",
                     "performance_metrics": {
                         "inference_speed": "fast",
                         "memory_efficiency": "high",
@@ -269,8 +269,8 @@ class EnhancedModelRegistry:
                     }
                 },
                 "download_info": {
-                    "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-                    "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                    "url": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf",
+                    "filename": "Qwen3-0.6B-Q4_K_M.gguf",
                     "checksum": "sha256:placeholder_checksum_for_validation",
                     "mirrors": []
                 }

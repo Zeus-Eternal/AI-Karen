@@ -9,12 +9,14 @@ startup command can continue to uvicorn.
 """
 import sys
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("init_db_schema")
 
 def main():
-    logger.info("init_db_schema: running no-op initialization")
+    if os.getenv("KARI_VERBOSE_INIT_DB_SCHEMA", "").lower() in {"1", "true", "yes"}:
+        logger.info("init_db_schema: skipping schema initialization in this environment")
     # Keep this intentionally minimal. If you need schema setup, run
     # scripts/create_tables.py or the proper migration manager instead.
     return 0

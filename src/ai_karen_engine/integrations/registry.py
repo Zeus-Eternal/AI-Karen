@@ -7,7 +7,7 @@ routing and compatibility matching.
 
 Key Features:
 - Extensible provider registration (OpenAI, Gemini, DeepSeek, HuggingFace, etc.)
-- Runtime registry for different execution engines (llama.cpp, Transformers, vLLM)
+- Runtime registry for different execution engines (llama.cpp, Transformers)
 - Compatibility matching between models and runtimes
 - Health monitoring and capability detection
 - Thread-safe operations with instance caching
@@ -188,7 +188,7 @@ class LLMRegistry:
     
     This registry separates concerns:
     - Providers: Where models come from (OpenAI API, HuggingFace Hub, local files)
-    - Runtimes: How models execute (llama.cpp, Transformers, vLLM)
+    - Runtimes: How models execute (llama.cpp, Transformers)
     """
     
     def __init__(self):
@@ -1161,25 +1161,10 @@ class LLMRegistry:
             health_check=self._health_check_local,
             required_dependencies=["llama-cpp-python"],
             fallback_priority=60,
-            can_fallback_to=["superkent"],
+            can_fallback_to=[],
             fallback_models=[]  # Will be populated by scanning local files
         )
         self.register_provider(local_spec)
-
-        # SuperKent Provider (alias of local for custom server branding)
-        superkent_spec = ProviderSpec(
-            name="superkent",
-            requires_api_key=False,
-            description="SuperKent Server (local llama.cpp compatible)",
-            category="LLM",
-            capabilities={"local_execution", "privacy"},
-            discover=self._discover_local_models,
-            health_check=self._health_check_local,
-            required_dependencies=["requests"],
-            fallback_priority=50,
-            fallback_models=[]
-        )
-        self.register_provider(superkent_spec)
         
         # CopilotKit Provider (UI Framework - NOT an LLM provider)
         copilotkit_spec = ProviderSpec(
@@ -1199,7 +1184,6 @@ class LLMRegistry:
             from ai_karen_engine.inference import (
                 LlamaCppRuntime,
                 TransformersRuntime,
-                VLLMRuntime,
                 CoreHelpersRuntime
             )
             
@@ -1240,25 +1224,6 @@ class LLMRegistry:
                     health=lambda: {"status": "healthy", "message": "Transformers runtime available"}
                 )
                 self.register_runtime(transformers_spec)
-            
-            # vLLM Runtime
-            if VLLMRuntime and VLLMRuntime.is_available():
-                vllm_spec = RuntimeSpec(
-                    name="vllm",
-                    description="vLLM runtime for high-performance GPU serving",
-                    family=["llama", "mistral", "qwen", "phi", "gemma"],
-                    supports=["safetensors", "fp16", "bf16"],
-                    requires_gpu=True,
-                    memory_efficient=False,
-                    supports_streaming=True,
-                    supports_batching=True,
-                    startup_time="slow",
-                    throughput="high",
-                    priority=90,  # Highest priority for GPU serving
-                    load=lambda kwargs: VLLMRuntime(**kwargs),
-                    health=lambda: {"status": "healthy", "message": "vLLM runtime available"}
-                )
-                self.register_runtime(vllm_spec)
             
             # Core Helpers Runtime (for degraded mode)
             if CoreHelpersRuntime and CoreHelpersRuntime.is_available():

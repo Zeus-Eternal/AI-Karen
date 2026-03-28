@@ -17,7 +17,6 @@ class InferenceServiceConfig:
         # Runtime enablement
         enable_llamacpp: bool = True,
         enable_transformers: bool = True,
-        enable_vllm: bool = False,
         enable_core_helpers: bool = True,
         # LlamaCpp settings
         llamacpp_n_ctx: int = 2048,
@@ -29,9 +28,6 @@ class InferenceServiceConfig:
         transformers_torch_dtype: str = "auto",
         transformers_quantization: Optional[str] = None,
         transformers_use_flash_attention: bool = False,
-        # VLLM settings
-        vllm_tensor_parallel_size: int = 1,
-        vllm_gpu_memory_utilization: float = 0.9,
         # Model store settings
         enable_model_store: bool = True,
         model_store_db_path: str = "~/.kari/models/model_store.db",
@@ -40,7 +36,6 @@ class InferenceServiceConfig:
     ):
         self.enable_llamacpp = enable_llamacpp
         self.enable_transformers = enable_transformers
-        self.enable_vllm = enable_vllm
         self.enable_core_helpers = enable_core_helpers
 
         self.llamacpp_n_ctx = llamacpp_n_ctx
@@ -53,9 +48,6 @@ class InferenceServiceConfig:
         self.transformers_quantization = transformers_quantization
         self.transformers_use_flash_attention = transformers_use_flash_attention
 
-        self.vllm_tensor_parallel_size = vllm_tensor_parallel_size
-        self.vllm_gpu_memory_utilization = vllm_gpu_memory_utilization
-
         self.enable_model_store = enable_model_store
         self.model_store_db_path = model_store_db_path
 
@@ -66,7 +58,7 @@ class InferenceServiceFactory:
     """
     Factory for creating and wiring inference services.
 
-    This factory ensures all inference runtimes (llama.cpp, Transformers, vLLM)
+    This factory ensures all inference runtimes (llama.cpp, Transformers)
     are properly initialized, configured, and wired together for production use.
     """
 
@@ -132,32 +124,6 @@ class InferenceServiceFactory:
             logger.error(f"Failed to create Transformers runtime: {e}")
             return None
 
-    def create_vllm_runtime(self, model_path: Optional[str] = None):
-        """Create and configure vLLM runtime."""
-        if not self.config.enable_vllm:
-            logger.info("vLLM runtime disabled by configuration")
-            return None
-
-        try:
-            from ai_karen_engine.inference.vllm_runtime import VLLMRuntime
-
-            runtime = VLLMRuntime(
-                model_path=model_path,
-                tensor_parallel_size=self.config.vllm_tensor_parallel_size,
-                gpu_memory_utilization=self.config.vllm_gpu_memory_utilization,
-            )
-
-            self._runtimes["vllm"] = runtime
-            logger.info("vLLM runtime created successfully")
-            return runtime
-
-        except ImportError as e:
-            logger.warning(f"vLLM runtime unavailable (vllm not installed): {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Failed to create vLLM runtime: {e}")
-            return None
-
     def create_core_helpers_runtime(self):
         """Create and configure core helpers runtime."""
         if not self.config.enable_core_helpers:
@@ -220,11 +186,11 @@ class InferenceServiceFactory:
 
         # Format-to-runtime mapping
         runtime_preferences = {
-            "gguf": ["llamacpp", "vllm"],
-            "safetensors": ["vllm", "transformers"],
-            "fp16": ["vllm", "transformers"],
-            "bf16": ["vllm", "transformers"],
-            "int8": ["transformers", "vllm"],
+            "gguf": ["llamacpp"],
+            "safetensors": ["transformers"],
+            "fp16": ["transformers"],
+            "bf16": ["transformers"],
+            "int8": ["transformers"],
             "int4": ["transformers"],
         }
 
@@ -264,7 +230,6 @@ class InferenceServiceFactory:
         # Create runtimes (without loading models yet)
         self.create_llamacpp_runtime()
         self.create_transformers_runtime()
-        self.create_vllm_runtime()
         self.create_core_helpers_runtime()
 
         # Create model store
@@ -374,17 +339,6 @@ def get_transformers_runtime():
     return runtime
 
 
-def get_vllm_runtime():
-    """Get or create global vLLM runtime."""
-    factory = get_inference_service_factory()
-    runtime = factory.get_runtime("vllm")
-
-    if runtime is None:
-        runtime = factory.create_vllm_runtime()
-
-    return runtime
-
-
 def get_model_store():
     """Get or create global model store."""
     factory = get_inference_service_factory()
@@ -402,6 +356,5 @@ __all__ = [
     "get_inference_service_factory",
     "get_llamacpp_runtime",
     "get_transformers_runtime",
-    "get_vllm_runtime",
     "get_model_store",
 ]

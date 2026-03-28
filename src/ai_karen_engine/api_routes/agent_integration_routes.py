@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 try:
     from pydantic import BaseModel, Field
@@ -29,6 +29,13 @@ from ..agents import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agent-integration"])
+
+
+async def _get_authenticated_user(request: Request) -> Dict[str, Any]:
+    """Prefer the user already resolved by middleware before re-authenticating."""
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+    return await get_current_user(request)
 
 
 # Request/Response Models for API
@@ -123,9 +130,10 @@ def _convert_agent_response_to_api_response(response) -> AgentExecuteResponse:
 # API Endpoints
 @router.post("/execute", response_model=AgentExecuteResponse)
 async def execute_agent(
+    http_request: Request,
     request: AgentExecuteRequest,
     background_tasks: BackgroundTasks,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Execute a request through the agent integration system.
@@ -178,8 +186,9 @@ async def execute_agent(
 
 @router.post("/execute/stream")
 async def execute_agent_stream(
+    http_request: Request,
     request: AgentExecuteRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Execute a request with streaming response through the agent integration system.
@@ -277,10 +286,11 @@ async def execute_agent_stream(
 
 @router.get("/", response_model=List[AgentInfoResponse])
 async def get_all_agents(
+    http_request: Request,
     execution_mode: Optional[AgentExecutionMode] = Query(None, description="Filter by execution mode"),
     status: Optional[str] = Query(None, description="Filter by status"),
     capabilities: Optional[List[str]] = Query(None, description="Filter by capabilities"),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Get all agents with optional filtering.
@@ -321,8 +331,9 @@ async def get_all_agents(
 
 @router.get("/{agent_id}", response_model=AgentInfoResponse)
 async def get_agent(
+    http_request: Request,
     agent_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Get information about a specific agent.
@@ -356,8 +367,9 @@ async def get_agent(
 
 @router.post("/", response_model=AgentInfoResponse)
 async def create_agent(
+    http_request: Request,
     request: AgentCreateRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Create a new agent.
@@ -398,8 +410,9 @@ async def create_agent(
 
 @router.delete("/{agent_id}")
 async def delete_agent(
+    http_request: Request,
     agent_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Delete an agent.
@@ -436,8 +449,9 @@ async def delete_agent(
 
 @router.post("/{agent_id}/terminate")
 async def terminate_agent(
+    http_request: Request,
     agent_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Terminate an agent.
@@ -474,8 +488,9 @@ async def terminate_agent(
 
 @router.get("/{agent_id}/metrics")
 async def get_agent_metrics(
+    http_request: Request,
     agent_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Get metrics for a specific agent.
@@ -508,7 +523,8 @@ async def get_agent_metrics(
 
 @router.get("/system/metrics")
 async def get_system_metrics(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    http_request: Request,
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Get system-wide metrics.
@@ -535,8 +551,9 @@ async def get_system_metrics(
 
 @router.post("/requests/{request_id}/cancel")
 async def cancel_request(
+    http_request: Request,
     request_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Cancel an active request.
@@ -569,10 +586,11 @@ async def cancel_request(
 
 @router.get("/routing/recommendations")
 async def get_routing_recommendations(
+    http_request: Request,
     capabilities: List[str] = Query(..., description="Required capabilities"),
     execution_mode: Optional[AgentExecutionMode] = Query(None, description="Preferred execution mode"),
     limit: int = Query(5, ge=1, le=20, description="Maximum number of recommendations"),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(_get_authenticated_user)
 ):
     """
     Get routing recommendations for given requirements.

@@ -10,7 +10,6 @@ from typing import Optional
 from ai_karen_engine.inference.factory import (
     get_llamacpp_runtime as _get_llamacpp_runtime,
     get_transformers_runtime as _get_transformers_runtime,
-    get_vllm_runtime as _get_vllm_runtime,
     get_model_store as _get_model_store,
     get_inference_service_factory,
 )
@@ -57,27 +56,6 @@ def get_transformers_runtime_dependency():
             return runtime.generate(prompt)
     """
     return _get_transformers_runtime()
-
-
-@lru_cache()
-def get_vllm_runtime_dependency():
-    """
-    FastAPI dependency for vLLM runtime.
-
-    Returns:
-        VLLMRuntime instance or None if unavailable
-
-    Usage:
-        @app.post("/generate/vllm")
-        def generate(
-            prompt: str,
-            runtime: VLLMRuntime = Depends(get_vllm_runtime_dependency)
-        ):
-            if not runtime:
-                raise HTTPException(status_code=503, detail="vLLM runtime unavailable")
-            return runtime.generate(prompt)
-    """
-    return _get_vllm_runtime()
 
 
 # Model store dependency
@@ -199,7 +177,6 @@ __all__ = [
     # Runtime dependencies
     "get_llamacpp_runtime_dependency",
     "get_transformers_runtime_dependency",
-    "get_vllm_runtime_dependency",
     # Model store dependency
     "get_model_store_dependency",
     # Factory dependency

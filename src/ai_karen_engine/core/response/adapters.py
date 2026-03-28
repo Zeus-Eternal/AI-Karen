@@ -25,7 +25,7 @@ class SpacyAnalyzerAdapter(Analyzer):
     def _init_nlp_service(self) -> None:
         """Initialize NLP service if available."""
         try:
-            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+            from services.memory.nlp_service_manager import nlp_service_manager
             self.nlp_service = nlp_service_manager
         except ImportError:
             logger.warning("NLP service not available, using fallback analysis")

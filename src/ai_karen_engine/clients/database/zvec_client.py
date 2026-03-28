@@ -16,22 +16,51 @@ Example:
     client.insert_memory("user_123", text="Hello world", metadata={"source": "chat"})
     results = client.semantic_search("user_123", query_embedding, top_k=10)
 """
+# cspell:ignore zvec
 
 import os
 import logging
 import threading
 import json
-from typing import Optional, List, Dict, Any, Union
+from types import SimpleNamespace
+from typing import Optional, List, Dict, Any, Union, Protocol, cast
 from datetime import datetime
 from pathlib import Path
 
-# Zvec import (will fail gracefully if not installed)
+class _ZvecConnectionProtocol(Protocol):
+    def has_collection(self, name: str) -> bool: ...
+    def create_collection(self, schema: Any) -> None: ...
+    def insert(self, collection: str, docs: List[Any]) -> None: ...
+    def query(self, collection: str, query: Any) -> List[Dict[str, Any]]: ...
+
+
+class _ZvecModuleProtocol(Protocol):
+    DataType: Any
+
+    def open(self, path: str) -> _ZvecConnectionProtocol: ...
+    def VectorSchema(self, *, name: str, data_type: Any, dimension: int) -> Any: ...
+    def CollectionSchema(self, *, name: str, vectors: Any) -> Any: ...
+    def Doc(self, *, id: str, vectors: Dict[str, Any], metadata: Dict[str, Any]) -> Any: ...
+    def VectorQuery(self, *, name: str, vector: List[float], topk: int) -> Any: ...
+
+
 try:
-    import zvec
+    import zvec as _zvec  # pyright: ignore[reportMissingImports]
+    zvec = cast(_ZvecModuleProtocol, _zvec)
     HAS_ZVEC = True
 except ImportError:
     HAS_ZVEC = False
-    zvec = None  # type: ignore
+    zvec = cast(
+        _ZvecModuleProtocol,
+        SimpleNamespace(
+            open=lambda path: None,
+            VectorSchema=lambda **kwargs: None,
+            CollectionSchema=lambda **kwargs: None,
+            Doc=lambda **kwargs: None,
+            VectorQuery=lambda **kwargs: None,
+            DataType=SimpleNamespace(),
+        ),
+    )
 
 logger = logging.getLogger(__name__)
 

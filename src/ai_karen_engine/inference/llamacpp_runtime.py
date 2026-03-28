@@ -7,6 +7,7 @@ It serves as the default always-on runtime for local model execution with privac
 
 import logging
 import os
+import json
 import threading
 import time
 from pathlib import Path
@@ -61,6 +62,27 @@ class LlamaCppRuntime:
     _instance: Optional['LlamaCppRuntime'] = None
     _singleton_lock = threading.Lock()
 
+    @staticmethod
+    def _load_runtime_defaults() -> Dict[str, Any]:
+        """Load llama.cpp runtime defaults from config when available."""
+        config_path = Path("config/llamacpp/config.json")
+        if not config_path.exists():
+            return {}
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as handle:
+                raw = json.load(handle)
+        except Exception as exc:
+            logger.warning("Failed to load llama.cpp runtime config from %s: %s", config_path, exc)
+            return {}
+
+        defaults: Dict[str, Any] = {}
+        for key in ("model_path", "n_ctx", "n_batch", "n_gpu_layers", "n_threads", "use_mmap", "use_mlock", "verbose"):
+            value = raw.get(key)
+            if value is not None:
+                defaults[key] = value
+        return defaults
+
     @classmethod
     def get_instance(cls, **kwargs) -> 'LlamaCppRuntime':
         """
@@ -75,7 +97,9 @@ class LlamaCppRuntime:
         with cls._singleton_lock:
             if cls._instance is None:
                 logger.info("Initializing global LlamaCppRuntime singleton")
-                cls._instance = cls(**kwargs)
+                init_kwargs = cls._load_runtime_defaults()
+                init_kwargs.update({k: v for k, v in kwargs.items() if v is not None})
+                cls._instance = cls(**init_kwargs)
             elif kwargs:
                 # Optionally update parameters if specified, though usually we want consistency
                 logger.debug("LlamaCppRuntime singleton already exists, ignoring new kwargs")
@@ -84,13 +108,13 @@ class LlamaCppRuntime:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        n_ctx: int = 1024,  # Reduced default context for memory safety
-        n_batch: int = 512,
-        n_gpu_layers: int = 0,
+        n_ctx: Optional[int] = None,
+        n_batch: Optional[int] = None,
+        n_gpu_layers: Optional[int] = None,
         n_threads: Optional[int] = None,
-        use_mmap: bool = True,
-        use_mlock: bool = False,
-        verbose: bool = False,
+        use_mmap: Optional[bool] = None,
+        use_mlock: Optional[bool] = None,
+        verbose: Optional[bool] = None,
         **kwargs
     ):
         """
@@ -109,22 +133,25 @@ class LlamaCppRuntime:
         """
         if not LLAMACPP_AVAILABLE:
             raise RuntimeError("llama-cpp-python is not available. Please install it to use LlamaCppRuntime.")
-        
-        self.model_path = model_path
-        self.n_ctx = n_ctx
-        self.n_batch = n_batch
-        self.n_gpu_layers = n_gpu_layers
+
+        defaults = self._load_runtime_defaults()
+
+        self.model_path = model_path or defaults.get("model_path")
+        self.n_ctx = int(n_ctx if n_ctx is not None else defaults.get("n_ctx", 4096))
+        self.n_batch = int(n_batch if n_batch is not None else defaults.get("n_batch", 512))
+        self.n_gpu_layers = int(n_gpu_layers if n_gpu_layers is not None else defaults.get("n_gpu_layers", 0))
         # Allow env overrides for performance tuning
         try:
             env_threads = int(os.getenv("LLAMA_THREADS", "0"))
         except ValueError:
             env_threads = 0
-        self.n_threads = n_threads or (env_threads if env_threads > 0 else 4)
-        self.use_mmap = use_mmap
+        default_threads = int(defaults.get("n_threads", 4))
+        self.n_threads = n_threads or (env_threads if env_threads > 0 else default_threads)
+        self.use_mmap = bool(use_mmap if use_mmap is not None else defaults.get("use_mmap", True))
         # Enable mlock via env if requested
         env_mlock = os.getenv("LLAMA_MLOCK", "false").lower() in ("1", "true", "yes")
-        self.use_mlock = use_mlock or env_mlock
-        self.verbose = verbose
+        self.use_mlock = bool(use_mlock if use_mlock is not None else defaults.get("use_mlock", False)) or env_mlock
+        self.verbose = bool(verbose if verbose is not None else defaults.get("verbose", False))
         self.kwargs = kwargs
         
         self._model: Optional[Llama] = None
@@ -152,35 +179,44 @@ class LlamaCppRuntime:
         with self._lock:
             try:
                 start_time = time.time()
-                
+
                 # Validate model file early for speed & correctness
-                p = Path(model_path)
+                p = Path(model_path).expanduser()
                 if not p.exists() or not p.is_file():
                     logger.error(f"Model file not found: {model_path}")
                     return False
+                p = p.resolve()
+                canonical_model_path = str(p)
                 if p.suffix.lower() != ".gguf":
-                    logger.error(f"Invalid model format (expected .gguf): {model_path}")
+                    logger.error(f"Invalid model format (expected .gguf): {canonical_model_path}")
                     return False
                 size = p.stat().st_size
                 if size < 50 * 1024 * 1024:
-                    logger.error(f"Model file too small to be valid GGUF: {model_path}")
+                    logger.error(f"Model file too small to be valid GGUF: {canonical_model_path}")
                     return False
                 try:
                     with open(p, "rb") as f:
                         magic = f.read(4)
                     if magic != b"GGUF":
-                        logger.error(f"Model file header invalid (no GGUF magic): {model_path}")
+                        logger.error(f"Model file header invalid (no GGUF magic): {canonical_model_path}")
                         return False
                 except Exception as e:
                     logger.error(f"Failed to read model header: {e}")
                     return False
-                
-                if not model_path.lower().endswith('.gguf'):
-                    logger.warning(f"Model file may not be GGUF format: {model_path}")
+
+                if self._loaded and self._model is not None:
+                    loaded_path = str(Path(self.model_path).expanduser().resolve()) if self.model_path else None
+                    if loaded_path == canonical_model_path:
+                        logger.info(f"GGUF model already loaded: {canonical_model_path}")
+                        return True
+                    self.unload_model()
+
+                if not canonical_model_path.lower().endswith('.gguf'):
+                    logger.warning(f"Model file may not be GGUF format: {canonical_model_path}")
                 
                 # Merge override parameters
                 params = {
-                    "model_path": model_path,
+                    "model_path": canonical_model_path,
                     "n_ctx": self.n_ctx,
                     "n_batch": self.n_batch,
                     "n_gpu_layers": self.n_gpu_layers,
@@ -190,28 +226,28 @@ class LlamaCppRuntime:
                     **self.kwargs,
                     **override_kwargs
                 }
-                
-                logger.info(f"Loading GGUF model: {model_path}")
+
+                logger.info(f"Loading GGUF model: {canonical_model_path}")
                 logger.debug(f"llama.cpp parameters: {params}")
                 
                 # Create llama.cpp instance
                 self._model = Llama(**params)
-                self.model_path = model_path
+                self.model_path = canonical_model_path
                 self._loaded = True
                 self._load_time = time.time() - start_time
                 
                 # Estimate memory usage (rough approximation)
-                model_size = Path(model_path).stat().st_size
+                model_size = p.stat().st_size
                 self._memory_usage = model_size + (self.n_ctx * 4 * 1024)  # Context memory
                 
                 logger.info(f"Model loaded successfully in {self._load_time:.2f}s")
                 return True
                 
             except Exception as e:
-                logger.error(f"Failed to load model {model_path}: {e}")
+                logger.error(f"Failed to load model {canonical_model_path if 'canonical_model_path' in locals() else model_path}: {e}")
                 # Attempt automatic recovery for known default model
                 try:
-                    filename = Path(model_path).name
+                    filename = Path(canonical_model_path if 'canonical_model_path' in locals() else model_path).name
                     auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
                     # Get default model info from config
                     try:
@@ -223,7 +259,7 @@ class LlamaCppRuntime:
                         logger.warning(f"Attempting to re-download default model ({_default_model}) due to load failure...")
                         # Move corrupt file aside first
                         try:
-                            p = Path(model_path)
+                            p = Path(canonical_model_path if 'canonical_model_path' in locals() else model_path)
                             if p.exists():
                                 corrupt_path = p.with_suffix(p.suffix + ".corrupt")
                                 try:
@@ -239,7 +275,7 @@ class LlamaCppRuntime:
                         downloaded = False
                         try:
                             from huggingface_hub import hf_hub_download  # type: ignore
-                            target_dir = str(Path(model_path).parent)
+                            target_dir = str(Path(canonical_model_path if 'canonical_model_path' in locals() else model_path).parent)
                             token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
                             # Derive repo_id from default model filename pattern
                             _repo_id = "microsoft/Phi-3-mini-4k-instruct-gguf"

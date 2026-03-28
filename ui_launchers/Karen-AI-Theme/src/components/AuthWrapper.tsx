@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/useAuth";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, ReactNode } from "react";
 
 interface AuthWrapperProps {
@@ -11,13 +11,16 @@ interface AuthWrapperProps {
 export function AuthWrapper({ children }: AuthWrapperProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      // User is not authenticated, redirect to login
-      router.replace("/login");
+      const nextPath =
+        pathname && pathname !== "/login" ? `?next=${encodeURIComponent(pathname)}` : "";
+      const loginUrl = `/login${nextPath}`;
+      router.replace(loginUrl);
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -30,7 +33,11 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   // If not authenticated, don't render children (will redirect)
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background text-muted-foreground">
+        Redirecting to login...
+      </div>
+    );
   }
 
   // If authenticated, render children

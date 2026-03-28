@@ -241,20 +241,23 @@ class ErrorRecoveryManager:
         try:
             # Try to import and use service lifecycle manager if available
             try:
-                from .service_lifecycle_manager import ServiceLifecycleManager
-                from .service_registry import ServiceRegistry
-                
-                # Get service registry and lifecycle manager
-                registry = ServiceRegistry()
-                lifecycle_manager = ServiceLifecycleManager(registry)
-                
-                # Attempt to restart the service
-                await lifecycle_manager.restart_service(service_name)
+                from .classified_service_registry import get_classified_registry
+
+                classified_registry = get_classified_registry()
+                if classified_registry is not None and service_name in classified_registry.classified_services:
+                    classified_info = classified_registry.classified_services[service_name]
+                    if classified_info.lifecycle_state == "active":
+                        await classified_registry.suspend_service(service_name)
+                    await classified_registry.load_service_on_demand(service_name)
+                else:
+                    self.recovery_logger.info(
+                        f"Classified registry unavailable for {service_name}, testing health directly"
+                    )
             except ImportError:
-                # If lifecycle manager not available, just test health
-                self.recovery_logger.info(f"ServiceLifecycleManager not available, testing health directly")
+                # If classified registry not available, just test health
+                self.recovery_logger.info("Classified service registry not available, testing health directly")
             except Exception as e:
-                self.recovery_logger.warning(f"Could not restart service {service_name}: {e}")
+                self.recovery_logger.warning(f"Could not recover service {service_name} through classified registry: {e}")
             
             # Test service health
             if await self._test_service_health(service_name):
@@ -276,10 +279,10 @@ class ErrorRecoveryManager:
         """Test if a service is healthy after recovery attempt"""
         try:
             # Import here to avoid circular imports
-            from .service_registry import ServiceRegistry
-            
-            registry = ServiceRegistry()
-            service = registry.get_service(service_name)
+            from .service_registry import get_service_registry
+
+            registry = get_service_registry()
+            service = await registry.get_service(service_name)
             
             if service and hasattr(service, 'health_check'):
                 return await service.health_check()

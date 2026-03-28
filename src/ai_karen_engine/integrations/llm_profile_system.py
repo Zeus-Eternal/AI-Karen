@@ -389,7 +389,7 @@ class LLMProfileManager:
                 # Privacy policy should prefer local providers
                 non_local_providers = [
                     use_case for use_case, pref in profile.providers.items()
-                    if pref.provider not in ["local", "superkent"]
+                    if pref.provider != "local"
                 ]
                 if non_local_providers:
                     warnings.append(f"Privacy policy with non-local providers: {non_local_providers}")

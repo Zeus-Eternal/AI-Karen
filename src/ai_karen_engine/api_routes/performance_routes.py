@@ -12,12 +12,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Depends, Response
 try:
-    from pydantic.v1 import BaseModel, Field
+    from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
-    try:
-        from pydantic import BaseModel, Field
-    except ImportError:
-        from pydantic_stub import BaseModel, Field
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ..core.performance_metrics import (
     get_performance_monitoring_system,
@@ -41,6 +38,8 @@ class MetricRequest(BaseModel):
     unit: str = ""
     description: str = ""
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class BenchmarkRequest(BaseModel):
     """Request model for creating benchmarks."""
@@ -48,11 +47,15 @@ class BenchmarkRequest(BaseModel):
     duration_minutes: int = 60
     services: Optional[List[str]] = None
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class ComparisonRequest(BaseModel):
     """Request model for benchmark comparisons."""
     baseline_name: str
     duration_minutes: int = 60
+
+    model_config = ConfigDict(extra="forbid")
 
 
 @router.get("/dashboard")

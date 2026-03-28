@@ -51,6 +51,57 @@ class FallbackProvider(LLMProviderBase):
 
     # ------------------------------------------------------------------
     # Core helpers
+    def _prepare_local_messages(
+        self, messages: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Trim chat history for local fallback models.
+
+        Local GGUF inference should remain responsive in degraded mode, so keep:
+        - at most one system message
+        - the most recent few conversation turns
+        - bounded content size per message and overall
+        """
+        max_messages = int(os.getenv("KARI_LOCAL_CHAT_MAX_MESSAGES", "4"))
+        max_total_chars = int(os.getenv("KARI_LOCAL_CHAT_MAX_CHARS", "3200"))
+        max_message_chars = int(os.getenv("KARI_LOCAL_CHAT_MAX_MESSAGE_CHARS", "1200"))
+
+        system_messages: List[Dict[str, str]] = []
+        conversation: List[Dict[str, str]] = []
+
+        for message in messages:
+            role = str(message.get("role", "user")).strip().lower() or "user"
+            content = str(message.get("content", "")).strip()
+            if not content:
+                continue
+            trimmed = {
+                "role": role,
+                "content": content[-max_message_chars:],
+            }
+            if role == "system" and not system_messages:
+                system_messages.append(trimmed)
+            else:
+                conversation.append(trimmed)
+
+        recent_conversation = conversation[-max_messages:]
+        prepared = system_messages + recent_conversation
+
+        total_chars = sum(len(item["content"]) for item in prepared)
+        if total_chars <= max_total_chars:
+            return prepared
+
+        budget = max_total_chars
+        bounded: List[Dict[str, str]] = []
+        for item in prepared:
+            remaining = max(0, budget)
+            if remaining == 0:
+                break
+            content = item["content"]
+            if len(content) > remaining:
+                content = content[-remaining:]
+            bounded.append({"role": item["role"], "content": content})
+            budget -= len(content)
+        return bounded
+
     def _discover_local_models(self) -> Dict[str, str]:
         """Discover available local models on the system.
         
@@ -109,13 +160,28 @@ class FallbackProvider(LLMProviderBase):
         
         # Determine model attempt order
         requested_model = kwargs.get("model")
+        if not requested_model:
+            try:
+                from ai_karen_engine.config.config_manager import get_default_model
+
+                requested_model = get_default_model("llamacpp")
+            except Exception:
+                requested_model = None
         attempt_order = []
         
         # 1. First priority: Specifically requested model
         if requested_model:
+            normalized_requested = str(requested_model).strip()
+            requested_stem = Path(normalized_requested).stem
             # Check for exact match or extension-stripped match
             for m_name, m_path in llama_models.items():
-                if m_name == requested_model or m_name == f"llamacpp_{requested_model}":
+                candidate_stem = Path(m_path).stem
+                if (
+                    m_name == normalized_requested
+                    or m_name == f"llamacpp_{normalized_requested}"
+                    or candidate_stem == normalized_requested
+                    or candidate_stem == requested_stem
+                ):
                     attempt_order.append((m_name, m_path))
                     break
         
@@ -132,11 +198,7 @@ class FallbackProvider(LLMProviderBase):
                 from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
                 
                 # Get global singleton runtime
-                runtime = LlamaCppRuntime.get_instance(
-                    n_ctx=1024,
-                    n_batch=512,
-                    n_threads=2
-                )
+                runtime = LlamaCppRuntime.get_instance()
                 
                 # Load model if not already loaded or different
                 if not runtime.is_loaded() or runtime.model_path != model_path:
@@ -149,10 +211,16 @@ class FallbackProvider(LLMProviderBase):
                 
                 # Generate response
                 if isinstance(messages, list):
-                    logger.info(f"Generating chat with {len(messages)} messages using {model_name}")
+                    prepared_messages = self._prepare_local_messages(messages)
+                    logger.info(
+                        "Generating chat with %d/%d trimmed messages using %s",
+                        len(prepared_messages),
+                        len(messages),
+                        model_name,
+                    )
                     response = runtime.chat(
-                        messages,
-                        max_tokens=256,
+                        prepared_messages,
+                        max_tokens=192,
                         temperature=0.7,
                         top_p=0.9,
                         stop=["\n\n", "Human:", "User:"]
@@ -332,13 +400,14 @@ class FallbackProvider(LLMProviderBase):
                 real_response = None
 
                 if isinstance(prompt, list):
+                    prepared_messages = self._prepare_local_messages(prompt)
                     runtime = getattr(llamacpp_provider, "runtime", None)
                     if runtime and hasattr(runtime, "chat"):
-                        real_response = runtime.chat(prompt, **kwargs)
+                        real_response = runtime.chat(prepared_messages, **kwargs)
                     elif hasattr(llamacpp_provider, "generate_chat"):
-                        real_response = llamacpp_provider.generate_chat(prompt, **kwargs)  # type: ignore[attr-defined]
+                        real_response = llamacpp_provider.generate_chat(prepared_messages, **kwargs)  # type: ignore[attr-defined]
                     elif hasattr(llamacpp_provider, "generate_response"):
-                        real_response = llamacpp_provider.generate_response(prompt, **kwargs)  # type: ignore[attr-defined]
+                        real_response = llamacpp_provider.generate_response(prepared_messages, **kwargs)  # type: ignore[attr-defined]
                 else:
                     real_response = llamacpp_provider.generate_text(prompt, **kwargs)
                     

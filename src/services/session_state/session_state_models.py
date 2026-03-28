@@ -7,12 +7,19 @@ This module defines the data models used by the Session State Manager service.
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-try:
-    from pydantic import BaseModel, Field, validator
-except ImportError:
+if TYPE_CHECKING:
+    from pydantic import BaseModel, Field
+    from pydantic.v1 import validator
+else:
     from ai_karen_engine.pydantic_stub import BaseModel, Field, validator
+
+    try:
+        from pydantic import BaseModel, Field
+        from pydantic.v1 import validator
+    except ImportError:
+        pass
 
 
 class SessionStateStatus(str, Enum):

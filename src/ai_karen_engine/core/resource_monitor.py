@@ -722,15 +722,23 @@ class ResourceMonitor:
 
             # Get service registry
             try:
-                from ai_karen_engine.core import get_registry
-                registry = get_registry()
+                from ai_karen_engine.core.classified_service_registry import get_classified_registry
+                from ai_karen_engine.core.service_registry import get_service_registry
+
+                registry = get_classified_registry() or get_service_registry()
             except Exception:
                 logger.debug("Service registry not available")
                 registry = None
 
             if registry:
                 # Get all services
-                all_services = registry.get_all_services()
+                if hasattr(registry, "get_all_services"):
+                    all_services = registry.get_all_services()
+                elif hasattr(registry, "list_services"):
+                    listed = registry.list_services()
+                    all_services = list(listed.keys()) if isinstance(listed, dict) else []
+                else:
+                    all_services = []
 
                 # Identify background/non-critical services
                 background_prefixes = ['metrics', 'analytics', 'monitoring', 'reporting', 'logging']

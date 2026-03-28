@@ -30,7 +30,7 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 from ai_karen_engine.core.logging import get_logger
-from src.services.connection_health_manager import (
+from services.memory.connection_health_manager import (
     get_connection_health_manager,
     ConnectionType,
     ServiceStatus,

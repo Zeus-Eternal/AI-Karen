@@ -508,12 +508,18 @@ def _load_provider_models(provider: ProviderConfig, override: Dict[str, Any]) ->
 def _build_provider_payload(provider: ProviderConfig, selected_provider: str, selected_model: str) -> ProviderPayload:
     override = _get_provider_override(provider.name)
     base_url = _resolve_provider_base_url(provider, override)
-    configured_models = _configured_models(provider)
     last_model = override.get("last_model") or provider.default_model or ""
     provider_selected_model = selected_model if provider.name == selected_provider else last_model
 
-    if provider_selected_model and all(model.id != provider_selected_model for model in configured_models):
-        configured_models.append(
+    # Use discovered models for the selected provider or local providers (llama-cpp, ollama)
+    # to ensure the UI shows the current state of available models.
+    if provider.name == selected_provider or provider.provider_type == ProviderType.LOCAL:
+        models = _load_provider_models(provider, override)
+    else:
+        models = _configured_models(provider)
+
+    if provider_selected_model and all(model.id != provider_selected_model for model in models):
+        models.append(
             _make_model_payload(
                 provider_selected_model,
                 name=provider_selected_model,
@@ -532,7 +538,7 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
         default_base_url=provider.endpoint.base_url if provider.endpoint else None,
         default_model=provider.default_model,
         selected_model=provider_selected_model or None,
-        models=configured_models,
+        models=models,
         requires_api_key=provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM},
         api_key_configured=_has_saved_api_key(provider.name, provider),
         api_key_header=str(override.get("api_key_header") or provider.authentication.api_key_header or "Authorization"),

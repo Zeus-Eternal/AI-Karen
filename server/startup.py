@@ -4,6 +4,8 @@ Startup configuration for Kari FastAPI Server.
 Handles lifespan, warmups, service initialization, and startup tasks.
 """
 
+import asyncio
+import os
 import logging
 from fastapi import FastAPI
 from .config import Settings
@@ -137,6 +139,38 @@ def register_startup_tasks(app: FastAPI) -> None:
 
         except Exception as e:
             logger.warning(f"Extension service recovery initialization failed: {e}")
+
+    @app.on_event("startup")
+    async def _warm_local_llm_stack() -> None:
+        """Warm the local chat/LLM stack during startup so first chat request does not time out."""
+        if os.getenv("KARI_WARM_LOCAL_LLM_ON_STARTUP", "true").lower() not in ("1", "true", "yes"):
+            logger.info("Skipping local LLM warmup (disabled by environment)")
+            return
+
+        try:
+            from services.memory.settings_manager import get_settings_manager
+
+            settings_manager = get_settings_manager()
+            active_provider = str(settings_manager.get_setting("provider", "") or "").strip().lower()
+            if active_provider not in {"llama-cpp", "llamacpp", "local"}:
+                logger.info("Skipping local LLM warmup for non-local provider: %s", active_provider or "unset")
+                return
+
+            logger.info("Warming local chat stack for provider: %s", active_provider)
+
+            def _warm() -> None:
+                from ai_karen_engine.api_routes.copilot_routes import get_langgraph_orchestrator
+                from ai_karen_engine.llm_orchestrator import get_orchestrator
+
+                get_langgraph_orchestrator()
+                get_orchestrator()._ensure_minimum_models_registered()
+
+            await asyncio.to_thread(_warm)
+            app.state.local_llm_warmed = True
+            logger.info("Local chat stack warmup completed")
+        except Exception as e:
+            app.state.local_llm_warmed = False
+            logger.warning(f"Local LLM warmup skipped after failure: {e}")
     
     async def _extension_startup_recovery_handler(recovery_manager):
         """Extension-specific startup recovery handler"""

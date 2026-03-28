@@ -19,13 +19,21 @@ logger = logging.getLogger("kari.llamacpp_provider")
 
 class LlamaCppProvider(LLMProviderBase):
     """LLaMA-CPP provider using the existing LlamaCppRuntime."""
+
+    @staticmethod
+    def _get_model_library_models(model_library: Any) -> List[Any]:
+        """Prefer the fast model-library path to avoid chat-time cache rebuild stalls."""
+        fast_getter = getattr(model_library, "get_available_models_fast", None)
+        if callable(fast_getter):
+            return fast_getter()
+        return model_library.get_available_models()
     
     def __init__(
         self,
         model_path: Optional[str] = None,
-        n_ctx: int = 1024,  # Matching new memory-safe default
-        n_batch: int = 512,
-        n_gpu_layers: int = 0,
+        n_ctx: Optional[int] = None,
+        n_batch: Optional[int] = None,
+        n_gpu_layers: Optional[int] = None,
         n_threads: Optional[int] = None,
         **kwargs
     ):
@@ -72,7 +80,7 @@ class LlamaCppProvider(LLMProviderBase):
                 from ai_karen_engine.services.model_library_service import ModelLibraryService
 
                 lib = ModelLibraryService()
-                models = lib.get_available_models()
+                models = self._get_model_library_models(lib)
                 local_candidates = [
                     m
                     for m in models
@@ -293,7 +301,7 @@ class LlamaCppProvider(LLMProviderBase):
             try:
                 from ai_karen_engine.services.model_library_service import ModelLibraryService
                 model_library = ModelLibraryService()
-                available_models = model_library.get_available_models()
+                available_models = self._get_model_library_models(model_library)
             except Exception as lib_err:
                 logger.debug(f"Inner Model Library access failed: {lib_err}")
                 available_models = []
@@ -647,7 +655,7 @@ class LlamaCppProvider(LLMProviderBase):
         try:
             from ai_karen_engine.services.model_library_service import ModelLibraryService
             model_library = ModelLibraryService()
-            available_models = model_library.get_available_models()
+            available_models = self._get_model_library_models(model_library)
             
             # Find current model in Model Library
             current_model_info = None
@@ -726,7 +734,7 @@ class LlamaCppProvider(LLMProviderBase):
             try:
                 from ai_karen_engine.services.model_library_service import ModelLibraryService
                 model_library = ModelLibraryService()
-                available_models = model_library.get_available_models()
+                available_models = self._get_model_library_models(model_library)
                 
                 local_models = [m for m in available_models if m.provider == "llama-cpp" and m.status == "local"]
                 
@@ -797,7 +805,7 @@ class LlamaCppProvider(LLMProviderBase):
         try:
             from ai_karen_engine.services.model_library_service import ModelLibraryService
             model_library = ModelLibraryService()
-            available_models = model_library.get_available_models()
+            available_models = self._get_model_library_models(model_library)
             
             for model_info in available_models:
                 if (model_info.provider == "llama-cpp" and 

@@ -125,7 +125,7 @@ class ModelDownloadManager:
         retry_strategy = Retry(
             total=3,
             status_forcelist=[429, 500, 502, 503, 504],
-            method_whitelist=["HEAD", "GET", "OPTIONS"],
+            allowed_methods=["HEAD", "GET", "OPTIONS"],
             backoff_factor=1,  # Will create delays of 1, 2, 4 seconds
             raise_on_status=False
         )
@@ -743,7 +743,7 @@ class ModelDownloadManager:
     def get_download_statistics(self) -> Dict[str, Any]:
         """Get download statistics."""
         with self._lock:
-            stats = {
+            stats: Dict[str, Any] = {
                 'total_downloads': len(self.active_downloads),
                 'active_downloads': len([t for t in self.active_downloads.values() if t.status == 'downloading']),
                 'completed_downloads': len([t for t in self.active_downloads.values() if t.status == 'completed']),

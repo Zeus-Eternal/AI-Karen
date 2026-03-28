@@ -84,15 +84,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     // Future: API call to record feedback
   };
 
-  const isDegraded = message.metadata?.degraded_mode === true;
   const llm = message.metadata?.llm;
+  const failureCategory = message.metadata?.failure_category || llm?.failure_category;
+  const isSafetyBlocked = failureCategory === 'safety_blocked';
+  const isDegraded = message.metadata?.degraded_mode === true || llm?.is_degraded === true;
   const hasLlmInfo = llm && (llm.provider || llm.model_id);
 
   return (
-    <div className={`flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+    <div className={`user-bubble flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       {!isUser && (
-        <Avatar className={`h-10 w-10 self-start shrink-0 flex items-center justify-center rounded-full shadow-sm ${isDegraded ? 'bg-amber-500/20' : 'bg-muted'}`}>
-          <Bot className={`h-5 w-5 ${isDegraded ? 'text-amber-600' : 'text-primary'}`} />
+        <Avatar className={`h-10 w-10 self-start shrink-0 flex items-center justify-center rounded-full shadow-sm ${isDegraded || isSafetyBlocked ? 'bg-amber-500/20' : 'bg-muted'}`}>
+          <Bot className={`h-5 w-5 ${isDegraded || isSafetyBlocked ? 'text-amber-600' : 'text-primary'}`} />
         </Avatar>
       )}
       <Card className={`shadow-md rounded-2xl border-none transition-all duration-300 ${
@@ -141,11 +143,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               {!isUser && message.role === 'assistant' && (hasLlmInfo || message.metadata?.degraded_mode) && (
                 <div className="flex items-center gap-2 flex-wrap mt-2 overflow-hidden">
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide uppercase border transition-all duration-300 ${
-                    isDegraded
+                    isDegraded || isSafetyBlocked
                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-sm shadow-amber-500/5'
                       : 'bg-primary/5 text-primary/80 border-primary/10 shadow-sm shadow-primary/5'
                   }`}>
-                    {isDegraded ? (
+                    {isDegraded || isSafetyBlocked ? (
                       <AlertTriangle className="h-3 w-3 animate-pulse" />
                     ) : (
                       <Zap className="h-3 w-3" />
@@ -153,9 +155,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     <span>{llm?.provider || 'system'}</span>
                     <span className="text-muted-foreground/50">·</span>
                     <span className="normal-case font-medium">
-                      {llm?.model_name || (llm?.model_id ? 
+                      {isSafetyBlocked
+                        ? 'Safety Blocked'
+                        : llm?.model_name || (llm?.model_id ? 
                         llm.model_id.split(':').pop()?.split('/').pop()?.replace(/\.(gguf|bin)$/i, '').replace(/[-_]/g, ' ') 
-                        : (message.metadata?.degraded_mode ? 'Degraded-Mode' : 'auto')
+                        : (isDegraded ? 'Degraded-Mode' : 'auto')
                       )}
                     </span>
                     {typeof llm?.duration === 'number' && (
@@ -172,8 +176,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                       </>
                     )}
                   </div>
-                  {isDegraded && (
-                    <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">degraded mode</span>
+                  {(isDegraded || isSafetyBlocked) && (
+                    <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">
+                      {isSafetyBlocked ? 'provider policy block' : 'degraded mode'}
+                    </span>
                   )}
                 </div>
               )}
@@ -218,11 +224,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         <span className="text-muted-foreground">Latency:</span>
                         <span className="font-semibold text-blue-500">{typeof llm.duration === 'number' ? llm.duration.toFixed(2) : 'N/A'}s</span>
                       </div>
-                      {llm.is_degraded && (
+                      {(isDegraded || isSafetyBlocked) && (
                         <div className="flex justify-between col-span-2 pt-1 mt-1 border-t border-border/20">
                           <span className="text-muted-foreground">Status:</span>
                           <span className="font-semibold text-amber-500 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" /> Degraded Mode
+                            <AlertTriangle className="h-3 w-3" /> {isSafetyBlocked ? 'Safety Blocked' : 'Degraded Mode'}
                           </span>
                         </div>
                       )}

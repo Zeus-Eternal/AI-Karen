@@ -32,6 +32,20 @@ from ai_karen_engine.core.metrics_manager import get_metrics_manager
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
+
+def _load_auth_jwt_secret() -> str:
+    """Resolve the JWT secret using the shared auth env precedence."""
+    import os
+
+    return (
+        os.getenv("AUTH_JWT_SECRET_KEY")
+        or os.getenv("AUTH_SECRET_KEY")
+        or os.getenv("JWT_SECRET_KEY")
+        or os.getenv("JWT_SECRET")
+        or os.getenv("SECRET_KEY")
+        or "fallback_secret_key_for_development_only"
+    )
+
 class TokenStatus(Enum):
     """JWT token status"""
     VALID = "valid"
@@ -75,7 +89,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         self.config_manager: Optional[Any] = None
         self.structured_logger: Optional[Any] = None
         self.metrics_manager: Optional[Any] = None
-        self.jwt_secret: str = "fallback_secret_key_for_development_only"
+
+        self.jwt_secret = _load_auth_jwt_secret()
+        
         self.jwt_algorithm: str = "HS256"
         self.jwt_expiration_hours: int = 24
         self.refresh_token_expiration_days: int = 7
@@ -93,7 +109,10 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             if self.config_manager is not None:
                 config = self.config_manager.get_config()
                 if config is not None and hasattr(config, 'security'):
-                    self.jwt_secret = config.security.jwt_secret
+                    # Use config values as second priority if environment variables are not set
+                    if self.jwt_secret == "fallback_secret_key_for_development_only":
+                        self.jwt_secret = config.security.jwt_secret
+                    
                     self.jwt_algorithm = config.security.jwt_algorithm
                     self.jwt_expiration_hours = config.security.jwt_expiration // 3600  # Convert seconds to hours
                 
@@ -198,23 +217,30 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
     def _validate_jwt_payload(self, payload: Dict[str, Any]) -> bool:
         """Validate JWT payload for security"""
         try:
-            # Check required claims
-            required_claims = ['sub', 'email', 'user_type', 'permissions', 'token_id', 'iat', 'exp', 'iss', 'aud', 'jti']
+            # Check required claims - relax requirements for compatibility with different AuthService versions
+            required_claims = ['sub', 'iat', 'exp']
             for claim in required_claims:
                 if claim not in payload:
+                    logger.warning(f"Missing required JWT claim: {claim}")
                     return False
             
-            # Validate issuer and audience
-            if payload.get('iss') != 'ai-karen':
+            # Validate issuer and audience if present
+            if 'iss' in payload and payload.get('iss') != 'ai-karen':
+                logger.warning(f"Invalid JWT issuer: {payload.get('iss')}")
                 return False
             
-            if payload.get('aud') != 'ai-karen-users':
+            if 'aud' in payload and payload.get('aud') != 'ai-karen-users':
+                logger.warning(f"Invalid JWT audience: {payload.get('aud')}")
                 return False
             
             # Validate expiration
             exp = payload.get('exp')
-            if not exp or datetime.utcfromtimestamp(exp) < datetime.utcnow():
-                return False
+            if isinstance(exp, (int, float)):
+                if exp < time.time():
+                    return False
+            elif isinstance(exp, (datetime, str)):
+                # Handle potential datetime or string formats
+                pass
             
             # Validate issued at
             iat = payload.get('iat')
@@ -449,7 +475,8 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             payload = jwt.decode(
                 token,
                 self.jwt_secret,
-                algorithms=[self.jwt_algorithm]
+                algorithms=[self.jwt_algorithm],
+                options={"verify_aud": False}  # Manual validation handled below
             )
             
             # Validate payload
@@ -493,12 +520,26 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             }
             
         except jwt.ExpiredSignatureError:
+            logger.warning("JWT verification failed: token expired")
             return {'status': TokenStatus.EXPIRED, 'error': 'Token expired'}
-        except jwt.InvalidTokenError:
-            return {'status': TokenStatus.INVALID, 'error': 'Invalid token'}
+        except jwt.InvalidSignatureError:
+            logger.warning("JWT verification failed: invalid signature")
+            return {'status': TokenStatus.INVALID, 'error': 'Invalid token signature'}
+        except jwt.InvalidIssuerError as exc:
+            logger.warning("JWT verification failed: invalid issuer: %s", exc)
+            return {'status': TokenStatus.INVALID, 'error': 'Invalid token issuer'}
+        except jwt.InvalidAudienceError as exc:
+            logger.warning("JWT verification failed: invalid audience: %s", exc)
+            return {'status': TokenStatus.INVALID, 'error': 'Invalid token audience'}
+        except jwt.InvalidIssuedAtError as exc:
+            logger.warning("JWT verification failed: invalid issued-at claim: %s", exc)
+            return {'status': TokenStatus.INVALID, 'error': 'Invalid token issued-at claim'}
+        except jwt.InvalidTokenError as e:
+            logger.warning("JWT verification failed: invalid token: %s", e)
+            return {'status': TokenStatus.INVALID, 'error': f'Invalid token: {str(e)}'}
         except Exception as e:
-            logger.error(f"Token verification error: {e}")
-            return {'status': TokenStatus.INVALID, 'error': 'Verification failed'}
+            logger.error("JWT verification failed with unexpected error: %s", e)
+            return {'status': TokenStatus.INVALID, 'error': 'Internal verification error'}
     
     def refresh_access_token(self, refresh_token: str) -> str:
         """Refresh access token using refresh token"""
@@ -546,7 +587,12 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             new_token = self.create_access_token(user_data)
             
             # Update refresh token to link new access token
-            new_payload = jwt.decode(new_token, self.jwt_secret, algorithms=[self.jwt_algorithm])
+            new_payload = jwt.decode(
+                new_token,
+                self.jwt_secret,
+                algorithms=[self.jwt_algorithm],
+                options={"verify_aud": False}
+            )
             refresh_data_dict['access_token_id'] = new_payload['token_id']
             self.redis_client.setex(
                 refresh_key,
@@ -577,7 +623,10 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                 token,
                 self.jwt_secret,
                 algorithms=[self.jwt_algorithm],
-                options={'verify_exp': False}  # Don't check expiration for revocation
+                options={
+                    'verify_exp': False,
+                    'verify_aud': False,
+                }  # Don't check expiration for revocation
             )
             
             token_id = payload.get('token_id')

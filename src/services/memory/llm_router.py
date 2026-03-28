@@ -7,6 +7,7 @@ import contextlib
 import inspect
 import logging
 import os
+from pathlib import Path
 import random
 import time
 import uuid
@@ -140,9 +141,15 @@ PROVIDER_API_KEY_ENV_MAPPING: Dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "zai": "ZAI_API_KEY",
     "huggingface": "HUGGINGFACE_API_KEY",
     "cohere": "COHERE_API_KEY",
     "copilotkit": "COPILOT_API_KEY",
+}
+
+NON_CHAT_PROVIDERS: Set[str] = {
+    "copilotkit",
+    "custom_copilotkit",
 }
 
 
@@ -225,11 +232,10 @@ class LLMRouter:
             "spacy": ProviderPriority.NLP,
             "distilbert": ProviderPriority.LIGHTWEIGHT,
             "openai": ProviderPriority.REMOTE,
+            "zai": ProviderPriority.REMOTE,
             "anthropic": ProviderPriority.REMOTE,
             "gemini": ProviderPriority.REMOTE,
             "deepseek": ProviderPriority.REMOTE,
-            "copilotkit": ProviderPriority.REMOTE,
-            "custom_copilotkit": ProviderPriority.REMOTE,
             "fallback": ProviderPriority.FALLBACK,
         }
 
@@ -279,48 +285,58 @@ class LLMRouter:
 
         await self._ensure_background_health_task()
         user_preferences = user_preferences or {}
-        preferred_provider = user_preferences.get("preferred_llm_provider")
-        preferred_model = request.preferred_model or user_preferences.get("preferred_model")
+        preferred_provider = self._normalize_provider_name(user_preferences.get("preferred_llm_provider"))
+        preferred_model = self._normalize_model_name(
+            request.preferred_model or user_preferences.get("preferred_model")
+        )
 
         # If model specified with provider prefix, split it
         if preferred_model and ":" in preferred_model:
             provider_part, model_part = preferred_model.split(":", 1)
-            preferred_provider = preferred_provider or provider_part
-            preferred_model = model_part
+            preferred_provider = preferred_provider or self._normalize_provider_name(provider_part)
+            preferred_model = self._normalize_model_name(model_part)
 
         # Validate preferred provider/model combination
         if preferred_provider and preferred_model:
-            info = self.registry.get_provider_info(preferred_provider)
-            if info and info.get("default_model") == preferred_model and await self._is_provider_healthy(preferred_provider):
-                self._structured_log(
-                    logging.INFO,
-                    "Using preferred provider/model",
-                    provider=preferred_provider,
-                    model=preferred_model,
-                    policy=self.routing_policy.value,
-                    conversation_id=request.conversation_id,
-                    platform=request.platform,
-                )
-                self._record_selection_metric(preferred_provider, "selected")
-                return preferred_provider, preferred_model
-            else:
-                self._structured_log(
-                    logging.WARNING,
-                    "Preferred provider/model unavailable",
-                    provider=preferred_provider,
-                    model=preferred_model,
-                    policy=self.routing_policy.value,
-                    conversation_id=request.conversation_id,
-                    platform=request.platform,
-                )
+            if preferred_provider in NON_CHAT_PROVIDERS:
                 preferred_provider = None
                 preferred_model = None
+            else:
+                info = self.registry.get_provider_info(preferred_provider)
+                default_model = self._normalize_model_name(info.get("default_model") if info else None)
+                if info and default_model == preferred_model and await self._is_provider_healthy(preferred_provider):
+                    self._structured_log(
+                        logging.INFO,
+                        "Using preferred provider/model",
+                        provider=preferred_provider,
+                        model=preferred_model,
+                        policy=self.routing_policy.value,
+                        conversation_id=request.conversation_id,
+                        platform=request.platform,
+                    )
+                    self._record_selection_metric(preferred_provider, "selected")
+                    return preferred_provider, preferred_model
+                else:
+                    self._structured_log(
+                        logging.WARNING,
+                        "Preferred provider/model unavailable",
+                        provider=preferred_provider,
+                        model=preferred_model,
+                        policy=self.routing_policy.value,
+                        conversation_id=request.conversation_id,
+                        platform=request.platform,
+                    )
+                    preferred_provider = None
+                    preferred_model = None
 
         # If only preferred model specified, find provider by model
         if preferred_model and not preferred_provider:
             for name in self.registry.list_providers():
+                if name in NON_CHAT_PROVIDERS:
+                    continue
                 info = self.registry.get_provider_info(name)
-                if info and info.get("default_model") == preferred_model:
+                default_model = self._normalize_model_name(info.get("default_model") if info else None)
+                if info and default_model == preferred_model:
                     if await self._is_provider_healthy(name):
                         self._structured_log(
                             logging.INFO,
@@ -345,18 +361,21 @@ class LLMRouter:
 
         # Preferred provider without model
         if preferred_provider and await self._is_provider_healthy(preferred_provider):
-            self._structured_log(
-                logging.INFO,
-                "Using preferred provider",
-                provider=preferred_provider,
-                policy=self.routing_policy.value,
-                conversation_id=request.conversation_id,
-                platform=request.platform,
-            )
-            info = self.registry.get_provider_info(preferred_provider)
-            model_name = info.get("default_model") if info else None
-            self._record_selection_metric(preferred_provider, "selected")
-            return preferred_provider, model_name
+            if preferred_provider in NON_CHAT_PROVIDERS:
+                preferred_provider = None
+            else:
+                self._structured_log(
+                    logging.INFO,
+                    "Using preferred provider",
+                    provider=preferred_provider,
+                    policy=self.routing_policy.value,
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
+                )
+                info = self.registry.get_provider_info(preferred_provider)
+                model_name = info.get("default_model") if info else None
+                self._record_selection_metric(preferred_provider, "selected")
+                return preferred_provider, model_name
 
         # Get available providers sorted by priority
         available_providers = await self._get_available_providers_by_priority()
@@ -417,9 +436,43 @@ class LLMRouter:
             return self._apply_hybrid_policy(providers_by_priority)
 
         return ordered
+
+    @staticmethod
+    def _normalize_provider_name(provider_name: Optional[Any]) -> Optional[str]:
+        if provider_name is None:
+            return None
+
+        normalized = str(provider_name).strip().lower()
+        if not normalized:
+            return None
+
+        aliases = {
+            "local": "llamacpp",
+            "llama-cpp": "llamacpp",
+            "llama_cpp": "llamacpp",
+        }
+        return aliases.get(normalized, normalized)
+
+    @staticmethod
+    def _normalize_model_name(model_name: Optional[Any]) -> Optional[str]:
+        if model_name is None:
+            return None
+
+        normalized = str(model_name).strip()
+        if not normalized:
+            return None
+
+        if ":" in normalized:
+            _, normalized = normalized.split(":", 1)
+
+        stem = Path(normalized).stem
+        return stem or normalized
     
     async def _meets_requirements(self, provider_name: str, request: ChatRequest) -> bool:
         """Check if provider meets request requirements"""
+        if provider_name in NON_CHAT_PROVIDERS:
+            return False
+
         provider_info = self.registry.get_provider_info(provider_name)
         if not provider_info:
             return False
@@ -516,6 +569,8 @@ class LLMRouter:
         }
 
         for provider_name in self.registry.list_providers():
+            if provider_name in NON_CHAT_PROVIDERS:
+                continue
             if not await self._is_provider_healthy(provider_name):
                 continue
             priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
@@ -762,11 +817,12 @@ class LLMRouter:
             "temperature": request.temperature,
         }
         provider_params = {k: v for k, v in provider_params.items() if v is not None}
+        provider_prompt = self._build_provider_prompt(request)
 
         if request.stream:
             stream_callable = getattr(provider, "stream_response", None)
             if stream_callable:
-                stream_result = stream_callable(request.message, **provider_params)
+                stream_result = stream_callable(provider_prompt, **provider_params)
                 if inspect.isawaitable(stream_result):
                     stream_result = await stream_result
 
@@ -784,7 +840,7 @@ class LLMRouter:
 
             stream_generate = getattr(provider, "stream_generate", None)
             if stream_generate:
-                stream_result = stream_generate(request.message, **provider_params)
+                stream_result = stream_generate(provider_prompt, **provider_params)
                 if stream_result is not None:
                     if hasattr(stream_result, "__iter__") and not isinstance(stream_result, (str, bytes)):
                         for chunk in stream_result:
@@ -799,10 +855,140 @@ class LLMRouter:
         if generator_callable is None:
             raise RuntimeError(f"Provider {provider_name} does not support text generation")
 
-        result = generator_callable(request.message, **provider_params)
+        result = generator_callable(provider_prompt, **provider_params)
         if inspect.isawaitable(result):
             result = await result
-        yield result
+        if result is None:
+            raise RuntimeError(f"Provider {provider_name} returned no response")
+        if isinstance(result, bytes):
+            result = result.decode("utf-8", errors="ignore")
+        result_text = str(result).strip()
+        if not result_text:
+            raise RuntimeError(f"Provider {provider_name} returned an empty response")
+        if self._looks_like_bad_completion(request, result_text):
+            raise RuntimeError(f"Provider {provider_name} returned a malformed response")
+        yield result_text
+
+    def _build_provider_prompt(self, request: ChatRequest) -> str:
+        """Build a grounded prompt from request context for plain-text providers."""
+
+        context = request.context if isinstance(request.context, dict) else {}
+        recent_messages = context.get("recent_messages")
+        has_recent_history = False
+        if isinstance(recent_messages, list):
+            for item in recent_messages:
+                if not isinstance(item, dict):
+                    continue
+                role = str(item.get("role", "")).strip()
+                content = str(item.get("content", "")).strip()
+                if role in {"user", "assistant"} and content:
+                    has_recent_history = True
+                    break
+
+        first_turn_value = "yes" if not has_recent_history else "no"
+        lines: List[str] = [
+            "You are Karen, an intelligent assistant.",
+            "Answer only the user's latest message.",
+            "Be brief, direct, and relevant.",
+            "Do not continue unrelated text.",
+            "Do not repeat instructions or metadata.",
+            f"First turn: {first_turn_value}.",
+            "Greet only if the latest user message is a greeting and this is the first turn.",
+            "Do not prepend a greeting to non-greeting questions.",
+        ]
+
+        profile = context.get("conversation_profile") if isinstance(context.get("conversation_profile"), dict) else {}
+        display_name = str(profile.get("preferred_address_name") or profile.get("display_name") or "").strip()
+        if display_name:
+            lines.append(f"Known user name: {display_name}.")
+
+        if isinstance(recent_messages, list):
+            rendered_messages: List[str] = []
+            for item in recent_messages[-6:]:
+                if not isinstance(item, dict):
+                    continue
+                role = str(item.get("role", "")).strip()
+                content = str(item.get("content", "")).strip()
+                if role in {"user", "assistant"} and content:
+                    speaker = "User" if role == "user" else "Assistant"
+                    rendered_messages.append(f"{speaker}: {content}")
+            if rendered_messages:
+                lines.append("Recent conversation:")
+                lines.extend(rendered_messages)
+
+        if request.memory_context:
+            lines.append("Memory context:")
+            lines.append(str(request.memory_context))
+        lines.append("Latest user message:")
+        lines.append(request.message)
+        lines.append("Assistant:")
+        return "\n".join(lines)
+
+    def _looks_like_bad_completion(self, request: ChatRequest, result_text: str) -> bool:
+        """Reject obvious continuation artifacts from low-quality local completions."""
+
+        normalized_request = request.message.strip().lower()
+        normalized_result = result_text.strip().lower()
+
+        if not normalized_result:
+            return True
+
+        leaked_prompt_markers = (
+            "first turn:",
+            "latest user message:",
+            "known user name:",
+            "recent conversation:",
+            "<assistant_context>",
+            "</assistant_context>",
+            "<recent_conversation>",
+            "</recent_conversation>",
+            "<memory_context>",
+            "</memory_context>",
+            "<user_message>",
+            "</user_message>",
+            "<assistant_reply>",
+            "first_turn=",
+            "user_name=",
+        )
+        if any(marker in normalized_result for marker in leaked_prompt_markers):
+            return True
+
+        malformed_starts = (
+            ",",
+            ".",
+            ";",
+            ":",
+            "and ",
+            "but ",
+            "or ",
+        )
+        if normalized_result.startswith(malformed_starts):
+            return True
+
+        if normalized_request in {"hi", "hello", "hey", "yo"}:
+            greeting_markers = ("hi", "hello", "hey", "yo")
+            return not normalized_result.startswith(greeting_markers)
+
+        generic_greeting_answers = (
+            "hello! how can i assist you today?",
+            "hello! how can i help you today?",
+            "hi! how can i assist you today?",
+            "hi! how can i help you today?",
+        )
+        if normalized_result in generic_greeting_answers and normalized_request not in {"hi", "hello", "hey", "yo"}:
+            return True
+
+        if normalized_result.startswith(("hello!", "hi!", "hello ", "hi ")) and "?" in normalized_request:
+            return True
+
+        if "what's my name" in normalized_request or "whats my name" in normalized_request or "what is my name" in normalized_request:
+            context = request.context if isinstance(request.context, dict) else {}
+            profile = context.get("conversation_profile") if isinstance(context.get("conversation_profile"), dict) else {}
+            known_name = str(profile.get("preferred_address_name") or profile.get("display_name") or "").strip()
+            if known_name and ("do not have the ability to know personal information" in normalized_result or "i do not know" in normalized_result):
+                return True
+
+        return False
     
     async def _get_fallback_providers(
         self,
@@ -1147,6 +1333,33 @@ class LLMRouter:
             return self._normalize_metric_label(type(error.last_error).__name__)
         return self._normalize_metric_label(type(error).__name__)
 
+    @staticmethod
+    def _classify_failure_detail(error_message: str) -> str:
+        """Convert raw provider/runtime errors into a short user-facing cause."""
+
+        lowered = str(error_message or "").strip().lower()
+        if not lowered:
+            return "Unknown provider failure."
+        if any(term in lowered for term in ("api key", "unauthorized", "401", "forbidden", "403", "authentication")):
+            return "The provider rejected the credentials or API key."
+        if any(term in lowered for term in ("rate limit", "429", "quota")):
+            return "The provider rejected the request because of rate limits or quota."
+        if any(term in lowered for term in ("bad gateway", "502", "gateway")):
+            return "The provider or upstream gateway returned a bad gateway error."
+        if any(term in lowered for term in ("timeout", "timed out")):
+            return "The provider timed out while generating a response."
+        if any(term in lowered for term in ("rejected", "safety", "moderat", "policy")):
+            return "The provider rejected the request under its policy or safety checks."
+        if any(term in lowered for term in ("connection", "network", "connect", "dns")):
+            return "The system could not connect to the provider."
+        if "empty response" in lowered:
+            return "The provider returned an empty response."
+        if "malformed response" in lowered:
+            return "The provider returned a malformed response."
+        if "could not get provider instance" in lowered:
+            return "The configured provider could not be initialized."
+        return "The provider failed while handling the request."
+
     async def _ensure_background_health_task(self) -> None:
         """Ensure a background health monitor loop is running."""
 
@@ -1266,6 +1479,16 @@ class LLMRouter:
             if isinstance(envelope, dict):
                 final_text = envelope.get("final") or envelope.get("response")
                 if final_text:
+                    if failure_records:
+                        primary_failure = failure_records[0]
+                        provider_name = primary_failure.get("provider", "provider")
+                        provider_cause = self._classify_failure_detail(primary_failure.get("error", ""))
+                        final_text = (
+                            f"Karen is operating in degraded mode.\n\n"
+                            f"Primary provider: {provider_name}\n"
+                            f"Cause: {provider_cause}\n\n"
+                            f"{final_text}"
+                        )
                     logger.error(
                         "Returning degraded mode response due to provider failures: %s",
                         failed_providers,

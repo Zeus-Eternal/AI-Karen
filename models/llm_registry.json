@@ -7,9 +7,9 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "unhealthy",
-    "last_health_check": 1774412627.0663974,
-    "error_message": "maximum recursion depth exceeded"
+    "health_status": "healthy",
+    "last_health_check": 1774708747.8267274,
+    "error_message": null
   },
   {
     "name": "openai",
@@ -19,9 +19,21 @@
     "supports_embeddings": true,
     "requires_api_key": true,
     "default_model": "gpt-3.5-turbo",
-    "health_status": "healthy",
-    "last_health_check": 1758943842.023017,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1774708747.827936,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
+  },
+  {
+    "name": "zai",
+    "provider_class": "OpenAIProvider",
+    "description": "Z.ai models via OpenAI-compatible API",
+    "supports_streaming": true,
+    "supports_embeddings": false,
+    "requires_api_key": true,
+    "default_model": "glm-5",
+    "health_status": "unhealthy",
+    "last_health_check": 1774708747.828392,
+    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
     "name": "gemini",
@@ -32,8 +44,8 @@
     "requires_api_key": true,
     "default_model": "gemini-1.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1758459745.7787442,
-    "error_message": "No API key provided"
+    "last_health_check": 1774708747.8290727,
+    "error_message": "No Gemini API key provided. Set GEMINI_API_KEY environment variable."
   },
   {
     "name": "deepseek",
@@ -43,9 +55,9 @@
     "supports_embeddings": false,
     "requires_api_key": true,
     "default_model": "deepseek-chat",
-    "health_status": "unknown",
-    "last_health_check": null,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1774708747.8295534,
+    "error_message": "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
   },
   {
     "name": "huggingface",
@@ -56,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "gpt2",
     "health_status": "unhealthy",
-    "last_health_check": 1758459745.7795298,
+    "last_health_check": 1774708747.830199,
     "error_message": "No API token provided"
   },
   {
@@ -67,8 +79,8 @@
     "supports_embeddings": true,
     "requires_api_key": true,
     "default_model": "gpt-4",
-    "health_status": "unknown",
-    "last_health_check": null,
+    "health_status": "healthy",
+    "last_health_check": 1774708747.8307562,
     "error_message": null
   },
   {
@@ -80,7 +92,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "healthy",
-    "last_health_check": null,
+    "last_health_check": 1774708747.8314543,
     "error_message": null
   },
   {
@@ -91,8 +103,8 @@
     "supports_embeddings": false,
     "requires_api_key": false,
     "default_model": "gpt-3.5-turbo",
-    "health_status": "unknown",
-    "last_health_check": null,
+    "health_status": "healthy",
+    "last_health_check": 1774708747.8319335,
     "error_message": null
   },
   {

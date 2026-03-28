@@ -6,12 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu } from 'lucide-react';
+import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square } from 'lucide-react';
 import { getSuggestedStarter } from '@/app/actions';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
-import { apiClient } from '@/lib/api';
+import { ApiError, apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
+import { authService } from '@/lib/auth';
+
+const PROCESSING_INPUT_STATES = [
+  'Karen is reviewing your request...',
+  'Karen is checking context and recent conversation...',
+  'Karen is aligning tools, memory, and provider routing...',
+  'Karen is reasoning through the next response...',
+];
 
 declare global {
   interface Window {
@@ -20,13 +28,27 @@ declare global {
   }
 }
 
+const createSessionId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  const randomHex = (length: number) =>
+    Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+  return [
+    randomHex(8),
+    randomHex(4),
+    `4${randomHex(3)}`,
+    `${(8 + Math.floor(Math.random() * 4)).toString(16)}${randomHex(3)}`,
+    randomHex(12),
+  ].join('-');
+};
+
 export default function ChatInterface() {
-  const sessionIdRef = useRef(
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? `chat_${crypto.randomUUID()}`
-      : `chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
-  );
-  const { user, isAuthenticated } = useAuth();
+  const sessionIdRef = useRef(createSessionId());
+  const submitInFlightRef = useRef(false);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +77,9 @@ export default function ChatInterface() {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
+  const [processingInputIndex, setProcessingInputIndex] = useState(0);
+  const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
+  const activeRequestControllerRef = useRef<AbortController | null>(null);
 
   type ActionParam = Record<string, any>;
   type SuggestedAction = {
@@ -72,6 +97,46 @@ export default function ChatInterface() {
     correlation_id?: string;
   };
 
+  const getDegradedResponseMessage = (error: unknown): string => {
+    if (error instanceof ApiError) {
+      const detail = error.message?.trim();
+
+      if (detail && !/^HTTP \d+: /i.test(detail)) {
+        return detail;
+      }
+
+      if (error.status >= 500) {
+        return 'Karen is running in degraded mode right now. A response model is not available yet, so I cannot complete this message until local or remote model routing recovers.';
+      }
+
+      if (error.status === 401 || error.status === 403) {
+        return 'Karen could not use the requested provider with your current session permissions. Sign in again or switch to an available model.';
+      }
+    }
+
+    return 'Karen is running in degraded mode right now and could not complete this message. Check model availability and try again.';
+  };
+
+  const preferredAddressName =
+    typeof user?.preferences?.preferred_address_name === 'string'
+      ? user.preferences.preferred_address_name.trim()
+      : '';
+  const fullName = user?.full_name?.trim() || '';
+  const emailName = user?.email?.split('@')[0]?.trim() || '';
+  const displayName = (() => {
+    const candidate = preferredAddressName || fullName || emailName || '';
+    return candidate || null;
+  })();
+  const firstNameOption = fullName.split(/\s+/).filter(Boolean)[0] || displayName || null;
+  const shouldPromptForPreferredName = Boolean(
+    isAuthenticated &&
+    !preferredAddressName &&
+    fullName &&
+    firstNameOption &&
+    fullName.includes(' ') &&
+    firstNameOption.toLowerCase() !== fullName.toLowerCase()
+  );
+
   const recentMessages = messages
     .filter((message) => message.role === 'user' || message.role === 'assistant')
     .slice(-6)
@@ -81,15 +146,44 @@ export default function ChatInterface() {
     }));
   
   useEffect(() => {
-    setMessages([
-      {
-        id: 'karen-initial-' + Date.now(),
-        role: 'assistant',
-        content: "Hello! I'm the front-end for Karen, your intelligent assistant. How can I help you today?",
-        timestamp: new Date(),
-      },
-    ]);
-  }, []);
+    if (isAuthLoading) {
+      return;
+    }
+
+    const greeting = displayName
+      ? shouldPromptForPreferredName && firstNameOption
+        ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
+        : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
+      : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+
+    setMessages((currentMessages) => {
+      if (currentMessages.length > 1) {
+        return currentMessages;
+      }
+
+      if (
+        currentMessages.length === 1 &&
+        !currentMessages[0].id.startsWith('karen-initial-')
+      ) {
+        return currentMessages;
+      }
+
+      return [
+        {
+          id: 'karen-initial-' + Date.now(),
+          role: 'assistant',
+          content: greeting,
+          timestamp: new Date(),
+          metadata: shouldPromptForPreferredName && firstNameOption
+            ? {
+                addressPreferencePrompt: true,
+                addressOptions: [firstNameOption, fullName],
+              }
+            : undefined,
+        },
+      ];
+    });
+  }, [displayName, firstNameOption, fullName, isAuthLoading, shouldPromptForPreferredName]);
 
   useEffect(() => {
     let isMounted = true;
@@ -200,20 +294,96 @@ export default function ChatInterface() {
     }
   };
 
+  const savePreferredAddressName = useCallback(async (preferredName: string) => {
+    if (!user) {
+      return false;
+    }
+
+    const nextPreferences = {
+      ...(user.preferences || {}),
+      preferred_address_name: preferredName,
+    };
+
+    await apiClient.put('/api/auth/me', {
+      preferences: nextPreferences,
+    });
+
+    authService.updateCurrentUser({
+      preferences: nextPreferences,
+    });
+
+    await apiClient.post('/api/memory/commit', {
+      user_id: user.user_id,
+      text: `The user prefers to be addressed as ${preferredName}.`,
+      tags: ['personal_fact', 'preferred_name', 'user_preference'],
+      importance: 9,
+      decay: 'pinned',
+    }).catch(() => undefined);
+
+    return true;
+  }, [user]);
+
   const handleSubmit = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isAuthLoading || submitInFlightRef.current) return;
+
+    const trimmedInput = input.trim();
+    const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
+    const addressOptions = Array.isArray(lastAssistantMessage?.metadata?.addressOptions)
+      ? (lastAssistantMessage.metadata.addressOptions as string[])
+      : [];
+    const matchedAddressOption = addressOptions.find(
+      (option) => option.trim().toLowerCase() === trimmedInput.toLowerCase()
+    );
+
+    if (lastAssistantMessage?.metadata?.addressPreferencePrompt && matchedAddressOption) {
+      setIsLoading(true);
+      try {
+        await savePreferredAddressName(matchedAddressOption);
+
+        const userMessage: ChatMessage = {
+          id: 'user-' + Date.now(),
+          role: 'user',
+          content: trimmedInput,
+          timestamp: new Date(),
+        };
+        const assistantMessage: ChatMessage = {
+          id: 'assistant-pref-' + Date.now(),
+          role: 'assistant',
+          content: `Understood. I'll address you as ${matchedAddressOption} from now on.`,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, userMessage, assistantMessage]);
+        setInput('');
+      } catch {
+        toast({
+          title: 'Preference update failed',
+          description: 'Karen could not save your preferred form of address.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: 'user-' + Date.now(),
       role: 'user',
-      content: input.trim(),
+      content: trimmedInput,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    submitInFlightRef.current = true;
     setIsLoading(true);
+    setIsEditingDuringProcessing(false);
+    setProcessingInputIndex(0);
 
     try {
+      const controller = new AbortController();
+      activeRequestControllerRef.current = controller;
+
       const response = await apiClient.post<AssistResponse>('/api/copilot/assist', {
         user_id: user?.user_id || 'anonymous',
         message: userMessage.content,
@@ -227,14 +397,26 @@ export default function ChatInterface() {
                 tenant_id: user.tenant_id,
                 roles: user.roles,
               },
+              conversation_profile: {
+                display_name: displayName,
+                preferred_address_name: preferredAddressName || undefined,
+                source: 'authenticated_profile',
+              },
               recent_messages: recentMessages,
             }
           : {
+              conversation_profile: {
+                display_name: displayName,
+                preferred_address_name: preferredAddressName || undefined,
+                source: displayName ? 'derived_profile' : 'unknown',
+              },
               recent_messages: recentMessages,
             },
         preferred_llm_provider: selectedProvider || undefined,
         preferred_model: selectedModel || undefined,
         session_id: sessionIdRef.current,
+      }, {
+        signal: controller.signal,
       });
 
       const assistantMessage: ChatMessage = {
@@ -257,24 +439,53 @@ export default function ChatInterface() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+
       const assistantMessage: ChatMessage = {
         id: 'assistant-error-' + Date.now(),
         role: 'assistant',
-        content: 'Karen could not generate a response with the current model. Check provider settings and try again.',
+        content: getDegradedResponseMessage(error),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
       toast({
         title: 'Chat request failed',
-        description: 'Karen could not reach the selected provider and model for this message.',
+        description: getDegradedResponseMessage(error),
         variant: 'destructive',
       });
       console.error('Chat request failed:', error);
     } finally {
+      submitInFlightRef.current = false;
+      activeRequestControllerRef.current = null;
       setIsLoading(false);
+      setIsEditingDuringProcessing(false);
+      setProcessingInputIndex(0);
     }
 
-  }, [input, isAuthenticated, isLoading, messages, recentMessages, selectedProvider, selectedModel, toast, user]); 
+  }, [displayName, input, isAuthLoading, isAuthenticated, isLoading, messages, preferredAddressName, recentMessages, savePreferredAddressName, selectedProvider, selectedModel, toast, user]); 
+
+  useEffect(() => {
+    if (!isLoading || isEditingDuringProcessing) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setProcessingInputIndex((current) => (current + 1) % PROCESSING_INPUT_STATES.length);
+    }, 1800);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isEditingDuringProcessing, isLoading]);
+
+  const stopActiveRequest = useCallback(() => {
+    submitInFlightRef.current = false;
+    activeRequestControllerRef.current?.abort();
+    activeRequestControllerRef.current = null;
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -367,6 +578,12 @@ export default function ChatInterface() {
   
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isLoading) {
+      if (input.trim()) {
+        stopActiveRequest();
+      }
+      return;
+    }
     handleSubmit();
   };
 
@@ -379,9 +596,14 @@ export default function ChatInterface() {
       setIsSuggestingStarter(false);
     }
   };
+
+  const displayedInputValue = isLoading && !isEditingDuringProcessing
+    ? PROCESSING_INPUT_STATES[processingInputIndex]
+    : input;
+  const showStopButton = isLoading && input.trim().length > 0;
   
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1">
       <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={viewportRef}>
         <div className="w-full space-y-1 pb-4">
           {messages.map((msg) => (
@@ -389,7 +611,8 @@ export default function ChatInterface() {
           ))}
         </div>
       </ScrollArea>
-      <div className="border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
+      <div id="chat-input-area">
+      <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
         <div className="mb-2 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
           {modelSettings && selectedProviderDetails && availableModels.length > 0 && (
             <div className="grid gap-2 md:grid-cols-[minmax(15rem,18rem)_minmax(18rem,22rem)]">
@@ -452,26 +675,66 @@ export default function ChatInterface() {
             size="icon"
             className={`${isRecording ? 'text-destructive animate-pulse' : ''}`}
             onClick={handleMicClick}
-            disabled={isLoading || !speechRecognitionSupported}
+            disabled={isLoading || isAuthLoading || !speechRecognitionSupported}
           >
             {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </Button>
           <Input
             type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Karen anything..."
+            value={displayedInputValue}
+            onChange={(e) => {
+              if (isLoading && !isEditingDuringProcessing) {
+                return;
+              }
+              setInput(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (
+                isLoading &&
+                !isEditingDuringProcessing &&
+                (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete')
+              ) {
+                setIsEditingDuringProcessing(true);
+                setInput('');
+              }
+            }}
+            onPaste={(e) => {
+              if (isLoading && !isEditingDuringProcessing) {
+                e.preventDefault();
+                const pastedText = e.clipboardData.getData('text');
+                setIsEditingDuringProcessing(true);
+                setInput(pastedText);
+              }
+            }}
+            placeholder={
+              isAuthLoading
+                ? "Loading your profile..."
+                : isLoading && isEditingDuringProcessing
+                  ? "Type while Karen is still processing..."
+                  : "Ask Karen anything..."
+            }
             className="flex-1 bg-[#292929]"
-            disabled={isLoading}
+            disabled={isAuthLoading}
           />
           <Button
-            type="submit"
+            type={isLoading ? 'button' : 'submit'}
             size="icon"
-            disabled={isLoading || !input.trim() || isRecording}
+            onClick={isLoading ? stopActiveRequest : undefined}
+            disabled={
+              isAuthLoading ||
+              isRecording ||
+              (!isLoading && !input.trim()) ||
+              (isLoading && !showStopButton)
+            }
           >
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <SendHorizontal className="h-5 w-5" />}
+            {isLoading ? (
+              showStopButton ? <Square className="h-4 w-4" /> : <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <SendHorizontal className="h-5 w-5" />
+            )}
           </Button>
         </form>
+      </div>
       </div>
     </div>
   );

@@ -7,9 +7,10 @@ to ensure graceful degradation when services fail.
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any, Callable, Protocol, cast
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 import json
 from pathlib import Path
@@ -34,7 +35,7 @@ class FallbackConfig:
     priority: int = 1  # Lower number = higher priority
     timeout: int = 30  # seconds
     retry_after: int = 300  # seconds before trying main service again
-    config: Dict[str, Any] = None
+    config: Dict[str, Any] = field(default_factory=dict)
 
 
 class FallbackHandler(ABC):
@@ -45,7 +46,7 @@ class FallbackHandler(ABC):
         self.config = config
         self.logger = logging.getLogger(f"{__name__}.{service_name}")
         self.active = False
-        self.activation_time = None
+        self.activation_time: Optional[datetime] = None
     
     @abstractmethod
     async def activate(self) -> bool:
@@ -65,6 +66,11 @@ class FallbackHandler(ABC):
     async def is_ready(self) -> bool:
         """Check if fallback is ready to handle requests"""
         return self.active
+
+
+class _RequestHandlingService(Protocol):
+    async def handle_request(self, *args: Any, **kwargs: Any) -> Any:
+        ...
 
 
 class CacheFallbackHandler(FallbackHandler):
@@ -125,7 +131,7 @@ class StaticFallbackHandler(FallbackHandler):
     
     def __init__(self, service_name: str, config: FallbackConfig):
         super().__init__(service_name, config)
-        self.static_responses = config.config.get('static_responses', {})
+        self.static_responses: Dict[str, Any] = config.config.get('static_responses', {})
         self.default_response = config.config.get('default_response')
     
     async def activate(self) -> bool:
@@ -140,7 +146,7 @@ class StaticFallbackHandler(FallbackHandler):
         self.logger.info(f"Deactivated static fallback for {self.service_name}")
         return True
     
-    async def handle_request(self, request_type: str = None, *args, **kwargs) -> Any:
+    async def handle_request(self, request_type: Optional[str] = None, *args, **kwargs) -> Any:
         """Handle request using static response"""
         if request_type and request_type in self.static_responses:
             return self.static_responses[request_type]
@@ -155,7 +161,7 @@ class SimplifiedFallbackHandler(FallbackHandler):
     
     def __init__(self, service_name: str, config: FallbackConfig):
         super().__init__(service_name, config)
-        self.simplified_handler = config.config.get('simplified_handler')
+        self.simplified_handler: Optional[Callable[..., Any]] = config.config.get('simplified_handler')
     
     async def activate(self) -> bool:
         """Activate simplified fallback"""
@@ -174,10 +180,13 @@ class SimplifiedFallbackHandler(FallbackHandler):
     
     async def handle_request(self, *args, **kwargs) -> Any:
         """Handle request using simplified functionality"""
-        if asyncio.iscoroutinefunction(self.simplified_handler):
-            return await self.simplified_handler(*args, **kwargs)
-        else:
-            return self.simplified_handler(*args, **kwargs)
+        handler = self.simplified_handler
+        if handler is None:
+            raise RuntimeError(f"Simplified fallback handler not configured for {self.service_name}")
+
+        if asyncio.iscoroutinefunction(handler):
+            return await handler(*args, **kwargs)
+        return handler(*args, **kwargs)
 
 
 class ProxyFallbackHandler(FallbackHandler):
@@ -185,8 +194,8 @@ class ProxyFallbackHandler(FallbackHandler):
     
     def __init__(self, service_name: str, config: FallbackConfig):
         super().__init__(service_name, config)
-        self.proxy_service = config.config.get('proxy_service')
-        self.proxy_endpoint = config.config.get('proxy_endpoint')
+        self.proxy_service: Optional[str] = config.config.get('proxy_service')
+        self.proxy_endpoint: Optional[str] = config.config.get('proxy_endpoint')
     
     async def activate(self) -> bool:
         """Activate proxy fallback"""
@@ -207,11 +216,12 @@ class ProxyFallbackHandler(FallbackHandler):
         """Handle request by proxying to alternative service"""
         if self.proxy_service:
             # Proxy to another service in the system
-            from .service_registry import ServiceRegistry
-            registry = ServiceRegistry()
-            service = registry.get_service(self.proxy_service)
+            from ai_karen_engine.core.service_registry import get_service_registry
+
+            registry = get_service_registry()
+            service = cast(Optional[_RequestHandlingService], await registry.get_service(self.proxy_service))
             
-            if service and hasattr(service, 'handle_request'):
+            if service is not None:
                 return await service.handle_request(*args, **kwargs)
             else:
                 raise Exception(f"Proxy service {self.proxy_service} not available")
@@ -231,8 +241,8 @@ class MockFallbackHandler(FallbackHandler):
     
     def __init__(self, service_name: str, config: FallbackConfig):
         super().__init__(service_name, config)
-        self.mock_generator = config.config.get('mock_generator')
-        self.mock_data = config.config.get('mock_data', {})
+        self.mock_generator: Optional[Callable[..., Any]] = config.config.get('mock_generator')
+        self.mock_data: Dict[str, Any] = config.config.get('mock_data', {})
     
     async def activate(self) -> bool:
         """Activate mock fallback"""
@@ -338,8 +348,8 @@ class FallbackManager:
         return handler
     
     def register_proxy_fallback(self, service_name: str, 
-                              proxy_service: str = None,
-                              proxy_endpoint: str = None,
+                              proxy_service: Optional[str] = None,
+                              proxy_endpoint: Optional[str] = None,
                               priority: int = 4):
         """Register a proxy fallback for a service"""
         config = FallbackConfig(
@@ -355,8 +365,8 @@ class FallbackManager:
         return handler
     
     def register_mock_fallback(self, service_name: str,
-                             mock_generator: Callable = None,
-                             mock_data: Dict[str, Any] = None,
+                             mock_generator: Optional[Callable[..., Any]] = None,
+                             mock_data: Optional[Dict[str, Any]] = None,
                              priority: int = 5):
         """Register a mock response fallback for a service"""
         config = FallbackConfig(
@@ -399,7 +409,7 @@ class FallbackManager:
         try:
             success = await handler.deactivate()
             if success:
-                del self.active_fallbacks[service_name]
+                self.active_fallbacks.pop(service_name, None)
                 self.logger.info(f"Deactivated fallback for {service_name}")
             return success
         except Exception as e:
@@ -441,22 +451,25 @@ class FallbackManager:
     
     async def get_fallback_status(self) -> Dict[str, Any]:
         """Get status of all fallback mechanisms"""
-        status = {
+        status: Dict[str, Dict[str, Any]] = {
             "active_fallbacks": {},
             "registered_fallbacks": {}
         }
+        active_fallbacks = cast(Dict[str, Dict[str, Any]], status["active_fallbacks"])
+        registered_fallbacks = cast(Dict[str, List[Dict[str, Any]]], status["registered_fallbacks"])
         
         # Active fallbacks
         for service_name, handler in self.active_fallbacks.items():
-            status["active_fallbacks"][service_name] = {
+            active_since = handler.activation_time
+            active_fallbacks[service_name] = {
                 "type": handler.config.fallback_type.value,
                 "priority": handler.config.priority,
-                "active_since": handler.activation_time.isoformat() if handler.activation_time else None
+                "active_since": active_since.isoformat() if active_since is not None else None
             }
         
         # Registered fallbacks
         for service_name, handlers in self.fallback_handlers.items():
-            status["registered_fallbacks"][service_name] = [
+            registered_fallbacks[service_name] = [
                 {
                     "type": h.config.fallback_type.value,
                     "priority": h.config.priority
@@ -468,7 +481,7 @@ class FallbackManager:
 
 
 # Global instance for easy access
-_fallback_manager = None
+_fallback_manager: Optional[FallbackManager] = None
 
 def get_fallback_manager() -> FallbackManager:
     """Get global fallback manager instance"""

@@ -28,7 +28,7 @@ class _LlamaCppInProcessClient:
         if self._runtime is None:
             if not LlamaCppRuntime.is_available():
                 raise RuntimeError("llama-cpp-python is not available")
-            self._runtime = LlamaCppRuntime()
+            self._runtime = LlamaCppRuntime.get_instance()
         return self._runtime
 
     @staticmethod

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+_correlation_service: Optional["CorrelationService"] = None
 
 
 class Phase(Enum):
@@ -534,3 +535,16 @@ def auth_event(
             "blocked_by_security": blocked_by_security
         }
     )
+
+
+def get_correlation_service() -> CorrelationService:
+    """Return the process-local correlation service singleton."""
+    global _correlation_service
+    if _correlation_service is None:
+        _correlation_service = CorrelationService()
+    return _correlation_service
+
+
+def get_request_id(headers: Optional[Dict[str, str]] = None) -> str:
+    """Compatibility helper for request-scoped correlation IDs."""
+    return CorrelationService.get_or_create_correlation_id(headers)

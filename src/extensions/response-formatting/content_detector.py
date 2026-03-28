@@ -241,7 +241,7 @@ class ContentTypeDetector:
         """
         try:
             # Import NLP service manager
-            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+            from services.memory.nlp_service_manager import nlp_service_manager
             
             # Get spaCy analysis
             parsed_message = await nlp_service_manager.spacy_service.parse_message(text)

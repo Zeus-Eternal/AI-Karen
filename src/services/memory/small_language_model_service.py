@@ -16,7 +16,7 @@ import time
 import shutil
 import tempfile
 import threading
-from typing import Dict, List, Optional, Any, Union, Tuple
+from typing import Dict, List, Optional, Any, Union, Tuple, Protocol
 from dataclasses import dataclass, field
 from pathlib import Path
 from cachetools import TTLCache
@@ -51,6 +51,20 @@ except ImportError:
             self.enabled = kwargs.get("enabled", True)
 
 logger = logging.getLogger(__name__)
+
+
+class _ChatClientProtocol(Protocol):
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        *,
+        max_tokens: int = 256,
+        temperature: float = 0.7,
+        stream: bool = False,
+        **kwargs: Any,
+    ) -> str: ...
+
+    def load_model(self, model_path: str) -> Dict[str, Any]: ...
 
 # Optional dependencies with graceful fallback
 llamacpp_inprocess_client = None
@@ -167,17 +181,30 @@ class SmallLMHealthStatus:
 
 class SmallLanguageModelService:
     """Generic Small Language Model service with dynamic model selection."""
+
+    LOCAL_MODEL_ALIASES = {
+        "default-lightweight-model": [
+            "Qwen3-0.6B-Q4_K_M.gguf",
+            "Phi-3-mini-4k-instruct-q4.gguf",
+            "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+        ],
+        "default-base-model": [
+            "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+        ],
+    }
     
     # Registry of known models with their properties
     MODEL_REGISTRY = {
         "default-lightweight-model": ModelInfo(
             name="default-lightweight-model",
-            description="Default lightweight chat model",
-            file_size=670000000,  # ~670MB
-            ram_required=2000000000,  # ~2GB RAM
-            parameters="1.1B",
-            quantization="Q4",
-            download_url="https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/resolve/main/tinyllama-1.1b-chat.Q4_K_M.gguf",
+            description="Default lightweight Qwen3 chat model",
+            file_size=520000000,  # ~520MB
+            ram_required=1500000000,  # ~1.5GB RAM
+            parameters="0.6B",
+            quantization="Q4_K_M",
+            download_url="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf",
             is_default=True
         ),
         "default-base-model": ModelInfo(
@@ -318,6 +345,13 @@ class SmallLanguageModelService:
                 logger.info("Enabled fallback mode due to initialization failure")
             else:
                 raise
+
+    def _require_client(self) -> _ChatClientProtocol:
+        """Return the active chat client or raise if unavailable."""
+        client = self.client
+        if client is None:
+            raise RuntimeError("Small language model client is not initialized")
+        return client
     
     def _get_system_resources(self) -> SystemResources:
         """Get information about system resources."""
@@ -390,6 +424,11 @@ class SmallLanguageModelService:
     
     def _resolve_model_file_path(self, model_name: str) -> Path:
         """Return the GGUF file that should be loaded for the given model."""
+        for alias in self.LOCAL_MODEL_ALIASES.get(model_name, []):
+            alias_path = self.models_dir / alias
+            if alias_path.exists():
+                return alias_path
+
         base_path = self.models_dir / f"{model_name}.gguf"
         if base_path.exists():
             return base_path
@@ -742,12 +781,13 @@ class SmallLanguageModelService:
                 prompt = f"Given ongoing conversation context, {prompt.lower()}"
         
         messages = [{"role": "user", "content": prompt}]
+        client = self._require_client()
         
         # Run inference in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None, 
-            lambda: self.client.chat(
+            lambda: client.chat(
                 messages, 
                 max_tokens=max_tokens,
                 temperature=self.config.temperature,
@@ -782,12 +822,13 @@ class SmallLanguageModelService:
             prompt = f"{style_instruction} with {max_points} main points for: {text}\n\nOutline:"
         
         messages = [{"role": "user", "content": prompt}]
+        client = self._require_client()
         
         # Run inference in thread pool
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: self.client.chat(
+            lambda: client.chat(
                 messages,
                 max_tokens=self.config.outline_max_tokens,
                 temperature=self.config.temperature,
@@ -845,12 +886,13 @@ class SmallLanguageModelService:
             prompt = f"{type_instruction}: {text}\n\nSummary:"
         
         messages = [{"role": "user", "content": prompt}]
+        client = self._require_client()
         
         # Run inference in thread pool
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: self.client.chat(
+            lambda: client.chat(
                 messages,
                 max_tokens=max_tokens,
                 temperature=self.config.temperature,

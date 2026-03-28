@@ -632,10 +632,16 @@ def validate_environment_security():
             all_valid = False
             validation_results['errors'].append(f"Critical secret {secret_name} is not properly configured")
     
+    def _env_true(name: str) -> bool:
+        return os.getenv(name, "false").lower() in {"1", "true", "yes", "on"}
+
     # Check environment-specific security
     if settings.environment.lower() == 'production':
         # Production requires additional security checks
-        if not os.getenv('SSL_CERT_PATH') or not os.getenv('SSL_KEY_PATH'):
+        has_local_tls = bool(os.getenv('SSL_CERT_PATH') and os.getenv('SSL_KEY_PATH'))
+        upstream_tls = _env_true('KARI_TLS_TERMINATED_UPSTREAM') or _env_true('TLS_TERMINATED_UPSTREAM')
+
+        if not has_local_tls and not upstream_tls:
             validation_results['warnings'].append("SSL certificates not configured for production")
         
         if os.getenv('DEBUG', 'false').lower() == 'true':

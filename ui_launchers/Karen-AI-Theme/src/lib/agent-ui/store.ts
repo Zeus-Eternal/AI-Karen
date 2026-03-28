@@ -67,7 +67,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   sendMessage: async (agentId: string, content: string) => {
-    const { sessionIds, messages } = get();
+    const { sessionIds, messages, agents } = get();
     
     // Ensure session is initialized
     if (!sessionIds[agentId]) {
@@ -103,7 +103,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     });
 
     try {
-      const response = await agentService.sendMessage(agentId, content, currentSession);
+      const response = await agentService.sendMessage(
+        agentId,
+        content,
+        currentSession,
+        {},
+        agents[agentId]?.executionMode
+      );
       
       const assistantMessage: ExtendedMessage = {
         id: response.correlation_id || `msg_a_${Date.now()}`,

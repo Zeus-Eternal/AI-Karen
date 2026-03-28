@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from contextlib import suppress
@@ -22,7 +23,7 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+from services.memory.nlp_service_manager import nlp_service_manager
 from ai_karen_engine.services.spacy_service import ParsedMessage
 from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
 from ai_karen_engine.chat.memory_processor import MemoryProcessor, MemoryContext
@@ -33,6 +34,7 @@ from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor, InstructionContext, InstructionScope
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
 from ai_karen_engine.chat.response_formatter import PrettyOutputLayer, ResponseContext as FormatterContext
+from ai_karen_engine.chat.identity_context import build_user_identity_line, resolve_display_name
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
@@ -202,8 +204,37 @@ class ChatOrchestrator:
         self._active_tasks: Dict[str, asyncio.Task] = {}
         self._contexts_lock = asyncio.Lock()
         self._tasks_lock = asyncio.Lock()
+        self._hook_timeout_seconds = float(os.getenv("KARI_CHAT_HOOK_TIMEOUT_SECONDS", "2.0"))
         
         logger.info("ChatOrchestrator initialized with enhanced instruction processing and context integration")
+
+    async def _trigger_hooks_with_timeout(
+        self,
+        hook_manager: Any,
+        hook_context: HookContext,
+    ) -> HookExecutionSummary:
+        """Run hooks with a bounded timeout so chat completion cannot hang indefinitely."""
+        from ai_karen_engine.hooks.models import HookExecutionSummary
+
+        try:
+            return await asyncio.wait_for(
+                hook_manager.trigger_hooks(hook_context),
+                timeout=self._hook_timeout_seconds,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Hook execution failed or timed out for %s: %s",
+                hook_context.hook_type,
+                exc,
+            )
+            return HookExecutionSummary(
+                hook_type=hook_context.hook_type,
+                total_hooks=0,
+                successful_hooks=0,
+                failed_hooks=0,
+                total_execution_time_ms=0.0,
+                results=[],
+            )
 
     def _ensure_llm_response_is_valid(
         self,
@@ -257,11 +288,34 @@ class ChatOrchestrator:
         if not provider:
             return prompt
             
-        local_providers = ["llamacpp", "local", "nano-vllm", "small_language_model", "transformers"]
+        local_providers = ["llamacpp", "local", "small_language_model", "transformers"]
         if any(p in provider.lower() for p in local_providers):
             if not prompt.rstrip().endswith("Assistant:"):
                 return prompt.rstrip() + "\n\nAssistant: "
         return prompt
+
+    def _resolve_provider_aliases(self, provider: Optional[str]) -> List[str]:
+        """Return canonical provider aliases used across settings, registry, and runtime."""
+        raw = (provider or "").strip()
+        if not raw:
+            return []
+
+        aliases: List[str] = [raw]
+        normalized = raw.replace("_", "-").lower()
+        canonical_map = {
+            "llama-cpp": "llamacpp",
+            "llama_cpp": "llamacpp",
+            "llamacpp": "llamacpp",
+            "local": "local",
+        }
+        canonical = canonical_map.get(normalized)
+        if canonical and canonical not in aliases:
+            aliases.append(canonical)
+
+        if canonical == "llamacpp" and "local" not in aliases:
+            aliases.append("local")
+
+        return aliases
 
     def _build_llm_metadata(
         self,
@@ -479,21 +533,9 @@ class ChatOrchestrator:
             }
         )
         
-        try:
-            pre_hook_summary = await hook_manager.trigger_hooks(pre_message_context)
-            logger.debug(f"Pre-message hooks executed: {pre_hook_summary.successful_hooks}/{pre_hook_summary.total_hooks}")
-        except Exception as e:
-            logger.warning(f"Pre-message hooks failed: {e}")
-            # Create empty summary for failed hooks
-            from ai_karen_engine.hooks.models import HookExecutionSummary
-            pre_hook_summary = HookExecutionSummary(
-                hook_type=HookTypes.PRE_MESSAGE,
-                total_hooks=0,
-                successful_hooks=0,
-                failed_hooks=0,
-                total_execution_time_ms=0.0,
-                results=[]
-            )
+        pre_hook_summary = await self._trigger_hooks_with_timeout(
+            hook_manager, pre_message_context
+        )
         
         try:
             # Process with retry logic
@@ -530,20 +572,9 @@ class ChatOrchestrator:
                     }
                 )
                 
-                try:
-                    processed_hook_summary = await hook_manager.trigger_hooks(message_processed_context)
-                    logger.debug(f"Message processed hooks executed: {processed_hook_summary.successful_hooks}/{processed_hook_summary.total_hooks}")
-                except Exception as e:
-                    logger.warning(f"Message processed hooks failed: {e}")
-                    from ai_karen_engine.hooks.models import HookExecutionSummary
-                    processed_hook_summary = HookExecutionSummary(
-                        hook_type=HookTypes.MESSAGE_PROCESSED,
-                        total_hooks=0,
-                        successful_hooks=0,
-                        failed_hooks=0,
-                        total_execution_time_ms=0.0,
-                        results=[]
-                    )
+                processed_hook_summary = await self._trigger_hooks_with_timeout(
+                    hook_manager, message_processed_context
+                )
                 
                 # Build metadata with context information
                 metadata = {
@@ -586,20 +617,9 @@ class ChatOrchestrator:
                     }
                 )
                 
-                try:
-                    post_hook_summary = await hook_manager.trigger_hooks(post_message_context)
-                    logger.debug(f"Post-message hooks executed: {post_hook_summary.successful_hooks}/{post_hook_summary.total_hooks}")
-                except Exception as e:
-                    logger.warning(f"Post-message hooks failed: {e}")
-                    from ai_karen_engine.hooks.models import HookExecutionSummary
-                    post_hook_summary = HookExecutionSummary(
-                        hook_type=HookTypes.POST_MESSAGE,
-                        total_hooks=0,
-                        successful_hooks=0,
-                        failed_hooks=0,
-                        total_execution_time_ms=0.0,
-                        results=[]
-                    )
+                post_hook_summary = await self._trigger_hooks_with_timeout(
+                    hook_manager, post_message_context
+                )
                 
                 # Add hook execution summary to metadata
                 metadata["post_hooks_executed"] = post_hook_summary.successful_hooks
@@ -646,20 +666,9 @@ class ChatOrchestrator:
                     }
                 )
                 
-                try:
-                    failed_hook_summary = await hook_manager.trigger_hooks(message_failed_context)
-                    logger.debug(f"Message failed hooks executed: {failed_hook_summary.successful_hooks}/{failed_hook_summary.total_hooks}")
-                except Exception as e:
-                    logger.warning(f"Message failed hooks failed: {e}")
-                    from ai_karen_engine.hooks.models import HookExecutionSummary
-                    failed_hook_summary = HookExecutionSummary(
-                        hook_type=HookTypes.MESSAGE_FAILED,
-                        total_hooks=0,
-                        successful_hooks=0,
-                        failed_hooks=0,
-                        total_execution_time_ms=0.0,
-                        results=[]
-                    )
+                failed_hook_summary = await self._trigger_hooks_with_timeout(
+                    hook_manager, message_failed_context
+                )
                 
                 # Return error response
                 error_metadata = {
@@ -1506,7 +1515,16 @@ class ChatOrchestrator:
         attempt_log.append(attempt_entry)
         
         # Try different model ID patterns to match the registry
-        potential_ids = [f"{user_llm_choice}:{user_model_choice}", f"local:{user_model_choice}", user_model_choice if ":" in user_model_choice else None]
+        potential_ids: List[Optional[str]] = [
+            f"{provider_id}:{user_model_choice}"
+            for provider_id in self._resolve_provider_aliases(user_llm_choice)
+        ]
+        potential_ids.extend(
+            [
+                f"local:{user_model_choice}",
+                user_model_choice if ":" in user_model_choice else None,
+            ]
+        )
         model_info = None
         target_id = None
         
@@ -1534,7 +1552,7 @@ class ChatOrchestrator:
                     enhanced_prompt, 
                     skill="conversation", 
                     return_metadata=True,
-                    provider=user_llm_choice,
+                    provider=self._resolve_provider_aliases(user_llm_choice)[0] if self._resolve_provider_aliases(user_llm_choice) else user_llm_choice,
                     model=user_model_choice
                 )
             )
@@ -1652,6 +1670,7 @@ class ChatOrchestrator:
         from ai_karen_engine.config.config_manager import get_fallback_chain, get_default_model
         _chain = get_fallback_chain()
         default_providers = []
+        loop = asyncio.get_event_loop()
         _provider_prefix = {"llamacpp": "local"}
         for _p in _chain:
             _prefix = _provider_prefix.get(_p, _p)
@@ -1792,6 +1811,48 @@ class ChatOrchestrator:
 
         logger.info("Starting comprehensive local model fallback")
 
+        slm_entry = {
+            "stage": "local_fallback",
+            "candidate": "small_language_model_service",
+        }
+        attempt_log.append(slm_entry)
+        slm_result = await self._try_small_language_model_service(
+            message,
+            integrated_context,
+            active_instructions,
+            processing_context,
+        )
+        if slm_result:
+            response_text, raw_metadata = slm_result
+            result_ns = SimpleNamespace(
+                content=response_text,
+                provider=raw_metadata.get("provider"),
+                model_id=raw_metadata.get("model_id"),
+                tags=raw_metadata.get("tags", []),
+                is_degraded=raw_metadata.get("is_degraded", False),
+                attempted_models=raw_metadata.get("attempted_models", []),
+                failure_reason=raw_metadata.get("failure_reason"),
+                metadata=raw_metadata.get("metadata", {}),
+            )
+            self._ensure_llm_response_is_valid(
+                result_ns, "small language model service fallback"
+            )
+            metadata = self._build_llm_metadata(
+                result_ns,
+                "local_fallback",
+                additional={"local_model_path": raw_metadata.get("model_path")},
+            )
+            metadata.setdefault("fallback_level", "local")
+            slm_entry.update(
+                {
+                    "status": "success",
+                    "model_id": metadata.get("model_id"),
+                    "provider": metadata.get("provider"),
+                }
+            )
+            return response_text, metadata
+        slm_entry.setdefault("status", "unavailable")
+
         attempt_entry = {"stage": "local_fallback", "candidate": "llamacpp"}
         attempt_log.append(attempt_entry)
         llama_result = await self._try_llamacpp_models(
@@ -1895,6 +1956,72 @@ class ChatOrchestrator:
         )
         return None
 
+    async def _try_small_language_model_service(
+        self,
+        message: str,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any],
+        processing_context: ProcessingContext,
+    ) -> Optional[Tuple[str, Dict[str, Any]]]:
+        """Use the shared SmallLanguageModelService before loading ad hoc runtimes."""
+        try:
+            service = getattr(nlp_service_manager, "small_language_model_service", None)
+            if not service:
+                logger.debug("SmallLanguageModelService is not available")
+                return None
+            if getattr(service, "fallback_mode", False):
+                logger.debug("SmallLanguageModelService is in fallback mode")
+                return None
+            if not getattr(service, "client", None) or not getattr(service, "current_model", None):
+                logger.debug("SmallLanguageModelService has no active model loaded")
+                return None
+
+            messages = await self._build_chat_messages(
+                message,
+                processing_context.user_id,
+                integrated_context,
+                active_instructions,
+            )
+
+            loop = asyncio.get_event_loop()
+            t0 = time.time()
+            response = await loop.run_in_executor(
+                None,
+                lambda: service.client.chat(
+                    messages,
+                    max_tokens=256,
+                    temperature=0.7,
+                    stream=False,
+                ),
+            )
+
+            if not response or not response.strip():
+                logger.debug("SmallLanguageModelService returned an empty response")
+                return None
+
+            model_name = str(service.current_model)
+            model_path = None
+            try:
+                model_path = str(service._resolve_model_file_path(model_name))
+            except Exception:
+                model_path = None
+
+            logger.info("Successfully used SmallLanguageModelService model: %s", model_name)
+            return response.strip(), {
+                "provider": "small_language_model",
+                "model_id": f"small_language_model:{model_name}",
+                "model_path": model_path,
+                "tags": ["local", "offline", "small-language-model"],
+                "metadata": {
+                    "duration": time.time() - t0,
+                    "usage": {},
+                    "confidence_score": 0.8,
+                },
+            }
+        except Exception as exc:
+            logger.debug("SmallLanguageModelService fallback failed: %s", exc)
+            return None
+
     async def _try_llamacpp_models(
         self, 
         enhanced_prompt: str, 
@@ -1924,17 +2051,11 @@ class ChatOrchestrator:
                 try:
                     logger.info("Trying llama-cpp model: %s", gguf_file.name)
 
-                    runtime = LlamaCppRuntime(
-                        model_path=str(gguf_file),
-                        n_ctx=512,
-                        n_batch=128,
-                        n_gpu_layers=0,
-                        verbose=False,
-                    )
-
-                    if not runtime.is_loaded():
-                        logger.warning("Failed to load %s", gguf_file.name)
-                        continue
+                    runtime = LlamaCppRuntime.get_instance()
+                    if not runtime.is_loaded() or runtime.model_path != str(gguf_file):
+                        if not runtime.load_model(str(gguf_file)):
+                            logger.warning("Failed to load %s", gguf_file.name)
+                            continue
 
                     # Build structured messages for the chat template
                     messages = await self._build_chat_messages(
@@ -2174,16 +2295,13 @@ class ChatOrchestrator:
         # Inject User Identity if available
         if self.auth_service and user_id:
             try:
-                user_info = await self.auth_service.get_user(user_id)
-                if user_info:
-                    # UserAccount is a dataclass, use getattr instead of .get()
-                    full_name = getattr(user_info, "full_name", None) or getattr(user_info, "email", "").split("@")[0] or "User"
-                    system_parts.append(f"User Identity: You are speaking to {full_name}.")
-                    logger.debug(f"Injected user identity for: {full_name}")
-                elif user_id == "frontend_user":
-                    # Fallback for the default frontend anonymous user
-                    system_parts.append("User Identity: You are speaking to Zeus.")
-                    logger.debug("Injected default user identity: Zeus")
+                display_name = await resolve_display_name(
+                    auth_service=self.auth_service,
+                    user_id=user_id,
+                )
+                if display_name:
+                    system_parts.append(build_user_identity_line(display_name))
+                    logger.debug(f"Injected user identity for: {display_name}")
             except Exception as e:
                 logger.warning(f"Failed to fetch user identity for prompting: {e}")
 
@@ -2231,18 +2349,14 @@ class ChatOrchestrator:
         user_identity_added = False
         if self.auth_service and user_id:
             try:
-                user_info = await self.auth_service.get_user(user_id)
-                if user_info:
-                    # UserAccount is a dataclass, use getattr instead of .get()
-                    full_name = getattr(user_info, "full_name", None) or getattr(user_info, "email", "").split("@")[0] or "User"
-                    prompt_parts.append(f"SYSTEM: User Identity: You are speaking to {full_name}.")
+                display_name = await resolve_display_name(
+                    auth_service=self.auth_service,
+                    user_id=user_id,
+                )
+                if display_name:
+                    prompt_parts.append(f"SYSTEM: {build_user_identity_line(display_name)}")
                     user_identity_added = True
-                    logger.debug(f"Injected user identity for: {full_name}")
-                elif user_id == "frontend_user":
-                    # Fallback for the default frontend anonymous user
-                    prompt_parts.append("SYSTEM: User Identity: You are speaking to Zeus.")
-                    user_identity_added = True
-                    logger.debug("Injected default user identity: Zeus")
+                    logger.debug(f"Injected user identity for: {display_name}")
             except Exception as e:
                 logger.warning(f"Failed to fetch user identity for prompting: {e}")
 

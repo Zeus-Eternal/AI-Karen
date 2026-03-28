@@ -8,7 +8,7 @@ import queue
 import os
 import logging
 from contextlib import contextmanager
-from typing import Optional
+from typing import Any, Dict, Iterable, List, Optional, cast
 
 import numpy as np
 from pymilvus import (
@@ -74,6 +74,8 @@ class MilvusClient:
     @contextmanager
     def _using(self):
         self._ensure_connected()  # Lazy connect on first use
+        if self._pool is None:
+            raise RuntimeError("Milvus connection pool is not initialized")
         alias = self._pool.get()
         try:
             yield alias
@@ -99,6 +101,8 @@ class MilvusClient:
                 Collection(self.collection_name, schema, using=alias)
 
     def pool_utilization(self) -> float:
+        if self._pool is None:
+            return 0.0
         used = self.pool_size - self._pool.qsize()
         return used / self.pool_size if self.pool_size else 0.0
 
@@ -108,8 +112,12 @@ class MilvusClient:
 
         model = SentenceTransformer("all-MiniLM-L6-v2")
         text = f"{profile_dict.get('name','')}. {profile_dict.get('bio','')}. {' '.join(profile_dict.get('tags',[]))}"
-        vec = model.encode([text])[0]
-        return vec / np.linalg.norm(vec)
+        encoded = model.encode([text])
+        vec = np.asarray(encoded[0], dtype=np.float32)
+        norm = float(np.linalg.norm(vec))
+        if norm == 0.0:
+            return vec
+        return vec / norm
 
     def upsert_persona_embedding(self, user_id, vec):
         entities = [[user_id], [vec]]
@@ -123,7 +131,7 @@ class MilvusClient:
         with self._using() as alias:
             col = Collection(self.collection_name, using=alias)
             col.load()
-            res = col.query(expr, output_fields=["embedding"])
+            res = cast(List[Dict[str, Any]], col.query(expr, output_fields=["embedding"]))
             record_metric("milvus_pool_utilization", self.pool_utilization())
         if not res:
             return None
@@ -145,7 +153,7 @@ class MilvusClient:
         with self._using() as alias:
             col = Collection(self.collection_name, using=alias)
             col.load()
-            res = col.search(
+            raw_res = col.search(
                 data=[query_vec],
                 anns_field="embedding",
                 param={"metric_type": "IP"},
@@ -153,11 +161,16 @@ class MilvusClient:
                 output_fields=["user_id"],
             )
             record_metric("milvus_pool_utilization", self.pool_utilization())
-        return (
-            [(hit.entity.get("user_id"), hit.distance) for hit in res[0]] if res else []
-        )
+        res = cast(List[Iterable[Any]], raw_res)
+        if not res:
+            return []
+        return [
+            (str(hit.entity.get("user_id")), float(hit.distance))
+            for hit in res[0]
+            if hit.entity.get("user_id") is not None
+        ]
 
-    async def insert(self, collection_name: str = None, data: dict = None, **kwargs):
+    async def insert(self, collection_name: Optional[str] = None, data: Optional[Dict[str, Any]] = None, **kwargs):
         """Async wrapper for upsert operations to maintain contract compatibility."""
         try:
             # Use the existing upsert method for compatibility
@@ -182,10 +195,10 @@ class MilvusClient:
 
     async def search(
         self,
-        collection_name: str = None,
-        query_vectors: list = None,
+        collection_name: Optional[str] = None,
+        query_vectors: Optional[List[Any]] = None,
         top_k: int = 10,
-        metadata_filter: dict = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         """Async wrapper for search operations to maintain contract compatibility."""

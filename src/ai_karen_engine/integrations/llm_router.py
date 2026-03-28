@@ -5,7 +5,7 @@ This module implements an intelligent routing system that selects the optimal LL
 and runtime based on user preferences, task requirements, privacy constraints, and performance needs.
 
 Key Features:
-- Policy-based routing: privacy/context → llama.cpp, interactive → vLLM, flexibility → Transformers
+- Policy-based routing: privacy/context → llama.cpp, interactive → Transformers, flexibility → Transformers
 - Tiered fallback strategy: user preference → system defaults → local models → degraded mode
 - Explainable routing with dry-run capabilities for debugging
 - Privacy-aware routing for sensitive operations
@@ -240,13 +240,13 @@ def _get_default_routing_policy() -> RoutingPolicy:
         
         # Task-specific runtime preferences
         task_runtime_map={
-            TaskType.CHAT: "vllm",
+            TaskType.CHAT: "transformers",
             TaskType.CODE: "transformers",
-            TaskType.REASONING: "vllm", 
+            TaskType.REASONING: "transformers",
             TaskType.EMBEDDING: "transformers",
             TaskType.SUMMARIZATION: "llama.cpp",
             TaskType.TRANSLATION: "transformers",
-            TaskType.CREATIVE: "vllm",
+            TaskType.CREATIVE: "transformers",
             TaskType.ANALYSIS: "transformers",
         },
         
@@ -259,7 +259,7 @@ def _get_default_routing_policy() -> RoutingPolicy:
         },
         
         privacy_runtime_map={
-            PrivacyLevel.PUBLIC: ["vllm", "transformers", "llama.cpp", "core_helpers"],
+            PrivacyLevel.PUBLIC: ["transformers", "llama.cpp", "core_helpers"],
             PrivacyLevel.INTERNAL: ["transformers", "llama.cpp", "core_helpers"],
             PrivacyLevel.CONFIDENTIAL: ["llama.cpp", "core_helpers"],
             PrivacyLevel.RESTRICTED: ["core_helpers"],
@@ -273,9 +273,9 @@ def _get_default_routing_policy() -> RoutingPolicy:
         },
         
         performance_runtime_map={
-            PerformanceRequirement.INTERACTIVE: "vllm",      # High throughput GPU
-            PerformanceRequirement.BATCH: "transformers",   # Flexible batching
-            PerformanceRequirement.BACKGROUND: "llama.cpp", # Memory efficient
+            PerformanceRequirement.INTERACTIVE: "transformers",
+            PerformanceRequirement.BATCH: "transformers",
+            PerformanceRequirement.BACKGROUND: "llama.cpp",
         },
         
         # Fallback chains
@@ -1448,8 +1448,6 @@ class IntelligentLLMRouter:
         # Simplified latency estimation in seconds
         if provider in ["openai", "gemini", "deepseek"]:
             return 1.5  # API latency
-        elif runtime == "vllm":
-            return 0.5  # Fast GPU inference
         elif runtime == "transformers":
             return 2.0  # Medium CPU/GPU inference
         elif runtime == "llama.cpp":

@@ -6,7 +6,6 @@ versioning, and search functionality.
 """
 
 import logging
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.utils.dependency_checks import import_fastapi
@@ -33,48 +32,65 @@ Body = import_fastapi("Body")
 Path = import_fastapi("Path")
 
 # Create router
-router = APIRouter(prefix="/api/context", tags=["context-management"])
+router = APIRouter(tags=["context-management"])
 
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
--- Dependencies
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+
+def _get_integration():
+    """Return the initialized context-management integration singleton."""
+    from ai_karen_engine.context_management.integration import (
+        get_context_management_integration,
+    )
+
+    integration = get_context_management_integration()
+    if integration is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Context management is not initialized",
+        )
+    return integration
 
 async def get_context_management_service():
-    """Dependency to get context management service."""
-    # This would be replaced with actual dependency injection
-    from ai_karen_engine.context_management.service import ContextManagementService
-    from ai_karen_engine.database.memory_manager import MemoryManager
-    
-    # Initialize with default values (in production, these would come from config)
-    memory_manager = MemoryManager(None, None)  # Placeholder
-    service = ContextManagementService(memory_manager)
-    return service
+    """Dependency to get the shared context management service."""
+    integration = _get_integration()
+    if integration.context_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Context management service is unavailable",
+        )
+    return integration.context_service
 
 
 async def get_file_upload_handler():
-    """Dependency to get file upload handler."""
-    from ai_karen_engine.context_management.file_handler import FileUploadHandler
-    
-    # Initialize with default values (in production, these would come from config)
-    handler = FileUploadHandler()
-    return handler
+    """Dependency to get the shared file upload handler."""
+    integration = _get_integration()
+    if integration.file_handler is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Context file handler is unavailable",
+        )
+    return integration.file_handler
 
 
 async def get_context_preprocessor():
-    """Dependency to get context preprocessor."""
-    from ai_karen_engine.context_management.preprocessor import ContextPreprocessor
-    
-    # Initialize with default values
-    preprocessor = ContextPreprocessor()
-    return preprocessor
+    """Dependency to get the shared context preprocessor."""
+    integration = _get_integration()
+    if integration.preprocessor is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Context preprocessor is unavailable",
+        )
+    return integration.preprocessor
 
 
-# ============================================================================
--- Context CRUD Operations
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Context CRUD Operations
+# ---------------------------------------------------------------------------
 
 @router.post("/contexts", response_model=Dict[str, Any])
 async def create_context(
@@ -187,12 +203,21 @@ async def get_context(
                 status_code=404,
                 detail="Context not found or access denied"
             )
-        
-        return {
+
+        response = {
             "success": True,
             "context": context.to_dict(include_content=include_content),
             "message": "Context retrieved successfully"
         }
+
+        if include_files:
+            files = await context_service.list_context_files(
+                context_id=context_id,
+                user_id=user_id,
+            )
+            response["files"] = [file.to_dict() for file in files]
+
+        return response
         
     except HTTPException:
         raise
@@ -327,9 +352,9 @@ async def delete_context(
         )
 
 
-# ============================================================================
--- Context Search and Querying
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Context Search and Querying
+# ---------------------------------------------------------------------------
 
 @router.post("/contexts/search", response_model=Dict[str, Any])
 async def search_contexts(
@@ -385,9 +410,9 @@ async def search_contexts(
         )
 
 
-# ============================================================================
--- File Upload Operations
--- ============================================================================
+# ---------------------------------------------------------------------------
+# File Upload Operations
+# ---------------------------------------------------------------------------
 
 @router.post("/contexts/{context_id}/files", response_model=Dict[str, Any])
 async def upload_file(
@@ -442,6 +467,8 @@ async def upload_file(
                 status_code=400,
                 detail=f"File upload failed: {error}"
             )
+
+        await context_service.add_file_reference(context_id, context_file.file_id)
         
         return {
             "success": True,
@@ -510,6 +537,7 @@ async def delete_file(
     permanent: bool = False,
     user_id: str = Query(..., description="User ID"),
     file_handler = Depends(get_file_upload_handler),
+    context_service = Depends(get_context_management_service),
 ):
     """
     Delete a file.
@@ -523,6 +551,17 @@ async def delete_file(
         Deletion result
     """
     try:
+        existing_file = await file_handler.get_file(
+            file_id=file_id,
+            user_id=user_id,
+            check_access=True,
+        )
+        if not existing_file:
+            raise HTTPException(
+                status_code=404,
+                detail="File not found or access denied"
+            )
+
         success = await file_handler.delete_file(
             file_id=file_id,
             user_id=user_id,
@@ -534,6 +573,8 @@ async def delete_file(
                 status_code=404,
                 detail="File not found or access denied"
             )
+
+        await context_service.remove_file_reference(existing_file.context_id, file_id)
         
         return {
             "success": True,
@@ -550,9 +591,9 @@ async def delete_file(
         )
 
 
-# ============================================================================
--- Context Sharing Operations
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Context Sharing Operations
+# ---------------------------------------------------------------------------
 
 @router.post("/contexts/{context_id}/share", response_model=Dict[str, Any])
 async def share_context(
@@ -624,9 +665,9 @@ async def share_context(
         )
 
 
-# ============================================================================
--- Context Versioning Operations
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Context Versioning Operations
+# ---------------------------------------------------------------------------
 
 @router.get("/contexts/{context_id}/versions", response_model=Dict[str, Any])
 async def get_context_versions(
@@ -665,9 +706,9 @@ async def get_context_versions(
         )
 
 
-# ============================================================================
--- Statistics and Analytics
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Statistics and Analytics
+# ---------------------------------------------------------------------------
 
 @router.get("/contexts/stats", response_model=Dict[str, Any])
 async def get_context_stats(
@@ -705,9 +746,9 @@ async def get_context_stats(
         )
 
 
-# ============================================================================
--- Utility Endpoints
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Utility Endpoints
+# ---------------------------------------------------------------------------
 
 @router.get("/file-types", response_model=Dict[str, Any])
 async def get_supported_file_types(
@@ -787,9 +828,9 @@ def _get_context_type_description(context_type: ContextType) -> str:
     return descriptions.get(context_type, "Unknown context type")
 
 
-# ============================================================================
--- Error Handlers
--- ============================================================================
+# ---------------------------------------------------------------------------
+# Error Handlers
+# ---------------------------------------------------------------------------
 
 @router.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

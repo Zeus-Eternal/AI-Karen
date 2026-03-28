@@ -25,6 +25,9 @@ except ImportError:
             return None
 
 
+_structured_logging_service: Optional["StructuredLoggingService"] = None
+
+
 @dataclass
 class LogEntry:
     """A structured log entry."""
@@ -300,3 +303,13 @@ class BoundLogger:
     def exception(self, message: str, **kwargs):
         """Log an exception with bound context."""
         self.logging_service.exception(message, **{**self.context, **kwargs})
+
+
+def get_structured_logging_service(
+    config: Optional[Dict[str, Any]] = None,
+) -> StructuredLoggingService:
+    """Return the process-local structured logging service singleton."""
+    global _structured_logging_service
+    if _structured_logging_service is None:
+        _structured_logging_service = StructuredLoggingService(config or {})
+    return _structured_logging_service

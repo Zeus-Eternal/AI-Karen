@@ -23,6 +23,7 @@ from ..agent_safety import (
     SafetyConfig, BehaviorData, BehaviorProfile, RiskAssessment,
     BehaviorAnalysis, CorrelationResult, RiskLevel
 )
+from ..agent_safety_types import PatternResult
 
 logger = logging.getLogger(__name__)
 
@@ -803,13 +804,32 @@ class AgentSafetyMonitor:
             # Create behavior analysis result
             # Handle cases where some results might be lists or None
             pattern_result_single = pattern_result[0] if pattern_result and isinstance(pattern_result, list) else pattern_result
+            if not isinstance(pattern_result_single, PatternResult):
+                pattern_result_single = PatternResult(
+                    pattern_detected=False,
+                    pattern_type="none",
+                    confidence=0.0,
+                    pattern_id=None,
+                    severity=RiskLevel.SAFE,
+                    description="No pattern detected",
+                )
+
+            profile_result = profile
+            if not isinstance(profile_result, BehaviorProfile):
+                profile_result = BehaviorProfile(
+                    agent_id=agent_id,
+                    profile_type="default",
+                    behavior_trends={},
+                    risk_history=[],
+                    behavior_categories={},
+                )
             
             analysis_result = BehaviorAnalysis(
                 agent_id=agent_id,
                 anomaly_result=anomaly_result,
                 pattern_result=pattern_result_single,
                 baseline_result=baseline_result,
-                profile_result=profile if profile else None,
+                profile_result=profile_result,
                 risk_result=risk_result,
                 correlation_result=correlation_result
             )

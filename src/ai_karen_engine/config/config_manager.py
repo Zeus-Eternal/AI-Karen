@@ -130,7 +130,16 @@ class ServiceConfig:
 class SecurityConfig:
     """Security configuration."""
 
-    jwt_secret: str = "your-secret-key"
+    jwt_secret: str = field(
+        default_factory=lambda: (
+            os.getenv("AUTH_JWT_SECRET_KEY")
+            or os.getenv("AUTH_SECRET_KEY")
+            or os.getenv("JWT_SECRET_KEY")
+            or os.getenv("JWT_SECRET")
+            or os.getenv("SECRET_KEY")
+            or "your-secret-key"
+        )
+    )
     jwt_algorithm: str = "HS256"
     jwt_expiration: int = 3600  # seconds
     cors_origins: List[str] = field(default_factory=lambda: ["*"])
@@ -280,6 +289,24 @@ def load_env_override(cfg: Dict[str, Any]):
             except Exception:
                 val = os.getenv(env_key)
             cfg[k] = val
+    
+    # Specific overrides for authentication and security
+    security = cfg.get("security", {})
+    if not isinstance(security, dict):
+        security = {}
+        cfg["security"] = security
+        
+    auth_secret = (
+        os.getenv("AUTH_JWT_SECRET_KEY")
+        or os.getenv("AUTH_SECRET_KEY")
+        or os.getenv("JWT_SECRET_KEY")
+        or os.getenv("JWT_SECRET")
+        or os.getenv("SECRET_KEY")
+    )
+    if auth_secret:
+        # Always override secret keys if present in environment
+        security["jwt_secret"] = auth_secret
+        security["secret_key"] = auth_secret
 
 def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     # You can add Pydantic or marshmallow for full schema; basic fallback:
@@ -309,28 +336,35 @@ def load_config() -> Dict[str, Any]:
 
 def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
     """Create a typed configuration object from a dictionary."""
+    from dataclasses import fields
+    
+    def _filter_kwargs(cls, kwargs):
+        if not isinstance(kwargs, dict):
+            return {}
+        field_names = {f.name for f in fields(cls)}
+        return {k: v for k, v in kwargs.items() if k in field_names}
+
     data = config_dict.copy()
 
     if "database" in data:
-        data["database"] = DatabaseConfig(**data["database"])
+        data["database"] = DatabaseConfig(**_filter_kwargs(DatabaseConfig, data["database"]))
     if "redis" in data:
-        data["redis"] = RedisConfig(**data["redis"])
+        data["redis"] = RedisConfig(**_filter_kwargs(RedisConfig, data["redis"]))
     if "vector_db" in data:
-        data["vector_db"] = VectorDBConfig(**data["vector_db"])
+        data["vector_db"] = VectorDBConfig(**_filter_kwargs(VectorDBConfig, data["vector_db"]))
     
     if "llm" in data:
         llm_data = data["llm"].copy()
-        # Handle the case where some keys might be missing in older config files
-        data["llm"] = LLMConfig(**llm_data)
+        data["llm"] = LLMConfig(**_filter_kwargs(LLMConfig, llm_data))
 
     if "services" in data:
-        data["services"] = ServiceConfig(**data["services"])
+        data["services"] = ServiceConfig(**_filter_kwargs(ServiceConfig, data["services"]))
     if "security" in data:
-        data["security"] = SecurityConfig(**data["security"])
+        data["security"] = SecurityConfig(**_filter_kwargs(SecurityConfig, data["security"]))
     if "monitoring" in data:
-        data["monitoring"] = MonitoringConfig(**data["monitoring"])
+        data["monitoring"] = MonitoringConfig(**_filter_kwargs(MonitoringConfig, data["monitoring"]))
     if "web_ui" in data:
-        data["web_ui"] = WebUIConfig(**data["web_ui"])
+        data["web_ui"] = WebUIConfig(**_filter_kwargs(WebUIConfig, data["web_ui"]))
 
     # Convert environment string to enum
     if "environment" in data and isinstance(data["environment"], str):
@@ -339,7 +373,7 @@ def _create_config_object(config_dict: Dict[str, Any]) -> AIKarenConfig:
         except ValueError:
             data["environment"] = Environment.LOCAL
 
-    return AIKarenConfig(**data)
+    return AIKarenConfig(**_filter_kwargs(AIKarenConfig, data))
 
 
 _cached_config_obj: Optional[AIKarenConfig] = None

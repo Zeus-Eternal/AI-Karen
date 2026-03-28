@@ -86,9 +86,10 @@ class Session:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
 class AuthConfig(ServiceConfig):
     """Authentication configuration."""
+    name: str = "auth_service"
+    version: str = "1.0.0"
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
@@ -100,13 +101,6 @@ class AuthConfig(ServiceConfig):
     session_timeout_hours: int = 24
     enable_two_factor: bool = True
     bcrypt_rounds: int = 12
-    
-    def __post_init__(self):
-        """Initialize ServiceConfig fields."""
-        if not hasattr(self, 'name') or not self.name:
-            self.name = "auth_service"
-        if not hasattr(self, 'version') or not self.version:
-            self.version = "1.0.0"
 
 
 class AuthService(BaseService):
@@ -143,8 +137,28 @@ class AuthService(BaseService):
     
     def _load_config_from_env(self) -> None:
         """Load configuration from environment variables."""
-        if "AUTH_JWT_SECRET_KEY" in os.environ:
-            self.config.jwt_secret_key = os.environ["AUTH_JWT_SECRET_KEY"]
+        auth_secret = (
+            os.getenv("AUTH_JWT_SECRET_KEY")
+            or os.getenv("AUTH_SECRET_KEY")
+            or os.getenv("JWT_SECRET_KEY")
+            or os.getenv("JWT_SECRET")
+            or os.getenv("SECRET_KEY")
+        )
+        if auth_secret:
+            self.config.jwt_secret_key = auth_secret
+
+        # Fall back to ConfigManager for consistent secret management
+        try:
+            from ai_karen_engine.config.config_manager import get_config
+            cfg = get_config()
+            if (
+                (not auth_secret)
+                and cfg.security.jwt_secret
+                and cfg.security.jwt_secret != "your-secret-key"
+            ):
+                self.config.jwt_secret_key = cfg.security.jwt_secret
+        except Exception:
+            pass
         
         if "AUTH_JWT_ALGORITHM" in os.environ:
             self.config.jwt_algorithm = os.environ["AUTH_JWT_ALGORITHM"]
@@ -360,7 +374,9 @@ class AuthService(BaseService):
         
         try:
             # Get user by email or username
-            user = await self.get_user(email)
+            user = await self.get_user_by_email(email)
+            if not user and "@" not in email:
+                user = await self.get_user_by_username(email)
             if not user:
                 logger.warning(f"Authentication failed: user not found - {email}")
                 return None, None, "Invalid credentials"
@@ -579,7 +595,7 @@ class AuthService(BaseService):
                 user = self._build_user_account(auth_user)
                 self._user_cache[user.id] = user
 
-            logger.info("Updated profile for user %s", user_id)
+            logger.info(f"Updated profile for user {user_id}")
             return user, None
         except Exception as e:
             logger.error(f"Error updating user profile: {e}")
@@ -630,15 +646,16 @@ class AuthService(BaseService):
                 if not stored_hash or not self._verify_password(current_password, stored_hash):
                     return "Current password is incorrect"
 
-                auth_user.password_hash = self._hash_password(new_password)  # type: ignore
+                new_password_hash = self._hash_password(new_password)
+                setattr(auth_user, "password_hash", new_password_hash)
                 await session.flush()
 
                 cached_user = self._user_cache.get(str(auth_user.user_id))
                 if cached_user:
-                    cached_user.password_hash = auth_user.password_hash or ""
+                    cached_user.password_hash = new_password_hash
                     cached_user.updated_at = getattr(auth_user, "updated_at", datetime.utcnow())
 
-            logger.info("Updated password for user %s", user_id)
+            logger.info(f"Updated password for user {user_id}")
             return None
         except Exception as e:
             logger.error(f"Error changing user password: {e}")
@@ -662,7 +679,8 @@ class AuthService(BaseService):
             payload = jwt.decode(
                 token,
                 self.config.jwt_secret_key,
-                algorithms=[self.config.jwt_algorithm]
+                algorithms=[self.config.jwt_algorithm],
+                options={"verify_aud": False}
             )
             
             # Check if token is expired
@@ -1049,6 +1067,7 @@ class AuthService(BaseService):
                         session_token,
                         self.config.jwt_secret_key,
                         algorithms=[self.config.jwt_algorithm],
+                        options={"verify_aud": False},
                     )
                     if payload.get("exp", 0) < time.time():
                         return None
@@ -1060,7 +1079,7 @@ class AuthService(BaseService):
                     current_fingerprint = self._generate_device_fingerprint(user_agent, ip_address)
                     if device_fingerprint_val != current_fingerprint:
                         logger.warning(
-                            "Device fingerprint mismatch for session %s", getattr(db_auth_session, 'session_token', 'unknown')  # type: ignore
+                            f"Device fingerprint mismatch for session {getattr(db_auth_session, 'session_token', 'unknown')}"  # type: ignore
                         )
 
                 db_auth_session.last_accessed = datetime.utcnow()  # type: ignore
@@ -1146,25 +1165,56 @@ class AuthService(BaseService):
         Returns:
             Access token
         """
-        return self._generate_access_token_by_id(user.id)
+        user_type = "user"
+        if "admin" in user.roles or UserRole.ADMIN in user.roles:
+            user_type = "admin"
+            
+        extra_payload = {
+            "email": user.email,
+            "user_type": user_type,
+            "permissions": list(user.roles),
+            "roles": user.roles
+        }
+        return self._generate_access_token_by_id(user.id, extra_payload)
     
-    def _generate_access_token_by_id(self, user_id: str) -> str:
+    def _generate_access_token_by_id(self, user_id: str, extra_payload: Optional[Dict[str, Any]] = None) -> str:
         """
         Generate an access token for a user ID.
         
         Args:
             user_id: User ID
+            extra_payload: Optional additional claims
             
         Returns:
             Access token
         """
+        import time
+        import secrets
+        
         now = int(time.time())
+        token_id = secrets.token_urlsafe(32)
+        
         payload = {
             "sub": user_id,
             "iat": now,
             "exp": now + (self.config.access_token_expire_minutes * 60),
-            "type": "access"
+            "token_id": token_id,
+            "jti": token_id,
+            "iss": "ai-karen",
+            "aud": "ai-karen-users"
         }
+        
+        if extra_payload:
+            payload.update(extra_payload)
+            
+        # Ensure minimal required claims for SecureAuthMiddleware
+        if "user_type" not in payload:
+            payload["user_type"] = "user"
+        if "permissions" not in payload:
+            payload["permissions"] = []
+        if "email" not in payload:
+             payload["email"] = ""
+             
         return jwt.encode(payload, self.config.jwt_secret_key, algorithm=self.config.jwt_algorithm)
     
     def _generate_refresh_token(self) -> str:
@@ -1431,7 +1481,8 @@ class AuthService(BaseService):
             payload = jwt.decode(
                 token,
                 self.config.jwt_secret_key,
-                algorithms=[self.config.jwt_algorithm]
+                algorithms=[self.config.jwt_algorithm],
+                options={"verify_aud": False}
             )
             
             if payload.get("sub") != test_user_id:

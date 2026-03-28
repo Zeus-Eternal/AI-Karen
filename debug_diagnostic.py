@@ -13,6 +13,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 # Setup logging
 logging.basicConfig(
@@ -21,16 +22,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _load_app_config() -> dict:
+    config_path = Path("config/config.json")
+    try:
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as exc:
+        logger.warning(f"⚠️  Failed to load config from {config_path}: {exc}")
+    return {}
+
+
+def _resolve_next_config_path() -> Optional[Path]:
+    config = _load_app_config()
+    web_ui_config = config.get("web_ui", {}) if isinstance(config, dict) else {}
+    launcher_path = web_ui_config.get("launcher_path", "ui_launchers/Karen-AI-Theme")
+    launcher_dir = Path(launcher_path)
+
+    for candidate_name in ("next.config.ts", "next.config.js"):
+        candidate = launcher_dir / candidate_name
+        if candidate.exists():
+            return candidate
+
+    return None
+
 def check_static_export_configuration():
     """Check Next.js static export configuration"""
     logger.info("=== Checking Static Export Configuration ===")
     
-    next_config_path = Path("ui_launchers/KAREN-Theme-Default/next.config.js")
-    if not next_config_path.exists():
-        logger.error("❌ next.config.js not found")
+    next_config_path = _resolve_next_config_path()
+    if next_config_path is None:
+        logger.error("❌ Next.js config not found from configured web_ui.launcher_path")
         return False
     
-    with open(next_config_path, 'r') as f:
+    with open(next_config_path, 'r', encoding='utf-8') as f:
         config_content = f.read()
     
     # Check if static export is enabled
@@ -102,9 +128,8 @@ def check_extension_auth_config():
     
     try:
         # Try to import and check extension auth
-        sys.path.insert(0, 'server')
-        from security import get_extension_auth_manager
-        from config import settings
+        from server.security import get_extension_auth_manager
+        from server.config import settings
         
         auth_manager = get_extension_auth_manager()
         logger.info("✅ Extension auth manager initialized")

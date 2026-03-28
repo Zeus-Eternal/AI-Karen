@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,17 +34,25 @@ type SubAgent = {
  * @description Page for defining and managing Tasks for AI agents via /api/tasks.
  */
 export default function TasksPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
   const fetchTasks = async () => {
+    if (!isAuthenticated) {
+      setTasks([]);
+      setErrorMsg("Sign in to manage tasks.");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setErrorMsg("");
     try {
       const { apiClient } = await import('@/lib/api');
       const data = await apiClient.get<any[]>('/api/tasks/');
       setTasks(data || []);
-      setErrorMsg("");
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Failed to fetch tasks.');
@@ -53,8 +62,11 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
     fetchTasks();
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
   
   // State for the mock form
@@ -93,6 +105,10 @@ export default function TasksPage() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage tasks.");
+      return;
+    }
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
       const { apiClient } = await import('@/lib/api');
@@ -104,6 +120,10 @@ export default function TasksPage() {
   };
 
   const handleExecuteTask = async (taskId: string) => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage tasks.");
+      return;
+    }
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/tasks/${taskId}/execute`, {});
@@ -114,6 +134,10 @@ export default function TasksPage() {
   };
 
   const handleCreateTask = async () => {
+    if (!isAuthenticated) {
+      setErrorMsg("Sign in to manage tasks.");
+      return;
+    }
     if (!newPrimaryAgent) {
       alert("Please select a primary agent first.");
       return;
@@ -167,10 +191,12 @@ export default function TasksPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Defined Tasks</h3>
-            <Button variant="outline" size="sm" onClick={fetchTasks}>Refresh</Button>
+            <Button variant="outline" size="sm" onClick={fetchTasks} disabled={isAuthLoading || !isAuthenticated}>Refresh</Button>
           </div>
           
-          {isLoading ? (
+          {isAuthLoading ? (
+            <div className="text-center p-8 text-muted-foreground animate-pulse">Restoring your session...</div>
+          ) : isLoading ? (
             <div className="text-center p-8 text-muted-foreground animate-pulse">Loading tasks from backend...</div>
           ) : tasks.length === 0 ? (
             <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No tasks defined yet.</div>

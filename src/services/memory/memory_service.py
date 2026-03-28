@@ -18,13 +18,16 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, desc, select, update
 
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.memory_manager import (
     MemoryEntry,
     MemoryManager,
     MemoryQuery,
 )
 from ai_karen_engine.database.models import TenantConversation, TenantMemoryEntry
-from src.services.memory.unified_memory_service import UnifiedMemoryService
+from services.memory.unified_memory_service import UnifiedMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -415,13 +418,36 @@ class WebUIMemoryService(UnifiedMemoryService):
     while leveraging the new unified architecture.
     """
 
-    def __init__(self, base_memory_manager: Optional[MemoryManager]):
-        """Initialize with existing memory manager."""
-        # Initialize the unified memory service
-        super().__init__()
-        
-        self.base_manager = base_memory_manager
-        self.db_client = base_memory_manager.db_client if base_memory_manager else None
+    def __init__(
+        self,
+        db_client: Optional[MultiTenantPostgresClient] = None,
+        milvus_client: Optional[MilvusClient] = None,
+        embedding_manager: Optional[EmbeddingManager] = None,
+        redis_client: Optional[Any] = None,
+        policy_manager: Optional[Any] = None,
+        base_memory_manager: Optional[MemoryManager] = None,
+    ):
+        """Initialize the production Web UI memory service on top of the unified service."""
+        if base_memory_manager is None:
+            db_client = db_client or MultiTenantPostgresClient()
+            embedding_manager = embedding_manager or EmbeddingManager()
+            milvus_client = milvus_client or MilvusClient()
+        else:
+            db_client = base_memory_manager.db_client
+            embedding_manager = base_memory_manager.embedding_manager
+            milvus_client = base_memory_manager.milvus_client
+            redis_client = getattr(base_memory_manager, "redis_client", redis_client)
+
+        super().__init__(
+            db_client=db_client,
+            milvus_client=milvus_client,
+            embedding_manager=embedding_manager,
+            redis_client=redis_client,
+            policy_manager=policy_manager,
+        )
+
+        self.base_manager = base_memory_manager or self.base_manager
+        self.db_client = db_client
         self.context_builder = MemoryContextBuilder(self)
 
         # Web UI specific configuration
@@ -437,6 +463,29 @@ class WebUIMemoryService(UnifiedMemoryService):
             "auto_tags_generated": 0,
             "facts_extracted": 0,
         }
+
+    async def build_context(
+        self,
+        *,
+        tenant_id: Optional[Union[str, uuid.UUID]] = None,
+        user_id: str,
+        query: Optional[str] = None,
+        prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        **_: Any,
+    ) -> Dict[str, Any]:
+        """LangGraph-compatible context builder backed by the production memory service."""
+        resolved_tenant_id: Union[str, uuid.UUID] = (
+            tenant_id or conversation_id or session_id or user_id
+        )
+        return await self.build_conversation_context(
+            tenant_id=resolved_tenant_id,
+            query=query or prompt or "",
+            user_id=user_id,
+            session_id=session_id,
+            conversation_id=conversation_id,
+        )
 
     async def store_web_ui_memory(
         self,

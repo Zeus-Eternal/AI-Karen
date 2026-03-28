@@ -98,3 +98,25 @@
     /* font-family removed to allow Next/Font to take precedence */
   }
 }
+
+main .container {
+  /* Ensure the main container takes up the full height of the viewport */
+  padding-bottom: 8em;
+}
+#chat-input-area {
+  /* Ensure the chat input area is above other content when sticky */
+  z-index: 10;
+  position: fixed;
+  padding: 0.75rem 1.25rem;
+  width: 80%; /* Adjust based on your layout, e.g., if you have a sidebar */
+  bottom: 0;
+}
+
+.chat-input-container {
+    width: 80%;
+    margin: auto;
+}
+
+.user-bubble {
+    padding: 0.75rem 1.25rem;
+}

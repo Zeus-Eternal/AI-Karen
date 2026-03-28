@@ -73,6 +73,9 @@ from ai_karen_engine.api_routes.settings_routes import router as settings_router
 from ai_karen_engine.api_routes.model_settings_routes import router as model_settings_router
 from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
 from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
+from ai_karen_engine.api_routes.agent_integration_routes import router as agent_integration_router
+from ai_karen_engine.api_routes.tasks_routes import router as tasks_router
+from ai_karen_engine.api_routes.automation_jobs_routes import router as automation_jobs_router
 from ai_karen_engine.api_routes.health import router as health_router
 from ai_karen_engine.api_routes.model_management_routes import router as model_management_router
 from ai_karen_engine.api_routes.huggingface_routes import router as enhanced_huggingface_router
@@ -164,7 +167,11 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
                 # For protected endpoints, authenticate and add user to request state
                 try:
-                    user_data = auth_middleware.get_current_user(request)
+                    authenticate_request = getattr(auth_middleware, "authenticate_request", None)
+                    if callable(authenticate_request):
+                        user_data = await authenticate_request(request)
+                    else:
+                        user_data = auth_middleware.get_current_user(request)
                     request.state.user = user_data
                 except HTTPException as exc:
                     logger.warning(
@@ -213,6 +220,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+    app.include_router(agent_integration_router, tags=["agents"])
+    app.include_router(tasks_router, tags=["tasks"])
+    app.include_router(automation_jobs_router, prefix="/api", tags=["automation-jobs"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
     
     # Align copilot routes under /api to match frontend expectations

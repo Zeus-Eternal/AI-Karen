@@ -605,7 +605,6 @@ class LLMOrchestrator:
             preload_thread.start()
             
             # Start performance monitoring in a background thread
-            import threading
             def start_monitoring():
                 import asyncio
                 loop = asyncio.new_event_loop()
@@ -744,6 +743,26 @@ class LLMOrchestrator:
                 info.warmed = True
                 info.record_latency(latency)
 
+    def _ensure_minimum_models_registered(self) -> None:
+        """Synchronously ensure the registry is never empty during routing."""
+        with self.registry._lock:
+            if self.registry._models:
+                return
+
+        logger.warning(
+            "LLM registry empty at request time; attempting synchronous local/fallback registration"
+        )
+
+        try:
+            self._register_local_models()
+        except Exception as exc:
+            logger.warning("Synchronous local model registration failed: %s", exc)
+
+        try:
+            self._ensure_fallback_provider()
+        except Exception as exc:
+            logger.warning("Synchronous fallback provider registration failed: %s", exc)
+
     def _register_local_models(self) -> None:
         """Register local models as fallback options."""
         try:
@@ -752,114 +771,76 @@ class LLMOrchestrator:
             
             # First, register the SmallLanguageModelService if enabled
             try:
-                from ai_karen_engine.services.small_language_model_service import SmallLanguageModelService
-                from ai_karen_engine.services.factory import ServicesConfig
-                
-                # Create a default config if we can't get the global one
-                config = ServicesConfig()
-                if hasattr(config, 'enable_small_language_model') and config.enable_small_language_model:
-                    logger.info("Initializing SmallLanguageModelService")
-                    
-                    # Create a wrapper class for the SmallLanguageModelService to match the provider interface
-                    class SmallLanguageModelProvider:
-                        def __init__(self):
-                            self.service = SmallLanguageModelService()
-                            self._ensure_model_loaded()
-                        
-                        def _ensure_model_loaded(self):
-                            """Ensure a model is loaded"""
-                            if not self.service.current_model:
-                                # The SmallLanguageModelService automatically loads a model in __init__
-                                # If no model is loaded, we need to check if we can switch to one
-                                available_models = self.service.get_available_models()
-                                if available_models:
-                                    for model_info in available_models:
-                                        if model_info.is_available:
-                                            self.service.switch_model(model_info.name)
-                                            break
-                        
-                        def generate_text(self, prompt: str, **kwargs) -> str:
-                            self._ensure_model_loaded()
-                            # Use generate_scaffold with default parameters for basic text generation
-                            import asyncio
-                            try:
-                                loop = asyncio.get_event_loop()
-                                if loop.is_running():
-                                    # Create a task in the running loop
-                                    import concurrent.futures
-                                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                                        future = executor.submit(
-                                            asyncio.run,
-                                            self.service.generate_scaffold(prompt, "reasoning")
-                                        )
-                                        result = future.result(timeout=30.0)
-                                        return result.content if hasattr(result, 'content') else str(result)
-                                else:
-                                    # No loop running, create one
-                                    result = asyncio.run(self.service.generate_scaffold(prompt, "reasoning"))
-                                    return result.content if hasattr(result, 'content') else str(result)
-                            except Exception as e:
-                                # Fallback to simple text generation
-                                return f"SmallLanguageModel response to: {prompt[:100]}..."
-                        
-                        def generate_response(self, prompt: str, **kwargs) -> str:
-                            self._ensure_model_loaded()
-                            # Use generate_scaffold with default parameters
-                            import asyncio
-                            try:
-                                loop = asyncio.get_event_loop()
-                                if loop.is_running():
-                                    # Create a task in the running loop
-                                    import concurrent.futures
-                                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                                        future = executor.submit(
-                                            asyncio.run,
-                                            self.service.generate_scaffold(prompt, "reasoning")
-                                        )
-                                        result = future.result(timeout=30.0)
-                                        return result.content if hasattr(result, 'content') else str(result)
-                                else:
-                                    # No loop running, create one
-                                    result = asyncio.run(self.service.generate_scaffold(prompt, "reasoning"))
-                                    return result.content if hasattr(result, 'content') else str(result)
-                            except Exception as e:
-                                # Fallback to simple text generation
-                                return f"SmallLanguageModel response to: {prompt[:100]}..."
-                        
-                        def enhanced_generate_response(self, prompt: str, **kwargs) -> str:
-                            self._ensure_model_loaded()
-                            # Use generate_scaffold with analysis type for enhanced response
-                            import asyncio
-                            try:
-                                loop = asyncio.get_event_loop()
-                                if loop.is_running():
-                                    # Create a task in the running loop
-                                    import concurrent.futures
-                                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                                        future = executor.submit(
-                                            asyncio.run,
-                                            self.service.generate_scaffold(prompt, "analysis")
-                                        )
-                                        result = future.result(timeout=30.0)
-                                        return result.content if hasattr(result, 'content') else str(result)
-                                else:
-                                    # No loop running, create one
-                                    result = asyncio.run(self.service.generate_scaffold(prompt, "analysis"))
-                                    return result.content if hasattr(result, 'content') else str(result)
-                            except Exception as e:
-                                # Fallback to simple text generation
-                                return f"SmallLanguageModel enhanced response to: {prompt[:100]}..."
-                        
-                        def is_loaded(self) -> bool:
-                            return self.service.current_model is not None
-                    
-                    # Register the SmallLanguageModelService
-                    slm_provider = SmallLanguageModelProvider()
-                    from ai_karen_engine.config.config_manager import get_default_model
-                    model_id = f"small_language_model:{get_default_model('llamacpp') or 'default'}"
-                    capabilities = ["scaffolding", "outlining", "summarization", "text", "generic"]
-                    self.registry.register(model_id, slm_provider, capabilities, weight=5, tags=["small-language-model", "local"])
-                    logger.info(f"Successfully registered SmallLanguageModelService: {model_id}")
+                from services.memory.small_language_model_service import SmallLanguageModelService
+
+                logger.info("Initializing SmallLanguageModelService")
+
+                # Create a wrapper class for the SmallLanguageModelService to match the provider interface
+                class SmallLanguageModelProvider:
+                    def __init__(self):
+                        self.service = SmallLanguageModelService()
+                        self._ensure_model_loaded()
+
+                    def _ensure_model_loaded(self):
+                        """Ensure a model is loaded."""
+                        if not self.service.current_model:
+                            available_models = self.service.get_available_models()
+                            for model_info in available_models:
+                                if model_info.is_available:
+                                    self.service.switch_model(model_info.name)
+                                    break
+
+                    def _run_scaffold(self, prompt: str, task_type: str) -> str:
+                        import asyncio
+                        import concurrent.futures
+
+                        self._ensure_model_loaded()
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                with concurrent.futures.ThreadPoolExecutor() as executor:
+                                    future = executor.submit(
+                                        asyncio.run,
+                                        self.service.generate_scaffold(prompt, task_type),
+                                    )
+                                    result = future.result(timeout=30.0)
+                            else:
+                                result = asyncio.run(self.service.generate_scaffold(prompt, task_type))
+                            return result.content if hasattr(result, "content") else str(result)
+                        except Exception:
+                            return f"SmallLanguageModel response to: {prompt[:100]}..."
+
+                    def generate_text(self, prompt: str, **kwargs) -> str:
+                        return self._run_scaffold(prompt, "reasoning")
+
+                    def generate_response(self, prompt: str, **kwargs) -> str:
+                        return self._run_scaffold(prompt, "reasoning")
+
+                    def enhanced_generate_response(self, prompt: str, **kwargs) -> str:
+                        return self._run_scaffold(prompt, "analysis")
+
+                    def is_loaded(self) -> bool:
+                        return self.service.current_model is not None or self.service.fallback_mode
+
+                slm_provider = SmallLanguageModelProvider()
+                current_model = slm_provider.service.current_model or "default-lightweight-model"
+                model_id = f"small_language_model:{current_model}"
+                capabilities = [
+                    "conversation",
+                    "generic",
+                    "text",
+                    "scaffolding",
+                    "outlining",
+                    "summarization",
+                ]
+                self.registry.register(
+                    model_id,
+                    slm_provider,
+                    capabilities,
+                    weight=5,
+                    tags=["small-language-model", "local"],
+                )
+                logger.info(f"Successfully registered SmallLanguageModelService: {model_id}")
             except Exception as e:
                 logger.warning(f"Failed to register SmallLanguageModelService: {e}")
             
@@ -1014,6 +995,27 @@ class LLMOrchestrator:
 
         return result if return_metadata else result.content
 
+    @staticmethod
+    def _provider_aliases(provider: Optional[str]) -> List[str]:
+        raw = (provider or "").strip()
+        if not raw:
+            return []
+
+        aliases: List[str] = [raw]
+        normalized = raw.replace("_", "-").lower()
+        canonical_map = {
+            "llama-cpp": "llamacpp",
+            "llama_cpp": "llamacpp",
+            "llamacpp": "llamacpp",
+            "local": "local",
+        }
+        canonical = canonical_map.get(normalized)
+        if canonical and canonical not in aliases:
+            aliases.append(canonical)
+        if canonical == "llamacpp" and "local" not in aliases:
+            aliases.append("local")
+        return aliases
+
     def _route_request(
         self,
         prompt: str,
@@ -1030,6 +1032,8 @@ class LLMOrchestrator:
         preferred_models: Deque[str] = deque()
         routing_decision: Any = None
 
+        self._ensure_minimum_models_registered()
+
         if mode == "copilotkit":
             with self.registry._lock:
                 for mid, info in self.registry._models.items():
@@ -1041,11 +1045,16 @@ class LLMOrchestrator:
         pref_model = kwargs.get("model")
         if pref_provider and pref_model:
             # Try both name-based and ID-based matching
-            potential_ids = [
-                f"{pref_provider}:{pref_model}",
-                f"local:{pref_model}",
-                pref_model if ":" in pref_model else None
+            potential_ids: List[Optional[str]] = [
+                f"{provider_id}:{pref_model}"
+                for provider_id in self._provider_aliases(pref_provider)
             ]
+            potential_ids.extend(
+                [
+                    f"local:{pref_model}",
+                    pref_model if ":" in pref_model else None,
+                ]
+            )
             for pid in filter(None, potential_ids):
                 if pid in self.registry._models:
                     preferred_models.appendleft(pid)

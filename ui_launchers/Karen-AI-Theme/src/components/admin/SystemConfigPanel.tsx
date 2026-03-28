@@ -16,6 +16,15 @@ type HealthData = {
   status: string;
   timestamp?: string;
   services?: Record<string, any>;
+  nlp_assets?: {
+    spacy_installed: boolean;
+    spacy_model_name: string;
+    spacy_model_installed: boolean;
+    nltk_installed: boolean;
+    nltk_resources: Record<string, boolean>;
+    runtime_downloads_enabled: boolean;
+    ready: boolean;
+  };
   [key: string]: any;
 };
 
@@ -23,6 +32,7 @@ export default function SystemConfigPanel() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [isInstallingNlpAssets, setIsInstallingNlpAssets] = useState(false);
 
   const loadHealth = useCallback(async () => {
     setIsLoading(true);
@@ -54,7 +64,18 @@ export default function SystemConfigPanel() {
     { key: "KARI_FAST_STARTUP", description: "Skip heavy init on startup", defaultValue: "true" },
     { key: "WARMUP_LLM", description: "Warm up LLM on startup", defaultValue: "false" },
     { key: "AI_KAREN_ENABLE_MODEL_LIBRARY", description: "Enable model library", defaultValue: "false" },
+    { key: "KARI_ENABLE_NLTK_DOWNLOADS", description: "Allow runtime NLTK downloads", defaultValue: "false" },
   ];
+
+  const installNlpAssets = useCallback(async () => {
+    setIsInstallingNlpAssets(true);
+    try {
+      await apiClient.post("/api/health/nlp-assets/install", {});
+      await loadHealth();
+    } finally {
+      setIsInstallingNlpAssets(false);
+    }
+  }, [loadHealth]);
 
   return (
     <div className="space-y-6">
@@ -158,6 +179,61 @@ export default function SystemConfigPanel() {
               <span className="text-muted-foreground font-mono">~25-30%</span>
             </div>
             <Progress value={28} className="h-2" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Cpu className="h-5 w-5 text-primary" />
+            NLP Assets
+          </CardTitle>
+          <CardDescription>
+            Availability of local spaCy and NLTK assets used by context preprocessing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">spaCy Model</span>
+                <Badge variant={health?.nlp_assets?.spacy_model_installed ? "default" : "destructive"}>
+                  {health?.nlp_assets?.spacy_model_installed ? "Ready" : "Missing"}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground font-mono">
+                {health?.nlp_assets?.spacy_model_name || "en_core_web_sm"}
+              </p>
+            </div>
+            <div className="rounded-xl border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">NLTK Resources</span>
+                <Badge variant={health?.nlp_assets?.ready ? "default" : "secondary"}>
+                  {health?.nlp_assets?.ready ? "Ready" : "Partial"}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {health?.nlp_assets?.nltk_resources
+                  ? Object.entries(health.nlp_assets.nltk_resources)
+                      .map(([name, ready]) => `${name}:${ready ? "ok" : "missing"}`)
+                      .join("  ")
+                  : "No resource data"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border p-3">
+            <div>
+              <p className="text-sm font-medium">Admin Install Action</p>
+              <p className="text-xs text-muted-foreground">
+                Use this when the environment is allowed to download missing NLP assets.
+              </p>
+            </div>
+            <Button onClick={installNlpAssets} disabled={isInstallingNlpAssets}>
+              {isInstallingNlpAssets ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Install Assets
+            </Button>
           </div>
         </CardContent>
       </Card>

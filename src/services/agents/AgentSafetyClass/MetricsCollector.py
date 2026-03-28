@@ -1,3 +1,13 @@
+import logging
+import threading
+from typing import Any, Dict
+
+from ..agent_safety_types import ContentType, RiskLevel
+
+
+logger = logging.getLogger(__name__)
+
+
 class MetricsCollector:
     """Collector for performance metrics."""
     
@@ -175,4 +185,3 @@ class MetricsCollector:
     async def health_check(self) -> bool:
         """Check health of the metrics collector."""
         return self._initialized
-

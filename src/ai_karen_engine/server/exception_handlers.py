@@ -28,6 +28,41 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _build_copilot_degraded_response(request: Request, exc: Exception) -> Dict[str, Any]:
+    correlation_id = request.headers.get("x-correlation-id") or f"copilot_{int(datetime.utcnow().timestamp())}"
+    error_message = str(exc).strip() or type(exc).__name__
+
+    return {
+        "answer": (
+            "Karen is operating in degraded mode.\n\n"
+            "Cause: An unexpected server error interrupted the full response pipeline.\n\n"
+            "I'm unable to generate a full AI response right now, but I've logged your request. "
+            "Please try again shortly."
+        ),
+        "structured_content": {},
+        "actions": [],
+        "metadata": {
+            "degraded_mode": True,
+            "failure_category": "server_error",
+            "error": {
+                "message": error_message[:300],
+                "type": type(exc).__name__,
+                "path": str(request.url.path),
+                "method": request.method,
+            },
+            "llm": {
+                "provider": "fallback",
+                "model_id": "exception-handler-fallback",
+                "model_name": "Exception Handler Fallback",
+                "source": "exception_handler",
+                "is_degraded": True,
+                "failure_reason": error_message[:300],
+            },
+        },
+        "correlation_id": correlation_id,
+    }
+
+
 async def custom_http_exception_handler(
     request: Request, exc: HTTPException
 ) -> JSONResponse:
@@ -168,6 +203,12 @@ async def custom_general_exception_handler(
     logger.exception(
         f"Unhandled exception on {request.method} {request.url.path}: {exc}"
     )
+
+    if request.url.path.startswith("/api/copilot/assist"):
+        return JSONResponse(
+            status_code=200,
+            content=_build_copilot_degraded_response(request, exc),
+        )
 
     content = {
         "detail": "Internal server error",

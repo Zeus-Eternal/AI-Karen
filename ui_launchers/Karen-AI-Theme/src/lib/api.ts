@@ -1,11 +1,8 @@
+"use client";
+
 // API service for HTTP requests
-const API_BASE_URL =
-  typeof window !== 'undefined'
-    ? ''
-    : (process.env.KAREN_BACKEND_URL ||
-       process.env.NEXT_PUBLIC_KAREN_BACKEND_URL ||
-       process.env.NEXT_PUBLIC_API_BASE_URL ||
-       'http://localhost:8000');
+const SAME_ORIGIN_API_BASE_URL = '';
+const DIRECT_BROWSER_BACKEND_PORT = '8000';
 
 
 export class ApiError extends Error {
@@ -19,6 +16,71 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
+  private getBrowserDirectBaseUrl(): string {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+
+    const configuredBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+    if (configuredBaseUrl) {
+      return configuredBaseUrl;
+    }
+
+    const { protocol, hostname, port } = window.location;
+    if (!hostname) {
+      return '';
+    }
+
+    if (port === DIRECT_BROWSER_BACKEND_PORT) {
+      return '';
+    }
+
+    return `${protocol}//${hostname}:${DIRECT_BROWSER_BACKEND_PORT}`;
+  }
+
+  private getPreferredBaseUrl(): string {
+    if (typeof window !== 'undefined') {
+      return SAME_ORIGIN_API_BASE_URL;
+    }
+
+    return (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
+  }
+
+  private getFallbackBaseUrl(preferredBaseUrl: string): string {
+    if (typeof window !== 'undefined') {
+      return '';
+    }
+
+    const configuredBackendUrl = (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
+    return preferredBaseUrl === SAME_ORIGIN_API_BASE_URL ? configuredBackendUrl : SAME_ORIGIN_API_BASE_URL;
+  }
+
+  private buildUrl(baseUrl: string, endpoint: string): string {
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    if (typeof window !== 'undefined') {
+      return baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+    }
+
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+
+    return `${baseUrl}${normalizedEndpoint}`;
+  }
+
+  private shouldRetryWithSameOrigin(error: unknown): boolean {
+    return typeof window !== 'undefined' && error instanceof TypeError;
+  }
+
+  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      Boolean(fallbackBaseUrl) &&
+      response.status >= 500
+    );
+  }
+
   private async getAuthHeaders(): Promise<Record<string, string>> {
     try {
       // Try to get a valid access token
@@ -70,14 +132,28 @@ class ApiClient {
         throw new Error('No refresh token available');
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
+      const sendRefresh = async (baseUrl: string): Promise<Response> =>
+        fetch(this.buildUrl(baseUrl, '/api/auth/refresh'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+      const preferredBaseUrl = this.getPreferredBaseUrl();
+      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+      let response: Response;
+      try {
+        response = await sendRefresh(preferredBaseUrl);
+      } catch (error) {
+        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+          throw error;
+        }
+        response = await sendRefresh(fallbackBaseUrl);
+      }
 
       if (!response.ok) {
         throw new Error('Token refresh failed');
@@ -102,33 +178,66 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
-    const send = async (): Promise<Response> => {
+    const send = async (baseUrl: string): Promise<Response> => {
       const authHeaders = await this.getAuthHeaders();
       const requestHeaders = {
         ...authHeaders,
         ...((init.headers as Record<string, string> | undefined) || {}),
       };
 
-      return fetch(`${API_BASE_URL}${endpoint}`, {
+      return fetch(this.buildUrl(baseUrl, endpoint), {
         ...init,
         headers: requestHeaders,
         credentials: 'include',
       });
     };
 
-    let response = await send();
+    const preferredBaseUrl = this.getPreferredBaseUrl();
+    const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+
+    let response: Response;
+    try {
+      response = await send(preferredBaseUrl);
+    } catch (error) {
+      if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+        throw error;
+      }
+      response = await send(fallbackBaseUrl);
+    }
+
+    if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+      response = await send(fallbackBaseUrl);
+    }
 
     if (response.status === 401) {
       try {
         await this.refreshAccessToken();
-        response = await send();
+        try {
+          response = await send(preferredBaseUrl);
+        } catch (error) {
+          if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+            throw error;
+          }
+          response = await send(fallbackBaseUrl);
+        }
+        if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+          response = await send(fallbackBaseUrl);
+        }
       } catch (refreshError) {
         // Fall through to the error handling below with the original/second response.
       }
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const rawText = await response.text().catch(() => '');
+      let errorData: Record<string, any> = {};
+      if (rawText) {
+        try {
+          errorData = JSON.parse(rawText);
+        } catch {
+          errorData = { detail: rawText.trim() };
+        }
+      }
       throw new ApiError(
         response.status,
         errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`
@@ -147,15 +256,17 @@ class ApiClient {
     return this.request<T>(endpoint);
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: any, init: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
+      ...init,
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined
     });
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: any, init: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
+      ...init,
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined
     });

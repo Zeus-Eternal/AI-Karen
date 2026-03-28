@@ -134,6 +134,7 @@ class SessionStateManager:
                 session_id=session_id,
                 user_id=request.user_id,
                 tenant_id=request.tenant_id,
+                thread_id=request.thread_id,
                 langgraph_thread_id=langgraph_thread_id,
                 status=SessionStateStatus.ACTIVE,
                 created_at=datetime.utcnow(),
@@ -141,7 +142,9 @@ class SessionStateManager:
                 expires_at=expires_at,
                 state_data=request.initial_state,
                 context_data=request.initial_context,
-                metadata=request.metadata
+                metadata=request.metadata,
+                last_checkpoint_id=None,
+                checkpoint_count=0,
             )
             
             # Store session
@@ -174,6 +177,7 @@ class SessionStateManager:
                 success=True,
                 session_state=session_state,
                 checkpoint=checkpoint,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -187,6 +191,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )
@@ -218,6 +224,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -238,6 +246,8 @@ class SessionStateManager:
             return SessionStateResponse(
                 success=True,
                 session_state=session_state,
+                checkpoint=None,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -251,6 +261,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )
@@ -284,6 +296,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -331,6 +345,7 @@ class SessionStateManager:
                 success=True,
                 session_state=session_state,
                 checkpoint=checkpoint,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -344,6 +359,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )
@@ -375,6 +392,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -396,6 +415,9 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=True,
+                session_state=None,
+                checkpoint=None,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -409,6 +431,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )
@@ -464,6 +488,7 @@ class SessionStateManager:
                 success=True,
                 sessions=sessions,
                 total_count=total_count,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -514,6 +539,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -526,6 +553,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -561,6 +590,7 @@ class SessionStateManager:
                 success=True,
                 session_state=session_state,
                 checkpoint=checkpoint,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -574,6 +604,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )
@@ -637,6 +669,7 @@ class SessionStateManager:
                 success=True,
                 checkpoints=[checkpoint],
                 total_count=1,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -700,6 +733,7 @@ class SessionStateManager:
                 success=True,
                 checkpoints=checkpoints,
                 total_count=total_count,
+                error_message=None,
                 correlation_id=correlation_id
             )
             
@@ -748,6 +782,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -761,6 +797,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -774,6 +812,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -800,6 +840,7 @@ class SessionStateManager:
                     success=True,
                     session_state=session_state,
                     checkpoint=checkpoint,
+                    error_message=None,
                     correlation_id=correlation_id
                 )
             else:
@@ -810,6 +851,8 @@ class SessionStateManager:
                 )
                 return SessionStateResponse(
                     success=False,
+                    session_state=None,
+                    checkpoint=None,
                     error_message=error_msg,
                     correlation_id=correlation_id
                 )
@@ -824,6 +867,8 @@ class SessionStateManager:
             
             return SessionStateResponse(
                 success=False,
+                session_state=None,
+                checkpoint=None,
                 error_message=error_msg,
                 correlation_id=correlation_id
             )

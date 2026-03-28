@@ -2224,7 +2224,7 @@ async def get_supported_formats():
         "safetensors": {
             "description": "Safe serialization format for PyTorch models",
             "extensions": [".safetensors"],
-            "runtimes": ["transformers", "vllm"],
+            "runtimes": ["transformers"],
             "quantization_support": False,
             "streaming_support": True,
             "memory_efficient": False,
@@ -2544,13 +2544,13 @@ class DownloadJobResponse(BaseModel):
 # Predefined model URLs for local features (no API key required)
 CURATED_MODELS = {
     "default-lightweight-model": {
-        "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-        "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-        "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
-        "description": "Tiny but capable chat model, perfect for testing and low-resource environments",
-        "size": 669000000,  # ~669MB
-        "family": "llama",
-        "parameters": "1.1B",
+        "url": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf",
+        "filename": "Qwen3-0.6B-Q4_K_M.gguf",
+        "model_id": "Qwen/Qwen3-0.6B-GGUF",
+        "description": "Compact Qwen3 chat model for low-resource local inference and default assistant tasks",
+        "size": 520000000,  # ~520MB
+        "family": "qwen",
+        "parameters": "0.6B",
         "quantization": "Q4_K_M"
     },
     "phi3-mini": {

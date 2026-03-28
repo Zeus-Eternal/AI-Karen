@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { AuthWrapper } from '@/components/AuthWrapper';
 import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, PanelLeft, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap, Binary, Bot as BotIcon, ScrollText, Clock, Workflow, UserCircle } from 'lucide-react';
 import SettingsDialogComponent from '@/components/settings/SettingsDialog';
 import DataConnectorPluginPage from '@/components/plugins/DataConnectorPluginPage';
@@ -41,17 +42,17 @@ import { Separator } from '@/components/ui/separator';
 import ChatInterface from '@/components/chat/ChatInterface';
 import CommsCenterPage from '@/components/comms/CommsCenterPage';
 import AdminSettingsPage from '@/components/admin/AdminSettingsPage';
-import ModelSettings from '@/components/settings/ModelSettings';
-import { Shield, Settings2 } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
-type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDataConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview' | 'automationOverview' | 'agents' | 'tasks' | 'sequences' | 'cronJobs' | 'account' | 'admin' | 'modelSettings';
+type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDataConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview' | 'automationOverview' | 'agents' | 'tasks' | 'sequences' | 'cronJobs' | 'account' | 'admin';
 
 export default function DashboardPage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
 
   return (
-    <SidebarProvider>
-      <div className="flex flex-col h-screen w-full bg-background text-foreground">
+    <AuthWrapper>
+      <SidebarProvider>
+        <div className="flex flex-col h-screen w-full bg-background text-foreground">
         <header className="p-3 md:p-4 border-b border-border flex items-center justify-between sticky top-0 z-30 bg-background/90 backdrop-blur-md shadow-sm">
           <div className="flex items-center space-x-3">
             <AppSidebarTrigger className="mr-1 md:mr-2">
@@ -77,7 +78,7 @@ export default function DashboardPage() {
           </Sheet>
         </header>
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1">
           <Sidebar
             variant="sidebar"
             collapsible="icon"
@@ -127,16 +128,6 @@ export default function DashboardPage() {
                   >
                     <Shield />
                     Admin Settings
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                    onClick={() => setActiveMainView('modelSettings')}
-                    isActive={activeMainView === 'modelSettings'}
-                    className="w-full text-amber-500/80 hover:text-amber-500 transition-colors"
-                  >
-                    <Settings2 />
-                    Model Config
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -288,7 +279,7 @@ export default function DashboardPage() {
           </Sidebar>
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
-            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
+            <main className="container flex-1 flex flex-col p-4 md:p-6 overflow-y-auto">
               {activeMainView === 'chat' && <ChatInterface />}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
               {activeMainView === 'pluginDataConnector' && <DataConnectorPluginPage />}
@@ -305,15 +296,11 @@ export default function DashboardPage() {
               {activeMainView === 'commsCenter' && <CommsCenterPage />}
               {activeMainView === 'account' && <AccountPage />}
               {activeMainView === 'admin' && <AdminSettingsPage />}
-              {activeMainView === 'modelSettings' && (
-                <div className="max-w-4xl mx-auto w-full">
-                  <ModelSettings />
-                </div>
-              )}
             </main>
           </SidebarInset>
         </div>
-      </div>
-    </SidebarProvider>
+        </div>
+      </SidebarProvider>
+    </AuthWrapper>
   );
 }

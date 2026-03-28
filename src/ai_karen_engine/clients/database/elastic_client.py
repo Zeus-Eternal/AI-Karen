@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol, cast
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,18 @@ except Exception:  # pragma: no cover - optional dep
     DOC_INDEX_COUNT = DOC_SEARCH_COUNT = _Dummy()
 
 try:
-    from elasticsearch import Elasticsearch
+    from elasticsearch import Elasticsearch as _Elasticsearch  # pyright: ignore[reportMissingImports]
+    Elasticsearch = cast(type["ElasticsearchClientProtocol"], _Elasticsearch)
 except Exception:  # pragma: no cover - optional dependency
     Elasticsearch = None
+
+
+class ElasticsearchClientProtocol(Protocol):
+    indices: Any
+    def __init__(self, hosts: List[Dict[str, Any]], *, basic_auth: Optional[tuple[str, str]] = None) -> None: ...
+
+    def index(self, *, index: str, document: Dict[str, Any]) -> Any: ...
+    def search(self, *, index: str, body: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 class ElasticClient:
@@ -84,7 +93,10 @@ class ElasticClient:
         try:
             logger.info(f"Initializing Elasticsearch connection to {self.host}:{self.port}")
             auth = (self.user, self.password) if self.user else None
-            self._es = Elasticsearch(
+            es_cls = Elasticsearch
+            if es_cls is None:
+                raise RuntimeError("Elasticsearch client is unavailable")
+            self._es = es_cls(
                 [{"host": self.host, "port": self.port, "scheme": "http"}],
                 basic_auth=auth,
             )

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Tuple
 import json
 
-from ...internal..core.services.base import BaseService, ServiceConfig
+from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 
 @dataclass
@@ -38,8 +38,9 @@ class BackendHardeningService(BaseService):
     """
     
     def __init__(self, config: Optional[ServiceConfig] = None):
-        if config is None:
-            config = ServiceConfig(
+        effective_config = config
+        if effective_config is None:
+            effective_config = ServiceConfig(
                 name="backend_hardening",
                 enabled=True,
                 config={
@@ -49,10 +50,12 @@ class BackendHardeningService(BaseService):
                 }
             )
         
-        super().__init__(config)
-        self.target_directories = config.config.get("target_directories", ["src"])
-        self.backup_directory = Path(config.config.get("backup_directory", "backups/hardening"))
-        self.dry_run = config.config.get("dry_run", False)
+        super().__init__(effective_config)
+        self.target_directories = effective_config.config.get("target_directories", ["src"])
+        self.backup_directory = Path(
+            effective_config.config.get("backup_directory", "backups/hardening")
+        )
+        self.dry_run = effective_config.config.get("dry_run", False)
         self.fixes_applied: List[HardeningFix] = []
     
     async def initialize(self) -> None:

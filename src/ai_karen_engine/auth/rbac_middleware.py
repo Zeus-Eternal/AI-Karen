@@ -330,12 +330,26 @@ def _load_permissions_config() -> Dict[str, Any]:
     return {}
 
 
+_PERMISSION_ALIASES: Dict[str, Permission] = {
+    "users:manage": Permission.ADMIN_WRITE,
+    "system:configure": Permission.ADMIN_SYSTEM,
+    "plugins:manage": Permission.ADMIN_WRITE,
+    "chat:use": Permission.BROWSER,
+    "data:read_own": Permission.DATA_READ,
+    "profile:manage_own": Permission.EDIT,
+}
+
+
 def _resolve_permission_names(raw_permissions: Iterable[str]) -> Set[Permission]:
     resolved: Set[Permission] = set()
     for value in raw_permissions:
         try:
             resolved.add(Permission(value))
         except ValueError:
+            alias = _PERMISSION_ALIASES.get(value)
+            if alias is not None:
+                resolved.add(alias)
+                continue
             logger.warning("Unknown permission '%s' in permissions.json", value)
     return resolved
 

@@ -11,7 +11,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from contextvars import ContextVar
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -134,10 +134,10 @@ class StructuredLogger:
         
         if error:
             error_type = type(error).__name__
-            error_details = {
+            error_details = cast(Dict[str, Any], {
                 "message": str(error),
                 "type": error_type,
-            }
+            })
             if hasattr(error, '__dict__'):
                 error_details.update({
                     k: v for k, v in error.__dict__.items()

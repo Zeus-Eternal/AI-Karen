@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Clock, PlusCircle, Trash2, Edit, AlertTriangle, ScrollText, Info } from "lucide-react";
+import { Clock, PlusCircle, Trash2, Edit, AlertTriangle, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 
 /**
  * @file CronJobsPage.tsx
- * @description Conceptual page for scheduling Tasks using cron expressions.
+ * @description Preview page for scheduling Tasks using cron expressions.
  */
 export default function CronJobsPage() {
 
@@ -49,16 +49,16 @@ export default function CronJobsPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Cron Job Assignments</h2>
           <p className="text-sm text-muted-foreground">
-            Schedule tasks to run automatically at specific times or intervals (Conceptual).
+            Preview the scheduler UX while backend job execution is still being wired.
           </p>
         </div>
       </div>
       
-      <Alert variant="destructive">
+      <Alert>
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Conceptual Feature</AlertTitle>
+        <AlertTitle>Scheduler Not Yet Connected</AlertTitle>
         <AlertDescription>
-          This section is a conceptual placeholder. A real cron job system requires a backend scheduler (like `node-cron` on a server or a cloud function scheduler) to trigger task executions.
+          Job schedules shown here are illustrative only. The backend scheduler and execution persistence are not connected yet, so creating or editing jobs is currently disabled.
         </AlertDescription>
       </Alert>
 
@@ -151,7 +151,7 @@ export default function CronJobsPage() {
         <Info className="h-4 w-4" />
         <AlertTitle>Developer Insight</AlertTitle>
         <AlertDescription>
-         Implementing this would involve storing cron schedules and their associated task or sequence IDs in a database. A master scheduler process would then periodically check for jobs whose time has come, retrieve the corresponding details, and trigger the execution flow.
+         The remaining backend work is to persist schedules, evaluate due runs, and dispatch the linked task or sequence through the automation executor.
         </AlertDescription>
       </Alert>
     </div>

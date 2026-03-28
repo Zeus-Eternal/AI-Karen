@@ -6,7 +6,7 @@ Production: Use redis-py, thread-safe, supports multiple namespaces.
 import json
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import redis
 
@@ -28,7 +28,7 @@ class RedisClient:
         self.prefix: str = prefix
         conn_url = url or os.getenv("REDIS_URL")
         self.pool: Optional[redis.ConnectionPool] = None
-        self.r: Optional[redis.Redis[Any]] = None
+        self.r: Optional[redis.Redis] = None
         if conn_url:
             try:
                 self.pool = redis.ConnectionPool.from_url(
@@ -50,7 +50,7 @@ class RedisClient:
         """Flush all short-term cache for user."""
         if not self.r:
             return
-        keys = self.r.keys(self._k(tenant_id, user_id, "short_term*"))
+        keys = cast(List[str], self.r.keys(self._k(tenant_id, user_id, "short_term*")))
         for k in keys:
             self.r.delete(k)
 
@@ -58,9 +58,19 @@ class RedisClient:
         """Flush all long-term cache for user."""
         if not self.r:
             return
-        keys = self.r.keys(self._k(tenant_id, user_id, "long_term*"))
+        keys = cast(List[str], self.r.keys(self._k(tenant_id, user_id, "long_term*")))
         for k in keys:
             self.r.delete(k)
+
+    @staticmethod
+    def _decode_json_value(value: object) -> Optional[Dict[str, Any]]:
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            return cast(Dict[str, Any], json.loads(value.decode("utf-8")))
+        if isinstance(value, str):
+            return cast(Dict[str, Any], json.loads(value))
+        return None
 
     def set_short_term(
         self, tenant_id: str, user_id: str, data: Dict[str, Any]
@@ -73,7 +83,7 @@ class RedisClient:
         if not self.r:
             return None
         val = self.r.get(self._k(tenant_id, user_id, "short_term"))
-        return json.loads(val) if val else None
+        return self._decode_json_value(val)
 
     def set_session(
         self, tenant_id: str, user_id: str, sess_data: Dict[str, Any]
@@ -86,7 +96,7 @@ class RedisClient:
         if not self.r:
             return None
         val = self.r.get(self._k(tenant_id, user_id, "session"))
-        return json.loads(val) if val else None
+        return self._decode_json_value(val)
 
     # Health
     def health(self) -> bool:
