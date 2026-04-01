@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.services.agents.agent_safety_types import SafetyLevel
+from ai_karen_engine.services.agent_safety_types import SafetyLevel
 
 logger = logging.getLogger(__name__)
 

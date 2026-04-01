@@ -25,14 +25,62 @@ def _get_service_classes():
     classes = {}
     try:
         # Try to import from src/services first
-        classes['AIOrchestrator'] = __import__('services.ai_orchestrator.ai_orchestrator', fromlist=['AIOrchestrator']).AIOrchestrator
-        classes['WebUIMemoryService'] = __import__('services.memory.memory_service', fromlist=['WebUIMemoryService']).WebUIMemoryService
-        classes['UnifiedMemoryService'] = __import__('services.memory.unified_memory_service', fromlist=['UnifiedMemoryService']).UnifiedMemoryService
-        classes['WebUIConversationService'] = __import__('services.memory.conversation_service', fromlist=['WebUIConversationService']).WebUIConversationService
-        classes['PluginService'] = __import__('services.infra.plugin_service', fromlist=['PluginService']).PluginService
-        classes['ToolService'] = __import__('services.memory.tool_service', fromlist=['ToolService']).ToolService
-        classes['AnalyticsService'] = __import__('services.memory.analytics_service', fromlist=['AnalyticsService']).AnalyticsService
-        classes['PerformanceAdaptiveRouter'] = __import__('ai_karen_engine.integrations.performance_adaptive_router', fromlist=['PerformanceAdaptiveRouter']).PerformanceAdaptiveRouter
+        logger.info("🔍 DEBUG: Attempting to import service classes...")
+        try:
+            classes['AIOrchestrator'] = __import__('services.ai_orchestrator.ai_orchestrator', fromlist=['AIOrchestrator']).AIOrchestrator
+            logger.info("✅ AIOrchestrator imported successfully")
+        except Exception as e:
+            logger.warning(f"AIOrchestrator import failed: {e}")
+            classes['AIOrchestrator'] = None
+            
+        try:
+            classes['WebUIMemoryService'] = __import__('services.memory.memory_service', fromlist=['WebUIMemoryService']).WebUIMemoryService
+            logger.info("✅ WebUIMemoryService imported successfully")
+        except Exception as e:
+            logger.warning(f"WebUIMemoryService import failed: {e}")
+            classes['WebUIMemoryService'] = None
+            
+        try:
+            classes['UnifiedMemoryService'] = __import__('services.memory.unified_memory_service', fromlist=['UnifiedMemoryService']).UnifiedMemoryService
+            logger.info("✅ UnifiedMemoryService imported successfully")
+        except Exception as e:
+            logger.warning(f"UnifiedMemoryService import failed: {e}")
+            classes['UnifiedMemoryService'] = None
+            
+        try:
+            classes['WebUIConversationService'] = __import__('services.memory.conversation_service', fromlist=['WebUIConversationService']).WebUIConversationService
+            logger.info("✅ WebUIConversationService imported successfully")
+        except Exception as e:
+            logger.warning(f"WebUIConversationService import failed: {e}")
+            classes['WebUIConversationService'] = None
+            
+        try:
+            classes['PluginService'] = __import__('services.infra.plugin_service', fromlist=['PluginService']).PluginService
+            logger.info("✅ PluginService imported successfully")
+        except Exception as e:
+            logger.warning(f"PluginService import failed: {e}")
+            classes['PluginService'] = None
+            
+        try:
+            classes['ToolService'] = __import__('services.memory.tool_service', fromlist=['ToolService']).ToolService
+            logger.info("✅ ToolService imported successfully")
+        except Exception as e:
+            logger.warning(f"ToolService import failed: {e}")
+            classes['ToolService'] = None
+            
+        try:
+            classes['AnalyticsService'] = __import__('services.memory.analytics_service', fromlist=['AnalyticsService']).AnalyticsService
+            logger.info("✅ AnalyticsService imported successfully")
+        except Exception as e:
+            logger.warning(f"AnalyticsService import failed: {e}")
+            classes['AnalyticsService'] = None
+            
+        try:
+            classes['PerformanceAdaptiveRouter'] = __import__('ai_karen_engine.integrations.performance_adaptive_router', fromlist=['PerformanceAdaptiveRouter']).PerformanceAdaptiveRouter
+            logger.info("✅ PerformanceAdaptiveRouter imported successfully")
+        except Exception as e:
+            logger.warning(f"PerformanceAdaptiveRouter import failed: {e}")
+            classes['PerformanceAdaptiveRouter'] = None
     except ImportError as e:
         logger.warning(f"Some service imports failed: {e}")
         # Define dummy classes for missing services
@@ -125,24 +173,34 @@ def _get_service_classes():
     
     try:
         classes['ConversationManager'] = __import__('ai_karen_engine.database.conversation_manager', fromlist=['ConversationManager']).ConversationManager
-        classes['MultiTenantPostgresClient'] = __import__('ai_karen_engine.database.client', fromlist=['MultiTenantPostgresClient']).MultiTenantPostgresClient
+        logger.info("✅ ConversationManager imported successfully")
     except ImportError as e:
-        logger.warning(f"Database import failed: {e}")
-        class ConversationManager:
-            def __init__(self, db_client, memory_manager, embedding_manager):
-                self.db_client = db_client
-                self.memory_manager = memory_manager
-                self.embedding_manager = embedding_manager
-            def load_config(self):
-                return {"environment": "fallback", "debug": True}
-        
+        logger.warning(f"ConversationManager import failed: {e}")
+        # Try to import from the new location
+        try:
+            classes['ConversationManager'] = __import__('ai_karen_engine.chat.conversation_manager', fromlist=['ConversationManager']).ConversationManager
+            logger.info("✅ ConversationManager imported from new location successfully")
+        except ImportError as e2:
+            logger.warning(f"ConversationManager import from new location failed: {e2}")
+            class ConversationManager:
+                def __init__(self, db_client, memory_manager, embedding_manager):
+                    self.db_client = db_client
+                    self.memory_manager = memory_manager
+                    self.embedding_manager = embedding_manager
+                def load_config(self):
+                    return {"environment": "fallback", "debug": True}
+            classes['ConversationManager'] = ConversationManager
+    
+    try:
+        classes['MultiTenantPostgresClient'] = __import__('ai_karen_engine.database.client', fromlist=['MultiTenantPostgresClient']).MultiTenantPostgresClient
+        logger.info("✅ MultiTenantPostgresClient imported successfully")
+    except ImportError as e:
+        logger.warning(f"MultiTenantPostgresClient import failed: {e}")
         class MultiTenantPostgresClient:
             def __init__(self):
                 pass
             def load_config(self):
                 return {"environment": "fallback", "debug": True}
-        
-        classes['ConversationManager'] = ConversationManager
         classes['MultiTenantPostgresClient'] = MultiTenantPostgresClient
     
     return classes
@@ -513,9 +571,17 @@ class ServiceRegistry:
                         logger.error(f"Failed to create WebUIMemoryService: {e}")
                         instance = None
                 elif service_class_name == 'UnifiedMemoryService':
-                    # UnifiedMemoryService can be initialized directly
+                    # UnifiedMemoryService needs the same storage dependencies as the Web UI memory service.
                     try:
-                        instance = UnifiedMemoryService()
+                        from ai_karen_engine.core.embedding_manager import EmbeddingManager
+                        from ai_karen_engine.core.milvus_client import MilvusClient
+                        from ai_karen_engine.database.client import MultiTenantPostgresClient
+
+                        instance = UnifiedMemoryService(
+                            db_client=MultiTenantPostgresClient(),
+                            milvus_client=MilvusClient(),
+                            embedding_manager=EmbeddingManager(),
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to initialize UnifiedMemoryService: {e}")
                         instance = None
@@ -992,44 +1058,109 @@ async def initialize_services() -> None:
         registry.register_service("database_client", FallbackDatabaseClient)
         logger.info("Registered FallbackDatabaseClient service")
     
-    # Only register services that actually exist
-    # Skip AIOrchestrator for now as it's abstract and causing issues
+    # Register ChatOrchestrator as the absolute source of truth for chat operations
     try:
-        # Create a concrete implementation of AIOrchestrator for now
-        class ConcreteAIOrchestrator:
+        logger.info("🔍 DEBUG: Attempting to register ChatOrchestrator...")
+        
+        # Import ChatOrchestrator
+        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
+        
+        # Create a simple config for ChatOrchestrator
+        class SimpleChatOrchestratorConfig:
+            def __init__(self, name: str, enabled: bool = True, dependencies: Optional[List[str]] = None, config: Optional[Dict[str, Any]] = None):
+                self.name = name
+                self.enabled = enabled
+                self.dependencies = dependencies or []
+                self.config = config or {}
+        
+        chat_orchestrator_config = SimpleChatOrchestratorConfig(
+            name="chat_orchestrator",
+            enabled=True,
+            dependencies=["memory_service"],
+            config={"environment": "production", "debug": True}
+        )
+        
+        # Register ChatOrchestrator service
+        registry.register_service("chat_orchestrator", ChatOrchestrator, {
+            "memory_service": True  # Required dependency
+        })
+        logger.info("✅ Registered ChatOrchestrator service")
+        
+        # Also register a fallback AIOrchestrator for compatibility
+        try:
+            # Create a concrete implementation of AIOrchestrator for now
+            class ConcreteAIOrchestrator:
+                def __init__(self, config=None):
+                    self.config = config
+                    self.initialized = False
+                
+                async def initialize(self):
+                    self.initialized = True
+                    logger.info("ConcreteAIOrchestrator initialized")
+                
+                async def start(self):
+                    logger.info("ConcreteAIOrchestrator started")
+                
+                async def stop(self):
+                    logger.info("ConcreteAIOrchestrator stopped")
+                
+                def load_config(self) -> Dict[str, Any]:
+                    return {"environment": "local", "debug": True}
+            
+            registry.register_service("ai_orchestrator", ConcreteAIOrchestrator)
+            logger.info("✅ Registered ConcreteAIOrchestrator service")
+        except Exception as e:
+            logger.warning(f"Could not register AIOrchestrator: {e}")
+            
+    except Exception as e:
+        logger.error(f"❌ Could not register ChatOrchestrator: {e}", exc_info=True)
+        # Register a fallback ChatOrchestrator
+        class FallbackChatOrchestrator:
             def __init__(self, config=None):
                 self.config = config
                 self.initialized = False
+                logger.info("🔄 Created fallback ChatOrchestrator")
             
             async def initialize(self):
                 self.initialized = True
-                logger.info("ConcreteAIOrchestrator initialized")
-            
-            async def start(self):
-                logger.info("ConcreteAIOrchestrator started")
-            
-            async def stop(self):
-                logger.info("ConcreteAIOrchestrator stopped")
+                logger.info("🔄 Fallback ChatOrchestrator initialized")
             
             def load_config(self) -> Dict[str, Any]:
-                return {"environment": "local", "debug": True}
+                return {"environment": "fallback", "debug": True}
         
-        registry.register_service("ai_orchestrator", ConcreteAIOrchestrator)
-        logger.info("Registered ConcreteAIOrchestrator service")
-    except Exception as e:
-        logger.warning(f"Could not register AIOrchestrator: {e}")
+        try:
+            fallback_config = SimpleChatOrchestratorConfig(
+                name="chat_orchestrator",
+                enabled=True,
+                dependencies=[],
+                config={"environment": "fallback", "debug": True}
+            )
+            registry.register_service("chat_orchestrator", FallbackChatOrchestrator)
+            logger.info("✅ Registered fallback ChatOrchestrator service")
+        except Exception as fallback_error:
+            logger.error(f"❌ Could not register fallback ChatOrchestrator: {fallback_error}")
     
     try:
-        registry.register_service("memory_service", WebUIMemoryService)
-        logger.info("Registered WebUIMemoryService service")
+        logger.info("🔍 DEBUG: Attempting to register WebUIMemoryService...")
+        # Check if WebUIMemoryService is available
+        if WebUIMemoryService is None:
+            logger.error("❌ WebUIMemoryService is None, cannot register")
+        else:
+            registry.register_service("memory_service", WebUIMemoryService)
+            logger.info("✅ Registered WebUIMemoryService service")
     except Exception as e:
-        logger.warning(f"Could not register WebUIMemoryService: {e}")
+        logger.error(f"❌ Could not register WebUIMemoryService: {e}", exc_info=True)
     
     try:
-        registry.register_service("conversation_service", WebUIConversationService, {"memory_service": True})
-        logger.info("Registered WebUIConversationService service")
+        logger.info("🔍 DEBUG: Attempting to register WebUIConversationService...")
+        # Check if WebUIConversationService is available
+        if WebUIConversationService is None:
+            logger.error("❌ WebUIConversationService is None, cannot register")
+        else:
+            registry.register_service("conversation_service", WebUIConversationService, {"memory_service": True})
+            logger.info("✅ Registered WebUIConversationService service")
     except Exception as e:
-        logger.warning(f"Could not register WebUIConversationService: {e}")
+        logger.error(f"❌ Could not register WebUIConversationService: {e}", exc_info=True)
     
     try:
         registry.register_service("plugin_service", PluginService)
@@ -1070,12 +1201,25 @@ async def initialize_services() -> None:
         logger.warning(f"Could not register PerformanceAdaptiveRouter: {e}")
     
     # Initialize all services with comprehensive reporting
+    logger.info("🔍 DEBUG: Starting service initialization...")
     results = await registry.initialize_all_services()
     
     # Generate and log initialization report
     report = registry.get_initialization_report()
-    logger.info(f"Service initialization complete: {report['summary']['ready_services']}/{report['summary']['total_services']} ready, "
+    logger.info(f"🔍 DEBUG: Service initialization complete: {report['summary']['ready_services']}/{report['summary']['total_services']} ready, "
                f"{report['summary']['degraded_services']} degraded, {report['summary']['error_services']} failed")
+    
+    # Log detailed status of each service
+    for service_name, service_info in report['services'].items():
+        status = service_info['status']
+        if status == 'error':
+            logger.error(f"❌ Service {service_name} failed: {service_info.get('error_message', 'Unknown error')}")
+        elif status == 'degraded':
+            logger.warning(f"⚠️ Service {service_name} degraded: {service_info.get('error_message', 'Missing optional dependencies')}")
+        elif status == 'ready':
+            logger.info(f"✅ Service {service_name} ready")
+        else:
+            logger.info(f"🔄 Service {service_name} status: {status}")
     
     # Log any services that failed to initialize
     for service_name, service_info in report['services'].items():
@@ -1086,6 +1230,30 @@ async def initialize_services() -> None:
     
     # Start health monitoring
     registry.start_health_monitoring()
+    
+    # Force synchronous initialization of critical services
+    logger.info("🔥 Force synchronizing critical services...")
+    critical_services = ["chat_orchestrator", "memory_service", "conversation_service"]
+    
+    for service_name in critical_services:
+        if service_name in registry._instances:
+            try:
+                logger.info(f"🔥 Synchronizing critical service: {service_name}")
+                # Ensure service is fully ready
+                service_instance = registry._instances[service_name]
+                logger.info(f"🔥 Service instance type: {type(service_instance)}")
+                logger.info(f"🔥 Service instance attributes: {dir(service_instance)}")
+                
+                if hasattr(service_instance, 'initialize'):
+                    # Already initialized, just verify it's ready
+                    if hasattr(service_instance, 'initialized') and not service_instance.initialized:
+                        await service_instance.initialize()
+                logger.info(f"✅ Critical service synchronized: {service_name}")
+            except Exception as e:
+                logger.error(f"❌ Failed to synchronize critical service {service_name}: {e}", exc_info=True)
+        else:
+            logger.warning(f"⚠️ Critical service {service_name} not found in service registry")
+            logger.warning(f"🔍 Available services: {list(registry._instances.keys())}")
     
     logger.info("AI Karen engine integration services initialized successfully")
 

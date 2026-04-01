@@ -1016,6 +1016,102 @@ class LLMOrchestrator:
             aliases.append("local")
         return aliases
 
+    async def generate_response(
+        self,
+        model_id: str,
+        messages: List[Dict[str, str]],
+        provider: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        stream: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Public entry point for generating a response with full orchestration."""
+        
+        # 1. Format prompt from messages
+        # Simple join for now; providers will handle specific templates
+        prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        if not prompt.lower().strip().endswith("assistant:"):
+            prompt += "\nassistant:"
+            
+        # 2. Add provider/model choice if explicit
+        kwargs["model"] = model_id
+        kwargs["provider"] = provider
+        
+        # 3. Route and Execute
+        # Note: In a fully async world, we'd make _route_request async.
+        # For now, we wrap the existing synchronous logic.
+        import asyncio
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: self._route_request(
+                prompt=prompt,
+                skill=kwargs.get("skill"),
+                mode=kwargs.get("mode", "default"),
+                context=kwargs.get("context"),
+                **kwargs
+            )
+        )
+        
+        return {
+            "content": result.content,
+            "structured_content": result.metadata.get("structured_content") or {},
+            "actions": result.metadata.get("actions") or [],
+            "metadata": result.to_metadata()
+        }
+
+    async def generate_response_stream(
+        self,
+        model_id: str,
+        messages: List[Dict[str, str]],
+        provider: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        **kwargs
+    ):
+        """Public entry point for token-by-token generation."""
+        prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        if not prompt.lower().strip().endswith("assistant:"):
+            prompt += "\nassistant:"
+            
+        kwargs["model"] = model_id
+        kwargs["provider"] = provider
+        kwargs["stream"] = True
+        
+        # We find the best model first
+        import asyncio
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: self._route_request(
+                prompt=prompt,
+                skill=kwargs.get("skill"),
+                mode=kwargs.get("mode", "default"),
+                context=kwargs.get("context"),
+                **kwargs
+            )
+        )
+        
+        # Determine which model we're actually using
+        final_model_id = result.model_id
+        if not final_model_id:
+            yield "I encountered a routing error. Please check the logs."
+            return
+            
+        with self.registry._lock:
+            model_info = self.registry._models.get(final_model_id)
+            if not model_info:
+                yield "The selected model is unavailable."
+                return
+                
+        # Execute the stream helper
+        async for chunk in self._execute_model_stream(
+            final_model_id, 
+            model_info, 
+            prompt, 
+            **kwargs
+        ):
+            yield chunk
+
     def _route_request(
         self,
         prompt: str,
@@ -1348,76 +1444,54 @@ class LLMOrchestrator:
         self.pool._record_outcome(model_id, True)
         latency = time.time() - start
         self._track_latency(model_id, latency)
-        self._handle_model_recovery(model_id, model)
-        self._log_request_event(
-            "success",
-            model_id,
-            prompt,
-            mode=mode,
-            metadata={"latency": round(latency, 3)},
-        )
-        
-        # Record performance metrics with PerformanceAdaptiveRouter
-        if hasattr(self, 'performance_router') and self.performance_router:
-            try:
-                import asyncio
-                provider_name = model_id.split(":", 1)[0] if ":" in model_id else model_id
+
+    async def _execute_model_stream(
+        self,
+        model_id: str,
+        model: ModelInfo,
+        prompt: str,
+        **kwargs,
+    ):
+        """Execute a provider call in streaming mode."""
+        # Ensure model is ready
+        if hasattr(model.model, "is_loaded") and not model.model.is_loaded():
+            if hasattr(model.model, "load_model"):
+                model.model.load_model()
                 
-                # Record performance metrics asynchronously
-                metrics = {
-                    'latency_mean': latency,
-                    'latency_p95': latency,  # Use same value for simplicity
-                    'success_rate': 1.0,  # Successful request
-                    'requests_per_second': 1.0 / latency,  # Simple RPS calculation
-                    'error_rate': 0.0,  # No error
-                    'user_satisfaction_score': 0.8,  # Default satisfaction
-                    'response_quality_score': 0.8,  # Default quality
-                    'cost_per_request': 0.01,  # Default cost
-                    'cost_efficiency_score': 0.8,  # Default efficiency
-                    'uptime_percentage': 100.0,  # Successful request
-                    'reliability_score': 1.0,  # Successful request
-                }
-                
-                # Run asynchronously to avoid blocking
-                try:
-                    loop = asyncio.get_running_loop()
-                    # Create a task to record performance
-                    asyncio.create_task(self.performance_router.record_performance(provider_name, metrics))
-                except RuntimeError:
-                    # No event loop running, create one
-                    import threading
-                    def record_metrics():
-                        import asyncio
-                        new_loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(new_loop)
-                        new_loop.run_until_complete(
-                            self.performance_router.record_performance(provider_name, metrics)
-                        )
-                        new_loop.close()
-                    
-                    thread = threading.Thread(target=record_metrics, daemon=True)
-                    thread.start()
-                    
-            except Exception as e:
-                logger.warning(f"Failed to record performance metrics: {e}")
+        target_model = model.model
         
-        # Apply response formatting if available
-        try:
-            formatted_result = self._apply_response_formatting(prompt, result, context)
-            if formatted_result != result:
-                self._log_request_event(
-                    "formatted",
-                    model_id,
-                    prompt,
-                    mode=mode,
-                    metadata={"formatting_applied": True},
+        # LlamaCpp specific streaming bridge
+        if hasattr(target_model, "chat") and kwargs.get("stream"):
+            # LlamaCppRuntime returns an iterator when stream=True
+            def sync_stream():
+                mock_messages = [{"role": "user", "content": prompt}]
+                return target_model.chat(
+                    messages=mock_messages,
+                    stream=True,
+                    **kwargs
                 )
-                return formatted_result
-        except Exception as format_error:
-            logger.warning(f"Response formatting failed for {model_id}: {format_error}")
-            # Continue with unformatted response
-        
-        return result
+
+            import asyncio
+            loop = asyncio.get_running_loop()
+            iterator = await loop.run_in_executor(None, sync_stream)
+            
+            for token in iterator:
+                # Handle different token formats (string vs dict)
+                chunk = token if isinstance(token, str) else str(token)
+                yield chunk
+                await asyncio.sleep(0) # Yield control
+            
+            self.pool._record_outcome(model_id, True)
+        else:
+            # Fallback for models that don't support streaming
+            # Recurse through non-streaming generate_response
+            response = await self.generate_response(
+                model_id=model_id, 
+                messages=[{"role": "user", "content": prompt}], 
+                **kwargs
+            )
+            yield response.get("content", "")
+        self._handle_model_recovery(model_id, model)
 
     def _log_request_event(
         self,

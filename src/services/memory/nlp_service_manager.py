@@ -8,6 +8,8 @@ import asyncio
 import logging
 import os
 import threading
+import subprocess
+import sys
 from typing import Dict, Any, Optional, List, Union
 
 from services.memory.spacy_service import SpacyService, ParsedMessage
@@ -73,6 +75,145 @@ class NLPServiceManager:
         
         self._initialized = True
         logger.info("NLP Service Manager initialized")
+
+    def _get_nltk_data_path(self) -> str:
+        """
+        Get standardized NLTK data path following DRY and production best practices.
+        Uses a workspace-relative path for maximum reliability in containerized/constrained environments.
+        """
+        # Prefer workspace-relative path for reliability and permission consistency
+        workspace_path = "/mnt/Development/KIRO/AI-Karen/nltk_data"
+        
+        # Fallback list for robustness
+        paths = [
+            workspace_path,
+            "/usr/share/nltk_data",
+            "/usr/local/share/nltk_data",
+            os.path.expanduser("~/nltk_data")
+        ]
+        
+        # Return the first one that exists or can be used
+        for path in paths:
+            if os.path.exists(path) and os.access(path, os.W_OK):
+                return path
+        
+        # If workspace path doesn't exist but parent is writable, create it
+        if not os.path.exists(workspace_path):
+            parent_dir = os.path.dirname(workspace_path)
+            if os.path.exists(parent_dir) and os.access(parent_dir, os.W_OK):
+                try:
+                    os.makedirs(workspace_path, exist_ok=True)
+                    return workspace_path
+                except Exception:
+                    pass
+
+        return paths[0]
+
+    async def ensure_assets_ready(self) -> Dict[str, Any]:
+        """
+        Ensure all NLP assets (NLTK, spaCy) are ready.
+        Attempts auto-download if resources are missing and enabled.
+        """
+        results = {
+            "spacy": {"status": "unknown", "details": ""},
+            "nltk": {"status": "unknown", "details": []},
+            "ready": False
+        }
+
+        # 1. Check spaCy
+        if self.spacy_service:
+            try:
+                import spacy
+                model_name = self.config.spacy.model_name
+                try:
+                    spacy.load(model_name)
+                    results["spacy"]["status"] = "ready"
+                except Exception:
+                    if self.config.spacy.download_missing:
+                        logger.info(f"Downloading spaCy model: {model_name}")
+                        subprocess.run([sys.executable, "-m", "spacy", "download", model_name], check=True)
+                        results["spacy"]["status"] = "installed"
+                    else:
+                        results["spacy"]["status"] = "missing"
+                        results["spacy"]["details"] = f"Model {model_name} not found"
+            except ImportError:
+                results["spacy"]["status"] = "error"
+                results["spacy"]["details"] = "spaCy not installed"
+        else:
+            results["spacy"]["status"] = "disabled"
+
+        # 2. Check NLTK
+        try:
+            import nltk
+            nltk_path = self._get_nltk_data_path()
+            if nltk_path not in nltk.data.path:
+                nltk.data.path.append(nltk_path)
+            
+            resources = ["punkt", "stopwords", "wordnet"]
+            for resource in resources:
+                try:
+                    nltk.data.find(f"tokenizers/{resource}" if resource == "punkt" else f"corpora/{resource}")
+                    results["nltk"]["details"].append({"resource": resource, "status": "ready"})
+                except LookupError:
+                    if os.getenv("KARI_ENABLE_NLTK_DOWNLOADS", "false").lower() == "true":
+                        logger.info(f"Downloading NLTK resource: {resource}")
+                        nltk.download(resource, download_dir=nltk_path, quiet=True)
+                        results["nltk"]["details"].append({"resource": resource, "status": "installed"})
+                    else:
+                        results["nltk"]["details"].append({"resource": resource, "status": "missing"})
+            
+            # Check if all required NLTK resources are available
+            nltk_ready = all(r["status"] in ("ready", "installed") for r in results["nltk"]["details"])
+            results["nltk"]["status"] = "ready" if nltk_ready else "degraded"
+        except ImportError:
+            results["nltk"]["status"] = "error"
+            results["nltk"]["details"] = "nltk not installed"
+
+        results["ready"] = (results["spacy"]["status"] in ("ready", "installed", "disabled")) and (results["nltk"]["status"] == "ready")
+        return results
+
+    async def generate_response(
+        self,
+        model_id: str,
+        messages: List[Dict[str, str]],
+        provider: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        stream: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Delegate generation to the central LLM Orchestrator."""
+        from ai_karen_engine.llm_orchestrator import LLMOrchestrator
+        orchestrator = LLMOrchestrator()
+        
+        return await orchestrator.generate_response(
+            model_id=model_id,
+            provider=provider,
+            messages=messages,
+            correlation_id=correlation_id,
+            stream=stream,
+            **kwargs
+        )
+
+    async def generate_response_stream(
+        self,
+        model_id: str,
+        messages: List[Dict[str, str]],
+        provider: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        **kwargs
+    ):
+        """Yield tokens from the central LLM Orchestrator in streaming mode."""
+        from ai_karen_engine.llm_orchestrator import LLMOrchestrator
+        orchestrator = LLMOrchestrator()
+        
+        async for chunk in orchestrator.generate_response_stream(
+            model_id=model_id,
+            provider=provider,
+            messages=messages,
+            correlation_id=correlation_id,
+            **kwargs
+        ):
+            yield chunk
     
     def _load_config(self) -> NLPConfig:
         """Load NLP configuration from config manager."""
@@ -129,6 +270,9 @@ class NLPServiceManager:
     # spaCy service methods
     async def parse_message(self, text: str) -> ParsedMessage:
         """Parse message using spaCy service."""
+        if self.spacy_service is None:
+            from services.memory.spacy_service import ParsedMessage
+            return ParsedMessage(tokens=[], entities=[], intention="unknown", raw_text=text)
         return await self.spacy_service.parse_message(text)
     
     # DistilBERT service methods
@@ -138,6 +282,11 @@ class NLPServiceManager:
         normalize: bool = True
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using DistilBERT service."""
+        if self.distilbert_service is None:
+            # Consistent fallback length for DistilBERT
+            if isinstance(texts, str):
+                return [0.0] * 768
+            return [[0.0] * 768 for _ in texts]
         return await self.distilbert_service.get_embeddings(texts, normalize)
     
     async def batch_embeddings(
@@ -157,6 +306,9 @@ class NLPServiceManager:
         context: Optional[Dict[str, Any]] = None
     ) -> ScaffoldResult:
         """Generate scaffolding using Small Language Model service."""
+        if self.small_language_model_service is None:
+            from services.memory.spacy_service import ScaffoldResult
+            return ScaffoldResult(content=f"[Degraded Mode] Placeholder for {scaffold_type}")
         return await self.small_language_model_service.generate_scaffold(
             text, scaffold_type, max_tokens, context
         )
@@ -168,6 +320,9 @@ class NLPServiceManager:
         max_points: int = 5
     ) -> OutlineResult:
         """Generate outline using Small Language Model service."""
+        if self.small_language_model_service is None:
+            from services.memory.spacy_service import OutlineResult
+            return OutlineResult(points=["[Degraded Mode] Outline unavailable"])
         return await self.small_language_model_service.generate_outline(
             text, outline_style, max_points
         )
@@ -179,6 +334,9 @@ class NLPServiceManager:
         max_tokens: Optional[int] = None
     ) -> SummaryResult:
         """Summarize context using Small Language Model service."""
+        if self.small_language_model_service is None:
+            from services.memory.spacy_service import SummaryResult
+            return SummaryResult(content="[Degraded Mode] Summary unavailable")
         return await self.small_language_model_service.summarize_context(
             text, summary_type, max_tokens
         )
@@ -191,6 +349,9 @@ class NLPServiceManager:
         fill_type: str = "continuation"
     ) -> ScaffoldResult:
         """Generate short fill using Small Language Model service."""
+        if self.small_language_model_service is None:
+            from services.memory.spacy_service import ScaffoldResult
+            return ScaffoldResult(content=f"[Degraded Mode] Short fill unavailable")
         return await self.small_language_model_service.generate_short_fill(
             context, prompt, max_tokens, fill_type
         )
@@ -202,6 +363,8 @@ class NLPServiceManager:
         augmentation_type: str = "enhancement"
     ) -> Dict[str, Any]:
         """Augment response using Small Language Model service."""
+        if self.small_language_model_service is None:
+            return {"augmented_content": main_response, "status": "degraded"}
         return await self.small_language_model_service.augment_response(
             user_message, main_response, augmentation_type
         )

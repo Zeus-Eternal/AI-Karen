@@ -28,12 +28,13 @@ from ai_karen_engine.database.conversation_manager import (
     normalize_user_id,
 )
 from ai_karen_engine.database.models import TenantConversation
-from src.services.memory_service import (
+from services.memory.memory_service import (
     WebUIMemoryService,
     WebUIMemoryQuery,
     MemoryType,
     UISource,
 )
+from services.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ class WebUIMessage(Message):
         """Convert to dictionary with web UI fields."""
         base_dict = super().to_dict()
         base_dict.update({
-            "ui_source": self.ui_source.value if self.ui_source else None,
+            "ui_source": self.ui_source.value if self.ui_source and hasattr(self.ui_source, "value") else str(self.ui_source) if self.ui_source else None,
             "ai_confidence": self.ai_confidence,
             "processing_time_ms": self.processing_time_ms,
             "tokens_used": self.tokens_used,
@@ -144,7 +145,7 @@ class WebUIConversation(Conversation):
             "priority": self.priority.value,
             "status": self.status.value,
             "user_settings": self.user_settings,
-            "recent_memories": self.context_memories[-5:] if self.context_memories else [],
+            "recent_memories": (self.context_memories[-5:] if self.context_memories and len(self.context_memories) >= 5 else self.context_memories) if self.context_memories else [],
             "ai_insights": self.ai_insights,
             "last_activity": self.updated_at.isoformat(),
             "summary": self.summary
@@ -233,7 +234,7 @@ class ConversationContextBuilder:
         tenant_id: Union[str, uuid.UUID],
         conversation: WebUIConversation,
         current_message: str
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Build memory context for conversation."""
         try:
             # Query for relevant memories
@@ -245,10 +246,10 @@ class ConversationContextBuilder:
                 similarity_threshold=self.context_relevance_threshold
             )
             
-            memories = await self.memory_service.query_memories(tenant_id, memory_query)
+            memories = await self._query_memory_records(tenant_id, memory_query)
             
             # Group memories by type for better context organization
-            memory_context = {
+            memory_context: Dict[str, List[Dict[str, Any]]] = {
                 "facts": [],
                 "preferences": [],
                 "insights": [],
@@ -256,20 +257,29 @@ class ConversationContextBuilder:
             }
             
             for memory in memories:
+                memory_type_value = getattr(memory, "memory_type", MemoryType.GENERAL)
+                if isinstance(memory_type_value, MemoryType):
+                    normalized_memory_type = memory_type_value
+                else:
+                    try:
+                        normalized_memory_type = MemoryType(str(memory_type_value))
+                    except Exception:
+                        normalized_memory_type = MemoryType.GENERAL
+
                 memory_data = {
-                    "content": memory.content,
-                    "similarity_score": memory.similarity_score,
-                    "importance_score": memory.importance_score,
-                    "timestamp": memory.timestamp,
-                    "tags": memory.tags,
-                    "memory_type": memory.memory_type.value
+                    "content": getattr(memory, "content", getattr(memory, "text", "")),
+                    "similarity_score": getattr(memory, "similarity_score", getattr(memory, "score", None)),
+                    "importance_score": getattr(memory, "importance_score", getattr(memory, "importance", 5)),
+                    "timestamp": getattr(memory, "timestamp", getattr(memory, "created_at", None)),
+                    "tags": getattr(memory, "tags", []),
+                    "memory_type": normalized_memory_type.value if hasattr(normalized_memory_type, "value") else str(normalized_memory_type)
                 }
                 
-                if memory.memory_type == MemoryType.FACT:
+                if normalized_memory_type == MemoryType.FACT:
                     memory_context["facts"].append(memory_data)
-                elif memory.memory_type == MemoryType.PREFERENCE:
+                elif normalized_memory_type == MemoryType.PREFERENCE:
                     memory_context["preferences"].append(memory_data)
-                elif memory.memory_type == MemoryType.INSIGHT:
+                elif normalized_memory_type == MemoryType.INSIGHT:
                     memory_context["insights"].append(memory_data)
                 else:
                     memory_context["general"].append(memory_data)
@@ -278,7 +288,80 @@ class ConversationContextBuilder:
             
         except Exception as e:
             logger.error(f"Failed to build memory context: {e}")
-            return []
+            return {"facts": [], "preferences": [], "insights": [], "general": []}
+
+    async def _query_memory_records(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        query: WebUIMemoryQuery,
+    ) -> List[Any]:
+        """Use the unified memory query path when available."""
+
+        if hasattr(self.memory_service, "query"):
+            result = await self.memory_service.query(
+                tenant_id,
+                MemoryQueryRequest(
+                    user_id=query.user_id or "anonymous",
+                    org_id=None,
+                    query=query.text,
+                    top_k=query.top_k,
+                    similarity_threshold=query.similarity_threshold or 0.7,
+                ),
+            )
+            return result.hits
+
+        return await self.memory_service.query_memories(tenant_id, query)
+
+    async def _commit_memory_record(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        *,
+        content: str,
+        user_id: Optional[str],
+        ui_source: UISource,
+        session_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        memory_type: MemoryType = MemoryType.GENERAL,
+        tags: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        """Use the unified memory commit path when available."""
+
+        resolved_user_id = user_id or session_id or conversation_id or "anonymous"
+        combined_metadata = {
+            "ui_source": ui_source.value,
+            "conversation_id": conversation_id,
+            "memory_type": memory_type.value,
+        }
+        if metadata:
+            combined_metadata.update(metadata)
+
+        if hasattr(self.memory_service, "commit"):
+            result = await self.memory_service.commit(
+                tenant_id,
+                MemoryCommitRequest(
+                    user_id=resolved_user_id,
+                    org_id=None,
+                    text=content,
+                    tags=list(tags or []),
+                    importance=5,
+                    decay="short",
+                    metadata=combined_metadata,
+                ),
+            )
+            return result.id if result.success else None
+
+        return await self.memory_service.store_web_ui_memory(
+            tenant_id=tenant_id,
+            content=content,
+            user_id=resolved_user_id,
+            ui_source=ui_source,
+            session_id=session_id,
+            conversation_id=conversation_id,
+            memory_type=memory_type,
+            tags=tags,
+            metadata=metadata,
+        )
     
     async def _build_insights_context(
         self,
@@ -413,7 +496,7 @@ class ConversationContextBuilder:
         
         # Analyze question frequency
         question_count = sum(1 for m in user_messages if "?" in m.content)
-        behavior["question_frequency"] = question_count / len(user_messages)
+        behavior["question_frequency"] = float(question_count) / len(user_messages)
         
         # Analyze politeness
         polite_words = ["please", "thank", "sorry", "excuse", "pardon"]
@@ -424,7 +507,7 @@ class ConversationContextBuilder:
             behavior["politeness_level"] = "moderate"
         
         # Analyze interaction style
-        if behavior["question_frequency"] > 0.6:
+        if float(behavior.get("question_frequency", 0)) > 0.6:
             behavior["interaction_style"] = "inquisitive"
         elif any(len(m.content) > 200 for m in user_messages):
             behavior["interaction_style"] = "detailed"
@@ -459,9 +542,6 @@ class ConversationContextBuilder:
             prev_words -= stop_words
             curr_words -= stop_words
             
-            if len(prev_words & curr_words) / max(len(prev_words | curr_words), 1) < 0.2:
-                topic_changes += 1
-        
         flow["topic_changes"] = topic_changes
         
         if topic_changes > len(user_messages) * 0.5:
@@ -534,7 +614,7 @@ class WebUIConversationService:
     ) -> Optional[WebUIConversation]:
         """Create a new conversation with web UI features."""
         try:
-            # Create base conversation
+            logger.info(f"🔍 DEBUG: Creating base conversation for user {user_id}, session {session_id}")
             base_conversation = await self.base_manager.create_conversation(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -551,7 +631,10 @@ class WebUIConversationService:
             )
             
             if not base_conversation:
+                logger.error("🔍 DEBUG: Base manager failed to create conversation (returned None)")
                 return None
+            
+            logger.info(f"🔍 DEBUG: Base conversation created: {base_conversation.id}")
             
             # Update database with web UI specific fields
             await self._update_web_ui_conversation_fields(
@@ -567,7 +650,7 @@ class WebUIConversationService:
             
             # Store initial message in memory if provided
             if initial_message and self.context_memory_integration:
-                await self.memory_service.store_web_ui_memory(
+                await self.context_builder._commit_memory_record(
                     tenant_id=tenant_id,
                     content=initial_message,
                     user_id=user_id,
@@ -575,10 +658,10 @@ class WebUIConversationService:
                     session_id=session_id,
                     conversation_id=base_conversation.id,
                     memory_type=MemoryType.CONVERSATION,
-                    tags=["conversation_start"] + (tags or [])
+                    tags=["conversation_start"] + (tags or []),
                 )
             
-            self.web_ui_metrics["web_ui_conversations_created"] += 1
+            self.web_ui_metrics["web_ui_conversations_created"] = int(self.web_ui_metrics.get("web_ui_conversations_created", 0)) + 1
             
             return web_ui_conversation
             
@@ -649,22 +732,35 @@ class WebUIConversationService:
         """Lookup a conversation using its tracked session identifier."""
 
         try:
+            logger.info("🔍 DEBUG: Looking up conversation by session in database")
+            logger.info("🔍 DEBUG: Session ID: %s", session_id)
+            logger.info("🔍 DEBUG: Tenant ID: %s", tenant_id)
+            logger.info("🔍 DEBUG: User ID: %s", user_id)
+            
             async with self.db_client.get_async_session() as session:
                 query = select(TenantConversation).where(
-                    TenantConversation.session_id == session_id
+                    TenantConversation.session_id == str(session_id)
                 )
 
                 if user_id:
                     query = query.where(
                         TenantConversation.user_id == normalize_user_id(user_id)
                     )
-
+                    
+                logger.info("🔍 DEBUG: Executing database query for session lookup")
                 result = await session.execute(query)
                 db_conversation = result.scalar_one_or_none()
+                
+                logger.info("🔍 DEBUG: Database query result: %s", db_conversation is not None)
+                if db_conversation:
+                    logger.info("🔍 DEBUG: Found conversation ID: %s", db_conversation.id)
+                    logger.info("🔍 DEBUG: Conversation user ID: %s", db_conversation.user_id)
 
             if not db_conversation:
+                logger.info("🔍 DEBUG: No conversation found for session - this is expected for new sessions")
                 return None
 
+            logger.info("🔍 DEBUG: Retrieving full conversation details")
             return await self.get_web_ui_conversation(
                 tenant_id,
                 str(db_conversation.id),
@@ -674,7 +770,7 @@ class WebUIConversationService:
 
         except Exception as e:
             logger.error(
-                "Failed to get conversation by session %s: %s", session_id, e
+                "🔍 DEBUG: Failed to get conversation by session %s: %s", session_id, e
             )
             return None
     
@@ -735,7 +831,7 @@ class WebUIConversationService:
             
             # Store in memory if it's a user message
             if role == MessageRole.USER and self.context_memory_integration:
-                await self.memory_service.store_web_ui_memory(
+                await self.context_builder._commit_memory_record(
                     tenant_id=tenant_id,
                     content=content,
                     user_id=base_message.metadata.get("user_id"),  # This should be available from conversation
@@ -743,7 +839,7 @@ class WebUIConversationService:
                     conversation_id=conversation_id,
                     memory_type=MemoryType.CONVERSATION,
                     tags=["user_message"],
-                    metadata={"message_id": base_message.id}
+                    metadata={"message_id": base_message.id},
                 )
             
             # Generate proactive suggestions if enabled
@@ -899,9 +995,11 @@ class WebUIConversationService:
         """Update session activity timestamp and data."""
         try:
             if session_id in self.active_sessions:
-                self.active_sessions[session_id]["last_activity"] = datetime.utcnow()
-                if activity_data:
-                    self.active_sessions[session_id]["data"].update(activity_data)
+                if session_id in self.active_sessions:
+                    session_info = self.active_sessions[session_id]
+                    session_info["last_activity"] = datetime.utcnow()
+                    if activity_data and isinstance(session_info.get("data"), dict):
+                        session_info["data"].update(activity_data)
                 
                 # Update database
                 async with self.db_client.get_async_session() as session:
@@ -956,18 +1054,26 @@ class WebUIConversationService:
             logger.error(f"Failed to get user active sessions: {e}")
             return []
     
-    async def cleanup_expired_sessions(self) -> int:
+    async def cleanup_expired_sessions(self, minutes: int = 0) -> int:
         """Clean up expired sessions."""
         try:
             cleaned_count = 0
-            timeout_threshold = datetime.utcnow() - timedelta(minutes=self.session_timeout_minutes)
             
-            expired_sessions = []
-            for session_id, session_info in self.active_sessions.items():
-                if session_info["last_activity"] < timeout_threshold:
-                    expired_sessions.append(session_id)
+            # Filter by date if requested
+            if minutes > 0:
+                cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+                sessions_to_clean = [
+                    sid for sid, data in self.active_sessions.items()
+                    if isinstance(data, dict) and isinstance(data.get("last_activity"), datetime) and data["last_activity"] < cutoff
+                ]
+            else:
+                timeout_threshold = datetime.utcnow() - timedelta(minutes=self.session_timeout_minutes)
+                sessions_to_clean = [
+                    sid for sid, data in self.active_sessions.items()
+                    if isinstance(data, dict) and isinstance(data.get("last_activity"), datetime) and data["last_activity"] < timeout_threshold
+                ]
             
-            for session_id in expired_sessions:
+            for session_id in sessions_to_clean:
                 await self._cleanup_session(session_id)
                 cleaned_count += 1
             
@@ -981,19 +1087,22 @@ class WebUIConversationService:
     async def _cleanup_session(self, session_id: str) -> bool:
         """Clean up a specific session."""
         try:
-            # Remove from cache
             if session_id in self.active_sessions:
-                user_id = self.active_sessions[session_id]["user_id"]
+                session_data = self.active_sessions.get(session_id)
+                user_id = session_data.get("user_id") if isinstance(session_data, dict) else None
                 del self.active_sessions[session_id]
                 
                 # Remove from user sessions
-                if user_id in self.user_sessions and session_id in self.user_sessions[user_id]:
-                    self.user_sessions[user_id].remove(session_id)
+                if user_id and user_id in self.user_sessions:
+                    user_sess_list = self.user_sessions.get(user_id)
+                    if isinstance(user_sess_list, list) and session_id in user_sess_list:
+                        user_sess_list.remove(session_id)
                     
                     # Clean up empty user session lists
-                    if not self.user_sessions[user_id]:
+                    if user_id in self.user_sessions and not self.user_sessions[user_id]:
                         del self.user_sessions[user_id]
             
+            self.web_ui_metrics["session_cleanups"] = int(self.web_ui_metrics.get("session_cleanups", 0)) + 1
             return True
             
         except Exception as e:
@@ -1065,7 +1174,7 @@ class WebUIConversationService:
                 )
                 await session.commit()
             
-            self.web_ui_metrics["context_tracking_updates"] += 1
+            self.web_ui_metrics["context_tracking_updates"] = int(self.web_ui_metrics.get("context_tracking_updates", 0)) + 1
             return True
             
         except Exception as e:
@@ -1285,17 +1394,24 @@ class WebUIConversationService:
                         
                         # Tag analysis
                         if conv.tags:
-                            analytics["conversations_with_tags"] += 1
+                            analytics["conversations_with_tags"] = analytics.get("conversations_with_tags", 0) + 1
                             total_tags += len(conv.tags)
                             for tag in conv.tags:
                                 tag_frequency[tag] = tag_frequency.get(tag, 0) + 1
                         
                         # Summary analysis
                         if conv.summary:
-                            analytics["conversations_with_summaries"] += 1
+                            analytics["conversations_with_summaries"] = analytics.get("conversations_with_summaries", 0) + 1
                     
                     analytics["average_tags_per_conversation"] = total_tags / len(conversations)
-                    analytics["most_common_tags"] = dict(sorted(tag_frequency.items(), key=lambda x: x[1], reverse=True)[:10])
+                    
+                    # Sort by count and take top N
+                    sorted_tags = sorted(tag_frequency.items(), key=lambda x: x[1], reverse=True)
+                    analytics["most_common_tags"] = dict(sorted_tags[:10])
+                
+                # Add metrics
+                analytics["metrics"] = self.web_ui_metrics.copy()
+                analytics["web_ui_metrics"] = self.web_ui_metrics.copy()
                 
                 return analytics
                 
@@ -1329,7 +1445,7 @@ class WebUIConversationService:
                 await session.commit()
                 
         except Exception as e:
-            logger.error(f"Failed to update web UI conversation fields: {e}")
+            logger.exception(f"🔍 DEBUG: Failed to update web UI conversation fields: {e}")
     
     async def _get_web_ui_conversation_data(
         self,
@@ -1348,11 +1464,11 @@ class WebUIConversationService:
                 if conversation:
                     return {
                         "session_id": conversation.session_id,
-                        "ui_context": conversation.ui_context or {},
-                        "ai_insights": conversation.ai_insights or {},
-                        "user_settings": conversation.user_settings or {},
+                        "ui_context": conversation.ui_context if conversation.ui_context is not None else {},
+                        "ai_insights": conversation.ai_insights if conversation.ai_insights is not None else {},
+                        "user_settings": conversation.user_settings if conversation.user_settings is not None else {},
                         "summary": conversation.summary,
-                        "tags": conversation.tags or [],
+                        "tags": conversation.tags if conversation.tags is not None else [],
                         "last_ai_response_id": conversation.last_ai_response_id,
                         "priority": conversation.conversation_metadata.get("priority", "normal") if conversation.conversation_metadata else "normal"
                     }
@@ -1408,7 +1524,7 @@ class WebUIConversationService:
             ai_insights={},  # Will be populated by _add_web_ui_context
             user_settings=user_settings or {},
             summary=summary,
-            tags=tags or [],
+            tags=tags if tags is not None else [],
             last_ai_response_id=last_ai_response_id,
             priority=priority
         )

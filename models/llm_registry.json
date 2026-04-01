@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "healthy",
-    "last_health_check": 1774708747.8267274,
+    "last_health_check": 1774889050.9836848,
     "error_message": null
   },
   {
@@ -20,7 +20,7 @@
     "requires_api_key": true,
     "default_model": "gpt-3.5-turbo",
     "health_status": "unhealthy",
-    "last_health_check": 1774708747.827936,
+    "last_health_check": 1774889050.9844644,
     "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
   },
   {
@@ -32,8 +32,8 @@
     "requires_api_key": true,
     "default_model": "glm-5",
     "health_status": "unhealthy",
-    "last_health_check": 1774708747.828392,
-    "error_message": "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
+    "last_health_check": 1774889051.7213674,
+    "error_message": "Error code: 429 - {'error': {'code': '1113', 'message': 'Insufficient balance or no resource package. Please recharge.'}}"
   },
   {
     "name": "gemini",
@@ -44,8 +44,8 @@
     "requires_api_key": true,
     "default_model": "gemini-1.5-flash",
     "health_status": "unhealthy",
-    "last_health_check": 1774708747.8290727,
-    "error_message": "No Gemini API key provided. Set GEMINI_API_KEY environment variable."
+    "last_health_check": 1774889051.9414296,
+    "error_message": "Quota exceeded or rate limited"
   },
   {
     "name": "deepseek",
@@ -56,7 +56,7 @@
     "requires_api_key": true,
     "default_model": "deepseek-chat",
     "health_status": "unhealthy",
-    "last_health_check": 1774708747.8295534,
+    "last_health_check": 1774889051.9422169,
     "error_message": "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
   },
   {
@@ -68,7 +68,7 @@
     "requires_api_key": true,
     "default_model": "gpt2",
     "health_status": "unhealthy",
-    "last_health_check": 1774708747.830199,
+    "last_health_check": 1774889051.9430776,
     "error_message": "No API token provided"
   },
   {
@@ -80,7 +80,7 @@
     "requires_api_key": true,
     "default_model": "gpt-4",
     "health_status": "healthy",
-    "last_health_check": 1774708747.8307562,
+    "last_health_check": 1774889051.943756,
     "error_message": null
   },
   {
@@ -92,7 +92,7 @@
     "requires_api_key": false,
     "default_model": "kari-fallback-v1",
     "health_status": "healthy",
-    "last_health_check": 1774708747.8314543,
+    "last_health_check": 1774889051.9443412,
     "error_message": null
   },
   {
@@ -104,7 +104,7 @@
     "requires_api_key": false,
     "default_model": "gpt-3.5-turbo",
     "health_status": "healthy",
-    "last_health_check": 1774708747.8319335,
+    "last_health_check": 1774889051.945008,
     "error_message": null
   },
   {

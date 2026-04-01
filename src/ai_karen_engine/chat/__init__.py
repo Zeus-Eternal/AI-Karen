@@ -6,12 +6,7 @@ message processing, and response formatting.
 """
 
 from .response_formatter import (
-    PrettyOutputLayer,
-    FormattingConfig,
-    SyntaxHighlightConfig,
-    FormattingRequest,
-    FormattingResponse,
-    StreamingFormattingResponse
+    PrettyOutputLayer
 )
 
 from .response_formatting_models import (
@@ -27,7 +22,12 @@ from .response_formatting_models import (
     FormattingPreferences,
     ResponseContext,
     StreamingChunk,
-    FormattingResult
+    FormattingResult,
+    FormattingConfig,
+    SyntaxHighlightConfig,
+    FormattingRequest,
+    FormattingResponse,
+    StreamingFormattingResponse
 )
 
 # Compatibility Mappings

@@ -7,10 +7,15 @@ try:
     from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
-from typing import List, Dict, Any, Optional, Union
+
+from typing import List, Dict, Any, Optional, Union, TYPE_CHECKING
 from datetime import datetime
 from enum import Enum
 import uuid
+
+if TYPE_CHECKING:
+    # Always provide a guaranteed base class for static analysis
+    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 
 class MessageRole(str, Enum):
@@ -249,3 +254,110 @@ class QuickAction(BaseModel):
     is_system: bool = False
     usage_count: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProcessingStatus(str, Enum):
+   """Processing status enumeration."""
+   IDLE = "idle"
+   PROCESSING = "processing"
+   RETRYING = "retrying"
+   COMPLETED = "completed"
+   FAILED = "failed"
+   CANCELLED = "cancelled"
+
+
+class ErrorType(str, Enum):
+   """Error type enumeration."""
+   UNKNOWN_ERROR = "unknown_error"
+   TIMEOUT_ERROR = "timeout_error"
+   NLP_PARSING_ERROR = "nlp_parsing_error"
+   EMBEDDING_ERROR = "embedding_error"
+   AI_MODEL_ERROR = "ai_model_error"
+   REQUEST_CANCELLED = "request_cancelled"
+   VALIDATION_ERROR = "validation_error"
+   MEMORY_ERROR = "memory_error"
+   CONTEXT_ERROR = "context_error"
+
+
+class ChatRequest(BaseModel):
+   """Chat request model with enhanced features."""
+   user_id: str
+   conversation_id: str
+   session_id: str
+   message: str
+   metadata: Dict[str, Any] = Field(default_factory=dict)
+   include_context: bool = True
+   stream: bool = False
+   attachments: List[Dict[str, Any]] = Field(default_factory=list)
+   request_timestamp: datetime = Field(default_factory=datetime.utcnow)
+   correlation_id: Optional[str] = None
+   
+   model_config = ConfigDict(
+       json_encoders={datetime: lambda v: v.isoformat() if v else None}
+   )
+
+
+class ProcessingContext(BaseModel):
+   """Processing context for tracking request lifecycle."""
+   correlation_id: str
+   user_id: str
+   conversation_id: str
+   session_id: str
+   metadata: Dict[str, Any] = Field(default_factory=dict)
+   request: ChatRequest
+   status: ProcessingStatus = ProcessingStatus.IDLE
+   processing_start: Optional[datetime] = None
+   processing_end: Optional[datetime] = None
+   retry_count: int = 0
+   cancelled: bool = False
+   cancel_event: Any = None  # Should be asyncio.Event, but we avoid import cycles
+   
+   def __init__(self, **data):
+       super().__init__(**data)
+       if self.cancel_event is None:
+           import asyncio
+           self.cancel_event = asyncio.Event()
+
+
+class ProcessingResult(BaseModel):
+   """Processing result for chat operations."""
+   success: bool
+   response: Optional[str] = None
+   error: Optional[str] = None
+   error_type: Optional[ErrorType] = None
+   correlation_id: str
+   parsed_message: Optional[Any] = None
+   embeddings: Optional[List[float]] = None
+   context: Optional[Dict[str, Any]] = None
+   processing_time: Optional[float] = None
+   used_fallback: bool = False
+   llm_metadata: Optional[Dict[str, Any]] = None
+
+
+class ChatResponse(BaseModel):
+   """Chat response model."""
+   response: str
+   correlation_id: str
+   processing_time: Optional[float] = None
+   used_fallback: bool = False
+   context_used: bool = False
+   metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatStreamChunk(BaseModel):
+   """Chat streaming chunk model."""
+   type: str  # "content", "metadata", "complete", "error"
+   content: str
+   correlation_id: str
+   metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ParsedMessage(BaseModel):
+   """Parsed message result from NLP processing."""
+   entities: List[tuple[str, str]] = Field(default_factory=list)  # (text, label)
+   intent: Optional[str] = None
+   sentiment: Optional[str] = None
+   confidence: Optional[float] = None
+   used_fallback: bool = False
+   processing_time: Optional[float] = None
+   metadata: Dict[str, Any] = Field(default_factory=dict)

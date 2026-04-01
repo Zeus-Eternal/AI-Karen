@@ -1,18 +1,357 @@
 "use client";
 
-import type { ChatMessage } from '@/lib/types';
-import { useState, useRef, useEffect, FormEvent, useCallback } from 'react';
+import type { ChatMessage, ConversationResponse, MessageResponse } from '@/lib/types';
+import { useState, useRef, useEffect, FormEvent, useCallback, createContext, useContext, ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown, Server, KeyRound } from 'lucide-react';
 import { getSuggestedStarter } from '@/app/actions';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { ApiError, apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { authService } from '@/lib/auth';
+import { Label } from '@/components/ui/label';
+
+// Session Management Types
+interface Session {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messageCount: number;
+  isActive: boolean;
+  lastMessage?: string;
+}
+
+interface SessionContextType {
+  currentSession: Session | null;
+  sessions: Session[];
+  isLoadingSessions: boolean;
+  error: string | null;
+  createNewSession: () => Promise<void>;
+  loadSession: (sessionId: string) => Promise<void>;
+  refreshSessions: () => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<boolean | void>;
+  updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
+}
+
+// Session Context
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
+
+// Session Management Hook
+export function useSession() {
+  const context = useContext(SessionContext);
+  if (context === undefined) {
+    throw new Error('useSession must be used within a SessionProvider');
+  }
+  return context;
+}
+
+// Session Provider Component
+interface SessionProviderProps {
+  children: ReactNode;
+  initialSessionId?: string;
+}
+
+export function SessionProvider({ children, initialSessionId }: SessionProviderProps) {
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Generate session title from first user message
+  const generateSessionTitle = (messages: ChatMessage[]): string => {
+    const firstUserMessage = messages.find(msg => msg.role === 'user');
+    if (firstUserMessage && firstUserMessage.content.length > 0) {
+      const content = firstUserMessage.content.trim();
+      return content.length > 50 ? content.substring(0, 50) + '...' : content;
+    }
+    return 'New Chat';
+  };
+
+  // Create a new session
+  const createNewSession = useCallback(async () => {
+    const sessionId = createSessionId();
+    const newSession: Session = {
+      id: sessionId,
+      title: 'New Chat',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      messageCount: 0,
+      isActive: true,
+    };
+    
+    setCurrentSession(newSession);
+    setSessions(prev => [newSession, ...prev]);
+    setError(null);
+  }, []);
+
+  // Load a specific session
+  const loadSession = useCallback(async (sessionId: string) => {
+    setIsLoadingSessions(true);
+    setError(null);
+    
+    try {
+      // Load session metadata and history
+      // We use the same endpoint for both since ConversationResponse includes all metadata
+      const conversationResponse: ConversationResponse = await apiClient.get<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
+      
+      const session: Session = {
+        id: sessionId,
+        title: conversationResponse.title || generateSessionTitle(conversationResponse.messages?.map(m => ({
+          ...m, 
+          role: m.role as 'user' | 'assistant',
+          timestamp: new Date(m.timestamp)
+        })) || []),
+        createdAt: new Date(conversationResponse.created_at || Date.now()),
+        updatedAt: new Date(conversationResponse.updated_at || Date.now()),
+        messageCount: conversationResponse.messages?.length || 0,
+        isActive: true,
+        lastMessage: conversationResponse.messages?.[conversationResponse.messages.length - 1]?.content,
+      };
+      
+      setCurrentSession(session);
+      
+      // Update sessions list to mark this as active
+      setSessions(prev => prev.map(s => ({
+        ...s,
+        isActive: s.id === sessionId
+      })));
+      
+    } catch (err: any) {
+      console.error('Failed to load session:', err);
+      
+      // If session not found (404), explicit recovery
+      if (err instanceof ApiError && err.status === 404) {
+        console.warn('Session was not found on server, starting fresh.');
+      }
+      
+      setError('Failed to load session. Starting fresh chat.');
+      
+      // Fallback: create new session
+      await createNewSession();
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [createNewSession]);
+
+  // Refresh sessions list
+  const refreshSessions = useCallback(async () => {
+    setIsLoadingSessions(true);
+    setError(null);
+    
+    try {
+      const response: any = await apiClient.get('/api/conversations/');
+      const sessionsData: Session[] = response.conversations?.map((session: any) => ({
+        id: session.id,
+        title: session.title || 'Untitled Chat',
+        createdAt: new Date(session.created_at),
+        updatedAt: new Date(session.updated_at),
+        messageCount: session.message_count || 0,
+        isActive: false, // Will be synced by separate effect
+        lastMessage: session.last_message,
+      })) || [];
+      
+      setSessions(sessionsData);
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
+      setError('Failed to load sessions list. Some features may be limited.');
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, []);
+
+  // Sync isActive state whenever currentSession ID changes
+  useEffect(() => {
+    setSessions(prev => prev.map(s => ({
+      ...s,
+      isActive: s.id === currentSession?.id
+    })));
+  }, [currentSession?.id]);
+
+  // Session timeout and renewal handling
+  useEffect(() => {
+    const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    const RENEWAL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+    let timeoutId: NodeJS.Timeout;
+    let renewalId: NodeJS.Timeout;
+
+    const renewSession = async () => {
+      try {
+        if (currentSession) {
+          // Use the update-activity endpoint which is implemented in the service
+          await apiClient.post(`/api/conversations/update-session-activity/${currentSession.id}`);
+          console.log('Session activity updated successfully');
+        }
+      } catch (err) {
+        console.error('Failed to renew session:', err);
+        // Attempt to recover by creating a new session
+        await createNewSession();
+      }
+    };
+
+    const checkSessionTimeout = () => {
+      const lastActivity = Date.now();
+      const timeSinceLastActivity = lastActivity - (currentSession?.updatedAt.getTime() || lastActivity);
+      
+      if (timeSinceLastActivity > SESSION_TIMEOUT) {
+        console.log('Session timed out, creating new session');
+        createNewSession();
+      }
+    };
+
+    if (currentSession) {
+      // Start renewal checks
+      renewalId = setInterval(renewSession, RENEWAL_INTERVAL);
+      
+      // Start timeout checks
+      timeoutId = setInterval(checkSessionTimeout, SESSION_TIMEOUT / 2);
+    }
+
+    // Update session activity on user interaction
+    // We use a ref for currentSession inside the event listener to avoid re-registering
+    const updateActivity = () => {
+      setCurrentSession(prev => {
+        if (!prev) return null;
+        // Only update if at least 1 minute has passed to throttle state updates
+        const now = new Date();
+        if (now.getTime() - prev.updatedAt.getTime() < 60000) return prev;
+        return { ...prev, updatedAt: now };
+      });
+    };
+
+    // Add event listeners for user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    return () => {
+      clearInterval(timeoutId);
+      clearInterval(renewalId);
+      events.forEach(event => {
+        document.removeEventListener(event, updateActivity);
+      });
+    };
+    // Removed currentSession from deps to avoid loop; updateActivity uses functional update
+  }, [createNewSession]);
+
+  // Delete a session
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      await apiClient.delete(`/api/conversations/${sessionId}`);
+      
+      // Update sessions list
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      // If deleted session was current, create new one
+      if (currentSession?.id === sessionId) {
+        await createNewSession();
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+      setError('Failed to delete session. Please try again.');
+      return false;
+    }
+  }, [currentSession?.id, createNewSession]);
+
+  // Update a session title
+  const updateSessionTitle = useCallback(async (sessionId: string, newTitle: string) => {
+    try {
+      await apiClient.put(`/api/conversations/${sessionId}`, { title: newTitle });
+      
+      // Update sessions list
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: newTitle } : s));
+      
+      // If updated session is current, update it too
+      if (currentSession?.id === sessionId) {
+        setCurrentSession(prev => prev ? { ...prev, title: newTitle } : null);
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to update session title:', err);
+      setError('Failed to rename session. Please try again.');
+      return false;
+    }
+  }, [currentSession?.id]);
+
+  // Session cleanup for old/inactive sessions
+  useEffect(() => {
+    const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+    const INACTIVE_THRESHOLD = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    const cleanupSessions = async () => {
+      try {
+        const cutoffDate = new Date(Date.now() - INACTIVE_THRESHOLD);
+        // Only consider the sessions that were in state at the time of cleanup start
+        const inactiveSessions = sessions.filter(session =>
+          session.createdAt < cutoffDate && !session.isActive
+        );
+
+        if (inactiveSessions.length > 0) {
+          console.log(`Cleaning up ${inactiveSessions.length} inactive sessions`);
+          // Use for...of to avoid parallel setSessions updates that might complicate the loop
+          for (const session of inactiveSessions) {
+            await deleteSession(session.id).catch(err =>
+              console.warn(`Failed to cleanup session ${session.id}:`, err)
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Session cleanup failed:', err);
+      }
+    };
+
+    const cleanupId = setInterval(cleanupSessions, CLEANUP_INTERVAL);
+
+    return () => {
+      clearInterval(cleanupId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run cleanup timer once on mount. It will use latest state via closure is tricky, 
+  // but if we want it to be dynamic we need to be careful.
+  // Actually, better to keep dependencies but debounce or check if actually needed.
+
+  // Initialize sessions on mount
+  useEffect(() => {
+    const initializeSessions = async () => {
+      if (initialSessionId) {
+        await loadSession(initialSessionId);
+      } else {
+        await createNewSession();
+      }
+      await refreshSessions();
+    };
+    
+    initializeSessions();
+    // Only initialize once on mount or when initialSessionId explicitly changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSessionId]);
+
+  return (
+    <SessionContext.Provider value={{
+      currentSession,
+      sessions,
+      isLoadingSessions,
+      error,
+      createNewSession,
+      loadSession,
+      refreshSessions,
+      deleteSession,
+      updateSessionTitle,
+    }}>
+      {children}
+    </SessionContext.Provider>
+  );
+}
 
 const PROCESSING_INPUT_STATES = [
   'Karen is reviewing your request...',
@@ -45,8 +384,18 @@ const createSessionId = (): string => {
   ].join('-');
 };
 
+const normalizeProviderName = (provider?: string | null): string => {
+  const value = String(provider || '').trim().toLowerCase();
+  if (!value) return '';
+  if (value === 'local' || value === 'llama-cpp' || value === 'llama_cpp') {
+    return 'llamacpp';
+  }
+  return value;
+};
+
 export default function ChatInterface() {
-  const sessionIdRef = useRef(createSessionId());
+  const { currentSession, sessions, isLoadingSessions, error, createNewSession, loadSession, refreshSessions, deleteSession, updateSessionTitle } = useSession();
+  const sessionIdRef = useRef(currentSession?.id || createSessionId());
   const submitInFlightRef = useRef(false);
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -66,8 +415,14 @@ export default function ChatInterface() {
     providers: Array<{
       id: string;
       display_name: string;
+      description?: string;
+      provider_type?: string;
+      selectable?: boolean;
+      requires_api_key?: boolean;
+      api_key_configured?: boolean;
       base_url?: string | null;
       default_base_url?: string | null;
+      supports_base_url_override?: boolean;
       models: Array<{
         id: string;
         name: string;
@@ -77,9 +432,12 @@ export default function ChatInterface() {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [tempBaseUrl, setTempBaseUrl] = useState('');
   const [processingInputIndex, setProcessingInputIndex] = useState(0);
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
+  const [isBackendOffline, setIsBackendOffline] = useState(false);
 
   type ActionParam = Record<string, any>;
   type SuggestedAction = {
@@ -95,6 +453,23 @@ export default function ChatInterface() {
     actions?: SuggestedAction[];
     metadata?: Record<string, any>;
     correlation_id?: string;
+  };
+
+  const handleActionClick = (action: SuggestedAction) => {
+    // Basic implementation: send the action description or type as a new message
+    const messageText = action.description || action.type;
+    if (!messageText) return;
+    
+    // For specific action types, we could add custom logic here
+    if (action.type === 'routing.profile.list') {
+      // Just send the request to list profiles
+      setInput('List all available profiles');
+      handleSubmit('List all available profiles');
+      return;
+    }
+
+    setInput(messageText);
+    handleSubmit(messageText);
   };
 
   const getDegradedResponseMessage = (error: unknown): string => {
@@ -157,14 +532,8 @@ export default function ChatInterface() {
       : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
 
     setMessages((currentMessages) => {
-      if (currentMessages.length > 1) {
-        return currentMessages;
-      }
-
-      if (
-        currentMessages.length === 1 &&
-        !currentMessages[0].id.startsWith('karen-initial-')
-      ) {
+      // Don't add greeting if we already have messages (e.g. from history load)
+      if (currentMessages.length > 0) {
         return currentMessages;
       }
 
@@ -174,6 +543,7 @@ export default function ChatInterface() {
           role: 'assistant',
           content: greeting,
           timestamp: new Date(),
+          status: 'completed',
           metadata: shouldPromptForPreferredName && firstNameOption
             ? {
                 addressPreferencePrompt: true,
@@ -184,6 +554,92 @@ export default function ChatInterface() {
       ];
     });
   }, [displayName, firstNameOption, fullName, isAuthLoading, shouldPromptForPreferredName]);
+
+  // Phase A: Load conversation history by session
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!isAuthenticated || isAuthLoading) return;
+      
+      console.log('🔍 DEBUG: Loading session history for session ID:', sessionIdRef.current);
+      console.log('🔍 DEBUG: Authentication status:', { isAuthenticated, isAuthLoading, user });
+      
+      try {
+        // First, ensure conversation record exists for this session
+        console.log('🔍 DEBUG: Ensuring conversation record exists for session...');
+        const ensureResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionIdRef.current}`);
+        console.log('🔍 DEBUG: Session ensure response:', ensureResponse);
+        
+        // Then load conversation history
+        const response = await apiClient.get<ConversationResponse>(`/api/conversations/by-session/${sessionIdRef.current}`);
+        console.log('🔍 DEBUG: Session history response:', response);
+        
+        if (response && response.messages && response.messages.length > 0) {
+          const historyMessages: ChatMessage[] = response.messages.map(m => ({
+            id: m.id,
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: new Date(m.timestamp),
+            status: 'completed',
+            metadata: m.metadata,
+          }));
+          console.log('🔍 DEBUG: Loaded', historyMessages.length, 'messages from session history');
+          setMessages(historyMessages);
+        } else {
+          console.log('🔍 DEBUG: No messages found in session history, starting fresh with empty conversation');
+          // Set empty greeting message for new sessions
+          const greeting = displayName
+            ? shouldPromptForPreferredName && firstNameOption
+              ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
+              : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
+            : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+          
+          setMessages([{
+            id: 'karen-initial-' + Date.now(),
+            role: 'assistant',
+            content: greeting,
+            timestamp: new Date(),
+            status: 'completed',
+            metadata: shouldPromptForPreferredName && firstNameOption
+              ? {
+                  addressPreferencePrompt: true,
+                  addressOptions: [firstNameOption, fullName],
+                }
+              : undefined,
+          }]);
+        }
+      } catch (err) {
+        console.warn('🔍 DEBUG: Could not load session history, starting fresh:', err);
+        console.log('🔍 DEBUG: Error type:', err instanceof ApiError ? 'ApiError' : 'Other error');
+        if (err instanceof ApiError) {
+          console.log('🔍 DEBUG: API Error status:', err.status);
+          console.log('🔍 DEBUG: API Error message:', err.message);
+        }
+        
+        // Fallback to greeting message if everything fails
+        const greeting = displayName
+          ? shouldPromptForPreferredName && firstNameOption
+            ? `Hello there! I'm Karen. ${fullName}, how may I assist you today? Would you rather I address you as ${firstNameOption} or ${fullName}?`
+            : `Hello there! I'm Karen. ${displayName}, how may I assist you today?`
+          : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+        
+        setMessages([{
+          id: 'karen-initial-' + Date.now(),
+          role: 'assistant',
+          content: greeting,
+          timestamp: new Date(),
+          status: 'completed',
+          metadata: shouldPromptForPreferredName && firstNameOption
+            ? {
+                addressPreferencePrompt: true,
+                addressOptions: [firstNameOption, fullName],
+              }
+            : undefined,
+        }]);
+      }
+    };
+
+    void loadHistory();
+  }, [isAuthenticated, isAuthLoading]);
 
   useEffect(() => {
     let isMounted = true;
@@ -196,8 +652,12 @@ export default function ChatInterface() {
           providers: Array<{
             id: string;
             display_name: string;
+            selectable?: boolean;
+            requires_api_key?: boolean;
+            api_key_configured?: boolean;
             base_url?: string | null;
             default_base_url?: string | null;
+            selected_model?: string;
             models: Array<{
               id: string;
               name: string;
@@ -210,9 +670,26 @@ export default function ChatInterface() {
         }
 
         setModelSettings(response);
-        setSelectedProvider(response.selected_provider || response.providers[0]?.id || '');
-        setSelectedModel(response.selected_model || response.providers.find((provider) => provider.id === response.selected_provider)?.models[0]?.id || '');
+        const allowedProviders = response.providers.filter((provider) => provider.selectable !== false);
+        const resolvedProvider =
+          allowedProviders.find((provider) => provider.id === response.selected_provider)?.id ||
+          allowedProviders[0]?.id ||
+          '';
+        setSelectedProvider(resolvedProvider);
+        const resolvedModel = response.selected_model ||
+          response.providers.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
+          '';
+        setSelectedModel(resolvedModel);
+        
+        // Sync temp values for modal
+        const activeProvider = response.providers.find(p => p.id === resolvedProvider);
+        if (activeProvider) {
+          setTempBaseUrl(activeProvider.base_url || activeProvider.default_base_url || '');
+        }
+        
+        setIsBackendOffline(false);
       } catch {
+        setIsBackendOffline(true);
         // Chat should stay usable even if settings cannot be loaded.
       }
     };
@@ -225,9 +702,10 @@ export default function ChatInterface() {
   }, []);
 
   const selectedProviderDetails = modelSettings?.providers.find((provider) => provider.id === selectedProvider) ?? null;
+  const selectableProviders = modelSettings?.providers.filter((provider) => provider.selectable !== false) ?? [];
   const availableModels = selectedProviderDetails?.models ?? [];
 
-  const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
+  const applyModelSelection = useCallback(async (providerId: string, modelId: string, customBaseUrl?: string, customApiKey?: string) => {
     if (!modelSettings) {
       return;
     }
@@ -242,29 +720,34 @@ export default function ChatInterface() {
       const response = await apiClient.put<{
         selected_provider: string;
         selected_model: string;
-        providers: Array<{
-          id: string;
-          display_name: string;
-          base_url?: string | null;
-          default_base_url?: string | null;
-          models: Array<{
-            id: string;
-            name: string;
-          }>;
-        }>;
+        providers: Array<any>;
       }>('/api/settings/model', {
         provider: providerId,
         model: modelId,
-        base_url: (provider.base_url || provider.default_base_url || '').replace(/\/api$/, ''),
+        base_url: (customBaseUrl || provider.base_url || provider.default_base_url || '').replace(/\/api$/, ''),
+        api_key: customApiKey?.trim() || undefined,
       });
 
-      setModelSettings(response);
-      setSelectedProvider(response.selected_provider);
-      setSelectedModel(response.selected_model);
-    } catch {
+      setModelSettings(response as any);
+      const allowedProviders = response.providers.filter((item) => item.selectable !== false);
+      const resolvedProvider =
+        allowedProviders.find((item) => item.id === response.selected_provider)?.id ||
+        allowedProviders[0]?.id ||
+        '';
+      setSelectedProvider(resolvedProvider);
+      setSelectedModel(
+        response.providers.find((item) => item.id === resolvedProvider)?.selected_model ||
+        response.providers.find((item) => item.id === resolvedProvider)?.models[0]?.id ||
+        response.selected_model
+      );
+      toast({
+        title: 'Settings applied',
+        description: `Karen is now using ${modelId} via ${provider.display_name}.`,
+      });
+    } catch (err: any) {
       toast({
         title: 'Model switch failed',
-        description: 'Karen could not update the active provider and model.',
+        description: err.message || 'Karen could not update the active provider and model.',
         variant: 'destructive',
       });
     } finally {
@@ -278,6 +761,9 @@ export default function ChatInterface() {
     }
 
     const provider = modelSettings.providers.find((item) => item.id === providerId);
+    if (!provider || provider.selectable === false) {
+      return;
+    }
     const nextModel = provider?.models[0]?.id || '';
     setSelectedProvider(providerId);
     setSelectedModel(nextModel);
@@ -323,10 +809,11 @@ export default function ChatInterface() {
     return true;
   }, [user]);
 
-  const handleSubmit = useCallback(async () => {
-    if (!input.trim() || isLoading || isAuthLoading || submitInFlightRef.current) return;
+  const handleSubmit = useCallback(async (manualInput?: string) => {
+    const rawInput = manualInput || input;
+    if (!rawInput.trim() || isLoading || isAuthLoading || submitInFlightRef.current) return;
 
-    const trimmedInput = input.trim();
+    const trimmedInput = rawInput.trim();
     const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
     const addressOptions = Array.isArray(lastAssistantMessage?.metadata?.addressOptions)
       ? (lastAssistantMessage.metadata.addressOptions as string[])
@@ -345,12 +832,14 @@ export default function ChatInterface() {
           role: 'user',
           content: trimmedInput,
           timestamp: new Date(),
+          status: 'completed',
         };
         const assistantMessage: ChatMessage = {
           id: 'assistant-pref-' + Date.now(),
           role: 'assistant',
           content: `Understood. I'll address you as ${matchedAddressOption} from now on.`,
           timestamp: new Date(),
+          status: 'completed',
         };
 
         setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -372,6 +861,7 @@ export default function ChatInterface() {
       role: 'user',
       content: trimmedInput,
       timestamp: new Date(),
+      status: 'pending', // Initially pending until logic completes
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
@@ -419,17 +909,47 @@ export default function ChatInterface() {
         signal: controller.signal,
       });
 
+      setIsBackendOffline(false);
+
+      const responseMetadata = response.metadata ? { ...response.metadata } : {};
+      const responseLlm = responseMetadata.llm ? { ...responseMetadata.llm } : {};
+      const requestedProvider = normalizeProviderName(selectedProvider);
+      const actualProvider = normalizeProviderName(responseLlm.provider);
+      const localProviderReturned =
+        Boolean(requestedProvider) &&
+        requestedProvider !== 'llamacpp' &&
+        actualProvider === 'llamacpp';
+
+      if (localProviderReturned) {
+        responseMetadata.degraded_mode = true;
+        responseMetadata.orchestrator = {
+          ...(responseMetadata.orchestrator || {}),
+          used_fallback: true,
+        };
+        responseLlm.is_degraded = true;
+        responseLlm.fallback_level = responseLlm.fallback_level || 'local';
+        responseLlm.source = responseLlm.source || 'provider_selection_fallback';
+        responseLlm.failure_reason =
+          responseLlm.failure_reason ||
+          `Selected provider ${selectedProvider} was unavailable; Karen continued with local llama.cpp.`;
+        responseLlm.routing_rationale =
+          responseLlm.routing_rationale ||
+          `Requested provider ${selectedProvider} failed, so the conversation continued in degraded mode on local llama.cpp.`;
+        responseMetadata.llm = responseLlm;
+      }
+
       const assistantMessage: ChatMessage = {
         id: response.correlation_id || 'assistant-' + Date.now(),
         role: 'assistant',
         content: response.answer?.trim() || 'Karen returned an empty response.',
         timestamp: new Date(),
+        status: 'completed',
         structuredContent: response.structured_content,
         actions: response.actions,
-        metadata: response.metadata,
-        aiData: response.metadata?.context && response.metadata.context.length > 0
+        metadata: responseMetadata,
+        aiData: responseMetadata?.context && responseMetadata.context.length > 0
           ? {
-              knowledgeGraphInsights: response.metadata.context
+              knowledgeGraphInsights: responseMetadata.context
                 .map((item: any) => item.preview || item.text)
                 .filter(Boolean)
                 .join('\n'),
@@ -437,10 +957,20 @@ export default function ChatInterface() {
           : undefined,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => {
+        // Update user message to completed and add assistant response
+        return prev.map(m => m.id === userMessage.id ? { ...m, status: 'completed' as const } : m)
+          .concat(assistantMessage);
+      });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
+      }
+
+      if (error instanceof TypeError) {
+        setIsBackendOffline(true);
+      } else if (error instanceof ApiError && error.status >= 500) {
+        setIsBackendOffline(true);
       }
 
       const assistantMessage: ChatMessage = {
@@ -448,8 +978,13 @@ export default function ChatInterface() {
         role: 'assistant',
         content: getDegradedResponseMessage(error),
         timestamp: new Date(),
+        status: 'failed',
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => {
+        // Update user message to failed and add error response
+        return prev.map(m => m.id === userMessage.id ? { ...m, status: 'failed' as const } : m)
+          .concat(assistantMessage);
+      });
       toast({
         title: 'Chat request failed',
         description: getDegradedResponseMessage(error),
@@ -597,76 +1132,441 @@ export default function ChatInterface() {
     }
   };
 
+  const handleNewChat = async () => {
+    if (isLoading) stopActiveRequest();
+    await createNewSession();
+    setMessages([]);
+  };
+
+  // Session History Component
+  const SessionHistory = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+    const [editingTitle, setEditingTitle] = useState('');
+
+    const formatDate = (date: Date) => {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    };
+
+    const handleSessionClick = async (session: Session) => {
+      if (editingSessionId === session.id) return;
+      setIsOpen(false);
+      await loadSession(session.id);
+      setMessages([]);
+    };
+
+    const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+      e.stopPropagation();
+      const success = await deleteSession(sessionId);
+      if (success) {
+        toast({
+          title: 'Session deleted',
+          description: 'Chat session has been removed.',
+        });
+      }
+    };
+
+    const handleStartEdit = (session: Session) => {
+      setEditingSessionId(session.id);
+      setEditingTitle(session.title);
+    };
+
+    const handleSaveEdit = async (sessionId: string) => {
+      if (editingTitle.trim()) {
+        const success = await updateSessionTitle(sessionId, editingTitle.trim());
+        if (success) {
+          setEditingSessionId(null);
+          toast({
+            title: 'Chat renamed',
+            description: `Session renamed to "${editingTitle.trim()}".`,
+          });
+        }
+      }
+    };
+
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) {
+          setEditingSessionId(null);
+        }
+      }}>
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+          >
+            <History className="h-4 w-4" />
+            CHAT
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>Chat History</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto pr-1">
+            {isLoadingSessions ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading sessions...</span>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No chat sessions found.</p>
+                <p className="text-sm mt-2">Start a new conversation to begin.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                      session.isActive ? 'bg-muted border-primary' : 'border-border'
+                    }`}
+                    onClick={() => handleSessionClick(session)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {editingSessionId === session.id ? (
+                          <div className="flex items-center gap-2 mb-1" onClick={e => e.stopPropagation()}>
+                            <Input
+                              value={editingTitle}
+                              onChange={e => setEditingTitle(e.target.value)}
+                              className="h-7 text-sm py-0"
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') void handleSaveEdit(session.id);
+                                if (e.key === 'Escape') setEditingSessionId(null);
+                              }}
+                            />
+                            <Button size="icon" className="h-7 w-7" onClick={() => void handleSaveEdit(session.id)}>
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium truncate">{session.title}</h4>
+                            {session.isActive && (
+                              <Badge variant="default" className="text-xs bg-primary text-primary-foreground h-4 px-1.5">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(session.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {editingSessionId !== session.id && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEdit(session);
+                            }}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => handleDeleteSession(e, session.id)}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between pt-4 border-t gap-3">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsOpen(false);
+                  void handleNewChat();
+                }}
+                className="flex items-center h-9 px-3"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Chat
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void refreshSessions()}
+                disabled={isLoadingSessions}
+                className="h-9 w-9 p-0"
+                title="Refresh History"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingSessions ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+            <Button onClick={() => setIsOpen(false)} className="h-9 px-4">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Provider Selector Modal (Single Source of Truth)
+  const ProviderSettingsModal = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [localProvider, setLocalProvider] = useState(selectedProvider);
+    const [localModel, setLocalModel] = useState(selectedModel);
+    const [apiKeyInput, setApiKeyInput] = useState('');
+    const [baseUrlInput, setBaseUrlInput] = useState(tempBaseUrl);
+    
+    // Sync local state when modal opens
+    useEffect(() => {
+      if (isOpen) {
+        setLocalProvider(selectedProvider);
+        setLocalModel(selectedModel);
+        setApiKeyInput('');
+        setBaseUrlInput(tempBaseUrl);
+      }
+    }, [isOpen, selectedProvider, selectedModel, tempBaseUrl]);
+
+    const activeProviderDetails = modelSettings?.providers.find(p => p.id === localProvider);
+    const providerModels = activeProviderDetails?.models || [];
+
+    const handleApply = async () => {
+      await applyModelSelection(localProvider, localModel, baseUrlInput, apiKeyInput);
+      setIsOpen(false);
+    };
+
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium"
+          >
+            <Bot className="h-4 w-4" />
+            PROVIDER
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden">
+          <div className="flex h-[600px]">
+            {/* Sidebar: Provider Selection */}
+            <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
+              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">AI Providers</div>
+              {modelSettings?.providers.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setLocalProvider(p.id);
+                    setLocalModel(p.models[0]?.id || '');
+                    setBaseUrlInput(p.base_url || p.default_base_url || '');
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
+                    localProvider === p.id 
+                      ? 'bg-primary text-primary-foreground font-medium' 
+                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Bot className={`h-4 w-4 ${localProvider === p.id ? 'opacity-100' : 'opacity-60'}`} />
+                  <span className="truncate">{p.display_name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <DialogHeader className="p-6 pb-2">
+                <DialogTitle className="flex items-center gap-2">
+                  {activeProviderDetails?.display_name || 'Select Provider'} Settings
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground">
+                  Configure models and authentication for this provider.
+                </p>
+              </DialogHeader>
+
+              <ScrollArea className="flex-1 p-6 pt-2">
+                <div className="space-y-6">
+                  {/* Model Selection section */}
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Models</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {providerModels.map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setLocalModel(m.id)}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            localModel === m.id 
+                              ? 'bg-primary/5 border-primary ring-1 ring-primary' 
+                              : 'border-border hover:bg-muted/50 hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="text-sm font-medium leading-tight truncate">{m.name}</div>
+                          <div className="text-[10px] text-muted-foreground mt-1 truncate">{m.id}</div>
+                        </button>
+                      ))}
+                      {providerModels.length === 0 && (
+                        <div className="col-span-2 py-8 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
+                          No models found for this provider.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Configuration section */}
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider Configuration</Label>
+                    
+                    <div className="grid gap-4">
+                      {activeProviderDetails?.supports_base_url_override && (
+                        <div className="space-y-2">
+                          <Label htmlFor="modal-base-url">Base URL</Label>
+                          <div className="relative">
+                            <Server className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="modal-base-url"
+                              value={baseUrlInput}
+                              onChange={e => setBaseUrlInput(e.target.value)}
+                              placeholder={activeProviderDetails.default_base_url || 'https://api.openai.com/v1'}
+                              className="pl-9 h-9 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {activeProviderDetails?.requires_api_key && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="modal-api-key">API Key</Label>
+                            {activeProviderDetails.api_key_configured && (
+                              <Badge variant="outline" className="text-[10px] font-normal h-4 text-green-500 border-green-500/30">
+                                Stored
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <KeyRound className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="modal-api-key"
+                              type="password"
+                              value={apiKeyInput}
+                              onChange={e => setApiKeyInput(e.target.value)}
+                              placeholder={activeProviderDetails.api_key_configured ? '••••••••••••••••' : 'Enter API Key'}
+                              className="pl-9 h-9 text-sm"
+                            />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic">
+                            {activeProviderDetails.api_key_configured 
+                              ? 'Enter a new key only if you wish to override the currently stored one.' 
+                              : 'Credentials are stored securely on the backend.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+
+              <div className="p-6 pt-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+                <Button variant="ghost" onClick={() => setIsOpen(false)} className="h-9">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleApply} 
+                  disabled={isUpdatingModelSelection || !localModel}
+                  className="h-9 min-w-[120px]"
+                >
+                  {isUpdatingModelSelection ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Apply Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   const displayedInputValue = isLoading && !isEditingDuringProcessing
     ? PROCESSING_INPUT_STATES[processingInputIndex]
     : input;
-  const showStopButton = isLoading && input.trim().length > 0;
+  const showStopButton = isLoading && submitInFlightRef.current;
   
   return (
     <div className="flex flex-col flex-1">
+      {isBackendOffline && (
+        <div className="bg-destructive/10 text-destructive border-b border-destructive/20 p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm shadow-sm ring-1 ring-destructive/20">
+          <ServerCrash className="h-4 w-4 shrink-0" />
+          <span>Backend services are currently unavailable or unreachable. Continuing in detached mode.</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-destructive/10 text-destructive border-b border-destructive/20 p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm shadow-sm ring-1 ring-destructive/20">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      
+      {currentSession && (
+        <div className="bg-muted/50 border-b border-border p-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-10 backdrop-blur-sm">
+          <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
+          <span>Session: {currentSession.title}</span>
+          <Badge variant="outline" className="text-xs">
+            {currentSession.messageCount} messages
+          </Badge>
+        </div>
+      )}
       <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={viewportRef}>
         <div className="w-full space-y-1 pb-4">
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble 
+              key={msg.id} 
+              message={msg} 
+              onActionClick={handleActionClick}
+            />
           ))}
         </div>
       </ScrollArea>
       <div id="chat-input-area">
       <div className="chat-input-container border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
         <div className="mb-2 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          {modelSettings && selectedProviderDetails && availableModels.length > 0 && (
-            <div className="grid gap-2 md:grid-cols-[minmax(15rem,18rem)_minmax(18rem,22rem)]">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  <Bot className="h-3.5 w-3.5" />
-                  Provider
-                </div>
-                <Select value={selectedProvider} onValueChange={(value) => void handleProviderChange(value)} disabled={isUpdatingModelSelection}>
-                  <SelectTrigger className="h-9 min-w-[11rem] border-border/70 bg-background/80 text-left shadow-sm">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modelSettings.providers.map((provider) => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        {provider.display_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  <Cpu className="h-3.5 w-3.5" />
-                  Model
-                </div>
-                <Select value={selectedModel} onValueChange={(value) => void handleModelChange(value)} disabled={isUpdatingModelSelection}>
-                  <SelectTrigger className="h-9 min-w-[14rem] border-border/70 bg-background/80 text-left shadow-sm">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableModels.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSuggestStarter}
-            disabled={isLoading || isSuggestingStarter || isRecording}
-            className="self-center md:ml-auto md:self-auto"
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
-          </Button>
+          <div className="flex gap-2">
+            <ProviderSettingsModal />
+            <SessionHistory />
+          </div>
+          <div className="flex self-center md:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSuggestStarter}
+              disabled={isLoading || isSuggestingStarter || isRecording}
+              className="h-9 px-3"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {isSuggestingStarter ? "Getting idea..." : "Need an idea?"}
+            </Button>
+          </div>
         </div>
         <form onSubmit={handleFormSubmit} className="w-full flex gap-2 md:gap-3 items-center">
           <Button

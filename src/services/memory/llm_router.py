@@ -9,11 +9,16 @@ import logging
 import os
 from pathlib import Path
 import random
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Set, Union
+
+from ai_karen_engine.config.llm_provider_config import (
+    get_openai_compatible_provider_defaults,
+)
 
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
@@ -303,8 +308,18 @@ class LLMRouter:
                 preferred_model = None
             else:
                 info = self.registry.get_provider_info(preferred_provider)
-                default_model = self._normalize_model_name(info.get("default_model") if info else None)
-                if info and default_model == preferred_model and await self._is_provider_healthy(preferred_provider):
+                if (
+                    info
+                    and (
+                        await self._is_provider_healthy(preferred_provider)
+                        or (
+                            self._health_allows_attempt(preferred_provider)
+                            and self._provider_has_runtime_readiness(preferred_provider, info)
+                        )
+                    )
+                    and await self._meets_requirements(preferred_provider, request)
+                    and self._provider_supports_model(preferred_provider, preferred_model, info)
+                ):
                     self._structured_log(
                         logging.INFO,
                         "Using preferred provider/model",
@@ -335,20 +350,29 @@ class LLMRouter:
                 if name in NON_CHAT_PROVIDERS:
                     continue
                 info = self.registry.get_provider_info(name)
-                default_model = self._normalize_model_name(info.get("default_model") if info else None)
-                if info and default_model == preferred_model:
-                    if await self._is_provider_healthy(name):
-                        self._structured_log(
-                            logging.INFO,
-                            "Resolved provider for preferred model",
-                            provider=name,
-                            model=preferred_model,
-                            policy=self.routing_policy.value,
-                            conversation_id=request.conversation_id,
-                            platform=request.platform,
+                if (
+                    info
+                    and (
+                        await self._is_provider_healthy(name)
+                        or (
+                            self._health_allows_attempt(name)
+                            and self._provider_has_runtime_readiness(name, info)
                         )
-                        self._record_selection_metric(name, "selected")
-                        return name, preferred_model
+                    )
+                    and await self._meets_requirements(name, request)
+                    and self._provider_supports_model(name, preferred_model, info)
+                ):
+                    self._structured_log(
+                        logging.INFO,
+                        "Resolved provider for preferred model",
+                        provider=name,
+                        model=preferred_model,
+                        policy=self.routing_policy.value,
+                        conversation_id=request.conversation_id,
+                        platform=request.platform,
+                    )
+                    self._record_selection_metric(name, "selected")
+                    return name, preferred_model
             self._structured_log(
                 logging.WARNING,
                 "Preferred model unavailable across providers",
@@ -465,8 +489,106 @@ class LLMRouter:
         if ":" in normalized:
             _, normalized = normalized.split(":", 1)
 
-        stem = Path(normalized).stem
-        return stem or normalized
+        # Only strip filesystem-style extensions for local file-backed model ids.
+        # Dotted remote model ids such as "glm-4.5" are semantic identifiers, not
+        # filenames, and Path(...).stem would incorrectly collapse them to "glm-4".
+        lowered = normalized.lower()
+        known_local_suffixes = (
+            ".gguf",
+            ".bin",
+            ".safetensors",
+            ".onnx",
+            ".pt",
+            ".pth",
+        )
+        if "/" in normalized or "\\" in normalized or lowered.endswith(known_local_suffixes):
+            stem = Path(normalized).stem
+            return stem or normalized
+
+        return normalized
+
+    def _provider_supports_model(
+        self,
+        provider_name: str,
+        preferred_model: str,
+        provider_info: Optional[Dict[str, Any]],
+    ) -> bool:
+        """Treat explicit provider/model pairs like OpenAI-compatible routing."""
+
+        normalized_model = self._normalize_model_name(preferred_model)
+        if not normalized_model:
+            return False
+
+        default_model = self._normalize_model_name(
+            provider_info.get("default_model") if provider_info else None
+        )
+        if default_model == normalized_model:
+            return True
+
+        candidate_models: List[str] = []
+        if isinstance(provider_info, dict):
+            for key in ("available_models", "models", "common_models"):
+                values = provider_info.get(key)
+                if isinstance(values, list):
+                    candidate_models.extend(str(value) for value in values if value)
+
+        if provider_name in {"openai", "zai"}:
+            candidate_models.extend(
+                get_openai_compatible_provider_defaults(provider_name).get("common_models", [])
+            )
+
+        normalized_candidates = {
+            self._normalize_model_name(candidate)
+            for candidate in candidate_models
+            if self._normalize_model_name(candidate)
+        }
+        if normalized_model in normalized_candidates:
+            return True
+
+        family_hints = {
+            "openai": ("gpt", "o1", "o3", "o4", "text-embedding", "omni"),
+            "zai": ("glm",),
+            "gemini": ("gemini",),
+            "anthropic": ("claude",),
+            "deepseek": ("deepseek",),
+            "mistral": ("mistral", "codestral"),
+            "groq": ("llama", "mixtral", "gemma", "qwen"),
+            "xai": ("grok",),
+            "qwen": ("qwen",),
+        }
+
+        hints = family_hints.get(provider_name, ())
+        return bool(hints) and normalized_model.lower().startswith(hints)
+
+    def _provider_has_runtime_readiness(
+        self, provider_name: str, provider_info: Optional[Dict[str, Any]]
+    ) -> bool:
+        """Use current runtime/provider metadata to decide if a provider is worth attempting."""
+
+        if not isinstance(provider_info, dict):
+            return False
+
+        if provider_info.get("requires_api_key", False) and not self._is_api_key_configured(provider_name, provider_info):
+            return False
+
+        has_api_key = provider_info.get("has_api_key") is True
+        api_key_valid = provider_info.get("api_key_valid") is not False
+        available_models = provider_info.get("available_models")
+        has_available_models = isinstance(available_models, list) and len(available_models) > 0
+        return has_api_key and api_key_valid and has_available_models
+
+    def _health_allows_attempt(self, provider_name: str) -> bool:
+        """Respect active cooldowns while allowing recovery from stale unhealthy snapshots."""
+
+        health = self.provider_health.get(provider_name)
+        if not health:
+            return True
+
+        if health.circuit_open_until and time.time() < health.circuit_open_until:
+            return False
+        if health.rate_limited_until and time.time() < health.rate_limited_until:
+            return False
+        return True
     
     async def _meets_requirements(self, provider_name: str, request: ChatRequest) -> bool:
         """Check if provider meets request requirements"""
@@ -629,7 +751,24 @@ class LLMRouter:
         if health.rate_limited_until and time.time() >= health.rate_limited_until:
             health.rate_limited_until = 0.0
 
-        return health.is_healthy and health.consecutive_failures < self.max_consecutive_failures
+        if health.is_healthy and health.consecutive_failures < self.max_consecutive_failures:
+            return True
+
+        provider_info = self.registry.get_provider_info(provider_name)
+        if isinstance(provider_info, dict):
+            has_api_key = provider_info.get("has_api_key") is True
+            api_key_valid = provider_info.get("api_key_valid") is not False
+            available_models = provider_info.get("available_models")
+            has_available_models = isinstance(available_models, list) and len(available_models) > 0
+
+            # Some providers fail an eager startup health probe before their persisted
+            # secret/config state is fully loaded. If the provider now has a valid key
+            # and successful model discovery, treat it as eligible for routing unless
+            # a circuit breaker or active rate-limit cooldown says otherwise.
+            if has_api_key and api_key_valid and has_available_models and health.consecutive_failures == 0:
+                return True
+
+        return False
     
     async def _perform_health_check(self, provider_name: str):
         """Perform health check on a provider"""
@@ -862,7 +1001,7 @@ class LLMRouter:
             raise RuntimeError(f"Provider {provider_name} returned no response")
         if isinstance(result, bytes):
             result = result.decode("utf-8", errors="ignore")
-        result_text = str(result).strip()
+        result_text = self._sanitize_provider_completion(str(result))
         if not result_text:
             raise RuntimeError(f"Provider {provider_name} returned an empty response")
         if self._looks_like_bad_completion(request, result_text):
@@ -989,6 +1128,84 @@ class LLMRouter:
                 return True
 
         return False
+
+    @staticmethod
+    def _sanitize_provider_completion(result_text: str) -> str:
+        """Normalize low-quality local completions before malformed-response checks."""
+
+        cleaned = str(result_text or "").strip()
+        if not cleaned:
+            return ""
+
+        marker_extractors = (
+            "<assistant_reply>",
+            "assistant:",
+            "answer:",
+        )
+        lowered = cleaned.lower()
+        for marker in marker_extractors:
+            marker_index = lowered.rfind(marker)
+            if marker_index != -1:
+                candidate = cleaned[marker_index + len(marker):].strip()
+                if candidate:
+                    cleaned = candidate
+                    lowered = cleaned.lower()
+
+        for prefix in (",", ".", ";", ":", "-", "and ", "but ", "or "):
+            while lowered.startswith(prefix):
+                cleaned = cleaned[len(prefix):].lstrip()
+                lowered = cleaned.lower()
+
+        speaker_assignment = inspect.cleandoc(
+            r"""
+            ^
+            [a-z][a-z0-9_-]{1,30}
+            \s*=
+            \s*
+            """
+        )
+        cleaned = re.sub(speaker_assignment, "", cleaned, count=1, flags=re.IGNORECASE | re.VERBOSE).strip()
+
+        leaked_line_markers = (
+            "first turn:",
+            "latest user message:",
+            "known user name:",
+            "recent conversation:",
+            "<assistant_context>",
+            "</assistant_context>",
+            "<recent_conversation>",
+            "</recent_conversation>",
+            "<memory_context>",
+            "</memory_context>",
+            "<user_message>",
+            "</user_message>",
+            "<assistant_reply>",
+            "first_turn=",
+            "user_name=",
+            "response>",
+            "response:",
+            "response =",
+            "response=",
+            "output:",
+            "user:",
+            "in this scenario,",
+            "the assistant responds",
+            "the user's message",
+        )
+        filtered_lines = []
+        for raw_line in cleaned.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            lowered_line = line.lower()
+            if any(marker in lowered_line for marker in leaked_line_markers):
+                continue
+            filtered_lines.append(line)
+
+        if filtered_lines:
+            cleaned = "\n".join(filtered_lines).strip()
+
+        return cleaned
     
     async def _get_fallback_providers(
         self,
@@ -1471,29 +1688,44 @@ class LLMRouter:
             degraded_reason = reason or DegradedModeReason.ALL_PROVIDERS_FAILED
 
             manager.activate_degraded_mode(degraded_reason, failed_providers)
-            envelope = await manager.generate_degraded_response(
-                request.message,
-                context=request.context or {},
-            )
 
-            if isinstance(envelope, dict):
-                final_text = envelope.get("final") or envelope.get("response")
-                if final_text:
-                    if failure_records:
-                        primary_failure = failure_records[0]
-                        provider_name = primary_failure.get("provider", "provider")
-                        provider_cause = self._classify_failure_detail(primary_failure.get("error", ""))
-                        final_text = (
-                            f"Karen is operating in degraded mode.\n\n"
-                            f"Primary provider: {provider_name}\n"
-                            f"Cause: {provider_cause}\n\n"
-                            f"{final_text}"
-                        )
-                    logger.error(
-                        "Returning degraded mode response due to provider failures: %s",
-                        failed_providers,
-                    )
-                    return final_text
+            provider_name = "provider"
+            provider_cause = "The provider failed while handling the request."
+            suggestion = "Try again shortly or switch to a different model in Settings."
+
+            if failure_records:
+                primary_failure = failure_records[0]
+                provider_name = primary_failure.get("provider", "provider")
+                provider_cause = self._classify_failure_detail(primary_failure.get("error", ""))
+                lowered_error = str(primary_failure.get("error", "")).lower()
+                if "api key" in lowered_error or "401" in lowered_error or "403" in lowered_error:
+                    suggestion = "Check the provider credentials in Settings."
+                elif "timeout" in lowered_error or "timed out" in lowered_error:
+                    suggestion = "Try a shorter prompt or switch to a faster model."
+                elif "malformed response" in lowered_error or "empty response" in lowered_error:
+                    suggestion = "Try again or switch to a different model in Settings."
+                elif "rate limit" in lowered_error or "429" in lowered_error:
+                    suggestion = "Wait a moment before trying again, or switch providers."
+                elif "connect" in lowered_error or "network" in lowered_error:
+                    suggestion = "Check the provider connection and base URL in Settings."
+
+            provider_block = (
+                f"Primary provider: {provider_name}\n"
+                if provider_name and provider_name != "provider"
+                else ""
+            )
+            final_text = (
+                "Karen is operating in degraded mode.\n\n"
+                f"{provider_block}"
+                f"Cause: {provider_cause}\n\n"
+                "I couldn't produce a reliable full answer from the selected model.\n"
+                f"{suggestion}"
+            )
+            logger.error(
+                "Returning degraded mode response due to provider failures: %s",
+                failed_providers,
+            )
+            return final_text
         except Exception as degraded_error:  # pragma: no cover - defensive fallback
             logger.exception("Failed to generate degraded mode response: %s", degraded_error)
 

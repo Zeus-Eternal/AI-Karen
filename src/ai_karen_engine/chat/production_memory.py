@@ -467,5 +467,16 @@ class ProductionChatMemory:
             )
 
 
-# Global memory service instance
-production_chat_memory = ProductionChatMemory()
+_production_chat_memory: Optional[ProductionChatMemory] = None
+
+
+def get_production_chat_memory() -> ProductionChatMemory:
+    """Lazily construct the legacy production chat memory adapter."""
+    global _production_chat_memory
+    if _production_chat_memory is None:
+        _production_chat_memory = ProductionChatMemory()
+    return _production_chat_memory
+
+
+# Backward-compatible module alias without eager initialization side effects.
+production_chat_memory = None

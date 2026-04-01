@@ -280,7 +280,7 @@ def restore_config():
 
 def load_env_override(cfg: Dict[str, Any]):
     """Apply .env overrides if present."""
-    load_dotenv(override=True)
+    load_dotenv()
     for k in cfg:
         env_key = f"KARI_{k.upper()}"
         if os.getenv(env_key) is not None:

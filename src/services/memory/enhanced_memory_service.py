@@ -29,7 +29,7 @@ from ai_karen_engine.database.memory_manager import (
 from ai_karen_engine.database.models import TenantConversation, TenantMemoryEntry
 
 # Import existing memory service components
-from src.services.memory_service import (
+from services.memory.memory_service import (
     MemoryContextBuilder,
     MemoryType,
     UISource,

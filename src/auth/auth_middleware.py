@@ -153,17 +153,26 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             redis_password = config.redis.password
             redis_db = config.redis.database
             
-            # Build Redis URL
+            # Ensure Redis URL and timeouts are set correctly.
+            redis_url = f"redis://{redis_host}:{redis_port}/0"
             if redis_password:
-                redis_url = f"redis://:{redis_password}@{redis_host}:{redis_port}/{redis_db}"
-            else:
-                redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
-                
-            self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                redis_url = f"redis://:{redis_password}@{redis_host}:{redis_port}/0"
+
+            self.redis_client = redis.from_url(
+                redis_url, 
+                decode_responses=True,
+                socket_timeout=2.0,
+                socket_connect_timeout=2.0,
+                retry_on_timeout=False
+            )
             
-            # Test connection
-            self.redis_client.ping()
-            logger.info("Redis client initialized for token management")
+            # Test connection with a short timeout to avoid blocking.
+            try:
+                self.redis_client.ping()
+                logger.info(f"Connected to token revocation store at {redis_host}:{redis_port}")
+            except Exception as e:
+                logger.warning(f"Could not connect to Redis at {redis_host}:{redis_port}: {e}. Revocation checks may be skipped.")
+                # We do not set redis_client to None, we let it be in a degraded state.
             
         except Exception as e:
             logger.error(f"Failed to initialize Redis client: {e}")

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 
-from ai_karen_engine.chat.enhanced_conversation_manager import EnhancedConversationManager
+from ai_karen_engine.chat.conversation_manager import ConversationManager
 from ai_karen_engine.chat.conversation_models import (
     Conversation, ChatMessage, ConversationFolder, ConversationTemplate,
     ConversationFilters, ConversationExportOptions, MessageRole, MessageType,
@@ -52,7 +52,7 @@ def mock_file_storage():
 @pytest.fixture
 def conversation_manager(mock_db_client, mock_distilbert_service, mock_file_storage):
     """Create conversation manager with mocked dependencies."""
-    return EnhancedConversationManager(
+    return ConversationManager(
         db_client=mock_db_client,
         distilbert_service=mock_distilbert_service,
         file_storage=mock_file_storage
@@ -97,7 +97,7 @@ def sample_messages():
     ]
 
 
-class TestEnhancedConversationManager:
+class TestConversationManager:
     """Test cases for enhanced conversation manager."""
     
     @pytest.mark.asyncio

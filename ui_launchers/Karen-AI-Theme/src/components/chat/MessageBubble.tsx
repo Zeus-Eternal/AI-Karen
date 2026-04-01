@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   User, Bot, Speaker, Copy, Check, Info, 
-  ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, AlertTriangle, Zap, Clock 
+  ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, AlertTriangle, Zap, Clock, PlusCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -22,9 +22,10 @@ import remarkGfm from 'remark-gfm';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  onActionClick?: (action: any) => void;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystemMessage = message.role === 'system';
   const [copied, setCopied] = useState(false);
@@ -87,7 +88,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const llm = message.metadata?.llm;
   const failureCategory = message.metadata?.failure_category || llm?.failure_category;
   const isSafetyBlocked = failureCategory === 'safety_blocked';
-  const isDegraded = message.metadata?.degraded_mode === true || llm?.is_degraded === true;
+  const usedFallback = message.metadata?.orchestrator?.used_fallback === true;
+  const isLocalFallbackSource =
+    llm?.source === 'chat_orchestrator_local_fallback' ||
+    llm?.source === 'configured_fallback_provider' ||
+    llm?.source === 'runtime_error_fallback' ||
+    llm?.fallback_level === 'local';
+  const isDegraded =
+    message.metadata?.degraded_mode === true ||
+    llm?.is_degraded === true ||
+    usedFallback ||
+    isLocalFallbackSource;
   const hasLlmInfo = llm && (llm.provider || llm.model_id);
 
   return (
@@ -254,7 +265,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               {message.structuredContent && Object.keys(message.structuredContent).length > 0 && (
                 <div className="mt-3 flex flex-col gap-2">
                   {Object.entries(message.structuredContent).map(([key, value]) => (
-                    <div key={key} className="bg-muted/30 border border-border/50 rounded-xl p-3 text-sm shadow-inner group">
+                    <div key={key} className="bg-muted/30 border border-border/50 rounded-xl p-3 text-sm shadow-inner group transition-all hover:bg-muted/40">
                       <span className="font-semibold text-primary capitalize mb-1 block text-xs tracking-tight group-hover:text-blue-500 transition-colors">
                         {key.replace(/_/g, ' ')}
                       </span>
@@ -266,6 +277,24 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         </pre>
                       )}
                     </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Suggested Actions (Quick Replies / Agentic Follow-ups) */}
+              {message.actions && message.actions.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-left-2 duration-500">
+                  {message.actions.map((action, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onActionClick?.(action)}
+                      className="rounded-full text-[11px] h-8 bg-background/50 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-300 shadow-sm group"
+                    >
+                      <PlusCircle className="h-3 w-3 mr-1.5 text-primary/60 group-hover:text-primary transition-colors" />
+                      {action.type === 'routing.profile.list' ? 'Show Available Profiles' : (action.description || action.type || 'Perform Action')}
+                    </Button>
                   ))}
                 </div>
               )}

@@ -316,6 +316,11 @@ class IntelligentLLMRouter:
         self.logger = logging.getLogger("kari.intelligent_router")
         self.degraded_mode_manager = get_degraded_mode_manager() if enable_degraded_mode else None
         
+        with open(Path(__file__).parents[2] / "config.json") as f:
+            config = json.load(f)
+        
+        self.llm_config = config.get("llm", {})
+        
         # Initialize fallback manager
         try:
             from ai_karen_engine.integrations.fallback_manager import get_fallback_manager
@@ -1347,28 +1352,13 @@ class IntelligentLLMRouter:
     
     def _select_model_for_provider(self, provider: str, request: RoutingRequest) -> Optional[str]:
         """Select an appropriate model for the provider based on request."""
-        provider_spec = self.registry.get_provider_spec(provider)
-        if not provider_spec:
-            return None
-        
-        # For now, return a simple default - this would be enhanced with actual model discovery
-        if provider == "openai":
-            if request.requires_vision:
-                return "gpt-4o"
-            elif request.task_type == TaskType.CODE:
-                return "gpt-4o-mini"
-            else:
-                return "gpt-4o-mini"
-        elif provider == "gemini":
-            return "gemini-1.5-flash"
-        elif provider == "deepseek":
-            return "deepseek-chat"
-        elif provider == "local":
-            return "llama3.2:latest"
-        elif provider == "huggingface":
-            return "microsoft/DialoGPT-medium"
-        else:
-            return "default-model"
+        task_assignments = self.llm_config.get("task_assignments", {})
+        task_assignment = task_assignments.get(request.task_type.value)
+        if task_assignment and task_assignment.get("provider") == provider:
+            return task_assignment.get("model")
+
+        # Fallback to provider defaults
+        return self.llm_config.get("provider_defaults", {}).get(provider)
     
     def _calculate_confidence(self, request: RoutingRequest, provider: str, runtime: str, model_id: str = None) -> float:
         """Calculate confidence score for routing decision using advanced scoring."""

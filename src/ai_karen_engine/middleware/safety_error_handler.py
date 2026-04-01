@@ -15,7 +15,7 @@ from enum import Enum
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from src.services.agents.agent_safety_types import SafetyLevel, RiskLevel
+from ai_karen_engine.services.agent_safety_types import SafetyLevel, RiskLevel
 
 logger = logging.getLogger(__name__)
 

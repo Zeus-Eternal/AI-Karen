@@ -36,7 +36,7 @@ except ImportError:
     # Note: croniter not available - cron scheduling will be disabled
 
 from ai_karen_engine.core.response.autonomous_learner import AutonomousLearner, LearningCycleResult
-from ai_karen_engine.services.memory_service import WebUIMemoryService
+from services.memory.memory_service import WebUIMemoryService
 
 logger = logging.getLogger(__name__)
 

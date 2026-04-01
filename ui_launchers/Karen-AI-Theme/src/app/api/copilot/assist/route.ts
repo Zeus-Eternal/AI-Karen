@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     longTimeout: true,
     retryAttempts: 4,
     retryDelayMs: 500,
+    retryOnStatusCodes: [500, 502, 503, 504],
     rawBody,
   })
     .then(async (response) => ({

@@ -111,6 +111,7 @@ class ProviderPayload(BaseModel):
     models: List[ProviderModelPayload] = Field(default_factory=list)
     requires_api_key: bool = False
     api_key_configured: bool = False
+    selectable: bool = True
     api_key_header: str = "Authorization"
     api_key_prefix: str = "Bearer"
     custom_headers: Dict[str, str] = Field(default_factory=dict)
@@ -528,6 +529,9 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
             )
         )
 
+    requires_api_key = provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM}
+    api_key_configured = _has_saved_api_key(provider.name, provider)
+
     return ProviderPayload(
         id=provider.name,
         display_name=provider.display_name,
@@ -539,8 +543,9 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
         default_model=provider.default_model,
         selected_model=provider_selected_model or None,
         models=models,
-        requires_api_key=provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM},
-        api_key_configured=_has_saved_api_key(provider.name, provider),
+        requires_api_key=requires_api_key,
+        api_key_configured=api_key_configured,
+        selectable=(not requires_api_key) or api_key_configured,
         api_key_header=str(override.get("api_key_header") or provider.authentication.api_key_header or "Authorization"),
         api_key_prefix=str(
             override.get("api_key_prefix")
@@ -657,6 +662,15 @@ async def update_model_settings(
     if not provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
+    requires_api_key = provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM}
+    provided_api_key = (request.api_key or "").strip()
+    has_configured_api_key = _has_saved_api_key(provider.name, provider)
+    if requires_api_key and not (provided_api_key or has_configured_api_key):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{provider.display_name} is not selectable until an API key is configured.",
+        )
+
     current_override = _get_provider_override(provider.name)
     selected_model = (
         (request.model or "").strip()
@@ -693,13 +707,23 @@ async def update_model_settings(
     )
 
     secret_name = _get_secret_name(provider.name, provider)
-    api_key = (request.api_key or "").strip()
+    api_key = provided_api_key
     if request.clear_api_key and secret_name:
-        secret_manager.delete_secret(secret_name)
+        cleared = secret_manager.delete_secret(secret_name)
+        if not cleared:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to clear stored credential for {provider.display_name}.",
+            )
         if provider.provider_type != ProviderType.LOCAL:
             secret_manager.delete_secret("COPILOT_API_KEY")
     elif api_key and secret_name:
-        secret_manager.set_secret(secret_name, api_key, f"{provider.display_name} API key")
+        stored = secret_manager.set_secret(secret_name, api_key, f"{provider.display_name} API key")
+        if not stored:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to store API key for {provider.display_name}.",
+            )
         if provider.provider_type != ProviderType.LOCAL:
             secret_manager.set_secret("COPILOT_API_KEY", api_key, f"Active cloud provider key for {provider.display_name}")
 

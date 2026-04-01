@@ -99,6 +99,26 @@ class MemoryContext:
     retrieval_time: float
     total_memories_considered: int
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert context to dictionary format."""
+        return {
+            "memories": [
+                {
+                    "content": m.content,
+                    "type": m.memory_type.value,
+                    "score": m.combined_score,
+                    "created_at": m.created_at.isoformat()
+                } for m in self.memories
+            ],
+            "entities": self.entities,
+            "preferences": self.preferences,
+            "facts": self.facts,
+            "relationships": self.relationships,
+            "context_summary": self.context_summary,
+            "retrieval_time": self.retrieval_time,
+            "total_memories_considered": self.total_memories_considered
+        }
+
 
 class MemoryProcessor:
     """

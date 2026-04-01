@@ -4,10 +4,10 @@ Enhanced Gemini LLM Provider Implementation
 Improved version with proper safety filtering, better error handling, and latest API features.
 """
 
+import os
 import logging
 import time
-import os
-from typing import Any, Dict, List, Optional, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase, GenerationFailed, EmbeddingFailed, record_llm_metric
 
@@ -173,6 +173,70 @@ class GeminiProvider(LLMProviderBase):
             })
         
         return safety_settings
+
+    def _discover_generation_models(self) -> List[str]:
+        """Return live generateContent-capable Gemini models without stale fallback aliases."""
+        if self.initialization_error or not self.genai:
+            return []
+
+        def _list_models() -> List[str]:
+            models: List[str] = []
+            for model in self.genai.list_models():
+                if "generateContent" in getattr(model, "supported_generation_methods", []):
+                    models.append(model.name.replace("models/", ""))
+            return models
+
+        return sorted(set(self._retry_with_backoff(_list_models)))
+
+    @staticmethod
+    def _model_rank(name: str) -> Tuple[int, int, int, str]:
+        lowered = name.lower()
+        stable_score = 0 if any(token in lowered for token in ("preview", "experimental")) else 1
+        lite_score = 0 if "lite" in lowered else 1
+        latest_score = 1 if "latest" in lowered else 0
+        flash_score = 1 if "flash" in lowered else 0
+        numeric_suffix = -1
+        for token in reversed(lowered.replace(".", "-").split("-")):
+            if token.isdigit():
+                numeric_suffix = int(token)
+                break
+        return (stable_score, lite_score, latest_score, numeric_suffix, flash_score, lowered)
+
+    def _resolve_generation_model(self, requested_model: str) -> str:
+        """Map UI aliases to a currently callable Gemini generateContent model."""
+        normalized = str(requested_model or self.model).replace("models/", "").strip()
+        if not normalized:
+            return self.model
+
+        discovered = self._discover_generation_models()
+        if not discovered:
+            return normalized
+        if normalized in discovered:
+            return normalized
+
+        candidates = [name for name in discovered if name.startswith(f"{normalized}-")]
+        if not candidates and normalized.startswith("gemini-1.5-flash"):
+            candidates = [name for name in discovered if name.startswith("gemini-1.5-flash")]
+        if not candidates and normalized.startswith("gemini-1.5-pro"):
+            candidates = [name for name in discovered if name.startswith("gemini-1.5-pro")]
+        if not candidates and "flash" in normalized:
+            candidates = [
+                name for name in discovered
+                if "flash" in name and "lite" not in name and "preview" not in name and "image" not in name and "tts" not in name
+            ]
+            if not candidates:
+                candidates = [name for name in discovered if "flash" in name and "image" not in name and "tts" not in name]
+        if not candidates and "pro" in normalized:
+            candidates = [name for name in discovered if "pro" in name and "preview" not in name and "image" not in name and "tts" not in name]
+            if not candidates:
+                candidates = [name for name in discovered if "pro" in name and "image" not in name and "tts" not in name]
+
+        if candidates:
+            resolved = sorted(candidates, key=self._model_rank, reverse=True)[0]
+            logger.info("Resolved Gemini model alias %s -> %s", normalized, resolved)
+            return resolved
+
+        return normalized
     
     def generate_text(self, prompt: str, **kwargs) -> str:
         """Generate text using Gemini API."""
@@ -186,7 +250,8 @@ class GeminiProvider(LLMProviderBase):
             raise GenerationFailed("Gemini client not initialized")
         
         try:
-            model_name = kwargs.pop("model", self.model)
+            requested_model_name = kwargs.pop("model", self.model)
+            model_name = self._resolve_generation_model(requested_model_name)
             
             # Initialize model
             model = self.genai.GenerativeModel(model_name)
@@ -261,7 +326,8 @@ class GeminiProvider(LLMProviderBase):
             raise GenerationFailed("Gemini client not initialized")
         
         try:
-            model_name = kwargs.pop("model", self.model)
+            requested_model_name = kwargs.pop("model", self.model)
+            model_name = self._resolve_generation_model(requested_model_name)
             
             # Initialize model
             model = self.genai.GenerativeModel(model_name)
@@ -362,21 +428,11 @@ class GeminiProvider(LLMProviderBase):
                 logger.info("Using fallback model list due to initialization issues")
                 return self._get_common_models()
             
-            def _list_models():
-                models = []
-                for model in self.genai.list_models():
-                    if "generateContent" in model.supported_generation_methods:
-                        models.append(model.name.replace("models/", ""))
-                return models
-            
-            discovered_models = self._retry_with_backoff(_list_models)
-            
-            # Merge with common models to ensure we have a comprehensive list
-            common_models = self._get_common_models()
-            all_models = list(set(discovered_models + common_models))
-            
-            logger.info(f"Discovered {len(discovered_models)} models from API, total available: {len(all_models)}")
-            return sorted(all_models)
+            discovered_models = self._discover_generation_models()
+            logger.info(
+                f"Discovered {len(discovered_models)} models from API, total available: {len(discovered_models)}"
+            )
+            return discovered_models or self._get_common_models()
             
         except Exception as ex:
             logger.warning(f"Could not fetch Gemini models: {ex}")
@@ -385,10 +441,10 @@ class GeminiProvider(LLMProviderBase):
     def _get_common_models(self) -> List[str]:
         """Get list of common Gemini models."""
         return [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-1.0-pro",
-            "gemini-pro-vision"
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite"
         ]
     
     def get_provider_info(self) -> Dict[str, Any]:
@@ -435,8 +491,9 @@ class GeminiProvider(LLMProviderBase):
         try:
             start_time = time.time()
             
-            # Test API connectivity with minimal request
-            model = self.genai.GenerativeModel("gemini-1.5-flash")
+            # Test API connectivity with a live callable model when aliases drift.
+            health_model = self._resolve_generation_model(self.model)
+            model = self.genai.GenerativeModel(health_model)
             response = model.generate_content(
                 "Hello",
                 generation_config={"max_output_tokens": 1}
@@ -448,7 +505,7 @@ class GeminiProvider(LLMProviderBase):
                 "status": "healthy",
                 "provider": "gemini",
                 "response_time": response_time,
-                "model_tested": "gemini-1.5-flash",
+                "model_tested": health_model,
                 "initialization_status": "success",
                 "api_key_status": "valid",
                 "connectivity": "ok"
@@ -473,7 +530,7 @@ class GeminiProvider(LLMProviderBase):
             # Test capability detection
             try:
                 # Check if multimodal capabilities are available
-                test_model = self.genai.GenerativeModel("gemini-1.5-flash")
+                test_model = self.genai.GenerativeModel(health_model)
                 health_result["capabilities"] = {
                     "text_generation": True,
                     "multimodal": True,

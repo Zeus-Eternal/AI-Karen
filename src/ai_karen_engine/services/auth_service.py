@@ -196,25 +196,23 @@ class AuthService(BaseService):
                 
             self._initializing_task = current_task
             try:
-                import logging
-                logging.warning("=== INSIDE INITIALIZE: validating config ===")
                 # Validate configuration
                 self._validate_config()
                 
-                logging.warning("=== INSIDE INITIALIZE: calling _ensure_database_tables ===")
                 # Initialize database tables if needed
+                logger.info("Ensuring database tables exist...")
                 await self._ensure_database_tables()
                 
-                logging.warning("=== INSIDE INITIALIZE: calling _ensure_default_admin_user ===")
                 # Create default admin user if it doesn't exist
+                logger.info("Checking for default admin user...")
                 await self._ensure_default_admin_user()
                 
                 self._initialized = True
                 logger.info("Authentication Service initialized successfully")
-                logging.warning("=== INSIDE INITIALIZE: DONE ===")
             except Exception as e:
-                logger.error(f"Failed to initialize Authentication Service: {e}")
-                raise RuntimeError(f"Authentication Service initialization failed: {e}")
+                logger.error(f"Failed to initialize Authentication Service: {e}", exc_info=True)
+                # Ensure we don't leave it in a partially initialized state that blocks others
+                raise RuntimeError(f"Authentication Service initialization failed: {e}") from e
             finally:
                 self._initializing_task = None
     
@@ -376,14 +374,9 @@ class AuthService(BaseService):
         Returns:
             Tuple of (user, access_token, refresh_token) or (None, None, None) if authentication fails
         """
-        import logging
-        logging.warning("=== AUTHENTICATE_USER: START ===")
         if not self._initialized:
-            logging.warning("=== AUTHENTICATE_USER: calling initialize() ===")
+            logger.info("AuthService not initialized, performing lazy initialization...")
             await self.initialize()
-            logging.warning("=== AUTHENTICATE_USER: initialize() DONE ===")
-        else:
-            logging.warning("=== AUTHENTICATE_USER: ALREADY INITIALIZED ===")
         
         # Note: _db_session check removed - method handles None case with temporary client
         

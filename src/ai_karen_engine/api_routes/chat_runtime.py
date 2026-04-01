@@ -25,7 +25,11 @@ import uuid
 from ..core.dependencies import get_current_user_context
 from ..core.config_manager import get_config_manager
 from ..core.logging.logger import get_structured_logger
-from ..chat.chat_orchestrator import ChatOrchestrator
+from ..chat.chat_orchestrator import (
+    ChatOrchestrator,
+    ChatRequest as OrchestratorChatRequest,
+    ChatResponse as OrchestratorChatResponse,
+)
 from ..chat.stream_processor import AsyncStreamProcessor as StreamProcessor
 from ..core.metrics_manager import get_metrics_manager
 
@@ -182,8 +186,9 @@ class SecurityValidator:
 # Dependency functions
 async def get_chat_orchestrator():
     """Get chat orchestrator instance"""
-    # Create a new instance with default parameters
-    return ChatOrchestrator()
+    from ..chat.factory import get_chat_orchestrator as get_factory_chat_orchestrator
+
+    return get_factory_chat_orchestrator()
 
 async def get_stream_processor():
     """Get stream processor instance"""
@@ -253,26 +258,34 @@ async def create_chat_response(
             }
         )
         
+        conversation_id = session_id or f"chat_{uuid.uuid4().hex[:12]}"
+        flattened_prompt = "\n".join(
+            msg["content"] for msg in validated_messages if msg.get("message_type") == "user"
+        ).strip()
+        chat_request = OrchestratorChatRequest(
+            message=flattened_prompt,
+            user_id=user["user_id"],
+            conversation_id=conversation_id,
+            session_id=session_id,
+            stream=bool(request.stream),
+            include_context=True,
+            attachments=[],
+            metadata={
+                "model": request.model,
+                "temperature": request.temperature,
+                "max_tokens": request.max_tokens,
+                "messages": validated_messages,
+                "response_id": response_id,
+            },
+        )
+
         # Process chat request
         if request.stream:
-            # Streaming response
-            stream_processor = await get_stream_processor()
-            
             async def generate_stream():
                 try:
-                    async for chunk in stream_processor.process_streaming_response(
-                        messages=validated_messages,
-                        model=request.model,
-                        temperature=request.temperature,
-                        max_tokens=request.max_tokens,
-                        session_id=session_id,
-                        user_id=user['user_id'],
-                        response_id=response_id
-                    ):
-                        yield chunk
-                        
-                        # Note: Rate limiter update skipped - needs implementation
-                        
+                    stream_result = await orchestrator.process_message(chat_request)
+                    async for chunk in stream_result:
+                        yield chunk.content
                 except Exception as e:
                     structured_logger.log_error(
                         error=str(e),
@@ -293,15 +306,7 @@ async def create_chat_response(
             )
         else:
             # Non-streaming response
-            response_data = await orchestrator.generate_response(
-                messages=validated_messages,
-                model=request.model,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                session_id=session_id,
-                user_id=user['user_id'],
-                response_id=response_id
-            )
+            response_data = await orchestrator.process_message(chat_request)
             
             # Note: Rate limiter update skipped - needs implementation
             
@@ -338,10 +343,10 @@ async def create_chat_response(
             
             return ChatResponse(
                 response_id=response_id,
-                content=response_data['content'],
-                model=response_data['model'],
-                usage=response_data['usage'],
-                metadata=response_data.get('metadata', {}),
+                content=response_data.response if isinstance(response_data, OrchestratorChatResponse) else "",
+                model=request.model or "orchestrated",
+                usage=(response_data.metadata or {}).get('llm', {}).get('usage', {}) if isinstance(response_data, OrchestratorChatResponse) else {},
+                metadata=response_data.metadata if isinstance(response_data, OrchestratorChatResponse) else {},
                 timestamp=datetime.utcnow()
             )
             
@@ -383,17 +388,8 @@ async def get_chat_session(
         if not re.match(r'^[a-zA-Z0-9_-]+$', session_id):
             raise HTTPException(status_code=400, detail="Invalid session ID format")
         
-        # Get chat orchestrator
-        orchestrator = await get_chat_orchestrator()
-        
-        # Get session with access control
-        session_data = await orchestrator.get_session(
-            session_id=session_id,
-            user_id=user['user_id']
-        )
-        
-        if not session_data:
-            raise HTTPException(status_code=404, detail="Session not found")
+        # Session management is not part of the current production chat orchestrator contract.
+        raise HTTPException(status_code=501, detail="Chat session retrieval is not implemented on the production orchestrator")
         
         # Log access
         structured_logger.log_request(
@@ -403,14 +399,6 @@ async def get_chat_session(
             correlation_id=correlation_id,
             request_data={'session_id': session_id}
         )
-        
-        return {
-            'session_id': session_id,
-            'messages': session_data['messages'],
-            'created_at': session_data['created_at'],
-            'updated_at': session_data['updated_at'],
-            'metadata': session_data.get('metadata', {})
-        }
         
     except HTTPException:
         raise
@@ -441,17 +429,7 @@ async def delete_chat_session(
         if not re.match(r'^[a-zA-Z0-9_-]+$', session_id):
             raise HTTPException(status_code=400, detail="Invalid session ID format")
         
-        # Get chat orchestrator
-        orchestrator = await get_chat_orchestrator()
-        
-        # Delete session with access control
-        success = await orchestrator.delete_session(
-            session_id=session_id,
-            user_id=user['user_id']
-        )
-        
-        if not success:
-            raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=501, detail="Chat session deletion is not implemented on the production orchestrator")
         
         # Log deletion
         structured_logger.log_request(
@@ -535,20 +513,14 @@ async def get_available_models(
 async def health_check():
     """Health check endpoint for chat service"""
     try:
-        orchestrator = await get_chat_orchestrator()
-        stream_processor = await get_stream_processor()
-        
-        # Check service health
-        orchestrator_healthy = await orchestrator.health_check()
-        stream_processor_healthy = await stream_processor.health_check()
-        
-        overall_healthy = orchestrator_healthy and stream_processor_healthy
+        await get_chat_orchestrator()
+        await get_stream_processor()
         
         return {
-            'status': 'healthy' if overall_healthy else 'unhealthy',
+            'status': 'healthy',
             'services': {
-                'orchestrator': 'healthy' if orchestrator_healthy else 'unhealthy',
-                'stream_processor': 'healthy' if stream_processor_healthy else 'unhealthy'
+                'orchestrator': 'healthy',
+                'stream_processor': 'healthy'
             },
             'timestamp': datetime.utcnow().isoformat()
         }

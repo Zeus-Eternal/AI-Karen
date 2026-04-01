@@ -1,0 +1,17 @@
+
+memory:
+  enabled: true
+  provider: local
+  
+  storage:
+    type: sqlite
+    path: data/memory.db
+    
+  embedding:
+    provider: transformers
+    model: distilbert-base-uncased
+    dimension: 768
+    
+  retrieval:
+    top_k: 10
+    similarity_threshold: 0.7

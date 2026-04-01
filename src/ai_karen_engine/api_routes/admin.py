@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from ai_karen_engine.services.memory_service import WebUIMemoryService
 from ai_karen_engine.core.dependencies import get_memory_service
 from ai_karen_engine.utils.bootstrap import bootstrap_memory_system
 
@@ -16,7 +16,7 @@ router = APIRouter(tags=["admin"])
 @router.post("/bootstrap_memory")
 async def bootstrap_memory(
     request: Request,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    memory_service: Any = Depends(get_memory_service),
 ):
     """Force initialization of memory tables and default models."""
     trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))

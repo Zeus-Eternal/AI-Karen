@@ -14,9 +14,11 @@ from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
-from ai_karen_engine.chat.production_memory import ProductionChatMemory
-from ai_karen_engine.chat.stream_processor import StreamProcessor
+from ai_karen_engine.chat.stream_processor import AsyncStreamProcessor as StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
+from ai_karen_engine.chat.conversation_manager import ConversationManager
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from services.memory.memory_service import WebUIMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -70,27 +72,48 @@ class ChatServiceFactory:
 
         try:
             from services.memory.nlp_service_manager import nlp_service_manager
-            from ai_karen_engine.clients.database.milvus_client import MilvusClient
+            memory_service = self.get_service("memory_service") or self.create_memory_service()
+            memory_manager = getattr(memory_service, "base_manager", None) if memory_service else None
 
-            # Initialize production chat memory
-            production_memory = ProductionChatMemory()
+            if memory_manager is None:
+                logger.warning("Memory manager unavailable - chat memory processor will be disabled")
+                return None
+
+            spacy_service = getattr(nlp_service_manager, "spacy_service", None)
+            distilbert_service = getattr(nlp_service_manager, "distilbert_service", None)
+            if spacy_service is None or distilbert_service is None:
+                logger.warning("NLP services unavailable - chat memory processor will be disabled")
+                return None
 
             # Create memory processor
             memory_processor = MemoryProcessor(
-                milvus_client=MilvusClient(),
-                nlp_service=nlp_service_manager,
-                similarity_threshold=0.7,
-                max_memories=10
+                spacy_service=spacy_service,
+                distilbert_service=distilbert_service,
+                memory_manager=memory_manager,
             )
 
             self._services['memory_processor'] = memory_processor
-            self._services['production_memory'] = production_memory
 
             logger.info("Memory processor created successfully")
             return memory_processor
 
         except Exception as e:
             logger.error(f"Failed to create memory processor: {e}")
+            return None
+
+    def create_memory_service(self) -> Optional[WebUIMemoryService]:
+        """Create and cache the authoritative chat memory service."""
+        if not self.config.enable_memory:
+            logger.info("Memory service disabled by configuration")
+            return None
+
+        try:
+            service = WebUIMemoryService()
+            self._services["memory_service"] = service
+            logger.info("Memory service created successfully")
+            return service
+        except Exception as e:
+            logger.error(f"Failed to create memory service: {e}")
             return None
 
     def create_file_attachment_service(self) -> Optional[FileAttachmentService]:
@@ -177,6 +200,18 @@ class ChatServiceFactory:
             # Return default instance as fallback
             return ContextIntegrator()
 
+    def create_conversation_manager(self) -> Optional[ConversationManager]:
+        """Create and configure the authoritative conversation manager."""
+        try:
+            db_client = MultiTenantPostgresClient()
+            manager = ConversationManager(db_client)
+            self._services['conversation_manager'] = manager
+            logger.info("Enhanced conversation manager created successfully")
+            return manager
+        except Exception as e:
+            logger.error(f"Failed to create conversation manager: {e}")
+            return None
+
     def create_chat_orchestrator(self) -> ChatOrchestrator:
         """
         Create and configure chat orchestrator with all services wired.
@@ -226,6 +261,7 @@ class ChatServiceFactory:
             tool_integration_service=tool_integration_service,
             instruction_processor=instruction_processor,
             context_integrator=context_integrator,
+            conversation_manager=self.create_conversation_manager(),
             retry_config=retry_config,
             timeout_seconds=self.config.timeout_seconds,
             enable_monitoring=self.config.enable_monitoring,
@@ -261,7 +297,7 @@ class ChatServiceFactory:
             if not orchestrator:
                 orchestrator = self.create_chat_orchestrator()
 
-            gateway = WebSocketGateway(orchestrator=orchestrator)
+            gateway = WebSocketGateway(chat_orchestrator=orchestrator)
             self._services['websocket_gateway'] = gateway
             logger.info("WebSocket gateway created successfully")
             return gateway

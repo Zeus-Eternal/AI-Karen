@@ -60,10 +60,6 @@ server.pid
 *.duckdb
 *.db
 .kiro/specs/web-ui-karen-integration/biome
-/ui_launchers/web_ui/.next
-/ui_launchers/web_ui/node_modules
-/ui_launchers/KAREN-Theme-Default/.next
-/ui_launchers/KAREN-Theme-Default/node_modules
 /.kiro
 /.github
 /data/default_classifier
@@ -104,27 +100,9 @@ htmlcov/
 
 # Ignore Theme active related development files
 # /ui_launchers/KAREN-Theme-Default
-
-ui_launchers/KAREN-Theme-Default/.gitattributes
-ui_launchers/KAREN-Theme-Default/.gitignore
 /.env_kari
-ui_launchers/KAREN-Theme-Default/.next/cache/tsbuildinfo
-/ui_launchers/KAREN-Theme-Default/.next
 data/users.json
-ui_launchers/KAREN-Theme-Default/package-lock.json
-data/users.json
-ui_launchers/KAREN-Theme-Default/package.json
-ui_launchers/KAREN-Theme-Default/package-lock.json
-ui_launchers/KAREN-Theme-Default/package.json
-ui_launchers/KAREN-Theme-Default/next.config.js
-ui_launchers/KAREN-Theme-Default/postcss.config.js
-ui_launchers/KAREN-Theme-Default/package-lock.json
-ui_launchers/KAREN-Theme-Default/package.json
-ui_launchers/KAREN-Theme-Default/next.config.js
-ui_launchers/KAREN-Theme-Default/postcss.config.js
 */test*
-data/users.json
-data/users.json
 /,env_karen/lib
 /,env_karen
 /,env_karen
@@ -135,8 +113,6 @@ data/users.json
 /scripts
 /src/ai_karen_engine/services/__tests__
 /tests
-/ui_launchers/KAREN-Theme-Default/out/_next
-ui_launchers/KAREN-Theme-Default/out/_next
 /.tools
 /.tools
 /.goose
@@ -144,6 +120,4 @@ ui_launchers/KAREN-Theme-Default/out/_next
 .tools/
 .virEnv
 server/models/transformers
-ui_launchers/defaultApp/node_modules
-ui_launchers/KAREN-Theme-Enterprise/node_modules
-ui_launchers/KAREN-Theme-LTE/node_modules
+ui_launchers/Karen-AI-Theme/.next

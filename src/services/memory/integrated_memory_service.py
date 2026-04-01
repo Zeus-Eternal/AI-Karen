@@ -13,16 +13,16 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.memory_manager import MemoryManager
-from src.services.conversation_tracker import (
+from services.memory.enhanced_memory_service import (
+    EnhancedMemoryService,
+    MemoryServiceError,
+)
+from services.memory.internal.conversation_tracker import (
     ConversationSession,
     ConversationTracker,
     ConversationTurn,
 )
-from src.services.enhanced_memory_service import (
-    EnhancedMemoryService,
-    MemoryServiceError,
-)
-from src.services.memory_service import (
+from services.memory.memory_service import (
     MemoryType,
     UISource,
     WebUIMemoryEntry,

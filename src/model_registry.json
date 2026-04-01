@@ -1,0 +1,27 @@
+{
+  "providers": {
+    "llama-cpp": {
+      "enabled": true,
+      "models_dir": "models/llama-cpp",
+      "supported_formats": [
+        ".gguf",
+        ".bin"
+      ]
+    },
+    "transformers": {
+      "enabled": true,
+      "models_dir": "models/transformers",
+      "cache_dir": "models/transformers"
+    },
+    "copilotkit": {
+      "enabled": false,
+      "api_key": null,
+      "base_url": "https://api.copilotkit.ai"
+    }
+  },
+  "default_models": {
+    "chat": "gpt2",
+    "completion": "gpt2",
+    "embedding": "distilbert-base-uncased"
+  }
+}

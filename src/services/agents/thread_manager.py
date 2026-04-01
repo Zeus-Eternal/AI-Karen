@@ -6,6 +6,7 @@ including session-to-thread mapping, thread lifecycle management, and thread per
 """
 
 import asyncio
+import importlib
 import logging
 import time
 import uuid
@@ -48,7 +49,7 @@ from .thread_manager_models import (
 
 # Try to import LangGraph integration
 try:
-    from src.services.langgraph.langgraph_integration import LangGraphIntegration
+    from services.session_state.langgraph_integration import LangGraphIntegration
     HAS_LANGGRAPH = True
 except ImportError:
     HAS_LANGGRAPH = False
@@ -56,16 +57,27 @@ except ImportError:
 
 # Try to import persistence services
 try:
-    from src.services.persistence.persistence_service import PersistenceService
-    HAS_PERSISTENCE = True
-except ImportError:
+    PersistenceService = None
+    for _persistence_module in (
+        "services.persistence.persistence_service",
+        "src.services.persistence.persistence_service",
+    ):
+        try:
+            PersistenceService = importlib.import_module(
+                _persistence_module
+            ).PersistenceService
+            break
+        except (ImportError, AttributeError):
+            continue
+    HAS_PERSISTENCE = PersistenceService is not None
+except Exception:
     HAS_PERSISTENCE = False
     PersistenceService = None
 
 # Try to import Session State Manager
 try:
-    from src.services.session_state.session_state_manager import SessionStateManager
-    from src.services.session_state.session_state_models import SessionState
+    from services.session_state.session_state_manager import SessionStateManager
+    from services.session_state.session_state_models import SessionState
     HAS_SESSION_STATE = True
 except ImportError:
     HAS_SESSION_STATE = False
@@ -620,7 +632,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
             # Create session state if Session State Manager is available
             if self._session_state_manager and SessionState:
                 try:
-                    from src.services.session_state.session_state_models import CreateSessionStateRequest
+                    from services.session_state.session_state_models import CreateSessionStateRequest
                     session_state_request = CreateSessionStateRequest(
                         session_id=request.session_id,
                         user_id=request.metadata.get("user_id", "") if request.metadata else "",
@@ -699,7 +711,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
                 # Get session state if Session State Manager is available
                 if self._session_state_manager:
                     try:
-                        from src.services.session_state.session_state_models import GetSessionStateRequest
+                        from services.session_state.session_state_models import GetSessionStateRequest
                         session_state_request = GetSessionStateRequest(
                             session_id=thread.session_id,
                             thread_id=request.thread_id
@@ -795,7 +807,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
                 # Update session state if Session State Manager is available
                 if self._session_state_manager:
                     try:
-                        from src.services.session_state.session_state_models import UpdateSessionStateRequest
+                        from services.session_state.session_state_models import UpdateSessionStateRequest
                         session_state_request = UpdateSessionStateRequest(
                             session_id=thread.session_id,
                             thread_id=request.thread_id,
@@ -928,7 +940,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
                 # Delete session state if Session State Manager is available
                 if self._session_state_manager:
                     try:
-                        from src.services.session_state.session_state_models import DeleteSessionStateRequest
+                        from services.session_state.session_state_models import DeleteSessionStateRequest
                         session_state_request = DeleteSessionStateRequest(
                             session_id=thread.session_id,
                             thread_id=thread_id
@@ -1200,7 +1212,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
             return None
         
         try:
-            from src.services.session_state.session_state_models import GetSessionStateRequest
+            from services.session_state.session_state_models import GetSessionStateRequest
             session_state_request = GetSessionStateRequest(
                 session_id=session_id,
                 thread_id=thread_id
@@ -1229,7 +1241,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
             return False
         
         try:
-            from src.services.session_state.session_state_models import CreateCheckpointRequest
+            from services.session_state.session_state_models import CreateCheckpointRequest
             checkpoint_request = CreateCheckpointRequest(
                 session_id=session_id,
                 thread_id=thread_id,
@@ -1256,7 +1268,7 @@ class ThreadManager(BaseService, ThreadManagerInterface):
             return False
         
         try:
-            from src.services.session_state.session_state_models import RestoreFromCheckpointRequest
+            from services.session_state.session_state_models import RestoreFromCheckpointRequest
             restore_request = RestoreFromCheckpointRequest(
                 session_id=session_id,
                 checkpoint_id=checkpoint_id

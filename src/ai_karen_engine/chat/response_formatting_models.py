@@ -20,6 +20,8 @@ except ImportError:
         def Field(*args, **kwargs): return None
         def validator(*args, **kwargs): return lambda x: x
 
+# --- Core Enums ---
+
 class OutputProfile(Enum):
     PLAIN = "plain"
     PRETTY = "pretty"
@@ -96,6 +98,104 @@ class StreamingState(Enum):
     END = "end"
     ERROR = "error"
 
+# --- Responsive Enums & Config ---
+
+class ScreenSize(Enum):
+    EXTRA_SMALL = "extra_small"
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"
+    EXTRA_LARGE = "extra_large"
+
+class DeviceType(Enum):
+    PHONE = "phone"
+    TABLET = "tablet"
+    DESKTOP = "desktop"
+    TV = "tv"
+    WEARABLE = "wearable"
+    UNKNOWN = "unknown"
+
+@dataclass
+class ResponsiveBreakpoint:
+    name: str
+    min_width: int
+    max_width: Optional[int] = None
+    layout_adaptations: Dict[str, Any] = field(default_factory=dict)
+
+# --- Service Configuration & User Preferences ---
+
+@dataclass
+class FormattingConfig:
+    """Configuration for the internal formatting service."""
+    output_profile: OutputProfile = OutputProfile.PRETTY
+    default_layout: LayoutType = LayoutType.DEFAULT
+    enable_markdown: bool = True
+    enable_sections: bool = True
+    enable_highlights: bool = True
+    enable_syntax_highlighting: bool = True
+    enable_responsive_formatting: bool = True
+    enable_accessibility_features: bool = True
+    enable_theme_support: bool = True
+    max_content_length: int = 20000
+    safe_mode: bool = True
+    cache_enabled: bool = True
+    performance_monitoring: bool = True
+
+@dataclass
+class FormattingPreferences:
+    """User-provided preferences for a single request context."""
+    output_profile: OutputProfile = OutputProfile.PRETTY
+    theme_mode: ThemeMode = ThemeMode.AUTO
+    accessibility_level: AccessibilityLevel = AccessibilityLevel.BASIC
+    display_context: DisplayContext = DisplayContext.DESKTOP
+    language: str = "en"
+    timezone: str = "UTC"
+    date_format: str = "%Y-%m-%d %H:%M:%S"
+    enable_syntax_highlighting: bool = True
+    enable_interactive_elements: bool = True
+    enable_animations: bool = True
+    max_content_length: int = 10000
+    custom_css_classes: List[str] = field(default_factory=list)
+    custom_settings: Dict[str, Any] = field(default_factory=dict)
+
+# --- Request/Response Models ---
+
+class FormattingRequest(BaseModel):
+    """Request model for formatting API."""
+    content: str
+    output_profile: Optional[str] = None
+    layout_type: Optional[str] = None
+    display_context: Optional[str] = "desktop"
+    theme_mode: Optional[str] = "auto"
+    accessibility_level: Optional[str] = "basic"
+    user_preferences: Dict[str, Any] = Field(default_factory=dict)
+    session_data: Dict[str, Any] = Field(default_factory=dict)
+
+class FormattingResponse(BaseModel):
+    """Response model for formatting API."""
+    formatted_content: str
+    content_type: str
+    layout_type: str
+    output_profile: str
+    metadata: Dict[str, Any]
+    accessibility_features: List[str] = Field(default_factory=list)
+    interactive_elements: List[str] = Field(default_factory=list)
+    theme_requirements: List[str] = Field(default_factory=list)
+    css_classes: List[str] = Field(default_factory=list)
+    processing_time: float
+    confidence_score: float
+
+class StreamingFormattingResponse(BaseModel):
+    """Response model for streaming formatting API."""
+    chunk_id: int
+    formatted_content: str
+    state: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    is_final: bool = False
+    progress: float = 0.0
+
+# --- Contextual Persistence ---
+
 @dataclass
 class LayoutHint:
     layout_type: LayoutType
@@ -124,22 +224,6 @@ class ResponseMetadata:
     interactive_elements: List[str] = field(default_factory=list)
     custom_metadata: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
-
-@dataclass
-class FormattingPreferences:
-    output_profile: OutputProfile = OutputProfile.PRETTY
-    theme_mode: ThemeMode = ThemeMode.AUTO
-    accessibility_level: AccessibilityLevel = AccessibilityLevel.BASIC
-    display_context: DisplayContext = DisplayContext.DESKTOP
-    language: str = "en"
-    timezone: str = "UTC"
-    date_format: str = "%Y-%m-%d %H:%M:%S"
-    enable_syntax_highlighting: bool = True
-    enable_interactive_elements: bool = True
-    enable_animations: bool = True
-    max_content_length: int = 10000
-    custom_css_classes: List[str] = field(default_factory=list)
-    custom_settings: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class ResponseContext:

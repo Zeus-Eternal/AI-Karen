@@ -18,7 +18,7 @@ import os
 from datetime import datetime, timezone
 import uuid
 
-from src.auth.auth_service import AuthService, get_auth_service, user_account_to_dict
+from ai_karen_engine.auth.auth_service import AuthService, get_auth_service, user_account_to_dict
 from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent
 from ai_karen_engine.core.response.analyzer import SpacyAnalyzer, AnalysisContext
 from ai_karen_engine.core.reasoning.synthesis import (
@@ -29,7 +29,7 @@ from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter
 from services.profile_manager import Guardrails, ProfileManager
 from ai_karen_engine.services.tool_service import ToolInput, ToolOutput, ToolService
 from ai_karen_engine.models.shared_types import ToolType
-from services.memory_service import MemoryType, UISource, WebUIMemoryService
+from services.memory.memory_service import MemoryType, UISource, WebUIMemoryService
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver

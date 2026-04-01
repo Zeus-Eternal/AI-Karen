@@ -373,7 +373,7 @@ export default function AdminPage() {
                     </TabsContent>
 
                     <TabsContent value="settings" className="mt-6">
-                         <SettingsDialog />
+                         <SettingsDialog adminMode />
                     </TabsContent>
 
                     <TabsContent value="database" className="mt-6 space-y-6">

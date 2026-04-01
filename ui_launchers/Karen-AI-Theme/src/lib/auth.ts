@@ -91,46 +91,64 @@ class AuthService {
     }
   }
 
-  private getConfiguredBackendUrl(): string {
-    if (typeof window !== 'undefined') {
-      const configuredBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+  private getConfiguredBackendUrl(): string | null {
+    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+    if (isBrowser) {
+      const env = (process as any).env || {};
+      const configuredBaseUrl = (env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
       if (configuredBaseUrl) {
         return configuredBaseUrl;
       }
 
       const { protocol, hostname, port } = window.location;
+      // If we are already on the backend port (unlikely for UI), return empty for same-origin
       if (!hostname || port === this.DIRECT_BROWSER_BACKEND_PORT) {
         return '';
       }
 
+      // Default to trying the expected backend port on the current host as a secondary option
       return `${protocol}//${hostname}:${this.DIRECT_BROWSER_BACKEND_PORT}`;
     }
 
-    return (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
+    const env = (process as any).env || {};
+    return (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') || null;
   }
 
   private getPreferredBaseUrl(): string {
-    if (typeof window === 'undefined') {
-      return this.getConfiguredBackendUrl();
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      return window.location.origin;
     }
-    return this.SAME_ORIGIN_API_BASE_URL;
+    return this.getConfiguredBackendUrl() || '';
   }
 
-  private getFallbackBaseUrl(preferredBaseUrl: string): string {
-    if (typeof window !== 'undefined') {
-      return '';
+  private getFallbackBaseUrl(preferredBaseUrl: string): string | null {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      return null;
     }
 
     const configuredBackendUrl = this.getConfiguredBackendUrl();
-    return preferredBaseUrl === this.SAME_ORIGIN_API_BASE_URL
-      ? configuredBackendUrl
-      : this.SAME_ORIGIN_API_BASE_URL;
+    if (preferredBaseUrl === this.SAME_ORIGIN_API_BASE_URL) {
+      return configuredBackendUrl;
+    }
+    
+    return this.SAME_ORIGIN_API_BASE_URL || null;
   }
 
-  private buildUrl(baseUrl: string, endpoint: string): string {
+  private buildUrl(baseUrl: string | null, endpoint: string): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // Browser: Prevent Docker internal hostnames or subnets from leaking
+      if (baseUrl && (
+        baseUrl.includes('api') || 
+        baseUrl.includes('172.') || 
+        baseUrl.includes('10.') || 
+        baseUrl.includes('192.168.') ||
+        baseUrl.includes('localhost:8000') ||
+        baseUrl === 'api'
+      )) {
+        return normalizedEndpoint;
+      }
       return baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
     }
 
@@ -138,7 +156,7 @@ class AuthService {
       return endpoint;
     }
 
-    return `${baseUrl}${normalizedEndpoint}`;
+    return `${baseUrl || ''}${normalizedEndpoint}`;
   }
 
   private shouldRetryWithSameOrigin(error: unknown): boolean {
@@ -151,7 +169,7 @@ class AuthService {
     );
   }
 
-  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string): boolean {
+  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string | null): boolean {
     return (
       typeof window !== 'undefined' &&
       Boolean(fallbackBaseUrl) &&
@@ -232,7 +250,7 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const sendLogin = async (baseUrl: string): Promise<Response> =>
+      const sendLogin = async (baseUrl: string | null): Promise<Response> =>
         this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/login'), {
           method: 'POST',
           headers: {
@@ -255,7 +273,7 @@ class AuthService {
         response = await sendLogin(fallbackBaseUrl);
       }
 
-      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
         response = await sendLogin(fallbackBaseUrl);
       }
 
@@ -265,8 +283,10 @@ class AuthService {
 
       const data: LoginResponse = await response.json();
       
-      // Store tokens in localStorage
-      localStorage.setItem('access_token', data.access_token);
+      // The backend session cookie is the authoritative browser auth state.
+      // Keep refresh token only for legacy/logout flows and avoid persisting
+      // a browser-side access token that can drift from the cookie session.
+      localStorage.removeItem('access_token');
       localStorage.setItem('refresh_token', data.refresh_token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
       this.setSessionMarker();
@@ -291,7 +311,7 @@ class AuthService {
       const refreshToken = localStorage.getItem('refresh_token');
       const accessToken = localStorage.getItem('access_token');
       if (refreshToken) {
-        const sendLogout = async (baseUrl: string): Promise<Response> =>
+        const sendLogout = async (baseUrl: string | null): Promise<Response> =>
           this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/logout'), {
             method: 'POST',
             headers: {
@@ -307,7 +327,7 @@ class AuthService {
 
         try {
           const response = await sendLogout(preferredBaseUrl);
-          if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+          if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
             await sendLogout(fallbackBaseUrl);
           }
         } catch (error) {
@@ -341,8 +361,13 @@ class AuthService {
         throw new Error('No refresh token available');
       }
 
-      const sendRefresh = async (baseUrl: string): Promise<Response> =>
-        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/refresh'), {
+      const sendRefresh = async (baseUrl: string | null): Promise<Response> => {
+        let url = this.buildUrl(baseUrl, '/api/auth/refresh');
+        // Final fallback for browser context
+        if (typeof window !== 'undefined') {
+          url = url.replace(/http:\/\/api:8000/g, '');
+        }
+        return this.fetchWithTimeout(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -350,6 +375,7 @@ class AuthService {
           credentials: 'include',
           body: JSON.stringify({ refresh_token: refreshToken }),
         });
+      };
 
       const preferredBaseUrl = this.getPreferredBaseUrl();
       const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
@@ -364,7 +390,7 @@ class AuthService {
         response = await sendRefresh(fallbackBaseUrl);
       }
 
-      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
         response = await sendRefresh(fallbackBaseUrl);
       }
 
@@ -443,7 +469,7 @@ class AuthService {
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return !!this.getAccessToken() && !!this.getCurrentUser();
+    return !!this.getCurrentUser() && (this.hasSessionMarker() || !!this.getAccessToken());
   }
 
   /**
@@ -484,12 +510,13 @@ class AuthService {
         return false;
       }
 
+      const shouldPreferCookieSession = typeof window !== 'undefined' && hasSessionMarker;
       const requestHeaders: Record<string, string> = {};
-      if (accessToken) {
+      if (!shouldPreferCookieSession && accessToken) {
         requestHeaders.Authorization = `Bearer ${accessToken}`;
       }
 
-      const sendValidate = async (baseUrl: string, headers: Record<string, string>): Promise<Response> =>
+      const sendValidate = async (baseUrl: string | null, headers: Record<string, string>): Promise<Response> =>
         this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/validate-session'), {
           method: 'GET',
           headers,
@@ -516,7 +543,7 @@ class AuthService {
       if (!response.ok) {
         // Try to refresh token if validation fails and we have a refresh token available.
         try {
-          if (!refreshToken) {
+          if (shouldPreferCookieSession || !refreshToken) {
             return false;
           }
           await this.refreshToken();
@@ -536,7 +563,7 @@ class AuthService {
             }
             newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
           }
-          if (this.shouldRetryWithDirectBackend(newResponse, fallbackBaseUrl)) {
+          if (this.shouldRetryWithDirectBackend(newResponse, fallbackBaseUrl || '')) {
             newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
           }
           if (!newResponse.ok) {

@@ -793,6 +793,66 @@ class AnalyticsService:
             "event_counts": dict(event_counts),
         }
 
+    def get_user_metrics(self, user_id: str, hours: int = 24) -> Dict[str, Any]:
+        """Return backend-derived metrics for a single user within the given time window."""
+        if hours <= 0:
+            raise ValueError("Hours must be greater than zero")
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        with self.user_tracker._lock:
+            events_snapshot = list(self.user_tracker.events)
+            sessions_snapshot = {
+                session_id: session.copy()
+                for session_id, session in self.user_tracker.user_sessions.items()
+            }
+
+        matching_events: List[tuple[UserInteractionEvent, datetime]] = []
+        for event in events_snapshot:
+            event_ts = self._normalize_timestamp(event.timestamp)
+            if event.user_id != user_id or event_ts is None or event_ts < cutoff:
+                continue
+            matching_events.append((event, event_ts))
+
+        session_durations: List[float] = []
+        last_seen: Optional[datetime] = None
+        session_count = 0
+
+        for session in sessions_snapshot.values():
+            if session.get("user_id") != user_id:
+                continue
+
+            start_time = self._normalize_timestamp(session.get("start_time"))
+            last_activity = self._normalize_timestamp(session.get("last_activity"))
+
+            if not start_time or not last_activity or last_activity < cutoff:
+                continue
+
+            session_count += 1
+            session_durations.append(max((last_activity - start_time).total_seconds() / 60.0, 0.0))
+            if last_seen is None or last_activity > last_seen:
+                last_seen = last_activity
+
+        if matching_events:
+            event_last_seen = max(timestamp for _, timestamp in matching_events)
+            if last_seen is None or event_last_seen > last_seen:
+                last_seen = event_last_seen
+
+        total_session_minutes = round(sum(session_durations), 2)
+        average_session_minutes = round(total_session_minutes / session_count, 2) if session_count else 0.0
+
+        return {
+            "user_id": user_id,
+            "hours": hours,
+            "event_count": len(matching_events),
+            "session_count": session_count,
+            "total_session_minutes": total_session_minutes,
+            "average_session_minutes": average_session_minutes,
+            "last_seen": last_seen.isoformat() if last_seen else None,
+            "token_usage": None,
+            "token_usage_supported": False,
+        }
+
     def _register_default_health_checks(self):
         """Register default health check functions"""
         self.health_checker.register_health_check("database", database_health_check)

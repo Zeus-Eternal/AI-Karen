@@ -746,6 +746,9 @@ class LLMRegistry:
 
                 init_kwargs = self._apply_saved_provider_settings(name, init_kwargs)
 
+                if registration.provider_class == "OpenAIProvider" and "provider_name" not in init_kwargs:
+                    init_kwargs["provider_name"] = name
+
                 # Translate llamacpp model id to a concrete model_path when possible
                 if name == "llamacpp":
                     # If a specific GGUF model was selected, resolve to a verified file path

@@ -1,0 +1,17 @@
+
+security:
+  authentication:
+    enabled: true
+    session_timeout: 3600
+    
+  authorization:
+    rbac_enabled: true
+    default_role: user
+    
+  encryption:
+    algorithm: AES-256-GCM
+    key_rotation_days: 90
+    
+  audit:
+    enabled: true
+    log_level: INFO

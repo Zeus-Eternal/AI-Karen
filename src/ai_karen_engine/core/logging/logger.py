@@ -444,6 +444,7 @@ class StructuredLogger:
     def _create_log_record(self,
                         level: LogLevel,
                         message: str,
+                        *args,
                         **kwargs) -> logging.LogRecord:
         """Create log record with additional context"""
         # Map custom log levels to standard logging levels
@@ -462,7 +463,7 @@ class StructuredLogger:
             fn='',
             lno=0,
             msg=message,
-            args=(),
+            args=args,
             exc_info=None
         )
         
@@ -472,38 +473,38 @@ class StructuredLogger:
         
         return record
     
-    def debug(self, message: str, **kwargs):
+    def debug(self, message: str, *args, **kwargs):
         """Log debug message"""
         if self._should_log(LogLevel.DEBUG):
-            record = self._create_log_record(LogLevel.DEBUG, message, **kwargs)
+            record = self._create_log_record(LogLevel.DEBUG, message, *args, **kwargs)
             self.logger.handle(record)
     
-    def info(self, message: str, **kwargs):
+    def info(self, message: str, *args, **kwargs):
         """Log info message"""
         if self._should_log(LogLevel.INFO):
-            record = self._create_log_record(LogLevel.INFO, message, **kwargs)
+            record = self._create_log_record(LogLevel.INFO, message, *args, **kwargs)
             self.logger.handle(record)
     
-    def warning(self, message: str, **kwargs):
+    def warning(self, message: str, *args, **kwargs):
         """Log warning message"""
         if self._should_log(LogLevel.WARNING):
-            record = self._create_log_record(LogLevel.WARNING, message, **kwargs)
+            record = self._create_log_record(LogLevel.WARNING, message, *args, **kwargs)
             self.logger.handle(record)
     
-    def error(self, message: str, **kwargs):
+    def error(self, message: str, *args, **kwargs):
         """Log error message"""
         if self._should_log(LogLevel.ERROR):
-            record = self._create_log_record(LogLevel.ERROR, message, **kwargs)
+            record = self._create_log_record(LogLevel.ERROR, message, *args, **kwargs)
             self.logger.handle(record)
     
-    def exception(self, message: str, exc_info=None, **kwargs):
+    def exception(self, message: str, *args, exc_info=None, **kwargs):
         """Log exception with traceback"""
         if self._should_log(LogLevel.ERROR):
             # Add exception info to kwargs if provided
             if exc_info:
                 kwargs['exc_info'] = exc_info
             
-            record = self._create_log_record(LogLevel.ERROR, message, **kwargs)
+            record = self._create_log_record(LogLevel.ERROR, message, *args, **kwargs)
             
             # Set exc_info on the record for proper traceback logging
             if exc_info:
@@ -511,16 +512,16 @@ class StructuredLogger:
             
             self.logger.handle(record)
     
-    def critical(self, message: str, **kwargs):
+    def critical(self, message: str, *args, **kwargs):
         """Log critical message"""
         if self._should_log(LogLevel.CRITICAL):
-            record = self._create_log_record(LogLevel.CRITICAL, message, **kwargs)
+            record = self._create_log_record(LogLevel.CRITICAL, message, *args, **kwargs)
             self.logger.handle(record)
     
-    def security(self, message: str, **kwargs):
+    def security(self, message: str, *args, **kwargs):
         """Log security event"""
         if self._should_log(LogLevel.SECURITY):
-            record = self._create_log_record(LogLevel.SECURITY, message, **kwargs)
+            record = self._create_log_record(LogLevel.SECURITY, message, *args, **kwargs)
             self.logger.handle(record)
     
     def log_request(self,

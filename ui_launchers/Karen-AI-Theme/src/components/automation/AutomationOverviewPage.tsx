@@ -184,7 +184,7 @@ export default function AutomationOverviewPage() {
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
                     <Workflow className="h-6 w-6 text-primary" />
                 </div>
-              <p className="font-semibold">4. Build Sequence</p>
+              <p className="font-semibold">4. Job Sequence</p>
               <p className="text-xs text-muted-foreground">Chain tasks into a workflow, orchestrating multiple Agents.</p>
             </div>
             <ArrowRight className="h-6 w-6 text-muted-foreground hidden md:block" />

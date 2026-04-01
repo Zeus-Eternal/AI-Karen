@@ -21,9 +21,61 @@ import shutil
 
 from ai_karen_engine.core.response.analyzer import SpacyAnalyzer
 from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
-from ai_karen_engine.services.memory_service import WebUIMemoryService, MemoryType, UISource
+from services.memory.memory_service import WebUIMemoryService
+from services.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 
 logger = logging.getLogger(__name__)
+
+
+async def _commit_learning_memory(
+    *,
+    memory_service: WebUIMemoryService,
+    tenant_id: Union[str, uuid.UUID],
+    user_id: str,
+    org_id: Optional[str],
+    text: str,
+    tags: Optional[List[str]] = None,
+    importance: int = 7,
+    decay: str = "long",
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """Persist learning metadata through the unified memory contract."""
+    response = await memory_service.commit(
+        tenant_id=tenant_id,
+        request=MemoryCommitRequest(
+            user_id=user_id,
+            org_id=org_id,
+            text=text,
+            tags=tags or [],
+            importance=importance,
+            decay=decay,
+            metadata=metadata or {},
+        ),
+    )
+    return response.id if response.success else None
+
+
+async def _query_learning_memories(
+    *,
+    memory_service: WebUIMemoryService,
+    tenant_id: Union[str, uuid.UUID],
+    user_id: str,
+    org_id: Optional[str],
+    query: str,
+    top_k: int,
+) -> List[Any]:
+    """Read learning metadata through the unified memory contract."""
+    response = await memory_service.query(
+        tenant_id=tenant_id,
+        request=MemoryQueryRequest(
+            user_id=user_id,
+            org_id=org_id,
+            query=query,
+            top_k=top_k,
+            similarity_threshold=0.5,
+        ),
+    )
+    return list(response.hits)
 
 
 class LearningDataType(str, Enum):
@@ -253,18 +305,20 @@ class ConversationMetadataCollector:
             content = f"Conversation metadata: Intent={metadata.intent_detected}, " \
                      f"Sentiment={metadata.sentiment_detected}, Persona={metadata.persona_selected}"
             
-            await self.memory_service.store_web_ui_memory(
+            await _commit_learning_memory(
+                memory_service=self.memory_service,
                 tenant_id=tenant_id,
-                content=content,
-                user_id=metadata.user_id,
-                ui_source=UISource.API,
-                session_id=metadata.session_id,
-                conversation_id=metadata.conversation_id,
-                memory_type=MemoryType.INSIGHT,
+                user_id="system",
+                org_id=None,
+                text=content,
                 tags=["conversation_metadata", "autonomous_learning"],
-                importance_score=7,
-                ai_generated=True,
-                metadata=metadata.to_dict()
+                importance=7,
+                decay="long",
+                metadata={
+                    **metadata.to_dict(),
+                    "source_user_id": metadata.user_id,
+                    "record_type": "conversation_metadata",
+                }
             )
             
         except Exception as e:
@@ -278,31 +332,31 @@ class ConversationMetadataCollector:
     ) -> List[ConversationMetadata]:
         """Curate high-quality conversation metadata for training."""
         try:
-            # Query memory for conversation metadata
-            from ai_karen_engine.services.memory_service import WebUIMemoryQuery
-            
-            query = WebUIMemoryQuery(
-                text="conversation metadata autonomous learning",
-                memory_types=[MemoryType.INSIGHT],
-                tags=["conversation_metadata", "autonomous_learning"],
+            memories = await _query_learning_memories(
+                memory_service=self.memory_service,
+                tenant_id=tenant_id,
+                user_id="system",
+                org_id=None,
+                query="conversation metadata autonomous learning",
                 top_k=max_examples,
-                similarity_threshold=0.5
             )
-            
-            memories = await self.memory_service.query_memories(tenant_id, query)
-            
+
             # Extract and filter metadata
             curated_metadata = []
             for memory in memories:
                 try:
-                    metadata_dict = memory.metadata
+                    metadata_dict = {}
+                    if hasattr(memory, "meta") and isinstance(memory.meta, dict):
+                        metadata_dict = memory.meta
+                    elif hasattr(memory, "metadata") and isinstance(memory.metadata, dict):
+                        metadata_dict = memory.metadata
                     if not metadata_dict:
                         continue
                     
                     # Reconstruct metadata object
                     metadata = ConversationMetadata(
                         conversation_id=metadata_dict.get("conversation_id", ""),
-                        user_id=metadata_dict.get("user_id", ""),
+                        user_id=metadata_dict.get("source_user_id") or metadata_dict.get("user_id", ""),
                         session_id=metadata_dict.get("session_id"),
                         timestamp=datetime.fromisoformat(metadata_dict.get("timestamp", datetime.utcnow().isoformat())),
                         intent_detected=metadata_dict.get("intent_detected", "general_assist"),
@@ -868,15 +922,15 @@ class AutonomousLearner:
             if result.model_improved:
                 content += " - Model improved"
             
-            await self.memory_service.store_web_ui_memory(
+            await _commit_learning_memory(
+                memory_service=self.memory_service,
                 tenant_id=tenant_id,
-                content=content,
                 user_id="system",
-                ui_source=UISource.API,
-                memory_type=MemoryType.INSIGHT,
+                org_id=None,
+                text=content,
                 tags=["autonomous_learning", "model_training", result.status.value],
-                importance_score=8 if result.model_improved else 6,
-                ai_generated=True,
+                importance=8 if result.model_improved else 6,
+                decay="long",
                 metadata=result.to_dict()
             )
             

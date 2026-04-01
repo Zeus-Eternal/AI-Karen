@@ -2,9 +2,10 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-from src.auth.auth_middleware import require_auth as get_current_user_context
+from ai_karen_engine.auth.auth_middleware import get_current_user as get_current_user_context
+from ai_karen_engine.core.dependencies import get_analytics_service
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
-from src.auth.auth_service import AuthService, get_auth_service
+from ai_karen_engine.auth.auth_service import AuthService, get_auth_service
 from ai_karen_engine.auth.exceptions import (
     AuthError,
     UserNotFoundError,
@@ -79,12 +80,25 @@ class UserResponse(BaseModel):
     preferences: Dict[str, Any]
     is_active: bool
     is_verified: bool
+    last_login: Optional[str] = None
     created_at: str
     updated_at: str
 
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class UserMetricsResponse(BaseModel):
+    user_id: str
+    hours: int
+    event_count: int
+    session_count: int
+    total_session_minutes: float
+    average_session_minutes: float
+    last_seen: Optional[str] = None
+    token_usage: Optional[int] = None
+    token_usage_supported: bool = False
 
 
 def error_detail(message: str) -> Dict[str, str]:
@@ -188,6 +202,7 @@ async def create_user(
             preferences=getattr(user_data, 'preferences', {}),
             is_active=user_data.is_active,
             is_verified=user_data.is_verified,
+            last_login=user_data.last_login.isoformat() if getattr(user_data, "last_login", None) else None,
             created_at=user_data.created_at.isoformat(),
             updated_at=user_data.updated_at.isoformat(),
         )
@@ -195,10 +210,9 @@ async def create_user(
     except UserAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=error_detail(str(e)))
     except RateLimitExceededError as e:
-        raise HTTPException(status_code=429, detail=error_detail(str(e)))
         retry_after = e.details.get("retry_after") if isinstance(e.details, dict) else None
         headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
-        raise HTTPException(status_code=429, detail=str(e), headers=headers)
+        raise HTTPException(status_code=429, detail=error_detail(str(e)), headers=headers)
     except SecurityError as e:
         raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
@@ -244,6 +258,7 @@ async def get_user(
             preferences=getattr(user_data, 'preferences', {}),
             is_active=user_data.is_active,
             is_verified=user_data.is_verified,
+            last_login=user_data.last_login.isoformat() if getattr(user_data, "last_login", None) else None,
             created_at=user_data.created_at.isoformat(),
             updated_at=user_data.updated_at.isoformat(),
         )
@@ -254,6 +269,33 @@ async def get_user(
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
     except Exception:
         raise HTTPException(status_code=500, detail=error_detail("Failed to get user"))
+
+
+@router.get(
+    "/users/{user_id}/metrics",
+    response_model=UserMetricsResponse,
+    status_code=200,
+    responses=error_responses,
+)
+async def get_user_metrics(
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    analytics_service: Any = Depends(get_analytics_service),
+    hours: int = 168,
+) -> UserMetricsResponse:
+    """Get backend-derived per-user metrics (own profile or admin only)."""
+    if current_user.get("user_id") != user_id and "admin" not in current_user.get("roles", []):
+        raise HTTPException(
+            status_code=403, detail=error_detail("Not authorized to access this user's metrics")
+        )
+
+    try:
+        metrics = analytics_service.get_user_metrics(user_id, hours=hours)
+        return UserMetricsResponse(**metrics)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(status_code=500, detail=error_detail("Failed to get user metrics"))
 
 
 @router.put(
@@ -309,6 +351,7 @@ async def update_user(
             preferences=getattr(updated_user, 'preferences', {}),
             is_active=updated_user.is_active,
             is_verified=updated_user.is_verified,
+            last_login=updated_user.last_login.isoformat() if getattr(updated_user, "last_login", None) else None,
             created_at=updated_user.created_at.isoformat(),
             updated_at=updated_user.updated_at.isoformat(),
         )
@@ -401,6 +444,7 @@ async def list_users(
                 preferences=getattr(user, 'preferences', {}),
                 is_active=user.is_active,
                 is_verified=user.is_verified,
+                last_login=user.last_login.isoformat() if getattr(user, "last_login", None) else None,
                 created_at=user.created_at.isoformat(),
                 updated_at=user.updated_at.isoformat(),
             )

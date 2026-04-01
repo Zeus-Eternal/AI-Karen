@@ -16,6 +16,7 @@ export interface ChatMessage {
   structuredContent?: Record<string, any>;
   actions?: any[];
   metadata?: Record<string, any>;
+  status?: 'pending' | 'streaming' | 'completed' | 'failed';
 }
 
 // Settings types
@@ -54,13 +55,46 @@ export interface KarenSettings {
   activeListenMode: boolean;
 }
 
-// This is deprecated as the backend logic has been removed.
-export interface HandleUserMessageResult {
-  acknowledgement?: string;
-  finalResponse: string;
-  aiDataForFinalResponse?: AiData;
-  suggestedNewFacts?: string[];
-  proactiveSuggestion?: string;
-  summaryWasGenerated?: boolean;
-  generatedImageDataUri?: string;
+export interface MessageResponse {
+  id: string;
+  role: string;
+  content: string;
+  timestamp: string;
+  metadata: Record<string, any>;
+  function_call?: Record<string, any>;
+  function_response?: Record<string, any>;
+  ui_source?: string;
+  ai_confidence?: number;
+  processing_time_ms?: number;
+  tokens_used?: number;
+  model_used?: string;
+  user_feedback?: string;
+  structured_content?: Record<string, any>;
+  actions?: any[];
+  edited: boolean;
+  edit_history: any[];
+}
+
+export interface ConversationResponse {
+  id: string;
+  user_id: string;
+  title?: string;
+  messages: MessageResponse[];
+  metadata: Record<string, any>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  last_message_at?: string;
+  session_id?: string;
+  ui_context: Record<string, any>;
+  ai_insights: Record<string, any>;
+  user_settings: Record<string, any>;
+  summary?: string;
+  tags: string[];
+  last_ai_response_id?: string;
+  status: string;
+  priority: string;
+  context_memories: any[];
+  proactive_suggestions: string[];
 }

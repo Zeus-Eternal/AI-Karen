@@ -25,7 +25,7 @@ from ai_karen_engine.integrations.auth_manager import AuthenticationManager as A
 
 # Try to import UnifiedMemoryService, but handle if it's not available
 try:
-    from src.services.memory.unified_memory_service import UnifiedMemoryService
+    from services.memory.unified_memory_service import UnifiedMemoryService
     HAS_MEMORY_SERVICE = True
 except ImportError:
     HAS_MEMORY_SERVICE = False

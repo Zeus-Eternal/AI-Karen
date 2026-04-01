@@ -25,6 +25,7 @@ interface ProviderDetails {
   display_name: string;
   description: string;
   provider_type: string;
+  selectable?: boolean;
   docs_url?: string | null;
   base_url?: string | null;
   default_base_url?: string | null;
@@ -272,19 +273,31 @@ export default function ModelSettings() {
 
     setIsSaving(true);
     try {
+      const submittedApiKey = apiKey.trim();
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
         base_url: baseUrl.trim(),
-        api_key: apiKey.trim() || undefined,
+        api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
       });
 
+      const updatedProvider = response.providers.find((provider) => provider.id === selectedProvider);
+      if (
+        selectedProviderDetails.requires_api_key &&
+        submittedApiKey &&
+        !updatedProvider?.api_key_configured
+      ) {
+        throw new Error(`${selectedProviderDetails.display_name} did not confirm that the API key was stored.`);
+      }
+
       setSettings(response);
       setSelectedProvider(response.selected_provider);
       setSelectedModel(response.selected_model);
-      setApiKey('');
+      if (!selectedProviderDetails.requires_api_key || updatedProvider?.api_key_configured) {
+        setApiKey('');
+      }
 
       toast({
         title: 'Model settings saved',

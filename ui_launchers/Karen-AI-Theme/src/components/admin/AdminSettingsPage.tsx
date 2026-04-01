@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Users, Settings, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, ListTree, FileJson, HardDrive, FileTerminal, ArrowRight, Bot, Shield, FileText, Activity } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, Bot, Shield, FileText, Activity, GraduationCap } from "lucide-react";
+import { apiClient, ApiError } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,12 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import FallbackModelSettings from "./FallbackModelSettings";
 import SystemConfigPanel from "./SystemConfigPanel";
 import AuditLogPanel from "./AuditLogPanel";
+import TrainingSettingsPanel from "./TrainingSettingsPanel";
+import CommsCenterPage from "@/components/comms/CommsCenterPage";
+import AdminAnalyticsPanel from "./AdminAnalyticsPanel";
+import AdminDatabasePanel from "./AdminDatabasePanel";
 
 type UserRole = "Admin" | "User" | "Editor";
 type UserStatus = "Active" | "Suspended" | "Pending";
@@ -33,42 +38,34 @@ type User = {
   status: UserStatus;
   createdAt: string;
   lastLogin: string | null;
-  timeSpent: string;
-  tokenUsage: number;
+  timeSpent: string | null;
+  tokenUsage: number | null;
 };
 
-const initialUsers: User[] = [
-  { id: 'usr_1', name: 'Admin User', email: 'admin@example.com', role: 'Admin', status: 'Active', createdAt: '2023-01-15', lastLogin: '2024-07-30', timeSpent: '12h 30m', tokenUsage: 1250000 },
-  { id: 'usr_2', name: 'Demo User', email: 'demo@example.com', role: 'User', status: 'Active', createdAt: '2023-02-20', lastLogin: '2024-07-29', timeSpent: '2h 15m', tokenUsage: 250000 },
-  { id: 'usr_3', name: 'John Doe', email: 'john.d@example.com', role: 'User', status: 'Suspended', createdAt: '2023-03-10', lastLogin: '2024-05-10', timeSpent: '5h 45m', tokenUsage: 550000 },
-  { id: 'usr_4', name: 'Jane Smith', email: 'jane.s@example.com', role: 'Editor', status: 'Active', createdAt: '2023-04-05', lastLogin: '2024-07-30', timeSpent: '25h 10m', tokenUsage: 2800000 },
-  { id: 'usr_5', name: 'Peter Jones', email: 'peter.j@example.com', role: 'User', status: 'Pending', createdAt: '2023-05-21', lastLogin: null, timeSpent: '0h 0m', tokenUsage: 0 },
-  { id: 'usr_6', name: 'Mary Johnson', email: 'mary.j@example.com', role: 'Editor', status: 'Active', createdAt: '2023-06-11', lastLogin: '2024-07-28', timeSpent: '8h 5m', tokenUsage: 950000 },
-  { id: 'usr_7', name: 'Chris Lee', email: 'chris.l@example.com', role: 'User', status: 'Active', createdAt: '2023-07-01', lastLogin: '2024-07-25', timeSpent: '1h 20m', tokenUsage: 120000 },
-];
+type BackendUserResponse = {
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  tenant_id: string;
+  roles: string[];
+  preferences: Record<string, unknown>;
+  is_active: boolean;
+  is_verified: boolean;
+  last_login?: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-const dbCollections = [
-  { name: 'users', docCount: 7, size: '1.2MB' },
-  { name: 'settings', docCount: 1, size: '5KB' },
-  { name: 'chat_sessions', docCount: 152, size: '25.6MB' },
-  { name: 'automation_tasks', docCount: 12, size: '150KB' },
-  { name: 'logs', docCount: 2348, size: '112.8MB' },
-];
-
-const dbDocuments: Record<string, Array<{ id: string; data: Record<string, any> }>> = {
-  users: initialUsers.map(u => ({ id: u.id, data: { name: u.name, email: u.email, role: u.role } })),
-  settings: [{ id: 'global_settings', data: { theme: 'dark', version: '1.2.0', enable_automations: true } }],
-  chat_sessions: [
-    { id: 'chat_abc', data: { userId: 'usr_2', message_count: 25, start_time: '2024-07-30T10:00:00Z' } },
-    { id: 'chat_def', data: { userId: 'usr_4', message_count: 40, start_time: '2024-07-30T11:30:00Z' } },
-  ],
-  automation_tasks: [
-    { id: 'task_123', data: { name: 'Check urgent emails', schedule: '*/15 * * * *', enabled: true } },
-    { id: 'task_456', data: { name: 'Generate weekly report', schedule: '0 0 * * 1', enabled: false } },
-  ],
-  logs: [
-    { id: 'log_xyz', data: { level: 'error', message: 'Failed to connect to external API', timestamp: '2024-07-30T12:00:00Z' } }
-  ]
+type UserMetricsResponse = {
+  user_id: string;
+  hours: number;
+  event_count: number;
+  session_count: number;
+  total_session_minutes: number;
+  average_session_minutes: number;
+  last_seen?: string | null;
+  token_usage?: number | null;
+  token_usage_supported: boolean;
 };
 
 const getInitials = (name: string) => {
@@ -100,25 +97,263 @@ const formatNumber = (num: number) => {
   return num.toString();
 };
 
+const formatLastLogin = (value: string | null) => {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+};
+
 export default function AdminSettingsPage() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const { toast } = useToast();
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersAuthRequired, setUsersAuthRequired] = useState(false);
+  const [usersAccessDenied, setUsersAccessDenied] = useState(false);
+  const [usersLoadError, setUsersLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [selectedCollection, setSelectedCollection] = useState<string>('users');
+  const [editDialogMode, setEditDialogMode] = useState<"view" | "edit">("edit");
+  const [userMetrics, setUserMetrics] = useState<UserMetricsResponse | null>(null);
+  const [userMetricsLoading, setUserMetricsLoading] = useState(false);
+  const [userMetricsError, setUserMetricsError] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "user",
+  });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    role: "User",
+  });
+
+  const mapBackendUser = (user: BackendUserResponse): User => ({
+    id: user.user_id,
+    name: user.full_name || user.email || user.user_id,
+    email: user.email,
+    role: user.roles.includes("admin") ? "Admin" : user.roles.includes("editor") ? "Editor" : "User",
+    status: !user.is_verified ? "Pending" : user.is_active ? "Active" : "Suspended",
+    createdAt: new Date(user.created_at).toLocaleDateString(),
+    lastLogin: user.last_login || null,
+    timeSpent: null,
+    tokenUsage: null,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUsers = async () => {
+      setUsersLoading(true);
+      setUsersAuthRequired(false);
+      setUsersAccessDenied(false);
+      try {
+        const response = await apiClient.get<BackendUserResponse[]>("/api/users");
+        if (!mounted) {
+          return;
+        }
+        setUsers(Array.isArray(response) ? response.map(mapBackendUser) : []);
+        setUsersLoadError(null);
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        if (error instanceof ApiError && error.status === 401) {
+          setUsers([]);
+          setUsersAuthRequired(true);
+          setUsersAccessDenied(false);
+          setUsersLoadError(null);
+        } else if (error instanceof ApiError && error.status === 403) {
+          setUsers([]);
+          setUsersAuthRequired(false);
+          setUsersAccessDenied(true);
+          setUsersLoadError(null);
+        } else {
+          setUsers([]);
+          setUsersAuthRequired(false);
+          setUsersAccessDenied(false);
+          setUsersLoadError(error instanceof Error ? error.message : "Karen could not load backend users.");
+        }
+      } finally {
+        if (mounted) {
+          setUsersLoading(false);
+        }
+      }
+    };
+
+    void loadUsers();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!editingUser) {
+      return;
+    }
+
+    setEditForm({
+      name: editingUser.name,
+      email: editingUser.email,
+      role: editingUser.role,
+    });
+  }, [editingUser]);
+
+  useEffect(() => {
+    if (!editingUser) {
+      setUserMetrics(null);
+      setUserMetricsError(null);
+      setUserMetricsLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    const loadUserMetrics = async () => {
+      setUserMetricsLoading(true);
+      setUserMetricsError(null);
+      try {
+        const response = await apiClient.get<UserMetricsResponse>(`/api/users/${editingUser.id}/metrics?hours=168`);
+        if (!mounted) {
+          return;
+        }
+        setUserMetrics(response);
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setUserMetrics(null);
+        setUserMetricsError(error instanceof Error ? error.message : "Karen could not load backend user metrics.");
+      } finally {
+        if (mounted) {
+          setUserMetricsLoading(false);
+        }
+      }
+    };
+
+    void loadUserMetrics();
+    return () => {
+      mounted = false;
+    };
+  }, [editingUser]);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleToggleSuspend = (userId: string) => {
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: (user.status === 'Active' ? 'Suspended' : 'Active') as UserStatus } : user
-    ));
+  const handleToggleSuspend = async (userId: string) => {
+    const targetUser = users.find((user) => user.id === userId);
+    if (!targetUser) {
+      return;
+    }
+
+    const nextActiveState = targetUser.status !== "Active";
+
+    try {
+      await apiClient.put(`/api/users/${userId}`, {
+        is_active: nextActiveState,
+      });
+      setUsers(users.map(user =>
+        user.id === userId ? { ...user, status: nextActiveState ? "Active" : "Suspended" } : user
+      ));
+    } catch (error) {
+      toast({
+        title: "User update failed",
+        description: error instanceof Error ? error.message : "Karen could not update the user status.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter(user => user.id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await apiClient.delete(`/api/users/${userId}`);
+      setUsers(users.filter(user => user.id !== userId));
+    } catch (error) {
+      toast({
+        title: "User deletion failed",
+        description: error instanceof Error ? error.message : "Karen could not delete the user.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openUserDialog = (user: User, mode: "view" | "edit") => {
+    setEditDialogMode(mode);
+    setEditingUser(user);
+  };
+
+  const handleCreateUser = async () => {
+    setIsCreatingUser(true);
+    try {
+      const response = await apiClient.post<BackendUserResponse>("/api/users", {
+        email: createForm.email.trim(),
+        password: createForm.password,
+        full_name: createForm.name.trim() || null,
+        roles: [createForm.role],
+      });
+
+      setUsers((current) => [mapBackendUser(response), ...current]);
+      setIsCreateDialogOpen(false);
+      setCreateForm({
+        name: "",
+        email: "",
+        password: "",
+        role: "user",
+      });
+      toast({
+        title: "User created",
+        description: `${response.email} was added through Karen's backend user service.`,
+      });
+    } catch (error) {
+      toast({
+        title: "User creation failed",
+        description: error instanceof Error ? error.message : "Karen could not create the user.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleSaveUser = async () => {
+    if (!editingUser) {
+      return;
+    }
+
+    setIsUpdatingUser(true);
+    try {
+      const response = await apiClient.put<BackendUserResponse>(`/api/users/${editingUser.id}`, {
+        full_name: editForm.name.trim(),
+        roles: [editForm.role.toLowerCase()],
+      });
+
+      setUsers((current) => current.map((user) => (user.id === editingUser.id ? mapBackendUser(response) : user)));
+      setEditingUser(null);
+      toast({
+        title: "User updated",
+        description: `${response.email} was updated through Karen's backend user service.`,
+      });
+    } catch (error) {
+      toast({
+        title: "User update failed",
+        description: error instanceof Error ? error.message : "Karen could not update the user.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingUser(false);
+    }
   };
 
   return (
@@ -139,6 +374,8 @@ export default function AdminSettingsPage() {
           <TabsList className="flex flex-wrap w-full justify-start shrink-0 h-auto">
             <TabsTrigger value="users"><Users className="mr-1.5 h-4 w-4" />Users</TabsTrigger>
             <TabsTrigger value="models"><Bot className="mr-1.5 h-4 w-4" />Fallback Models</TabsTrigger>
+            <TabsTrigger value="training"><GraduationCap className="mr-1.5 h-4 w-4" />Training</TabsTrigger>
+            <TabsTrigger value="communications"><Bell className="mr-1.5 h-4 w-4" />Communications</TabsTrigger>
             <TabsTrigger value="system"><Activity className="mr-1.5 h-4 w-4" />System</TabsTrigger>
             <TabsTrigger value="database"><Database className="mr-1.5 h-4 w-4" />Database</TabsTrigger>
             <TabsTrigger value="analytics"><BarChart className="mr-1.5 h-4 w-4" />Analytics</TabsTrigger>
@@ -170,12 +407,12 @@ export default function AdminSettingsPage() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Token Usage (Total)</CardTitle>
+                  <CardTitle className="text-sm font-medium">User Metrics</CardTitle>
                   <BrainCircuit className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatNumber(users.reduce((acc, user) => acc + user.tokenUsage, 0))}</div>
-                  <p className="text-xs text-muted-foreground">Across all users</p>
+                  <div className="text-2xl font-bold">--</div>
+                  <p className="text-xs text-muted-foreground">Per-user token and session metrics are not yet exposed by the backend contract.</p>
                 </CardContent>
               </Card>
               <Card>
@@ -203,9 +440,34 @@ export default function AdminSettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
-                <CardDescription>View, manage, and control user accounts and roles.</CardDescription>
+                <CardDescription>View, manage, and control user accounts and roles through Karen&apos;s backend user service.</CardDescription>
               </CardHeader>
               <CardContent>
+                {usersAccessDenied && (
+                  <Alert className="mb-6 border-primary/20 bg-primary/5">
+                    <Shield className="h-4 w-4 !text-primary" />
+                    <AlertTitle>User Access Restricted</AlertTitle>
+                    <AlertDescription>
+                      The users route is live, but this session is not authorized to list or manage backend user records.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {usersAuthRequired && (
+                  <Alert className="mb-6 border-primary/20 bg-primary/5">
+                    <Shield className="h-4 w-4 !text-primary" />
+                    <AlertTitle>Sign In Required</AlertTitle>
+                    <AlertDescription>
+                      The users route is live, but this session is not authenticated. Sign in before listing or managing backend user records.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {usersLoadError && (
+                  <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/5">
+                    <Activity className="h-4 w-4 !text-yellow-600" />
+                    <AlertTitle>User Inventory Unavailable</AlertTitle>
+                    <AlertDescription>{usersLoadError}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="flex items-center justify-between gap-4 mb-6">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -216,7 +478,7 @@ export default function AdminSettingsPage() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Dialog>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
                       <Button>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add User
@@ -230,15 +492,39 @@ export default function AdminSettingsPage() {
                       <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="name" className="text-right">Name</Label>
-                          <Input id="name" placeholder="John Doe" className="col-span-3" />
+                          <Input
+                            id="name"
+                            placeholder="John Doe"
+                            className="col-span-3"
+                            value={createForm.name}
+                            onChange={(e) => setCreateForm((current) => ({ ...current, name: e.target.value }))}
+                          />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="email" className="text-right">Email</Label>
-                          <Input id="email" type="email" placeholder="john@example.com" className="col-span-3" />
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="john@example.com"
+                            className="col-span-3"
+                            value={createForm.email}
+                            onChange={(e) => setCreateForm((current) => ({ ...current, email: e.target.value }))}
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="password" className="text-right">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            placeholder="Temporary password"
+                            className="col-span-3"
+                            value={createForm.password}
+                            onChange={(e) => setCreateForm((current) => ({ ...current, password: e.target.value }))}
+                          />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="role" className="text-right">Role</Label>
-                          <Select>
+                          <Select value={createForm.role} onValueChange={(value) => setCreateForm((current) => ({ ...current, role: value }))}>
                             <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a role" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="user">User</SelectItem>
@@ -250,12 +536,24 @@ export default function AdminSettingsPage() {
                       </div>
                       <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                        <DialogClose asChild><Button type="submit">Create and Invite</Button></DialogClose>
+                        <Button
+                          type="submit"
+                          onClick={() => void handleCreateUser()}
+                          disabled={isCreatingUser || !createForm.email.trim() || !createForm.password.trim()}
+                        >
+                          {isCreatingUser ? "Creating..." : "Create and Invite"}
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </div>
 
+                {usersLoading ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 p-4 text-sm text-muted-foreground">
+                    <Activity className="h-4 w-4 animate-pulse" />
+                    Loading backend user inventory.
+                  </div>
+                ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -285,9 +583,9 @@ export default function AdminSettingsPage() {
                         </TableCell>
                         <TableCell><Badge variant={getStatusBadgeVariant(user.status)}>{user.status}</Badge></TableCell>
                         <TableCell><Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge></TableCell>
-                        <TableCell>{user.lastLogin || 'N/A'}</TableCell>
-                        <TableCell>{user.timeSpent}</TableCell>
-                        <TableCell className="text-right">{formatNumber(user.tokenUsage)}</TableCell>
+                        <TableCell>{formatLastLogin(user.lastLogin)}</TableCell>
+                        <TableCell>{user.timeSpent || 'Not instrumented'}</TableCell>
+                        <TableCell className="text-right">{user.tokenUsage == null ? 'Not instrumented' : formatNumber(user.tokenUsage)}</TableCell>
                         <TableCell>{user.createdAt}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -296,11 +594,15 @@ export default function AdminSettingsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                              <DropdownMenuItem onClick={() => openUserDialog(user, "view")}>
+                                <Eye className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openUserDialog(user, "edit")}>
                                 <PenSquare className="mr-2 h-4 w-4" /> Edit User
                               </DropdownMenuItem>
-                              <DropdownMenuItem><UserCog className="mr-2 h-4 w-4" /> Change Role</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openUserDialog(user, "edit")}>
+                                <UserCog className="mr-2 h-4 w-4" /> Change Role
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleToggleSuspend(user.id)}>
                                 <Ban className="mr-2 h-4 w-4" /> {user.status === 'Active' ? 'Suspend' : 'Unsuspend'}
@@ -331,6 +633,7 @@ export default function AdminSettingsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -340,6 +643,16 @@ export default function AdminSettingsPage() {
             <FallbackModelSettings />
           </TabsContent>
 
+          {/* ── Training Tab ── */}
+          <TabsContent value="training" className="mt-6">
+            <TrainingSettingsPanel />
+          </TabsContent>
+
+          {/* ── Communications Tab ── */}
+          <TabsContent value="communications" className="mt-6">
+            <CommsCenterPage />
+          </TabsContent>
+
           {/* ── System Tab ── */}
           <TabsContent value="system" className="mt-6">
             <SystemConfigPanel />
@@ -347,97 +660,12 @@ export default function AdminSettingsPage() {
 
           {/* ── Database Tab ── */}
           <TabsContent value="database" className="mt-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center"><ListTree className="mr-2 h-5 w-5" /> Collections</CardTitle>
-                    <CardDescription>Browse data collections</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      <div className="space-y-2">
-                        {dbCollections.map(col => (
-                          <button
-                            key={col.name}
-                            onClick={() => setSelectedCollection(col.name)}
-                            className={`w-full text-left p-3 rounded-lg transition-colors ${selectedCollection === col.name ? 'bg-muted' : 'hover:bg-muted/50'}`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div className="font-semibold text-sm">{col.name}</div>
-                              {selectedCollection === col.name && <ArrowRight className="h-4 w-4" />}
-                            </div>
-                            <div className="text-xs text-muted-foreground">{col.docCount} docs - {col.size}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="lg:col-span-2 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <FileJson className="mr-2 h-5 w-5" /> Documents in <span className="text-primary mx-1">&apos;{selectedCollection}&apos;</span>
-                    </CardTitle>
-                    <CardDescription>Browse and manage documents.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px] border rounded-md">
-                      <Table>
-                        <TableHeader className="sticky top-0 bg-muted">
-                          <TableRow>
-                            <TableHead>Document ID</TableHead>
-                            <TableHead>Data Preview</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(dbDocuments[selectedCollection] || []).slice(0, 10).map(doc => (
-                            <TableRow key={doc.id}>
-                              <TableCell className="font-mono text-xs">{doc.id}</TableCell>
-                              <TableCell>
-                                <pre className="text-xs bg-[#1e1e1e] text-[#d4d4d4] p-2 rounded-md overflow-x-auto">
-                                  <code>{JSON.stringify(doc.data, null, 2)}</code>
-                                </pre>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button variant="ghost" size="sm">View</Button>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">Delete</Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center"><FileTerminal className="mr-2 h-5 w-5" /> Query Runner</CardTitle>
-                    <CardDescription>Run a raw query against the database (conceptual).</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea placeholder="db.collection('users').where('role', '==', 'Admin').get()" className="font-mono text-xs" rows={4} />
-                    <Button className="mt-3">Run Query</Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            <AdminDatabasePanel />
           </TabsContent>
 
           {/* ── Analytics Tab ── */}
           <TabsContent value="analytics" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Analytics</CardTitle>
-                <CardDescription>Application analytics and usage metrics.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-center h-64 bg-muted/30 rounded-lg">
-                <p className="text-muted-foreground">Analytics Dashboard coming soon.</p>
-              </CardContent>
-            </Card>
+            <AdminAnalyticsPanel />
           </TabsContent>
 
           {/* ── Audit Log Tab ── */}
@@ -451,21 +679,35 @@ export default function AdminSettingsPage() {
       <Dialog open={!!editingUser} onOpenChange={(isOpen) => !isOpen && setEditingUser(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit User: {editingUser?.name}</DialogTitle>
-            <DialogDescription>Modify the details for this user account.</DialogDescription>
+            <DialogTitle>{editDialogMode === "view" ? "User Details" : "Edit User"}: {editingUser?.name}</DialogTitle>
+            <DialogDescription>
+              {editDialogMode === "view"
+                ? "Review backend-derived account details for this user."
+                : "Modify the details for this user account."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-name" className="text-right">Name</Label>
-              <Input id="edit-name" defaultValue={editingUser?.name} className="col-span-3" />
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm((current) => ({ ...current, name: e.target.value }))}
+                className="col-span-3"
+                disabled={editDialogMode === "view"}
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-email" className="text-right">Email</Label>
-              <Input id="edit-email" type="email" defaultValue={editingUser?.email} className="col-span-3" />
+              <Input id="edit-email" type="email" value={editForm.email} className="col-span-3" disabled />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-role" className="text-right">Role</Label>
-              <Select defaultValue={editingUser?.role}>
+              <Select
+                value={editForm.role}
+                onValueChange={(value) => setEditForm((current) => ({ ...current, role: value as UserRole }))}
+                disabled={editDialogMode === "view"}
+              >
                 <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="User">User</SelectItem>
@@ -474,10 +716,89 @@ export default function AdminSettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-status" className="text-right">Status</Label>
+              <Input id="edit-status" value={editingUser?.status || ""} className="col-span-3" disabled />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-last-login" className="text-right">Last Login</Label>
+              <Input id="edit-last-login" value={editingUser ? formatLastLogin(editingUser.lastLogin) : ""} className="col-span-3" disabled />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-user-events" className="text-right">Events</Label>
+              <Input
+                id="edit-user-events"
+                value={userMetricsLoading ? "Loading..." : userMetrics ? String(userMetrics.event_count) : userMetricsError ? "Unavailable" : "Not recorded"}
+                className="col-span-3"
+                disabled
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-user-sessions" className="text-right">Sessions</Label>
+              <Input
+                id="edit-user-sessions"
+                value={userMetricsLoading ? "Loading..." : userMetrics ? String(userMetrics.session_count) : userMetricsError ? "Unavailable" : "Not recorded"}
+                className="col-span-3"
+                disabled
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-user-session-minutes" className="text-right">Session Minutes</Label>
+              <Input
+                id="edit-user-session-minutes"
+                value={
+                  userMetricsLoading
+                    ? "Loading..."
+                    : userMetrics
+                      ? `${userMetrics.total_session_minutes.toFixed(1)} total / ${userMetrics.average_session_minutes.toFixed(1)} avg`
+                      : userMetricsError
+                        ? "Unavailable"
+                        : "Not recorded"
+                }
+                className="col-span-3"
+                disabled
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-user-last-seen" className="text-right">Last Seen</Label>
+              <Input
+                id="edit-user-last-seen"
+                value={
+                  userMetricsLoading
+                    ? "Loading..."
+                    : userMetrics?.last_seen
+                      ? formatLastLogin(userMetrics.last_seen)
+                      : userMetricsError
+                        ? "Unavailable"
+                        : "Not recorded"
+                }
+                className="col-span-3"
+                disabled
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-user-token-usage" className="text-right">Token Usage</Label>
+              <Input
+                id="edit-user-token-usage"
+                value={
+                  userMetricsLoading
+                    ? "Loading..."
+                    : userMetrics?.token_usage_supported
+                      ? String(userMetrics.token_usage ?? 0)
+                      : "Not instrumented"
+                }
+                className="col-span-3"
+                disabled
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-            <Button type="submit" onClick={() => setEditingUser(null)}>Save Changes</Button>
+            {editDialogMode === "edit" && (
+              <Button type="submit" onClick={() => void handleSaveUser()} disabled={isUpdatingUser}>
+                {isUpdatingUser ? "Saving..." : "Save Changes"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

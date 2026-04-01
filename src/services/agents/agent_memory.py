@@ -26,7 +26,7 @@ from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 # Try to import Unified Memory Service components
 try:
-    from src.services.memory.unified_memory_service import (
+    from services.memory.unified_memory_service import (
         UnifiedMemoryService,
         MemoryCommitRequest,
         MemoryQueryRequest,
@@ -44,7 +44,7 @@ except ImportError:
 
 # Try to import Agent Registry
 try:
-    from src.services.agents.agent_registry import AgentRegistry
+    from .agent_registry import AgentRegistry
     HAS_AGENT_REGISTRY = True
 except ImportError:
     HAS_AGENT_REGISTRY = False
@@ -52,7 +52,7 @@ except ImportError:
 
 # Try to import Agent Orchestrator
 try:
-    from src.services.agents.agent_orchestrator import AgentOrchestrator
+    from .agent_orchestrator import AgentOrchestrator
     HAS_AGENT_ORCHESTRATOR = True
 except ImportError:
     HAS_AGENT_ORCHESTRATOR = False

@@ -18,14 +18,53 @@ try:
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
 
-from src.services.audit_logger import (
-    AuditLogger,
-    AuditContext,
-    get_audit_logger,
-    create_audit_context
-)
+try:
+    from services.audit_logging import get_audit_logger
+except ImportError:
+    from ai_karen_engine.services.audit_logger import get_audit_logger
 
 logger = logging.getLogger(__name__)
+
+
+def _build_audit_metadata(
+    *,
+    user_id: str,
+    tenant_id: Optional[str],
+    correlation_id: Optional[str],
+    delete_type: str,
+    duration_ms: float,
+    outcome: str,
+    error_message: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build normalized audit metadata for the current lightweight audit logger."""
+
+    return {
+        "event_type": "privacy_erasure",
+        "severity": "info" if outcome == "success" else "error",
+        "message": "privacy_erasure_completed" if outcome == "success" else "privacy_erasure_failed",
+        "user_id": user_id,
+        "tenant_id": tenant_id,
+        "correlation_id": correlation_id,
+        "metadata": {
+            "delete_type": delete_type,
+            "duration_ms": duration_ms,
+            "outcome": outcome,
+            **({"error_message": error_message} if error_message else {}),
+        },
+    }
+
+
+async def _get_memory_service() -> Any:
+    from ai_karen_engine.core.dependencies import get_memory_service
+
+    return await get_memory_service()
+
+
+def _get_conversation_manager() -> Any:
+    from ai_karen_engine.database.client import MultiTenantPostgresClient
+    from ai_karen_engine.database.conversation_manager import ConversationManager
+
+    return ConversationManager(db_client=MultiTenantPostgresClient())
 
 class DataExportFormat(str, Enum):
     """Supported data export formats"""
@@ -188,33 +227,56 @@ class DataExporter:
         include_pii: bool
     ) -> List[Dict[str, Any]]:
         """Export user memories"""
-        memories = []
-        
+        memories: List[Dict[str, Any]] = []
+
         try:
-            # This would query the actual memory database
-            # For now, return placeholder data
-            placeholder_memories = [
-                {
-                    "id": f"mem_{i}",
-                    "content": f"Sample memory content {i}" if include_pii else "[CONTENT_REDACTED]",
-                    "created_at": (datetime.utcnow() - timedelta(days=i)).isoformat(),
-                    "tags": ["sample", "export"],
-                    "importance_score": 5,
-                    "memory_type": "general",
-                    "metadata": self.pii_detector.extract_safe_metadata(f"Sample memory content {i}")
+            memory_service = await _get_memory_service()
+            tenant_scope = tenant_id or user_id
+
+            if hasattr(memory_service, "list_memories"):
+                records = await memory_service.list_memories(
+                    tenant_scope,
+                    user_id=user_id,
+                    org_id=tenant_id,
+                    limit=250,
+                )
+            else:
+                from ai_karen_engine.database.memory_manager import MemoryQuery
+
+                records = await memory_service.base_manager.query_memories(
+                    tenant_scope,
+                    MemoryQuery(
+                        text=user_id,
+                        user_id=user_id,
+                        metadata_filter={
+                            "user_id": user_id,
+                            **({"org_id": tenant_id} if tenant_id else {}),
+                        },
+                        top_k=250,
+                        similarity_threshold=0.0,
+                        include_embeddings=False,
+                    ),
+                )
+
+            for memory in records:
+                content = getattr(memory, "text", getattr(memory, "content", ""))
+                metadata = getattr(memory, "meta", getattr(memory, "metadata", {})) or {}
+                record = {
+                    "id": str(getattr(memory, "id", "")),
+                    "content": content if include_pii else self.pii_detector.anonymize_text(content),
+                    "created_at": getattr(memory, "created_at", None) or getattr(memory, "timestamp", None),
+                    "tags": list(getattr(memory, "tags", []) or metadata.get("tags", [])),
+                    "importance_score": getattr(memory, "importance", metadata.get("importance_score", 5)),
+                    "memory_type": metadata.get("memory_type", getattr(memory, "decay_tier", "general")),
+                    "metadata": metadata if include_pii else self.pii_detector.extract_safe_metadata(content),
                 }
-                for i in range(3)
-            ]
-            
-            for memory in placeholder_memories:
-                if not include_pii and memory.get("content"):
-                    memory["content"] = self.pii_detector.anonymize_text(memory["content"])
-                
-                memories.append(memory)
-            
+                if isinstance(record["created_at"], datetime):
+                    record["created_at"] = record["created_at"].isoformat()
+                memories.append(record)
+
         except Exception as e:
             self.logger.error(f"Failed to export memories: {e}")
-        
+
         return memories
     
     async def _export_conversations(
@@ -224,27 +286,36 @@ class DataExporter:
         include_pii: bool
     ) -> List[Dict[str, Any]]:
         """Export user conversations"""
-        conversations = []
-        
+        conversations: List[Dict[str, Any]] = []
+
         try:
-            # This would query the actual conversation database
-            # For now, return placeholder data
-            placeholder_conversations = [
-                {
-                    "id": f"conv_{i}",
-                    "title": f"Conversation {i}" if include_pii else "[TITLE_REDACTED]",
-                    "created_at": (datetime.utcnow() - timedelta(days=i)).isoformat(),
-                    "message_count": 5 + i,
-                    "summary": f"Summary of conversation {i}" if include_pii else "[SUMMARY_REDACTED]"
-                }
-                for i in range(2)
-            ]
-            
-            conversations.extend(placeholder_conversations)
-            
+            conversation_manager = _get_conversation_manager()
+            records = await conversation_manager.list_conversations(
+                tenant_id or user_id,
+                user_id=user_id,
+                active_only=False,
+                limit=100,
+                offset=0,
+            )
+
+            for conversation in records:
+                title = conversation.title or "Untitled conversation"
+                summary = conversation.get_summary_text()
+                conversations.append(
+                    {
+                        "id": conversation.id,
+                        "title": title if include_pii else self.pii_detector.anonymize_text(title),
+                        "created_at": conversation.created_at.isoformat(),
+                        "updated_at": conversation.updated_at.isoformat(),
+                        "message_count": len(conversation.messages),
+                        "summary": summary if include_pii else self.pii_detector.anonymize_text(summary),
+                        "metadata": conversation.metadata,
+                    }
+                )
+
         except Exception as e:
             self.logger.error(f"Failed to export conversations: {e}")
-        
+
         return conversations
     
     async def _export_analytics(
@@ -254,15 +325,32 @@ class DataExporter:
     ) -> Dict[str, Any]:
         """Export user analytics (anonymized)"""
         try:
+            memory_stats: Dict[str, Any] = {}
+            conversation_stats: Dict[str, Any] = {}
+
+            try:
+                memory_service = await _get_memory_service()
+                if hasattr(memory_service, "get_memory_stats"):
+                    memory_stats = await memory_service.get_memory_stats(
+                        tenant_id or user_id,
+                        user_id=user_id,
+                        org_id=tenant_id,
+                    )
+            except Exception as exc:
+                self.logger.warning("Failed to gather memory stats for export: %s", exc)
+
+            try:
+                conversation_manager = _get_conversation_manager()
+                conversation_stats = await conversation_manager.get_conversation_stats(
+                    tenant_id or user_id,
+                    user_id=user_id,
+                )
+            except Exception as exc:
+                self.logger.warning("Failed to gather conversation stats for export: %s", exc)
+
             return {
-                "usage_stats": {
-                    "total_memories": 10,
-                    "total_conversations": 5,
-                    "total_queries": 25,
-                    "avg_session_duration": 15.5,
-                    "most_active_day": "Monday",
-                    "preferred_memory_types": ["general", "fact"]
-                },
+                "memory_stats": memory_stats,
+                "conversation_stats": conversation_stats,
                 "privacy_note": "All analytics data has been anonymized"
             }
         except Exception as e:
@@ -276,17 +364,28 @@ class DataExporter:
     ) -> List[Dict[str, Any]]:
         """Export audit logs (without PII)"""
         try:
-            # This would query actual audit logs
-            return [
-                {
-                    "timestamp": (datetime.utcnow() - timedelta(hours=i)).isoformat(),
-                    "event_type": "memory_create",
-                    "outcome": "success",
-                    "resource_type": "memory",
-                    "note": "PII has been removed from audit logs"
-                }
-                for i in range(5)
-            ]
+            audit_logger = get_audit_logger()
+            recent_events = []
+            if hasattr(audit_logger, "get_recent_events"):
+                recent_events = audit_logger.get_recent_events(limit=250)
+
+            sanitized_events = []
+            for event in recent_events:
+                if tenant_id and event.get("tenant_id") not in {None, tenant_id}:
+                    continue
+                if user_id and event.get("user_id") not in {None, user_id}:
+                    continue
+                sanitized_events.append(
+                    {
+                        "timestamp": event.get("timestamp"),
+                        "event_type": event.get("event_type"),
+                        "outcome": event.get("outcome"),
+                        "resource_type": event.get("resource_type"),
+                        "correlation_id": event.get("correlation_id"),
+                        "note": "PII has been removed from audit logs",
+                    }
+                )
+            return sanitized_events
         except Exception as e:
             self.logger.error(f"Failed to export audit logs: {e}")
             return []
@@ -308,13 +407,6 @@ class DataEraser:
     ) -> Dict[str, Any]:
         """Erase user data according to specified type"""
         start_time = datetime.utcnow()
-        
-        # Create audit context
-        audit_context = create_audit_context(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            correlation_id=correlation_id
-        )
         
         try:
             erasure_results = {
@@ -355,12 +447,15 @@ class DataEraser:
             erasure_results["duration_ms"] = (datetime.utcnow() - start_time).total_seconds() * 1000
             
             # Log the erasure operation
-            self.audit_logger.log_memory_delete(
-                context=audit_context,
-                memory_id=f"bulk_erasure_{user_id}",
-                delete_type=erasure_type.value,
-                duration_ms=erasure_results["duration_ms"],
-                outcome="success"
+            self.audit_logger.log_audit_event(
+                _build_audit_metadata(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    correlation_id=correlation_id,
+                    delete_type=erasure_type.value,
+                    duration_ms=erasure_results["duration_ms"],
+                    outcome="success",
+                )
             )
             
             return erasure_results
@@ -369,13 +464,16 @@ class DataEraser:
             duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
             
             # Log failed erasure
-            self.audit_logger.log_memory_delete(
-                context=audit_context,
-                memory_id=f"bulk_erasure_{user_id}",
-                delete_type=erasure_type.value,
-                duration_ms=duration_ms,
-                outcome="failure",
-                error_message=str(e)
+            self.audit_logger.log_audit_event(
+                _build_audit_metadata(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    correlation_id=correlation_id,
+                    delete_type=erasure_type.value,
+                    duration_ms=duration_ms,
+                    outcome="failure",
+                    error_message=str(e),
+                )
             )
             
             self.logger.error(f"Failed to erase data for user {user_id}: {e}")

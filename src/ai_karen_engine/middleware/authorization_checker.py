@@ -12,7 +12,7 @@ from enum import Enum
 
 from fastapi import Request, HTTPException, status
 
-from src.auth.auth_middleware import get_current_user
+from ai_karen_engine.auth.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 

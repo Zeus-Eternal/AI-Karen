@@ -1,0 +1,59 @@
+{
+  "active_user": "default",
+  "theme": "dark",
+  "llm": {
+    "default_provider": "llamacpp",
+    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
+    "default_lightweight_model_id": "Phi-3-mini-4k-instruct-q4.gguf",
+    "default_nlp_model_id": "distilbert-base-uncased",
+    "default_classifier_model_id": "default-classifier-model",
+    "models_dir": "models",
+    "fallback_chain": [
+      "llamacpp",
+      "openai",
+      "gemini",
+      "deepseek",
+      "huggingface"
+    ],
+    "provider_defaults": {
+      "openai": "gpt-4o-mini",
+      "deepseek": "deepseek-chat",
+      "llamacpp": "Phi-3-mini-4k-instruct-q4.gguf",
+      "gemini": "gemini-1.5-flash",
+      "huggingface": "microsoft/DialoGPT-large"
+    },
+    "task_assignments": {
+      "chat": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "code": {
+        "provider": "deepseek",
+        "model": "deepseek-coder"
+      },
+      "reasoning": {
+        "provider": "openai",
+        "model": "gpt-4o"
+      },
+      "summarization": {
+        "provider": "llamacpp",
+        "model": "Phi-3-mini-4k-instruct-q4.gguf"
+      }
+    },
+    "temperature": 0.7,
+    "max_tokens": 2048,
+    "timeout": 30,
+    "max_retries": 3
+  },
+  "spacy_model": "en_core_web_sm",
+  "memory": {
+    "enabled": true,
+    "provider": "local",
+    "embedding_dim": 768,
+    "decay_lambda": 0.1
+  },
+  "event_bus": "memory",
+  "ui": {
+    "show_debug_info": false
+  }
+}

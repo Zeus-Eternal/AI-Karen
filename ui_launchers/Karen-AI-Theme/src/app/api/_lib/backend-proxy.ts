@@ -16,10 +16,40 @@ function getBackendBaseUrl(): string {
 }
 
 function sanitizeHeaders(headers: Headers, backendBaseUrl: string): Headers {
-  const nextHeaders = new Headers(headers);
-  const backendHost = new URL(backendBaseUrl).host;
+  const nextHeaders = new Headers();
+  
+  // Explicitly copy all headers from the incoming request
+  // This is more reliable than using the Headers constructor with a Headers object
+  headers.forEach((value, key) => {
+    const k = key.toLowerCase();
+    // Skip host as it will be set by the backend URL
+    // Skip hop-by-hop headers and other sensitive proxy headers
+    const skipHeaders = [
+      'host',
+      'connection',
+      'keep-alive',
+      'proxy-authenticate',
+      'proxy-authorization',
+      'te',
+      'trailers',
+      'transfer-encoding',
+      'upgrade'
+    ];
+    
+    if (!skipHeaders.includes(k)) {
+      nextHeaders.set(key, value);
+    }
+  });
 
-  nextHeaders.delete('host');
+  // Explicitly ensure Authorization and Cookie headers are preserved
+  // These are critical for the backend authentication middleware
+  const auth = headers.get('authorization');
+  if (auth) nextHeaders.set('Authorization', auth);
+  
+  const cookie = headers.get('cookie');
+  if (cookie) nextHeaders.set('Cookie', cookie);
+
+  const backendHost = new URL(backendBaseUrl).host;
   nextHeaders.set('x-forwarded-host', headers.get('host') || backendHost);
   nextHeaders.set('x-forwarded-proto', 'http');
   return nextHeaders;
@@ -49,8 +79,6 @@ async function buildInit(
     // @ts-expect-error Node/undici extension supported in Next runtime.
     duplex: body ? 'half' : undefined,
     next: { revalidate: 0 },
-    // @ts-expect-error attach for cleanup in proxyToBackend.
-    __timeout: timeout,
   };
 }
 
@@ -82,12 +110,19 @@ async function sleep(ms: number): Promise<void> {
 export async function proxyToBackend(
   request: NextRequest,
   upstreamPath: string,
-  options?: { longTimeout?: boolean; retryAttempts?: number; retryDelayMs?: number; rawBody?: string },
+  options?: {
+    longTimeout?: boolean;
+    retryAttempts?: number;
+    retryDelayMs?: number;
+    rawBody?: string;
+    retryOnStatusCodes?: number[];
+  },
 ): Promise<NextResponse> {
   const backendBaseUrl = getBackendBaseUrl();
   const timeoutMs = options?.longTimeout ? LONG_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
   const retryAttempts = Math.max(1, options?.retryAttempts ?? 2);
   const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 250);
+  const retryOnStatusCodes = new Set(options?.retryOnStatusCodes ?? []);
   const upstreamUrl = `${backendBaseUrl}${upstreamPath}${request.nextUrl.search}`;
   let init = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
 
@@ -98,6 +133,16 @@ export async function proxyToBackend(
     for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
       try {
         upstream = await fetch(upstreamUrl, init);
+        const shouldRetryStatus =
+          retryOnStatusCodes.has(upstream.status) && attempt < retryAttempts;
+
+        if (shouldRetryStatus) {
+          clearInitTimeout(init);
+          await sleep(retryDelayMs * attempt);
+          init = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+          continue;
+        }
+
         lastError = undefined;
         break;
       } catch (error) {

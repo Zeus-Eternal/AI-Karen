@@ -45,8 +45,10 @@ from ai_karen_engine.api_routes.audit import router as audit_router
 # NEW: Simple auth system
 try:
     from ai_karen_engine.api_routes.auth_routes import router as auth_router
-    from src.auth.auth_middleware import AuthenticationError
-    from src.auth.auth_middleware import get_auth_middleware
+    from ai_karen_engine.auth.auth_middleware import (
+        AuthenticationError,
+        get_auth_middleware,
+    )
     logger.info("✅ Auth router imported successfully")
 except ImportError as e:
     # Fallback - disable auth routes if auth not available
@@ -54,6 +56,7 @@ except ImportError as e:
     logger.warning(f"🚫 Auth system not available - auth routes disabled: {e}")
 from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
+from ai_karen_engine.api_routes.communications_center_routes import router as communications_center_router
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.extensions import router as extensions_router
@@ -88,9 +91,13 @@ from ai_karen_engine.api_routes.provider_compatibility_routes import router as p
 from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
 from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
+from ai_karen_engine.api_routes.persona_routes import router as persona_router
 from ai_karen_engine.api_routes.model_organization_routes import router as model_organization_router
 from ai_karen_engine.api_routes.user_preferences_routes import router as user_preferences_router
 from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
+from ai_karen_engine.api_routes.users import router as users_router
+from ai_karen_engine.api_routes.training_data_routes import router as training_data_router
+from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
 
 # Multi-modal and AI enhancement routes
 multimodal_router: Optional[Any] = None
@@ -138,7 +145,6 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     
     # Add auth middleware globally (if available)
     try:
-        from src.auth.auth_middleware import get_auth_middleware
         auth_middleware = get_auth_middleware()
 
         # Use FastAPI middleware for global auth
@@ -219,11 +225,15 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(websocket_router, prefix="/api/ws", tags=["websocket"])
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
+    app.include_router(communications_center_router, prefix="/api/communications-center", tags=["communications-center"])
+    app.include_router(training_data_router, tags=["training-data"])
+    app.include_router(privacy_router, prefix="/api", tags=["privacy"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
     app.include_router(agent_integration_router, tags=["agents"])
     app.include_router(tasks_router, tags=["tasks"])
     app.include_router(automation_jobs_router, prefix="/api", tags=["automation-jobs"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
+    app.include_router(persona_router, prefix="/api/personas", tags=["personas"])
     
     # Align copilot routes under /api to match frontend expectations
     app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
@@ -247,6 +257,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
     app.include_router(provider_public_router, prefix="/api/public/providers", tags=["public-providers"])
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
+    app.include_router(users_router, prefix="/api", tags=["users"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
     # Health router already defines a "/health" prefix, so mount it at the API root
     # to expose endpoints like "/api/health" and "/api/health/degraded-mode".

@@ -354,7 +354,7 @@ class SystemInitializer:
     async def _initialize_databases(self) -> bool:
         """Initialize required databases."""
         try:
-            # Create database files if they don't exist
+            # 1. Create SQLite database files if they don't exist
             db_files = [
                 "auth.db",
                 "auth_sessions.db", 
@@ -366,11 +366,21 @@ class SystemInitializer:
                 if not db_path.exists():
                     db_path.parent.mkdir(parents=True, exist_ok=True)
                     db_path.touch()
-                    self.logger.info(f"✅ Created database: {db_file}")
+                    self.logger.info(f"✅ Created SQLite database: {db_file}")
             
+            # 2. Initialize PostgreSQL Tables
+            try:
+                from ai_karen_engine.database.client import MultiTenantPostgresClient
+                db_client = MultiTenantPostgresClient()
+                self.logger.info("🛠️ Initializing PostgreSQL tables...")
+                await db_client.create_tables_async()
+                self.logger.info("✅ PostgreSQL tables initialized successfully")
+            except Exception as e:
+                self.logger.warning(f"⚠️ Non-critical failure initializing PostgreSQL: {e}")
+                
             return True
         except Exception as e:
-            self.logger.error(f"❌ Failed to initialize databases: {e}")
+            self.logger.exception(f"❌ Failed to initialize databases: {e}")
             return False
     
     async def _setup_copilotkit(self) -> bool:

@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any, Deque, Dict, List, Optional, Union
 
 
 class AuditEventType(str, Enum):
@@ -71,6 +72,7 @@ class AuditLogger:
             handler.setFormatter(logging.Formatter("%(message)s"))
             self._logger.addHandler(handler)
         self._logger.propagate = False
+        self._recent_events: Deque[Dict[str, Any]] = deque(maxlen=1000)
 
     def _normalize_event(self, event: Union[AuditEvent, Dict[str, Any]]) -> Dict[str, Any]:
         """Convert supported event inputs into a JSON-serialisable dict."""
@@ -100,11 +102,26 @@ class AuditLogger:
     def log_audit_event(self, event: Union[AuditEvent, Dict[str, Any]]) -> None:
         """Log an audit event. Accepts either the dataclass or a plain dict."""
         payload = self._normalize_event(event)
+        self._recent_events.append(payload)
         try:
             self._logger.info(json.dumps(payload, default=str))
         except Exception:
             # Never let audit logging crash the request path
             self._logger.info(str(payload))
+
+    def get_recent_events(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Return recent audit events for observability surfaces."""
+        if limit <= 0:
+            return []
+        return list(self._recent_events)[-limit:]
+
+    def get_event_counts(self) -> Dict[str, int]:
+        """Return event counts grouped by event type."""
+        counts: Dict[str, int] = {}
+        for event in self._recent_events:
+            event_type = str(event.get("event_type") or "unknown")
+            counts[event_type] = counts.get(event_type, 0) + 1
+        return counts
 
     def log_cloud_usage(self, user_id: str, provider: str, model: str) -> None:
         """Compatibility helper used by model orchestrator audit hooks."""

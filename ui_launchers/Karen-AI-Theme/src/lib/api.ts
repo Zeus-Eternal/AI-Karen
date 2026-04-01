@@ -2,9 +2,6 @@
 
 // API service for HTTP requests
 const SAME_ORIGIN_API_BASE_URL = '';
-const DIRECT_BROWSER_BACKEND_PORT = '8000';
-
-
 export class ApiError extends Error {
   status: number;
 
@@ -16,73 +13,128 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private getBrowserDirectBaseUrl(): string {
-    if (typeof window === 'undefined') {
-      return '';
-    }
+  private readonly SESSION_MARKER_KEY = 'kari_session_expected';
 
-    const configuredBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
-    if (configuredBaseUrl) {
-      return configuredBaseUrl;
-    }
-
-    const { protocol, hostname, port } = window.location;
-    if (!hostname) {
-      return '';
-    }
-
-    if (port === DIRECT_BROWSER_BACKEND_PORT) {
-      return '';
-    }
-
-    return `${protocol}//${hostname}:${DIRECT_BROWSER_BACKEND_PORT}`;
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private getPreferredBaseUrl(): string {
-    if (typeof window !== 'undefined') {
-      return SAME_ORIGIN_API_BASE_URL;
+    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+    if (isBrowser) {
+      const origin = window.location.origin;
+      console.log('[ApiClient] Browser environment. Using origin as baseUrl:', origin);
+      return origin;
     }
 
-    return (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
+    // Server-side only
+    const env = (process as any).env || {};
+    return (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
   }
 
-  private getFallbackBaseUrl(preferredBaseUrl: string): string {
-    if (typeof window !== 'undefined') {
-      return '';
+  private getFallbackBaseUrl(preferredBaseUrl: string): string | null {
+    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+    if (isBrowser) {
+      return null;
     }
 
-    const configuredBackendUrl = (process.env.KAREN_BACKEND_URL || '').replace(/\/$/, '');
-    return preferredBaseUrl === SAME_ORIGIN_API_BASE_URL ? configuredBackendUrl : SAME_ORIGIN_API_BASE_URL;
+    const env = (process as any).env || {};
+    const configuredBackendUrl = (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+    
+    // Server-side: if we preferred same-origin (unlikely on server), fallback to direct backend URL
+    if (preferredBaseUrl === SAME_ORIGIN_API_BASE_URL) {
+      return configuredBackendUrl || null;
+    }
+    
+    // Otherwise, we were already trying direct backend, fallback to proxy origin if applicable
+    return SAME_ORIGIN_API_BASE_URL || null;
   }
 
-  private buildUrl(baseUrl: string, endpoint: string): string {
+  private buildUrl(baseUrl: string | null, endpoint: string): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-    if (typeof window !== 'undefined') {
-      return baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // Browser: Prevent Docker internal hostnames or subnets from leaking
+      if (baseUrl && (
+        baseUrl.includes('api') || 
+        baseUrl.includes('172.') || 
+        baseUrl.includes('10.') || 
+        baseUrl.includes('192.168.') ||
+        baseUrl.includes('localhost:8000') ||
+        baseUrl === 'api'
+      )) {
+        console.warn('[ApiClient] Blocking internal/Docker baseUrl in browser:', baseUrl, 'Rewriting to:', normalizedEndpoint);
+        return normalizedEndpoint;
+      }
+      const result = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+      console.log('[ApiClient] Browser BuildUrl result:', result, '(baseUrl:', baseUrl, 'endpoint:', endpoint, ')');
+      return result;
     }
 
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
       return endpoint;
     }
 
-    return `${baseUrl}${normalizedEndpoint}`;
+    return `${baseUrl || ''}${normalizedEndpoint}`;
   }
 
   private shouldRetryWithSameOrigin(error: unknown): boolean {
     return typeof window !== 'undefined' && error instanceof TypeError;
   }
 
-  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string): boolean {
+  private hasFallbackBaseUrl(baseUrl: string | null): baseUrl is string {
+    return baseUrl !== null && baseUrl !== '';
+  }
+
+  private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string | null): boolean {
     return (
       typeof window !== 'undefined' &&
-      Boolean(fallbackBaseUrl) &&
+      this.hasFallbackBaseUrl(fallbackBaseUrl) &&
       response.status >= 500
     );
   }
 
+  private shouldRetryMissingApiRoute(endpoint: string, response: Response, fallbackBaseUrl: string | null): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      this.hasFallbackBaseUrl(fallbackBaseUrl) &&
+      endpoint.startsWith('/api/') &&
+      response.status === 404
+    );
+  }
+
+  private shouldRetryAssistServerError(endpoint: string, response: Response): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      endpoint === '/api/copilot/assist' &&
+      response.status >= 500
+    );
+  }
+
+  private hasSessionMarker(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    try {
+      return localStorage.getItem(this.SESSION_MARKER_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private shouldPreferCookieSession(): boolean {
+    return typeof window !== 'undefined' && this.hasSessionMarker();
+  }
+
   private async getAuthHeaders(): Promise<Record<string, string>> {
     try {
+      if (this.shouldPreferCookieSession()) {
+        return {
+          'Content-Type': 'application/json'
+        };
+      }
+
       // Try to get a valid access token
       const accessToken = localStorage.getItem('access_token');
       
@@ -132,7 +184,7 @@ class ApiClient {
         throw new Error('No refresh token available');
       }
 
-      const sendRefresh = async (baseUrl: string): Promise<Response> =>
+      const sendRefresh = async (baseUrl: string | null): Promise<Response> =>
         fetch(this.buildUrl(baseUrl, '/api/auth/refresh'), {
           method: 'POST',
           headers: {
@@ -178,14 +230,20 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
-    const send = async (baseUrl: string): Promise<Response> => {
+    const send = async (baseUrl: string | null): Promise<Response> => {
       const authHeaders = await this.getAuthHeaders();
       const requestHeaders = {
         ...authHeaders,
         ...((init.headers as Record<string, string> | undefined) || {}),
       };
 
-      return fetch(this.buildUrl(baseUrl, endpoint), {
+      let url = this.buildUrl(baseUrl, endpoint);
+      // Final fallback: Ensure no Docker hostnames leak if logic above somehow missed it or was bypassed
+      if (typeof window !== 'undefined') {
+        url = url.replace(/http:\/\/api:8000/g, '');
+        console.log('[ApiClient] Executing browser fetch to URL:', url);
+      }
+      return fetch(url, {
         ...init,
         headers: requestHeaders,
         credentials: 'include',
@@ -193,23 +251,26 @@ class ApiClient {
     };
 
     const preferredBaseUrl = this.getPreferredBaseUrl();
-    const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
+    const fallbackBaseUrl: string | null = this.getFallbackBaseUrl(preferredBaseUrl) || null;
 
     let response: Response;
     try {
       response = await send(preferredBaseUrl);
     } catch (error) {
-      if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
+      if (!this.shouldRetryWithSameOrigin(error) || !this.hasFallbackBaseUrl(fallbackBaseUrl)) {
         throw error;
       }
       response = await send(fallbackBaseUrl);
     }
 
-    if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+    if (
+      this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+      this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
+    ) {
       response = await send(fallbackBaseUrl);
     }
 
-    if (response.status === 401) {
+    if (response.status === 401 && !this.shouldPreferCookieSession()) {
       try {
         await this.refreshAccessToken();
         try {
@@ -220,11 +281,33 @@ class ApiClient {
           }
           response = await send(fallbackBaseUrl);
         }
-        if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
+        if (
+          this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+          this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
+        ) {
           response = await send(fallbackBaseUrl);
         }
       } catch (refreshError) {
         // Fall through to the error handling below with the original/second response.
+      }
+    }
+
+    if (!response.ok && this.shouldRetryAssistServerError(endpoint, response)) {
+      await this.sleep(250);
+      try {
+        response = await send(preferredBaseUrl);
+      } catch (error) {
+        if (!this.shouldRetryWithSameOrigin(error) || !this.hasFallbackBaseUrl(fallbackBaseUrl)) {
+          throw error;
+        }
+        response = await send(fallbackBaseUrl);
+      }
+
+      if (
+        this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+        this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
+      ) {
+        response = await send(fallbackBaseUrl);
       }
     }
 

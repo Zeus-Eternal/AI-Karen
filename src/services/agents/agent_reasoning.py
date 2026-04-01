@@ -25,7 +25,7 @@ from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 # Try to import AI Orchestrator
 try:
-    from src.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+    from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
     HAS_AI_ORCHESTRATOR = True
 except ImportError:
     HAS_AI_ORCHESTRATOR = False

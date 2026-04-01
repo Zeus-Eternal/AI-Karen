@@ -210,6 +210,10 @@ class IntelligentErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
+            if response is None:
+                # If an inner middleware or endpoint returns None, Starlette will crash.
+                # Catch it here and raise to trigger our local error handling.
+                raise RuntimeError("No response returned from inner middleware chain")
             return response
             
         except HTTPException as e:
@@ -245,6 +249,10 @@ class IntelligentErrorHandlerMiddleware(BaseHTTPMiddleware):
             error_type = type(e).__name__
             traceback_str = traceback.format_exc()
             
+            print(f"!!! UNHANDLED EXCEPTION IN MIDDLEWARE: {error_type} - {error_message}")
+            print(traceback_str)
+            print("!!! END OF TRACEBACK")
+            
             logger.error(
                 f"Unhandled exception: {error_type} - {error_message}",
                 extra={
@@ -265,13 +273,21 @@ class IntelligentErrorHandlerMiddleware(BaseHTTPMiddleware):
                 )
             
             # Use intelligent error response
-            return await self._create_intelligent_error_response(
-                error_message=error_message,
-                error_type=error_type,
-                status_code=500,
-                request_meta=request_meta,
-                traceback_str=traceback_str
-            )
+            try:
+                return await self._create_intelligent_error_response(
+                    error_message=error_message,
+                    error_type=error_type,
+                    status_code=500,
+                    request_meta=request_meta,
+                    traceback_str=traceback_str
+                )
+            except Exception as final_e:
+                print(f"!!! CRITICAL: Intelligent error handler failed itself: {final_e}")
+                return await self._create_simple_error_response(
+                    error_message=f"Critical server error: {error_message}",
+                    status_code=500,
+                    traceback_str=traceback_str
+                )
 
 
 # Convenience function for adding middleware to FastAPI app

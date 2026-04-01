@@ -391,7 +391,7 @@ class AgentOrchestrator(BaseService):
         try:
             if service_name == "ai_orchestrator":
                 try:
-                    from src.services.ai_orchestrator import AIOrchestrator
+                    from services.ai_orchestrator import AIOrchestrator
                     service = AIOrchestrator()
                     await service.initialize()
                 except ImportError:
@@ -400,7 +400,7 @@ class AgentOrchestrator(BaseService):
                     
             elif service_name == "model_orchestrator":
                 try:
-                    from src.services.models.model_orchestrator_service import ModelOrchestratorService
+                    from services.models.model_orchestrator_service import ModelOrchestratorService
                     service = ModelOrchestratorService()
                     service.initialize({})
                 except ImportError:
@@ -418,7 +418,7 @@ class AgentOrchestrator(BaseService):
                     
             elif service_name == "memory_service":
                 try:
-                    from src.services.memory.unified_memory_service import UnifiedMemoryService
+                    from services.memory.unified_memory_service import UnifiedMemoryService
                     from ai_karen_engine.core.embedding_manager import EmbeddingManager
                     from ai_karen_engine.core.milvus_client import MilvusClient
                     from ai_karen_engine.database.client import MultiTenantPostgresClient
@@ -1263,7 +1263,7 @@ class AgentOrchestrator(BaseService):
             
             # Use AI orchestrator if available for reasoning
             if self._ai_orchestrator:
-                from src.services.ai_orchestrator.ai_orchestrator import FlowInput
+                from services.ai_orchestrator.ai_orchestrator import FlowInput
                 
                 # Determine the appropriate flow type based on task type
                 flow_type = "decision"  # Default flow type
@@ -1844,7 +1844,7 @@ class AgentOrchestrator(BaseService):
             # Store in unified memory service if available
             if self._memory_service:
                 try:
-                    from src.services.memory.unified_memory_service import MemoryCommitRequest
+                    from services.memory.unified_memory_service import MemoryCommitRequest
                     
                     # Convert content to text for unified memory service
                     content_text = str(content)
@@ -1953,7 +1953,7 @@ class AgentOrchestrator(BaseService):
             # If no memories found, try unified memory service
             if not memories and self._memory_service:
                 try:
-                    from src.services.memory.unified_memory_service import MemoryQueryRequest
+                    from services.memory.unified_memory_service import MemoryQueryRequest
                     
                     # Build query based on parameters
                     query_text = f"agent:{agent_id}"
@@ -2064,7 +2064,7 @@ class AgentOrchestrator(BaseService):
             # If no results, try unified memory service
             if self._memory_service:
                 try:
-                    from src.services.memory.unified_memory_service import MemoryQueryRequest
+                    from services.memory.unified_memory_service import MemoryQueryRequest
                     
                     # Build search query with memory type filter
                     search_query = query
@@ -2407,7 +2407,7 @@ class AgentOrchestrator(BaseService):
             # Initialize team reasoning context if AI orchestrator is available
             if self._ai_orchestrator:
                 try:
-                    from src.services.ai_orchestrator.ai_orchestrator import FlowInput
+                    from services.ai_orchestrator.ai_orchestrator import FlowInput
                     
                     # Create team reasoning context
                     reasoning_context = FlowInput({
@@ -2685,7 +2685,7 @@ class AgentOrchestrator(BaseService):
             # Use AI Orchestrator for consensus negotiation if available
             if self._ai_orchestrator:
                 try:
-                    from src.services.ai_orchestrator.ai_orchestrator import FlowInput
+                    from services.ai_orchestrator.ai_orchestrator import FlowInput
                     
                     # Prepare negotiation context with team information
                     negotiation_context = {
@@ -3110,7 +3110,7 @@ class AgentOrchestrator(BaseService):
             # Use AI orchestrator for conflict resolution if available
             if self._ai_orchestrator:
                 try:
-                    from src.services.ai_orchestrator.ai_orchestrator import FlowInput
+                    from services.ai_orchestrator.ai_orchestrator import FlowInput
                     
                     # Prepare conflict context with team information if available
                     conflict_context = {
@@ -3573,7 +3573,7 @@ class AgentOrchestrator(BaseService):
             
             # Use AI orchestrator's decide_action method for decision-making
             try:
-                from src.services.ai_orchestrator.ai_orchestrator import FlowInput
+                from services.ai_orchestrator.ai_orchestrator import FlowInput
                 
                 # Create decision input for AI orchestrator
                 decision_input = FlowInput({

@@ -827,55 +827,56 @@ class WebUIMemoryService(UnifiedMemoryService):
         memory_id: str,
         web_ui_metadata: Dict[str, Any],
     ):
-        """Update database with web UI specific fields."""
-        try:
-            if self.db_client:
-                async with self.db_client.get_async_session() as session:
-                    await session.execute(
-                        update(TenantMemoryEntry)
-                        .where(TenantMemoryEntry.vector_id == memory_id)
-                        .values(
-                            ui_source=web_ui_metadata.get("ui_source"),
-                            conversation_id=uuid.UUID(web_ui_metadata["conversation_id"])
-                            if web_ui_metadata.get("conversation_id")
-                            else None,
-                            memory_type=web_ui_metadata.get("memory_type"),
-                            importance_score=web_ui_metadata.get("importance_score"),
-                            ai_generated=web_ui_metadata.get("ai_generated"),
-                            user_confirmed=web_ui_metadata.get("user_confirmed"),
-                        )
-                    )
-                    await session.commit()
+        """Compatibility shim for older schemas.
 
-        except Exception as e:
-            logger.error(f"Failed to update web UI fields: {e}")
+        The current TenantMemoryEntry model stores web UI fields inside JSON metadata.
+        Base memory persistence already writes those fields, so no follow-up SQL update
+        is required here.
+        """
+        return None
 
     async def _get_web_ui_memory_data(
         self, tenant_id: Union[str, uuid.UUID], memory_ids: List[str]
     ) -> Dict[str, Dict[str, Any]]:
         """Get web UI specific data for memory entries."""
         try:
+            if not memory_ids:
+                return {}
+
             if self.db_client:
+                valid_ids = []
+                for memory_id in memory_ids:
+                    try:
+                        valid_ids.append(uuid.UUID(str(memory_id)))
+                    except Exception:
+                        continue
+
+                if not valid_ids:
+                    return {}
+
                 async with self.db_client.get_async_session() as session:
                     result = await session.execute(
                         select(TenantMemoryEntry).where(
-                            TenantMemoryEntry.vector_id.in_(memory_ids)
+                            TenantMemoryEntry.id.in_(valid_ids)
                         )
                     )
 
                     web_ui_data = {}
-                    for memory in result.fetchall():
-                        web_ui_data[memory.vector_id] = {
-                            "ui_source": memory.ui_source,
-                            "conversation_id": str(memory.conversation_id)
-                            if memory.conversation_id
-                            else None,
-                            "memory_type": memory.memory_type,
-                            "importance_score": memory.importance_score,
-                            "access_count": memory.access_count,
-                            "last_accessed": memory.last_accessed,
-                            "ai_generated": memory.ai_generated,
-                            "user_confirmed": memory.user_confirmed,
+                    for memory in result.scalars().all():
+                        item_metadata = (
+                            memory.item_metadata
+                            if isinstance(memory.item_metadata, dict)
+                            else {}
+                        )
+                        web_ui_data[str(memory.id)] = {
+                            "ui_source": item_metadata.get("ui_source"),
+                            "conversation_id": item_metadata.get("conversation_id"),
+                            "memory_type": item_metadata.get("memory_type", memory.kind),
+                            "importance_score": item_metadata.get("importance_score", 5),
+                            "access_count": item_metadata.get("access_count", 0),
+                            "last_accessed": item_metadata.get("last_accessed"),
+                            "ai_generated": item_metadata.get("ai_generated", False),
+                            "user_confirmed": item_metadata.get("user_confirmed", True),
                         }
 
                     return web_ui_data
@@ -926,22 +927,12 @@ class WebUIMemoryService(UnifiedMemoryService):
     async def _increment_access_count(
         self, tenant_id: Union[str, uuid.UUID], memory_id: str
     ):
-        """Increment access count for a memory."""
-        try:
-            if self.db_client:
-                async with self.db_client.get_async_session() as session:
-                    await session.execute(
-                        update(TenantMemoryEntry)
-                        .where(TenantMemoryEntry.vector_id == memory_id)
-                        .values(
-                            access_count=TenantMemoryEntry.access_count + 1,
-                            last_accessed=datetime.utcnow(),
-                        )
-                    )
-                    await session.commit()
+        """Increment access count for a memory.
 
-        except Exception as e:
-            logger.error(f"Failed to increment access count: {e}")
+        Access metrics are not materialized as dedicated columns in the current
+        schema, so this is a no-op compatibility shim.
+        """
+        return None
 
     async def _generate_auto_tags(
         self, content: str, memory_type: MemoryType

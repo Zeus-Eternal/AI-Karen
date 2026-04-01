@@ -10,11 +10,14 @@ import PrivacySettings from "./PrivacySettings";
 import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
 import ModelSettings from "./ModelSettings";
-import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Bot } from "lucide-react";
+import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Bot, GraduationCap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import TrainingSettingsPanel from "@/components/admin/TrainingSettingsPanel";
+import CommsCenterPage from "@/components/comms/CommsCenterPage";
 
 interface SettingsDialogProps {
   inSheet?: boolean;
+  adminMode?: boolean;
 }
 
 /**
@@ -23,7 +26,7 @@ interface SettingsDialogProps {
  * It uses a tabbed interface to organize different settings categories.
  * This component is intended to be rendered as a main view or within a sheet.
  */
-export default function SettingsDialog({ inSheet = false }: SettingsDialogProps) {
+export default function SettingsDialog({ inSheet = false, adminMode = false }: SettingsDialogProps) {
   return (
     <div className={inSheet ? "p-4" : "space-y-6"}>
       {!inSheet && (
@@ -63,6 +66,16 @@ export default function SettingsDialog({ inSheet = false }: SettingsDialogProps)
            <TabsTrigger value="apikey-placeholder">
             <KeyRound className="mr-1 sm:mr-2 h-4 w-4" /> API Keys
           </TabsTrigger>
+          {adminMode && (
+            <TabsTrigger value="training">
+              <GraduationCap className="mr-1 sm:mr-2 h-4 w-4" /> Training
+            </TabsTrigger>
+          )}
+          {adminMode && (
+            <TabsTrigger value="communications">
+              <Bell className="mr-1 sm:mr-2 h-4 w-4" /> Communications
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* This div ensures padding and allows content to grow within the main scrollable area */}
@@ -91,6 +104,16 @@ export default function SettingsDialog({ inSheet = false }: SettingsDialogProps)
            <TabsContent value="apikey-placeholder">
             <ApiKeyManager />
           </TabsContent>
+          {adminMode && (
+            <TabsContent value="training">
+              <TrainingSettingsPanel />
+            </TabsContent>
+          )}
+          {adminMode && (
+            <TabsContent value="communications">
+              <CommsCenterPage />
+            </TabsContent>
+          )}
         </div>
       </Tabs>
     </div>

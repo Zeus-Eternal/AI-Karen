@@ -27,7 +27,7 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = logging.getLogger("kari.ai_routes")
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 class PromptAnalysisRequest(BaseModel):
     """Request for prompt analysis."""

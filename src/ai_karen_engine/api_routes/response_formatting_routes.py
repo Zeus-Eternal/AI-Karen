@@ -470,7 +470,6 @@ async def health_check():
             "subsystems": {
                 "content_detector": "healthy",
                 "syntax_highlighter": "healthy",
-                "responsive_formatter": "healthy",
                 "api_endpoints": "healthy",
                 "cache": "healthy"
             },
@@ -499,7 +498,6 @@ async def health_check():
             "subsystems": {
                 "content_detector": "error",
                 "syntax_highlighter": "error",
-                "responsive_formatter": "error",
                 "api_endpoints": "error",
                 "cache": "error"
             }

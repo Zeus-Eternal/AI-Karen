@@ -126,50 +126,11 @@ class StreamMetricsResponse(BaseModel):
 @lru_cache
 def get_chat_orchestrator() -> ChatOrchestrator:
     """Create or return the chat orchestrator instance."""
-    from ai_karen_engine.chat.memory_processor import MemoryProcessor
-    from services.memory.nlp_service_manager import nlp_service_manager
-    from ai_karen_engine.database.memory_manager import MemoryManager
-    from ai_karen_engine.database.client import MultiTenantPostgresClient
-    from ai_karen_engine.core.milvus_client import MilvusClient
-    from ai_karen_engine.core import default_models
-
-    try:
-        # Initialize required components for memory manager
-        db_client = MultiTenantPostgresClient()
-        milvus_client = MilvusClient()
-        
-        # Load embedding manager (async operation handled gracefully)
-        try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're in an async context, we can't await here
-                # Use a fallback or initialize without embedding manager
-                embedding_manager = None
-            else:
-                loop.run_until_complete(default_models.load_default_models())
-                embedding_manager = default_models.get_embedding_manager()
-        except Exception as e:
-            logger.warning(f"Failed to load embedding manager: {e}")
-            embedding_manager = None
-        
-        # Create memory manager instance
-        memory_manager = MemoryManager(
-            db_client=db_client,
-            milvus_client=milvus_client,
-            embedding_manager=embedding_manager
-        )
-    except Exception as e:
-        logger.warning(f"Failed to create memory manager: {e}")
-        memory_manager = None
-
-    memory_processor = MemoryProcessor(
-        spacy_service=nlp_service_manager.spacy_service,
-        distilbert_service=nlp_service_manager.distilbert_service,
-        memory_manager=memory_manager,
+    from ai_karen_engine.chat.factory import (
+        get_chat_orchestrator as get_factory_chat_orchestrator,
     )
 
-    return ChatOrchestrator(memory_processor=memory_processor)
+    return get_factory_chat_orchestrator()
 
 
 @lru_cache
@@ -209,7 +170,10 @@ async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ", 1)[1]
         try:
-            from src.auth.auth_service import get_auth_service, user_account_to_dict
+            from ai_karen_engine.auth.auth_service import (
+                get_auth_service,
+                user_account_to_dict,
+            )
 
             service = await get_auth_service()
             user = await service.validate_token(access_token)

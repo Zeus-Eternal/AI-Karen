@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 from ai_karen_engine.models.ag_ui_types import AGUIMemoryEntry, AGUIMemoryQuery
-from src.services.memory_service import WebUIMemoryEntry, WebUIMemoryQuery
+from services.memory.memory_service import WebUIMemoryEntry, WebUIMemoryQuery
 
 
 async def transform_ag_ui_query(query: AGUIMemoryQuery) -> WebUIMemoryQuery:
@@ -31,11 +31,16 @@ def transform_web_ui_entries(entries: List[WebUIMemoryEntry]) -> List[AGUIMemory
     """Transform internal WebUIMemoryEntry objects to AG-UI response format."""
     results: List[AGUIMemoryEntry] = []
     for entry in entries:
+        timestamp_ms = (
+            int(entry.timestamp.timestamp() * 1000)
+            if isinstance(entry.timestamp, datetime)
+            else int(entry.timestamp * 1000)
+        )
         results.append(
             AGUIMemoryEntry(
                 id=str(entry.id),
                 content=entry.content,
-                timestamp=int(entry.timestamp * 1000),
+                timestamp=timestamp_ms,
                 tags=entry.tags,
                 similarity_score=entry.similarity_score,
                 session_id=entry.session_id,

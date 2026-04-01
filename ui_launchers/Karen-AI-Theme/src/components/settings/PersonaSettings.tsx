@@ -14,12 +14,29 @@ import { Save, RotateCcw, Drama, Sailboat, Scroll } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { authService } from '@/lib/auth';
 
 interface PersonaSettingsProps {
   inSheet?: boolean;
 }
+
+interface PersonaRecord {
+  id: string;
+  name: string;
+  description?: string | null;
+  system_prompt: string;
+  is_system_persona: boolean;
+}
+
+interface PersonaPreferences {
+  active_persona_id?: string | null;
+}
+
+const CUSTOM_PERSONA_NAME = 'My Custom Persona';
+const PERSONA_API_UNAVAILABLE_KEY = 'karen_persona_api_unavailable';
+const AUTH_PROFILE_SYNC_UNAVAILABLE_KEY = 'karen_auth_profile_sync_unavailable';
 
 /**
  * @file PersonaSettings.tsx
@@ -30,6 +47,8 @@ interface PersonaSettingsProps {
 export default function PersonaSettings({ inSheet = false }: PersonaSettingsProps) {
   const [instructions, setInstructions] = useState<string>(DEFAULT_KAREN_SETTINGS.customPersonaInstructions);
   const [preferredAddressName, setPreferredAddressName] = useState('');
+  const [currentPersonaId, setCurrentPersonaId] = useState<string | null>(null);
+  const [personaApiAvailable, setPersonaApiAvailable] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -110,7 +129,55 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
     }
   }, [user]);
 
-  const savePersonaInstructionsToLocalStorage = (newInstructions: string) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPersistedPersona = async () => {
+      if (typeof window !== 'undefined' && window.sessionStorage.getItem(PERSONA_API_UNAVAILABLE_KEY) === 'true') {
+        setPersonaApiAvailable(false);
+        return;
+      }
+
+      try {
+        const [personas, preferences] = await Promise.all([
+          apiClient.get<PersonaRecord[]>('/api/personas/'),
+          apiClient.get<PersonaPreferences>('/api/personas/preferences/me'),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const selectedPersona =
+          personas.find((persona) => persona.id === preferences.active_persona_id && !persona.is_system_persona) ||
+          personas.find((persona) => persona.name === CUSTOM_PERSONA_NAME && !persona.is_system_persona);
+
+        if (selectedPersona) {
+          setCurrentPersonaId(selectedPersona.id);
+          if (selectedPersona.system_prompt?.trim()) {
+            setInstructions(selectedPersona.system_prompt);
+          }
+        }
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          setPersonaApiAvailable(false);
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(PERSONA_API_UNAVAILABLE_KEY, 'true');
+          }
+          return;
+        }
+        console.error('Failed to load persisted persona settings:', error);
+      }
+    };
+
+    void loadPersistedPersona();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const savePersonaInstructionsToLocalStorage = async (newInstructions: string) => {
     try {
       const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
       let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
@@ -140,20 +207,46 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedFullSettings));
       setInstructions(newInstructions); 
 
-      // Wire out to the backend API explicitly as required by Phase 4
-      import('@/lib/api').then(({ apiClient }) => {
-        // Here we hit learning/persona APIs to persist this instruction set to DB
-        // Using /api/personas as a conceptual endpoint derived from persona_routes.py
-        apiClient.post('/api/personas/', {
-          name: "My Custom Persona",
-          description: "Modified from UI",
-          system_prompt: newInstructions,
-        }).catch(err => console.error("Failed to sync persona to backend:", err));
-      }).catch(err => console.error("Failed to load API Client:", err));
+      const payload = {
+        name: CUSTOM_PERSONA_NAME,
+        description: 'Modified from UI',
+        system_prompt: newInstructions,
+      };
+
+      let personaId = currentPersonaId;
+      if (personaApiAvailable) {
+        try {
+          if (personaId) {
+            const updatedPersona = await apiClient.put<PersonaRecord>(`/api/personas/${personaId}`, payload);
+            personaId = updatedPersona.id;
+          } else {
+            const createdPersona = await apiClient.post<PersonaRecord>('/api/personas/', payload);
+            personaId = createdPersona.id;
+          }
+
+          if (personaId) {
+            setCurrentPersonaId(personaId);
+            await apiClient.post('/api/personas/preferences/switch', {
+              persona_id: personaId,
+            });
+          }
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) {
+            setPersonaApiAvailable(false);
+            if (typeof window !== 'undefined') {
+              window.sessionStorage.setItem(PERSONA_API_UNAVAILABLE_KEY, 'true');
+            }
+          } else {
+            throw error;
+          }
+        }
+      }
 
       toast({
         title: "Persona Instructions Saved",
-        description: "Karen's core persona instructions have been updated and synced to backend.",
+        description: personaApiAvailable
+          ? "Karen's core persona instructions have been updated and synced to backend."
+          : "Karen's core persona instructions were saved locally. Backend persona sync is not available yet.",
       });
     } catch (error) {
       console.error("Failed to save persona instructions to localStorage:", error);
@@ -165,47 +258,81 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
     }
   };
 
-  const handleSave = () => {
-    savePersonaInstructionsToLocalStorage(instructions);
+  const handleSave = async () => {
+    await savePersonaInstructionsToLocalStorage(instructions);
   };
 
   const handleSavePreferredAddress = async () => {
     const normalized = preferredAddressName.trim();
-    if (!user || !normalized) {
+    if (!normalized) {
       return;
     }
 
     try {
+      const storedSettingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+      let currentFullSettings = { ...DEFAULT_KAREN_SETTINGS };
+      if (storedSettingsStr) {
+        try {
+          const parsed = JSON.parse(storedSettingsStr) as Partial<KarenSettings>;
+          currentFullSettings = {
+            ...DEFAULT_KAREN_SETTINGS,
+            ...parsed,
+            notifications: { ...DEFAULT_KAREN_SETTINGS.notifications, ...(parsed.notifications || {}) },
+            personalFacts: Array.isArray(parsed.personalFacts) ? parsed.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
+            ttsVoiceURI: parsed.ttsVoiceURI ?? null,
+          };
+        } catch (error) {
+          console.error('Failed to parse settings before saving preferred name:', error);
+        }
+      }
+      localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(currentFullSettings));
+
       const nextPreferences = {
-        ...(user.preferences || {}),
+        ...((user?.preferences as Record<string, any> | undefined) || {}),
         preferred_address_name: normalized,
       };
 
-      const updatedUser = await apiClient.put<{
-        user_id: string;
-        email: string;
-        full_name: string;
-        roles: string[];
-        is_active: boolean;
-        created_at?: string;
-        last_login?: string | null;
-        tenant_id: string;
-        preferences: Record<string, any>;
-      }>('/api/auth/me', {
+      authService.updateCurrentUser({
         preferences: nextPreferences,
       });
 
-      authService.updateCurrentUser({
-        preferences: updatedUser.preferences || nextPreferences,
-      });
+      const authProfileSyncUnavailable =
+        typeof window !== 'undefined' &&
+        window.sessionStorage.getItem(AUTH_PROFILE_SYNC_UNAVAILABLE_KEY) === 'true';
 
-      await apiClient.post('/api/memory/commit', {
-        user_id: user.user_id,
-        text: `The user prefers to be addressed as ${normalized}.`,
-        tags: ['personal_fact', 'preferred_name', 'user_preference'],
-        importance: 9,
-        decay: 'pinned',
-      }).catch(() => undefined);
+      if (user?.user_id && !authProfileSyncUnavailable) {
+        await apiClient.put<{
+          user_id: string;
+          email: string;
+          full_name: string;
+          roles: string[];
+          is_active: boolean;
+          created_at?: string;
+          last_login?: string | null;
+          tenant_id: string;
+          preferences: Record<string, any>;
+        }>('/api/auth/me', {
+          preferences: nextPreferences,
+        }).catch((error) => {
+          console.error('Failed to sync preferred name to backend profile:', error);
+          if (
+            typeof window !== 'undefined' &&
+            error instanceof ApiError &&
+            (error.status === 400 || error.status === 401 || error.status === 404)
+          ) {
+            window.sessionStorage.setItem(AUTH_PROFILE_SYNC_UNAVAILABLE_KEY, 'true');
+          }
+          return null;
+        });
+
+        await apiClient.post('/api/memory/commit', {
+          user_id: user.user_id,
+          text: `The user prefers to be addressed as ${normalized}.`,
+          tags: ['personal_fact', 'preferred_name', 'user_preference'],
+          importance: 9,
+          decay: 'pinned',
+        }).catch(() => undefined);
+      }
 
       toast({
         title: 'Preferred name saved',
@@ -223,7 +350,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
   const handleResetToDefault = () => {
     const defaultInstructions = DEFAULT_KAREN_SETTINGS.customPersonaInstructions;
     setInstructions(defaultInstructions);
-    savePersonaInstructionsToLocalStorage(defaultInstructions);
+    void savePersonaInstructionsToLocalStorage(defaultInstructions);
     toast({
       title: "Persona Instructions Reset",
       description: "Karen's custom persona instructions have been reset to the default.",

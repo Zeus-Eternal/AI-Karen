@@ -44,7 +44,8 @@ from ai_karen_engine.models.web_api_error_responses import (
 from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
 from services.memory.internal.web_ui_api import WebUITransformationService
 from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from services.memory.memory_service import WebUIMemoryService
+from services.memory.memory_service import WebUIMemoryService, UISource, MemoryType
+from services.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
@@ -63,6 +64,66 @@ sys.modules.setdefault(
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web-ui-compatibility"])
+
+
+async def _query_memory_records(
+    memory_service: WebUIMemoryService,
+    tenant_id: str,
+    backend_request: Any,
+) -> List[Any]:
+    """Prefer the unified memory query path while preserving compatibility responses."""
+
+    if hasattr(memory_service, "query"):
+        query_request = MemoryQueryRequest(
+            user_id=backend_request.user_id or backend_request.session_id or "anonymous",
+            org_id=None,
+            query=backend_request.text,
+            top_k=backend_request.top_k,
+            similarity_threshold=backend_request.similarity_threshold,
+        )
+        result = await memory_service.query(tenant_id, query_request)
+        return result.hits
+
+    return await memory_service.query_memories(tenant_id, backend_request)
+
+
+async def _commit_memory_record(
+    memory_service: WebUIMemoryService,
+    tenant_id: str,
+    backend_request: Any,
+    *,
+    user_id: Optional[str],
+) -> Optional[str]:
+    """Prefer unified commit while preserving legacy store fallback."""
+
+    if hasattr(memory_service, "commit"):
+        commit_request = MemoryCommitRequest(
+            user_id=user_id or backend_request.user_id or backend_request.session_id or "anonymous",
+            org_id=None,
+            text=backend_request.text if hasattr(backend_request, "text") else backend_request.content,
+            tags=list(getattr(backend_request, "tags", None) or []),
+            importance=int(getattr(backend_request, "importance", 5) or 5),
+            decay=getattr(backend_request, "decay", "short") or "short",
+            metadata={
+                "ui_source": "web",
+                "session_id": getattr(backend_request, "session_id", None),
+                "conversation_id": getattr(backend_request, "conversation_id", None),
+            },
+        )
+        result = await memory_service.commit(tenant_id, commit_request)
+        return result.id if result.success else None
+
+    return await memory_service.store_web_ui_memory(
+        tenant_id=tenant_id,
+        content=backend_request.text if hasattr(backend_request, "text") else backend_request.content,
+        user_id=user_id or backend_request.user_id or backend_request.session_id or "anonymous",
+        ui_source=getattr(backend_request, "ui_source", UISource.WEB),
+        session_id=getattr(backend_request, "session_id", None),
+        memory_type=getattr(backend_request, "memory_type", MemoryType.GENERAL),
+        tags=getattr(backend_request, "tags", None),
+        metadata=getattr(backend_request, "metadata", None),
+        ai_generated=getattr(backend_request, "ai_generated", False),
+    )
 
 
 async def _get_plugin_service_optional():
@@ -487,7 +548,7 @@ async def memory_query_compatibility(
                 import asyncio
 
                 memories = await asyncio.wait_for(
-                    memory_service.query_memories("default", backend_request),
+                    _query_memory_records(memory_service, "default", backend_request),
                     timeout=15.0,  # 15 second timeout for memory queries
                 )
                 break
@@ -773,16 +834,11 @@ async def memory_store_compatibility(
         memory_id = None
 
         try:
-            memory_id = await memory_service.store_web_ui_memory(
-                tenant_id="default",
-                content=backend_request.content,
+            memory_id = await _commit_memory_record(
+                memory_service,
+                "default",
+                backend_request,
                 user_id=user_id,
-                ui_source=backend_request.ui_source,
-                session_id=backend_request.session_id,
-                memory_type=backend_request.memory_type,
-                tags=backend_request.tags,
-                metadata=backend_request.metadata,
-                ai_generated=backend_request.ai_generated,
             )
         except Exception as e:
             error_str = str(e).lower()
@@ -803,16 +859,11 @@ async def memory_store_compatibility(
                             f"[{request_id}] Auto-migration successful, retrying memory store"
                         )
 
-                        memory_id = await memory_service.store_web_ui_memory(
-                            tenant_id="default",
-                            content=backend_request.content,
+                        memory_id = await _commit_memory_record(
+                            memory_service,
+                            "default",
+                            backend_request,
                             user_id=user_id,
-                            ui_source=backend_request.ui_source,
-                            session_id=backend_request.session_id,
-                            memory_type=backend_request.memory_type,
-                            tags=backend_request.tags,
-                            metadata=backend_request.metadata,
-                            ai_generated=backend_request.ai_generated,
                         )
                         storage_time = (
                             datetime.utcnow() - start_time
@@ -1663,4 +1714,3 @@ async def trigger_health_check(http_request: Request):
             "Failed to trigger health check",
             request_id,
         )
-

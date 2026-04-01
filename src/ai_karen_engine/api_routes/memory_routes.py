@@ -20,7 +20,11 @@ from ai_karen_engine.api_routes.unified_schemas import (
     FieldError,
     ValidationUtils,
 )
-from services.memory.unified_memory_service import PIIRedactor
+from services.memory.unified_memory_service import (
+    MemoryCommitRequest,
+    MemoryQueryRequest,
+    PIIRedactor,
+)
 from services.monitoring.metrics_service import MetricsService
 from services.monitoring.structured_logging_service import StructuredLoggingService
 from services.monitoring.correlation_service import (
@@ -34,20 +38,12 @@ _metrics_service: Optional[MetricsService] = None
 
 # Graceful imports with fallback mechanisms
 try:
-    from services.memory.memory_service import (
-        MemoryType,
-        UISource,
-        WebUIMemoryQuery,
-        WebUIMemoryService,
-    )
+    from services.memory.memory_service import WebUIMemoryService
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
     logger.warning("Memory service not available, using fallback")
     MEMORY_SERVICE_AVAILABLE = False
-    MemoryType = None  # type: ignore
-    UISource = None  # type: ignore
-    WebUIMemoryQuery = None  # type: ignore
     WebUIMemoryService = None  # type: ignore
 
 try:
@@ -143,8 +139,8 @@ class MemDeleteResponse(ISO8601Model):
 
 
 # Import unified schemas
-# Create router
-router = APIRouter(tags=["memory"])
+# Unified router with memory prefix for API gateway
+router = APIRouter(prefix="/memory", tags=["memory"])
 
 CORRELATION_AVAILABLE = True
 logger = create_correlation_logger(__name__)
@@ -316,33 +312,26 @@ async def memory_search(request: MemQuery, http_request: Request):
         if memory_service:
             try:
                 tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
-                query = WebUIMemoryQuery(
-                    text=request.query,
+                search_request = MemoryQueryRequest(
                     user_id=request.user_id,
+                    org_id=request.org_id,
+                    query=request.query,
                     top_k=request.top_k,
                 )
-                memories = await memory_service.query_memories(tenant_id, query)
+                search_response = await memory_service.query(tenant_id, search_request, correlation_id)
                 hits = []
-                for mem in memories:
-                    redacted_text = PIIRedactor.redact_pii(mem.content)
+                for mem in search_response.hits:
+                    redacted_text = PIIRedactor.redact_pii(mem.text)
                     hits.append(
                         ContextHit(
                             id=mem.id,
                             text=redacted_text,
                             preview=redacted_text[:100],
-                            score=mem.similarity_score or 0.0,
+                            score=mem.score,
                             tags=mem.tags or [],
-                            importance=getattr(mem, "importance_score", 5),
-                            decay_tier=(
-                                mem.metadata.get("decay") if mem.metadata else "short"
-                            ),
-                            created_at=datetime.fromtimestamp(mem.timestamp).isoformat()
-                            if isinstance(mem.timestamp, (int, float))
-                            else (
-                                mem.timestamp.isoformat()
-                                if isinstance(mem.timestamp, datetime)
-                                else datetime.now().isoformat()
-                            ),
+                            importance=mem.importance,
+                            decay_tier=mem.decay_tier,
+                            created_at=mem.created_at,
                             user_id=request.user_id,
                             org_id=request.org_id,
                             meta={"source": "unified_search", "tenant_filtered": True},
@@ -629,18 +618,25 @@ async def memory_commit(request: MemCommit, http_request: Request):
         if memory_service:
             try:
                 tenant_id = tenant_filters.get("org_id") or tenant_filters["user_id"]
-                memory_id = await memory_service.store_web_ui_memory(
-                    tenant_id=tenant_id,
-                    content=request.text,
+                commit_request = MemoryCommitRequest(
                     user_id=request.user_id,
-                    ui_source=UISource.AG_UI,
-                    memory_type=MemoryType.GENERAL,
+                    org_id=request.org_id,
+                    text=request.text,
                     tags=request.tags,
-                    importance_score=request.importance,
-                    metadata={"decay": request.decay},
-                    tenant_filters=tenant_filters,
+                    importance=request.importance,
+                    decay=request.decay,
+                    metadata={
+                        "source": "memory_commit_route",
+                        "tenant_filters": tenant_filters,
+                    },
                 )
-                success = memory_id is not None
+                commit_response = await memory_service.commit(
+                    tenant_id=tenant_id,
+                    request=commit_request,
+                    correlation_id=correlation_id,
+                )
+                success = commit_response.success
+                memory_id = commit_response.id if commit_response.success else ""
                 message = (
                     f"Memory stored with decay tier '{request.decay}' and importance {request.importance}"
                     if success
@@ -857,18 +853,33 @@ async def memory_update(
                     await memory_service.base_manager.delete_memory(
                         tenant_id, memory_id
                     )
-                    new_id = await memory_service.store_web_ui_memory(
-                        tenant_id=tenant_id,
-                        content=request.text or "",
-                        user_id=user_id or tenant_filters["user_id"],
-                        ui_source=UISource.AG_UI,
-                        memory_type=MemoryType.GENERAL,
-                        tags=request.tags,
-                        importance_score=request.importance,
-                        metadata={"decay": request.decay} if request.decay else None,
-                        tenant_filters=tenant_filters,
-                    )
-                    success = new_id is not None
+                    if request.text:
+                        commit_response = await memory_service.commit(
+                            tenant_id,
+                            MemoryCommitRequest(
+                                user_id=user_id or tenant_filters["user_id"],
+                                org_id=org_id,
+                                text=request.text,
+                                tags=request.tags or [],
+                                importance=request.importance or 5,
+                                decay=request.decay or "short",
+                                metadata=tenant_filters,
+                            ),
+                        )
+                        success = commit_response.success
+                    else:
+                        new_id = await memory_service.store_web_ui_memory(
+                            tenant_id=tenant_id,
+                            content="",
+                            user_id=user_id or tenant_filters["user_id"],
+                            ui_source=UISource.AG_UI,
+                            memory_type=MemoryType.GENERAL,
+                            tags=request.tags,
+                            importance_score=request.importance,
+                            metadata={"decay": request.decay} if request.decay else None,
+                            tenant_filters=tenant_filters,
+                        )
+                        success = new_id is not None
                 message = (
                     f"Memory {memory_id} updated successfully"
                     if success

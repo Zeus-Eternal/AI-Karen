@@ -7,8 +7,12 @@ Improved version with latest API features, better error handling, and streaming 
 import logging
 import os
 import time
+from email.utils import parsedate_to_datetime
 from typing import Any, Dict, Iterator, List, Optional, Union
 
+from ai_karen_engine.config.llm_provider_config import (
+    get_openai_compatible_provider_defaults,
+)
 from ai_karen_engine.integrations.llm_utils import (
     EmbeddingFailed,
     GenerationFailed,
@@ -29,22 +33,27 @@ class OpenAIProvider(LLMProviderBase):
         base_url: Optional[str] = None,
         timeout: int = 60,
         max_retries: int = 3,
+        provider_name: str = "openai",
     ):
         """
         Initialize OpenAI provider.
 
         Args:
-            model: Default model name (e.g., "gpt-3.5-turbo", "gpt-4")
-            api_key: OpenAI API key (from env OPENAI_API_KEY if not provided)
+            model: Default model identifier
+            api_key: Provider API key (from the provider-specific env var if omitted)
             base_url: Custom base URL for OpenAI-compatible APIs
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
         """
+        self.provider_name = str(provider_name or "openai").strip().lower()
+        self.provider_defaults = get_openai_compatible_provider_defaults(self.provider_name)
+        self.api_key_env_var = str(self.provider_defaults["api_key_env"])
+        self.display_name = str(self.provider_defaults["display_name"])
         self.model = model
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.base_url = base_url
+        self.api_key = api_key or os.getenv(self.api_key_env_var)
+        self.base_url = self._normalize_base_url(base_url or str(self.provider_defaults["base_url"]))
         self.timeout = timeout
-        self.max_retries = max_retries
+        self.max_retries = min(max_retries, 2) if self.provider_name == "zai" else max_retries
         self.last_usage: Dict[str, Any] = {}
         self.initialization_error: Optional[str] = None
         self.client: Optional[Any] = None
@@ -59,12 +68,20 @@ class OpenAIProvider(LLMProviderBase):
             self.openai = openai
 
             if not self.api_key:
-                self.initialization_error = "No OpenAI API key provided. Set OPENAI_API_KEY environment variable."
+                self.initialization_error = (
+                    f"No {self.display_name} API key provided. "
+                    f"Set {self.api_key_env_var} environment variable."
+                )
                 logger.warning(self.initialization_error)
                 return
 
             # Initialize client with custom settings
-            client_kwargs = {"api_key": self.api_key, "timeout": self.timeout}
+            client_kwargs = {
+                "api_key": self.api_key,
+                "timeout": self.timeout,
+                # Avoid stacked retries from both the OpenAI SDK and our wrapper.
+                "max_retries": 0,
+            }
             if self.base_url:
                 client_kwargs["base_url"] = self.base_url
 
@@ -74,10 +91,12 @@ class OpenAIProvider(LLMProviderBase):
             self._validate_api_key()
             
         except ImportError:
-            self.initialization_error = "OpenAI Python package not installed. Install with: pip install openai"
+            self.initialization_error = (
+                f"{self.display_name} client dependency not installed. Install with: pip install openai"
+            )
             logger.error(self.initialization_error)
         except Exception as ex:
-            self.initialization_error = f"OpenAI client initialization failed: {ex}"
+            self.initialization_error = f"{self.display_name} client initialization failed: {ex}"
             logger.error(self.initialization_error)
 
     def _validate_api_key(self):
@@ -88,11 +107,14 @@ class OpenAIProvider(LLMProviderBase):
         try:
             # Make a minimal request to validate the API key
             self.client.models.list()
-            logger.info("OpenAI API key validated successfully")
+            logger.info("%s API key validated successfully", self.display_name)
         except Exception as ex:
             error_msg = str(ex).lower()
             if "api key" in error_msg or "unauthorized" in error_msg:
-                self.initialization_error = "Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable."
+                self.initialization_error = (
+                    f"Invalid {self.display_name} API key. "
+                    f"Please check your {self.api_key_env_var} environment variable."
+                )
             elif "rate limit" in error_msg or "quota" in error_msg:
                 # Rate limit during validation is not a fatal error
                 logger.warning("Rate limited during API key validation, but key appears valid")
@@ -101,6 +123,16 @@ class OpenAIProvider(LLMProviderBase):
             
             if self.initialization_error:
                 logger.error(self.initialization_error)
+
+    def _normalize_base_url(self, base_url: str) -> str:
+        """Normalize provider base URLs for the active transport."""
+        normalized = str(base_url or "").rstrip("/")
+        if self.provider_name == "zai" and normalized.endswith("/api/coding/paas/v4"):
+            logger.warning(
+                "Normalizing legacy Z.ai coding endpoint to general PaaS endpoint for chat completions"
+            )
+            return "https://api.z.ai/api/paas/v4"
+        return normalized
 
     def _retry_with_backoff(self, func, *args, **kwargs):
         """Execute function with exponential backoff retry logic and rate limit handling."""
@@ -114,8 +146,8 @@ class OpenAIProvider(LLMProviderBase):
                 error_str = str(ex).lower()
 
                 # Handle rate limiting with specific retry-after logic
-                if "rate limit" in error_str or "too many requests" in error_str:
-                    retry_after = self._extract_retry_after(ex)
+                if "rate limit" in error_str or "too many requests" in error_str or "429" in error_str:
+                    retry_after = self._extract_retry_after(ex, attempt)
                     if retry_after and attempt < self.max_retries - 1:
                         logger.warning(
                             f"Rate limited, waiting {retry_after}s before retry {attempt + 1}"
@@ -126,7 +158,7 @@ class OpenAIProvider(LLMProviderBase):
                 # Check if it's a retryable error
                 if self._is_retryable_error(ex):
                     if attempt < self.max_retries - 1:
-                        wait_time = min(2**attempt, 60)  # Cap at 60 seconds
+                        wait_time = self._default_backoff_seconds(attempt)
                         logger.warning(
                             f"Attempt {attempt + 1} failed, retrying in {wait_time}s: {ex}"
                         )
@@ -140,14 +172,33 @@ class OpenAIProvider(LLMProviderBase):
 
         raise last_exception
 
-    def _extract_retry_after(self, error: Exception) -> Optional[int]:
+    def _default_backoff_seconds(self, attempt: int) -> int:
+        base_delay = 2 if self.provider_name == "zai" else 1
+        return min(base_delay * (2 ** attempt), 60)
+
+    def _extract_retry_after(self, error: Exception, attempt: int = 0) -> Optional[int]:
         """Extract retry-after value from rate limit error."""
         try:
             # Try to extract from OpenAI error response
             if hasattr(error, 'response') and hasattr(error.response, 'headers'):
-                retry_after = error.response.headers.get('retry-after')
+                headers = error.response.headers
+                retry_after = headers.get('retry-after')
                 if retry_after:
                     return int(retry_after)
+
+                reset_at = headers.get('x-ratelimit-reset')
+                if reset_at:
+                    try:
+                        if str(reset_at).isdigit():
+                            wait_seconds = int(reset_at) - int(time.time())
+                        else:
+                            wait_seconds = int(
+                                parsedate_to_datetime(str(reset_at)).timestamp() - time.time()
+                            )
+                        if wait_seconds > 0:
+                            return min(wait_seconds, 60)
+                    except Exception:
+                        pass
             
             # Fallback to parsing error message
             error_str = str(error)
@@ -161,7 +212,7 @@ class OpenAIProvider(LLMProviderBase):
             pass
             
         # Default backoff for rate limits
-        return 30
+        return self._default_backoff_seconds(attempt)
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Check if an error is retryable with enhanced classification."""
@@ -264,30 +315,30 @@ class OpenAIProvider(LLMProviderBase):
             else:
                 self.last_usage = {}
 
-            record_llm_metric("generate_text", time.time() - t0, True, "openai")
+            record_llm_metric("generate_text", time.time() - t0, True, self.provider_name)
             return text
 
         except Exception as ex:
             record_llm_metric(
-                "generate_text", time.time() - t0, False, "openai", error=str(ex)
+                "generate_text", time.time() - t0, False, self.provider_name, error=str(ex)
             )
 
             # Provide more specific error messages
             error_msg = str(ex).lower()
             if "api key" in error_msg or "unauthorized" in error_msg:
                 raise GenerationFailed(
-                    "Invalid OpenAI API key. Check your OPENAI_API_KEY environment variable."
+                    f"Invalid {self.display_name} API key. Check your {self.api_key_env_var} environment variable."
                 )
             elif "rate limit" in error_msg or "quota" in error_msg:
                 raise GenerationFailed(
-                    "OpenAI rate limit exceeded or quota reached. Please try again later."
+                    f"{self.display_name} rate limit exceeded or quota reached. Please try again later."
                 )
             elif "model" in error_msg and "not found" in error_msg:
                 raise GenerationFailed(
                     f"Model '{model}' not available. Check available models."
                 )
             else:
-                raise GenerationFailed(f"OpenAI generation failed: {ex}")
+                raise GenerationFailed(f"{self.display_name} generation failed: {ex}")
 
     def stream_generate(self, prompt: str, **kwargs) -> Iterator[str]:
         """Generate text with streaming support."""
@@ -337,14 +388,14 @@ class OpenAIProvider(LLMProviderBase):
             error_msg = str(ex).lower()
             if "api key" in error_msg or "unauthorized" in error_msg:
                 raise GenerationFailed(
-                    "Invalid OpenAI API key. Check your OPENAI_API_KEY environment variable."
+                    f"Invalid {self.display_name} API key. Check your {self.api_key_env_var} environment variable."
                 )
             elif "rate limit" in error_msg:
                 raise GenerationFailed(
-                    "OpenAI rate limit exceeded. Please try again later."
+                    f"{self.display_name} rate limit exceeded. Please try again later."
                 )
             else:
-                raise GenerationFailed(f"OpenAI streaming failed: {ex}")
+                raise GenerationFailed(f"{self.display_name} streaming failed: {ex}")
 
     def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
         """Generate embeddings using OpenAI embeddings API."""
@@ -382,23 +433,23 @@ class OpenAIProvider(LLMProviderBase):
             else:
                 self.last_usage = {}
 
-            record_llm_metric("embed", time.time() - t0, True, "openai")
+            record_llm_metric("embed", time.time() - t0, True, self.provider_name)
             return embeddings
 
         except Exception as ex:
-            record_llm_metric("embed", time.time() - t0, False, "openai", error=str(ex))
+            record_llm_metric("embed", time.time() - t0, False, self.provider_name, error=str(ex))
 
             error_msg = str(ex).lower()
             if "api key" in error_msg or "unauthorized" in error_msg:
                 raise EmbeddingFailed(
-                    "Invalid OpenAI API key. Check your OPENAI_API_KEY environment variable."
+                    f"Invalid {self.display_name} API key. Check your {self.api_key_env_var} environment variable."
                 )
             elif "rate limit" in error_msg:
                 raise EmbeddingFailed(
-                    "OpenAI rate limit exceeded. Please try again later."
+                    f"{self.display_name} rate limit exceeded. Please try again later."
                 )
             else:
-                raise EmbeddingFailed(f"OpenAI embedding failed: {ex}")
+                raise EmbeddingFailed(f"{self.display_name} embedding failed: {ex}")
 
     def get_models(self) -> List[str]:
         """Get list of available models from OpenAI with fallback to static list."""
@@ -410,7 +461,7 @@ class OpenAIProvider(LLMProviderBase):
 
             def _list_models():
                 models = self.client.models.list()
-                return [model.id for model in models.data if "gpt" in model.id.lower()]
+                return [model.id for model in models.data]
 
             discovered_models = self._retry_with_backoff(_list_models)
             
@@ -422,19 +473,12 @@ class OpenAIProvider(LLMProviderBase):
             return sorted(all_models)
 
         except Exception as ex:
-            logger.warning(f"Could not fetch OpenAI models: {ex}")
+            logger.warning(f"Could not fetch {self.display_name} models: {ex}")
             return self._get_common_models()
 
     def _get_common_models(self) -> List[str]:
-        """Get list of common OpenAI models."""
-        return [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
-        ]
+        """Get list of common provider models."""
+        return list(self.provider_defaults["common_models"])
 
     def get_provider_info(self) -> Dict[str, Any]:
         """Get provider metadata with initialization status."""
@@ -444,9 +488,9 @@ class OpenAIProvider(LLMProviderBase):
             models = []
 
         return {
-            "name": "openai",
+            "name": self.provider_name,
             "model": self.model,
-            "base_url": self.base_url or "https://api.openai.com/v1",
+            "base_url": self.base_url or str(self.provider_defaults["base_url"]),
             "has_api_key": bool(self.api_key),
             "api_key_valid": self.initialization_error is None and self.client is not None,
             "initialization_error": self.initialization_error,
@@ -465,15 +509,15 @@ class OpenAIProvider(LLMProviderBase):
             return {
                 "status": "unhealthy",
                 "error": self.initialization_error,
-                "provider": "openai",
+                "provider": self.provider_name,
                 "initialization_status": "failed"
             }
 
         if not self.client:
             return {
                 "status": "unhealthy",
-                "error": "OpenAI client not initialized",
-                "provider": "openai",
+                "error": f"{self.display_name} client not initialized",
+                "provider": self.provider_name,
                 "initialization_status": "failed"
             }
 
@@ -482,7 +526,7 @@ class OpenAIProvider(LLMProviderBase):
 
             # Test API connectivity with minimal request
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=self.model,
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=1,
             )
@@ -491,9 +535,9 @@ class OpenAIProvider(LLMProviderBase):
 
             health_result = {
                 "status": "healthy",
-                "provider": "openai",
+                "provider": self.provider_name,
                 "response_time": response_time,
-                "model_tested": "gpt-3.5-turbo",
+                "model_tested": self.model,
                 "initialization_status": "success",
                 "api_key_status": "valid",
                 "connectivity": "ok"
@@ -519,7 +563,7 @@ class OpenAIProvider(LLMProviderBase):
             try:
                 from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
                 compatibility_service = ProviderModelCompatibilityService()
-                validation = compatibility_service.validate_provider_model_setup("openai")
+                validation = compatibility_service.validate_provider_model_setup(self.provider_name)
                 
                 health_result["model_library"] = {
                     "available": True,
@@ -564,7 +608,7 @@ class OpenAIProvider(LLMProviderBase):
             
             return {
                 "status": "unhealthy",
-                "provider": "openai",
+                "provider": self.provider_name,
                 "error": specific_error,
                 "error_type": error_type,
                 "raw_error": str(ex),

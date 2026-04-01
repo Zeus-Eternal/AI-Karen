@@ -5,8 +5,12 @@ import uuid
 from typing import Union
 
 try:
-    from ai_karen_engine.services.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
-    from ai_karen_engine.services.memory.unified_memory_service import UnifiedMemoryService
+    from services.memory.memory_service import WebUIMemoryService, WebUIMemoryQuery, UISource
+    from services.memory.unified_memory_service import (
+        UnifiedMemoryService,
+        MemoryCommitRequest,
+        MemoryQueryRequest,
+    )
     from ai_karen_engine.core.default_models import load_default_models
 except ImportError:
     # Define dummy classes if imports fail
@@ -38,7 +42,26 @@ except ImportError:
             return "test_id"
         async def query_memories(self, tenant_id, query):
             return []
-    
+
+    class MemoryCommitRequest:
+        def __init__(self, user_id, org_id, text, tags, importance, decay, metadata):
+            self.user_id = user_id
+            self.org_id = org_id
+            self.text = text
+            self.tags = tags
+            self.importance = importance
+            self.decay = decay
+            self.metadata = metadata
+
+    class MemoryQueryRequest:
+        def __init__(self, user_id, org_id, query, top_k, similarity_threshold=0.0, include_metadata=True):
+            self.user_id = user_id
+            self.org_id = org_id
+            self.query = query
+            self.top_k = top_k
+            self.similarity_threshold = similarity_threshold
+            self.include_metadata = include_metadata
+
     async def load_default_models():
         pass
 
@@ -55,15 +78,43 @@ async def bootstrap_memory_system(memory_service: Union[WebUIMemoryService, Unif
 
     await load_default_models()
 
-    test_id = await memory_service.store_web_ui_memory(
-        tenant_id=tenant_id,
-        content="bootstrap test",
-        user_id=str(uuid.uuid4()),
-        ui_source=UISource.API,
-    )
-    results = await memory_service.query_memories(
-        tenant_id=tenant_id, query=WebUIMemoryQuery(text="bootstrap test")
-    )
-    found = any(m.id == test_id for m in results)
+    user_id = str(uuid.uuid4())
+    if hasattr(memory_service, "commit") and hasattr(memory_service, "query"):
+        commit_response = await memory_service.commit(
+            tenant_id=tenant_id,
+            request=MemoryCommitRequest(
+                user_id=user_id,
+                org_id=None,
+                text="bootstrap test",
+                tags=["bootstrap"],
+                importance=5,
+                decay="short",
+                metadata={"ui_source": UISource.API if hasattr(UISource, "API") else "api"},
+            ),
+        )
+        test_id = commit_response.id
+        search_response = await memory_service.query(
+            tenant_id=tenant_id,
+            request=MemoryQueryRequest(
+                user_id=user_id,
+                org_id=None,
+                query="bootstrap test",
+                top_k=10,
+                similarity_threshold=0.0,
+                include_metadata=True,
+            ),
+        )
+        found = any(hit.id == test_id for hit in search_response.hits)
+    else:
+        test_id = await memory_service.store_web_ui_memory(
+            tenant_id=tenant_id,
+            content="bootstrap test",
+            user_id=user_id,
+            ui_source=UISource.API,
+        )
+        results = await memory_service.query_memories(
+            tenant_id=tenant_id, query=WebUIMemoryQuery(text="bootstrap test")
+        )
+        found = any(m.id == test_id for m in results)
     logger.info("[bootstrap] roundtrip success=%s", found)
     return found

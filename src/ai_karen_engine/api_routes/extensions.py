@@ -29,7 +29,7 @@ router = APIRouter()
 
 # Import authentication dependencies
 try:
-    from src.auth.auth_middleware import get_current_user
+    from ai_karen_engine.auth.auth_middleware import get_current_user
     AUTH_AVAILABLE = True
 except ImportError:
     AUTH_AVAILABLE = False

@@ -18,7 +18,7 @@ from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.middleware.content_safety_checker import (
     ContentSafetyChecker
 )
-from src.services.agents.agent_safety_types import (
+from ai_karen_engine.services.agent_safety_types import (
     SafetyLevel, RiskLevel, ValidationResult, ContentType
 )
 

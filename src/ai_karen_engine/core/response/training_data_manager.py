@@ -242,6 +242,68 @@ class TrainingDataManager:
         
         self.logger.info(f"Created dataset {dataset_id}: {name}")
         return dataset_id
+
+    def list_datasets(
+        self,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[DatasetMetadata]:
+        """List dataset metadata records from the authoritative metadata store."""
+
+        del tenant_id  # Reserved for future tenant-aware dataset partitioning
+
+        datasets: List[DatasetMetadata] = []
+        if not self.metadata_dir.exists():
+            return datasets
+
+        for metadata_file in self.metadata_dir.glob("*.json"):
+            try:
+                dataset_id = metadata_file.stem
+                metadata = self._load_dataset_metadata(dataset_id)
+                if metadata is None:
+                    continue
+                if user_id and metadata.created_by not in {user_id, "system"}:
+                    continue
+                datasets.append(metadata)
+            except Exception as exc:
+                self.logger.warning(
+                    "Failed to load dataset metadata from %s: %s",
+                    metadata_file,
+                    exc,
+                )
+
+        datasets.sort(key=lambda item: item.created_at, reverse=True)
+        return datasets[offset : offset + limit]
+
+    def delete_dataset(
+        self,
+        dataset_id: str,
+        user_id: Optional[str] = None,
+    ) -> bool:
+        """Delete a dataset and all of its stored artifacts."""
+
+        metadata = self._load_dataset_metadata(dataset_id)
+        if metadata is None:
+            return False
+        if user_id and metadata.created_by not in {user_id, "system"}:
+            return False
+
+        metadata_path = self.metadata_dir / f"{dataset_id}.json"
+        if metadata_path.exists():
+            metadata_path.unlink()
+
+        dataset_dir = self.datasets_dir / dataset_id
+        if dataset_dir.exists():
+            shutil.rmtree(dataset_dir)
+
+        versions_dir = self.versions_dir / dataset_id
+        if versions_dir.exists():
+            shutil.rmtree(versions_dir)
+
+        self.logger.info("Deleted dataset %s", dataset_id)
+        return True
     
     def upload_dataset(
         self,
@@ -293,6 +355,44 @@ class TrainingDataManager:
         
         self.logger.info(f"Uploaded {len(examples)} examples to dataset {dataset_id}, version {version_id}")
         return version_id
+
+    def create_dataset_from_examples(
+        self,
+        *,
+        name: str,
+        description: str,
+        created_by: str,
+        examples: List[TrainingExample],
+        tags: Optional[List[str]] = None,
+        provenance: Optional[Dict[str, Any]] = None,
+        version_description: str = "Curated memory ingest",
+    ) -> Tuple[str, str, ValidationReport]:
+        """Create a dataset and first version from curated training examples."""
+
+        dataset_id = self.create_dataset(
+            name=name,
+            description=description,
+            created_by=created_by,
+            format=DataFormat.JSON,
+            tags=tags,
+        )
+
+        metadata = self._load_dataset_metadata(dataset_id)
+        if metadata and provenance:
+            metadata.provenance.update(provenance)
+            metadata.updated_at = datetime.utcnow()
+            self._save_dataset_metadata(metadata)
+
+        payload = [example.to_dict() for example in examples]
+        version_id = self.upload_dataset(
+            dataset_id=dataset_id,
+            data=payload,
+            format=DataFormat.JSON,
+            version_description=version_description,
+            created_by=created_by,
+        )
+        validation_report = self.validate_dataset(examples)
+        return dataset_id, version_id, validation_report
     
     def get_dataset(self, dataset_id: str, version: Optional[str] = None) -> List[TrainingExample]:
         """Retrieve training data from a dataset.

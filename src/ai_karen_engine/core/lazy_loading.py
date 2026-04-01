@@ -204,12 +204,20 @@ class ResourceManager:
         check_interval: float = 30.0
     ):
         self.check_interval = check_interval
-        self._memory_ratio = self._get_env_float("KAREN_MAX_MEMORY_RATIO", 0.85)
-        self._memory_reserve_mb = self._get_env_float("KAREN_MEMORY_RESERVE_MB", 1024.0)
-        self._minimum_memory_mb = self._get_env_float("KAREN_MIN_MEMORY_MB", 1536.0)
-        self._cpu_threshold_auto = self._get_env_float("KAREN_CPU_AUTO_THRESHOLD_PERCENT", 85.0)
-        self._limit_log_delta_mb = self._get_env_float("KAREN_RESOURCE_LIMIT_LOG_DELTA_MB", 256.0)
+        self._memory_ratio = self._get_env_float("KAREN_MAX_MEMORY_RATIO", 0.95)
+        self._memory_reserve_mb = self._get_env_float("KAREN_MEMORY_RESERVE_MB", 512.0)
+        self._minimum_memory_mb = self._get_env_float("KAREN_MIN_MEMORY_MB", 2048.0)
+        self._cpu_threshold_auto = self._get_env_float("KAREN_CPU_AUTO_THRESHOLD_PERCENT", 90.0)
+        self._limit_log_delta_mb = self._get_env_float("KAREN_RESOURCE_LIMIT_LOG_DELTA_MB", 512.0)
+        
+        self._force_full_startup = os.getenv("KAREN_FORCE_FULL_STARTUP", "true").lower() == "true"
+        self._detected_memory_limit_mb = self._detect_memory_limit_mb()
         self.max_memory_mb = max_memory_mb or self._detect_memory_threshold_mb()
+        
+        if self._force_full_startup:
+            logger.info("🚀 KAREN_FORCE_FULL_STARTUP enabled: Relaxing memory ceiling to 8GB for critical services")
+            self.max_memory_mb = max(self.max_memory_mb, 8192.0)
+
         self.max_cpu_percent = max_cpu_percent or self._detect_cpu_threshold_percent()
         
         self._services: Dict[str, LazyService] = {}
@@ -270,7 +278,8 @@ class ResourceManager:
                             cpu_usage,
                             self.max_cpu_percent,
                         )
-                    await self._cleanup_idle_services()
+                    cleaned_count = await self._cleanup_idle_services()
+                    self._reconcile_runtime_memory_limit(memory_usage, cleaned_count)
                 
             except asyncio.CancelledError:
                 break
@@ -301,7 +310,11 @@ class ResourceManager:
             except ValueError:
                 logger.warning("Invalid KAREN_MAX_MEMORY_MB=%s; using dynamic detection", env_value)
 
-        limit_mb = self._detect_memory_limit_mb()
+        return self._compute_adaptive_memory_threshold_mb()
+
+    def _compute_adaptive_memory_threshold_mb(self) -> float:
+        """Compute the runtime-safe memory threshold from detected limits only."""
+        limit_mb = self._detected_memory_limit_mb
         reserve_adjusted_mb = max(0.0, limit_mb - self._memory_reserve_mb)
         ratio_adjusted_mb = limit_mb * self._memory_ratio
         adaptive_threshold_mb = min(ratio_adjusted_mb, reserve_adjusted_mb) if reserve_adjusted_mb else ratio_adjusted_mb
@@ -347,6 +360,7 @@ class ResourceManager:
     def _refresh_dynamic_limits(self) -> None:
         """Refresh dynamic thresholds when auto mode is enabled."""
         previous_limits = (self.max_memory_mb, self.max_cpu_percent)
+        self._detected_memory_limit_mb = self._detect_memory_limit_mb()
 
         if self._is_auto_env("KAREN_MAX_MEMORY_MB"):
             self.max_memory_mb = self._detect_memory_threshold_mb()
@@ -419,7 +433,33 @@ class ResourceManager:
             return 45.0
         return 60.0
     
-    async def _cleanup_idle_services(self) -> None:
+    def _reconcile_runtime_memory_limit(self, memory_usage: float, cleaned_count: int) -> None:
+        """
+        Lift stale explicit memory ceilings to the detected container-safe threshold
+        when baseline runtime footprint already exceeds the configured limit.
+        """
+        if cleaned_count > 0 or self._is_auto_env("KAREN_MAX_MEMORY_MB"):
+            return
+
+        adaptive_limit_mb = self._compute_adaptive_memory_threshold_mb()
+        if adaptive_limit_mb <= self.max_memory_mb:
+            return
+
+        # Only reconcile when runtime baseline already exceeds the stale ceiling.
+        if memory_usage <= self.max_memory_mb:
+            return
+
+        previous_limit = self.max_memory_mb
+        self.max_memory_mb = adaptive_limit_mb
+        self._last_logged_limits = (self.max_memory_mb, self.max_cpu_percent)
+        logger.warning(
+            "Adjusted stale explicit memory ceiling to runtime-safe threshold - Memory: %.1fMB -> %.1fMB (detected container limit %.1fMB)",
+            previous_limit,
+            self.max_memory_mb,
+            self._detected_memory_limit_mb,
+        )
+
+    async def _cleanup_idle_services(self) -> int:
         """Cleanup idle services based on priority and usage."""
         # Sort services by priority (low priority first) and last used time
         services_to_cleanup = []
@@ -455,6 +495,7 @@ class ResourceManager:
                 cleaned_count,
                 idle_cleanup_threshold,
             )
+        return cleaned_count
 
 
 class LazyServiceRegistry:
@@ -570,16 +611,57 @@ def create_ai_orchestrator_factory():
     """Factory for AI orchestrator service."""
 
     def factory():
-        from ai_karen_engine.core.services.base import ServiceConfig
-        from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
-            AIOrchestrator,
-        )
+        logger.info("🔍 DEBUG: Creating AI orchestrator factory instance...")
+        try:
+            from ai_karen_engine.core.services.base import ServiceConfig
+            from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+                AIOrchestrator,
+            )
 
-        service = AIOrchestrator(
-            ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
-        )
-        return service
+            service = AIOrchestrator(
+                ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
+            )
+            logger.info("✅ AI orchestrator factory created successfully")
+            return service
+        except Exception as e:
+            logger.error(f"❌ Failed to create AI orchestrator factory: {e}", exc_info=True)
+            # Create a fallback service
+            class FallbackAIOrchestrator:
+                def __init__(self, config):
+                    self.config = config
+                    self.initialized = False
+                    logger.info("🔄 Created fallback AI orchestrator")
+                
+                async def initialize(self):
+                    self.initialized = True
+                    logger.info("🔄 Fallback AI orchestrator initialized")
+                
+                def load_config(self):
+                    return {"environment": "fallback", "debug": True}
+            
+            return FallbackAIOrchestrator(ServiceConfig(name="ai_orchestrator", dependencies=[], config={}))
 
+    return factory
+
+
+def create_memory_service_factory():
+    def factory():
+        from services.memory.memory_service import WebUIMemoryService
+        return WebUIMemoryService()
+    return factory
+
+
+def create_conversation_service_factory():
+    def factory():
+        from services.memory.conversation_service import WebUIConversationService
+        from ai_karen_engine.chat.factory import get_chat_service_factory
+        factory = get_chat_service_factory()
+        base_manager = factory.create_conversation_manager()
+        memory_service = factory.get_service("memory_service") or factory.create_memory_service()
+        return WebUIConversationService(
+            base_conversation_manager=base_manager,
+            memory_service=memory_service
+        )
     return factory
 
 
@@ -593,14 +675,19 @@ def create_analytics_service_factory():
 
 async def setup_lazy_services():
     """Setup all lazy services with appropriate configurations."""
+    logger.info("🔍 DEBUG: Setting up lazy services...")
     await lazy_registry.initialize()
     
     # Get timeout configurations from environment - balanced cleanup
-    nlp_timeout = float(os.getenv("KAREN_NLP_IDLE_TIMEOUT", "120.0"))  # 2 minutes - balanced
-    orchestrator_timeout = float(os.getenv("KAREN_ORCHESTRATOR_IDLE_TIMEOUT", "60.0"))  # 1 minute - balanced
-    analytics_timeout = float(os.getenv("KAREN_ANALYTICS_IDLE_TIMEOUT", "30.0"))  # 30 seconds - balanced
+    # Get timeout configurations from environment - robust production settings
+    nlp_timeout = float(os.getenv("KAREN_NLP_IDLE_TIMEOUT", "300.0"))  # 5 minutes
+    orchestrator_timeout = float(os.getenv("KAREN_ORCHESTRATOR_IDLE_TIMEOUT", "300.0"))  # 5 minutes
+    analytics_timeout = float(os.getenv("KAREN_ANALYTICS_IDLE_TIMEOUT", "120.0"))  # 2 minutes
+    
+    logger.info(f"🔍 DEBUG: Configuration - NLP timeout: {nlp_timeout}, Orchestrator timeout: {orchestrator_timeout}, Analytics timeout: {analytics_timeout}")
     
     # Register NLP services (low priority, shorter timeout for memory efficiency)
+    logger.info("🔍 DEBUG: Registering NLP service...")
     lazy_registry.register(
         name="nlp_service",
         factory=create_nlp_service_factory(),
@@ -610,6 +697,7 @@ async def setup_lazy_services():
     )
     
     # Register AI orchestrator (medium priority, aggressive cleanup)
+    logger.info("🔍 DEBUG: Registering AI orchestrator...")
     lazy_registry.register(
         name="ai_orchestrator",
         factory=create_ai_orchestrator_factory(),
@@ -617,7 +705,26 @@ async def setup_lazy_services():
         priority=3
     )
     
+    # Register memory service (high priority)
+    logger.info("🔍 DEBUG: Registering memory service...")
+    lazy_registry.register(
+        name="memory_service",
+        factory=create_memory_service_factory(),
+        idle_timeout=orchestrator_timeout * 2,
+        priority=4
+    )
+    
+    # Register conversation service (high priority, critical for history)
+    logger.info("🔍 DEBUG: Registering conversation service...")
+    lazy_registry.register(
+        name="conversation_service",
+        factory=create_conversation_service_factory(),
+        idle_timeout=orchestrator_timeout * 2,
+        priority=5
+    )
+    
     # Register analytics service (low priority, very aggressive cleanup)
+    logger.info("🔍 DEBUG: Registering analytics service...")
     lazy_registry.register(
         name="analytics_service",
         factory=create_analytics_service_factory(),
@@ -625,6 +732,7 @@ async def setup_lazy_services():
         priority=1
     )
     
+    logger.info(f"🔍 DEBUG: Lazy services registered: {lazy_registry.list_services()}")
     logger.info("✅ Lazy services configured")
 
 

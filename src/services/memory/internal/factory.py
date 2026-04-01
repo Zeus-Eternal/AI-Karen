@@ -302,7 +302,7 @@ class ServicesFactory:
             return None
 
         try:
-            from src.services.memory_service import WebUIMemoryService
+            from services.memory.memory_service import WebUIMemoryService
 
             service = WebUIMemoryService()
             self._services["memory_service"] = service
@@ -319,11 +319,18 @@ class ServicesFactory:
             return None
 
         try:
-            from src.services.enhanced_memory_service import (
+            from services.memory.enhanced_memory_service import (
                 EnhancedMemoryService,
             )
+            from services.memory.memory_service import WebUIMemoryService
 
-            service = EnhancedMemoryService()
+            base_service = self._services.get("memory_service")
+            if not isinstance(base_service, WebUIMemoryService):
+                base_service = self.create_memory_service()
+            if not isinstance(base_service, WebUIMemoryService):
+                raise RuntimeError("Memory Service unavailable for Enhanced Memory Service initialization")
+
+            service = EnhancedMemoryService(base_service.base_manager)
             self._services["enhanced_memory"] = service
             logger.info("Enhanced Memory Service created successfully")
             return service
@@ -338,11 +345,26 @@ class ServicesFactory:
             return None
 
         try:
-            from src.services.integrated_memory_service import (
+            from services.memory.enhanced_memory_service import EnhancedMemoryService
+            from services.memory.integrated_memory_service import (
                 IntegratedMemoryService,
             )
+            from services.memory.memory_service import WebUIMemoryService
 
-            service = IntegratedMemoryService()
+            base_service = self._services.get("memory_service")
+            if not isinstance(base_service, WebUIMemoryService):
+                base_service = self.create_memory_service()
+            if not isinstance(base_service, WebUIMemoryService):
+                raise RuntimeError("Memory Service unavailable for Integrated Memory Service initialization")
+
+            enhanced_service = self._services.get("enhanced_memory")
+            if not isinstance(enhanced_service, EnhancedMemoryService):
+                enhanced_service = self.create_enhanced_memory_service()
+
+            service = IntegratedMemoryService(
+                base_memory_manager=base_service.base_manager,
+                db_client=base_service.db_client,
+            )
             self._services["integrated_memory"] = service
             logger.info("Integrated Memory Service created successfully")
             return service

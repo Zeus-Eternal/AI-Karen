@@ -39,6 +39,7 @@ class SettingsManager:
             if self.settings_path.exists():
                 with open(self.settings_path, 'r', encoding='utf-8') as f:
                     self.settings = json.load(f)
+                self._normalize_settings()
                 logger.info(f"Loaded settings from {self.settings_path}")
             else:
                 logger.warning(f"Settings file not found: {self.settings_path}")
@@ -51,6 +52,7 @@ class SettingsManager:
     def _save_settings(self) -> None:
         """Save settings to JSON file."""
         try:
+            self._normalize_settings()
             # Ensure directory exists
             self.settings_path.parent.mkdir(parents=True, exist_ok=True)
             
@@ -66,7 +68,6 @@ class SettingsManager:
         return {
             "provider": "llama-cpp",
             "model": "Phi-3-mini-4k-instruct-q4.gguf",
-            "api_key": "",
             "use_memory": True,
             "context_length": 512,
             "decay": 0.1,
@@ -82,6 +83,11 @@ class SettingsManager:
                 "enable_audit_logging": True
             }
         }
+
+    def _normalize_settings(self) -> None:
+        """Remove legacy fields that no longer belong in mutable app settings."""
+        # Provider secrets are stored in SecretManager, not in settings.json.
+        self.settings.pop("api_key", None)
     
     def get_setting(self, key: str, default: Any = None) -> Any:
         """

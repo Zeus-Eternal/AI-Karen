@@ -5,11 +5,15 @@ Enhanced authentication endpoints with security hardening, rate limiting,
 and first-run setup flow.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("kari.auth_routes")
+
 try:
     from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 except ImportError:
@@ -116,16 +120,43 @@ auth_config = AuthConfig.model_construct(
 )
 auth_service = AuthService(config=auth_config)
 
-# Router - prefix is empty since routes already include /auth/ prefix
-router = APIRouter(prefix="", tags=["authentication"])
+# Router - now with explicit /auth prefix for API gateway consistency
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 async def _get_authenticated_user_from_request(request: Request):
     """Prefer the middleware-resolved user already attached to the request."""
+    import os
+    # Support multiple ways to enable auth bypass for development
+    bypass_env = os.getenv("KARI_AUTH_BYPASS", "false").lower()
+    auth_bypass = bypass_env in ("true", "1", "yes")
+    
+    # Check for direct marker in request state (set by middleware)
     request_user = getattr(request.state, "user", None)
     if request_user:
-        return request_user
-    return await get_authenticated_user(request)
+        return UserData.ensure(request_user)
+        
+    if auth_bypass:
+        logger.debug("Authentication bypass active in _get_authenticated_user_from_request")
+        return UserData.from_dict({
+            "user_id": "dev-user",
+            "email": "admin@karen.ai",
+            "roles": ["admin", "user"],
+            "full_name": "Developer Admin",
+            "tenant_id": "default",
+            "preferences": {}
+        })
+        
+    # Standard authentication path
+    try:
+        user = await get_authenticated_user(request)
+        return UserData.ensure(user)
+    except Exception as e:
+        logger.warning(f"Authentication failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed or session expired"
+        )
 
 
 def get_client_ip(request: Request) -> str:
@@ -158,25 +189,75 @@ def _serialize_permissions(user_payload: Dict[str, Any]) -> List[str]:
     return sorted(permissions)
 
 
+def _user_value(user: Any, key: str, default: Any = None) -> Any:
+    """Read a field from either a dict payload or an object."""
+    if isinstance(user, dict):
+        return user.get(key, default)
+    return getattr(user, key, default)
+
+
+def _ensure_authenticated_user_payload(user: Any) -> Dict[str, Any]:
+    """Normalize and validate an authenticated user payload."""
+    if isinstance(user, dict):
+        payload = dict(user)
+    else:
+        payload = {
+            "user_id": getattr(user, "user_id", None) or getattr(user, "id", None),
+            "email": getattr(user, "email", None),
+            "full_name": getattr(user, "full_name", None),
+            "roles": getattr(user, "roles", []),
+            "tenant_id": getattr(user, "tenant_id", None),
+            "preferences": getattr(user, "preferences", {}),
+            "is_active": getattr(user, "is_active", True),
+        }
+
+    user_id = str(payload.get("user_id") or payload.get("id") or "").strip()
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated user context is missing a user identifier",
+        )
+
+    payload["user_id"] = user_id
+    payload["tenant_id"] = str(payload.get("tenant_id") or payload.get("org_id") or "default")
+    payload["roles"] = list(payload.get("roles") or [])
+    payload["preferences"] = dict(payload.get("preferences") or {})
+    payload["full_name"] = payload.get("full_name") or payload.get("name") or ""
+    payload["email"] = payload.get("email") or ""
+    return payload
+
+
 def _serialize_user_response(user: Any) -> Dict[str, Any]:
     """Normalize a user-like object into the public response shape."""
-
-    user_id = str(getattr(user, "id", None) or getattr(user, "user_id", ""))
-    created_at = getattr(user, "created_at", None)
-    last_login = getattr(user, "last_login", None)
-    tenant_id = getattr(user, "tenant_id", "default")
+    payload = _ensure_authenticated_user_payload(user)
+    user_id = payload["user_id"]
+    created_at = _user_value(user, "created_at", None)
+    last_login = _user_value(user, "last_login", None)
+    tenant_id = payload["tenant_id"]
+    status_value = _user_value(user, "status", None)
+    is_active = (
+        getattr(status_value, "value", None) == "active"
+        if status_value is not None
+        else bool(payload.get("is_active", True))
+    )
 
     return {
         "user_id": user_id,
-        "email": getattr(user, "email", ""),
-        "full_name": getattr(user, "full_name", "") or "",
-        "roles": list(getattr(user, "roles", []) or []),
-        "is_active": getattr(user, "status", None).value == "active" if getattr(user, "status", None) else getattr(user, "is_active", True),
+        "email": payload["email"],
+        "full_name": payload["full_name"],
+        "roles": payload["roles"],
+        "is_active": is_active,
         "created_at": created_at.isoformat() if created_at else datetime.now(timezone.utc).isoformat(),
         "last_login": last_login.isoformat() if last_login else None,
-        "tenant_id": str(tenant_id) if tenant_id is not None else "default",
-        "preferences": dict(getattr(user, "preferences", {}) or {}),
+        "tenant_id": tenant_id,
+        "preferences": payload["preferences"],
     }
+
+
+def _resolve_current_user_id(user: Any) -> str:
+    """Resolve current user ID from either a dict payload or a user-like object."""
+    payload = _ensure_authenticated_user_payload(user)
+    return payload["user_id"]
 
 
 # Startup/shutdown handlers commented out to prevent blocking during app startup
@@ -194,7 +275,7 @@ def _serialize_user_response(user: Any) -> Dict[str, Any]:
 #     await auth_service.stop()
 
 
-@router.get("/auth/status")
+@router.get("/status")
 async def auth_status() -> Dict[str, Any]:
     """Get authentication service status."""
     stats = await auth_service.get_auth_stats()
@@ -216,7 +297,7 @@ async def auth_status() -> Dict[str, Any]:
     }
 
 
-@router.get("/auth/health")
+@router.get("/health")
 async def auth_health() -> Dict[str, Any]:
     """Authentication service health check."""
     is_healthy = await auth_service.health_check()
@@ -228,7 +309,7 @@ async def auth_health() -> Dict[str, Any]:
     }
 
 
-@router.get("/auth/first-run")
+@router.get("/first-run")
 async def check_first_run() -> Dict[str, Any]:
     """Check if first-run setup is required."""
     is_first_run = await auth_service.is_first_run()
@@ -239,7 +320,7 @@ async def check_first_run() -> Dict[str, Any]:
     }
 
 
-@router.post("/auth/first-run/setup")
+@router.post("/first-run/setup")
 async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) -> JSONResponse:
     """Set up the first admin user."""
     # Check if first-run setup is actually needed
@@ -305,7 +386,20 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "message": "First admin user created and authenticated successfully"
         }
         
-        return JSONResponse(content=response_data, status_code=status.HTTP_201_CREATED)
+        response = JSONResponse(content=response_data, status_code=status.HTTP_201_CREATED)
+
+        is_secure = http_request.url.scheme == "https"
+        response.set_cookie(
+            key="kari_session",
+            value=access_token,
+            max_age=auth_service.config.access_token_expire_minutes * 60,
+            httponly=True,
+            secure=is_secure,
+            samesite="lax",
+            path="/",
+        )
+
+        return response
         
     except ValueError as e:
         raise HTTPException(
@@ -319,7 +413,7 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
         )
 
 
-@router.post("/auth/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     """Authenticate user and return tokens."""
     ip_address = get_client_ip(http_request)
@@ -385,7 +479,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     return response
 
 
-@router.post("/auth/refresh")
+@router.post("/refresh")
 async def refresh_token(request: RefreshTokenRequest, http_request: Request) -> JSONResponse:
     """Refresh access token using refresh token."""
     access_token, error = await auth_service.refresh_access_token(request.refresh_token)
@@ -417,7 +511,7 @@ async def refresh_token(request: RefreshTokenRequest, http_request: Request) -> 
     return response
 
 
-@router.post("/auth/logout")
+@router.post("/logout")
 async def logout(
     request: RefreshTokenRequest,
     current_user=Depends(_get_authenticated_user_from_request),
@@ -432,10 +526,11 @@ async def logout(
     return response
 
 
-@router.get("/auth/validate-session")
+@router.get("/validate-session")
 async def validate_session(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
     """Validate current session and return user information."""
-    user_payload = _serialize_user_response(current_user)
+    # current_user is already a UserData instance from the dependency
+    user_payload = current_user.to_dict() if hasattr(current_user, "to_dict") else dict(current_user)
     permissions = _serialize_permissions(user_payload)
     user_payload["permissions"] = permissions
     return {
@@ -448,7 +543,7 @@ async def validate_session(current_user=Depends(_get_authenticated_user_from_req
     }
 
 
-@router.get("/auth/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
     """Get current user information."""
     response = _serialize_user_response(current_user)
@@ -457,14 +552,14 @@ async def get_current_user_info(current_user=Depends(_get_authenticated_user_fro
     return response
 
 
-@router.put("/auth/me", response_model=UserResponse)
+@router.put("/me", response_model=UserResponse)
 async def update_current_user_info(
     request: UpdateProfileRequest,
     current_user=Depends(_get_authenticated_user_from_request),
 ) -> Dict[str, Any]:
     """Update current user information."""
 
-    current_user_id = str(getattr(current_user, "id", None) or getattr(current_user, "user_id", ""))
+    current_user_id = _resolve_current_user_id(current_user)
 
     updated_user, error = await auth_service.update_user_profile(
         current_user_id,
@@ -484,14 +579,14 @@ async def update_current_user_info(
     return _serialize_user_response(updated_user)
 
 
-@router.post("/auth/change-password")
+@router.post("/change-password")
 async def change_password(
     request: ChangePasswordRequest,
     current_user=Depends(_get_authenticated_user_from_request),
 ) -> Dict[str, str]:
     """Change the current user's password."""
 
-    current_user_id = str(getattr(current_user, "id", None) or getattr(current_user, "user_id", ""))
+    current_user_id = _resolve_current_user_id(current_user)
 
     error = await auth_service.change_user_password(
         current_user_id,
@@ -510,7 +605,7 @@ async def change_password(
     return {"detail": "Password updated successfully"}
 
 
-@router.post("/auth/create-user", response_model=UserResponse)
+@router.post("/create-user", response_model=UserResponse)
 async def create_user(
     request: CreateUserRequest,
     current_user=Depends(get_authenticated_user)
@@ -551,7 +646,7 @@ async def create_user(
     return JSONResponse(content=user_data, status_code=status.HTTP_201_CREATED)
 
 
-@router.get("/auth/stats", response_model=None)
+@router.get("/stats", response_model=None)
 async def get_auth_stats(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Get authentication statistics (admin only)."""
     # Check if current user has admin privileges
@@ -565,7 +660,7 @@ async def get_auth_stats(current_user=Depends(get_authenticated_user)) -> Dict[s
     return stats
 
 
-@router.get("/auth/security/context")
+@router.get("/security/context")
 async def get_security_context(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
     """Get security context for authenticated user."""
     return {

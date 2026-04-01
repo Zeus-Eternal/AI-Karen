@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ai_karen_engine.models.web_ui_types import WebUIMemoryQuery, WebUIMemoryEntry
 from ai_karen_engine.api_routes.memory_routes import MemQuery
 from ai_karen_engine.database.memory_manager import MemoryEntry
-from src.services.memory_service import UISource
+from services.memory.memory_service import UISource
 
 
 def convert_datetime_to_js_timestamp(dt: datetime) -> int:

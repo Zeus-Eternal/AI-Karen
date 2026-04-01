@@ -16,10 +16,13 @@ from fastapi import Depends
 
 # Import authentication middleware
 if TYPE_CHECKING:
-    from src.auth.auth_middleware import BaseAuthMiddleware
+    from ai_karen_engine.auth.auth_middleware import BaseAuthMiddleware
 
 try:
-    from src.auth.auth_middleware import get_auth_middleware, AuthenticationError  # type: ignore
+    from ai_karen_engine.auth.auth_middleware import (  # type: ignore
+        AuthenticationError,
+        get_auth_middleware,
+    )
     AUTH_AVAILABLE = True
 except ImportError:
     # Fallback for development/testing

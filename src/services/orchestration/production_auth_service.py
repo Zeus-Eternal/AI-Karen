@@ -5,7 +5,7 @@ This module re-exports the AuthService and UserAccount classes from the auth_ser
 for backward compatibility with existing code.
 """
 
-from src.services.auth_service import AuthService, UserAccount
+from ai_karen_engine.services.auth_service import AuthService, UserAccount
 
 __all__ = [
     "AuthService",

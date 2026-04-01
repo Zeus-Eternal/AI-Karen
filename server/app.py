@@ -41,6 +41,9 @@ except ImportError:
     EXTENSIONS_AVAILABLE = False
     logger.warning("Extension system not available")
 
+# Initialize logging EARLY to ensure all subsequent imports use configured loggers
+configure_logging()
+
 # Global variables from original main.py
 ENABLED_PLUGINS = []
 PLUGIN_MAP = {}
@@ -67,9 +70,9 @@ def create_app() -> FastAPI:
     settings = Settings()
     environment = settings.environment.lower()
     
-    # Configure logging
-    configure_logging()
-    
+    # Environment loading is handled in config module
+    settings = Settings()
+    environment = settings.environment.lower()
     # Load performance configuration
     load_performance_settings(settings)
     

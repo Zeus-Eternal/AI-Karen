@@ -262,7 +262,7 @@ class MemoryWritebackSystem:
             for entry in batch:
                 try:
                     # Create memory commit request
-                    from src.services.unified_memory_service import (
+                    from services.memory.unified_memory_service import (
                         MemoryCommitRequest,
                     )
 
@@ -308,7 +308,12 @@ class MemoryWritebackSystem:
 
                     # Commit to memory service
                     # Assume we have access to tenant_id through the service
-                    tenant_id = "default"  # This would be properly resolved
+                    tenant_id = str(
+                        entry.org_id
+                        or entry.user_id
+                        or entry.session_id
+                        or "default"
+                    )
 
                     response = await self.memory_service.commit(
                         tenant_id=tenant_id,
@@ -597,8 +602,13 @@ class MemoryWritebackSystem:
                 except Exception as e:
                     logger.error(f"Background writeback processing failed: {e}")
 
-        # This would be started by the application
-        # self._writeback_task = asyncio.create_task(background_processor())
+        if self._writeback_task and not self._writeback_task.done():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._writeback_task = loop.create_task(background_processor())
 
     async def shutdown(self):
         """Shutdown the writeback system and process remaining entries"""

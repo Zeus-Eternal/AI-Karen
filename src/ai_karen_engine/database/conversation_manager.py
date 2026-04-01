@@ -232,7 +232,11 @@ class ConversationManager:
                 )
 
                 session.add(db_conversation)
-                await session.flush()
+                try:
+                    await session.flush()
+                except Exception as flush_exc:
+                    logger.exception(f"❌ Database flush failed during conversation creation: {flush_exc}")
+                    raise
 
                 # Add initial message if provided
                 if initial_message:

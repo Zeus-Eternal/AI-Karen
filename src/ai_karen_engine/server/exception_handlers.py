@@ -17,7 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ai_karen_engine.server.json_encoder import custom_json_dumps
 
 try:
-    from src.auth.auth_middleware import AuthenticationError
+    from ai_karen_engine.auth.auth_middleware import AuthenticationError
 except ImportError:
     # Fallback for environments where auth is not available
     class AuthenticationError(Exception):

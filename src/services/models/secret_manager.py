@@ -9,6 +9,8 @@ import base64
 import json
 import logging
 import os
+import shutil
+import tempfile
 from cryptography.fernet import Fernet
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -29,8 +31,11 @@ class SecretManager:
         Args:
             secrets_dir: Directory to store encrypted secrets (default: config/secrets)
         """
-        self.secrets_dir = secrets_dir or Path("config/secrets")
+        self.legacy_secrets_dir = Path("config/secrets")
+        self.secrets_dir = self._resolve_secrets_dir(secrets_dir)
         self.secrets_dir.mkdir(parents=True, exist_ok=True)
+        self._ensure_directory_permissions(self.secrets_dir)
+        self._migrate_legacy_secrets_if_needed()
         
         # Initialize encryption key
         self.key_file = self.secrets_dir / ".key"
@@ -39,6 +44,61 @@ class SecretManager:
         # Secrets metadata file
         self.metadata_file = self.secrets_dir / "metadata.json"
         self.metadata = self._load_metadata()
+
+    def _resolve_secrets_dir(self, secrets_dir: Optional[Path]) -> Path:
+        """Resolve a writable secrets directory for the current runtime."""
+        if secrets_dir is not None:
+            return secrets_dir
+
+        env_dir = os.getenv("KARI_SECRETS_DIR")
+        if env_dir:
+            return Path(os.path.expanduser(env_dir))
+
+        container_secure = Path("/secure/secrets")
+        if self._is_directory_writable(container_secure.parent):
+            return container_secure
+
+        user_secure = Path.home() / ".kari" / "secure" / "secrets"
+        if self._is_directory_writable(user_secure.parent):
+            return user_secure
+
+        return Path(tempfile.gettempdir()) / "kari" / "secrets"
+
+    def _is_directory_writable(self, path: Path) -> bool:
+        """Return True when the directory can be created or written to."""
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            test_file = path / ".write_test"
+            with open(test_file, "w", encoding="utf-8") as handle:
+                handle.write("ok")
+            test_file.unlink(missing_ok=True)
+            return True
+        except Exception:
+            return False
+
+    def _ensure_directory_permissions(self, path: Path) -> None:
+        """Apply restrictive permissions where supported."""
+        try:
+            os.chmod(path, 0o700)
+        except Exception:
+            logger.debug("Unable to apply secure permissions to %s", path, exc_info=True)
+
+    def _migrate_legacy_secrets_if_needed(self) -> None:
+        """Copy legacy secrets into the writable runtime directory when needed."""
+        if self.secrets_dir == self.legacy_secrets_dir:
+            return
+        if not self.legacy_secrets_dir.exists():
+            return
+
+        for candidate in [".key", "metadata.json", *[p.name for p in self.legacy_secrets_dir.glob("*.enc")]]:
+            source = self.legacy_secrets_dir / candidate
+            target = self.secrets_dir / candidate
+            if not source.exists() or target.exists():
+                continue
+            try:
+                shutil.copy2(source, target)
+            except Exception as exc:
+                logger.warning("Failed to migrate legacy secret artifact %s: %s", source, exc)
     
     def _get_or_create_cipher(self) -> Fernet:
         """Get or create encryption cipher."""
@@ -70,11 +130,17 @@ class SecretManager:
     def _save_metadata(self) -> None:
         """Save secrets metadata."""
         try:
+            self.metadata_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.metadata_file, 'w', encoding='utf-8') as f:
                 json.dump(self.metadata, f, indent=2)
             os.chmod(self.metadata_file, 0o600)
         except Exception as e:
             logger.error(f"Failed to save secrets metadata: {e}")
+            raise
+
+    def _refresh_metadata(self) -> None:
+        """Refresh in-memory metadata from disk."""
+        self.metadata = self._load_metadata()
     
     def set_secret(self, name: str, value: str, description: str = "") -> bool:
         """
@@ -151,7 +217,18 @@ class SecretManager:
             True if secret exists, False otherwise
         """
         secret_file = self.secrets_dir / f"{name}.enc"
-        return secret_file.exists() and name in self.metadata
+        if not secret_file.exists():
+            return False
+        if name in self.metadata:
+            return True
+        self._refresh_metadata()
+        if name in self.metadata:
+            return True
+        logger.warning(
+            "Secret file exists for '%s' but metadata is missing; treating file presence as configured.",
+            name,
+        )
+        return True
     
     def delete_secret(self, name: str) -> bool:
         """

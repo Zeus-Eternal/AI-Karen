@@ -8,7 +8,12 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 
-from src.services.memory_service import WebUIMemoryService, WebUIMemoryQuery, WebUIMemoryEntry
+from services.audit_logging import get_audit_logger
+from services.memory.memory_service import (
+    WebUIMemoryEntry,
+    WebUIMemoryQuery,
+    WebUIMemoryService,
+)
 from src.services.tenant_isolation import (
     TenantIsolationService,
     TenantContext,
@@ -16,12 +21,6 @@ from src.services.tenant_isolation import (
     SecurityIncidentType,
     get_tenant_isolation_service,
     create_tenant_context
-)
-from src.services.audit_logger import (
-    AuditLogger,
-    AuditContext,
-    get_audit_logger,
-    create_audit_context
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +33,64 @@ class TenantIsolatedMemoryService:
         self.tenant_service = get_tenant_isolation_service()
         self.audit_logger = get_audit_logger()
         self.logger = logging.getLogger(f"{__name__}.TenantIsolatedMemoryService")
+
+    def _build_audit_payload(
+        self,
+        *,
+        action: str,
+        outcome: str,
+        tenant_id: Union[str, uuid.UUID],
+        user_id: str,
+        correlation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload_metadata = dict(metadata or {})
+        if error_message:
+            payload_metadata["error_message"] = error_message
+        return {
+            "event_type": f"memory_{action}",
+            "severity": "info" if outcome == "success" else "warning",
+            "message": f"memory_{action}_{outcome}",
+            "user_id": user_id,
+            "tenant_id": str(tenant_id),
+            "session_id": session_id,
+            "correlation_id": correlation_id,
+            "duration_ms": duration_ms,
+            "metadata": payload_metadata,
+        }
+
+    def _log_memory_event(
+        self,
+        *,
+        action: str,
+        outcome: str,
+        tenant_id: Union[str, uuid.UUID],
+        user_id: str,
+        correlation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        duration_ms: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None,
+    ) -> None:
+        try:
+            self.audit_logger.log_audit_event(
+                self._build_audit_payload(
+                    action=action,
+                    outcome=outcome,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    correlation_id=correlation_id,
+                    session_id=session_id,
+                    duration_ms=duration_ms,
+                    metadata=metadata,
+                    error_message=error_message,
+                )
+            )
+        except Exception:
+            self.logger.exception("Failed to log tenant-isolated memory audit event")
     
     def _create_tenant_context_from_request(
         self,
@@ -133,14 +190,6 @@ class TenantIsolatedMemoryService:
     ) -> Optional[str]:
         """Store memory with tenant isolation"""
         start_time = datetime.utcnow()
-        
-        # Create audit context
-        audit_context = create_audit_context(
-            user_id=user_id,
-            tenant_id=str(tenant_id),
-            session_id=session_id,
-            correlation_id=correlation_id
-        )
 
         try:
             # Verify tenant filters
@@ -177,13 +226,19 @@ class TenantIsolatedMemoryService:
             if not self._validate_tenant_access(context, str(tenant_id), correlation_id):
                 # Log audit event for failed access
                 duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-                self.audit_logger.log_memory_create(
-                    context=audit_context,
-                    memory_content=content,
-                    metadata=metadata,
-                    duration_ms=duration_ms,
+                self._log_memory_event(
+                    action="create",
                     outcome="failure",
-                    error_message=f"Access denied for tenant {tenant_id}"
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    correlation_id=correlation_id,
+                    session_id=session_id,
+                    duration_ms=duration_ms,
+                    metadata={
+                        "memory_content_preview": content[:200],
+                        "metadata": metadata,
+                    },
+                    error_message=f"Access denied for tenant {tenant_id}",
                 )
                 raise PermissionError(f"Access denied for tenant {tenant_id}")
             
@@ -215,13 +270,19 @@ class TenantIsolatedMemoryService:
             
             # Log successful audit event
             duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-            self.audit_logger.log_memory_create(
-                context=audit_context,
-                memory_content=content,
-                memory_id=memory_id,
-                metadata=tenant_metadata,
+            self._log_memory_event(
+                action="create",
+                outcome="success",
+                tenant_id=tenant_id,
+                user_id=user_id,
+                correlation_id=correlation_id,
+                session_id=session_id,
                 duration_ms=duration_ms,
-                outcome="success"
+                metadata={
+                    "memory_id": memory_id,
+                    "memory_content_preview": content[:200],
+                    "metadata": tenant_metadata,
+                },
             )
             
             self.logger.info(
@@ -239,13 +300,19 @@ class TenantIsolatedMemoryService:
         except Exception as e:
             # Log failed audit event
             duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-            self.audit_logger.log_memory_create(
-                context=audit_context,
-                memory_content=content,
-                metadata=metadata,
-                duration_ms=duration_ms,
+            self._log_memory_event(
+                action="create",
                 outcome="failure",
-                error_message=str(e)
+                tenant_id=tenant_id,
+                user_id=user_id,
+                correlation_id=correlation_id,
+                session_id=session_id,
+                duration_ms=duration_ms,
+                metadata={
+                    "memory_content_preview": content[:200],
+                    "metadata": metadata,
+                },
+                error_message=str(e),
             )
             
             self.logger.error(
@@ -268,13 +335,7 @@ class TenantIsolatedMemoryService:
     ) -> List[WebUIMemoryEntry]:
         """Query memories with tenant isolation"""
         start_time = datetime.utcnow()
-        
-        # Create audit context
-        audit_context = create_audit_context(
-            user_id=query.user_id or "unknown",
-            tenant_id=str(tenant_id),
-            correlation_id=correlation_id
-        )
+        actor_user_id = query.user_id or "unknown"
         
         try:
             # Verify tenant filters
@@ -299,13 +360,15 @@ class TenantIsolatedMemoryService:
                     correlation_id=correlation_id
                 )
                 duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-                self.audit_logger.log_memory_read(
-                    context=audit_context,
-                    query=query.text,
-                    results_count=0,
-                    duration_ms=duration_ms,
+                self._log_memory_event(
+                    action="read",
                     outcome="failure",
-                    error_message=f"Access denied for tenant {tenant_id}"
+                    tenant_id=tenant_id,
+                    user_id=actor_user_id,
+                    correlation_id=correlation_id,
+                    duration_ms=duration_ms,
+                    metadata={"query": query.text, "results_count": 0},
+                    error_message=f"Access denied for tenant {tenant_id}",
                 )
                 self.logger.warning(
                     f"Access denied for tenant {tenant_id} query",
@@ -328,13 +391,15 @@ class TenantIsolatedMemoryService:
             if not self._validate_tenant_access(context, str(tenant_id), correlation_id):
                 # Log audit event for failed access
                 duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-                self.audit_logger.log_memory_read(
-                    context=audit_context,
-                    query=query.text,
-                    results_count=0,
-                    duration_ms=duration_ms,
+                self._log_memory_event(
+                    action="read",
                     outcome="failure",
-                    error_message=f"Access denied for tenant {tenant_id}"
+                    tenant_id=tenant_id,
+                    user_id=actor_user_id,
+                    correlation_id=correlation_id,
+                    duration_ms=duration_ms,
+                    metadata={"query": query.text, "results_count": 0},
+                    error_message=f"Access denied for tenant {tenant_id}",
                 )
 
                 self.logger.warning(
@@ -370,13 +435,18 @@ class TenantIsolatedMemoryService:
             # Log successful audit event
             duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
             memory_ids = [memory.id for memory in filtered_memories]
-            self.audit_logger.log_memory_read(
-                context=audit_context,
-                query=query.text,
-                results_count=len(filtered_memories),
-                memory_ids=memory_ids,
+            self._log_memory_event(
+                action="read",
+                outcome="success",
+                tenant_id=tenant_id,
+                user_id=actor_user_id,
+                correlation_id=correlation_id,
                 duration_ms=duration_ms,
-                outcome="success"
+                metadata={
+                    "query": query.text,
+                    "results_count": len(filtered_memories),
+                    "memory_ids": memory_ids,
+                },
             )
             
             self.logger.info(
@@ -395,13 +465,15 @@ class TenantIsolatedMemoryService:
         except Exception as e:
             # Log failed audit event
             duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
-            self.audit_logger.log_memory_read(
-                context=audit_context,
-                query=query.text,
-                results_count=0,
-                duration_ms=duration_ms,
+            self._log_memory_event(
+                action="read",
                 outcome="failure",
-                error_message=str(e)
+                tenant_id=tenant_id,
+                user_id=actor_user_id,
+                correlation_id=correlation_id,
+                duration_ms=duration_ms,
+                metadata={"query": query.text, "results_count": 0},
+                error_message=str(e),
             )
             
             self.logger.error(

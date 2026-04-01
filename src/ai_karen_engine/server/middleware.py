@@ -125,13 +125,7 @@ def configure_middleware(
     # REMOVED: RBAC middleware - replaced with simple auth role checking
     logger.info("🔐 Using simple auth system - RBAC middleware removed")
 
-    # Add intelligent error handler (outermost - catches all errors)
-    app.add_middleware(
-        IntelligentErrorHandlerMiddleware,
-        enable_intelligent_responses=True,
-        debug_mode=getattr(settings, "environment", "").lower() != "production"
-    )
-    
+
     # REMOVED: Session persistence middleware - replaced with simple JWT auth
     logger.info("🔐 Using simple JWT auth - session persistence middleware removed")
     
@@ -394,3 +388,11 @@ def configure_middleware(
         )
 
         return response
+
+    # Add intelligent error handler as the FINAL middleware (making it the outermost)
+    # This ensures it catches errors from all other middlewares.
+    app.add_middleware(
+        IntelligentErrorHandlerMiddleware,
+        enable_intelligent_responses=True,
+        debug_mode=getattr(settings, "environment", "").lower() != "production"
+    )

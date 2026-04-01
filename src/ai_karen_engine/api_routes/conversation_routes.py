@@ -11,14 +11,14 @@ from ai_karen_engine.core.dependencies import (
     get_current_user_context,
 )
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.database.conversation_manager import MessageRole
+from ai_karen_engine.database.conversation_manager import MessageRole, normalize_user_id
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     create_generic_error_response,
     create_service_error_response,
     get_http_status_for_error_code,
 )
-from ai_karen_engine.services.conversation_service import (
+from services.memory.conversation_service import (
     ConversationPriority,
     UISource,
     WebUIConversationService,
@@ -35,6 +35,7 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = get_logger(__name__)
 
+# Create router without prefix for automatic discovery alignment
 router = APIRouter(tags=["conversations"])
 
 
@@ -327,12 +328,18 @@ async def get_conversation(
 ):
     """Get conversation by ID with web UI features."""
     try:
+        # DEBUG: Log service availability
+        logger.info(f"🔍 DEBUG: Getting conversation {conversation_id} with service: {type(conversation_service).__name__}")
+        logger.info(f"🔍 DEBUG: Service registry status: {conversation_service}")
+        
         conversation = await conversation_service.get_web_ui_conversation(
             tenant_id=tenant_id,
             conversation_id=conversation_id,
             include_context=include_context,
             user_id=user_ctx.get("user_id"),
         )
+        
+        logger.info(f"🔍 DEBUG: Successfully retrieved conversation {conversation_id}")
 
         if not conversation:
             error_response = create_generic_error_response(
@@ -377,31 +384,61 @@ async def get_conversation_by_session(
     """Retrieve a conversation using its session identifier."""
 
     try:
+        # DEBUG: Log session lookup details
+        logger.info("🔍 DEBUG: Attempting to retrieve conversation by session ID: %s", session_id)
+        logger.info("🔍 DEBUG: Tenant ID: %s", tenant_id)
+        logger.info("🔍 DEBUG: User context: %s", user_ctx)
+        logger.info("🔍 DEBUG: Conversation service type: %s", type(conversation_service).__name__)
+        
         conversation = await conversation_service.get_web_ui_conversation_by_session(
             tenant_id=tenant_id,
             session_id=session_id,
             user_id=user_ctx.get("user_id"),
             include_context=include_context,
         )
+        
+        logger.info("🔍 DEBUG: Conversation lookup result: %s", conversation is not None)
 
         if not conversation:
-            error_response = create_generic_error_response(
-                error_code=WebAPIErrorCode.NOT_FOUND,
-                message="Conversation not found",
-                user_message="The requested conversation could not be found.",
-                details={"session_id": session_id},
+            logger.warning("🔍 DEBUG: No conversation found for session ID: %s", session_id)
+            logger.info("🔍 DEBUG: This indicates a new session that hasn't been used to create a conversation yet")
+            
+            # Instead of returning a 404, return an empty conversation response
+            # This allows the frontend to handle new sessions gracefully
+            empty_conversation = ConversationResponse(
+                id="new-session",
+                user_id=user_ctx.get("user_id", "anonymous"),
+                title="New Conversation",
+                messages=[],
+                metadata={},
+                is_active=True,
+                created_at=datetime.utcnow().isoformat(),
+                updated_at=datetime.utcnow().isoformat(),
+                message_count=0,
+                last_message_at=None,
+                session_id=session_id,
+                ui_context={},
+                ai_insights={},
+                user_settings={},
+                summary=None,
+                tags=[],
+                last_ai_response_id=None,
+                status="active",
+                priority="normal",
+                context_memories=[],
+                proactive_suggestions=[],
             )
-            raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.model_dump(mode="json"),
-            )
+            
+            logger.info("🔍 DEBUG: Returning empty conversation for new session")
+            return empty_conversation
 
+        logger.info("🔍 DEBUG: Successfully retrieved conversation with %d messages", len(conversation.messages))
         return _convert_conversation_to_response(conversation)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Failed to get conversation by session", error=str(e))
+        logger.exception("🔍 DEBUG: Failed to get conversation by session", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
@@ -421,11 +458,12 @@ async def add_message(
     conversation_id: str,
     request: AddMessageRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Add a message to conversation with web UI features."""
     try:
         message = await conversation_service.add_web_ui_message(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             role=request.role,
             content=request.content,
@@ -495,11 +533,12 @@ async def build_context(
     conversation_id: str,
     request: BuildContextRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Build comprehensive conversation context."""
     try:
         context = await conversation_service.build_conversation_context(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             current_message=request.current_message,
             include_memories=request.include_memories,
@@ -529,11 +568,12 @@ async def update_ui_context(
     conversation_id: str,
     request: UpdateUIContextRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation UI context."""
     try:
         success = await conversation_service.update_conversation_ui_context(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             ui_context=request.ui_context,
         )
@@ -575,11 +615,12 @@ async def update_ai_insights(
     conversation_id: str,
     request: UpdateAIInsightsRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation AI insights."""
     try:
         success = await conversation_service.update_conversation_ai_insights(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             ai_insights=request.ai_insights,
         )
@@ -621,11 +662,12 @@ async def add_tags(
     conversation_id: str,
     request: AddTagsRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Add tags to conversation."""
     try:
         success = await conversation_service.add_conversation_tags(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             tags=request.tags,
         )
@@ -676,9 +718,10 @@ async def list_conversations(
 ):
     """List conversations for current user."""
     try:
+        # Use keyword arguments as supported by the enhanced ConversationManager
         conversations = await conversation_service.base_manager.list_conversations(
             tenant_id=tenant_id,
-            user_id=user_ctx.get("user_id"),
+            user_id=normalize_user_id(user_ctx.get("user_id")),
             active_only=active_only,
             limit=limit,
             offset=offset,
@@ -689,7 +732,7 @@ async def list_conversations(
         for conv in conversations:
             # Get web UI data for each conversation
             web_ui_data = await conversation_service._get_web_ui_conversation_data(
-                "00000000-0000-0000-0000-000000000001", conv.id
+                tenant_id, conv.id
             )
 
             web_ui_conv = await conversation_service._convert_to_web_ui_conversation(
@@ -705,14 +748,21 @@ async def list_conversations(
 
             web_ui_conversations.append(_convert_conversation_to_response(web_ui_conv))
 
+        # Get global stats for total count
+        stats = await conversation_service.base_manager.get_conversation_stats(
+            tenant_id=tenant_id,
+            user_id=user_ctx.get("user_id")
+        )
+        total_count = stats.get("total_conversations", len(web_ui_conversations))
+
         return ConversationListResponse(
             conversations=web_ui_conversations,
-            total_count=len(web_ui_conversations),
+            total_count=total_count,
             has_more=len(web_ui_conversations) == limit,
         )
 
     except Exception as e:
-        logger.exception("Failed to list conversations", error=str(e))
+        logger.exception("❌ API: Failed to list conversations for user %s: %s", user_ctx.get("user_id"), str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
@@ -733,11 +783,12 @@ async def update_conversation(
     title: Optional[str] = Query(None, description="New title"),
     is_active: Optional[bool] = Query(None, description="Active status"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Update conversation properties."""
     try:
         success = await conversation_service.base_manager.update_conversation(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             title=title,
             is_active=is_active,
@@ -779,11 +830,12 @@ async def update_conversation(
 async def delete_conversation(
     conversation_id: str,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Delete a conversation."""
     try:
         success = await conversation_service.base_manager.delete_conversation(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
         )
 
@@ -827,6 +879,8 @@ async def get_analytics(
     ),
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
 ):
     """Get conversation analytics for dashboard."""
     try:
@@ -836,10 +890,10 @@ async def get_analytics(
             time_range = (time_range_start, time_range_end)
 
         # Use current user if no user_id specified
-        target_user_id = user_id or "00000000-0000-0000-0000-000000000002"
+        target_user_id = user_id or user_ctx.get("user_id")
 
         analytics = await conversation_service.get_conversation_analytics(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             user_id=target_user_id,
             time_range=time_range,
         )
@@ -865,20 +919,21 @@ async def get_analytics(
 @router.get("/stats")
 async def get_conversation_stats(
     tenant_id: str = Depends(get_current_tenant),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Get basic conversation statistics."""
     try:
         stats = await conversation_service.base_manager.get_conversation_stats(
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
+            tenant_id,
+            user_ctx.get("user_id"),
         )
         web_ui_metrics = conversation_service.get_metrics()
 
         return {
             "base_stats": stats,
             "web_ui_metrics": web_ui_metrics,
-            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "tenant_id": tenant_id,
         }
 
     except Exception as e:
@@ -901,11 +956,12 @@ async def get_conversation_stats(
 async def cleanup_inactive_conversations(
     days_inactive: int = Query(30, ge=1, description="Days of inactivity threshold"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
 ):
     """Mark old conversations as inactive."""
     try:
         count = await conversation_service.base_manager.cleanup_inactive_conversations(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             days_inactive=days_inactive,
         )
 
@@ -940,3 +996,91 @@ async def health_check():
         "service": "conversation",
         "timestamp": datetime.utcnow().isoformat(),
     }
+
+
+@router.post("/ensure-session/{session_id}")
+async def ensure_session_conversation(
+    session_id: str,
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+):
+    """Ensure a conversation record exists for the given session ID. Creates one if it doesn't exist."""
+
+    try:
+        logger.info("🔍 DEBUG: Ensuring conversation exists for session ID: %s", session_id)
+        
+        # First, try to get existing conversation
+        existing_conversation = await conversation_service.get_web_ui_conversation_by_session(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            user_id=user_ctx.get("user_id"),
+            include_context=False,
+        )
+        
+        if existing_conversation:
+            logger.info("🔍 DEBUG: Existing conversation found for session: %s", session_id)
+            return _convert_conversation_to_response(existing_conversation)
+        
+        # Create new conversation for this session
+        logger.info("🔍 DEBUG: Creating new conversation for session: %s", session_id)
+        
+        from services.memory.conversation_service import UISource
+        
+        new_conversation = await conversation_service.create_web_ui_conversation(
+            tenant_id=tenant_id,
+            user_id=user_ctx.get("user_id", "anonymous"),
+            session_id=session_id,
+            ui_source=UISource.WEB,
+            title="New Conversation",
+            initial_message=None,
+            user_settings={},
+            ui_context={},
+            tags=["new-session"],
+            priority=ConversationPriority.NORMAL,
+        )
+        
+        if not new_conversation:
+             logger.error("❌ API: Service failed to create conversation for session: %s", session_id)
+             raise HTTPException(
+                status_code=500,
+                detail="Failed to create conversation record."
+             )
+
+        logger.info("🔍 DEBUG: Successfully created new conversation for session: %s", session_id)
+        return _convert_conversation_to_response(new_conversation)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("❌ API: Failed to ensure session conversation for session %s: %s", session_id, str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to ensure conversation exists. Please try again.",
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
+            detail=error_response.model_dump(mode="json"),
+        )
+
+
+@router.post("/update-session-activity/{session_id}")
+async def update_session_activity(
+    session_id: str,
+    activity_data: Optional[Dict[str, Any]] = None,
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+):
+    """Update session activity timestamp and data."""
+    try:
+        success = await conversation_service.update_session_activity(
+            session_id=session_id,
+            activity_data=activity_data,
+        )
+        return {"success": success}
+    except Exception as e:
+        logger.exception("Failed to update session activity", error=str(e))
+        return {"success": False, "error": str(e)}

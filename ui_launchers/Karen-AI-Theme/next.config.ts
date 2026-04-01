@@ -1,15 +1,15 @@
 import path from 'path';
 import type {NextConfig} from 'next';
 
-const backendBaseUrl =
-  process.env.KAREN_BACKEND_URL ||
-  'http://api:8000';
+// Determine the backend URL based on the environment
+const backendBaseUrl = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
+const isDocker = process.env.KAREN_DOCKER === 'true';
+
+console.log(`Backend URL: ${backendBaseUrl}, isDocker: ${isDocker}`);
 
 const allowedDevOrigins = [
   'localhost',
   '127.0.0.1',
-  '172.21.0.11',
-  '172.21.0.12',
 ];
 
 const nextConfig: NextConfig = {
@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   async rewrites() {
     return [
       {

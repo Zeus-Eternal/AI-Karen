@@ -29,6 +29,7 @@ from ai_karen_engine.core.response.training_data_manager import (
     DatasetVersion
 )
 from ai_karen_engine.core.response.autonomous_learner import TrainingExample, LearningDataType
+from ai_karen_engine.core.response.factory import create_autonomous_learner
 from ai_karen_engine.auth.rbac_middleware import (
     require_permission, get_current_user, Permission, 
     check_training_access, check_data_access
@@ -70,6 +71,27 @@ class CreateDatasetResponse(BaseModel):
     """Response model for dataset creation."""
     dataset_id: str = Field(..., description="Created dataset ID")
     message: str = Field(..., description="Success message")
+
+
+class CreateCuratedDatasetRequest(BaseModel):
+    """Request model for building a dataset from curated autonomous-learning outputs."""
+
+    name: str = Field(..., description="Dataset name")
+    description: str = Field(..., description="Dataset description")
+    tenant_id: Optional[str] = Field(None, description="Tenant scope for curated memory")
+    min_confidence: float = Field(0.7, ge=0.0, le=1.0)
+    max_examples: int = Field(250, ge=1, le=5000)
+    tags: Optional[List[str]] = Field(None, description="Dataset tags")
+
+
+class CreateCuratedDatasetResponse(BaseModel):
+    """Response for curated memory dataset creation."""
+
+    dataset_id: str
+    version_id: str
+    example_count: int
+    quality_score: float
+    message: str
 
 
 class UploadDatasetRequest(BaseModel):
@@ -131,7 +153,7 @@ async def create_dataset(
     
     try:
         manager = get_training_manager()
-        dataset_id = await manager.create_dataset(
+        dataset_id = manager.create_dataset(
             name=request.name,
             description=request.description,
             format=request.format,
@@ -178,7 +200,7 @@ async def list_datasets(
     
     try:
         manager = get_training_manager()
-        datasets = await manager.list_datasets(
+        datasets = manager.list_datasets(
             user_id=current_user.user_id,
             tenant_id=current_user.tenant_id,
             limit=limit,
@@ -213,7 +235,7 @@ async def delete_dataset(
     
     try:
         manager = get_training_manager()
-        success = await manager.delete_dataset(
+        success = manager.delete_dataset(
             dataset_id=dataset_id,
             user_id=current_user.user_id
         )
@@ -235,7 +257,79 @@ async def delete_dataset(
     except Exception as e:
         logger.error(f"Failed to delete dataset: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    version: Optional[str] = Field(None, description="Specific version")
+
+
+@router.post("/datasets/from-curated-memory", response_model=CreateCuratedDatasetResponse)
+async def create_dataset_from_curated_memory(
+    request: CreateCuratedDatasetRequest,
+    current_user: UserData = Depends(get_current_user),
+) -> CreateCuratedDatasetResponse:
+    """Create a training dataset from curated autonomous-learning memory outputs."""
+
+    if not check_data_access(current_user, "write"):
+        training_audit_logger.log_permission_denied(
+            user=current_user,
+            resource_type="dataset",
+            resource_id="curated-memory",
+            permission_required="data:write",
+        )
+        raise HTTPException(status_code=403, detail="DATA_WRITE permission required")
+
+    try:
+        tenant_id = request.tenant_id or current_user.tenant_id or current_user.user_id
+        learner = create_autonomous_learner(current_user.user_id, tenant_id)
+        curated_metadata = await learner.metadata_collector.curate_training_data(
+            tenant_id=tenant_id,
+            min_confidence=request.min_confidence,
+            max_examples=request.max_examples,
+        )
+        training_examples = await learner.training_pipeline.create_training_examples(
+            curated_metadata
+        )
+
+        if not training_examples:
+            raise HTTPException(
+                status_code=400,
+                detail="No curated training examples available for dataset creation",
+            )
+
+        manager = get_training_manager()
+        dataset_id, version_id, validation_report = manager.create_dataset_from_examples(
+            name=request.name,
+            description=request.description,
+            created_by=current_user.user_id,
+            examples=training_examples,
+            tags=(request.tags or []) + ["curated-memory"],
+            provenance={
+                "source": "autonomous_learner",
+                "tenant_id": tenant_id,
+                "curated_metadata_count": len(curated_metadata),
+                "created_via": "training_data_routes",
+            },
+        )
+
+        training_audit_logger.log_training_data_uploaded(
+            user=current_user,
+            dataset_id=dataset_id,
+            dataset_name=request.name,
+            record_count=len(training_examples),
+            file_size=0,
+            data_format=DataFormat.JSON.value,
+        )
+
+        return CreateCuratedDatasetResponse(
+            dataset_id=dataset_id,
+            version_id=version_id,
+            example_count=len(training_examples),
+            quality_score=validation_report.quality_score,
+            message=f"Curated dataset '{request.name}' created successfully",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create curated dataset: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class EnhanceDatasetRequest(BaseModel):
@@ -255,8 +349,7 @@ class CreateVersionRequest(BaseModel):
 
 # API Routes
 
-@router.post("/datasets", response_model=CreateDatasetResponse)
-async def create_dataset(
+async def _legacy_create_dataset(
     request: CreateDatasetRequest,
     current_user: Dict[str, Any] = Depends(require_permission("training_data:write"))
 ):
@@ -284,8 +377,7 @@ async def create_dataset(
         raise HTTPException(status_code=500, detail=f"Failed to create dataset: {str(e)}")
 
 
-@router.get("/datasets", response_model=DatasetListResponse)
-async def list_datasets(
+async def _legacy_list_datasets(
     current_user: Dict[str, Any] = Depends(require_permission("training_data:read"))
 ):
     """List all training datasets."""
@@ -713,8 +805,7 @@ async def create_dataset_version(
         raise HTTPException(status_code=500, detail=f"Failed to create dataset version: {str(e)}")
 
 
-@router.delete("/datasets/{dataset_id}")
-async def delete_dataset(
+async def _legacy_delete_dataset(
     dataset_id: str,
     current_user: Dict[str, Any] = Depends(require_permission("training_data:delete"))
 ):

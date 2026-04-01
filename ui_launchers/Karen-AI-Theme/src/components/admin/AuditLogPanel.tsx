@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { apiClient, ApiError } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, UserCog, Settings, Bot, Shield, Clock } from "lucide-react";
+import { FileText, UserCog, Settings, Bot, Shield, Clock, Loader2, ShieldAlert, AlertCircle } from "lucide-react";
 
 type AuditEntry = {
   id: string;
@@ -39,7 +42,7 @@ const mockAuditLog: AuditEntry[] = [
     timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
     action: "Login successful",
     actor: "admin@example.com",
-    details: "IP: 172.21.0.1",
+    details: "IP: 127.0.0.1",
     category: "security",
   },
   {
@@ -94,6 +97,35 @@ const categoryConfig: Record<AuditEntry["category"], { icon: React.ReactNode; co
   system: { icon: <Clock className="h-3.5 w-3.5" />, color: "text-muted-foreground bg-muted/40 border-border/30" },
 };
 
+function mapAuditCategory(entry: Record<string, any>): AuditEntry["category"] {
+  const eventType = String(entry.event_type || entry.action || "").toLowerCase();
+  if (eventType.includes("auth") || eventType.includes("security") || eventType.includes("privacy")) {
+    return "security";
+  }
+  if (eventType.includes("model") || eventType.includes("provider")) {
+    return "model";
+  }
+  if (eventType.includes("user") || eventType.includes("profile") || eventType.includes("permission")) {
+    return "user";
+  }
+  if (eventType.includes("config") || eventType.includes("setting")) {
+    return "settings";
+  }
+  return "system";
+}
+
+function mapAuditEntry(entry: Record<string, any>, index: number): AuditEntry {
+  return {
+    id: String(entry.id || `${entry.timestamp || "event"}-${index}`),
+    timestamp: String(entry.timestamp || entry.created_at || new Date().toISOString()),
+    action: String(entry.message || entry.event_type || entry.action || "Audit event"),
+    actor: String(entry.user_id || entry.actor || "system"),
+    target: entry.resource_id ? String(entry.resource_id) : undefined,
+    details: entry.metadata ? JSON.stringify(entry.metadata) : entry.details ? String(entry.details) : undefined,
+    category: mapAuditCategory(entry),
+  };
+}
+
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -106,6 +138,57 @@ function formatRelativeTime(iso: string): string {
 }
 
 export default function AuditLogPanel() {
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadAuditLogs = async () => {
+      setIsLoading(true);
+      setAuthRequired(false);
+      setAccessDenied(false);
+      try {
+        const response = await apiClient.get<Array<Record<string, any>>>("/api/audit/logs");
+        if (!mounted) {
+          return;
+        }
+        setEntries(Array.isArray(response) ? response.map(mapAuditEntry) : []);
+        setLoadError(null);
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        if (error instanceof ApiError && error.status === 401) {
+          setAuthRequired(true);
+          setEntries([]);
+          setLoadError(null);
+        } else if (error instanceof ApiError && error.status === 403) {
+          setAccessDenied(true);
+          setEntries([]);
+          setLoadError(null);
+        } else {
+          setEntries([]);
+          setLoadError(error instanceof Error ? error.message : "Karen could not load the backend audit log.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadAuditLogs();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const displayedEntries = entries.length > 0 ? entries : mockAuditLog;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -115,13 +198,46 @@ export default function AuditLogPanel() {
             Admin Activity Log
           </CardTitle>
           <CardDescription>
-            Recent administrative actions and system events. This is a preview — full audit logging will be connected to the backend.
+            Backend-derived audit activity where authorized, with graceful fallback only when the live audit surface is unavailable.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {authRequired && (
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <ShieldAlert className="h-4 w-4 !text-primary" />
+              <AlertTitle>Sign In Required</AlertTitle>
+              <AlertDescription>
+                The audit route is live, but this session is not authenticated. Sign in to inspect backend audit events.
+              </AlertDescription>
+            </Alert>
+          )}
+          {accessDenied && (
+            <Alert className="mb-4 border-primary/20 bg-primary/5">
+              <ShieldAlert className="h-4 w-4 !text-primary" />
+              <AlertTitle>Audit Access Restricted</AlertTitle>
+              <AlertDescription>
+                The audit route is live, but this session is not authorized to inspect backend audit events.
+              </AlertDescription>
+            </Alert>
+          )}
+          {loadError && (
+            <Alert className="mb-4 border-yellow-500/30 bg-yellow-500/5">
+              <AlertCircle className="h-4 w-4 !text-yellow-600" />
+              <AlertTitle>Audit Fallback</AlertTitle>
+              <AlertDescription>
+                {loadError}
+              </AlertDescription>
+            </Alert>
+          )}
+          {isLoading ? (
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 p-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading backend audit events.
+            </div>
+          ) : (
           <ScrollArea className="h-[560px]">
             <div className="space-y-1">
-              {mockAuditLog.map((entry) => {
+              {displayedEntries.map((entry) => {
                 const cat = categoryConfig[entry.category];
                 return (
                   <div
@@ -161,6 +277,7 @@ export default function AuditLogPanel() {
               })}
             </div>
           </ScrollArea>
+          )}
         </CardContent>
       </Card>
     </div>

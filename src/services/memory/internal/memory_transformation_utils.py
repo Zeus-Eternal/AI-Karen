@@ -18,7 +18,7 @@ from ai_karen_engine.models.web_ui_types import (
     WebUIMemoryStoreRequest,
     WebUIMemoryStoreResponse,
 )
-from src.services.memory_service import (
+from services.memory.memory_service import (
     WebUIMemoryQuery as ServiceWebUIMemoryQuery,
     UISource,
 )

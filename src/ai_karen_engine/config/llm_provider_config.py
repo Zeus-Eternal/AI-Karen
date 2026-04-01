@@ -32,6 +32,52 @@ logger = logging.getLogger(__name__)
 DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/api")
 
 
+# OpenAI-compatible providers share the same transport adapter, but their
+# catalog metadata belongs in the configuration layer rather than the runtime
+# HTTP client implementation.
+OPENAI_COMPATIBLE_PROVIDER_DEFAULTS: Dict[str, Dict[str, Any]] = {
+    "openai": {
+        "api_key_env": "OPENAI_API_KEY",
+        "base_url": "https://api.openai.com/v1",
+        "display_name": "OpenAI",
+        "common_models": [
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4-turbo",
+            "gpt-4",
+            "gpt-3.5-turbo",
+            "gpt-3.5-turbo-16k",
+        ],
+    },
+    "zai": {
+        "api_key_env": "ZAI_API_KEY",
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "display_name": "Z.ai",
+        "common_models": [
+            "glm-5",
+            "glm-4.7",
+            "glm-4.7-flash",
+            "glm-4.5",
+            "glm-4.5-air",
+            "glm-4.5-flash",
+            "glm-4.6",
+            "glm-4.6v",
+        ],
+    },
+}
+
+
+def get_openai_compatible_provider_defaults(provider_name: str) -> Dict[str, Any]:
+    """Return catalog defaults for an OpenAI-compatible provider."""
+    normalized_name = str(provider_name or "openai").strip().lower()
+    return dict(
+        OPENAI_COMPATIBLE_PROVIDER_DEFAULTS.get(
+            normalized_name,
+            OPENAI_COMPATIBLE_PROVIDER_DEFAULTS["openai"],
+        )
+    )
+
+
 class ProviderType(str, Enum):
     """LLM provider types"""
     LOCAL = "local"
@@ -652,8 +698,8 @@ class LLMProviderConfigManager:
             ),
             models=[
                 ProviderModel(
-                    id="gemini-1.5-pro",
-                    name="Gemini 1.5 Pro",
+                    id="gemini-2.5-pro",
+                    name="Gemini 2.5 Pro",
                     family="gemini",
                     capabilities={"text", "vision", "code"},
                     context_length=2097152,
@@ -663,8 +709,8 @@ class LLMProviderConfigManager:
                     cost_per_1k_tokens=0.0035
                 ),
                 ProviderModel(
-                    id="gemini-1.5-flash",
-                    name="Gemini 1.5 Flash",
+                    id="gemini-2.5-flash",
+                    name="Gemini 2.5 Flash",
                     family="gemini",
                     capabilities={"text", "vision", "code"},
                     context_length=1048576,
@@ -674,7 +720,7 @@ class LLMProviderConfigManager:
                     cost_per_1k_tokens=0.00075
                 )
             ],
-            default_model="gemini-1.5-flash",
+            default_model="gemini-2.5-flash",
             capabilities={"streaming", "vision", "code"},
             limits=ProviderLimits(
                 requests_per_minute=1500,
@@ -1087,7 +1133,7 @@ class LLMProviderConfigManager:
             ProviderConfig(
                 name="zai",
                 display_name="Z.ai",
-                description="Z.ai GLM models via the official PaaS chat completions API",
+                description="Z.ai GLM models via the official general PaaS chat completions API",
                 provider_type=ProviderType.REMOTE,
                 priority=70,
                 endpoint=ProviderEndpoint(
@@ -1123,6 +1169,25 @@ class LLMProviderConfigManager:
                         supports_functions=True,
                     ),
                     ProviderModel(
+                        id="glm-4.7-flash",
+                        name="GLM-4.7 Flash",
+                        family="glm",
+                        capabilities={"text", "code"},
+                        context_length=131072,
+                        max_tokens=131072,
+                        supports_streaming=True,
+                    ),
+                    ProviderModel(
+                        id="glm-4.5",
+                        name="GLM-4.5",
+                        family="glm",
+                        capabilities={"text", "code", "tool_use"},
+                        context_length=128000,
+                        max_tokens=98304,
+                        supports_streaming=True,
+                        supports_functions=True,
+                    ),
+                    ProviderModel(
                         id="glm-4.5-air",
                         name="GLM-4.5 Air",
                         family="glm",
@@ -1131,8 +1196,17 @@ class LLMProviderConfigManager:
                         max_tokens=96000,
                         supports_streaming=True,
                     ),
+                    ProviderModel(
+                        id="glm-4.5-flash",
+                        name="GLM-4.5 Flash",
+                        family="glm",
+                        capabilities={"text", "code"},
+                        context_length=98304,
+                        max_tokens=98304,
+                        supports_streaming=True,
+                    ),
                 ],
-                default_model="glm-5",
+                default_model="glm-4.5",
                 capabilities={"streaming", "reasoning", "tool_use", "web_search", "code"},
                 limits=ProviderLimits(
                     concurrent_requests=5,

@@ -16,11 +16,11 @@ from fastapi import Request, Response, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.services.agents.agent_safety import AgentSafety
-from src.services.agents.agent_safety_types import (
+from ai_karen_engine.services.agent_safety import AgentSafety
+from ai_karen_engine.services.agent_safety_types import (
     SafetyConfig, SafetyLevel, RiskLevel, ValidationResult, Context
 )
-from src.auth.auth_middleware import get_current_user
+from ai_karen_engine.auth.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 

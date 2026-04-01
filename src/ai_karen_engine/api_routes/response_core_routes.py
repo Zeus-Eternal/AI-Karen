@@ -435,12 +435,9 @@ class TrainingResponse(BaseModel):
 def get_chat_orchestrator() -> ChatOrchestrator:
     """Get existing chat orchestrator instance"""
     # Import here to avoid circular dependencies
-    from ..chat.chat_orchestrator import ChatOrchestrator
-    from ..chat.memory_processor import MemoryProcessor
-    
-    # Create with default dependencies
-    memory_processor = MemoryProcessor()
-    return ChatOrchestrator(memory_processor=memory_processor)
+    from ..chat.factory import get_chat_orchestrator as get_factory_chat_orchestrator
+
+    return get_factory_chat_orchestrator()
 
 
 def get_response_orchestrator(
