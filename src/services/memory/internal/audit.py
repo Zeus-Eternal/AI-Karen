@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Tuple
 import json
 
-from ...internal..core.services.base import BaseService, ServiceConfig
+from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 
 class IssueType(str, Enum):
@@ -153,9 +153,9 @@ class ProductionHardeningAuditService(BaseService):
         r'http://127\.0\.0\.1',
     ]
     
-    def __init__(self, config: Optional[ServiceConfig] = None):
-        if config is None:
-            config = ServiceConfig(
+    def __init__(self, service_config: Optional[ServiceConfig] = None):
+        if service_config is None:
+            service_config = ServiceConfig(
                 name="production_hardening_audit",
                 enabled=True,
                 config={
@@ -167,16 +167,28 @@ class ProductionHardeningAuditService(BaseService):
                     ],
                     "file_extensions": [".py", ".js", ".ts", ".tsx", ".jsx", ".json", ".yaml", ".yml"],
                     "max_file_size_mb": 10,
-                    "output_directory": "reports/production_audit"
+                    "output_directory": "reports/production_audit",
+                    "hardcoded_patterns": [
+                        r'localhost:(?:3000|8000|5000|9000)',
+                        r'127\.0\.0\.1:(?:3000|8000|5000|9000)',
+                        r'http://localhost',
+                        r'http://127\.0\.0\.1',
+                    ]
                 }
             )
         
-        super().__init__(config)
-        self.scan_directories = config.config.get("scan_directories", ["src"])
-        self.exclude_patterns = config.config.get("exclude_patterns", [])
-        self.file_extensions = config.config.get("file_extensions", [".py"])
-        self.max_file_size_mb = config.config.get("max_file_size_mb", 10)
-        self.output_directory = Path(config.config.get("output_directory", "reports/production_audit"))
+        super().__init__(service_config)
+        
+        # Pull configuration from the service_config object
+        inner_config = service_config.config if service_config else {}
+        self.scan_directories = inner_config.get("scan_directories", ["src"])
+        self.exclude_patterns = inner_config.get("exclude_patterns", [])
+        self.file_extensions = inner_config.get("file_extensions", [".py"])
+        self.max_file_size_mb = inner_config.get("max_file_size_mb", 10)
+        self.output_directory = Path(inner_config.get("output_directory", "reports/production_audit"))
+        
+        # Dynamically load hardcoded patterns from config or use defaults
+        self.hardcoded_patterns = inner_config.get("hardcoded_patterns", self.HARDCODED_PATTERNS)
         
         # Compile regex patterns for performance
         self._compiled_patterns = {
@@ -184,7 +196,7 @@ class ProductionHardeningAuditService(BaseService):
             IssueType.DUMMY_LOGIC: [re.compile(pattern, re.IGNORECASE) for pattern in self.DUMMY_LOGIC_PATTERNS],
             IssueType.PLACEHOLDER_IMPLEMENTATION: [re.compile(pattern, re.IGNORECASE) for pattern in self.PLACEHOLDER_PATTERNS],
             IssueType.DEBUG_CODE: [re.compile(pattern, re.IGNORECASE) for pattern in self.DEBUG_CODE_PATTERNS],
-            IssueType.HARDCODED_VALUES: [re.compile(pattern, re.IGNORECASE) for pattern in self.HARDCODED_PATTERNS],
+            IssueType.HARDCODED_VALUES: [re.compile(pattern, re.IGNORECASE) for pattern in self.hardcoded_patterns],
         }
     
     async def initialize(self) -> None:
@@ -659,26 +671,26 @@ class ProductionHardeningAuditService(BaseService):
     
     <h2>Issues by Severity</h2>
     <ul>
-        {chr(10).join(f'<li>{severity.value.title()}: {count}</li>' for severity, count in report.issues_by_severity.items())}
+        {chr(10).join(f'<li>{str(sev.value).title()}: {cnt}</li>' for sev, cnt in report.issues_by_severity.items())}
     </ul>
     
     <h2>Recommendations</h2>
     <div class="recommendations">
         <ul>
-            {chr(10).join(f'<li>{rec}</li>' for rec in report.recommendations)}
+            {chr(10).join(f'<li>{str(rec)}</li>' for rec in report.recommendations)}
         </ul>
     </div>
     
     <h2>Detailed Issues</h2>
     {chr(10).join(f'''
-    <div class="issue {issue.severity.value}">
-        <h4>{issue.issue_type.value.replace('_', ' ').title()}</h4>
-        <p><strong>File:</strong> {issue.file_path}:{issue.line_number}</p>
-        <p><strong>Description:</strong> {issue.description}</p>
-        <div class="code">{issue.code_snippet}</div>
-        <p><strong>Recommendation:</strong> {issue.recommendation}</p>
+    <div class="issue {str(itm.severity.value)}">
+        <h4>{str(itm.issue_type.value).replace('_', ' ').title()}</h4>
+        <p><strong>File:</strong> {itm.file_path}:{itm.line_number}</p>
+        <p><strong>Description:</strong> {itm.description}</p>
+        <div class="code">{itm.code_snippet}</div>
+        <p><strong>Recommendation:</strong> {itm.recommendation}</p>
     </div>
-    ''' for issue in report.issues)}
+    ''' for itm in report.issues)}
 </body>
 </html>
         """
@@ -697,30 +709,30 @@ class ProductionHardeningAuditService(BaseService):
 ## Summary
 
 ### Issues by Severity
-{chr(10).join(f'- **{severity.value.title()}:** {count}' for severity, count in report.issues_by_severity.items())}
+{chr(10).join(f'- **{str(sev.value).title()}:** {cnt}' for sev, cnt in report.issues_by_severity.items())}
 
 ### Issues by Type
-{chr(10).join(f'- **{issue_type.value.replace("_", " ").title()}:** {count}' for issue_type, count in report.issues_by_type.items())}
+{chr(10).join(f'- **{str(typ.value).replace("_", " ").title()}:** {cnt}' for typ, cnt in report.issues_by_type.items())}
 
 ## Recommendations
 
-{chr(10).join(f'- {rec}' for rec in report.recommendations)}
+{chr(10).join(f'- {str(rec)}' for rec in report.recommendations)}
 
 ## Detailed Issues
 
-{chr(10).join(f'''### {issue.issue_type.value.replace('_', ' ').title()} - {issue.severity.value.upper()}
+{chr(10).join(f'''### {str(itm.issue_type.value).replace('_', ' ').title()} - {str(itm.severity.value).upper()}
 
-**File:** `{issue.file_path}:{issue.line_number}`  
-**Description:** {issue.description}  
+**File:** `{itm.file_path}:{itm.line_number}`  
+**Description:** {itm.description}  
 
 ```
-{issue.code_snippet}
+{itm.code_snippet}
 ```
 
-**Recommendation:** {issue.recommendation}
+**Recommendation:** {itm.recommendation}
 
 ---
-''' for issue in report.issues)}
+''' for itm in report.issues)}
         """
         return markdown
     

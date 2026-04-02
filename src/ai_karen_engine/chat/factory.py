@@ -36,7 +36,7 @@ class ChatServiceConfig:
         enable_websocket: bool = True,
         retry_max_attempts: int = 3,
         retry_backoff_factor: float = 2.0,
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = 300.0,
         enable_monitoring: bool = True,
     ):
         self.enable_memory = enable_memory

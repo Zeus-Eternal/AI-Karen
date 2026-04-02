@@ -19,10 +19,10 @@ from enum import Enum
 import random
 import json
 
-from ...internal..core.services.base import BaseService, ServiceConfig
-from ...internal.database_connection_manager import get_database_manager
-from ...internal.redis_connection_manager import get_redis_manager
-from ...internal.database_health_checker import DatabaseHealthChecker
+from ai_karen_engine.core.services.base import BaseService, ServiceConfig
+from .database_connection_manager import get_database_manager
+from .redis_connection_manager import get_redis_manager
+from .internal.database_health_checker import DatabaseHealthChecker
 
 
 class RetryStrategy(str, Enum):
@@ -187,14 +187,14 @@ class DatabaseOptimizationService(BaseService):
         self.logger.info("Stopping Database Optimization Service")
         
         # Cancel monitoring tasks
-        if self.monitoring_task:
+        if self.monitoring_task is not None:
             self.monitoring_task.cancel()
             try:
                 await self.monitoring_task
             except asyncio.CancelledError:
                 pass
         
-        if self.optimization_task:
+        if self.optimization_task is not None:
             self.optimization_task.cancel()
             try:
                 await self.optimization_task
@@ -207,7 +207,7 @@ class DatabaseOptimizationService(BaseService):
         """Perform health check."""
         try:
             # Check if monitoring is running
-            if self.monitoring_task and self.monitoring_task.done():
+            if self.monitoring_task is not None and self.monitoring_task.done():
                 return False
             
             # Check database connectivity
@@ -539,7 +539,7 @@ class DatabaseOptimizationService(BaseService):
         # Remove old resolved alerts
         self.active_alerts = [
             a for a in self.active_alerts
-            if not a.resolved or (a.resolved_at and a.resolved_at > cutoff_time)
+            if not a.resolved or (a.resolved_at is not None and a.resolved_at > cutoff_time)
         ]
     
     async def execute_with_retry(self, operation_name: str, operation_func, *args, **kwargs) -> Any:
@@ -589,7 +589,9 @@ class DatabaseOptimizationService(BaseService):
                 await asyncio.sleep(delay)
         
         # All attempts failed
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError(f"Operation '{operation_name}' failed after {retry_config.max_attempts} attempts")
     
     def _calculate_retry_delay(self, config: RetryConfig, attempt: int) -> float:
         """Calculate delay for retry attempt based on strategy."""

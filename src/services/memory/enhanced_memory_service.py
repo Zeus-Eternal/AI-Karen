@@ -59,7 +59,7 @@ class MemoryServiceError(Exception):
 class MemoryRetrievalError(MemoryServiceError):
     """Exception for memory retrieval failures"""
 
-    def __init__(self, message: str, query: str = "", details: Dict[str, Any] = None):
+    def __init__(self, message: str, query: str = "", details: Optional[Dict[str, Any]] = None):
         super().__init__(message, "MEMORY_RETRIEVAL_ERROR", details)
         self.query = query
 
@@ -67,7 +67,7 @@ class MemoryRetrievalError(MemoryServiceError):
 class MemoryStorageError(MemoryServiceError):
     """Exception for memory storage failures"""
 
-    def __init__(self, message: str, content: str = "", details: Dict[str, Any] = None):
+    def __init__(self, message: str, content: str = "", details: Optional[Dict[str, Any]] = None):
         super().__init__(message, "MEMORY_STORAGE_ERROR", details)
         self.content = content[:100] + "..." if len(content) > 100 else content
 
@@ -178,7 +178,7 @@ class EnhancedMemoryService(WebUIMemoryService):
 
     def __init__(self, base_memory_manager: MemoryManager):
         """Initialize enhanced memory service"""
-        super().__init__(base_memory_manager)
+        super().__init__(base_memory_manager=base_memory_manager)
 
         # Circuit breakers for different operations
         self.vector_circuit_breaker = CircuitBreaker("vector_store")
@@ -412,20 +412,17 @@ class EnhancedMemoryService(WebUIMemoryService):
                         memory = WebUIMemoryEntry(
                             id=db_memory.vector_id or str(db_memory.id),
                             content=db_memory.content,
-                            metadata=db_memory.metadata or {},
+                            metadata=db_memory.item_metadata or {},
                             timestamp=db_memory.created_at.timestamp(),
-                            tags=db_memory.tags or [],
-                            user_id=str(db_memory.user_id),
-                            session_id=db_memory.session_id,
                             similarity_score=0.5,  # Default score for SQL search
                             ui_source=UISource(db_memory.ui_source)
-                            if db_memory.ui_source
+                            if (hasattr(db_memory, "ui_source") and db_memory.ui_source)
                             else UISource.API,
                             conversation_id=str(db_memory.conversation_id)
-                            if db_memory.conversation_id
+                            if (hasattr(db_memory, "conversation_id") and db_memory.conversation_id)
                             else None,
                             memory_type=MemoryType(db_memory.memory_type)
-                            if db_memory.memory_type
+                            if (hasattr(db_memory, "memory_type") and db_memory.memory_type)
                             else MemoryType.GENERAL,
                             importance_score=db_memory.importance_score or 5,
                             access_count=db_memory.access_count or 0,
@@ -481,7 +478,7 @@ class EnhancedMemoryService(WebUIMemoryService):
         conversation_id: Optional[str] = None,
         memory_type: MemoryType = MemoryType.GENERAL,
         tags: Optional[List[str]] = None,
-        importance_score: int = None,
+        importance_score: Optional[int] = None,
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
         ttl_hours: Optional[int] = None,

@@ -26,7 +26,7 @@ from transformers import AutoConfig, AutoTokenizer, AutoModel
 
 from ai_karen_engine.core.response.training_data_manager import TrainingDataManager, TrainingExample
 from ai_karen_engine.core.response.autonomous_learner import AutonomousLearner, ValidationResult
-from ai_karen_engine.services.enhanced_huggingface_service import EnhancedHuggingFaceService, TrainableModel
+from ai_karen_engine.inference.huggingface_service import EnhancedHuggingFaceServicebleModel
 from ai_karen_engine.services.system_model_manager import SystemModelManager
 
 logger = logging.getLogger(__name__)
@@ -243,7 +243,7 @@ class TrainingJob:
 class ModelCompatibilityChecker:
     """Checks model compatibility for training operations."""
     
-    def __init__(self, enhanced_hf_service: EnhancedHuggingFaceService):
+    def __init__(self, enhanced_hf_service: HuggingFaceService):
         self.enhanced_hf_service = enhanced_hf_service
         self.logger = logging.getLogger(__name__)
     
@@ -638,7 +638,7 @@ class FlexibleTrainingInterface:
     
     def __init__(
         self,
-        enhanced_hf_service: EnhancedHuggingFaceService,
+        enhanced_hf_service: HuggingFaceService,
         training_data_manager: TrainingDataManager,
         system_model_manager: SystemModelManager,
         base_dir: str = "./training_environments"

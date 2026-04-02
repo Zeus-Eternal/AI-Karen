@@ -88,7 +88,7 @@ class PluginService:
             Dictionary of discovered plugin metadata
         """
         await self._ensure_initialized()
-        return await self.registry.discover_plugins(force_refresh)
+        return await self._get_registry().discover_plugins(force_refresh)
     
     async def validate_plugin(self, plugin_name: str) -> bool:
         """
@@ -101,7 +101,7 @@ class PluginService:
             True if validation successful, False otherwise
         """
         await self._ensure_initialized()
-        return await self.registry.validate_plugin(plugin_name)
+        return await self._get_registry().validate_plugin(plugin_name)
     
     async def register_plugin(self, plugin_name: str) -> bool:
         """
@@ -114,7 +114,7 @@ class PluginService:
             True if registration successful, False otherwise
         """
         await self._ensure_initialized()
-        return await self.registry.register_plugin(plugin_name)
+        return await self._get_registry().register_plugin(plugin_name)
     
     async def validate_and_register_plugin(self, plugin_name: str) -> bool:
         """
@@ -127,9 +127,10 @@ class PluginService:
             True if both validation and registration successful, False otherwise
         """
         await self._ensure_initialized()
-        
-        if await self.registry.validate_plugin(plugin_name):
-            return await self.registry.register_plugin(plugin_name)
+
+        registry = self._get_registry()
+        if await registry.validate_plugin(plugin_name):
+            return await registry.register_plugin(plugin_name)
         return False
     
     async def validate_and_register_all_discovered(self) -> Dict[str, bool]:
@@ -140,9 +141,10 @@ class PluginService:
             Dictionary mapping plugin names to success status
         """
         await self._ensure_initialized()
-        
+
+        registry = self._get_registry()
         results = {}
-        discovered_plugins = self.registry.get_plugins_by_status(PluginStatus.DISCOVERED)
+        discovered_plugins = registry.get_plugins_by_status(PluginStatus.DISCOVERED)
         
         for plugin_metadata in discovered_plugins:
             plugin_name = plugin_metadata.manifest.name
@@ -162,7 +164,7 @@ class PluginService:
     async def execute_plugin(
         self,
         plugin_name: str,
-        parameters: Dict[str, Any] = None,
+        parameters: Optional[Dict[str, Any]] = None,
         execution_mode: ExecutionMode = ExecutionMode.SANDBOX,
         timeout_seconds: int = 30,
         resource_limits: Optional[Dict[str, Any]] = None,
@@ -187,7 +189,7 @@ class PluginService:
             Execution result
         """
         await self._ensure_initialized()
-        
+
         request = ExecutionRequest(
             plugin_name=plugin_name,
             parameters=parameters or {},
@@ -198,8 +200,8 @@ class PluginService:
             user_id=user_id,
             session_id=session_id
         )
-        
-        return await self.execution_engine.execute_plugin(request)
+
+        return await self._get_execution_engine().execute_plugin(request)
     
     async def cancel_execution(self, request_id: str) -> bool:
         """
@@ -212,7 +214,7 @@ class PluginService:
             True if cancellation successful, False otherwise
         """
         await self._ensure_initialized()
-        return await self.execution_engine.cancel_execution(request_id)
+        return await self._get_execution_engine().cancel_execution(request_id)
     
     def get_plugin(self, plugin_name: str) -> Optional[PluginMetadata]:
         """Get plugin metadata by name."""
@@ -356,6 +358,18 @@ class PluginService:
         if not self.initialized:
             await self.initialize()
 
+    def _get_registry(self) -> PluginRegistry:
+        """Get the initialized plugin registry."""
+        if self.registry is None:
+            raise RuntimeError("Plugin registry is not initialized")
+        return self.registry
+
+    def _get_execution_engine(self) -> PluginExecutionEngine:
+        """Get the initialized plugin execution engine."""
+        if self.execution_engine is None:
+            raise RuntimeError("Plugin execution engine is not initialized")
+        return self.execution_engine
+
 
 # Global plugin service instance
 _plugin_service: Optional[PluginService] = None
@@ -401,7 +415,7 @@ async def discover_and_register_all_plugins() -> Dict[str, bool]:
 
 async def execute_plugin_simple(
     plugin_name: str,
-    parameters: Dict[str, Any] = None,
+    parameters: Optional[Dict[str, Any]] = None,
     timeout_seconds: int = 30
 ) -> ExecutionResult:
     """Simple plugin execution with default settings."""

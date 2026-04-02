@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 
-from production_cache_service import get_cache_service
-from model_library_cache_service import get_model_cache_service
-from database_query_cache_service import get_db_cache_service
+from .production_cache_service import get_cache_service
+from .model_library_cache_service import get_model_cache_service
+from .database_query_cache_service import get_db_cache_service
 
 logger = logging.getLogger(__name__)
 

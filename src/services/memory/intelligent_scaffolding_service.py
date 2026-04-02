@@ -17,13 +17,13 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
 import hashlib
 
-from src.services.intelligent_model_router import (
+from .intelligent_model_router import (
     ModelRouter, get_model_router
 )
-from src.services.model_discovery_engine import (
+from .internal.model_discovery_engine import (
     ModelDiscoveryEngine, get_model_discovery_engine
 )
-from src.services.profile_manager import (
+from .profile_manager import (
     ProfileManager, get_profile_manager
 )
 

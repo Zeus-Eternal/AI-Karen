@@ -546,8 +546,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G      # Increased to 6GB for better performance
-          cpus: '4.0'     # Increased to 4 CPU cores for better performance
+          memory: 8G      # Increased to 8GB for local LLM support
+          cpus: '6.0'     # Increased to 6 CPU cores for better generation speed
         reservations:
           memory: 2G      # Reserve 2GB minimum
           cpus: '2.0'     # Reserve 2 CPU cores

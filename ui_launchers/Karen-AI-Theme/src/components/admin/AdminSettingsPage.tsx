@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, Bot, Shield, FileText, Activity, GraduationCap } from "lucide-react";
+import { Users, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, Bot, Shield, FileText, Activity, GraduationCap, Wrench } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import TrainingSettingsPanel from "./TrainingSettingsPanel";
 import CommsCenterPage from "@/components/comms/CommsCenterPage";
 import AdminAnalyticsPanel from "./AdminAnalyticsPanel";
 import AdminDatabasePanel from "./AdminDatabasePanel";
+import MaintenancePanel from "./MaintenancePanel";
 
 type UserRole = "Admin" | "User" | "Editor";
 type UserStatus = "Active" | "Suspended" | "Pending";
@@ -380,6 +381,7 @@ export default function AdminSettingsPage() {
             <TabsTrigger value="database"><Database className="mr-1.5 h-4 w-4" />Database</TabsTrigger>
             <TabsTrigger value="analytics"><BarChart className="mr-1.5 h-4 w-4" />Analytics</TabsTrigger>
             <TabsTrigger value="audit"><FileText className="mr-1.5 h-4 w-4" />Audit Log</TabsTrigger>
+            <TabsTrigger value="maintenance"><Wrench className="mr-1.5 h-4 w-4" />Maintenance</TabsTrigger>
           </TabsList>
 
           {/* ── Users Tab ── */}
@@ -671,6 +673,11 @@ export default function AdminSettingsPage() {
           {/* ── Audit Log Tab ── */}
           <TabsContent value="audit" className="mt-6">
             <AuditLogPanel />
+          </TabsContent>
+
+          {/* ── Maintenance Tab ── */}
+          <TabsContent value="maintenance" className="mt-6">
+            <MaintenancePanel />
           </TabsContent>
         </Tabs>
       </div>

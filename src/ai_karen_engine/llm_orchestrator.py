@@ -663,6 +663,14 @@ class LLMOrchestrator:
             if not models:
                 default_name = info.default_model or provider_name
                 models = [ProviderModelInfo(name=default_name, capabilities=["generic"])]
+            elif info.default_model:
+                default_models = [m for m in models if m.name == info.default_model]
+                if default_models:
+                    # Avoid registering and warming an entire cloud catalog at startup.
+                    # One representative model per provider is enough for health and routing bootstrap.
+                    models = default_models
+
+            warm_provider = self._should_warm_provider(provider_name)
             for m in models:
                 try:
                     provider = registry.get_provider(provider_name, model=m.name)
@@ -679,7 +687,7 @@ class LLMOrchestrator:
                         capabilities,
                         **register_kwargs,
                     )
-                    latency = self._warm_model(model_id, provider)
+                    latency = self._warm_model(model_id, provider) if warm_provider else None
                     if latency is not None:
                         info = self.registry._models.get(model_id)
                         if info:
@@ -742,6 +750,26 @@ class LLMOrchestrator:
             if info:
                 info.warmed = True
                 info.record_latency(latency)
+
+    def _should_warm_provider(self, provider_name: str) -> bool:
+        """Warm only cheap/local providers by default.
+
+        Cloud providers often trigger expensive network calls and large model
+        catalog initialization during startup, which can interfere with active
+        requests and exhaust memory on constrained dev hosts.
+        """
+        if os.getenv("KARI_WARM_CLOUD_PROVIDERS", "").lower() in {"1", "true", "yes", "on"}:
+            return True
+
+        localish_providers = {
+            "fallback",
+            "local",
+            "llamacpp",
+            "llama-cpp",
+            "transformers",
+            "huggingface-local",
+        }
+        return provider_name.lower() in localish_providers
 
     def _ensure_minimum_models_registered(self) -> None:
         """Synchronously ensure the registry is never empty during routing."""
@@ -918,10 +946,25 @@ class LLMOrchestrator:
         """Warm a model and return latency in seconds if successful."""
         start = time.time()
         try:
+            # Skip warming if the model seems unhealthy or already warmed
+            info = self.registry._models.get(model_id)
+            if info and (info.warmed or info.status != ModelStatus.ACTIVE):
+                return None
+
             if hasattr(provider, "warm_cache"):
+                # Use a timeout if supported, otherwise just call it
                 provider.warm_cache()
             else:  # Fallback minimal generation
-                provider.generate_text("hello", max_tokens=1)
+                # We use a very small max_tokens to minimize impact
+                # In production, we might want to skip this if it causes hangs
+                try:
+                    # Try to call generate_text with a timeout if it's a wrapper
+                    # but for llama-cpp it's likely blocking.
+                    provider.generate_text("hello", max_tokens=1)
+                except Exception as e:
+                    logger.debug(f"Minimal generation warmup failed for {model_id}: {e}")
+                    return None
+            
             latency = time.time() - start
             logger.info(f"Warmed {model_id} in {latency:.3f}s")
             return latency
@@ -1104,11 +1147,14 @@ class LLMOrchestrator:
                 return
                 
         # Execute the stream helper
+        stream_kwargs = dict(kwargs)
+        stream_kwargs.pop("model", None)
+        stream_kwargs.pop("provider", None)
         async for chunk in self._execute_model_stream(
             final_model_id, 
             model_info, 
             prompt, 
-            **kwargs
+            **stream_kwargs
         ):
             yield chunk
 
@@ -1275,13 +1321,16 @@ class LLMOrchestrator:
             )
 
             try:
+                execution_kwargs = dict(kwargs)
+                execution_kwargs.pop("model", None)
+                execution_kwargs.pop("provider", None)
                 response_text = self._execute_model(
                     model_id,
                     model,
                     prompt,
                     mode=mode,
                     context=context,
-                    **kwargs,
+                    **execution_kwargs,
                 )
 
                 provider_name = (
@@ -1444,6 +1493,8 @@ class LLMOrchestrator:
         self.pool._record_outcome(model_id, True)
         latency = time.time() - start
         self._track_latency(model_id, latency)
+
+        return result
 
     async def _execute_model_stream(
         self,

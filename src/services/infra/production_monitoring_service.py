@@ -18,7 +18,7 @@ from collections import defaultdict, deque
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.metrics_manager import get_metrics_manager
-from src.services.database_health_checker import (
+from ..memory import (
     get_database_health_checker,
     OverallHealthStatus,
 )
@@ -605,6 +605,7 @@ class ProductionMonitoringService:
                     self.performance_metrics.throughput_rps = len(recent_responses) / 300.0
                     
                     # Calculate error rate
+                    error_rate = 0.0
                     recent_errors = [
                         e for e in self._error_counts
                         if (now - e["timestamp"]).total_seconds() < 300
@@ -724,7 +725,7 @@ class ProductionMonitoringService:
                 self.active_alerts = [
                     alert for alert in self.active_alerts
                     if not alert.resolved or
-                    (now - alert.resolution_time).total_seconds() < 86400  # Keep for 24 hours
+                    (alert.resolution_time and (now - alert.resolution_time).total_seconds() < 86400)  # Keep for 24 hours
                 ]
                 
                 await asyncio.sleep(300)  # Process every 5 minutes

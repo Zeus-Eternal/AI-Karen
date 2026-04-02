@@ -96,6 +96,16 @@ class DatabaseHealthChecker:
         self._start_time = time.time()
         self._last_health_check: Optional[HealthCheckResult] = None
 
+    async def initialize(self) -> bool:
+        """Initialize health checker and perform initial check"""
+        logger.info("Initializing Database Health Checker")
+        try:
+            await self.check_health()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize database health checker: {e}")
+            return False
+
     @property
     def milvus_client(self) -> MilvusClient:
         """Lazy load Milvus client only when needed for health checks"""

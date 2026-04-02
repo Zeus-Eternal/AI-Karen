@@ -9,19 +9,22 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Tuple
+from typing import Dict, List, Optional, Any, Union, Tuple, Callable, TYPE_CHECKING
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict, Counter
 import statistics
 from concurrent.futures import ThreadPoolExecutor
 
-try:
+if TYPE_CHECKING:
     from pydantic import BaseModel, ConfigDict, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
+else:
+    try:
+        from pydantic import BaseModel, ConfigDict, Field
+    except ImportError:
+        from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
-from src.services.analytics_service import (
+from services.memory.analytics_service import (
     AnalyticsService,
     get_analytics_service,
     Metric,
@@ -154,7 +157,7 @@ class SystemHealthSummary(BaseModel):
 class DataAggregator:
     """Aggregates and processes analytics data"""
     
-    def __init__(self, analytics_service: AnalyticsService = None):
+    def __init__(self, analytics_service: Optional[AnalyticsService] = None):
         self.analytics_service = analytics_service or get_analytics_service()
         self.logger = logging.getLogger(__name__)
     
@@ -207,12 +210,12 @@ class DataAggregator:
             
             # Group by time buckets
             bucket_size = self._get_time_bucket_size(query.time_range)
-            time_buckets = defaultdict(list)
+            time_buckets: Dict[datetime, List[float]] = defaultdict(list)
             
             for metric in filtered_metrics:
                 # Calculate bucket timestamp
                 bucket_timestamp = self._get_bucket_timestamp(metric.timestamp, bucket_size)
-                time_buckets[bucket_timestamp].append(metric.value)
+                time_buckets[bucket_timestamp].append(float(metric.value))
             
             # Aggregate values in each bucket
             aggregated_points = []
@@ -278,7 +281,7 @@ class DataAggregator:
 class UserBehaviorAnalyzer:
     """Analyzes user behavior patterns and generates insights"""
     
-    def __init__(self, analytics_service: AnalyticsService = None):
+    def __init__(self, analytics_service: Optional[AnalyticsService] = None):
         self.analytics_service = analytics_service or get_analytics_service()
         self.logger = logging.getLogger(__name__)
     
@@ -449,19 +452,20 @@ class UserBehaviorAnalyzer:
 class RealtimeMetricsProcessor:
     """Processes real-time metrics for dashboard updates"""
     
-    def __init__(self, analytics_service: AnalyticsService = None):
+    def __init__(self, analytics_service: Optional[AnalyticsService] = None):
+        """Initialize the analytics dashboard service"""
         self.analytics_service = analytics_service or get_analytics_service()
-        self.subscribers: Dict[str, List[callable]] = defaultdict(list)
+        self.subscribers: Dict[str, List[Callable]] = defaultdict(list)
         self.is_running = False
-        self._processor_task = None
+        self._processor_task: Optional[asyncio.Task] = None
         self.logger = logging.getLogger(__name__)
     
-    def subscribe(self, metric_name: str, callback: callable):
+    def subscribe(self, metric_name: str, callback: Callable):
         """Subscribe to real-time updates for a metric"""
         self.subscribers[metric_name].append(callback)
         self.logger.info(f"Subscribed to real-time updates for {metric_name}")
     
-    def unsubscribe(self, metric_name: str, callback: callable):
+    def unsubscribe(self, metric_name: str, callback: Callable):
         """Unsubscribe from real-time updates"""
         if callback in self.subscribers[metric_name]:
             self.subscribers[metric_name].remove(callback)
@@ -531,7 +535,7 @@ class AnalyticsDashboard:
     real-time metrics, historical reporting, and user behavior insights.
     """
     
-    def __init__(self, analytics_service: AnalyticsService = None):
+    def __init__(self, analytics_service: Optional[AnalyticsService] = None):
         self.analytics_service = analytics_service or get_analytics_service()
         self.data_aggregator = DataAggregator(self.analytics_service)
         self.behavior_analyzer = UserBehaviorAnalyzer(self.analytics_service)
@@ -751,11 +755,11 @@ class AnalyticsDashboard:
         """Stop real-time metrics processing"""
         await self.realtime_processor.stop_processing()
     
-    def subscribe_to_metric(self, metric_name: str, callback: callable):
+    def subscribe_to_metric(self, metric_name: str, callback: Callable):
         """Subscribe to real-time metric updates"""
         self.realtime_processor.subscribe(metric_name, callback)
     
-    def unsubscribe_from_metric(self, metric_name: str, callback: callable):
+    def unsubscribe_from_metric(self, metric_name: str, callback: Callable):
         """Unsubscribe from real-time metric updates"""
         self.realtime_processor.unsubscribe(metric_name, callback)
     
@@ -828,7 +832,7 @@ class AnalyticsDashboard:
 _analytics_dashboard: Optional[AnalyticsDashboard] = None
 
 
-def get_analytics_dashboard(analytics_service: AnalyticsService = None) -> AnalyticsDashboard:
+def get_analytics_dashboard(analytics_service: Optional[AnalyticsService] = None) -> AnalyticsDashboard:
     """Get or create the global analytics dashboard instance"""
     global _analytics_dashboard
     if _analytics_dashboard is None:
@@ -836,7 +840,7 @@ def get_analytics_dashboard(analytics_service: AnalyticsService = None) -> Analy
     return _analytics_dashboard
 
 
-def initialize_analytics_dashboard(analytics_service: AnalyticsService = None) -> AnalyticsDashboard:
+def initialize_analytics_dashboard(analytics_service: Optional[AnalyticsService] = None) -> AnalyticsDashboard:
     """Initialize the analytics dashboard with configuration"""
     global _analytics_dashboard
     _analytics_dashboard = AnalyticsDashboard(analytics_service)

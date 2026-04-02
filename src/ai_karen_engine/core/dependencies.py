@@ -291,35 +291,78 @@ async def get_conversation_service() -> Any:
                 # Let's create a simple adapter or use the base_manager directly
                 from ai_karen_engine.database.conversation_manager import (
                     ConversationManager,
+                    Conversation as LegacyConversation,
+                    Message as LegacyMessage,
+                    MessageRole as LegacyMessageRole,
                     normalize_user_id,
                 )
+                from ai_karen_engine.chat.conversation_models import ConversationStatus
                 
-                # Create a simple adapter class
+                # Create an adapter class to bridge the enhanced ConversationManager (Pydantic based)
+                # and the original WebUIConversationService (Dataclass based)
                 class ConversationManagerAdapter:
                     def __init__(self, enhanced_manager):
                         self.enhanced_manager = enhanced_manager
                     
+                    def _to_legacy_message(self, msg) -> LegacyMessage:
+                        """Convert enhanced ChatMessage (BaseModel) to legacy Message (Dataclass)."""
+                        role_val = msg.role.value if hasattr(msg.role, "value") else str(msg.role)
+                        return LegacyMessage(
+                            id=msg.id,
+                            role=LegacyMessageRole(role_val),
+                            content=msg.content,
+                            timestamp=msg.created_at,
+                            metadata=msg.metadata or {},
+                        )
+
+                    def _to_legacy_conversation(self, conv, messages=None) -> LegacyConversation:
+                        """Convert enhanced Conversation (BaseModel) to legacy Conversation (Dataclass)."""
+                        return LegacyConversation(
+                            id=conv.id,
+                            user_id=str(conv.user_id),
+                            title=conv.title,
+                            messages=[self._to_legacy_message(m) for m in (messages or [])],
+                            metadata=conv.metadata or {},
+                            is_active=conv.status == ConversationStatus.ACTIVE,
+                            created_at=conv.created_at,
+                            updated_at=conv.updated_at or conv.created_at
+                        )
+
                     # Delegate the required methods
                     async def create_conversation(self, tenant_id, user_id, title=None, initial_message=None, metadata=None):
-                        return await self.enhanced_manager.create_conversation(
+                        conv = await self.enhanced_manager.create_conversation(
                             tenant_id=tenant_id,
                             user_id=normalize_user_id(user_id),
                             title=title,
                             initial_message=initial_message,
                             metadata=metadata or {}
                         )
+                        
+                        # New conversations usually have no messages yet returned from create_conversation, 
+                        # but initial_message might have been added to DB.
+                        messages = []
+                        if initial_message:
+                            messages = await self.enhanced_manager.get_conversation_messages(tenant_id, conv.id)
+                        
+                        return self._to_legacy_conversation(conv, messages)
                     
                     async def get_conversation(self, tenant_id, conversation_id, include_context=False):
-                        return await self.enhanced_manager.get_conversation(tenant_id, conversation_id)
+                        conv = await self.enhanced_manager.get_conversation(tenant_id, conversation_id)
+                        if not conv:
+                            return None
+                        
+                        messages = await self.enhanced_manager.get_conversation_messages(tenant_id, conversation_id)
+                        return self._to_legacy_conversation(conv, messages)
                     
                     async def add_message(self, tenant_id, conversation_id, role, content, metadata=None):
-                        return await self.enhanced_manager.add_message(
+                        msg = await self.enhanced_manager.add_message(
                             tenant_id=tenant_id,
                             conversation_id=conversation_id,
                             role=role,
                             content=content,
                             metadata=metadata or {}
                         )
+                        return self._to_legacy_message(msg)
 
                     async def list_conversations(self, tenant_id, user_id, active_only=True, limit=50, offset=0):
                         """Delegated list_conversations to the underlying manager."""
@@ -332,13 +375,15 @@ async def get_conversation_service() -> Any:
                                 filters = ConversationFilters(status=ConversationStatus.ACTIVE)
                             
                             # Use keyword arguments as supported by the enhanced ConversationManager
-                            return await self.enhanced_manager.list_conversations(
+                            conversations = await self.enhanced_manager.list_conversations(
                                 tenant_id=tenant_id,
                                 user_id=normalize_user_id(user_id),
                                 filters=filters,
                                 limit=limit,
                                 offset=offset
                             )
+                            # Convert multiple conversations efficiently
+                            return [self._to_legacy_conversation(c) for c in conversations]
                         except Exception as e:
                             logger.error(f"❌ Adapter list_conversations failed: {e}")
                             return []

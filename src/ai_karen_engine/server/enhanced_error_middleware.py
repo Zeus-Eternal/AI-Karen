@@ -591,6 +591,10 @@ class EnhancedErrorMiddleware(BaseHTTPMiddleware):
     
     async def _handle_error(self, request: Request, error: Exception) -> JSONResponse:
         """Handle errors with appropriate fallback strategies."""
+        # Bypass for copilot assist to allow specialized handling and avoid recursion
+        if "/api/copilot/assist" in request.url.path:
+            raise error
+
         error_context = {
             "path": request.url.path,
             "method": request.method,
@@ -628,6 +632,9 @@ class EnhancedErrorMiddleware(BaseHTTPMiddleware):
         
         else:
             # Handle as general error
+            import traceback
+            print(f"!!! ENHANCED ERROR MIDDLEWARE TRAPPING UNHANDLED ERROR: {error}")
+            traceback.print_exc()
             logger.error(f"Unhandled error: {error}", exc_info=True)
             return JSONResponse(
                 status_code=500,

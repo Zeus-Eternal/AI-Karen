@@ -26,7 +26,7 @@ from ai_karen_engine.core.response.training_interface import (
     TrainingJob,
     HardwareConstraints
 )
-from ai_karen_engine.services.enhanced_huggingface_service import EnhancedHuggingFaceService
+from ai_karen_engine.inference.huggingface_service import EnhancedHuggingFaceService
 from ai_karen_engine.core.response.training_data_manager import TrainingDataManager
 from ai_karen_engine.services.system_model_manager import SystemModelManager
 
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/api/training", tags=["training"])
 def get_training_interface() -> FlexibleTrainingInterface:
     """Get training interface instance."""
     # In a real implementation, this would be properly injected
-    enhanced_hf_service = EnhancedHuggingFaceService()
+    enhanced_hf_service = HuggingFaceService()
     training_data_manager = TrainingDataManager()
     system_model_manager = SystemModelManager()
     

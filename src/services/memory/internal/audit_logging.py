@@ -147,10 +147,10 @@ class AuditLogger:
     def log_audit_event(self, event: AuditEvent) -> None:
         """Log a general audit event"""
         # Convert to dict and redact sensitive data
-        event_dict = asdict(event)
+        event_dict = asdict(event)  # type: ignore
         event_dict["timestamp"] = event.timestamp.isoformat()
-        event_dict["event_type"] = event.event_type.value
-        event_dict["severity"] = event.severity.value
+        event_dict["event_type"] = str(event.event_type.value)
+        event_dict["severity"] = str(event.severity.value)
         
         # Redact PII from metadata
         if event_dict.get("metadata"):
@@ -162,7 +162,8 @@ class AuditLogger:
             del event_dict["session_id"]
         
         # Track event counts for metrics
-        self._event_counts[event.event_type.value] = self._event_counts.get(event.event_type.value, 0) + 1
+        event_type_key = str(event.event_type.value)
+        self._event_counts[event_type_key] = self._event_counts.get(event_type_key, 0) + 1
         
         # Log to appropriate logger based on severity
         extra = {
@@ -193,12 +194,12 @@ class AuditLogger:
         user_id: str,
         email: str,
         ip_address: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        session_id: str = None,
-        previous_login: datetime = None,
-        login_count: int = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        previous_login: Optional[datetime] = None,
+        login_count: Optional[int] = None,
         logged_by: str = "auth_routes",
         **metadata
     ) -> None:
@@ -244,9 +245,9 @@ class AuditLogger:
         email: str,
         ip_address: str,
         failure_reason: str,
-        user_agent: str = None,
-        correlation_id: str = None,
-        attempt_count: int = None,
+        user_agent: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        attempt_count: Optional[int] = None,
         logged_by: str = "auth_routes",
         **metadata
     ) -> None:
@@ -294,11 +295,11 @@ class AuditLogger:
         self,
         user_id: str,
         ip_address: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        session_id: str = None,
-        session_duration_minutes: float = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        session_duration_minutes: Optional[float] = None,
         logged_by: str = "auth_routes",
         **metadata
     ) -> None:
@@ -339,11 +340,11 @@ class AuditLogger:
         self,
         user_id: str,
         ip_address: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        old_token_jti: str = None,
-        new_token_jti: str = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        old_token_jti: Optional[str] = None,
+        new_token_jti: Optional[str] = None,
         logged_by: str = "auth_routes",
         **metadata
     ) -> None:
@@ -388,9 +389,9 @@ class AuditLogger:
         self,
         ip_address: str,
         failure_reason: str,
-        user_agent: str = None,
-        correlation_id: str = None,
-        token_jti: str = None,
+        user_agent: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        token_jti: Optional[str] = None,
         **metadata
     ) -> None:
         """Log failed token refresh attempt"""
@@ -418,9 +419,9 @@ class AuditLogger:
         old_token_jti: str,
         new_access_jti: str,
         new_refresh_jti: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         **metadata
     ) -> None:
         """Log token rotation event"""
@@ -448,10 +449,10 @@ class AuditLogger:
         user_id: str,
         session_id: str,
         ip_address: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        expires_at: datetime = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        expires_at: Optional[datetime] = None,
         **metadata
     ) -> None:
         """Log session creation"""
@@ -477,11 +478,11 @@ class AuditLogger:
         self,
         user_id: str,
         session_id: str,
-        ip_address: str = None,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        session_duration_minutes: float = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        session_duration_minutes: Optional[float] = None,
         **metadata
     ) -> None:
         """Log session expiration"""
@@ -509,15 +510,15 @@ class AuditLogger:
         self,
         error_category: str,
         error_severity: str,
-        provider_name: str = None,
+        provider_name: Optional[str] = None,
         ai_analysis_used: bool = False,
         response_cached: bool = False,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        llm_provider: str = None,
-        llm_model: str = None,
-        generation_time_ms: float = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        llm_provider: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        generation_time_ms: Optional[float] = None,
         **metadata
     ) -> None:
         """Log intelligent error response generation"""
@@ -550,10 +551,10 @@ class AuditLogger:
     def log_ai_analysis_requested(
         self,
         error_message: str,
-        provider_name: str = None,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
+        provider_name: Optional[str] = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         **metadata
     ) -> None:
         """Log AI analysis request"""
@@ -577,11 +578,11 @@ class AuditLogger:
         llm_provider: str,
         llm_model: str,
         generation_time_ms: float,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        response_quality_score: float = None,
-        error_message: str = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        response_quality_score: Optional[float] = None,
+        error_message: Optional[str] = None,
         **metadata
     ) -> None:
         """Log AI analysis completion"""
@@ -609,10 +610,10 @@ class AuditLogger:
     def log_response_cache_event(
         self,
         cache_hit: bool,
-        error_category: str = None,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
+        error_category: Optional[str] = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         **metadata
     ) -> None:
         """Log response cache hit/miss"""
@@ -632,6 +633,36 @@ class AuditLogger:
         )
         
         self.log_audit_event(event)
+
+    def log_ai_analysis_failed(
+        self,
+        error_message: str,
+        failure_reason: str,
+        provider_name: Optional[str] = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        **metadata
+    ) -> None:
+        """Log AI analysis failure"""
+        event = IntelligentResponseAuditEvent(
+            event_type=AuditEventType.AI_ANALYSIS_COMPLETED,
+            severity=AuditSeverity.WARNING,
+            message=f"AI analysis failed: {failure_reason}",
+            user_id=user_id,
+            tenant_id=tenant_id,
+            correlation_id=correlation_id,
+            provider_name=provider_name,
+            ai_analysis_used=True,
+            metadata={
+                **metadata,
+                "error_message_hash": PIIRedactor.hash_sensitive_data(error_message),
+                "failure_reason": failure_reason,
+                "success": False
+            }
+        )
+        
+        self.log_audit_event(event)
     
     # Performance Event Logging
     
@@ -640,12 +671,12 @@ class AuditLogger:
         operation_name: str,
         duration_ms: float,
         success: bool = True,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        error_message: str = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        error_message: Optional[str] = None,
         cache_hit: bool = False,
-        token_jti: str = None,
+        token_jti: Optional[str] = None,
         logged_by: str = "token_manager",
         **metadata
     ) -> None:
@@ -697,11 +728,11 @@ class AuditLogger:
         model: str,
         duration_ms: float,
         success: bool = True,
-        user_id: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        error_message: str = None,
-        token_count: int = None,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        error_message: Optional[str] = None,
+        token_count: Optional[int] = None,
         **metadata
     ) -> None:
         """Log LLM response performance"""
@@ -746,10 +777,10 @@ class AuditLogger:
         self,
         user_id: str,
         ip_address: str,
-        user_agent: str = None,
-        tenant_id: str = None,
-        correlation_id: str = None,
-        session_id: str = None,
+        user_agent: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        session_id: Optional[str] = None,
         validation_method: str = "token",
         logged_by: str = "session_validator",
         **metadata
@@ -791,10 +822,10 @@ class AuditLogger:
     def log_suspicious_activity(
         self,
         description: str,
-        user_id: str = None,
-        ip_address: str = None,
-        user_agent: str = None,
-        correlation_id: str = None,
+        user_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         **metadata
     ) -> None:
         """Log suspicious activity"""
@@ -830,8 +861,8 @@ class AuditLogger:
         endpoint: str,
         limit: int,
         current_count: int,
-        ip_address: str = None,
-        correlation_id: str = None,
+        ip_address: Optional[str] = None,
+        correlation_id: Optional[str] = None,
         **metadata
     ) -> None:
         """Log rate limit exceeded"""

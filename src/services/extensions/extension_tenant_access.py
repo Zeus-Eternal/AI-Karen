@@ -239,5 +239,5 @@ class ExtensionTenantAccess(BaseService):
         self._tenant_resource_usage.clear()
         
         self._initialized = False
-        self._status = ServiceStatus.SHUTDOWN
+        self._status = ServiceStatus.STOPPED
         self.logger.info("Extension Tenant Access service shutdown complete")

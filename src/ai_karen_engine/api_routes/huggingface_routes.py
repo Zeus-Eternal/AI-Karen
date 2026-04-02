@@ -14,9 +14,9 @@ This module implements:
 import logging
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.services.enhanced_huggingface_service import (
+from ai_karen_engine.inference.huggingface_service import (
     get_enhanced_huggingface_service, TrainingFilters, TrainableModel,
-    CompatibilityReport, EnhancedDownloadJob
+    CompatibilityReport, DownloadJob as EnhancedDownloadJob
 )
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 

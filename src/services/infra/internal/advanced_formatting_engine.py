@@ -26,7 +26,9 @@ class FormatType(Enum):
     CODE_BLOCK = "code_block"
     LIST = "list"
     TABLE = "table"
+    BULLET_POINTS = "bullet_points"
     STRUCTURED = "structured"
+
     INTERACTIVE = "interactive"
 
 
@@ -39,6 +41,9 @@ class ContentType(Enum):
     TECHNICAL = "technical"
     NARRATIVE = "narrative"
     INSTRUCTIONAL = "instructional"
+    LIST = "list"
+    TABLE = "table"
+
 
 
 class AccessibilityLevel(Enum):
@@ -126,9 +131,49 @@ class AdvancedFormattingEngine:
             'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
         }
         
+        self.content_patterns = self._initialize_content_patterns()
         self.syntax_highlighters = self._initialize_syntax_highlighters()
+
     
+    def _initialize_content_patterns(self) -> Dict[ContentType, Dict[str, Any]]:
+        """Initialize patterns for content type detection and formatting"""
+        return {
+            ContentType.CODE: {
+                'patterns': [
+                    r'```[\w]*\n.*?\n```',
+                    r'`[^`]+`',
+                    r'def\s+\w+\(',
+                    r'class\s+\w+',
+                    r'import\s+\w+',
+                    r'from\s+\w+\s+import',
+                    r'function\s+\w+\(',
+                    r'var\s+\w+\s*=',
+                    r'const\s+\w+\s*=',
+                    r'let\s+\w+\s*='
+                ],
+                'format': FormatType.CODE_BLOCK
+            },
+            ContentType.LIST: {
+                'patterns': [
+                    r'^\s*[-*+]\s+',
+                    r'^\s*\d+\.\s+',
+                    r'^\s*[a-zA-Z]\.\s+'
+                ],
+                'format': FormatType.BULLET_POINTS
+            },
+            ContentType.TABLE: {
+                'patterns': [
+                    r'\|.*\|.*\|',
+                    r'^\s*\w+\s*:\s*\w+',
+                    r'Column\s+\d+',
+                    r'Row\s+\d+'
+                ],
+                'format': FormatType.TABLE
+            }
+        }
+
     def _initialize_syntax_highlighters(self) -> Dict[str, Any]:
+
         """Initialize syntax highlighting configurations."""
         return {
             'python': {
@@ -176,8 +221,26 @@ class AdvancedFormattingEngine:
             }
     
     def _detect_content_type(self, content: str) -> ContentType:
-        """Detect the primary type of content."""
+        # Check patterns for content type detection
+        max_matches = 0
+        detected_type = ContentType.TEXT
+        
+        for content_type, config in self.content_patterns.items():
+            matches = 0
+            for pattern in config['patterns']:
+                if re.search(pattern, content, re.MULTILINE | re.DOTALL):
+                    matches += 1
+            
+            if matches > max_matches:
+                max_matches = matches
+                detected_type = content_type
+        
+        if max_matches > 0:
+            return detected_type
+            
+        # Fallback to existing logic if patterns don't give a clear result
         code_indicators = len(self.format_patterns['code_block'].findall(content))
+
         inline_code_indicators = len(self.format_patterns['inline_code'].findall(content))
         list_indicators = len(self.format_patterns['list_item'].findall(content))
         table_indicators = len(self.format_patterns['table_row'].findall(content))
@@ -259,8 +322,27 @@ class AdvancedFormattingEngine:
                     'language': line.strip()[3:] if len(line.strip()) > 3 else 'text',
                     'start_line': i
                 }
+            # Check for tables
+            elif any(re.match(p, line) for p in self.content_patterns[ContentType.TABLE]['patterns']):
+                if current_section['content'].strip():
+                    sections.append(current_section)
+                current_section = {
+                    'content': line + '\n',
+                    'type': 'table',
+                    'start_line': i
+                }
+            # Check for lists
+            elif any(re.match(p, line) for p in self.content_patterns[ContentType.LIST]['patterns']):
+                if current_section['content'].strip():
+                    sections.append(current_section)
+                current_section = {
+                    'content': line + '\n',
+                    'type': 'list',
+                    'start_line': i
+                }
             else:
                 current_section['content'] += line + '\n'
+
         
         if current_section['content'].strip():
             sections.append(current_section)

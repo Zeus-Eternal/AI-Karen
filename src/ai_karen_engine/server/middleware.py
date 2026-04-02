@@ -93,7 +93,7 @@ def configure_middleware(
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Request-ID", "X-Response-Time"],
+        expose_headers=["X-Request-ID", "X-Response-Time", "X-Process-Time"],
         max_age=600,
     )
 
@@ -105,7 +105,31 @@ def configure_middleware(
     # "Response content longer than Content-Length" in Uvicorn.
     @app.middleware("http")
     async def strip_content_length_for_streams(request: Request, call_next):
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+            if request.url.path.startswith("/api/copilot/assist"):
+                logger.warning(
+                    "strip_content_length_for_streams received response: %s",
+                    type(response).__name__ if response is not None else "None",
+                )
+        except RuntimeError as exc:
+            if (
+                request.url.path.startswith("/api/copilot/assist")
+                and "No response returned" in str(exc)
+            ):
+                from ai_karen_engine.server.exception_handlers import (
+                    _build_copilot_degraded_response,
+                )
+                from fastapi.responses import JSONResponse
+
+                logger.warning(
+                    "Returning degraded Copilot response after middleware chain dropped the response"
+                )
+                return JSONResponse(
+                    status_code=200,
+                    content=_build_copilot_degraded_response(request, exc),
+                )
+            raise
         try:
             # Remove Content-Length for true streaming responses
             if isinstance(response, StreamingResponse):
@@ -120,6 +144,62 @@ def configure_middleware(
         except Exception:
             # Do not interfere with the response in case of header mutations failing
             pass
+        return response
+
+    @app.middleware("http")
+    async def fix_internal_redirects(request: Request, call_next):
+        """
+        Intercepts absolute redirects containing internal Docker hostnames
+        and rewrites them to be relative or use the correct forwarded host.
+        """
+        try:
+            response = await call_next(request)
+            if request.url.path.startswith("/api/copilot/assist"):
+                logger.warning(
+                    "fix_internal_redirects received response: %s",
+                    type(response).__name__ if response is not None else "None",
+                )
+        except RuntimeError as exc:
+            if (
+                request.url.path.startswith("/api/copilot/assist")
+                and "No response returned" in str(exc)
+            ):
+                from ai_karen_engine.server.exception_handlers import (
+                    _build_copilot_degraded_response,
+                )
+                from fastapi.responses import JSONResponse
+
+                logger.warning(
+                    "Returning degraded Copilot response from redirect middleware after dropped inner response"
+                )
+                return JSONResponse(
+                    status_code=200,
+                    content=_build_copilot_degraded_response(request, exc),
+                )
+            raise
+        
+        # We only care about redirects (301, 302, 307, 308)
+        if response.status_code in (301, 302, 307, 308):
+            location = response.headers.get("location")
+            if location:
+                # Internal hostnames commonly used in Docker/K8s
+                internal_hosts = ["api:8000", "api-copilot:8000", "localhost:8000", "host.docker.internal:8000"]
+                for host in internal_hosts:
+                    if f"http://{host}" in location or f"https://{host}" in location:
+                        # Extract the forwarded host if provided by a proxy (like Next.js)
+                        # Otherwise fall back to the Host header
+                        external_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+                        if external_host:
+                            # Reconstruct the URL using the correct host and protocol
+                            from urllib.parse import urlparse, urlunparse
+                            parsed = urlparse(location)
+                            # Preserve the original protocol (http/https) from the redirect unless we are explicitly TLS terminated
+                            scheme = request.headers.get("x-forwarded-proto") or parsed.scheme
+                            new_location = urlunparse((scheme, external_host, parsed.path, parsed.params, parsed.query, parsed.fragment))
+                            
+                            logger.info(f"🔄 Rewriting internal redirect: {location} -> {new_location}")
+                            response.headers["location"] = new_location
+                            break
         return response
 
     # REMOVED: RBAC middleware - replaced with simple auth role checking
@@ -207,16 +287,44 @@ def configure_middleware(
     @app.middleware("http")
     async def security_headers_middleware(request: Request, call_next):
         response = await call_next(request)
-        response.headers.update(
-            {
-                "X-Content-Type-Options": "nosniff",
-                "X-Frame-Options": "DENY",
-                "X-XSS-Protection": "1; mode=block",
-                "Referrer-Policy": "strict-origin-when-cross-origin",
-                "Content-Security-Policy": "default-src 'self'",
-                "Permissions-Policy": "geolocation=(), microphone=()",
-            }
-        )
+        if request.url.path.startswith("/api/copilot/assist"):
+            logger.warning(
+                "security_headers_middleware received response: %s",
+                type(response).__name__ if response is not None else "None",
+            )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        env_name = (getattr(settings, "environment", "") or "").lower()
+        is_production = env_name == "production"
+
+        if is_production:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' data:; "
+                "connect-src 'self'"
+            )
+            response.headers["Permissions-Policy"] = (
+                "geolocation=(), microphone=(self)"
+            )
+        else:
+            # Development: permissive CSP to allow cross-port API calls
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self' http://localhost:* http://127.0.0.1:*; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https: http:; "
+                "font-src 'self' data:; "
+                "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*"
+            )
+            response.headers["Permissions-Policy"] = (
+                "geolocation=(), microphone=(self)"
+            )
         return response
 
     # Use globally configured validation framework or create default
@@ -262,6 +370,21 @@ def configure_middleware(
     async def request_monitoring_middleware(request: Request, call_next):
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
+
+        # Skip validation in dev/bypass mode
+        auth_bypass = os.getenv("KARI_AUTH_BYPASS", "true").lower() == "true"
+        if auth_bypass:
+            start_time = datetime.now(timezone.utc)
+            response = await call_next(request)
+            if request.url.path.startswith("/api/copilot/assist"):
+                logger.warning(
+                    "request_monitoring_middleware(auth_bypass) received response: %s",
+                    type(response).__name__ if response is not None else "None",
+                )
+            process_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            response.headers["X-Process-Time"] = str(process_time)
+            response.headers["X-Request-ID"] = request_id
+            return response
 
         # Perform comprehensive request validation using the new validator
         validation_result = await http_validator.validate_request(request)

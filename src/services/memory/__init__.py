@@ -1,9 +1,6 @@
-"""
-Memory & Cognitive Services
-
-This package contains memory and cognitive services for the Kari platform.
-"""
-
+import importlib
+import logging
+import sys
 from typing import Any
 
 __all__ = [
@@ -11,6 +8,8 @@ __all__ = [
     "NeuroVaultIntegrationService",
     "MemoryPolicy",
     "MemoryWritebackSystem",
+    "get_database_health_checker",
+    "OverallHealthStatus",
 ]
 
 
@@ -32,4 +31,15 @@ def __getattr__(name: str) -> Any:
         from .internal.memory_writeback import MemoryWritebackSystem
 
         return MemoryWritebackSystem
+    
+    # Static imports for IDE support
+    if name == "get_database_health_checker":
+        from .internal.database_health_checker import get_database_health_checker
+        return get_database_health_checker
+    
+    if name == "OverallHealthStatus":
+        from .internal.database_health_checker import OverallHealthStatus
+        return OverallHealthStatus
+        
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

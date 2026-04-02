@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Any, Union, Callable
 from datetime import datetime, timedelta
 import weakref
 
-from src.services.smart_cache_manager import (
+from services.memory.smart_cache_manager import (
     SmartCacheManager, get_smart_cache_manager, CacheEntry
 )
 

@@ -127,6 +127,8 @@ class SafetyMiddleware(BaseHTTPMiddleware):
             "/api/auth/register",
             "/api/auth/reset-password",
             "/api/auth/validate-session",
+            "/api/conversations/",
+            "/api/system/",
         }
         
         # Thread-safe data structures
@@ -156,22 +158,24 @@ class SafetyMiddleware(BaseHTTPMiddleware):
         return self._safety_config
     
     def _should_skip_safety_check(self, request: Request) -> bool:
-        """Check if safety checks should be skipped for this request."""
-        path = request.url.path
-        
-        # Skip paths in the skip list
-        if path in self._skip_safety_paths:
-            return True
-        
-        # Skip paths with certain prefixes
-        for prefix in ["/static/", "/public/", "/api/health/"]:
-            if path.startswith(prefix):
-                return True
-        
+        """Determines if the safety check should be skipped for this request."""
+        # Respect development bypass
+        import os
+        if os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true":
+             return True
+
         # Skip OPTIONS requests
         if request.method.upper() == "OPTIONS":
             return True
+
+        # Skip for health check endpoints
+        if request.url.path.endswith("/health") or request.url.path.endswith("/system/health"):
+            return True
         
+        # Skip for telemetry
+        if "/api/telemetry" in request.url.path:
+            return True
+            
         return False
     
     async def _extract_request_content(self, request: Request) -> Dict[str, Any]:

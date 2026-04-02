@@ -2,75 +2,153 @@
 
 // API service for HTTP requests
 const SAME_ORIGIN_API_BASE_URL = '';
+
 export class ApiError extends Error {
   status: number;
+  details?: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, details?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.details = details;
   }
 }
 
 class ApiClient {
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
 
+  private formatApiErrorMessage(payload: unknown, fallback: string): string {
+    if (typeof payload === 'string') {
+      const trimmed = payload.trim();
+      return trimmed || fallback;
+    }
+
+    if (payload && typeof payload === 'object') {
+      const record = payload as Record<string, unknown>;
+      const preferredKeys = ['user_message', 'message', 'detail', 'error'];
+
+      for (const key of preferredKeys) {
+        const value = record[key];
+        if (typeof value === 'string' && value.trim()) {
+          return value.trim();
+        }
+      }
+
+      try {
+        return JSON.stringify(payload);
+      } catch {
+        return fallback;
+      }
+    }
+
+    if (payload == null) {
+      return fallback;
+    }
+
+    return String(payload);
+  }
+
   private async sleep(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private isBrowser(): boolean {
+    return typeof window !== 'undefined' && (!!window.document || !!window.navigator);
+  }
+
+  private forceBrowserRelativeApiUrl(url: string): string {
+    if (!this.isBrowser()) {
+      return url;
+    }
+
+    if (url.startsWith('/')) {
+      return url;
+    }
+
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      const apiIndex = url.indexOf('/api/');
+      if (apiIndex >= 0) {
+        return url.slice(apiIndex);
+      }
+      return url;
+    }
+  }
+
+  /**
+   * Determine the preferred base URL.
+   * In a browser context, we return an empty string to force relative paths
+   * which are then handled by the Next.js local proxy.
+   */
   private getPreferredBaseUrl(): string {
-    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
-    if (isBrowser) {
-      const origin = window.location.origin;
-      console.log('[ApiClient] Browser environment. Using origin as baseUrl:', origin);
-      return origin;
+    if (this.isBrowser()) {
+      return '';
     }
 
     // Server-side only
     const env = (process as any).env || {};
-    return (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+    if (env.KAREN_DOCKER === 'true' || env.KARI_DOCKER === 'true' || 
+        env.HOSTNAME?.includes('api') || env.HOSTNAME?.includes('web')) {
+      return 'http://api:8000';
+    }
+    
+    return (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || env.API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
   }
 
   private getFallbackBaseUrl(preferredBaseUrl: string): string | null {
-    const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
-    if (isBrowser) {
+    if (this.isBrowser()) {
       return null;
     }
 
     const env = (process as any).env || {};
     const configuredBackendUrl = (env.KAREN_BACKEND_URL || env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
     
-    // Server-side: if we preferred same-origin (unlikely on server), fallback to direct backend URL
     if (preferredBaseUrl === SAME_ORIGIN_API_BASE_URL) {
       return configuredBackendUrl || null;
     }
     
-    // Otherwise, we were already trying direct backend, fallback to proxy origin if applicable
     return SAME_ORIGIN_API_BASE_URL || null;
   }
 
+  private hasFallbackBaseUrl(baseUrl: string | null): baseUrl is string {
+    return baseUrl !== null && baseUrl !== '';
+  }
+
+  /**
+   * Build the final URL, ensuring that Docker-internal hostnames are stripped
+   * when running in a browser context to avoid ERR_NAME_NOT_RESOLVED.
+   */
   private buildUrl(baseUrl: string | null, endpoint: string): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      // Browser: Prevent Docker internal hostnames or subnets from leaking
-      if (baseUrl && (
-        baseUrl.includes('api') || 
-        baseUrl.includes('172.') || 
-        baseUrl.includes('10.') || 
-        baseUrl.includes('192.168.') ||
-        baseUrl.includes('localhost:8000') ||
-        baseUrl === 'api'
-      )) {
-        console.warn('[ApiClient] Blocking internal/Docker baseUrl in browser:', baseUrl, 'Rewriting to:', normalizedEndpoint);
-        return normalizedEndpoint;
+    
+    // Aggressive browser-side URL hardening
+    if (this.isBrowser()) {
+      const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:8000|host\.docker\.internal)(:\d+)?/gi;
+      
+      let finalUrl = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+      
+      // If it's an absolute URL pointing to internal Docker hosts, strip it
+      if (finalUrl.startsWith('http')) {
+        finalUrl = finalUrl.replace(dockerHostPattern, '');
       }
-      const result = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
-      console.log('[ApiClient] Browser BuildUrl result:', result, '(baseUrl:', baseUrl, 'endpoint:', endpoint, ')');
-      return result;
+      
+      // If we are in the browser and the URL is still absolute to 'api', force it to relative
+      if (finalUrl.includes('://api')) {
+         finalUrl = finalUrl.substring(finalUrl.indexOf('/api/'));
+      }
+
+      // Ensure it starts with /api if it's a relative path to our backend
+      if (!finalUrl.startsWith('http') && !finalUrl.startsWith('/')) {
+        finalUrl = '/' + finalUrl;
+      }
+      
+      return finalUrl;
     }
 
+    // Server-side logic
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
       return endpoint;
     }
@@ -79,16 +157,12 @@ class ApiClient {
   }
 
   private shouldRetryWithSameOrigin(error: unknown): boolean {
-    return typeof window !== 'undefined' && error instanceof TypeError;
-  }
-
-  private hasFallbackBaseUrl(baseUrl: string | null): baseUrl is string {
-    return baseUrl !== null && baseUrl !== '';
+    return this.isBrowser() && error instanceof TypeError;
   }
 
   private shouldRetryWithDirectBackend(response: Response, fallbackBaseUrl: string | null): boolean {
     return (
-      typeof window !== 'undefined' &&
+      this.isBrowser() &&
       this.hasFallbackBaseUrl(fallbackBaseUrl) &&
       response.status >= 500
     );
@@ -96,7 +170,7 @@ class ApiClient {
 
   private shouldRetryMissingApiRoute(endpoint: string, response: Response, fallbackBaseUrl: string | null): boolean {
     return (
-      typeof window !== 'undefined' &&
+      this.isBrowser() &&
       this.hasFallbackBaseUrl(fallbackBaseUrl) &&
       endpoint.startsWith('/api/') &&
       response.status === 404
@@ -105,17 +179,14 @@ class ApiClient {
 
   private shouldRetryAssistServerError(endpoint: string, response: Response): boolean {
     return (
-      typeof window !== 'undefined' &&
+      this.isBrowser() &&
       endpoint === '/api/copilot/assist' &&
       response.status >= 500
     );
   }
 
   private hasSessionMarker(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
+    if (typeof window === 'undefined') return false;
     try {
       return localStorage.getItem(this.SESSION_MARKER_KEY) === 'true';
     } catch {
@@ -124,47 +195,34 @@ class ApiClient {
   }
 
   private shouldPreferCookieSession(): boolean {
-    return typeof window !== 'undefined' && this.hasSessionMarker();
+    return this.isBrowser() && this.hasSessionMarker();
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
     try {
-      if (this.shouldPreferCookieSession()) {
-        return {
-          'Content-Type': 'application/json'
-        };
-      }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
 
-      // Try to get a valid access token
-      const accessToken = localStorage.getItem('access_token');
-      
-      if (!accessToken) {
-        return {
-          'Content-Type': 'application/json'
-        };
-      }
-
-      // Check if token is expired and refresh if needed
-      if (this.isTokenExpired(accessToken)) {
-        try {
-          await this.refreshAccessToken();
-        } catch (error) {
-          // If refresh fails, clear auth data and continue without auth
-          console.warn('Failed to refresh access token, proceeding without auth');
-          return {
-            'Content-Type': 'application/json'
-          };
+      if (!this.shouldPreferCookieSession()) {
+        const accessToken = localStorage.getItem('access_token');
+        if (accessToken) {
+          if (this.isTokenExpired(accessToken)) {
+            try {
+              await this.refreshAccessToken();
+              const newToken = localStorage.getItem('access_token');
+              if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
+            } catch {
+              console.warn('Failed to refresh token, proceeding without auth');
+            }
+          } else {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+          }
         }
       }
-
-      return {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        'Content-Type': 'application/json'
-      };
-    } catch (error) {
-      return {
-        'Content-Type': 'application/json'
-      };
+      return headers;
+    } catch {
+      return { 'Content-Type': 'application/json' };
     }
   }
 
@@ -180,16 +238,12 @@ class ApiClient {
   private async refreshAccessToken(): Promise<void> {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
+      if (!refreshToken) throw new Error('No refresh token available');
 
       const sendRefresh = async (baseUrl: string | null): Promise<Response> =>
         fetch(this.buildUrl(baseUrl, '/api/auth/refresh'), {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ refresh_token: refreshToken }),
         });
@@ -201,30 +255,22 @@ class ApiClient {
       try {
         response = await sendRefresh(preferredBaseUrl);
       } catch (error) {
-        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-          throw error;
-        }
+        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) throw error;
         response = await sendRefresh(fallbackBaseUrl);
       }
 
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
+      if (!response.ok) throw new Error('Token refresh failed');
       const data = await response.json();
       localStorage.setItem('access_token', data.access_token);
     } catch (error) {
-      // If refresh fails, clear all auth data
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_data');
-      
       if (typeof document !== 'undefined') {
         document.cookie = 'kari_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       }
-      
       throw error;
     }
   }
@@ -237,17 +283,19 @@ class ApiClient {
         ...((init.headers as Record<string, string> | undefined) || {}),
       };
 
-      let url = this.buildUrl(baseUrl, endpoint);
-      // Final fallback: Ensure no Docker hostnames leak if logic above somehow missed it or was bypassed
-      if (typeof window !== 'undefined') {
-        url = url.replace(/http:\/\/api:8000/g, '');
-        console.log('[ApiClient] Executing browser fetch to URL:', url);
+      const url = this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, endpoint));
+      console.log(`[ApiClient] Request: ${url} (Base: ${baseUrl}, Endpoint: ${endpoint})`);
+      
+      try {
+        return await fetch(url, {
+          ...init,
+          headers: requestHeaders,
+          credentials: 'include',
+        });
+      } catch (err) {
+        console.error(`[ApiClient] Network error for ${url}:`, err);
+        throw err;
       }
-      return fetch(url, {
-        ...init,
-        headers: requestHeaders,
-        credentials: 'include',
-      });
     };
 
     const preferredBaseUrl = this.getPreferredBaseUrl();
@@ -257,80 +305,52 @@ class ApiClient {
     try {
       response = await send(preferredBaseUrl);
     } catch (error) {
-      if (!this.shouldRetryWithSameOrigin(error) || !this.hasFallbackBaseUrl(fallbackBaseUrl)) {
-        throw error;
-      }
+      if (!this.shouldRetryWithSameOrigin(error) || !this.hasFallbackBaseUrl(fallbackBaseUrl)) throw error;
       response = await send(fallbackBaseUrl);
     }
 
-    if (
-      this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
-      this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
-    ) {
+    // Logic for retries (500s or 404s on API routes)
+    if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+        this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)) {
       response = await send(fallbackBaseUrl);
     }
 
+    // 401 Handling
     if (response.status === 401 && !this.shouldPreferCookieSession()) {
       try {
         await this.refreshAccessToken();
-        try {
-          response = await send(preferredBaseUrl);
-        } catch (error) {
-          if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-            throw error;
-          }
+        response = await send(preferredBaseUrl);
+        if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
+            this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)) {
           response = await send(fallbackBaseUrl);
         }
-        if (
-          this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
-          this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
-        ) {
-          response = await send(fallbackBaseUrl);
-        }
-      } catch (refreshError) {
-        // Fall through to the error handling below with the original/second response.
-      }
+      } catch {}
     }
 
+    // 500 Retry for Copilot Assist
     if (!response.ok && this.shouldRetryAssistServerError(endpoint, response)) {
       await this.sleep(250);
-      try {
-        response = await send(preferredBaseUrl);
-      } catch (error) {
-        if (!this.shouldRetryWithSameOrigin(error) || !this.hasFallbackBaseUrl(fallbackBaseUrl)) {
-          throw error;
-        }
-        response = await send(fallbackBaseUrl);
-      }
-
-      if (
-        this.shouldRetryWithDirectBackend(response, fallbackBaseUrl) ||
-        this.shouldRetryMissingApiRoute(endpoint, response, fallbackBaseUrl)
-      ) {
-        response = await send(fallbackBaseUrl);
-      }
+      response = await send(preferredBaseUrl);
     }
 
     if (!response.ok) {
       const rawText = await response.text().catch(() => '');
       let errorData: Record<string, any> = {};
-      if (rawText) {
-        try {
-          errorData = JSON.parse(rawText);
-        } catch {
-          errorData = { detail: rawText.trim() };
-        }
+      try {
+        errorData = JSON.parse(rawText);
+      } catch {
+        errorData = { detail: rawText.trim() };
       }
+      const fallbackMessage = `HTTP ${response.status}: ${response.statusText}`;
+      const errorPayload = errorData.detail ?? errorData.message ?? errorData.error ?? rawText;
       throw new ApiError(
         response.status,
-        errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        this.formatApiErrorMessage(errorPayload, fallbackMessage),
+        errorData,
       );
     }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
+    if (response.status === 204) return undefined as T;
     const text = await response.text();
     return (text ? JSON.parse(text) : undefined) as T;
   }

@@ -151,6 +151,12 @@ class RedisConnectionManager:
             logger.warning(f"Redis connection test failed: {e}")
             return False
 
+    async def health_check(self) -> Dict[str, Any]:
+        """Public health check method"""
+        result = await self._health_check()
+        result["connection_info"] = self.get_connection_info()
+        return result
+
     async def _health_check(self) -> Dict[str, Any]:
         """Health check function for connection health manager"""
         if not self._client or self._degraded_mode:

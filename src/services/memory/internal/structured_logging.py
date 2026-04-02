@@ -95,7 +95,7 @@ class PIIRedactor:
         return redacted_text
     
     @staticmethod
-    def redact_dict(data: Dict[str, Any], sensitive_keys: List[str] = None) -> Dict[str, Any]:
+    def redact_dict(data: Dict[str, Any], sensitive_keys: Optional[List[str]] = None) -> Dict[str, Any]:
         """Redact PII from dictionary values"""
         if not isinstance(data, dict):
             return data
@@ -237,7 +237,7 @@ class SecurityLogger:
         )
     
     def log_authentication_failure(self, user_id: str, ip_address: str, 
-                                 correlation_id: str = None, **kwargs):
+                                 correlation_id: Optional[str] = None, **kwargs):
         """Log authentication failure"""
         event = SecurityEvent(
             event_type=SecurityEventType.AUTHENTICATION_FAILURE,
@@ -251,7 +251,7 @@ class SecurityLogger:
         self.log_security_event(event)
     
     def log_authorization_failure(self, user_id: str, endpoint: str, 
-                                required_scope: str, correlation_id: str = None, **kwargs):
+                                required_scope: str, correlation_id: Optional[str] = None, **kwargs):
         """Log authorization failure"""
         event = SecurityEvent(
             event_type=SecurityEventType.AUTHORIZATION_FAILURE,
@@ -265,7 +265,7 @@ class SecurityLogger:
         self.log_security_event(event)
     
     def log_cross_tenant_access_attempt(self, user_id: str, user_org_id: str, 
-                                      attempted_org_id: str, correlation_id: str = None, **kwargs):
+                                      attempted_org_id: str, correlation_id: Optional[str] = None, **kwargs):
         """Log cross-tenant access attempt"""
         event = SecurityEvent(
             event_type=SecurityEventType.CROSS_TENANT_ACCESS_ATTEMPT,
@@ -279,8 +279,8 @@ class SecurityLogger:
         self.log_security_event(event)
     
     def log_rate_limit_violation(self, user_id: str, endpoint: str, 
-                               limit: int, current_count: int, 
-                               correlation_id: str = None, **kwargs):
+                                limit: int, current_count: int, 
+                                correlation_id: Optional[str] = None, **kwargs):
         """Log rate limit violation"""
         event = SecurityEvent(
             event_type=SecurityEventType.RATE_LIMIT_VIOLATION,
@@ -293,8 +293,8 @@ class SecurityLogger:
         )
         self.log_security_event(event)
     
-    def log_suspicious_activity(self, description: str, user_id: str = None, 
-                              ip_address: str = None, correlation_id: str = None, **kwargs):
+    def log_suspicious_activity(self, description: str, user_id: Optional[str] = None, 
+                              ip_address: Optional[str] = None, correlation_id: Optional[str] = None, **kwargs):
         """Log suspicious activity"""
         event = SecurityEvent(
             event_type=SecurityEventType.SUSPICIOUS_ACTIVITY,
@@ -309,12 +309,12 @@ class SecurityLogger:
     
     def get_recent_events(self, limit: int = 100) -> List[SecurityEvent]:
         """Get recent security events"""
-        return self.security_events[-limit:]
+        return self.security_events[-limit:] if self.security_events else []
 
 class StructuredLoggingService:
     """Main structured logging service"""
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         self.config_path = config_path
         self.security_logger = SecurityLogger()
         self.configured = False
@@ -407,8 +407,8 @@ class StructuredLoggingService:
         """Get security logger"""
         return self.security_logger
     
-    def create_request_logger(self, correlation_id: str, user_id: str = None, 
-                            org_id: str = None, ip_address: str = None) -> logging.Logger:
+    def create_request_logger(self, correlation_id: str, user_id: Optional[str] = None, 
+                            org_id: Optional[str] = None, ip_address: Optional[str] = None) -> logging.Logger:
         """Create a logger with request context"""
         logger = self.get_logger('request')
         
@@ -428,9 +428,9 @@ class StructuredLoggingService:
         return ContextAdapter(logger, {})
     
     def log_api_request(self, method: str, endpoint: str, status_code: int, 
-                       duration_ms: float, user_id: str = None, org_id: str = None,
-                       ip_address: str = None, user_agent: str = None, 
-                       correlation_id: str = None, **kwargs):
+                       duration_ms: float, user_id: Optional[str] = None, org_id: Optional[str] = None,
+                       ip_address: Optional[str] = None, user_agent: Optional[str] = None, 
+                       correlation_id: Optional[str] = None, **kwargs):
         """Log API request"""
         logger = self.get_logger('api')
         
@@ -458,7 +458,7 @@ class StructuredLoggingService:
         )
     
     def log_memory_access(self, operation: str, memory_id: str, user_id: str, 
-                         org_id: str = None, correlation_id: str = None, **kwargs):
+                         org_id: Optional[str] = None, correlation_id: Optional[str] = None, **kwargs):
         """Log memory access (without content for privacy)"""
         logger = self.get_logger('memory')
         
@@ -487,7 +487,7 @@ def get_structured_logging_service() -> StructuredLoggingService:
         _structured_logging_service = StructuredLoggingService()
     return _structured_logging_service
 
-def init_structured_logging(config_path: str = None) -> StructuredLoggingService:
+def init_structured_logging(config_path: Optional[str] = None) -> StructuredLoggingService:
     """Initialize global structured logging service"""
     global _structured_logging_service
     _structured_logging_service = StructuredLoggingService(config_path)

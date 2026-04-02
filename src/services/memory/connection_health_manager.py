@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Callable, Union, Coroutine
 import random
 import json
 
@@ -112,7 +112,7 @@ class ConnectionHealthManager:
         self,
         service_name: str,
         connection_type: ConnectionType,
-        health_check_func: Callable[[], Union[bool, Dict[str, Any]]],
+        health_check_func: Callable[[], Union[bool, Dict[str, Any], Coroutine[Any, Any, Union[bool, Dict[str, Any]]]]],
         degraded_mode_callback: Optional[Callable] = None,
         recovery_callback: Optional[Callable] = None,
     ):

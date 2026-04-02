@@ -223,6 +223,11 @@ async def rate_limit_middleware(request: Request, call_next):
         
         # Process the request
         response = await call_next(request)
+        if str(request.url.path).startswith("/api/copilot/assist"):
+            logger.warning(
+                "rate_limit_middleware received response: %s",
+                type(response).__name__ if response is not None else "None",
+            )
         
         # Add rate limit headers to successful responses
         response.headers["X-RateLimit-Limit"] = str(result.limit)

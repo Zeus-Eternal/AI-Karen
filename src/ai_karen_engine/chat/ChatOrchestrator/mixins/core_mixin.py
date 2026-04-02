@@ -729,8 +729,10 @@ class ChatCoreMixin(Base):
 
     async def _cleanup_context(self, correlation_id: str) -> None:
         async with self._tasks_lock: task = self._active_tasks.pop(correlation_id, None)
-        if task and not task.done():
-            with suppress(asyncio.CancelledError): task.cancel()
+        current_task = asyncio.current_task()
+        if task and task is not current_task and not task.done():
+            with suppress(asyncio.CancelledError):
+                task.cancel()
         async with self._contexts_lock: self._active_contexts.pop(correlation_id, None)
     
     async def _retrieve_context(self, embeddings: List[float], parsed_message: Any, user_id: str, conversation_id: str) -> Dict[str, Any]:

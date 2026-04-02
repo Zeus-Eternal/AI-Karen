@@ -3,7 +3,7 @@ FastAPI routes for enhanced conversation management with web UI integration.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from ai_karen_engine.core.dependencies import (
     get_conversation_service,
@@ -37,6 +37,29 @@ logger = get_logger(__name__)
 
 # Create router without prefix for automatic discovery alignment
 router = APIRouter(tags=["conversations"])
+
+
+def _require_user_id(user_ctx: Dict[str, Any]) -> str:
+    """Extract the authenticated user id as a non-empty string."""
+    user_id = user_ctx.get("user_id")
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(status_code=401, detail="Missing authenticated user id")
+    return user_id
+
+
+def _get_total_conversations_from_stats(
+    stats: Any, fallback: int,
+) -> int:
+    """Read total conversation count from either dict or model-like stats."""
+    if isinstance(stats, dict):
+        value = stats.get("total_conversations", fallback)
+    else:
+        value = getattr(stats, "total_conversations", fallback)
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
 
 
 # Request/Response Models
@@ -267,7 +290,7 @@ async def create_conversation(
 ):
     """Create a new conversation with web UI features."""
     try:
-        user_id = user_ctx.get("user_id")
+        user_id = _require_user_id(user_ctx)
 
         conversation = await conversation_service.create_web_ui_conversation(
             tenant_id=tenant_id,
@@ -718,14 +741,42 @@ async def list_conversations(
 ):
     """List conversations for current user."""
     try:
-        # Use keyword arguments as supported by the enhanced ConversationManager
-        conversations = await conversation_service.base_manager.list_conversations(
-            tenant_id=tenant_id,
-            user_id=normalize_user_id(user_ctx.get("user_id")),
-            active_only=active_only,
-            limit=limit,
-            offset=offset,
-        )
+        import inspect
+        user_id = _require_user_id(user_ctx)
+
+        base_manager = conversation_service.base_manager
+        sig = inspect.signature(base_manager.list_conversations)
+        params = sig.parameters
+
+        # The base ConversationManager accepts `active_only` directly.
+        # The enhanced ConversationManager uses `filters: ConversationFilters`.
+        # We must detect which variant is wired and call accordingly.
+        if "active_only" in params:
+            conversations = await base_manager.list_conversations(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                active_only=active_only,
+                limit=limit,
+                offset=offset,
+            )
+        else:
+            # Enhanced manager – convert the boolean to ConversationFilters
+            from ai_karen_engine.chat.conversation_models import (
+                ConversationFilters as _ConversationFilters,
+                ConversationStatus as _ConversationStatus,
+            )
+            filters: Optional[Any] = None
+            if active_only:
+                filters = _ConversationFilters(status=_ConversationStatus.ACTIVE)
+            enhanced_list_conversations = cast(Any, base_manager.list_conversations)
+            conversations = await enhanced_list_conversations(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                filters=filters,
+                limit=limit,
+                offset=offset,
+            )
+
 
         # Convert to web UI conversations
         web_ui_conversations = []
@@ -741,7 +792,7 @@ async def list_conversations(
                 web_ui_data.get("ui_context", {}),
                 web_ui_data.get("user_settings", {}),
                 web_ui_data.get("tags", []),
-                ConversationPriority(web_ui_data.get("priority", "normal")),
+                ConversationPriority.from_any(web_ui_data.get("priority", "normal")),
                 web_ui_data.get("summary"),
                 web_ui_data.get("last_ai_response_id"),
             )
@@ -751,9 +802,12 @@ async def list_conversations(
         # Get global stats for total count
         stats = await conversation_service.base_manager.get_conversation_stats(
             tenant_id=tenant_id,
-            user_id=user_ctx.get("user_id")
+            user_id=user_id,
         )
-        total_count = stats.get("total_conversations", len(web_ui_conversations))
+        total_count = _get_total_conversations_from_stats(
+            stats,
+            len(web_ui_conversations),
+        )
 
         return ConversationListResponse(
             conversations=web_ui_conversations,
@@ -834,7 +888,7 @@ async def delete_conversation(
 ):
     """Delete a conversation."""
     try:
-        success = await conversation_service.base_manager.delete_conversation(
+        success = await conversation_service.delete_conversation(
             tenant_id=tenant_id,
             conversation_id=conversation_id,
         )
@@ -1025,26 +1079,34 @@ async def ensure_session_conversation(
         # Create new conversation for this session
         logger.info("🔍 DEBUG: Creating new conversation for session: %s", session_id)
         
-        from services.memory.conversation_service import UISource
-        
-        new_conversation = await conversation_service.create_web_ui_conversation(
-            tenant_id=tenant_id,
-            user_id=user_ctx.get("user_id", "anonymous"),
-            session_id=session_id,
-            ui_source=UISource.WEB,
-            title="New Conversation",
-            initial_message=None,
-            user_settings={},
-            ui_context={},
-            tags=["new-session"],
-            priority=ConversationPriority.NORMAL,
-        )
+        try:
+            new_conversation = await conversation_service.create_web_ui_conversation(
+                tenant_id=tenant_id,
+                user_id=user_ctx.get("user_id", "anonymous"),
+                session_id=session_id,
+                ui_source=UISource.WEB,
+                title="New Conversation",
+                initial_message=None,
+                user_settings={},
+                ui_context={},
+                tags=["new-session"],
+                priority=ConversationPriority.NORMAL,
+            )
+        except Exception as create_err:
+            logger.exception(
+                "❌ API: create_web_ui_conversation raised for session %s: %s",
+                session_id, create_err,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create conversation: {type(create_err).__name__}: {create_err}",
+            )
         
         if not new_conversation:
-             logger.error("❌ API: Service failed to create conversation for session: %s", session_id)
+             logger.error("❌ API: Service returned None for session: %s", session_id)
              raise HTTPException(
                 status_code=500,
-                detail="Failed to create conversation record."
+                detail="Failed to create conversation record (service returned None)."
              )
 
         logger.info("🔍 DEBUG: Successfully created new conversation for session: %s", session_id)

@@ -54,6 +54,9 @@ class MemoryItem:
     metadata: Dict[str, Any] = field(default_factory=dict)
     scope: Optional[str] = None
     kind: Optional[str] = None
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
     timestamp: float = field(default_factory=time.time)
     similarity_score: Optional[float] = None
 
@@ -64,6 +67,9 @@ class MemoryItem:
             "metadata": self.metadata,
             "scope": self.scope,
             "kind": self.kind,
+            "user_id": self.user_id,
+            "session_id": self.session_id,
+            "tags": self.tags,
             "timestamp": self.timestamp,
             "similarity_score": self.similarity_score,
         }

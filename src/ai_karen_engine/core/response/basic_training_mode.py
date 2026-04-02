@@ -28,7 +28,7 @@ from ai_karen_engine.core.response.training_interface import (
     HardwareConstraints, ModelCompatibility, BasicTrainingConfig
 )
 from ai_karen_engine.core.response.training_data_manager import TrainingDataManager
-from ai_karen_engine.services.enhanced_huggingface_service import EnhancedHuggingFaceService
+from ai_karen_engine.inference.huggingface_service import EnhancedHuggingFaceService
 from ai_karen_engine.services.system_model_manager import SystemModelManager
 
 logger = logging.getLogger(__name__)
@@ -644,7 +644,7 @@ class BasicTrainingMode:
         training_interface: FlexibleTrainingInterface,
         training_data_manager: TrainingDataManager,
         system_model_manager: SystemModelManager,
-        enhanced_hf_service: EnhancedHuggingFaceService
+        enhanced_hf_service: HuggingFaceService
     ):
         self.training_interface = training_interface
         self.training_data_manager = training_data_manager

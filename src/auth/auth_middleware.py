@@ -796,6 +796,22 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
     def get_current_user(self, request: Request) -> Dict[str, Any]:
         """Get current user from request with comprehensive validation"""
         try:
+            # Check for global environment bypass
+            import os
+            auth_bypass = os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true"
+            if auth_bypass:
+                logger.debug("Authentication bypass active in SecureAuthMiddleware")
+                return {
+                    'user_id': 'dev-user',
+                    'email': 'admin@karen.ai',
+                    'user_type': 'developer',
+                    'permissions': ['extension:*', 'chat:*', 'admin:*'],
+                    'token_id': 'dev-token-id',
+                    'tenant_id': 'default',
+                    'roles': ['admin', 'user'],
+                    'full_name': 'Developer Admin'
+                }
+
             # Check for development bypass mode first
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
@@ -876,6 +892,11 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         HttpOnly ``kari_session`` cookie set by the production auth routes.
         """
         try:
+            import os
+            auth_bypass = os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true"
+            if auth_bypass:
+                return self.get_current_user(request)
+
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
             if skip_auth_header == "dev" and dev_mode_header == "true":

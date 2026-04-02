@@ -14,25 +14,23 @@ from enum import Enum
 from typing import Dict, List, Optional, Any, Callable, Union
 from contextlib import asynccontextmanager
 
-from ...internal.error_recovery_system import (
+from services.memory.internal.error_recovery_system import (
     ErrorRecoverySystem, ErrorContext, ErrorType, RecoveryResult
 )
-from ...internal.model_availability_handler import (
+from services.memory.internal.model_availability_handler import (
     ModelAvailabilityHandler, ModalityRequirement, ModelAvailabilityStatus
 )
-from ...internal.timeout_performance_handler import (
+from services.memory.internal.timeout_performance_handler import (
     TimeoutPerformanceHandler, PerformanceIssue, PerformanceIssueType
 )
-from ...internal.memory_exhaustion_handler import (
+from services.memory.internal.memory_exhaustion_handler import (
     MemoryExhaustionHandler, MemoryPressureLevel, MemoryRecoveryResult
 )
-from ...internal.streaming_interruption_handler import (
+from services.memory.internal.streaming_interruption_handler import (
     StreamingInterruptionHandler, InterruptionContext, InterruptionType
 )
 
-from ...internal..core.types.shared_types import (
-    ModelInfo, Modality, ModalityType, OptimizedResponse, PerformanceMetrics
-)
+from .model_discovery_engine import Modality, ModalityType
 
 
 class SystemHealthStatus(Enum):
@@ -114,6 +112,7 @@ class GracefulDegradationCoordinator:
         self.last_health_check = 0.0
         self.current_health_status = SystemHealthStatus.HEALTHY
         self.current_degradation_level = DegradationLevel.NONE
+        self._recovery_result = None  # To store recovered responses
         
         # Degradation policies
         self.degradation_policies = {
@@ -382,8 +381,33 @@ class GracefulDegradationCoordinator:
             
         finally:
             # Cleanup recovery tracking
-            if recovery_id in self.active_recoveries:
-                del self.active_recoveries[recovery_id]
+            self.active_recoveries.pop(recovery_id, None)
+
+    async def _classify_error_for_coordination(self, error: Exception) -> ErrorType:
+        """Classify error for coordinated recovery."""
+        return self._classify_error_type(error)
+    
+    async def _execute_coordinated_recovery(
+        self,
+        recovery_id: str,
+        error_type: ErrorType,
+        error: Exception,
+        context: DegradationContext
+    ) -> Dict[str, Any]:
+        """Execute coordinated recovery across all handlers."""
+        recovery_result = await self._coordinate_error_recovery(
+            recovery_id, context, error
+        )
+        
+        if recovery_result and recovery_result.success:
+            return {
+                "content": recovery_result.response,
+                "degradation_level": DegradationLevel.MODERATE,
+                "fallback_applied": recovery_result.fallback_model is not None,
+                "model_used": recovery_result.fallback_model
+            }
+        
+        return {}
     
     # Helper methods
     
@@ -642,7 +666,7 @@ class GracefulDegradationCoordinator:
         # Update average degradation level
         total_requests = self.degradation_stats["total_requests"]
         current_avg = self.degradation_stats["average_degradation_level"]
-        new_level = response.degradation_level.value
+        new_level = float(response.degradation_level.value)
         
         self.degradation_stats["average_degradation_level"] = (
             (current_avg * (total_requests - 1) + new_level) / total_requests

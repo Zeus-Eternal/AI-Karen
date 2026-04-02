@@ -68,10 +68,10 @@ class AiData(BaseModel):
 
 class ChatMessage(BaseModel):
     """Represents a single message in a conversation."""
-    id: str = Field(description="Unique identifier for the message")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for the message")
     role: MessageRole = Field(description="Role of the message sender")
     content: str = Field(description="Content of the message")
-    timestamp: datetime = Field(description="When the message was created")
+    timestamp: datetime = Field(default_factory=datetime.now, description="When the message was created")
     ai_data: Optional[AiData] = Field(None, description="AI-generated metadata for the message")
     should_auto_play: Optional[bool] = Field(None, description="Whether the message should auto-play (for TTS)")
 

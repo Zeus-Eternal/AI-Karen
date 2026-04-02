@@ -98,6 +98,8 @@ from ai_karen_engine.api_routes.user_data_routes import router as user_data_rout
 from ai_karen_engine.api_routes.users import router as users_router
 from ai_karen_engine.api_routes.training_data_routes import router as training_data_router
 from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
+from ai_karen_engine.api_routes.maintenance import router as maintenance_router
+
 
 # Multi-modal and AI enhancement routes
 multimodal_router: Optional[Any] = None
@@ -150,21 +152,25 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         # Use FastAPI middleware for global auth
         @app.middleware("http")
         async def auth_middleware_handler(request, call_next):
-            # Check for development bypass headers first
+            # Check for development bypass mode first
+            import os
+            auth_bypass = os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true"
+            
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
             
-            if skip_auth_header == "dev" and dev_mode_header == "true":
+            if auth_bypass or (skip_auth_header == "dev" and dev_mode_header == "true"):
                 # Development mode - set mock user context directly
                 mock_user_id = request.headers.get("X-Mock-User-ID", "dev-user")
                 request.state.user = {
                     'user_id': mock_user_id,
                     'email': f"{mock_user_id}@localhost",
                     'user_type': 'developer',
-                    'permissions': ['extension:*', 'chat:write', 'memory:read', 'memory:write'],
-                    'token_id': 'dev-token-id'
+                    'permissions': ['extension:*', 'chat:write', 'memory:read', 'memory:write', 'admin:*'],
+                    'token_id': 'dev-token-id',
+                    'tenant_id': 'default'
                 }
-                logger.info(f"🔓 Development mode bypass for user: {mock_user_id}")
+                logger.info(f"🔓 Development mode bypass active (KARI_AUTH_BYPASS={auth_bypass}) for user: {mock_user_id}")
             else:
                 # Skip auth for public endpoints
                 if auth_middleware.is_public_endpoint(request.url.path):
@@ -278,6 +284,8 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(user_data_router, prefix="/api", tags=["user-data"])
     app.include_router(settings_router)
     app.include_router(model_settings_router, prefix="/api", tags=["model-settings"])
+    app.include_router(maintenance_router, prefix="/api", tags=["maintenance"])
+
     
     # Multi-modal and AI enhancement routes
     if MULTIMODAL_AVAILABLE:

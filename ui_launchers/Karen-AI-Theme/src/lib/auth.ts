@@ -71,10 +71,15 @@ class AuthService {
   private readonly LEGACY_REFRESH_COOKIE_NAME = 'refresh_token';
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
   private readonly REQUEST_TIMEOUT_MS = 15000;
+  private readonly SESSION_VALIDATION_TIMEOUT_MS = 30000;
 
-  private async fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  private async fetchWithTimeout(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+    timeoutMs: number = this.REQUEST_TIMEOUT_MS,
+  ): Promise<Response> {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT_MS);
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       return await fetch(input, {
@@ -83,11 +88,32 @@ class AuthService {
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error(`Request timed out after ${this.REQUEST_TIMEOUT_MS}ms`);
+        throw new Error(`Request timed out after ${timeoutMs}ms`);
       }
       throw error;
     } finally {
       window.clearTimeout(timeout);
+    }
+  }
+
+  private forceBrowserRelativeApiUrl(url: string): string {
+    if (typeof window === 'undefined') {
+      return url;
+    }
+
+    if (url.startsWith('/')) {
+      return url;
+    }
+
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      const apiIndex = url.indexOf('/api/');
+      if (apiIndex >= 0) {
+        return url.slice(apiIndex);
+      }
+      return url;
     }
   }
 
@@ -116,6 +142,8 @@ class AuthService {
 
   private getPreferredBaseUrl(): string {
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // In the browser, we MUST always prefer same-origin for /api requests to satisfy CORS
+      // and handle Docker networking correctly via the Next.js proxy.
       return window.location.origin;
     }
     return this.getConfiguredBackendUrl() || '';
@@ -137,19 +165,18 @@ class AuthService {
   private buildUrl(baseUrl: string | null, endpoint: string): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      // Browser: Prevent Docker internal hostnames or subnets from leaking
-      if (baseUrl && (
-        baseUrl.includes('api') || 
-        baseUrl.includes('172.') || 
-        baseUrl.includes('10.') || 
-        baseUrl.includes('192.168.') ||
-        baseUrl.includes('localhost:8000') ||
-        baseUrl === 'api'
-      )) {
-        return normalizedEndpoint;
-      }
-      return baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+    // Strip absolute URLs pointing to internal Docker infrastructure in a browser context.
+    // This ensures requests go through the local proxy and avoids ERR_NAME_NOT_RESOLVED.
+    const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:8000|host\.docker\.internal)(:\d+)?/gi;
+    
+    let finalUrl = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+    if (typeof window !== 'undefined' && dockerHostPattern.test(finalUrl)) {
+      finalUrl = finalUrl.replace(dockerHostPattern, '');
+      if (!finalUrl.startsWith('/')) finalUrl = '/' + finalUrl;
+    }
+    
+    if (typeof window !== 'undefined') {
+      return finalUrl;
     }
 
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
@@ -251,7 +278,7 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       const sendLogin = async (baseUrl: string | null): Promise<Response> =>
-        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/login'), {
+        this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/login')), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -312,7 +339,7 @@ class AuthService {
       const accessToken = localStorage.getItem('access_token');
       if (refreshToken) {
         const sendLogout = async (baseUrl: string | null): Promise<Response> =>
-          this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/logout'), {
+          this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/logout')), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -362,12 +389,8 @@ class AuthService {
       }
 
       const sendRefresh = async (baseUrl: string | null): Promise<Response> => {
-        let url = this.buildUrl(baseUrl, '/api/auth/refresh');
-        // Final fallback for browser context
-        if (typeof window !== 'undefined') {
-          url = url.replace(/http:\/\/api:8000/g, '');
-        }
-        return this.fetchWithTimeout(url, {
+        const url = this.buildUrl(baseUrl, '/api/auth/refresh');
+        return this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(url), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -517,11 +540,11 @@ class AuthService {
       }
 
       const sendValidate = async (baseUrl: string | null, headers: Record<string, string>): Promise<Response> =>
-        this.fetchWithTimeout(this.buildUrl(baseUrl, '/api/auth/validate-session'), {
+        this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/validate-session')), {
           method: 'GET',
           headers,
           credentials: 'include',
-        });
+        }, this.SESSION_VALIDATION_TIMEOUT_MS);
 
       const preferredBaseUrl = this.getPreferredBaseUrl();
       const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);

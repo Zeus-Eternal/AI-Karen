@@ -4,9 +4,11 @@ Dependency injection container for AI Karen services.
 
 from typing import Any, Dict, Type, TypeVar, Callable, Optional, List
 from functools import wraps
+import asyncio
 import inspect
 import logging
-from ai_karen_engine.core.services.base import BaseService, ServiceConfig
+import os
+from .base import BaseService, ServiceConfig
 
 T = TypeVar('T')
 logger = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ class ServiceContainer:
         self._singletons: Dict[str, BaseService] = {}
         self._configs: Dict[str, ServiceConfig] = {}
         self._dependency_graph: Dict[str, List[str]] = {}
+        self._started_services: List[str] = []
     
     def register_service(
         self, 
@@ -146,13 +149,23 @@ class ServiceContainer:
         startup_order = self.get_startup_order()
         logger.info(f"Starting services in order: {startup_order}")
         
-        for service_name in startup_order:
+        for name in startup_order:
             try:
-                service = self.get_service(service_name)
+                # Add explicit print for Docker logs visibility
+                print(f"🚀 [INIT] Starting service: {name}")
+                logger.info(f"🚀 Starting service: {name}")
+                
+                service = self.get_service(name)
+                
+                # Run startup without the strict timeout that might be causing hangs/interruption in Docker
                 await service.startup()
-                logger.info(f"Successfully started service: {service_name}")
+                
+                self._started_services.append(name)
+                print(f"✅ [INIT] Service started successfully: {name}")
+                logger.info(f"✅ Service started successfully: {name}")
             except Exception as e:
-                logger.error(f"Failed to start service {service_name}: {e}")
+                print(f"❌ [INIT] Failed to start service {name}: {e}")
+                logger.error(f"❌ Failed to start service {name}: {e}", exc_info=True)
                 raise
     
     async def stop_all_services(self) -> None:

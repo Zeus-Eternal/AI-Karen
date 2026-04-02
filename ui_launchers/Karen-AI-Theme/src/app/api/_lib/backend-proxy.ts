@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const DEFAULT_BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://api:8000';
+const IS_DOCKER =
+  process.env.KAREN_DOCKER === 'true' ||
+  process.env.IS_DOCKER === 'true' ||
+  process.env.HOSTNAME?.includes('api') ||
+  process.env.HOSTNAME?.includes('web');
+
+const DEFAULT_BACKEND_URL = IS_DOCKER
+  ? 'http://api:8000'
+  : process.env.KAREN_BACKEND_URL ||
+    process.env.BACKEND_URL ||
+    'http://localhost:8000';
 const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '60000', 10);
 const LONG_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '180000', 10);
 const RETRYABLE_PROXY_ERROR_CODES = new Set([
@@ -69,7 +79,7 @@ async function buildInit(
       ? undefined
       : bodyOverride ?? await request.text();
 
-  return {
+  const init: RequestInit & { __timeout?: ReturnType<typeof setTimeout> } = {
     method: request.method,
     headers: sanitizeHeaders(request.headers, backendBaseUrl),
     body,
@@ -80,6 +90,9 @@ async function buildInit(
     duplex: body ? 'half' : undefined,
     next: { revalidate: 0 },
   };
+
+  init.__timeout = timeout;
+  return init;
 }
 
 function getTimeoutHandle(init: RequestInit): ReturnType<typeof setTimeout> | undefined {
@@ -163,6 +176,37 @@ export async function proxyToBackend(
       throw lastError instanceof Error ? lastError : new Error('Unknown proxy error');
     }
 
+    // Follow redirects server-side to prevent internal Docker hostnames
+    // (e.g. http://api:8000) from leaking to the browser via Location headers.
+    const MAX_REDIRECTS = 5;
+    let redirectCount = 0;
+    while (
+      upstream.status >= 300 &&
+      upstream.status < 400 &&
+      upstream.headers.has('location') &&
+      redirectCount < MAX_REDIRECTS
+    ) {
+      redirectCount += 1;
+      const locationHeader = upstream.headers.get('location')!;
+
+      // Resolve the redirect URL. If it's absolute with the backend host,
+      // keep it as-is (we're server-side and can resolve Docker names).
+      // If it's relative, resolve against the current upstream URL.
+      let redirectUrl: string;
+      try {
+        const parsed = new URL(locationHeader);
+        // Rewrite to use our known backend base to avoid stale Host headers
+        redirectUrl = `${backendBaseUrl}${parsed.pathname}${parsed.search}`;
+      } catch {
+        // Relative URL – resolve against the backend base
+        redirectUrl = `${backendBaseUrl}${locationHeader}`;
+      }
+
+      const redirectInit = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+      upstream = await fetch(redirectUrl, redirectInit);
+      clearInitTimeout(redirectInit);
+    }
+
     const body = await upstream.text();
     const headers = new Headers(upstream.headers);
     clearInitTimeout(init);
@@ -171,12 +215,15 @@ export async function proxyToBackend(
     headers.delete('content-length');
     headers.delete('transfer-encoding');
     headers.delete('connection');
+    // Remove any stale Location headers that point to internal Docker hosts
+    headers.delete('location');
     headers.set('cache-control', 'no-store');
 
     return new NextResponse(body, {
       status: upstream.status,
       headers,
     });
+
   } catch (error) {
     clearInitTimeout(init);
 

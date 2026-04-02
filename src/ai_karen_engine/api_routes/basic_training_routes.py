@@ -30,7 +30,7 @@ from ai_karen_engine.core.response.basic_training_mode import (
 )
 from ai_karen_engine.core.response.training_interface import TrainingType, TrainingStatus
 from ai_karen_engine.core.response.training_data_manager import TrainingDataManager
-from ai_karen_engine.services.enhanced_huggingface_service import EnhancedHuggingFaceService
+from ai_karen_engine.inference.huggingface_service import EnhancedHuggingFaceService
 from ai_karen_engine.services.system_model_manager import SystemModelManager
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def get_basic_training_mode() -> BasicTrainingMode:
         # Initialize with dependencies
         from ai_karen_engine.core.response.training_interface import FlexibleTrainingInterface
         
-        enhanced_hf_service = EnhancedHuggingFaceService()
+        enhanced_hf_service = HuggingFaceService()
         training_data_manager = TrainingDataManager()
         system_model_manager = SystemModelManager()
         training_interface = FlexibleTrainingInterface(

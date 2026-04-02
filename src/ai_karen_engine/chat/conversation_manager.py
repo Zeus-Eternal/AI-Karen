@@ -982,7 +982,7 @@ class ConversationManager:
                 # Get all conversations for user
                 result = await session.execute(
                     select(TenantConversation).where(
-                        TenantConversation.user_id == uuid.UUID(user_id)
+                        TenantConversation.user_id == normalize_user_id(user_id)
                     )
                 )
 

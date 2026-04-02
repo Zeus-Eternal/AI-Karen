@@ -1072,13 +1072,13 @@ async def search_huggingface_models(
 ):
     """Search HuggingFace models with enhanced filtering."""
     try:
-        from ai_karen_engine.services.enhanced_huggingface_service import get_enhanced_huggingface_service
+        from ai_karen_engine.inference.huggingface_service import get_enhanced_huggingface_service
         
         service = get_enhanced_huggingface_service()
         
         if filter_trainable:
             # Use enhanced search for trainable models
-            from ai_karen_engine.services.enhanced_huggingface_service import TrainingFilters
+            from ai_karen_engine.inference.huggingface_service import TrainingFilters
             filters = TrainingFilters(supports_fine_tuning=True)
             models = service.search_trainable_models(
                 query=query,
@@ -1170,7 +1170,7 @@ async def download_model(
     try:
         if provider == "huggingface" and enhanced:
             # Use enhanced download service
-            from ai_karen_engine.services.enhanced_huggingface_service import get_enhanced_huggingface_service
+            from ai_karen_engine.inference.huggingface_service import get_enhanced_huggingface_service
             
             service = get_enhanced_huggingface_service()
             job = service.download_with_training_setup(

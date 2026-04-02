@@ -18,7 +18,7 @@ from collections import defaultdict
 import statistics
 import threading
 
-from ...internal.response_performance_metrics import ResponsePerformanceMetrics, performance_collector
+from ..internal.response_performance_metrics import ResponsePerformanceMetrics, performance_collector
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class ABTestingSystem:
         target_sample_size: int = 1000,
         confidence_level: float = 0.95,
         minimum_effect_size: float = 0.1,
-        success_metrics: List[str] = None,
+        success_metrics: Optional[List[str]] = None,
         created_by: str = "system"
     ) -> str:
         """Create a new A/B test"""
@@ -188,6 +188,7 @@ class ABTestingSystem:
         logger.info(f"Started A/B test: {test.name} (ID: {test_id})")
         return True
     
+
     def pause_test(self, test_id: str) -> bool:
         """Pause an active A/B test"""
         with self.lock:

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import json
 import re
 
-from ...internal.query_analyzer import QueryAnalysis, ContextRequirement
+from ...infra.internal.query_analyzer import QueryAnalysis, ContextRequirement
 
 logger = logging.getLogger(__name__)
 
@@ -160,13 +160,16 @@ class ContextProcessor:
             context_results = await asyncio.gather(*context_tasks, return_exceptions=True)
             
             # Process results and handle exceptions
-            user_context = context_results[0] if not isinstance(context_results[0], Exception) else {}
-            conversation_context = context_results[1] if not isinstance(context_results[1], Exception) else {}
-            technical_context = context_results[2] if not isinstance(context_results[2], Exception) else {}
-            temporal_context = context_results[3] if not isinstance(context_results[3], Exception) else {}
-            geographical_context = context_results[4] if not isinstance(context_results[4], Exception) else {}
-            domain_context = context_results[5] if not isinstance(context_results[5], Exception) else {}
-            system_context = context_results[6] if not isinstance(context_results[6], Exception) else {}
+            def get_result(res: Any) -> Dict[str, Any]:
+                return res if isinstance(res, dict) else {}
+
+            user_context = get_result(context_results[0])
+            conversation_context = get_result(context_results[1])
+            technical_context = get_result(context_results[2])
+            temporal_context = get_result(context_results[3])
+            geographical_context = get_result(context_results[4])
+            domain_context = get_result(context_results[5])
+            system_context = get_result(context_results[6])
             
             # Generate context summary
             context_summary = await self._generate_context_summary(
@@ -268,6 +271,18 @@ class ContextProcessor:
             logger.error(f"Error extracting conversation context: {e}")
             return {'conversation_id': conversation_id, 'error': str(e)}
     
+    async def _extract_personal_context(self, query_analysis: QueryAnalysis) -> Dict[str, Any]:
+        """Extract personal context from query analysis"""
+        try:
+            context = {}
+            personal_requirements = [req for req in query_analysis.context_requirements if req.type == 'personal']
+            if personal_requirements:
+                context['personal_reqs'] = personal_requirements
+            return context
+        except Exception as e:
+            logger.error(f"Error extracting personal context: {e}")
+            return {}
+
     async def _extract_technical_context(self, query_analysis: QueryAnalysis) -> Dict[str, Any]:
         """Extract technical context for code and technical queries"""
         try:

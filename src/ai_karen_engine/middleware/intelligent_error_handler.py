@@ -210,6 +210,12 @@ class IntelligentErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         try:
             response = await call_next(request)
+            if request.url.path.startswith("/api/copilot/assist"):
+                logger.warning(
+                    "intelligent_error_handler received response: %s",
+                    type(response).__name__ if response is not None else "None",
+                    extra={"path": request_meta["path"], "method": request_meta["method"]},
+                )
             if response is None:
                 # If an inner middleware or endpoint returns None, Starlette will crash.
                 # Catch it here and raise to trigger our local error handling.

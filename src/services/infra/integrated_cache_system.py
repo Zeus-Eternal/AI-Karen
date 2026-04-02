@@ -7,7 +7,7 @@ This service provides a unified interface to different cache types.
 import logging
 import asyncio
 from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import time
 import json
@@ -30,7 +30,7 @@ class CacheEntry:
     ttl: Optional[int] = None
     created_at: float = 0
     access_count: int = 0
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class IntegratedCacheSystem:
@@ -166,7 +166,7 @@ class IntegratedCacheSystem:
             value=value,
             ttl=ttl,
             created_at=time.time(),
-            metadata=metadata
+            metadata=metadata or {},
         )
         
         return await backend.set(entry)
@@ -216,7 +216,8 @@ class IntegratedCacheSystem:
         """
         backend = self._get_backend(backend_type)
         await backend.clear()
-        self.logger.info(f"Cleared cache: {backend_type.value}")
+        resolved_backend_type = backend_type or self.default_backend
+        self.logger.info(f"Cleared cache: {resolved_backend_type.value}")
     
     async def get_stats(self, backend_type: Optional[CacheType] = None) -> Dict[str, Any]:
         """

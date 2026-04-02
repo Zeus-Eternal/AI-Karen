@@ -15,12 +15,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple, Iterable
 import hashlib
 
 from ai_karen_engine.core.logging import get_logger
-from src.services.database_connection_manager import get_database_manager
-from src.services.redis_connection_manager import get_redis_manager
+from services.memory.database_connection_manager import get_database_manager
+from services.memory.redis_connection_manager import get_redis_manager
 
 logger = get_logger(__name__)
 
@@ -125,9 +125,9 @@ class DataCleanupService:
         """
         logger.info(f"Starting comprehensive data cleanup (dry_run={dry_run})")
         
-        actions = []
-        errors = []
-        bytes_cleaned = 0
+        actions: List[CleanupAction] = []
+        errors: List[str] = []
+        bytes_cleaned: int = 0
         
         try:
             # Clean up data directory files
@@ -224,7 +224,7 @@ class DataCleanupService:
                                 size_bytes=file_size,
                             ))
                         
-                        bytes_cleaned += file_size
+                        bytes_cleaned: int = int(bytes_cleaned + file_size)
             
             # Check for demo content in JSON files
             json_files = list(self.data_directory.glob("*.json"))
@@ -238,7 +238,7 @@ class DataCleanupService:
                     
                     # Check for demo content
                     has_demo_content = any(
-                        keyword.lower() in content.lower() 
+                        str(keyword).lower() in str(content).lower() 
                         for keyword in self.demo_patterns["demo_content_keywords"]
                     )
                     
@@ -342,10 +342,10 @@ class DataCleanupService:
         
         return actions
 
-    async def _cleanup_temporary_files(self, dry_run: bool) -> tuple[List[CleanupAction], int]:
+    async def _cleanup_temporary_files(self, dry_run: bool) -> Tuple[List[CleanupAction], int]:
         """Clean up temporary and log files"""
-        actions = []
-        bytes_cleaned = 0
+        actions: List[CleanupAction] = []
+        bytes_cleaned: int = 0
         
         try:
             # Find temporary files
@@ -382,7 +382,8 @@ class DataCleanupService:
                                 size_bytes=file_size,
                             ))
                         
-                        bytes_cleaned += file_size
+                        inc: int = int(file_size)
+                        bytes_cleaned = bytes_cleaned + inc
                 
                 except Exception as e:
                     logger.warning(f"Error removing {temp_file}: {e}")
@@ -398,10 +399,10 @@ class DataCleanupService:
         
         return actions, bytes_cleaned
 
-    async def _cleanup_cache_files(self, dry_run: bool) -> tuple[List[CleanupAction], int]:
-        """Clean up cache files and directories"""
-        actions = []
-        bytes_cleaned = 0
+    async def _cleanup_cache_files(self, dry_run: bool) -> Tuple[List[CleanupAction], int]:
+        """Clean up cached responses and data"""
+        actions: List[CleanupAction] = []
+        bytes_cleaned: int = 0
         
         try:
             # Common cache directories to clean
@@ -497,10 +498,10 @@ class DataCleanupService:
         
         return actions, bytes_cleaned
 
-    async def _cleanup_old_backups(self, dry_run: bool) -> tuple[List[CleanupAction], int]:
-        """Clean up old backup files"""
-        actions = []
-        bytes_cleaned = 0
+    async def _cleanup_old_backups(self, dry_run: bool) -> Tuple[List[CleanupAction], int]:
+        """Clean up older system backups"""
+        actions: List[CleanupAction] = []
+        bytes_cleaned: int = 0
         
         try:
             if not self.backup_directory.exists():
@@ -576,7 +577,7 @@ class DataCleanupService:
         """
         logger.info(f"Starting Redis cache cleanup (dry_run={dry_run})")
         
-        results = {
+        results: Dict[str, Any] = {
             "dry_run": dry_run,
             "timestamp": datetime.utcnow().isoformat(),
             "actions_taken": [],

@@ -8,9 +8,11 @@ import json
 import logging
 import time
 import uuid
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Tuple
+from typing import Dict, List, Optional, Any, Union, Tuple, cast, Protocol, TypeGuard, ClassVar
 from dataclasses import dataclass, field
+from .production_cache_service import get_cache_service
 from enum import Enum
 
 try:
@@ -40,6 +42,41 @@ from ai_karen_engine.database.client import MultiTenantPostgresClient
 logger = logging.getLogger(__name__)
 
 
+class _DataclassInstance(Protocol):
+    __dataclass_fields__: Dict[str, Any]
+
+
+def _is_dataclass_instance(value: Any) -> TypeGuard[_DataclassInstance]:
+    return not isinstance(value, type) and is_dataclass(value)
+
+
+def _stats_to_dict(stats: Any) -> Dict[str, Any]:
+    """Normalize stats objects from either base or enhanced managers."""
+    if isinstance(stats, dict):
+        return dict(stats)
+
+    if hasattr(stats, "model_dump"):
+        try:
+            return cast(Dict[str, Any], stats.model_dump())
+        except Exception:
+            pass
+
+    if _is_dataclass_instance(stats):
+        try:
+            return cast(Dict[str, Any], asdict(stats))
+        except Exception:
+            pass
+
+    if hasattr(stats, "__dict__"):
+        return {
+            key: value
+            for key, value in vars(stats).items()
+            if not key.startswith("_")
+        }
+
+    return {}
+
+
 class ConversationStatus(str, Enum):
     """Conversation status for web UI."""
     ACTIVE = "active"
@@ -54,6 +91,66 @@ class ConversationPriority(str, Enum):
     NORMAL = "normal"
     HIGH = "high"
     URGENT = "urgent"
+
+    @classmethod
+    def from_any(cls, value: Any) -> "ConversationPriority":
+        """Convert various priority representations to a ConversationPriority enum member.
+        
+        Supports:
+        - Enum members themselves
+        - String values ('low', 'normal', etc.)
+        - Integer levels (0=normal, 1=high, -1=low, 2=urgent)
+        """
+        if isinstance(value, cls):
+            return value
+            
+        if value is None:
+            return cls.NORMAL
+            
+        if isinstance(value, int):
+            # Map integer values to enum members
+            mapping = {
+                -1: cls.LOW,
+                0: cls.NORMAL,
+                1: cls.HIGH,
+                2: cls.URGENT
+            }
+            return mapping.get(value, cls.NORMAL)
+            
+        if isinstance(value, str):
+            # Handle string conversion (case-insensitive)
+            val_lower = value.lower().strip()
+            
+            # Simple string match
+            try:
+                return cls(val_lower)
+            except ValueError:
+                # Map common alternative string representations
+                alt_mapping = {
+                    "normal": cls.NORMAL,
+                    "high": cls.HIGH,
+                    "low": cls.LOW,
+                    "urgent": cls.URGENT,
+                    "0": cls.NORMAL,
+                    "1": cls.HIGH,
+                    "2": cls.URGENT,
+                    "-1": cls.LOW
+                }
+                
+                if val_lower in alt_mapping:
+                    return alt_mapping[val_lower]
+                    
+                # Handle numeric strings that aren't in the map
+                if val_lower.isdigit() or (val_lower.startswith('-') and val_lower[1:].isdigit()):
+                    try:
+                        return cls.from_any(int(val_lower))
+                    except (ValueError, TypeError):
+                        return cls.NORMAL
+                        
+                return cls.NORMAL
+                
+        # Default fallback
+        return cls.NORMAL
 
 
 @dataclass
@@ -666,8 +763,8 @@ class WebUIConversationService:
             return web_ui_conversation
             
         except Exception as e:
-            logger.error(f"Failed to create web UI conversation: {e}")
-            return None
+            logger.exception(f"Failed to create web UI conversation: {e}")
+            raise
     
     async def get_web_ui_conversation(
         self,
@@ -700,6 +797,10 @@ class WebUIConversationService:
             # Get web UI specific data
             web_ui_data = await self._get_web_ui_conversation_data(tenant_id, conversation_id)
 
+            # Safely resolve priority using the robust from_any method
+            priority_val = web_ui_data.get("priority", "normal")
+            resolved_priority = ConversationPriority.from_any(priority_val)
+
             # Convert to WebUIConversation
             web_ui_conversation = await self._convert_to_web_ui_conversation(
                 base_conversation,
@@ -707,7 +808,7 @@ class WebUIConversationService:
                 web_ui_data.get("ui_context", {}),
                 web_ui_data.get("user_settings", {}),
                 web_ui_data.get("tags", []),
-                ConversationPriority(web_ui_data.get("priority", "normal")),
+                resolved_priority,
                 web_ui_data.get("summary"),
                 web_ui_data.get("last_ai_response_id")
             )
@@ -738,7 +839,8 @@ class WebUIConversationService:
             logger.info("🔍 DEBUG: User ID: %s", user_id)
             
             async with self.db_client.get_async_session() as session:
-                query = select(TenantConversation).where(
+                # Use cast to Any to satisfy Pylance which is confused about SQLA entities
+                query = select(cast(Any, TenantConversation)).where(
                     TenantConversation.session_id == str(session_id)
                 )
 
@@ -773,6 +875,49 @@ class WebUIConversationService:
                 "🔍 DEBUG: Failed to get conversation by session %s: %s", session_id, e
             )
             return None
+
+    async def delete_conversation(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        conversation_id: str,
+    ) -> bool:
+        """Delete a conversation across either base manager implementation."""
+        try:
+            # Check if conversation_id is valid UUID
+            try:
+                # Support both string and UUID objects
+                target_id = uuid.UUID(conversation_id) if isinstance(conversation_id, str) else conversation_id
+            except (ValueError, AttributeError):
+                logger.error("Attempted to delete conversation with invalid ID format: %s", conversation_id)
+                return False
+
+            delete_method = getattr(self.base_manager, "delete_conversation", None)
+            if callable(delete_method):
+                return bool(
+                    await delete_method(
+                        tenant_id=tenant_id,
+                        conversation_id=str(target_id),
+                    )
+                )
+
+            async with self.db_client.get_async_session() as session:
+                result = await session.execute(
+                    select(cast(Any, TenantConversation)).where(
+                        TenantConversation.id == target_id
+                    )
+                )
+                db_conversation = result.scalar_one_or_none()
+                if db_conversation is None:
+                    return False
+
+                await session.delete(db_conversation)
+                await session.commit()
+
+            logger.info("Deleted conversation %s via service fallback", target_id)
+            return True
+        except Exception as e:
+            logger.exception("Failed to delete conversation %s: %s", conversation_id, e)
+            return False
     
     async def add_web_ui_message(
         self,
@@ -1138,11 +1283,9 @@ class WebUIConversationService:
                     logger.warning(f"Context data too large for conversation {conversation_id}")
                     return False
             
-            # Update database with context tracking
             async with self.db_client.get_async_session() as session:
-                # Get current ui_context
                 result = await session.execute(
-                    select(TenantConversation.ui_context)
+                    select(cast(Any, TenantConversation.ui_context))
                     .where(TenantConversation.id == uuid.UUID(conversation_id))
                 )
                 current_context = result.scalar_one_or_none() or {}
@@ -1192,7 +1335,7 @@ class WebUIConversationService:
         try:
             async with self.db_client.get_async_session() as session:
                 result = await session.execute(
-                    select(TenantConversation.ui_context)
+                    select(cast(Any, TenantConversation.ui_context))
                     .where(TenantConversation.id == uuid.UUID(conversation_id))
                 )
                 ui_context = result.scalar_one_or_none() or {}
@@ -1345,7 +1488,9 @@ class WebUIConversationService:
     ) -> Dict[str, Any]:
         """Get conversation analytics for web UI dashboard."""
         try:
-            base_stats = await self.base_manager.get_conversation_stats(tenant_id, user_id)
+            base_stats = _stats_to_dict(
+                await self.base_manager.get_conversation_stats(tenant_id, user_id)
+            )
             
             # Add web UI specific analytics
             async with self.db_client.get_async_session() as session:
@@ -1389,7 +1534,7 @@ class WebUIConversationService:
                         analytics["conversations_by_ui_source"][ui_source] = analytics["conversations_by_ui_source"].get(ui_source, 0) + 1
                         
                         # Priority distribution (if available in metadata)
-                        priority = conv.conversation_metadata.get("priority", "normal") if conv.conversation_metadata else "normal"
+                        priority = conv.conversation_metadata.get("priority", "normal") if conv.conversation_metadata is not None else "normal"
                         analytics["conversations_by_priority"][priority] = analytics["conversations_by_priority"].get(priority, 0) + 1
                         
                         # Tag analysis
@@ -1462,6 +1607,11 @@ class WebUIConversationService:
                 
                 conversation = result.scalar_one_or_none()
                 if conversation:
+                    priority = "normal"
+                    if conversation.conversation_metadata is not None:
+                        priority_val = conversation.conversation_metadata.get("priority", "normal")
+                        priority = ConversationPriority.from_any(priority_val).value
+                    
                     return {
                         "session_id": conversation.session_id,
                         "ui_context": conversation.ui_context if conversation.ui_context is not None else {},
@@ -1470,7 +1620,7 @@ class WebUIConversationService:
                         "summary": conversation.summary,
                         "tags": conversation.tags if conversation.tags is not None else [],
                         "last_ai_response_id": conversation.last_ai_response_id,
-                        "priority": conversation.conversation_metadata.get("priority", "normal") if conversation.conversation_metadata else "normal"
+                        "priority": priority,
                     }
                 
                 return {}
@@ -1483,9 +1633,9 @@ class WebUIConversationService:
         self,
         base_conversation: Conversation,
         session_id: Optional[str] = None,
-        ui_context: Dict[str, Any] = None,
-        user_settings: Dict[str, Any] = None,
-        tags: List[str] = None,
+        ui_context: Optional[Dict[str, Any]] = None,
+        user_settings: Optional[Dict[str, Any]] = None,
+        tags: Optional[List[str]] = None,
         priority: ConversationPriority = ConversationPriority.NORMAL,
         summary: Optional[str] = None,
         last_ai_response_id: Optional[str] = None
@@ -1493,35 +1643,66 @@ class WebUIConversationService:
         """Convert base conversation to WebUIConversation."""
         # Convert messages to WebUIMessage
         web_ui_messages = []
-        for msg in base_conversation.messages:
+        # Support both original Dataclass (with .messages) and enhanced Pydantic models (which may lack it)
+        # or use different attribute names for role and timestamp.
+        messages = getattr(base_conversation, "messages", []) or []
+        for msg in messages:
+            # Handle Pydantic models vs Dataclasses for message attributes
+            msg_id = getattr(msg, "id", None)
+            msg_content = getattr(msg, "content", "")
+            
+            # Handle role (Enum vs String)
+            role_raw = getattr(msg, "role", "user")
+            msg_role = getattr(role_raw, "value", str(role_raw))
+            
+            # Handle timestamp (Legacy uses .timestamp, Enhanced uses .created_at)
+            msg_timestamp = getattr(msg, "timestamp", getattr(msg, "created_at", datetime.utcnow()))
+            
+            # Handle metadata
+            msg_metadata = getattr(msg, "metadata", {}) or {}
+            
             web_ui_msg = WebUIMessage(
-                id=msg.id,
-                role=msg.role,
-                content=msg.content,
-                timestamp=msg.timestamp,
-                metadata=msg.metadata,
-                function_call=msg.function_call,
-                function_response=msg.function_response,
-                ui_source=UISource(msg.metadata.get("ui_source", "api")) if msg.metadata.get("ui_source") else None,
-                ai_confidence=msg.metadata.get("ai_confidence"),
-                processing_time_ms=msg.metadata.get("processing_time_ms"),
-                tokens_used=msg.metadata.get("tokens_used"),
-                model_used=msg.metadata.get("model_used")
+                id=str(msg_id) if msg_id is not None else str(uuid.uuid4()),
+                role=MessageRole(msg_role),
+                content=msg_content,
+                timestamp=msg_timestamp,
+                metadata=msg_metadata,
+                function_call=getattr(msg, "function_call", None),
+                function_response=getattr(msg, "function_response", None),
+                ui_source=UISource(str(msg_metadata.get("ui_source"))) if msg_metadata.get("ui_source") else None,
+                ai_confidence=msg_metadata.get("ai_confidence"),
+                processing_time_ms=msg_metadata.get("processing_time_ms"),
+                tokens_used=msg_metadata.get("tokens_used"),
+                model_used=msg_metadata.get("model_used")
             )
             web_ui_messages.append(web_ui_msg)
-        
+
+        # Handle is_active (Legacy uses .is_active, Enhanced uses .status)
+        is_active = getattr(base_conversation, "is_active", True)
+        if not hasattr(base_conversation, "is_active") and hasattr(base_conversation, "status"):
+            # For enhanced Pydantic model, check status against ConversationStatus
+            try:
+                from ai_karen_engine.chat.conversation_models import ConversationStatus
+                is_active = getattr(base_conversation, "status", None) == ConversationStatus.ACTIVE
+            except (ImportError, AttributeError):
+                # Fallback if types not available
+                is_active = str(getattr(base_conversation, "status", "")).lower() == "active"
+
+        # Handle title/metadata
+        conv_title = getattr(base_conversation, "title", "New Conversation")
+        conv_user_id = str(getattr(base_conversation, "user_id", "anonymous"))
+        conv_metadata = getattr(base_conversation, "metadata", {}) or {}
+        conv_created_at = getattr(base_conversation, "created_at", datetime.utcnow())
+        conv_updated_at = getattr(base_conversation, "updated_at", conv_created_at)
+
         return WebUIConversation(
-            id=base_conversation.id,
-            user_id=base_conversation.user_id,
-            title=base_conversation.title,
+            id=str(base_conversation.id),
+            user_id=conv_user_id,
+            title=conv_title,
             messages=web_ui_messages,
-            metadata=base_conversation.metadata,
-            is_active=base_conversation.is_active,
-            created_at=base_conversation.created_at,
-            updated_at=base_conversation.updated_at,
+            metadata=conv_metadata,
             session_id=session_id,
             ui_context=ui_context or {},
-            ai_insights={},  # Will be populated by _add_web_ui_context
             user_settings=user_settings or {},
             summary=summary,
             tags=tags if tags is not None else [],
@@ -1589,7 +1770,7 @@ class WebUIConversationService:
                 async with self.db_client.get_async_session() as session:
                     # Get current ai_insights
                     result = await session.execute(
-                        select(TenantConversation.ai_insights)
+                        select(cast(Any, TenantConversation.ai_insights))
                         .where(TenantConversation.id == uuid.UUID(conversation_id))
                     )
                     current_insights = result.scalar() or {}

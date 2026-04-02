@@ -14,7 +14,7 @@ import logging
 import time
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timedelta
-from typing import Any, Dict, Generator, Optional, AsyncGenerator
+from typing import Any, Dict, Generator, Optional, AsyncGenerator, Union
 from dataclasses import dataclass
 
 from sqlalchemy import create_engine, text
@@ -26,7 +26,7 @@ from sqlalchemy.exc import SQLAlchemyError, DisconnectionError, OperationalError
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.database.models import Base
 from ai_karen_engine.core.logging import get_logger
-from src.services.connection_health_manager import (
+from .connection_health_manager import (
     get_connection_health_manager,
     ConnectionType,
     ServiceStatus,
@@ -245,29 +245,31 @@ class DatabaseConnectionManager:
         
         if self.engine and hasattr(self.engine, 'pool'):
             pool = self.engine.pool
-            try:
-                metrics["sync_pool"] = {
-                    "size": getattr(pool, 'size', lambda: 0)(),
-                    "checked_out": getattr(pool, 'checkedout', lambda: 0)(),
-                    "overflow": getattr(pool, 'overflow', lambda: 0)(),
-                    "checked_in": getattr(pool, 'checkedin', lambda: 0)(),
-                    "invalid": getattr(pool, 'invalidated', lambda: 0)(),
-                }
-            except Exception as e:
-                logger.debug(f"Could not get sync pool metrics: {e}")
+            if pool:
+                try:
+                    metrics["sync_pool"] = {
+                        "size": getattr(pool, 'size', lambda: 0)(),
+                        "checked_out": getattr(pool, 'checkedout', lambda: 0)(),
+                        "overflow": getattr(pool, 'overflow', lambda: 0)(),
+                        "checked_in": getattr(pool, 'checkedin', lambda: 0)(),
+                        "invalid": getattr(pool, 'invalidated', lambda: 0)(),
+                    }
+                except Exception as e:
+                    logger.debug(f"Could not get sync pool metrics: {e}")
 
         if self.async_engine and hasattr(self.async_engine, 'pool'):
             pool = self.async_engine.pool
-            try:
-                metrics["async_pool"] = {
-                    "size": getattr(pool, 'size', lambda: 0)(),
-                    "checked_out": getattr(pool, 'checkedout', lambda: 0)(),
-                    "overflow": getattr(pool, 'overflow', lambda: 0)(),
-                    "checked_in": getattr(pool, 'checkedin', lambda: 0)(),
-                    "invalid": getattr(pool, 'invalidated', lambda: 0)(),
-                }
-            except Exception as e:
-                logger.debug(f"Could not get async pool metrics: {e}")
+            if pool:
+                try:
+                    metrics["async_pool"] = {
+                        "size": getattr(pool, 'size', lambda: 0)(),
+                        "checked_out": getattr(pool, 'checkedout', lambda: 0)(),
+                        "overflow": getattr(pool, 'overflow', lambda: 0)(),
+                        "checked_in": getattr(pool, 'checkedin', lambda: 0)(),
+                        "invalid": getattr(pool, 'invalidated', lambda: 0)(),
+                    }
+                except Exception as e:
+                    logger.debug(f"Could not get async pool metrics: {e}")
 
         return metrics
 
@@ -300,7 +302,7 @@ class DatabaseConnectionManager:
         return self.SessionLocal()
 
     @contextmanager
-    def session_scope(self) -> Generator[Session, None, None]:
+    def session_scope(self) -> Generator[Union[Session, Any], None, None]:
         """Provide a transactional scope around a series of operations"""
         if self._degraded_mode:
             # Return a mock session that stores data in memory
@@ -323,7 +325,7 @@ class DatabaseConnectionManager:
                 session.close()
 
     @asynccontextmanager
-    async def async_session_scope(self) -> AsyncGenerator[AsyncSession, None]:
+    async def async_session_scope(self) -> AsyncGenerator[Union[AsyncSession, Any], None]:
         """Provide async transactional scope around operations"""
         if self._degraded_mode:
             # Return a mock async session
@@ -454,6 +456,8 @@ class DatabaseConnectionManager:
             return
 
         try:
+            if not self.async_engine:
+                raise RuntimeError("Async database engine not initialized")
             async with self.async_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created successfully (async)")
@@ -526,7 +530,7 @@ class DatabaseConnectionManager:
 
     async def close(self):
         """Close database connections and cleanup resources"""
-        if self.async_engine:
+        if self.async_engine is not None:
             try:
                 await self.async_engine.dispose()
             except Exception as e:
@@ -534,7 +538,7 @@ class DatabaseConnectionManager:
             finally:
                 self.async_engine = None
 
-        if self.engine:
+        if self.engine is not None:
             try:
                 self.engine.dispose()
             except Exception as e:

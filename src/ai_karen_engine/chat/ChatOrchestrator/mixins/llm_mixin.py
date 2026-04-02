@@ -252,7 +252,7 @@ class ChatLLMMixin(Base):
         
         content = ""
         if isinstance(result, dict):
-            content = result.get("content", "").strip()
+            content = (result.get("content") or "").strip()
             # If we requested structured output, check for that too
             if not content and not result.get("structured_content") and not result.get("tool_calls"):
                 logger.error(f"Model {model_id} returned empty dict: {result}")

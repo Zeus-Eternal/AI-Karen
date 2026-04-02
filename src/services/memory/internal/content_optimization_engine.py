@@ -128,7 +128,7 @@ class ContentOptimizationEngine:
         self.expertise_adapters = self._initialize_expertise_adapters()
         self.content_cache = {}
         
-    def _initialize_format_patterns(self) -> Dict[ContentType, Dict[str, str]]:
+    def _initialize_format_patterns(self) -> Dict[ContentType, Dict[str, Any]]:
         """Initialize patterns for content type detection and formatting"""
         return {
             ContentType.CODE: {

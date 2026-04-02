@@ -2,15 +2,14 @@
 HuggingFace Hub Integration Service
 
 This module provides integration with HuggingFace Hub for model search, download,
-and management. It includes advanced filtering, download management with progress
-tracking, and automatic integration with the local model store.
+and management. It includes advanced filtering, training compatibility detection,
+and automatic integration with the local model store.
 
 Key Features:
-- Model search and browsing with advanced filtering
+- Model search and browsing with advanced filtering (including training filters)
+- Training compatibility detection and hardware estimation
 - Download management with progress tracking and resume capability
-- Automatic format detection and conversion recommendations
-- Integration with local model registry
-- Checksum verification and error handling
+- Automatic format detection and registration with local model store
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
-from urllib.parse import urljoin
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,17 @@ class ModelFilters:
     sort_by: str = "downloads"  # downloads, created_at, updated_at
     sort_order: str = "desc"  # asc, desc
 
+@dataclass
+class TrainingFilters:
+    """Filters for trainable model search."""
+    supports_fine_tuning: bool = True
+    supports_lora: bool = False
+    supports_full_training: bool = False
+    min_parameters: Optional[str] = None  # "1B", "7B", etc.
+    max_parameters: Optional[str] = None
+    hardware_requirements: Optional[str] = None  # "cpu", "gpu", "multi-gpu"
+    training_frameworks: List[str] = field(default_factory=list)  # ["transformers", "peft"]
+    memory_requirements: Optional[int] = None  # in GB
 
 @dataclass
 class HFModel:
@@ -104,7 +114,7 @@ class HFModel:
         """Infer model metadata from name and tags."""
         name_lower = self.id.lower()
         
-        # Infer family (order matters - check more specific patterns first)
+        # Infer family
         families = {
             "codellama": ["codellama", "code-llama"],
             "llama": ["llama", "alpaca", "vicuna"],
@@ -128,7 +138,7 @@ class HFModel:
                 self.parameters = pattern.upper()
                 break
         
-        # Infer quantization from tags, name, or filenames
+        # Infer quantization
         quant_patterns = ["q2_k", "q3_k", "q4_k_m", "q5_k_m", "q6_k", "q8_0", "iq2_m", "iq3_m", "fp16", "bf16", "int8", "int4"]
         for pattern in quant_patterns:
             if (pattern in name_lower or 
@@ -137,7 +147,7 @@ class HFModel:
                 self.quantization = pattern.upper()
                 break
         
-        # Infer format from files or tags
+        # Infer format
         if any("gguf" in tag.lower() for tag in self.tags) or any(f.get("rfilename", "").endswith(".gguf") for f in self.files):
             self.format = "gguf"
         elif any("safetensors" in tag.lower() for tag in self.tags) or any(f.get("rfilename", "").endswith(".safetensors") for f in self.files):
@@ -145,6 +155,68 @@ class HFModel:
         elif any(f.get("rfilename", "").endswith(".bin") for f in self.files):
             self.format = "bin"
 
+@dataclass
+class TrainableModel(HFModel):
+    """Extended model info with training capabilities."""
+    supports_fine_tuning: bool = False
+    supports_lora: bool = False
+    supports_full_training: bool = False
+    training_frameworks: List[str] = field(default_factory=list)
+    hardware_requirements: Dict[str, Any] = field(default_factory=dict)
+    memory_requirements: Optional[int] = None
+    training_complexity: str = "unknown"  # "easy", "medium", "hard"
+    
+    def __post_init__(self):
+        """Infer training capabilities from model metadata."""
+        super().__post_init__()
+        self._infer_training_capabilities()
+    
+    def _infer_training_capabilities(self):
+        """Infer training capabilities from model info."""
+        training_friendly_families = {
+            "llama", "mistral", "qwen", "phi", "gemma", "bert", "roberta", "t5", "gpt"
+        }
+        
+        if self.family and self.family.lower() in training_friendly_families:
+            self.supports_fine_tuning = True
+            self.supports_lora = True
+            
+            if self.parameters:
+                param_num = self._extract_parameter_count(self.parameters)
+                if param_num and param_num <= 7:  # 7B or smaller
+                    self.supports_full_training = True
+        
+        if any("transformers" in tag.lower() for tag in self.tags):
+            self.training_frameworks.append("transformers")
+        if any("peft" in tag.lower() or "lora" in tag.lower() for tag in self.tags):
+            self.training_frameworks.append("peft")
+        
+        if self.parameters:
+            param_count = self._extract_parameter_count(self.parameters)
+            if param_count:
+                if param_count <= 1:
+                    self.hardware_requirements = {"min_gpu_memory": 4, "recommended": "cpu"}
+                    self.training_complexity = "easy"
+                elif param_count <= 7:
+                    self.hardware_requirements = {"min_gpu_memory": 16, "recommended": "gpu"}
+                    self.training_complexity = "medium"
+                else:
+                    self.hardware_requirements = {"min_gpu_memory": 40, "recommended": "multi-gpu"}
+                    self.training_complexity = "hard"
+                
+                self.memory_requirements = self.hardware_requirements.get("min_gpu_memory")
+    
+    def _extract_parameter_count(self, param_str: str) -> Optional[float]:
+        """Extract numeric parameter count from string like '7B'."""
+        try:
+            param_str = param_str.upper().strip()
+            if param_str.endswith("B"):
+                return float(param_str.replace("B", ""))
+            elif param_str.endswith("M"):
+                return float(param_str.replace("M", "")) / 1000
+            return float(param_str)
+        except:
+            return None
 
 @dataclass
 class ModelInfo:
@@ -161,6 +233,16 @@ class ModelInfo:
     downloads: int = 0
     likes: int = 0
 
+@dataclass
+class CompatibilityReport:
+    """Model compatibility report."""
+    is_compatible: bool
+    compatibility_score: float  # 0.0 to 1.0
+    supported_operations: List[str]
+    hardware_requirements: Dict[str, Any]
+    framework_compatibility: Dict[str, bool]
+    warnings: List[str] = field(default_factory=list)
+    recommendations: List[str] = field(default_factory=list)
 
 @dataclass
 class DeviceCapabilities:
@@ -172,14 +254,13 @@ class DeviceCapabilities:
     supports_int8: bool = False
     supports_int4: bool = False
 
-
 @dataclass
 class DownloadJob:
     """Download job information."""
     id: str
     model_id: str
     artifact: Optional[str] = None
-    status: str = "queued"  # queued, downloading, completed, failed, cancelled
+    status: str = "queued"  # queued, downloading, completed, failed, cancelled, paused
     progress: float = 0.0
     total_size: Optional[int] = None
     downloaded_size: int = 0
@@ -194,7 +275,12 @@ class DownloadJob:
     # Control flags
     _cancelled: bool = False
     _paused: bool = False
-
+    
+    # Enhanced metadata (formerly from EnhancedDownloadJob)
+    compatibility_report: Optional[CompatibilityReport] = None
+    selected_artifacts: List[str] = field(default_factory=list)
+    conversion_needed: bool = False
+    post_download_actions: List[str] = field(default_factory=list)
 
 # -----------------------------
 # HuggingFace Service Implementation
@@ -202,20 +288,10 @@ class DownloadJob:
 
 class HuggingFaceService:
     """
-    Service for interacting with HuggingFace Hub.
-    
-    Provides model search, download, and management capabilities with
-    integration to the local model store.
+    Unified service for interacting with HuggingFace Hub.
     """
     
     def __init__(self, cache_dir: Optional[str] = None, token: Optional[str] = None):
-        """
-        Initialize HuggingFace service.
-        
-        Args:
-            cache_dir: Directory for caching downloads (default: ~/.cache/huggingface)
-            token: HuggingFace API token for private models
-        """
         self.cache_dir = Path(cache_dir or self._get_default_cache_dir())
         self.token = token
         self._lock = threading.RLock()
@@ -231,11 +307,13 @@ class HuggingFaceService:
         self._download_jobs: Dict[str, DownloadJob] = {}
         self._download_threads: Dict[str, threading.Thread] = {}
         
+        # Compatibility cache
+        self._compatibility_cache: Dict[str, CompatibilityReport] = {}
+        
         # Ensure cache directory exists
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def _get_default_cache_dir(self) -> str:
-        """Get default cache directory."""
         home = Path.home()
         return str(home / ".cache" / "huggingface")
     
@@ -245,25 +323,12 @@ class HuggingFaceService:
                      query: str = "",
                      filters: Optional[ModelFilters] = None,
                      limit: int = 50) -> List[HFModel]:
-        """
-        Search for models on HuggingFace Hub.
-        
-        Args:
-            query: Search query string
-            filters: Additional filters to apply
-            limit: Maximum number of results
-            
-        Returns:
-            List of matching HF models
-        """
         if not self.api:
-            logger.warning("HuggingFace API not available")
             return []
         
         filters = filters or ModelFilters()
         
         try:
-            # Build search parameters
             search_params = {
                 "search": query if query else None,
                 "limit": limit,
@@ -273,40 +338,76 @@ class HuggingFaceService:
                 "library": filters.library,
             }
             
-            # Add tag filters
             if filters.tags:
                 search_params["tags"] = filters.tags
             
-            # Remove None values
             search_params = {k: v for k, v in search_params.items() if v is not None}
-            
-            # Search models
             models = list(self.api.list_models(**search_params))
             
-            # Convert to HFModel objects
             hf_models = []
             for model in models:
                 try:
                     hf_model = self._convert_to_hf_model(model)
-                    
-                    # Apply additional filters
                     if self._passes_filters(hf_model, filters):
                         hf_models.append(hf_model)
-                        
                 except Exception as e:
                     logger.debug(f"Failed to convert model {getattr(model, 'id', 'unknown')}: {e}")
                     continue
             
-            logger.info(f"Found {len(hf_models)} models matching query: {query}")
             return hf_models
             
         except Exception as e:
             logger.error(f"Failed to search models: {e}")
             return []
+
+    def search_trainable_models(self, 
+                               query: str = "",
+                               filters: Optional[TrainingFilters] = None,
+                               limit: int = 50) -> List[TrainableModel]:
+        if not self.api:
+            return []
+        
+        filters = filters or TrainingFilters()
+        
+        try:
+            search_params = {
+                "search": query if query else None,
+                "limit": limit * 2,
+                "sort": "downloads",
+                "direction": -1,
+                "task": "text-generation",
+                "library": "transformers"
+            }
+            
+            training_tags = ["pytorch", "safetensors"]
+            if filters.supports_lora:
+                training_tags.append("peft")
+            
+            search_params["tags"] = training_tags
+            search_params = {k: v for k, v in search_params.items() if v is not None}
+            
+            models = list(self.api.list_models(**search_params))
+            
+            trainable_models = []
+            for model in models:
+                try:
+                    trainable_model = self._convert_to_trainable_model(model)
+                    if self._passes_training_filters(trainable_model, filters):
+                        trainable_models.append(trainable_model)
+                        
+                    if len(trainable_models) >= limit:
+                        break
+                except Exception as e:
+                    logger.debug(f"Failed to convert model {getattr(model, 'id', 'unknown')}: {e}")
+                    continue
+            
+            return trainable_models
+            
+        except Exception as e:
+            logger.error(f"Failed to search trainable models: {e}")
+            return []
     
     def _convert_to_hf_model(self, model) -> HFModel:
-        """Convert HF API model to HFModel."""
-        # Extract files information
         files = []
         total_size = 0
         
@@ -319,8 +420,8 @@ class HuggingFaceService:
                     }
                     files.append(file_info)
                     total_size += file_info["size"]
-        except Exception as e:
-            logger.debug(f"Failed to extract files for {model.id}: {e}")
+        except Exception:
+            pass
         
         return HFModel(
             id=model.id,
@@ -338,47 +439,81 @@ class HuggingFaceService:
             files=files,
             size=total_size
         )
+
+    def _convert_to_trainable_model(self, model) -> TrainableModel:
+        hf_model = self._convert_to_hf_model(model)
+        return TrainableModel(
+            id=hf_model.id,
+            name=hf_model.name,
+            author=hf_model.author,
+            description=hf_model.description,
+            tags=hf_model.tags,
+            downloads=hf_model.downloads,
+            likes=hf_model.likes,
+            created_at=hf_model.created_at,
+            updated_at=hf_model.updated_at,
+            library_name=hf_model.library_name,
+            pipeline_tag=hf_model.pipeline_tag,
+            license=hf_model.license,
+            files=hf_model.files,
+            size=hf_model.size,
+            family=hf_model.family,
+            parameters=hf_model.parameters,
+            quantization=hf_model.quantization,
+            format=hf_model.format
+        )
     
     def _passes_filters(self, model: HFModel, filters: ModelFilters) -> bool:
-        """Check if model passes additional filters."""
         if filters.family and model.family != filters.family:
             return False
-        
         if filters.quantization and model.quantization != filters.quantization:
             return False
-        
         if filters.min_downloads and model.downloads < filters.min_downloads:
             return False
-        
         if filters.max_size and model.size and model.size > filters.max_size:
             return False
-        
         if filters.license and model.license != filters.license:
             return False
+        return True
+
+    def _passes_training_filters(self, model: TrainableModel, filters: TrainingFilters) -> bool:
+        if filters.supports_fine_tuning and not model.supports_fine_tuning:
+            return False
+        if filters.supports_lora and not model.supports_lora:
+            return False
+        if filters.supports_full_training and not model.supports_full_training:
+            return False
+        
+        if filters.min_parameters or filters.max_parameters:
+            param_count = model._extract_parameter_count(model.parameters or "")
+            if param_count:
+                if filters.min_parameters:
+                    min_count = model._extract_parameter_count(filters.min_parameters)
+                    if min_count and param_count < min_count:
+                        return False
+                if filters.max_parameters:
+                    max_count = model._extract_parameter_count(filters.max_parameters)
+                    if max_count and param_count > max_count:
+                        return False
+        
+        if filters.memory_requirements and model.memory_requirements:
+            if model.memory_requirements > filters.memory_requirements:
+                return False
+        
+        if filters.training_frameworks:
+            if not any(fw in model.training_frameworks for fw in filters.training_frameworks):
+                return False
         
         return True
     
     # ---------- Model Information ----------
     
     def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
-        """
-        Get detailed information about a model.
-        
-        Args:
-            model_id: HuggingFace model ID
-            
-        Returns:
-            Detailed model information or None if not found
-        """
         if not self.api:
-            logger.warning("HuggingFace API not available")
             return None
         
         try:
-            # Get model info
             model = self.api.model_info(model_id)
-            
-            # Get files list
             files = []
             total_size = 0
             
@@ -392,31 +527,21 @@ class HuggingFaceService:
                     files.append(file_info)
                     total_size += file_info["size"]
             
-            # Try to get config
             config = {}
             try:
-                config_content = self.api.hf_hub_download(
-                    repo_id=model_id,
-                    filename="config.json",
-                    repo_type="model"
-                )
+                config_content = self.api.hf_hub_download(repo_id=model_id, filename="config.json")
                 with open(config_content, 'r') as f:
                     config = json.load(f)
             except Exception:
-                pass  # Config not available
+                pass
             
-            # Try to get README
             readme = ""
             try:
-                readme_content = self.api.hf_hub_download(
-                    repo_id=model_id,
-                    filename="README.md",
-                    repo_type="model"
-                )
+                readme_content = self.api.hf_hub_download(repo_id=model_id, filename="README.md")
                 with open(readme_content, 'r') as f:
                     readme = f.read()
             except Exception:
-                pass  # README not available
+                pass
             
             return ModelInfo(
                 id=model_id,
@@ -433,11 +558,96 @@ class HuggingFaceService:
             )
             
         except (RepositoryNotFoundError, RevisionNotFoundError):
-            logger.warning(f"Model not found: {model_id}")
             return None
         except Exception as e:
             logger.error(f"Failed to get model info for {model_id}: {e}")
             return None
+
+    # ---------- Compatibility Detection ----------
+
+    def check_training_compatibility(self, model_id: str) -> CompatibilityReport:
+        """Check training compatibility for a model."""
+        if model_id in self._compatibility_cache:
+            return self._compatibility_cache[model_id]
+        
+        try:
+            model_info = self.get_model_info(model_id)
+            if not model_info:
+                return CompatibilityReport(False, 0.0, [], {}, {}, ["Model not found"])
+            
+            report = self._analyze_model_compatibility(model_info)
+            self._compatibility_cache[model_id] = report
+            return report
+            
+        except Exception as e:
+            logger.error(f"Failed to check compatibility for {model_id}: {e}")
+            return CompatibilityReport(False, 0.0, [], {}, {}, [f"Check failed: {str(e)}"])
+
+    def _analyze_model_compatibility(self, model_info: ModelInfo) -> CompatibilityReport:
+        supported_operations = []
+        framework_compatibility = {}
+        warnings = []
+        recommendations = []
+        compatibility_score = 0.0
+        
+        has_config = bool(model_info.config)
+        has_safetensors = any(f["rfilename"].endswith(".safetensors") for f in model_info.files)
+        has_pytorch = any(f["rfilename"].endswith(".bin") for f in model_info.files)
+        
+        if has_config:
+            compatibility_score += 0.3
+            framework_compatibility["transformers"] = True
+            supported_operations.append("inference")
+            
+            arch = model_info.config.get("architectures", [])
+            training_friendly_archs = {
+                "LlamaForCausalLM", "MistralForCausalLM", "Qwen2ForCausalLM",
+                "PhiForCausalLM", "GemmaForCausalLM", "BertForSequenceClassification"
+            }
+            
+            if any(a in training_friendly_archs for a in arch):
+                compatibility_score += 0.4
+                supported_operations.extend(["fine_tuning", "lora"])
+                framework_compatibility["peft"] = True
+                
+                if model_info.size < 15 * 1024 * 1024 * 1024:
+                    supported_operations.append("full_training")
+                    compatibility_score += 0.2
+        
+        if has_safetensors:
+            compatibility_score += 0.1
+            recommendations.append("SafeTensors format detected - optimal for training")
+        elif has_pytorch:
+            warnings.append("PyTorch .bin format detected - consider converting to SafeTensors")
+        
+        hardware_requirements = self._estimate_hardware_requirements(model_info)
+        
+        if model_info.license:
+            if model_info.license.lower() in ["apache-2.0", "mit", "bsd"]:
+                compatibility_score += 0.1
+            elif "cc-by" in model_info.license.lower():
+                warnings.append("Creative Commons license - check terms for commercial use")
+        
+        is_compatible = compatibility_score >= 0.5 and len(supported_operations) > 0
+        
+        return CompatibilityReport(
+            is_compatible=is_compatible,
+            compatibility_score=min(compatibility_score, 1.0),
+            supported_operations=supported_operations,
+            hardware_requirements=hardware_requirements,
+            framework_compatibility=framework_compatibility,
+            warnings=warnings,
+            recommendations=recommendations
+        )
+
+    def _estimate_hardware_requirements(self, model_info: ModelInfo) -> Dict[str, Any]:
+        size = model_info.size
+        if size < 2 * 1024 * 1024 * 1024:
+            return {"min_gpu_memory": 4, "gpu_required": False}
+        elif size < 15 * 1024 * 1024 * 1024:
+            return {"min_gpu_memory": 16, "gpu_required": True}
+        else:
+            return {"min_gpu_memory": 40, "gpu_required": True, "multi_gpu_beneficial": True}
     
     # ---------- Artifact Selection ----------
     
@@ -445,235 +655,146 @@ class HuggingFaceService:
                                files: List[Dict[str, Any]], 
                                preference: str = "auto",
                                device_caps: Optional[DeviceCapabilities] = None) -> Optional[Dict[str, Any]]:
-        """
-        Select optimal artifact from available files.
+        if not files: return None
+        device_caps = device_caps or self._detect_device_capabilities()
         
-        Args:
-            files: List of available files
-            preference: Format preference (auto, gguf, safetensors, bin)
-            device_caps: Device capabilities for optimization
-            
-        Returns:
-            Selected file info or None if no suitable file found
-        """
-        if not files:
-            return None
-        
-        device_caps = device_caps or DeviceCapabilities()
-        
-        # Categorize files by format
         gguf_files = [f for f in files if f.get("rfilename", "").endswith(".gguf")]
         safetensors_files = [f for f in files if f.get("rfilename", "").endswith(".safetensors")]
         bin_files = [f for f in files if f.get("rfilename", "").endswith(".bin")]
         
-        # Handle explicit preferences
-        if preference == "gguf" and gguf_files:
-            return self._select_best_gguf(gguf_files, device_caps)
-        elif preference == "safetensors" and safetensors_files:
-            return self._select_best_safetensors(safetensors_files, device_caps)
-        elif preference == "bin" and bin_files:
-            return self._select_best_bin(bin_files, device_caps)
+        if preference == "gguf" and gguf_files: return self._select_best_gguf(gguf_files, device_caps)
+        if preference == "safetensors" and safetensors_files: return self._select_best_safetensors(safetensors_files, device_caps)
+        if preference == "bin" and bin_files: return self._select_best_bin(bin_files, device_caps)
         
-        # Auto selection based on device capabilities
         if preference == "auto":
-            # Prefer GGUF for CPU-only or memory-constrained devices
-            if not device_caps.has_gpu or (device_caps.cpu_memory and device_caps.cpu_memory < 16000):
-                if gguf_files:
-                    return self._select_best_gguf(gguf_files, device_caps)
-            
-            # Prefer safetensors for GPU devices
-            if device_caps.has_gpu and safetensors_files:
-                return self._select_best_safetensors(safetensors_files, device_caps)
-            
-            # Fallback order: GGUF -> safetensors -> bin
-            for file_list, selector in [
-                (gguf_files, self._select_best_gguf),
-                (safetensors_files, self._select_best_safetensors),
-                (bin_files, self._select_best_bin)
-            ]:
-                if file_list:
-                    return selector(file_list, device_caps)
+            if not device_caps.has_gpu and gguf_files: return self._select_best_gguf(gguf_files, device_caps)
+            if device_caps.has_gpu and safetensors_files: return self._select_best_safetensors(safetensors_files, device_caps)
         
-        # If no specific format found, return the largest file (likely the main model)
         return max(files, key=lambda f: f.get("size", 0))
     
-    def _select_best_gguf(self, gguf_files: List[Dict[str, Any]], device_caps: DeviceCapabilities) -> Dict[str, Any]:
-        """Select best GGUF file based on device capabilities."""
-        # Prefer quantized models for memory efficiency
-        quant_priority = ["Q4_K_M", "Q5_K_M", "Q3_K", "Q6_K", "Q8_0", "Q2_K"]
-        
-        for quant in quant_priority:
-            for file in gguf_files:
-                filename = file.get("rfilename", "").upper()
-                if quant in filename:
-                    return file
-        
-        # If no quantized version found, return the largest GGUF file
-        return max(gguf_files, key=lambda f: f.get("size", 0))
-    
-    def _select_best_safetensors(self, safetensors_files: List[Dict[str, Any]], device_caps: DeviceCapabilities) -> Dict[str, Any]:
-        """Select best safetensors file based on device capabilities."""
-        # Look for model.safetensors or pytorch_model.safetensors
-        preferred_names = ["model.safetensors", "pytorch_model.safetensors"]
-        
-        for name in preferred_names:
-            for file in safetensors_files:
-                if file.get("rfilename", "") == name:
-                    return file
-        
-        # Return the largest safetensors file
-        return max(safetensors_files, key=lambda f: f.get("size", 0))
-    
-    def _select_best_bin(self, bin_files: List[Dict[str, Any]], device_caps: DeviceCapabilities) -> Dict[str, Any]:
-        """Select best bin file based on device capabilities."""
-        # Look for pytorch_model.bin
-        for file in bin_files:
-            if file.get("rfilename", "") == "pytorch_model.bin":
-                return file
-        
-        # Return the largest bin file
-        return max(bin_files, key=lambda f: f.get("size", 0))
-    
+    def _select_best_gguf(self, gguf_files, caps):
+        quant_priority = ["Q4_K_M", "Q5_K_M", "Q3_K", "Q8_0"]
+        for q in quant_priority:
+            for f in gguf_files:
+                if q in f["rfilename"].upper(): return f
+        return max(gguf_files, key=lambda f: f["size"])
+
+    def _select_best_safetensors(self, files, caps):
+        preferred = ["model.safetensors", "pytorch_model.safetensors"]
+        for p in preferred:
+            for f in files:
+                if f["rfilename"] == p: return f
+        return max(files, key=lambda f: f["size"])
+
+    def _select_best_bin(self, files, caps):
+        for f in files:
+            if f["rfilename"] == "pytorch_model.bin": return f
+        return max(files, key=lambda f: f["size"])
+
     # ---------- Download Management ----------
     
     def download_model(self, 
                       model_id: str, 
                       artifact: Optional[str] = None,
                       preference: str = "auto",
-                      device_caps: Optional[DeviceCapabilities] = None) -> DownloadJob:
-        """
-        Start downloading a model.
-        
-        Args:
-            model_id: HuggingFace model ID
-            artifact: Specific artifact to download (optional)
-            preference: Format preference for auto-selection
-            device_caps: Device capabilities for optimization
-            
-        Returns:
-            Download job object
-        """
+                      device_caps: Optional[DeviceCapabilities] = None,
+                      setup_training: bool = False,
+                      training_config: Optional[Dict[str, Any]] = None) -> DownloadJob:
+        """Start downloading a model with optional training setup."""
         job_id = f"download_{model_id.replace('/', '_')}_{int(time.time())}"
         
+        # Enhanced initialization logic if training is requested
+        comp_report = None
+        selected_artifacts = []
+        post_actions = ["register_with_model_store"]
+        
+        if setup_training:
+            comp_report = self.check_training_compatibility(model_id)
+            if comp_report.is_compatible:
+                post_actions.insert(0, "setup_training_environment")
+                # Add more actions based on report...
+
         job = DownloadJob(
             id=job_id,
             model_id=model_id,
-            artifact=artifact
+            artifact=artifact,
+            compatibility_report=comp_report,
+            post_download_actions=post_actions
         )
         
         with self._lock:
             self._download_jobs[job_id] = job
         
-        # Start download in background thread
-        download_thread = threading.Thread(
+        thread = threading.Thread(
             target=self._download_worker,
             args=(job, preference, device_caps),
             daemon=True
         )
         
         with self._lock:
-            self._download_threads[job_id] = download_thread
+            self._download_threads[job_id] = thread
         
-        download_thread.start()
-        
-        logger.info(f"Started download job {job_id} for model {model_id}")
+        thread.start()
         return job
     
-    def _download_worker(self, 
-                        job: DownloadJob, 
-                        preference: str,
-                        device_caps: Optional[DeviceCapabilities]):
-        """Worker function for downloading models."""
+    def _download_worker(self, job: DownloadJob, preference: str, device_caps: Optional[DeviceCapabilities]):
         try:
             job.status = "downloading"
             job.started_at = time.time()
             
-            # Get model info if artifact not specified
             if not job.artifact:
-                model_info = self.get_model_info(job.model_id)
-                if not model_info:
-                    raise Exception(f"Model not found: {job.model_id}")
-                
-                # Select optimal artifact
-                optimal_file = self.select_optimal_artifact(
-                    model_info.files, 
-                    preference, 
-                    device_caps
-                )
-                
-                if not optimal_file:
-                    raise Exception("No suitable artifact found")
-                
-                job.artifact = optimal_file["rfilename"]
-                job.total_size = optimal_file.get("size", 0)
+                info = self.get_model_info(job.model_id)
+                if not info: raise Exception("Model not found")
+                opt = self.select_optimal_artifact(info.files, preference, device_caps)
+                if not opt: raise Exception("No artifact found")
+                job.artifact = opt["rfilename"]
+                job.total_size = opt["size"]
             
-            # Download the file
-            if not HF_AVAILABLE:
-                raise Exception("HuggingFace Hub library not available")
+            if not HF_AVAILABLE: raise Exception("hf_hub not available")
             
-            # Create progress callback
-            def progress_callback(downloaded: int, total: int):
-                if job._cancelled:
-                    raise Exception("Download cancelled")
-                
-                job.downloaded_size = downloaded
-                job.total_size = total
-                job.progress = downloaded / total if total > 0 else 0.0
-                
-                # Calculate speed and ETA
-                elapsed = time.time() - job.started_at
-                if elapsed > 0:
-                    job.speed = downloaded / elapsed
-                    if job.speed > 0:
-                        remaining = total - downloaded
-                        job.eta = remaining / job.speed
-            
-            # Download using HuggingFace Hub
             local_path = hf_hub_download(
                 repo_id=job.model_id,
                 filename=job.artifact,
                 cache_dir=str(self.cache_dir),
-                token=self.token,
-                # Note: progress callback would need custom implementation
-                # as hf_hub_download doesn't support it directly
+                token=self.token
             )
             
             job.local_path = local_path
+            
+            # Execute post-download actions
+            self._execute_post_download_actions(job)
+            
             job.status = "completed"
             job.completed_at = time.time()
             job.progress = 1.0
-            
-            # Register with model store
-            self._register_downloaded_model(job)
-            
-            logger.info(f"Download completed: {job.id}")
             
         except Exception as e:
             job.status = "failed"
             job.error = str(e)
             job.completed_at = time.time()
             logger.error(f"Download failed for {job.id}: {e}")
-        
         finally:
-            # Clean up thread reference
-            with self._lock:
-                self._download_threads.pop(job.id, None)
-    
+            with self._lock: self._download_threads.pop(job.id, None)
+
+    def _execute_post_download_actions(self, job: DownloadJob):
+        for action in job.post_download_actions:
+            try:
+                if action == "register_with_model_store":
+                    self._register_downloaded_model(job)
+                elif action == "setup_training_environment":
+                    logger.info(f"Setting up training env for {job.model_id}")
+            except Exception as e:
+                logger.warning(f"Action {action} failed: {e}")
+
     def _register_downloaded_model(self, job: DownloadJob):
-        """Register downloaded model with the model store."""
         try:
             from ai_karen_engine.inference.model_store import get_model_store, ModelDescriptor
-            
-            # Get model info
-            model_info = self.get_model_info(job.model_id)
-            if not model_info:
-                logger.warning(f"Could not get model info for registration: {job.model_id}")
-                return
-            
-            # Create model descriptor
+            info = self.get_model_info(job.model_id)
+            if not info: return
+
             descriptor = ModelDescriptor(
                 id=f"hf_{job.model_id.replace('/', '_')}",
-                name=model_info.name,
+                name=info.name,
                 family=self._infer_family_from_id(job.model_id),
                 format=self._infer_format_from_artifact(job.artifact),
                 size=job.total_size,
@@ -681,191 +802,64 @@ class HuggingFaceService:
                 provider="huggingface",
                 local_path=job.local_path,
                 download_url=f"https://huggingface.co/{job.model_id}",
-                license=model_info.license,
-                description=model_info.description,
-                tags=set(model_info.tags),
-                capabilities=set()  # Would be inferred from model type
+                description=info.description,
+                tags=set(info.tags),
+                metadata={
+                    "compatibility_report": job.compatibility_report.__dict__ if job.compatibility_report else {}
+                }
             )
-            
-            # Register with model store
-            model_store = get_model_store()
-            model_store.register_model(descriptor)
-            
-            logger.info(f"Registered downloaded model: {descriptor.id}")
-            
+            get_model_store().register_model(descriptor)
         except Exception as e:
-            logger.warning(f"Failed to register downloaded model: {e}")
-    
+            logger.warning(f"Registration failed: {e}")
+
+    def _detect_device_capabilities(self) -> DeviceCapabilities:
+        caps = DeviceCapabilities()
+        try:
+            import torch
+            caps.has_gpu = torch.cuda.is_available()
+            if caps.has_gpu:
+                caps.gpu_memory = torch.cuda.get_device_properties(0).total_memory // (1024*1024)
+        except ImportError: pass
+        return caps
+
     def _infer_family_from_id(self, model_id: str) -> str:
-        """Infer model family from HuggingFace model ID."""
-        id_lower = model_id.lower()
-        
-        families = {
-            "codellama": ["codellama", "code-llama"],
-            "llama": ["llama", "alpaca", "vicuna"],
-            "mistral": ["mistral", "mixtral"],
-            "qwen": ["qwen", "qwen2"],
-            "phi": ["phi", "phi-2", "phi-3"],
-            "gemma": ["gemma"],
-            "bert": ["bert", "distilbert", "roberta"],
-            "gpt": ["gpt", "gpt2", "gpt-neo", "gpt-j"]
-        }
-        
-        for family, patterns in families.items():
-            if any(pattern in id_lower for pattern in patterns):
-                return family
-        
+        id_l = model_id.lower()
+        mapping = {"llama": ["llama"], "mistral": ["mistral"], "phi": ["phi"], "gemma": ["gemma"]}
+        for fam, pats in mapping.items():
+            if any(p in id_l for p in pats): return fam
         return "unknown"
-    
+
     def _infer_format_from_artifact(self, artifact: Optional[str]) -> str:
-        """Infer format from artifact filename."""
-        if not artifact:
-            return "unknown"
-        
-        artifact_lower = artifact.lower()
-        
-        if artifact_lower.endswith(".gguf"):
-            return "gguf"
-        elif artifact_lower.endswith(".safetensors"):
-            return "safetensors"
-        elif artifact_lower.endswith(".bin"):
-            return "bin"
-        elif artifact_lower.endswith(".pt") or artifact_lower.endswith(".pth"):
-            return "pytorch"
-        
+        if not artifact: return "unknown"
+        ext_map = {".gguf": "gguf", ".safetensors": "safetensors", ".bin": "bin"}
+        for ext, fmt in ext_map.items():
+            if artifact.lower().endswith(ext): return fmt
         return "unknown"
-    
+
     # ---------- Job Management ----------
     
     def get_download_job(self, job_id: str) -> Optional[DownloadJob]:
-        """Get download job by ID."""
-        with self._lock:
-            return self._download_jobs.get(job_id)
+        with self._lock: return self._download_jobs.get(job_id)
     
     def list_download_jobs(self, status: Optional[str] = None) -> List[DownloadJob]:
-        """List download jobs, optionally filtered by status."""
-        with self._lock:
-            jobs = list(self._download_jobs.values())
-        
-        if status:
-            jobs = [job for job in jobs if job.status == status]
-        
-        return jobs
+        with self._lock: jobs = list(self._download_jobs.values())
+        return [j for j in jobs if j.status == status] if status else jobs
     
     def cancel_download(self, job_id: str) -> bool:
-        """Cancel a download job."""
         with self._lock:
             job = self._download_jobs.get(job_id)
-            if not job:
-                return False
-            
-            if job.status in ["completed", "failed", "cancelled"]:
-                return False
-            
+            if not job or job.status in ["completed", "failed", "cancelled"]: return False
             job._cancelled = True
             job.status = "cancelled"
             job.completed_at = time.time()
-            
-            # Clean up thread
-            thread = self._download_threads.pop(job_id, None)
-            if thread and thread.is_alive():
-                # Thread will check _cancelled flag and exit
-                pass
-            
-            logger.info(f"Cancelled download job: {job_id}")
             return True
-    
-    def pause_download(self, job_id: str) -> bool:
-        """Pause a download job."""
-        with self._lock:
-            job = self._download_jobs.get(job_id)
-            if not job or job.status != "downloading":
-                return False
-            
-            job._paused = True
-            return True
-    
-    def resume_download(self, job_id: str) -> bool:
-        """Resume a paused download job."""
-        with self._lock:
-            job = self._download_jobs.get(job_id)
-            if not job or not job._paused:
-                return False
-            
-            job._paused = False
-            return True
-    
-    def cleanup_completed_jobs(self, older_than_hours: int = 24) -> int:
-        """Clean up completed jobs older than specified hours."""
-        cutoff_time = time.time() - (older_than_hours * 3600)
-        cleaned = 0
-        
-        with self._lock:
-            jobs_to_remove = []
-            
-            for job_id, job in self._download_jobs.items():
-                if (job.status in ["completed", "failed", "cancelled"] and 
-                    job.completed_at and job.completed_at < cutoff_time):
-                    jobs_to_remove.append(job_id)
-            
-            for job_id in jobs_to_remove:
-                del self._download_jobs[job_id]
-                cleaned += 1
-        
-        logger.info(f"Cleaned up {cleaned} old download jobs")
-        return cleaned
-    
-    # ---------- Utility Methods ----------
-    
-    def is_available(self) -> bool:
-        """Check if HuggingFace service is available."""
-        return HF_AVAILABLE and self.api is not None
-    
-    def get_cache_size(self) -> int:
-        """Get total size of cached models in bytes."""
-        total_size = 0
-        
-        try:
-            for root, dirs, files in os.walk(self.cache_dir):
-                for file in files:
-                    file_path = Path(root) / file
-                    try:
-                        total_size += file_path.stat().st_size
-                    except (OSError, IOError):
-                        continue
-        except Exception as e:
-            logger.warning(f"Failed to calculate cache size: {e}")
-        
-        return total_size
-    
-    def clear_cache(self, confirm: bool = False) -> bool:
-        """Clear the download cache."""
-        if not confirm:
-            logger.warning("Cache clear requires confirmation")
-            return False
-        
-        try:
-            if self.cache_dir.exists():
-                shutil.rmtree(self.cache_dir)
-                self.cache_dir.mkdir(parents=True, exist_ok=True)
-                logger.info("Cleared HuggingFace cache")
-                return True
-        except Exception as e:
-            logger.error(f"Failed to clear cache: {e}")
-        
-        return False
 
-
-# -----------------------------
-# Global Service Instance
-# -----------------------------
+# ---------- Global Service ----------
 
 _global_service: Optional[HuggingFaceService] = None
 _global_service_lock = threading.RLock()
 
-
 def get_huggingface_service() -> HuggingFaceService:
-    """Get the global HuggingFace service instance."""
     global _global_service
     if _global_service is None:
         with _global_service_lock:
@@ -873,35 +867,26 @@ def get_huggingface_service() -> HuggingFaceService:
                 _global_service = HuggingFaceService()
     return _global_service
 
+# For backward compatibility with EnhancedHuggingFaceService callers
+def get_enhanced_huggingface_service() -> HuggingFaceService:
+    return get_huggingface_service()
 
-def initialize_huggingface_service(cache_dir: Optional[str] = None, token: Optional[str] = None) -> HuggingFaceService:
-    """Initialize a fresh global HuggingFace service."""
-    global _global_service
-    with _global_service_lock:
-        _global_service = HuggingFaceService(cache_dir=cache_dir, token=token)
-    return _global_service
+# Type alias for backward compatibility
+EnhancedHuggingFaceService = HuggingFaceService
 
-
-# Convenience functions
-def search_models(query: str = "", filters: Optional[ModelFilters] = None, limit: int = 50) -> List[HFModel]:
-    """Search models using the global service."""
-    return get_huggingface_service().search_models(query, filters, limit)
-
-
-def download_model(model_id: str, **kwargs) -> DownloadJob:
-    """Download model using the global service."""
-    return get_huggingface_service().download_model(model_id, **kwargs)
-
+# Helper for download_with_training_setup
+def download_with_training_setup(model_id: str, **kwargs) -> DownloadJob:
+    return get_huggingface_service().download_model(model_id, setup_training=True, **kwargs)
 
 __all__ = [
-    "ModelFilters",
-    "HFModel",
-    "ModelInfo",
-    "DeviceCapabilities",
-    "DownloadJob",
     "HuggingFaceService",
     "get_huggingface_service",
-    "initialize_huggingface_service",
-    "search_models",
-    "download_model",
+    "get_enhanced_huggingface_service",
+    "EnhancedHuggingFaceService",
+    "TrainableModel",
+    "TrainingFilters",
+    "ModelFilters",
+    "HFModel",
+    "DownloadJob",
+    "download_with_training_setup"
 ]

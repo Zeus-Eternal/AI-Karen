@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from functools import wraps
 import asyncio
 
-from production_cache_service import get_cache_service
+from .production_cache_service import get_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class QueryCacheConfig:
     """Configuration for query caching."""
     ttl: int = 3600  # Default 1 hour
-    tags: List[str] = None
+    tags: Optional[List[str]] = None
     invalidate_on_write: bool = True
     max_result_size: int = 1024 * 1024  # 1MB max result size
     

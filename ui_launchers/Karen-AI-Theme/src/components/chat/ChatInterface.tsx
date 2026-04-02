@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown, Server, KeyRound } from 'lucide-react';
 import { getSuggestedStarter } from '@/app/actions';
@@ -38,6 +38,7 @@ interface SessionContextType {
   loadSession: (sessionId: string) => Promise<void>;
   refreshSessions: () => Promise<void>;
   deleteSession: (sessionId: string) => Promise<boolean | void>;
+  deleteSessions: (sessionIds: string[]) => Promise<boolean>;
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
 }
 
@@ -155,7 +156,9 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
         updatedAt: new Date(session.updated_at),
         messageCount: session.message_count || 0,
         isActive: false, // Will be synced by separate effect
-        lastMessage: session.last_message,
+        lastMessage: session.messages && session.messages.length > 0 
+          ? session.messages[session.messages.length - 1].content 
+          : session.last_message
       })) || [];
       
       setSessions(sessionsData);
@@ -263,6 +266,61 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     }
   }, [currentSession?.id, createNewSession]);
 
+  // Delete multiple sessions
+  const deleteSessions = useCallback(async (sessionIds: string[]) => {
+    if (sessionIds.length === 0) return true;
+    
+    try {
+      const maxConcurrentDeletes = 4;
+      const deletedIds = new Set<string>();
+      const failedIds: string[] = [];
+
+      let nextIndex = 0;
+      const workers = Array.from(
+        { length: Math.min(maxConcurrentDeletes, sessionIds.length) },
+        async () => {
+          while (nextIndex < sessionIds.length) {
+            const currentIndex = nextIndex;
+            nextIndex += 1;
+            const sessionId = sessionIds[currentIndex];
+
+            try {
+              await apiClient.delete(`/api/conversations/${sessionId}`);
+              deletedIds.add(sessionId);
+            } catch (err) {
+              if (err instanceof ApiError && err.status === 404) {
+                deletedIds.add(sessionId);
+                continue;
+              }
+              failedIds.push(sessionId);
+            }
+          }
+        }
+      );
+
+      await Promise.all(workers);
+
+      if (deletedIds.size > 0) {
+        setSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
+      }
+
+      if (currentSession && deletedIds.has(currentSession.id)) {
+        await createNewSession();
+      }
+
+      if (failedIds.length > 0) {
+        setError(`Failed to delete ${failedIds.length} session${failedIds.length === 1 ? '' : 's'}. Please try again.`);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Failed to delete sessions:', err);
+      setError('Failed to delete some sessions. Please try again.');
+      return false;
+    }
+  }, [currentSession, createNewSession]);
+
   // Update a session title
   const updateSessionTitle = useCallback(async (sessionId: string, newTitle: string) => {
     try {
@@ -346,6 +404,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       loadSession,
       refreshSessions,
       deleteSession,
+      deleteSessions,
       updateSessionTitle,
     }}>
       {children}
@@ -394,7 +453,18 @@ const normalizeProviderName = (provider?: string | null): string => {
 };
 
 export default function ChatInterface() {
-  const { currentSession, sessions, isLoadingSessions, error, createNewSession, loadSession, refreshSessions, deleteSession, updateSessionTitle } = useSession();
+  const { 
+    currentSession, 
+    sessions, 
+    isLoadingSessions, 
+    error, 
+    createNewSession, 
+    loadSession, 
+    refreshSessions, 
+    deleteSession, 
+    deleteSessions, 
+    updateSessionTitle 
+  } = useSession();
   const sessionIdRef = useRef(currentSession?.id || createSessionId());
   const submitInFlightRef = useRef(false);
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -1143,6 +1213,15 @@ export default function ChatInterface() {
     const [isOpen, setIsOpen] = useState(false);
     const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+
+    const filteredSessions = sessions.filter(s => 
+      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const formatDate = (date: Date) => {
       return new Intl.DateTimeFormat('en-US', {
@@ -1154,10 +1233,32 @@ export default function ChatInterface() {
     };
 
     const handleSessionClick = async (session: Session) => {
+      if (isSelectionMode) {
+        toggleSelection(session.id);
+        return;
+      }
       if (editingSessionId === session.id) return;
       setIsOpen(false);
       await loadSession(session.id);
       setMessages([]);
+    };
+
+    const toggleSelection = (id: string) => {
+      const newSelected = new Set(selectedIds);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      setSelectedIds(newSelected);
+    };
+
+    const toggleAll = () => {
+      if (selectedIds.size === filteredSessions.length) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(filteredSessions.map(s => s.id)));
+      }
     };
 
     const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
@@ -1168,6 +1269,25 @@ export default function ChatInterface() {
           title: 'Session deleted',
           description: 'Chat session has been removed.',
         });
+      }
+    };
+
+    const handleBulkDelete = async () => {
+      if (selectedIds.size === 0) return;
+      
+      setIsDeletingBulk(true);
+      try {
+        const success = await deleteSessions(Array.from(selectedIds));
+        if (success) {
+          toast({
+            title: 'Sessions deleted',
+            description: `${selectedIds.size} chat sessions have been removed.`,
+          });
+          setSelectedIds(new Set());
+          setIsSelectionMode(false);
+        }
+      } finally {
+        setIsDeletingBulk(false);
       }
     };
 
@@ -1194,6 +1314,9 @@ export default function ChatInterface() {
         setIsOpen(open);
         if (!open) {
           setEditingSessionId(null);
+          setIsSelectionMode(false);
+          setSelectedIds(new Set());
+          setSearchQuery('');
         }
       }}>
         <DialogTrigger asChild>
@@ -1204,100 +1327,181 @@ export default function ChatInterface() {
             className="flex gap-2 h-9 px-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
             <History className="h-4 w-4" />
-            CHAT
+            HISTORY
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle>Chat History</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto pr-1">
-            {isLoadingSessions ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading sessions...</span>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No chat sessions found.</p>
-                <p className="text-sm mt-2">Start a new conversation to begin.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                      session.isActive ? 'bg-muted border-primary' : 'border-border'
-                    }`}
-                    onClick={() => handleSessionClick(session)}
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Chat History</DialogTitle>
+              <div className="flex gap-2">
+                {sessions.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsSelectionMode(!isSelectionMode)}
+                    className="h-8 text-xs"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        {editingSessionId === session.id ? (
-                          <div className="flex items-center gap-2 mb-1" onClick={e => e.stopPropagation()}>
-                            <Input
-                              value={editingTitle}
-                              onChange={e => setEditingTitle(e.target.value)}
-                              className="h-7 text-sm py-0"
-                              autoFocus
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') void handleSaveEdit(session.id);
-                                if (e.key === 'Escape') setEditingSessionId(null);
-                              }}
-                            />
-                            <Button size="icon" className="h-7 w-7" onClick={() => void handleSaveEdit(session.id)}>
-                              <Check className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium truncate">{session.title}</h4>
-                            {session.isActive && (
-                              <Badge variant="default" className="text-xs bg-primary text-primary-foreground h-4 px-1.5">
-                                Active
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDate(session.createdAt)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {editingSessionId !== session.id && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEdit(session);
-                            }}
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => handleDeleteSession(e, session.id)}
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    {isSelectionMode ? "Cancel" : "Select"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Review and manage your previous chat sessions with Karen.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <Input
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pr-8"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <XCircle className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {isSelectionMode && filteredSessions.length > 0 && (
+              <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-4 h-4 border rounded flex items-center justify-center cursor-pointer"
+                    onClick={toggleAll}
+                  >
+                    {selectedIds.size === filteredSessions.length && selectedIds.size > 0 && (
+                      <Check className="h-3 w-3" />
+                    )}
                   </div>
-                ))}
+                  <span className="text-muted-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                </div>
+                {selectedIds.size > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={handleBulkDelete}
+                    disabled={isDeletingBulk}
+                    className="h-7 px-2 text-[10px]"
+                  >
+                    {isDeletingBulk ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                    Delete Selected
+                  </Button>
+                )}
               </div>
             )}
+
+            <ScrollArea className="h-[40vh] pr-4">
+              {isLoadingSessions ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Loading history...</span>
+                </div>
+              ) : filteredSessions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">{searchQuery ? "No matching sessions found." : "No chat sessions found."}</p>
+                  {!searchQuery && <p className="text-xs mt-2">Start a new conversation to begin.</p>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className={`group p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 relative ${
+                        session.isActive ? 'bg-muted border-primary/50' : 'border-border'
+                      } ${selectedIds.has(session.id) ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+                      onClick={() => handleSessionClick(session)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {isSelectionMode && (
+                          <div 
+                            className={`mt-1 w-4 h-4 shrink-0 border rounded flex items-center justify-center transition-colors ${
+                              selectedIds.has(session.id) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                            }`}
+                          >
+                            {selectedIds.has(session.id) && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          {editingSessionId === session.id ? (
+                            <div className="flex items-center gap-2 mb-1" onClick={e => e.stopPropagation()}>
+                              <Input
+                                value={editingTitle}
+                                onChange={e => setEditingTitle(e.target.value)}
+                                className="h-8 text-sm"
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') void handleSaveEdit(session.id);
+                                  if (e.key === 'Escape') setEditingSessionId(null);
+                                }}
+                              />
+                              <Button size="icon" className="h-8 w-8" onClick={() => void handleSaveEdit(session.id)}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-sm truncate">{session.title}</h4>
+                              {session.isActive && (
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none bg-primary/10 text-primary border-none">
+                                  CURRENT
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDate(session.createdAt)}
+                            </div>
+                            <div className="w-1 h-1 rounded-full bg-border" />
+                            <div className="truncate italic">
+                              {session.lastMessage || "No messages yet"}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {!isSelectionMode && editingSessionId !== session.id && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(session);
+                              }}
+                            >
+                              <Edit2 className="h-3 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => handleDeleteSession(e, session.id)}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
           </div>
-          <div className="flex justify-between pt-4 border-t gap-3">
+
+          <div className="flex justify-between pt-4 border-t gap-3 mt-2">
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -1313,17 +1517,17 @@ export default function ChatInterface() {
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => void refreshSessions()}
                 disabled={isLoadingSessions}
-                className="h-9 w-9 p-0"
+                className="h-9 w-9"
                 title="Refresh History"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoadingSessions ? 'animate-spin' : ''}`} />
               </Button>
             </div>
-            <Button onClick={() => setIsOpen(false)} className="h-9 px-4">
-              Close
+            <Button variant="secondary" onClick={() => setIsOpen(false)} className="h-9 px-4">
+              Finish
             </Button>
           </div>
         </DialogContent>
@@ -1368,7 +1572,13 @@ export default function ChatInterface() {
             PROVIDER
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[850px] gap-0 p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>AI Provider Settings</DialogTitle>
+            <DialogDescription>
+              Configure AI providers, models, and connection settings for Karen.
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex h-[600px]">
             {/* Sidebar: Provider Selection */}
             <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
@@ -1399,9 +1609,9 @@ export default function ChatInterface() {
                 <DialogTitle className="flex items-center gap-2">
                   {activeProviderDetails?.display_name || 'Select Provider'} Settings
                 </DialogTitle>
-                <p className="text-xs text-muted-foreground">
+                <DialogDescription className="text-xs">
                   Configure models and authentication for this provider.
-                </p>
+                </DialogDescription>
               </DialogHeader>
 
               <ScrollArea className="flex-1 p-6 pt-2">

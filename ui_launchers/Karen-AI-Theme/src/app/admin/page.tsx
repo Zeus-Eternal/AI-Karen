@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Brain, Users, Settings, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, ListTree, FileJson, HardDrive, FileTerminal, ArrowRight } from "lucide-react";
+import { Brain, Users, Settings, BarChart, Bell, Database, MoreHorizontal, PlusCircle, Search, Trash2, UserPlus, BrainCircuit, Eye, PenSquare, UserCog, Ban, ListTree, FileJson, HardDrive, FileTerminal, ArrowRight, Wrench, RefreshCw, FileSearch, ShieldCheck, History, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +20,8 @@ import Link from "next/link";
 import SettingsDialog from "@/components/settings/SettingsDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import apiClient from "@/lib/api";
 
 type UserRole = "Admin" | "User" | "Editor";
 type UserStatus = "Active" | "Suspended" | "Pending";
@@ -109,6 +111,12 @@ export default function AdminPage() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
 
     const [selectedCollection, setSelectedCollection] = useState<keyof typeof dbDocuments>('users');
+    
+    // Maintenance State
+    const [maintenanceReport, setMaintenanceReport] = useState<any>(null);
+    const [isCleaning, setIsCleaning] = useState(false);
+    const [dryRun, setDryRun] = useState(true);
+    const [lastCleanupStatus, setLastCleanupStatus] = useState<{ status: string; last_run: string | null }>({ status: 'ready', last_run: null });
 
     const filteredUsers = users.filter(user =>
         user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,6 +131,22 @@ export default function AdminPage() {
 
     const handleDeleteUser = (userId: string) => {
         setUsers(users.filter(user => user.id !== userId));
+    };
+
+    const handleRunCleanup = async () => {
+        setIsCleaning(true);
+        try {
+            const report = await apiClient.post<any>(`/api/maintenance/cleanup?dry_run=${dryRun}`);
+            setMaintenanceReport(report);
+            setLastCleanupStatus({
+                status: 'completed',
+                last_run: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error("Cleanup failed:", error);
+        } finally {
+            setIsCleaning(false);
+        }
     };
 
 
@@ -141,10 +165,11 @@ export default function AdminPage() {
 
             <main className="flex-1 p-4 md:p-8">
                 <Tabs defaultValue="users" className="w-full">
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-6">
                         <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" />User Management</TabsTrigger>
                         <TabsTrigger value="settings"><Settings className="mr-2 h-4 w-4" />App Settings</TabsTrigger>
                         <TabsTrigger value="database"><Database className="mr-2 h-4 w-4" />Database</TabsTrigger>
+                        <TabsTrigger value="maintenance"><Wrench className="mr-2 h-4 w-4" />Maintenance</TabsTrigger>
                         <TabsTrigger value="analytics"><BarChart className="mr-2 h-4 w-4" />Analytics</TabsTrigger>
                         <TabsTrigger value="notifications"><Bell className="mr-2 h-4 w-4" />System Notifications</TabsTrigger>
                     </TabsList>
@@ -498,6 +523,158 @@ export default function AdminPage() {
                                     </CardContent>
                                 </Card>
                             </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="maintenance" className="mt-6 space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">System Status</CardTitle>
+                                    <ShieldCheck className={`h-4 w-4 ${lastCleanupStatus.status === 'ready' ? 'text-green-500' : 'text-blue-500'}`} />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold uppercase">{lastCleanupStatus.status}</div>
+                                    <p className="text-xs text-muted-foreground">System maintenance health</p>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Last Cleanup</CardTitle>
+                                    <History className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{lastCleanupStatus.last_run ? new Date(lastCleanupStatus.last_run).toLocaleDateString() : 'Never'}</div>
+                                    <p className="text-xs text-muted-foreground">{lastCleanupStatus.last_run ? new Date(lastCleanupStatus.last_run).toLocaleTimeString() : 'No recent runs'}</p>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Actions (Total)</CardTitle>
+                                    <ListTree className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{maintenanceReport?.total_actions || 0}</div>
+                                    <p className="text-xs text-muted-foreground">From last maintenance run</p>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Purged Size</CardTitle>
+                                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{(maintenanceReport?.bytes_cleaned / (1024 * 1024)).toFixed(2) || '0.00'} MB</div>
+                                    <p className="text-xs text-muted-foreground">Disk space recovered</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card className="lg:col-span-1">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center"><Wrench className="mr-2 h-5 w-5"/> Maintenance Tools</CardTitle>
+                                    <CardDescription>System-wide cleanup and optimization</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between space-x-2">
+                                        <div className="flex flex-col space-y-1">
+                                            <Label htmlFor="dry-run">Dry Run Mode</Label>
+                                            <p className="text-xs text-muted-foreground">Simulate cleanup without deleting data</p>
+                                        </div>
+                                        <Switch 
+                                            id="dry-run" 
+                                            checked={dryRun}
+                                            onCheckedChange={setDryRun}
+                                        />
+                                    </div>
+                                    
+                                    <div className="pt-4 border-t">
+                                        <Button 
+                                            className="w-full" 
+                                            size="lg" 
+                                            onClick={handleRunCleanup}
+                                            disabled={isCleaning}
+                                        >
+                                            {isCleaning ? (
+                                                <>
+                                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                                    Running Maintenance...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {dryRun ? <FileSearch className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                                    {dryRun ? 'Start Dry Run Simulation' : 'Execute Full System Cleanup'}
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+
+                                    <div className="rounded-md bg-muted/50 p-4 space-y-2">
+                                        <h4 className="text-sm font-semibold flex items-center">
+                                            <AlertCircle className="mr-2 h-4 w-4 text-blue-500" />
+                                            Active Maintenance Tasks
+                                        </h4>
+                                        <ul className="text-xs space-y-1 list-disc pl-4 text-muted-foreground">
+                                            <li>Orphaned Demo Users purging</li>
+                                            <li>Test/Temp file cleanup</li>
+                                            <li>Log file rotation & archiving</li>
+                                            <li>Expired Session Cache flushing</li>
+                                            <li>System Backup validation</li>
+                                        </ul>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center">
+                                        <FileTerminal className="mr-2 h-5 w-5"/> 
+                                        Cleanup Report {maintenanceReport?.dry_run && <Badge className="ml-2" variant="secondary">SIMULATION</Badge>}
+                                    </CardTitle>
+                                    <CardDescription>Results from the {maintenanceReport ? 'last' : 'next'} maintenance operation</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {maintenanceReport ? (
+                                        <ScrollArea className="h-[400px] rounded-md border p-4 bg-muted/20">
+                                            <div className="space-y-4">
+                                                {maintenanceReport.actions.map((action: any, i: number) => (
+                                                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-background border shadow-sm">
+                                                        <div className={`mt-1 p-1 rounded-full ${action.action_type.includes('error') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                                            {action.action_type.includes('error') ? <AlertCircle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className="flex justify-between">
+                                                                <span className="font-semibold text-sm capitalize">{action.action_type.replace(/_/g, ' ')}</span>
+                                                                <span className="text-[10px] text-muted-foreground">{new Date(action.timestamp).toLocaleTimeString()}</span>
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground mt-1">{action.description}</p>
+                                                            <div className="mt-2 flex gap-2">
+                                                                <Badge variant="outline" className="text-[10px] py-0">{action.target}</Badge>
+                                                                {action.size_bytes > 0 && (
+                                                                    <Badge variant="secondary" className="text-[10px] py-0">{(action.size_bytes / 1024).toFixed(1)} KB</Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {maintenanceReport.actions.length === 0 && (
+                                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-10">
+                                                        <ShieldCheck className="h-10 w-10 mb-2 opacity-20" />
+                                                        <p>No maintenance actions required. System is clean.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-[400px] border rounded-md border-dashed border-muted-foreground/30 text-muted-foreground">
+                                            <Wrench className="h-12 w-12 mb-4 opacity-10" />
+                                            <p className="text-sm">Run maintenance to generate a system report</p>
+                                            <p className="text-xs mt-1">Simulated or active cleanup actions will appear here</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
                         </div>
                     </TabsContent>
 
