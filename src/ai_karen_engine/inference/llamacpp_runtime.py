@@ -398,7 +398,20 @@ class LlamaCppRuntime:
         with self._lock:
             try:
                 # Define default stop sequences to prevent hallucinated turns
-                default_stop = ["User:", "Assistant:", "<|user|>", "<|assistant|>", "<|end|>", "</s>", "\n\nUser:", "\n\nAssistant:"]
+                default_stop = [
+                    "User:",
+                    "Assistant:",
+                    "user:",
+                    "assistant:",
+                    "<|user|>",
+                    "<|assistant|>",
+                    "<|end|>",
+                    "</s>",
+                    "\n\nUser:",
+                    "\n\nAssistant:",
+                    "\n\nuser:",
+                    "\n\nassistant:",
+                ]
                 
                 # Combine provided stop sequences with defaults, ensuring no duplicates
                 combined_stop = list(set((stop or []) + default_stop))
@@ -460,7 +473,16 @@ class LlamaCppRuntime:
         with self._lock:
             try:
                 # Basic stop sequences that might not be in the template but help prevent run-on
-                default_stop = ["User:", "Assistant:", "<|user|>", "<|assistant|>", "<|end|>", "</s>"]
+                default_stop = [
+                    "User:",
+                    "Assistant:",
+                    "user:",
+                    "assistant:",
+                    "<|user|>",
+                    "<|assistant|>",
+                    "<|end|>",
+                    "</s>",
+                ]
                 combined_stop = list(set((stop or []) + default_stop))
                 
                 chat_params = {

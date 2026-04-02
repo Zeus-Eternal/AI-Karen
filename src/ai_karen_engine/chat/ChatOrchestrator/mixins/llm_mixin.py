@@ -108,12 +108,12 @@ class ChatLLMMixin(Base):
     ) -> Union[Optional[ProcessingResult], AsyncIterator[str]]:
         """Try the specific LLM requested by the user, if any."""
         metadata = getattr(request, "metadata", {})
-        if not metadata.get("model_id"):
+        model_id = metadata.get("model_id") or metadata.get("preferred_model")
+        provider = metadata.get("provider") or metadata.get("preferred_llm_provider")
+
+        if not model_id:
             return None
-            
-        model_id = metadata["model_id"]
-        provider = metadata.get("provider")
-        
+
         logger.info(f"Attempting user-chosen model: {model_id} ({provider})")
         
         try:
@@ -150,6 +150,9 @@ class ChatLLMMixin(Base):
     ) -> Union[ProcessingResult, AsyncIterator[str]]:
         """Execute the fallback chain through system defaults and local models."""
         trial_plan = self.fallback_router.get_trial_plan(request)
+        request_metadata = getattr(request, "metadata", {}) or {}
+        preferred_model = request_metadata.get("model_id") or request_metadata.get("preferred_model")
+        preferred_provider = request_metadata.get("provider") or request_metadata.get("preferred_llm_provider")
         
         attempted_models = []
         for trial in trial_plan:
@@ -179,13 +182,48 @@ class ChatLLMMixin(Base):
                     self._verify_model_output(result, model_id)
                     
                     duration = time.time() - start_time
+                    used_fallback = len(attempted_models) > 1
+                    preferred_selection_failed = bool(preferred_model or preferred_provider)
+                    actual_provider = result.get("provider") or provider
+                    actual_model_id = result.get("model_id") or model_id
+                    selection_mismatch = (
+                        bool(preferred_model and actual_model_id and preferred_model != actual_model_id)
+                        or bool(preferred_provider and actual_provider and preferred_provider != actual_provider)
+                    )
+                    is_degraded = bool(result.get("is_degraded", False)) or used_fallback or (preferred_selection_failed and selection_mismatch)
                     metadata = self._build_llm_metadata(
-                        result, 
+                        {
+                            **result,
+                            "provider": actual_provider,
+                            "model_id": actual_model_id,
+                            "is_degraded": is_degraded,
+                            "failure_reason": result.get("failure_reason")
+                            or (
+                                f"Requested provider/model {preferred_provider or 'default'}"
+                                f"{('/' + preferred_model) if preferred_model else ''} was unavailable; "
+                                f"continued with {actual_provider or 'fallback'}"
+                                f"{('/' + actual_model_id) if actual_model_id else ''}."
+                                if preferred_selection_failed and selection_mismatch
+                                else None
+                            ),
+                            "routing_rationale": result.get("routing_rationale")
+                            or (
+                                f"Preferred selection could not be used; fallback chain selected "
+                                f"{actual_provider or 'fallback'}"
+                                f"{('/' + actual_model_id) if actual_model_id else ''}."
+                                if preferred_selection_failed and selection_mismatch
+                                else None
+                            ),
+                            "fallback_level": result.get("fallback_level")
+                            or ("provider_selection" if preferred_selection_failed and selection_mismatch else ("system_default" if used_fallback else None)),
+                        },
                         source="fallback_chain",
                         additional={
                             "attempted_models": attempted_models,
                             "trial_index": len(attempted_models) - 1,
-                            "duration": duration
+                            "duration": duration,
+                            "requested_provider": preferred_provider,
+                            "requested_model": preferred_model,
                         }
                     )
                     return ProcessingResult(
@@ -195,7 +233,7 @@ class ChatLLMMixin(Base):
                         actions=result.get("actions") or [],
                         llm_metadata=metadata,
                         context=context.metadata,
-                        used_fallback=len(attempted_models) > 1,
+                        used_fallback=used_fallback or (preferred_selection_failed and selection_mismatch),
                         processing_time=duration
                     )
             except Exception as exc:
@@ -218,15 +256,20 @@ class ChatLLMMixin(Base):
         # Use absolute import for service manager
         from services.memory.nlp_service_manager import nlp_service_manager
         
-        messages = [{"role": "system", "content": system_prompt}]
-        # Convert ChatMessage objects to the dict format expected by nlp_service_manager
-        formatted_history: List[Dict[str, str]] = []
+        # `history` already contains the prompt sequence assembled by the prompt
+        # mixin, including the active system prompt and current user turn.
+        # Duplicating those entries here causes completion-style models to keep
+        # extending a synthetic multi-turn transcript.
+        messages: List[Dict[str, str]] = []
         for m in history:
             role = m.role.value if hasattr(m.role, "value") else str(m.role)
-            formatted_history.append({"role": role, "content": m.content})
-            
-        messages.extend(formatted_history)
-        messages.append({"role": "user", "content": prompt})
+            messages.append({"role": role, "content": m.content})
+
+        if not messages:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ]
         
         if stream:
             return nlp_service_manager.generate_response_stream(

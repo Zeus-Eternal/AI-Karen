@@ -132,11 +132,11 @@ class PrettyOutputLayer:
         }
         self._layout_formatters = {
             LayoutType.DEFAULT: lambda c, p, ctx: c,
-            LayoutType.MENU: lambda c, p, ctx: f'<div class="ui-menu">\n{c}\n</div>',
-            LayoutType.SYSTEM_STATUS: lambda c, p, ctx: f'<div class="ui-system-status">\n{c}\n</div>',
+            LayoutType.MENU: lambda c, p, ctx: c,
+            LayoutType.SYSTEM_STATUS: lambda c, p, ctx: c,
             LayoutType.CODE_BLOCK: self._format_code_block,
-            LayoutType.TABLE: lambda c, p, ctx: f'<div class="ui-table-container">\n{c}\n</div>',
-            LayoutType.STEPS: lambda c, p, ctx: f'<div class="ui-steps-container">\n{c}\n</div>',
+            LayoutType.TABLE: lambda c, p, ctx: c,
+            LayoutType.STEPS: lambda c, p, ctx: c,
         }
         self._profile_formatters = {
             OutputProfile.PLAIN: self._apply_plain,
@@ -235,12 +235,6 @@ class PrettyOutputLayer:
             # 6. Final Profiling & Wrappers
             profile_func = self._profile_formatters.get(self.config.output_profile, self._profile_formatters[OutputProfile.PRETTY])
             formatted_content = profile_func(formatted_content, context)
-
-            if self.config.enable_theme_support and context.theme_mode == ThemeMode.DARK:
-                formatted_content = f'<div class="theme-dark">{formatted_content}</div>'
-                
-            if self.config.enable_accessibility_features and context.accessibility_level != AccessibilityLevel.BASIC:
-                formatted_content = f'<div role="article" class="acc-{context.accessibility_level.value}">{formatted_content}</div>'
 
             # 7. Final Result Construction
             proc_time = time.time() - start_time

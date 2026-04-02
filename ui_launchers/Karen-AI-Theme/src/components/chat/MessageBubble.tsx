@@ -86,6 +86,8 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
   };
 
   const llm = message.metadata?.llm;
+  const metadataKeys = message.metadata ? Object.keys(message.metadata) : [];
+  const hasMetadataDetails = metadataKeys.length > 0;
   const failureCategory = message.metadata?.failure_category || llm?.failure_category;
   const isSafetyBlocked = failureCategory === 'safety_blocked';
   const usedFallback = message.metadata?.orchestrator?.used_fallback === true;
@@ -100,6 +102,14 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     usedFallback ||
     isLocalFallbackSource;
   const hasLlmInfo = llm && (llm.provider || llm.model_id);
+  const normalizedContent = (message.content || '')
+    .replace(/^<div class="ui-[^"]+">\s*/i, '')
+    .replace(/<\/div>\s*$/i, '')
+    .replace(/^<section[^>]*>\s*/i, '')
+    .replace(/<\/section>\s*$/i, '')
+    .replace(/^<div role="article"[^>]*>\s*/i, '')
+    .replace(/<\/div>\s*$/i, '')
+    .trim();
 
   return (
     <div className={`user-bubble flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -145,13 +155,13 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                        }
                      }}
                    >
-                     {message.content}
+                     {normalizedContent}
                    </ReactMarkdown>
                  </div>
               )}
 
               {/* Compact Metadata Badge — always visible for assistant messages */}
-              {!isUser && message.role === 'assistant' && (hasLlmInfo || message.metadata?.degraded_mode) && (
+              {!isUser && message.role === 'assistant' && (hasLlmInfo || hasMetadataDetails || message.metadata?.degraded_mode) && (
                 <div className="flex items-center gap-2 flex-wrap mt-2 overflow-hidden">
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide uppercase border transition-all duration-300 ${
                     isDegraded || isSafetyBlocked
@@ -196,7 +206,7 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
               )}
 
               {/* Collapsible Metadata Details */}
-              {!isUser && message.role === 'assistant' && hasLlmInfo && (
+              {!isUser && message.role === 'assistant' && hasMetadataDetails && (
                 <div className="mt-1 overflow-hidden transition-all duration-300">
                   <button 
                     onClick={() => setShowDetails(!showDetails)}
@@ -211,29 +221,29 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                     <div className="mt-2 p-2.5 bg-muted/40 rounded-xl border border-border/30 text-[10px] grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono shadow-inner animate-in fade-in zoom-in-95 duration-200">
                       <div className="flex justify-between border-b border-border/20 pb-1 col-span-2 mb-1">
                           <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Engine Metadata</span>
-                          <span className="text-[8px] text-blue-500 font-bold uppercase">{llm.provider}</span>
+                          <span className="text-[8px] text-blue-500 font-bold uppercase">{llm?.provider || 'system'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Provider:</span>
-                        <span className="font-semibold">{llm.provider}</span>
+                        <span className="font-semibold">{llm?.provider || 'system'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Model:</span>
                         <span className="font-semibold truncate max-w-[120px]" title={llm.model_id}>
-                          {llm.model_id?.split(':').pop() || 'auto'}
+                          {llm?.model_id?.split(':').pop() || llm?.model_name || 'auto'}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Source:</span>
-                        <span className="font-semibold">{llm.source || 'direct'}</span>
+                        <span className="font-semibold">{llm?.source || 'direct'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Speed:</span>
-                        <span className="font-semibold text-emerald-500">{llm.tokens_per_second || 'N/A'} tok/s</span>
+                        <span className="font-semibold text-emerald-500">{llm?.tokens_per_second || 'N/A'} tok/s</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Latency:</span>
-                        <span className="font-semibold text-blue-500">{typeof llm.duration === 'number' ? llm.duration.toFixed(2) : 'N/A'}s</span>
+                        <span className="font-semibold text-blue-500">{typeof llm?.duration === 'number' ? llm.duration.toFixed(2) : 'N/A'}s</span>
                       </div>
                       {(isDegraded || isSafetyBlocked) && (
                         <div className="flex justify-between col-span-2 pt-1 mt-1 border-t border-border/20">
@@ -243,13 +253,13 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                           </span>
                         </div>
                       )}
-                      {llm.failure_reason && (
+                      {llm?.failure_reason && (
                         <div className="col-span-2 pt-1 mt-1 border-t border-border/20">
                           <span className="text-muted-foreground">Reason:</span>
                           <span className="font-semibold text-rose-400 ml-2 break-all">{llm.failure_reason}</span>
                         </div>
                       )}
-                      {llm.usage && (
+                      {llm?.usage && (
                         <div className="col-span-2 pt-1 mt-1 border-t border-border/20 flex justify-between">
                           <span className="text-muted-foreground">Tokens:</span>
                           <span className="font-semibold text-amber-500">

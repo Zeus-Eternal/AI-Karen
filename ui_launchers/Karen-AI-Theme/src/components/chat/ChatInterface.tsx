@@ -250,55 +250,63 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
       await apiClient.delete(`/api/conversations/${sessionId}`);
-      
-      // Update sessions list
+
+      // Update sessions list optimistically, then re-sync from server to avoid stale history.
       setSessions(prev => prev.filter(s => s.id !== sessionId));
-      
+
       // If deleted session was current, create new one
       if (currentSession?.id === sessionId) {
         await createNewSession();
       }
+
+      await refreshSessions();
       return true;
     } catch (err) {
       console.error('Failed to delete session:', err);
       setError('Failed to delete session. Please try again.');
       return false;
     }
-  }, [currentSession?.id, createNewSession]);
+  }, [currentSession?.id, createNewSession, refreshSessions]);
 
   // Delete multiple sessions
   const deleteSessions = useCallback(async (sessionIds: string[]) => {
     if (sessionIds.length === 0) return true;
     
     try {
-      const maxConcurrentDeletes = 4;
       const deletedIds = new Set<string>();
       const failedIds: string[] = [];
+      const retryableStatuses = new Set([502, 504]);
 
-      let nextIndex = 0;
-      const workers = Array.from(
-        { length: Math.min(maxConcurrentDeletes, sessionIds.length) },
-        async () => {
-          while (nextIndex < sessionIds.length) {
-            const currentIndex = nextIndex;
-            nextIndex += 1;
-            const sessionId = sessionIds[currentIndex];
+      for (const sessionId of sessionIds) {
+        let attempts = 0;
 
-            try {
-              await apiClient.delete(`/api/conversations/${sessionId}`);
+        while (attempts < 2) {
+          attempts += 1;
+          try {
+            await apiClient.delete(`/api/conversations/${sessionId}`);
+            deletedIds.add(sessionId);
+            break;
+          } catch (err) {
+            if (err instanceof ApiError && err.status === 404) {
               deletedIds.add(sessionId);
-            } catch (err) {
-              if (err instanceof ApiError && err.status === 404) {
-                deletedIds.add(sessionId);
-                continue;
-              }
-              failedIds.push(sessionId);
+              break;
             }
+
+            const shouldRetry =
+              err instanceof ApiError &&
+              retryableStatuses.has(err.status) &&
+              attempts < 2;
+
+            if (shouldRetry) {
+              await new Promise((resolve) => window.setTimeout(resolve, 350));
+              continue;
+            }
+
+            failedIds.push(sessionId);
+            break;
           }
         }
-      );
-
-      await Promise.all(workers);
+      }
 
       if (deletedIds.size > 0) {
         setSessions(prev => prev.filter(s => !deletedIds.has(s.id)));
@@ -306,6 +314,10 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
 
       if (currentSession && deletedIds.has(currentSession.id)) {
         await createNewSession();
+      }
+
+      if (deletedIds.size > 0) {
+        await refreshSessions();
       }
 
       if (failedIds.length > 0) {
@@ -319,7 +331,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
       setError('Failed to delete some sessions. Please try again.');
       return false;
     }
-  }, [currentSession, createNewSession]);
+  }, [currentSession, createNewSession, refreshSessions]);
 
   // Update a session title
   const updateSessionTitle = useCallback(async (sessionId: string, newTitle: string) => {
