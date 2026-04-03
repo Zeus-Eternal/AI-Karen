@@ -88,193 +88,147 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold tracking-tight px-2 py-1">Navigation</h2>
             </AppSidebarHeader>
             <Separator className="my-1" />
-            <AppSidebarContent className="p-2">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('chat')}
-                    isActive={activeMainView === 'chat'}
-                    className="w-full"
-                  >
-                    <MessageSquare />
-                    Chat
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('settings')}
-                    isActive={activeMainView === 'settings'}
-                    className="w-full"
-                  >
-                    <SettingsIconLucide />
-                    Settings
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                    onClick={() => setActiveMainView('commsCenter')}
-                    isActive={activeMainView === 'commsCenter'}
-                    className="w-full"
-                  >
-                    <Bell />
-                    Comms Center
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                    onClick={() => setActiveMainView('admin')}
-                    isActive={activeMainView === 'admin'}
-                    className="w-full text-rose-500/80 hover:text-rose-500 transition-colors"
-                  >
-                    <Shield />
-                    Admin Settings
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-
-              <Separator className="my-2" />
-
+            <AppSidebarContent className="p-2 space-y-4">
+              {/* --- ASSISTANT CATEGORY --- */}
               <SidebarGroup>
-                <SidebarGroupLabel className="text-sm flex items-center"><Binary className="mr-2 h-4 w-4"/>Automation Hub</SidebarGroupLabel>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('automationOverview')}
-                        isActive={activeMainView === 'automationOverview'}
-                        className="w-full"
-                      >
-                        <LayoutGrid />
-                        Hub Overview
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('agents')}
-                        isActive={activeMainView === 'agents'}
-                        className="w-full"
-                      >
-                        <BotIcon />
-                        Agents
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('tasks')}
-                        isActive={activeMainView === 'tasks'}
-                        className="w-full"
-                      >
-                        <ScrollText />
-                        Tasks
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('sequences')}
-                        isActive={activeMainView === 'sequences'}
-                        className="w-full"
-                      >
-                        <Workflow />
-                        Jobs
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('cronJobs')}
-                        isActive={activeMainView === 'cronJobs'}
-                        className="w-full"
-                      >
-                        <Clock />
-                        Cron Jobs
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroup>
-
-              <Separator className="my-2" />
-
-              <SidebarGroup>
-                <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-xs uppercase tracking-widest font-bold text-primary/70 mb-2 px-2">Assistant</SidebarGroupLabel>
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginOverview')}
-                      isActive={activeMainView === 'pluginOverview'}
+                      onClick={() => setActiveMainView('chat')}
+                      isActive={activeMainView === 'chat'}
                       className="w-full"
                     >
-                      <PlugZap />
-                      Plugin Overview
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Chat</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginDataConnector')}
-                      isActive={activeMainView === 'pluginDataConnector'}
+                      onClick={() => setActiveMainView('commsCenter')}
+                      isActive={activeMainView === 'commsCenter'}
                       className="w-full"
                     >
-                      <Database />
-                      Data Connector
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginFacebook')}
-                      isActive={activeMainView === 'pluginFacebook'}
-                      className="w-full"
-                    >
-                      <Facebook />
-                      Facebook Integration
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginGmail')}
-                      isActive={activeMainView === 'pluginGmail'}
-                      className="w-full"
-                    >
-                      <Mail />
-                      Gmail Integration
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginDateTime')}
-                      isActive={activeMainView === 'pluginDateTime'}
-                      className="w-full"
-                    >
-                      <CalendarDays />
-                      Date/Time Service
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginWeather')}
-                      isActive={activeMainView === 'pluginWeather'}
-                      className="w-full"
-                    >
-                      <CloudSun />
-                      Weather Service
+                      <Bell className="h-4 w-4" />
+                      <span>Comms Center</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroup>
 
-              <Separator className="my-2" />
+              <Separator className="bg-border/50 mx-2" />
 
-              <SidebarMenu>
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                    onClick={() => setActiveMainView('account')}
-                    isActive={activeMainView === 'account'}
-                    className="w-full"
-                  >
-                    <UserCircle />
-                    My Account
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
+              {/* --- PERSONAL CATEGORY --- */}
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs uppercase tracking-widest font-bold text-primary/70 mb-2 px-2">Personal</SidebarGroupLabel>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setActiveMainView('account')}
+                      isActive={activeMainView === 'account'}
+                      className="w-full"
+                    >
+                      <UserCircle className="h-4 w-4" />
+                      <span>My Account</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setActiveMainView('settings')}
+                      isActive={activeMainView === 'settings'}
+                      className="w-full"
+                    >
+                      <SettingsIconLucide className="h-4 w-4" />
+                      <span>Application Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroup>
+
+              <Separator className="bg-border/50 mx-2" />
+
+              {/* --- MODELS & RUNTIME CATEGORY --- */}
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs uppercase tracking-widest font-bold text-primary/70 mb-2 px-2">Models & Runtime</SidebarGroupLabel>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => setActiveMainView('admin')}
+                      isActive={activeMainView === 'admin'}
+                      className="w-full text-rose-500/80 hover:text-rose-500 transition-colors"
+                    >
+                      <Shield className="h-4 w-4" />
+                      <span>Admin Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+
+                <div className="mt-4 px-2 space-y-4">
+                  {/* Automation Hub Sub-group */}
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground/60 mb-2 flex items-center">
+                      <Binary className="mr-1.5 h-3 w-3"/> Automation Hub
+                    </p>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => setActiveMainView('automationOverview')}
+                          isActive={activeMainView === 'automationOverview'}
+                          className="w-full h-8 text-xs"
+                        >
+                          <LayoutGrid className="h-3.5 w-3.5" />
+                          Hub Overview
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => setActiveMainView('agents')}
+                          isActive={activeMainView === 'agents'}
+                          className="w-full h-8 text-xs"
+                        >
+                          <BotIcon className="h-3.5 w-3.5" />
+                          Agents
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => setActiveMainView('tasks')}
+                          isActive={activeMainView === 'tasks'}
+                          className="w-full h-8 text-xs"
+                        >
+                          <ScrollText className="h-3.5 w-3.5" />
+                          Tasks
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </div>
+
+                  {/* Plugins Sub-group */}
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground/60 mb-2 flex items-center">
+                      <PlugZap className="mr-1.5 h-3 w-3"/> Dynamic Plugins
+                    </p>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => setActiveMainView('pluginOverview')}
+                          isActive={activeMainView === 'pluginOverview'}
+                          className="w-full h-8 text-xs"
+                        >
+                          <LayoutGrid className="h-3.5 w-3.5" />
+                          Plugin Inventory
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </div>
+                </div>
+              </SidebarGroup>
             </AppSidebarContent>
-            <AppSidebarFooter className="p-2 border-t">
-              <p className="text-xs text-muted-foreground text-center">Karen AI Menu</p>
+            <AppSidebarFooter className="p-4 border-t bg-muted/20">
+              <div className="flex flex-col items-center gap-1">
+                <Brain className="h-4 w-4 text-primary/50" />
+                <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-tighter">Karen AI Unified Platform</p>
+              </div>
             </AppSidebarFooter>
           </Sidebar>
 

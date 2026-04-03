@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
@@ -1343,14 +1344,60 @@ export default function ChatInterface() {
     const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortMode, setSortMode] = useState<'recent' | 'oldest' | 'most-messages' | 'title'>('recent');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
-    const filteredSessions = sessions.filter(s => 
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    const filteredSessions = sessions
+      .filter((session) =>
+        !normalizedQuery ||
+        session.title.toLowerCase().includes(normalizedQuery) ||
+        session.lastMessage?.toLowerCase().includes(normalizedQuery)
+      )
+      .sort((a, b) => {
+        switch (sortMode) {
+          case 'oldest':
+            return a.updatedAt.getTime() - b.updatedAt.getTime();
+          case 'most-messages':
+            return b.messageCount - a.messageCount || b.updatedAt.getTime() - a.updatedAt.getTime();
+          case 'title':
+            return a.title.localeCompare(b.title);
+          case 'recent':
+          default:
+            return b.updatedAt.getTime() - a.updatedAt.getTime();
+        }
+      });
+
+    const groupedSessions = filteredSessions.reduce<Record<string, Session[]>>((groups, session) => {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      const startOfWeek = new Date(startOfToday);
+      startOfWeek.setDate(startOfWeek.getDate() - 7);
+      const sessionTime = session.updatedAt.getTime();
+
+      let bucket = 'Earlier';
+      if (sessionTime >= startOfToday.getTime()) {
+        bucket = 'Today';
+      } else if (sessionTime >= startOfYesterday.getTime()) {
+        bucket = 'Yesterday';
+      } else if (sessionTime >= startOfWeek.getTime()) {
+        bucket = 'Last 7 Days';
+      }
+
+      if (!groups[bucket]) {
+        groups[bucket] = [];
+      }
+      groups[bucket].push(session);
+      return groups;
+    }, {});
+
+    const groupOrder = ['Today', 'Yesterday', 'Last 7 Days', 'Earlier'].filter((label) => groupedSessions[label]?.length);
+    const totalMessages = sessions.reduce((sum, session) => sum + session.messageCount, 0);
 
     const formatDate = (date: Date) => {
       return new Intl.DateTimeFormat('en-US', {
@@ -1359,6 +1406,21 @@ export default function ChatInterface() {
         hour: '2-digit',
         minute: '2-digit'
       }).format(date);
+    };
+
+    const formatRelativeDate = (date: Date) => {
+      const diff = Date.now() - date.getTime();
+      const minute = 60 * 1000;
+      const hour = 60 * minute;
+      const day = 24 * hour;
+
+      if (diff < hour) {
+        return `${Math.max(1, Math.floor(diff / minute))}m ago`;
+      }
+      if (diff < day) {
+        return `${Math.floor(diff / hour)}h ago`;
+      }
+      return formatDate(date);
     };
 
     const handleSessionClick = async (session: Session) => {
@@ -1459,10 +1521,15 @@ export default function ChatInterface() {
             HISTORY
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[720px]">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <DialogTitle>Chat History</DialogTitle>
+              <div className="space-y-1">
+                <DialogTitle>Chat History</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Review, reopen, rename, and clean up durable conversation sessions.
+                </DialogDescription>
+              </div>
               <div className="flex gap-2">
                 {sessions.length > 0 && (
                   <Button 
@@ -1476,34 +1543,78 @@ export default function ChatInterface() {
                 )}
               </div>
             </div>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Review and manage your previous chat sessions with Karen.
-            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="relative">
-              <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 pr-8"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-              )}
+            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 md:grid-cols-3">
+              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sessions</div>
+                <div className="mt-1 text-lg font-semibold">{sessions.length}</div>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Messages</div>
+                <div className="mt-1 text-lg font-semibold">{totalMessages}</div>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-background px-3 py-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active Session</div>
+                <div className="mt-1 truncate text-sm font-semibold">{currentSession?.title || 'None selected'}</div>
+              </div>
             </div>
 
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-10 pr-8"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={sortMode} onValueChange={(value: 'recent' | 'oldest' | 'most-messages' | 'title') => setSortMode(value)}>
+                  <SelectTrigger className="h-10 w-[180px] bg-background">
+                    <SelectValue placeholder="Sort sessions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Most Recent</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="most-messages">Most Messages</SelectItem>
+                    <SelectItem value="title">Title A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => void refreshSessions()}
+                  disabled={isLoadingSessions}
+                  className="h-10 w-10"
+                  title="Refresh History"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingSessions ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             {isSelectionMode && filteredSessions.length > 0 && (
-              <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs">
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs">
                 <div className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 border rounded flex items-center justify-center cursor-pointer"
+                  <div
+                    className="flex h-4 w-4 items-center justify-center rounded border cursor-pointer"
                     onClick={toggleAll}
                   >
                     {selectedIds.size === filteredSessions.length && selectedIds.size > 0 && (
@@ -1529,7 +1640,7 @@ export default function ChatInterface() {
               </div>
             )}
 
-            <ScrollArea className="h-[40vh] pr-4">
+            <ScrollArea className="h-[52vh] pr-4">
               {isLoadingSessions ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1541,87 +1652,104 @@ export default function ChatInterface() {
                   {!searchQuery && <p className="text-xs mt-2">Start a new conversation to begin.</p>}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {filteredSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className={`group p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 relative ${
-                        session.isActive ? 'bg-muted border-primary/50' : 'border-border'
-                      } ${selectedIds.has(session.id) ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-                      onClick={() => handleSessionClick(session)}
-                    >
-                      <div className="flex items-start gap-3">
-                        {isSelectionMode && (
-                          <div 
-                            className={`mt-1 w-4 h-4 shrink-0 border rounded flex items-center justify-center transition-colors ${
-                              selectedIds.has(session.id) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
-                            }`}
+                <div className="space-y-5">
+                  {groupOrder.map((groupLabel) => (
+                    <div key={groupLabel} className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          {groupLabel}
+                        </h4>
+                        <Separator className="flex-1" />
+                      </div>
+                      <div className="space-y-2">
+                        {groupedSessions[groupLabel].map((session) => (
+                          <div
+                            key={session.id}
+                            className={`group rounded-xl border p-3 cursor-pointer transition-all hover:bg-muted/50 relative ${
+                              session.isActive ? 'bg-muted border-primary/50' : 'border-border'
+                            } ${selectedIds.has(session.id) ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+                            onClick={() => handleSessionClick(session)}
                           >
-                            {selectedIds.has(session.id) && <Check className="h-3 w-3 text-primary-foreground" />}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          {editingSessionId === session.id ? (
-                            <div className="flex items-center gap-2 mb-1" onClick={e => e.stopPropagation()}>
-                              <Input
-                                value={editingTitle}
-                                onChange={e => setEditingTitle(e.target.value)}
-                                className="h-8 text-sm"
-                                autoFocus
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') void handleSaveEdit(session.id);
-                                  if (e.key === 'Escape') setEditingSessionId(null);
-                                }}
-                              />
-                              <Button size="icon" className="h-8 w-8" onClick={() => void handleSaveEdit(session.id)}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-sm truncate">{session.title}</h4>
-                              {session.isActive && (
-                                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none bg-primary/10 text-primary border-none">
-                                  CURRENT
-                                </Badge>
+                            <div className="flex items-start gap-3">
+                              {isSelectionMode && (
+                                <div
+                                  className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                                    selectedIds.has(session.id) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                                  }`}
+                                >
+                                  {selectedIds.has(session.id) && <Check className="h-3 w-3 text-primary-foreground" />}
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                {editingSessionId === session.id ? (
+                                  <div className="mb-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                    <Input
+                                      value={editingTitle}
+                                      onChange={e => setEditingTitle(e.target.value)}
+                                      className="h-8 text-sm"
+                                      autoFocus
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') void handleSaveEdit(session.id);
+                                        if (e.key === 'Escape') setEditingSessionId(null);
+                                      }}
+                                    />
+                                    <Button size="icon" className="h-8 w-8" onClick={() => void handleSaveEdit(session.id)}>
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="mb-1 flex items-center gap-2">
+                                    <h4 className="truncate font-semibold text-sm">{session.title}</h4>
+                                    {session.isActive && (
+                                      <Badge variant="secondary" className="h-5 border-none bg-primary/10 px-1.5 text-[10px] leading-none text-primary">
+                                        CURRENT
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatRelativeDate(session.updatedAt)}
+                                  </div>
+                                  <div className="h-1 w-1 rounded-full bg-border" />
+                                  <div>{session.messageCount} message{session.messageCount === 1 ? '' : 's'}</div>
+                                  <div className="h-1 w-1 rounded-full bg-border" />
+                                  <div>{formatDate(session.createdAt)}</div>
+                                </div>
+                                <div className="line-clamp-2 text-xs text-muted-foreground">
+                                  {session.lastMessage || "No messages yet"}
+                                </div>
+                              </div>
+
+                              {!isSelectionMode && editingSessionId !== session.id && (
+                                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartEdit(session);
+                                    }}
+                                    title="Rename conversation"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => handleDeleteSession(e, session.id)}
+                                    title="Delete conversation"
+                                  >
+                                    <XCircle className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               )}
                             </div>
-                          )}
-                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatDate(session.createdAt)}
-                            </div>
-                            <div className="w-1 h-1 rounded-full bg-border" />
-                            <div className="truncate italic">
-                              {session.lastMessage || "No messages yet"}
-                            </div>
                           </div>
-                        </div>
-                        
-                        {!isSelectionMode && editingSessionId !== session.id && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleStartEdit(session);
-                              }}
-                            >
-                              <Edit2 className="h-3 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => handleDeleteSession(e, session.id)}
-                            >
-                              <XCircle className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -1630,7 +1758,10 @@ export default function ChatInterface() {
             </ScrollArea>
           </div>
 
-          <div className="flex justify-between pt-4 border-t gap-3 mt-2">
+          <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
+            <div className="text-xs text-muted-foreground">
+              {filteredSessions.length} visible of {sessions.length} total conversation{sessions.length === 1 ? '' : 's'}
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -1643,16 +1774,6 @@ export default function ChatInterface() {
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Chat
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => void refreshSessions()}
-                disabled={isLoadingSessions}
-                className="h-9 w-9"
-                title="Refresh History"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoadingSessions ? 'animate-spin' : ''}`} />
               </Button>
             </div>
             <Button variant="secondary" onClick={() => setIsOpen(false)} className="h-9 px-4">

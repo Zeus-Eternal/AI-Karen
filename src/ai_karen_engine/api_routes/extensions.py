@@ -3,9 +3,18 @@
 from typing import Any, Dict, List
 
 try:
-    from ai_karen_engine.extension_host.__init__2 import get_extension_manager
-    from ai_karen_engine.extension_host.models import ExtensionStatusAPI
+    from extensions.core.manager import get_plugin_manager as get_extension_manager
     from ai_karen_engine.utils.dependency_checks import import_fastapi
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
+
+    class ExtensionStatusAPI(BaseModel):
+        name: str
+        display_name: str | None = Field(default=None)
+        description: str | None = Field(default=None)
+        version: str
+        status: str
+        loaded_at: Any | None = Field(default=None)
+        error_message: str | None = Field(default=None)
 except ImportError:
     # Fallback when extension host is unavailable; still use real FastAPI if installed
     from ai_karen_engine.utils.dependency_checks import import_fastapi
@@ -13,6 +22,8 @@ except ImportError:
 
     class ExtensionStatusAPI(BaseModel):
         name: str
+        display_name: str | None = Field(default=None)
+        description: str | None = Field(default=None)
         version: str
         status: str
         loaded_at: Any | None = Field(default=None)
@@ -102,6 +113,8 @@ async def list_extensions(current_user=Depends(get_current_user) if AUTH_AVAILAB
         extensions.append(
             ExtensionStatusAPI(
                 name=record.manifest.name,
+                display_name=record.manifest.display_name,
+                description=record.manifest.description,
                 version=record.manifest.version,
                 status=record.status.value,
                 loaded_at=record.loaded_at,
@@ -209,7 +222,7 @@ async def discover_extensions(current_user=Depends(get_current_user) if AUTH_AVA
                     "category": manifest.category,
                     "author": manifest.author,
                 }
-                for manifest in manifests.values()
+                for manifest in getattr(manifests, "values", lambda: manifests.values())()
             ],
         }
     except Exception as e:  # pragma: no cover - runtime errors

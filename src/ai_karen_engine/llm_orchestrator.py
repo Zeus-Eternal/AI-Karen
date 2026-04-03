@@ -457,9 +457,20 @@ class ExecutionPool:
         self.circuit_states: Dict[str, CircuitState] = {}
         self.lock = threading.RLock()
 
+    @staticmethod
+    def _is_local_model(model_id: str) -> bool:
+        """Return whether the target model is a local runtime model."""
+        normalized = (model_id or "").strip().lower()
+        return normalized.startswith(("local:", "llama-cpp:", "llamacpp:", "ollama:"))
+
+    @staticmethod
+    def _is_resource_pressure_error(error: Exception) -> bool:
+        """Return whether an exception represents local resource pressure."""
+        return "system memory threshold exceeded" in str(error).strip().lower()
+
     def execute(self, model_id: str, fn: Callable, *args, **kwargs) -> Future:
         """Execute function in secure environment"""
-        if not self.hardware.check_memory():
+        if self._is_local_model(model_id) and not self.hardware.check_memory():
             raise RuntimeError("System memory threshold exceeded")
 
         state = self._check_circuit(model_id)
@@ -1637,7 +1648,11 @@ class LLMOrchestrator:
         except CircuitOpenError:
             raise
         except Exception as exec_error:
-            self.pool._record_outcome(model_id, False, exec_error)
+            if not (
+                self.pool._is_resource_pressure_error(exec_error)
+                and self.pool._is_local_model(model_id)
+            ):
+                self.pool._record_outcome(model_id, False, exec_error)
             raise
 
         self.pool._record_outcome(model_id, True)
@@ -2325,9 +2340,14 @@ class LLMOrchestrator:
             except Exception as e:
                 self.pool._record_outcome(model_id, False)  # type: ignore
                 logger.warning(f"Enhanced model {model_id} failed: {str(e)}, trying next model...")
-                
-                # Mark this model as temporarily unavailable
-                model.status = ModelStatus.CIRCUIT_BROKEN
+
+                # Resource pressure on local inference should not be treated as a
+                # generic provider breakage signal for the routing layer.
+                if not (
+                    self.pool._is_resource_pressure_error(e)
+                    and self.pool._is_local_model(model_id)
+                ):
+                    model.status = ModelStatus.CIRCUIT_BROKEN
                 continue
         
         # All models failed

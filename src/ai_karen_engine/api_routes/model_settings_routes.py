@@ -565,7 +565,6 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
     requires_api_key = provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM}
     api_key_configured = _has_saved_api_key(provider.name, provider)
     api_key_masked = _mask_api_key(_get_saved_api_key(provider.name, provider)) if api_key_configured else None
-
     return ProviderPayload(
         id=provider.name,
         display_name=provider.display_name,
@@ -580,6 +579,9 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
         requires_api_key=requires_api_key,
         api_key_configured=api_key_configured,
         api_key_masked=api_key_masked,
+        # Settings reads should reflect saved configurability only. Runtime/provider
+        # initialization happens during explicit validation, save, or actual use so
+        # the UI does not eagerly instantiate inactive cloud providers.
         selectable=(not requires_api_key) or api_key_configured,
         api_key_header=str(override.get("api_key_header") or provider.authentication.api_key_header or "Authorization"),
         api_key_prefix=str(
@@ -614,8 +616,21 @@ def _build_response() -> ModelSettingsResponse:
     valid_provider_ids = {provider.id for provider in providers}
     if providers and selected_provider not in valid_provider_ids:
         selected_provider = next((provider.id for provider in providers if provider.id == "ollama"), providers[0].id)
+
+    active = next((provider for provider in providers if provider.id == selected_provider), providers[0]) if providers else None
+    if active and not active.selectable:
+        fallback = next(
+            (
+                provider for provider in providers
+                if provider.provider_type == ProviderType.LOCAL.value and provider.selectable
+            ),
+            next((provider for provider in providers if provider.selectable), active),
+        )
+        selected_provider = fallback.id
+        active = fallback
+
     if not selected_model and providers:
-        active = next((provider for provider in providers if provider.id == selected_provider), providers[0])
+        active = active or next((provider for provider in providers if provider.id == selected_provider), providers[0])
         selected_model = active.selected_model or active.default_model or ""
 
     return ModelSettingsResponse(

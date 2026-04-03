@@ -80,7 +80,7 @@ class DirectoryAnalyzer:
         
         # Import path mappings
         self.plugin_system_mappings = {
-            "ai_karen_engine.plugin_manager": "ai_karen_engine.plugins.manager",
+            "ai_karen_engine.plugin_manager": "extensions.core.manager",
             "ai_karen_engine.plugin_router": "ai_karen_engine.plugins.router",
             "ai_karen_engine.plugins.sandbox": "ai_karen_engine.plugins.sandbox",
             "ai_karen_engine.plugins.sandbox_runner": "ai_karen_engine.plugins.sandbox_runner",

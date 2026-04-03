@@ -9,35 +9,38 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable, Union, Tuple
+from typing import Any, Dict, List, Optional, Callable, Union, Tuple, cast
 from contextlib import asynccontextmanager
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import queue
 import gc
+import os
+
+# cspell:ignore cupy pynvml nvml
 
 try:
-    import torch
-    import torch.cuda as cuda
+    import torch  # type: ignore[reportMissingImports]
+    import torch.cuda as cuda  # type: ignore[reportMissingImports]
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    torch = None
-    cuda = None
+    torch = cast(Any, None)
+    cuda = cast(Any, None)
 
 try:
-    import cupy as cp
+    import cupy as cp  # type: ignore[reportMissingImports]
     CUPY_AVAILABLE = True
 except ImportError:
     CUPY_AVAILABLE = False
-    cp = None
+    cp = cast(Any, None)
 
 try:
-    import pynvml
+    import pynvml  # type: ignore[reportMissingImports]
     PYNVML_AVAILABLE = True
 except ImportError:
     PYNVML_AVAILABLE = False
-    pynvml = None
+    pynvml = cast(Any, None)
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +158,13 @@ class CUDAAccelerationEngine:
         self.cache_cleanup_threshold = cache_cleanup_threshold
         self.batch_timeout = batch_timeout
         self.max_batch_size = max_batch_size
+        self.cuda_enabled = True
+        self.auto_detect_devices = True
+        self.preferred_device_id: Optional[int] = None
+        self.memory_optimization_enabled = True
+        self.batch_processing_enabled = True
+        self.cpu_fallback_enabled = True
+        self._config_manager: Optional[Any] = None
         
         self.cuda_info: Optional[CUDAInfo] = None
         self.initialized = False
@@ -174,8 +184,171 @@ class CUDAAccelerationEngine:
         
         # Thread safety
         self.lock = threading.RLock()
+
+        self._bind_runtime_configuration()
         
         logger.info("CUDA Acceleration Engine initialized")
+
+    def _cuda_ready(self) -> bool:
+        """Return whether CUDA runtime processing is currently usable."""
+        return bool(self.initialized and self.cuda_info and self.cuda_info.available)
+
+    def _zero_metrics(self) -> GPUMetrics:
+        """Return an empty metrics object."""
+        return GPUMetrics(
+            utilization_percentage=0.0,
+            memory_usage_percentage=0.0,
+            temperature=0.0,
+            power_usage=0.0,
+            inference_throughput=0.0,
+            batch_processing_efficiency=0.0,
+        )
+
+    def _append_bounded_metric(self, collection: List[Any], value: Any, max_size: int = 1000, keep_size: int = 500) -> None:
+        """Append to a metrics history list while keeping it bounded."""
+        collection.append(value)
+        if len(collection) > max_size:
+            del collection[:-keep_size]
+
+    def _build_batch_error_response(
+        self,
+        request_id: str,
+        error: Exception | str,
+        *,
+        processing_time: float = 0.0,
+        gpu_time: float = 0.0,
+    ) -> BatchResponse:
+        """Build a standard failed batch response."""
+        return BatchResponse(
+            request_id=request_id,
+            output_data=None,
+            processing_time=processing_time,
+            gpu_time=gpu_time,
+            success=False,
+            error=str(error),
+        )
+
+    def _build_optimized_request_error(
+        self,
+        request_id: str,
+        error: Exception | str,
+        *,
+        processing_time: float = 0.0,
+        gpu_accelerated: bool = False,
+    ) -> Dict[str, Any]:
+        """Build a standard optimized batch-processing error response."""
+        return {
+            "request_id": request_id,
+            "result": None,
+            "success": False,
+            "error": str(error),
+            "processing_time": processing_time,
+            "gpu_accelerated": gpu_accelerated,
+        }
+
+    def _expired_keys(
+        self,
+        items: Dict[str, Any],
+        *,
+        now: float,
+        max_age_seconds: float,
+        timestamp_attr: str,
+    ) -> List[str]:
+        """Return expired item ids from a timestamped mapping."""
+        return [
+            item_id
+            for item_id, item in items.items()
+            if now - float(getattr(item, timestamp_attr, now)) > max_age_seconds
+        ]
+
+    def _bind_runtime_configuration(self) -> None:
+        """Bind runtime behavior to the shared optimization configuration manager."""
+        try:
+            from services.memory.optimization_configuration_manager import (
+                get_optimization_config_manager,
+            )
+
+            self._config_manager = get_optimization_config_manager()
+            self._apply_runtime_configuration(self._config_manager.get_configuration())
+            self._config_manager.add_config_callback(self._on_configuration_changed)
+        except Exception as exc:
+            logger.debug(f"CUDA engine could not bind optimization config manager: {exc}")
+            self._apply_environment_overrides()
+
+    def _on_configuration_changed(self, _old_config: Any, new_config: Any) -> None:
+        """React to optimization configuration changes."""
+        self._apply_runtime_configuration(new_config)
+
+    def _apply_environment_overrides(self) -> None:
+        """Fallback environment-based overrides when the config manager is unavailable."""
+        if os.getenv("KARI_ENABLE_CUDA"):
+            self.cuda_enabled = os.getenv("KARI_ENABLE_CUDA", "true").lower() in ("1", "true", "yes")
+        if os.getenv("KARI_CUDA_MEMORY_FRACTION"):
+            try:
+                self.max_gpu_memory_usage = float(os.getenv("KARI_CUDA_MEMORY_FRACTION", str(self.max_gpu_memory_usage)))
+            except ValueError:
+                pass
+
+    def _apply_runtime_configuration(self, config: Any) -> None:
+        """Apply optimization/CUDA config to the runtime engine."""
+        try:
+            from services.memory.optimization_configuration_manager import build_gpu_runtime_policy
+
+            policy = build_gpu_runtime_policy(config)
+        except Exception:
+            self._apply_environment_overrides()
+            return
+
+        self.cuda_enabled = policy.enable_cuda
+        self.auto_detect_devices = policy.auto_detect_devices
+        self.preferred_device_id = policy.preferred_device_id
+        self.max_gpu_memory_usage = policy.memory_fraction
+        self.memory_optimization_enabled = policy.enable_memory_optimization
+        self.batch_processing_enabled = policy.enable_batch_processing
+        self.cpu_fallback_enabled = policy.fallback_to_cpu
+
+    def get_admin_settings_snapshot(self) -> Dict[str, Any]:
+        """Return runtime/admin-facing CUDA configuration and capability state."""
+        return {
+            "runtime": {
+                "cuda_enabled": self.cuda_enabled,
+                "initialized": self.initialized,
+                "auto_detect_devices": self.auto_detect_devices,
+                "preferred_device_id": self.preferred_device_id,
+                "memory_fraction": self.max_gpu_memory_usage,
+                "memory_optimization_enabled": self.memory_optimization_enabled,
+                "batch_processing_enabled": self.batch_processing_enabled,
+                "cpu_fallback_enabled": self.cpu_fallback_enabled,
+                "batch_timeout_seconds": self.batch_timeout,
+                "max_batch_size": self.max_batch_size,
+                "cache_cleanup_threshold": self.cache_cleanup_threshold,
+            },
+            "capabilities": {
+                "torch_available": TORCH_AVAILABLE,
+                "cupy_available": CUPY_AVAILABLE,
+                "pynvml_available": PYNVML_AVAILABLE,
+            },
+            "cuda": {
+                "available": bool(self.cuda_info and self.cuda_info.available),
+                "device_count": self.cuda_info.device_count if self.cuda_info else 0,
+                "cuda_version": self.cuda_info.cuda_version if self.cuda_info else None,
+                "driver_version": self.cuda_info.driver_version if self.cuda_info else None,
+                "devices": [
+                    {
+                        "id": device.id,
+                        "name": device.name,
+                        "compute_capability": device.compute_capability,
+                        "memory_total": device.memory_total,
+                        "memory_free": device.memory_free,
+                        "memory_used": device.memory_used,
+                        "utilization": device.utilization,
+                        "temperature": device.temperature,
+                        "power_usage": device.power_usage,
+                    }
+                    for device in (self.cuda_info.devices if self.cuda_info else [])
+                ],
+            },
+        }
     
     async def detect_cuda_availability(self) -> CUDAInfo:
         """
@@ -187,6 +360,11 @@ class CUDAAccelerationEngine:
         logger.info("Detecting CUDA availability...")
         
         cuda_info = CUDAInfo(available=False, device_count=0)
+
+        if not self.cuda_enabled:
+            logger.info("CUDA is disabled by optimization/admin configuration")
+            self.cuda_info = cuda_info
+            return cuda_info
         
         if not TORCH_AVAILABLE:
             logger.warning("PyTorch not available - CUDA acceleration disabled")
@@ -343,6 +521,9 @@ class CUDAAccelerationEngine:
     
     async def _start_batch_processor(self):
         """Start the batch processing background task."""
+        if not self.batch_processing_enabled:
+            logger.info("Batch processor not started because batch processing is disabled")
+            return
         if not self.batch_processor_running:
             self.batch_processor_running = True
             asyncio.create_task(self._batch_processor_loop())
@@ -394,38 +575,18 @@ class CUDAAccelerationEngine:
                     responses.extend(model_responses)
                 except Exception as e:
                     logger.error(f"Error processing batch for model {model_id}: {e}")
-                    # Create error responses
                     for req in model_requests:
-                        responses.append(BatchResponse(
-                            request_id=req.id,
-                            output_data=None,
-                            processing_time=0.0,
-                            gpu_time=0.0,
-                            success=False,
-                            error=str(e)
-                        ))
+                        responses.append(self._build_batch_error_response(req.id, e))
             
             batch_time = time.time() - batch_start
-            self.batch_times.append(batch_time)
-            
-            # Keep only recent batch times for metrics
-            if len(self.batch_times) > 1000:
-                self.batch_times = self.batch_times[-500:]
+            self._append_bounded_metric(self.batch_times, batch_time)
             
             logger.debug(f"Processed batch of {len(requests)} requests in {batch_time:.3f}s")
             
         except Exception as e:
             logger.error(f"Batch processing failed: {e}")
-            # Create error responses for all requests
             for req in requests:
-                responses.append(BatchResponse(
-                    request_id=req.id,
-                    output_data=None,
-                    processing_time=0.0,
-                    gpu_time=0.0,
-                    success=False,
-                    error=str(e)
-                ))
+                responses.append(self._build_batch_error_response(req.id, e))
         
         return responses
     
@@ -460,34 +621,22 @@ class CUDAAccelerationEngine:
                             success=True
                         ))
                         
-                        self.inference_times.append(total_time)
+                        self._append_bounded_metric(self.inference_times, total_time)
                         
                     except Exception as e:
                         logger.error(f"GPU inference failed for request {req.id}: {e}")
-                        responses.append(BatchResponse(
-                            request_id=req.id,
-                            output_data=None,
-                            processing_time=time.time() - start_time,
-                            gpu_time=0.0,
-                            success=False,
-                            error=str(e)
-                        ))
-            
-            # Keep only recent inference times for metrics
-            if len(self.inference_times) > 1000:
-                self.inference_times = self.inference_times[-500:]
+                        responses.append(
+                            self._build_batch_error_response(
+                                req.id,
+                                e,
+                                processing_time=time.time() - start_time,
+                            )
+                        )
                 
         except Exception as e:
             logger.error(f"Model batch processing failed: {e}")
             for req in requests:
-                responses.append(BatchResponse(
-                    request_id=req.id,
-                    output_data=None,
-                    processing_time=0.0,
-                    gpu_time=0.0,
-                    success=False,
-                    error=str(e)
-                ))
+                responses.append(self._build_batch_error_response(req.id, e))
         
         return responses
     
@@ -510,6 +659,9 @@ class CUDAAccelerationEngine:
         """Select the optimal GPU device for a given model."""
         if not self.device_contexts:
             return None
+
+        if self.preferred_device_id is not None and self.preferred_device_id in self.device_contexts:
+            return self.preferred_device_id
         
         # Simple selection based on available memory
         best_device = None
@@ -539,9 +691,11 @@ class CUDAAccelerationEngine:
         Returns:
             Inference results or None if GPU processing failed
         """
-        if not self.initialized or not self.cuda_info.available:
+        if not self._cuda_ready():
             logger.debug("GPU not available, falling back to CPU")
-            return await self._cpu_inference(model_info, input_data)
+            if self.cpu_fallback_enabled:
+                return await self._cpu_inference(model_info, input_data)
+            raise RuntimeError("CUDA inference requested but GPU is unavailable and CPU fallback is disabled")
         
         try:
             model_id = model_info.get('id', 'unknown')
@@ -570,7 +724,7 @@ class CUDAAccelerationEngine:
             inference_time = time.time() - start_time
             
             # Update performance metrics
-            self.inference_times.append(inference_time)
+            self._append_bounded_metric(self.inference_times, inference_time)
             
             logger.debug(f"GPU inference completed in {inference_time:.3f}s for model {model_id}")
             return result
@@ -578,7 +732,9 @@ class CUDAAccelerationEngine:
         except Exception as e:
             logger.error(f"GPU inference failed: {e}")
             # Fallback to CPU
-            return await self._cpu_inference(model_info, input_data)
+            if self.cpu_fallback_enabled:
+                return await self._cpu_inference(model_info, input_data)
+            raise
     
     async def _cpu_inference(self, model_info: Dict[str, Any], input_data: Any) -> Any:
         """Fallback CPU inference implementation."""
@@ -597,8 +753,11 @@ class CUDAAccelerationEngine:
         Returns:
             GPUMemoryHandle if allocation successful, None otherwise
         """
-        if not self.initialized or not self.cuda_info.available:
+        if not self._cuda_ready():
             logger.debug("GPU not available for memory allocation")
+            return None
+        if not self.memory_optimization_enabled:
+            logger.debug("GPU memory optimization disabled by configuration")
             return None
         
         try:
@@ -665,12 +824,12 @@ class CUDAAccelerationEngine:
             with self.lock:
                 current_time = time.time()
                 
-                # Remove old memory handles
-                expired_handles = []
-                for handle_id, handle in self.memory_handles.items():
-                    # Remove handles not accessed in last 5 minutes
-                    if current_time - handle.last_accessed > 300:
-                        expired_handles.append(handle_id)
+                expired_handles = self._expired_keys(
+                    self.memory_handles,
+                    now=current_time,
+                    max_age_seconds=300,
+                    timestamp_attr="last_accessed",
+                )
                 
                 for handle_id in expired_handles:
                     handle = self.memory_handles.pop(handle_id)
@@ -678,11 +837,12 @@ class CUDAAccelerationEngine:
                         del handle.ptr
                     logger.debug(f"Cleaned up expired memory handle {handle_id}")
                 
-                # Remove old cached models
-                expired_models = []
-                for model_id, component in self.model_cache.items():
-                    if current_time - component.last_used > 600:  # 10 minutes
-                        expired_models.append(model_id)
+                expired_models = self._expired_keys(
+                    self.model_cache,
+                    now=current_time,
+                    max_age_seconds=600,
+                    timestamp_attr="last_used",
+                )
                 
                 for model_id in expired_models:
                     component = self.model_cache.pop(model_id)
@@ -707,7 +867,7 @@ class CUDAAccelerationEngine:
         Args:
             components: List of model components to cache
         """
-        if not self.initialized or not self.cuda_info.available:
+        if not self._cuda_ready():
             logger.debug("GPU not available for model caching")
             return
         
@@ -780,15 +940,8 @@ class CUDAAccelerationEngine:
         Returns:
             GPUMetrics object with current utilization data
         """
-        if not self.initialized or not self.cuda_info.available:
-            return GPUMetrics(
-                utilization_percentage=0.0,
-                memory_usage_percentage=0.0,
-                temperature=0.0,
-                power_usage=0.0,
-                inference_throughput=0.0,
-                batch_processing_efficiency=0.0
-            )
+        if not self._cuda_ready():
+            return self._zero_metrics()
         
         try:
             # Calculate average metrics across all devices
@@ -839,22 +992,13 @@ class CUDAAccelerationEngine:
             )
             
             # Store metrics history
-            self.metrics_history.append(metrics)
-            if len(self.metrics_history) > 1000:
-                self.metrics_history = self.metrics_history[-500:]
+            self._append_bounded_metric(self.metrics_history, metrics)
             
             return metrics
             
         except Exception as e:
             logger.error(f"GPU monitoring failed: {e}")
-            return GPUMetrics(
-                utilization_percentage=0.0,
-                memory_usage_percentage=0.0,
-                temperature=0.0,
-                power_usage=0.0,
-                inference_throughput=0.0,
-                batch_processing_efficiency=0.0
-            )
+            return self._zero_metrics()
     
     async def fallback_to_cpu_on_gpu_failure(self, computation: Callable) -> Any:
         """
@@ -894,7 +1038,7 @@ class CUDAAccelerationEngine:
         Returns:
             List of response dictionaries
         """
-        if not self.initialized or not self.cuda_info.available:
+        if not self._cuda_ready():
             logger.debug("GPU not available, processing requests individually on CPU")
             responses = []
             for req in batch_requests:
@@ -908,14 +1052,13 @@ class CUDAAccelerationEngine:
                         'gpu_accelerated': False
                     })
                 except Exception as e:
-                    responses.append({
-                        'request_id': req.get('id', 'unknown'),
-                        'result': None,
-                        'success': False,
-                        'error': str(e),
-                        'processing_time': 0.0,
-                        'gpu_accelerated': False
-                    })
+                    responses.append(
+                        self._build_optimized_request_error(
+                            req.get('id', 'unknown'),
+                            e,
+                            gpu_accelerated=False,
+                        )
+                    )
             return responses
         
         try:
@@ -954,15 +1097,14 @@ class CUDAAccelerationEngine:
             
         except Exception as e:
             logger.error(f"Batch processing optimization failed: {e}")
-            # Return error responses
-            return [{
-                'request_id': req.get('id', 'unknown'),
-                'result': None,
-                'success': False,
-                'error': str(e),
-                'processing_time': 0.0,
-                'gpu_accelerated': False
-            } for req in batch_requests]
+            return [
+                self._build_optimized_request_error(
+                    req.get('id', 'unknown'),
+                    e,
+                    gpu_accelerated=False,
+                )
+                for req in batch_requests
+            ]
     
     async def get_performance_summary(self) -> Dict[str, Any]:
         """Get comprehensive performance summary."""
@@ -1070,3 +1212,17 @@ class CUDAAccelerationEngine:
                     self.batch_executor.shutdown(wait=False)
             except Exception:
                 pass
+
+
+_cuda_acceleration_engine: Optional[CUDAAccelerationEngine] = None
+_cuda_acceleration_engine_lock = threading.Lock()
+
+
+def get_cuda_acceleration_engine() -> CUDAAccelerationEngine:
+    """Return the shared CUDA acceleration engine instance."""
+    global _cuda_acceleration_engine
+    if _cuda_acceleration_engine is None:
+        with _cuda_acceleration_engine_lock:
+            if _cuda_acceleration_engine is None:
+                _cuda_acceleration_engine = CUDAAccelerationEngine()
+    return _cuda_acceleration_engine

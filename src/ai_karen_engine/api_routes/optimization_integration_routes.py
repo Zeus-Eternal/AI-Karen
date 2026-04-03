@@ -25,6 +25,7 @@ from ai_karen_engine.services.optimization_configuration_manager import (
     get_optimization_config_manager,
     get_optimization_config
 )
+from services.memory.internal.cuda_acceleration_engine import get_cuda_acceleration_engine
 
 logger = logging.getLogger("kari.optimization_integration_routes")
 
@@ -42,6 +43,7 @@ class IntegrationStatusResponse(BaseModel):
     cache_system_metrics: Dict[str, Any]
     performance_monitoring_status: Dict[str, Any]
     reasoning_preservation_stats: Dict[str, Any]
+    gpu_runtime: Optional[Dict[str, Any]] = None
 
 class HealthCheckResponse(BaseModel):
     overall_health: str
@@ -94,6 +96,33 @@ async def get_integration_status(orchestrator = Depends(get_orchestrator)):
     """Get comprehensive integration status."""
     try:
         status = orchestrator.get_integration_status()
+        try:
+            cuda_engine = get_cuda_acceleration_engine()
+            if cuda_engine.cuda_info is None:
+                await cuda_engine.detect_cuda_availability()
+            status["gpu_runtime"] = {
+                "snapshot": cuda_engine.get_admin_settings_snapshot(),
+                "summary": await cuda_engine.get_performance_summary(),
+            }
+        except Exception as gpu_exc:
+            logger.warning(f"GPU runtime status unavailable: {gpu_exc}")
+            status["gpu_runtime"] = {
+                "snapshot": {
+                    "runtime": {},
+                    "capabilities": {},
+                    "cuda": {
+                        "available": False,
+                        "device_count": 0,
+                        "devices": [],
+                    },
+                },
+                "summary": {
+                    "cuda_available": False,
+                    "initialized": False,
+                    "device_count": 0,
+                    "error": str(gpu_exc),
+                },
+            }
         return IntegrationStatusResponse(**status)
     except Exception as e:
         logger.error(f"Failed to get integration status: {e}")

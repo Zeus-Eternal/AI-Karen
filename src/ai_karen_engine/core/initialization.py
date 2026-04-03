@@ -129,7 +129,10 @@ class SystemInitializer:
         # 6. Setup CopilotKit if configured
         results["copilotkit"] = await self._setup_copilotkit()
         
-        # 7. Validate system health
+        # 7. Discover and register plugins/extensions
+        results["plugins"] = await self._discover_plugins()
+        
+        # 8. Validate system health
         results["validation"] = await self._validate_system_health()
         
         success_count = sum(1 for success in results.values() if success)
@@ -407,6 +410,19 @@ class SystemInitializer:
         except Exception as e:
             self.logger.warning(f"⚠️ CopilotKit setup issue: {e}")
             return True  # Don't fail initialization for optional component
+            
+    async def _discover_plugins(self) -> bool:
+        """Discover and load plugin manifests into the registry."""
+        try:
+            from extensions.core.manager import get_plugin_manager
+            manager = get_plugin_manager()
+            await manager.discover_extensions()
+            plugins = manager.registry.list_plugins()
+            self.logger.info(f"✅ Discovered and registered {len(plugins)} plugins")
+            return True
+        except Exception as e:
+            self.logger.error(f"❌ Failed to discover plugins: {e}")
+            return False
     
     async def _validate_system_health(self) -> bool:
         """Validate that the system is properly initialized."""

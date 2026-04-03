@@ -1,23 +1,44 @@
 
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { PlugZap, MessageSquare, Info, Settings2, CalendarDays, CloudSun, Database, Facebook, Mail, Puzzle } from "lucide-react";
+import { PlugZap, MessageSquare, Info, Settings2, Puzzle, Loader2 } from "lucide-react";
+import apiClient from "@/lib/api";
+import { PluginHost } from "./PluginHost";
+
+interface Plugin {
+  name: string;
+  display_name?: string;
+  description?: string;
+  version: string;
+  status: string;
+  loaded_at?: string;
+  error_message?: string;
+}
 
 /**
  * @file PluginOverviewPage.tsx
  * @description Displays an overview of Karen AI's integrated tools/plugins and the vision for its plugin architecture.
  */
 export default function PluginOverviewPage() {
-  const integratedTools = [
-    { name: "Date Service", description: "Provides current date.", icon: <CalendarDays className="h-5 w-5 text-primary/80" /> },
-    { name: "Time Service", description: "Provides current time (local or for specified locations).", icon: <CalendarDays className="h-5 w-5 text-primary/80" /> },
-    { name: "Weather Service", description: "Fetches current weather for specified locations.", icon: <CloudSun className="h-5 w-5 text-primary/80" /> },
-    { name: "Item Details Lookup", description: "Looks up details for items (e.g., books) via chat.", icon: <Database className="h-5 w-5 text-primary/80" /> },
-    { name: "Gmail Integration", description: "Checks unread emails and composes new ones via chat. (Simulated)", icon: <Mail className="h-5 w-5 text-primary/80" /> },
-    { name: "Facebook Integration", description: "Placeholder for Facebook interactions. (Conceptual)", icon: <Facebook className="h-5 w-5 text-primary/80" /> },
-  ];
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPlugins() {
+      try {
+        const data = await apiClient.get<any[]>('/api/extensions/list');
+        setPlugins(data || []);
+      } catch (error) {
+        console.error("Failed to fetch plugins", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlugins();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -54,21 +75,33 @@ export default function PluginOverviewPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Currently Integrated Tools & Capabilities</CardTitle>
+          <CardTitle className="text-lg">Registered Plugin Components (Hook Zones)</CardTitle>
           <CardDescription>
-            Here are some of the tools Karen AI can currently utilize:
+            These plugins conform to the new UI Hook Contract, automatically resolving their GUI components or headless APIs.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {integratedTools.map((tool) => (
-            <div key={tool.name} className="p-4 border rounded-lg bg-muted/30 flex items-start space-x-3">
-              <div className="shrink-0 mt-1">{tool.icon}</div>
-              <div>
-                <h4 className="font-semibold text-sm">{tool.name}</h4>
-                <p className="text-xs text-muted-foreground">{tool.description}</p>
-              </div>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-          ))}
+          ) : plugins.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No dynamic extensions registered yet. Ensure the python manager discovered them.</div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+              {plugins.map((plugin) => (
+                <div key={plugin.name} className="p-4 border rounded-lg bg-muted/30">
+                  <h4 className="font-semibold text-sm">{plugin.display_name || plugin.name} <span className="text-xs font-normal opacity-50 ml-2">v{plugin.version}</span></h4>
+                  <p className="text-xs text-muted-foreground mb-4">{plugin.description || "No description provided."}</p>
+                  
+                  {/* Plugin UI Hook Binding - Attempt to load plugin GUI if requested */}
+                  <div className="mt-2 bg-background/50 border border-border p-2 rounded">
+                    <PluginHost pluginId={plugin.name} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -43,13 +43,16 @@ logger = logging.getLogger(__name__)
 
 
 class ConversationStatus(str, Enum):
+    """Conversation status for web UI."""
     ACTIVE = "active"
+    PAUSED = "paused"
     ARCHIVED = "archived"
     DELETED = "deleted"
     SPAM = "spam"
 
 
 class ConversationPriority(str, Enum):
+    """Conversation priority levels."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -57,21 +60,14 @@ class ConversationPriority(str, Enum):
 
     @classmethod
     def from_any(cls, value: Any) -> "ConversationPriority":
-        """
-        Convert various types to ConversationPriority.
-        Handles:
-        - Enum members themselves
-        - String values ('low', 'normal', etc.)
-        - Integer levels (0=normal, 1=high, -1=low, 2=urgent)
-        """
+        """Convert various priority representations to a ConversationPriority enum member."""
         if isinstance(value, cls):
             return cast("ConversationPriority", value)
-
+            
         if value is None:
             return cls.NORMAL
-
+            
         if isinstance(value, int):
-            # Map integer values to enum members
             mapping = {
                 -1: cls.LOW,
                 0: cls.NORMAL,
@@ -79,12 +75,9 @@ class ConversationPriority(str, Enum):
                 2: cls.URGENT
             }
             return mapping.get(value, cls.NORMAL)
-
+            
         if isinstance(value, str):
-            # Handle string conversion (case-insensitive)
             val_lower = value.lower().strip()
-
-            # Simple string match
             try:
                 # Direct string to enum conversion
                 return cast("ConversationPriority", cls(val_lower))
@@ -100,26 +93,23 @@ class ConversationPriority(str, Enum):
                     "2": cls.URGENT,
                     "-1": cls.LOW
                 }
-
+                
                 if val_lower in alt_mapping:
                     return alt_mapping[val_lower]
-
+                    
                 # Handle numeric strings that aren't in the map
-                if val_lower.isdigit() or (val_lower.startswith('-') and len(val_lower) > 1 and val_lower[1:].isdigit()):
+                if val_lower.isdigit() or (val_lower.startswith('-') and len(val_lower) > 1 and all(c.isdigit() for c in val_lower[1:])):
                     try:
                         return cls.from_any(int(val_lower))
                     except (ValueError, TypeError):
                         return cls.NORMAL
-
+                        
                 return cls.NORMAL
-
-        # Default fallback
         return cls.NORMAL
 
 
-
 class _DataclassInstance(Protocol):
-    __dataclass_fields__: Dict[str, Any]
+    __dataclass_fields__: ClassVar[Dict[str, Any]]
 
 
 def _is_dataclass_instance(value: Any) -> TypeGuard[_DataclassInstance]:
@@ -152,84 +142,6 @@ def _stats_to_dict(stats: Any) -> Dict[str, Any]:
 
     return {}
 
-
-class ConversationStatus(str, Enum):
-    """Conversation status for web UI."""
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ARCHIVED = "archived"
-    DELETED = "deleted"
-
-
-class ConversationPriority(str, Enum):
-    """Conversation priority levels."""
-    LOW = "low"
-    NORMAL = "normal"
-    HIGH = "high"
-    URGENT = "urgent"
-
-    @classmethod
-    def from_any(cls, value: Any) -> "ConversationPriority":
-        """Convert various priority representations to a ConversationPriority enum member.
-        
-        Supports:
-        - Enum members themselves
-        - String values ('low', 'normal', etc.)
-        - Integer levels (0=normal, 1=high, -1=low, 2=urgent)
-        """
-        if isinstance(value, cls):
-            return cast("ConversationPriority", value)
-            
-        if value is None:
-            return cls.NORMAL
-            
-        if isinstance(value, int):
-            # Map integer values to enum members
-            mapping = {
-                -1: cls.LOW,
-                0: cls.NORMAL,
-                1: cls.HIGH,
-                2: cls.URGENT
-            }
-            return mapping.get(value, cls.NORMAL)
-            
-        if isinstance(value, str):
-            # Handle string conversion (case-insensitive)
-            val_lower = value.lower().strip()
-            
-            # Simple string match
-            try:
-                # Direct string to enum conversion
-                return cast("ConversationPriority", cls(val_lower))
-            except ValueError:
-                # Map common alternative string representations
-                alt_mapping = {
-                    "normal": cls.NORMAL,
-                    "high": cls.HIGH,
-                    "low": cls.LOW,
-                    "urgent": cls.URGENT,
-                    "0": cls.NORMAL,
-                    "1": cls.HIGH,
-                    "2": cls.URGENT,
-                    "-1": cls.LOW
-                }
-                
-                if val_lower in alt_mapping:
-                    return alt_mapping[val_lower]
-                    
-                # Handle numeric strings that aren't in the map
-                if val_lower.isdigit() or (val_lower.startswith('-') and len(val_lower) > 1 and val_lower[1:].isdigit()):
-                    try:
-                        return cls.from_any(int(val_lower))
-                    except (ValueError, TypeError):
-                        return cls.NORMAL
-                        
-                return cls.NORMAL
-                
-        # Default fallback
-        return cls.NORMAL
-
-
 @dataclass
 class WebUIMessage(Message):
     """Extended message with web UI specific fields."""
@@ -238,15 +150,36 @@ class WebUIMessage(Message):
     processing_time_ms: Optional[int] = None
     tokens_used: Optional[int] = None
     model_used: Optional[str] = None
-    user_feedback: Optional[str] = None  # thumbs up/down, etc.
+    user_feedback: Optional[str] = None
     edited: bool = False
     edit_history: List[Dict[str, Any]] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary with web UI fields."""
-        base_dict = super().to_dict()
+        # Use getattr safely to avoid NoneType errors
+        base_dict = {}
+        try:
+            base_dict = super().to_dict()
+        except (AttributeError, TypeError):
+            # Fallback for base dict
+            base_dict = {
+                "id": getattr(self, "id", None),
+                "role": getattr(self, "role", MessageRole.USER).value if hasattr(getattr(self, "role", MessageRole.USER), "value") else str(getattr(self, "role", MessageRole.USER)),
+                "content": getattr(self, "content", ""),
+                "timestamp": getattr(self, "timestamp", datetime.utcnow()).isoformat() if hasattr(getattr(self, "timestamp", None), "isoformat") else None,
+                "metadata": getattr(self, "metadata", {})
+            }
+        
+        # Handle ui_source carefully
+        ui_source_val = None
+        if self.ui_source:
+            if hasattr(self.ui_source, "value"):
+                ui_source_val = self.ui_source.value
+            else:
+                ui_source_val = str(self.ui_source)
+
         base_dict.update({
-            "ui_source": self.ui_source.value if self.ui_source and hasattr(self.ui_source, "value") else str(self.ui_source) if self.ui_source else None,
+            "ui_source": ui_source_val,
             "ai_confidence": self.ai_confidence,
             "processing_time_ms": self.processing_time_ms,
             "tokens_used": self.tokens_used,
@@ -275,7 +208,33 @@ class WebUIConversation(Conversation):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary with web UI fields."""
-        base_dict = super().to_dict()
+        base_dict = {}
+        try:
+            base_dict = super().to_dict()
+        except (AttributeError, TypeError):
+            base_dict = {
+                "id": str(getattr(self, "id", "")),
+                "user_id": str(getattr(self, "user_id", "")),
+                "title": getattr(self, "title", "New Conversation"),
+                "messages": [m.to_dict() if hasattr(m, "to_dict") else str(m) for m in getattr(self, "messages", [])] if getattr(self, "messages", []) else [],
+                "metadata": getattr(self, "metadata", {})
+            }
+        
+        # Ensure status and priority are converted to strings safely
+        status_val = "active"
+        if self.status:
+            status_val = self.status.value if hasattr(self.status, "value") else str(self.status)
+            
+        priority_val = "normal"
+        if self.priority:
+            priority_val = self.priority.value if hasattr(self.priority, "value") else str(self.priority)
+
+        # Handle updated_at safely
+        updated_at_val = None
+        updated_at = getattr(self, "updated_at", None)
+        if updated_at and hasattr(updated_at, "isoformat"):
+            updated_at_val = updated_at.isoformat()
+
         base_dict.update({
             "session_id": self.session_id,
             "ui_context": self.ui_context,
@@ -284,44 +243,30 @@ class WebUIConversation(Conversation):
             "summary": self.summary,
             "tags": self.tags,
             "last_ai_response_id": self.last_ai_response_id,
-            "status": self.status.value if hasattr(self.status, "value") else str(self.status),
-            "priority": self.priority.value if hasattr(self.priority, "value") else str(self.priority),
+            "status": status_val,
+            "priority": priority_val,
             "context_memories": self.context_memories,
-            "proactive_suggestions": self.proactive_suggestions
+            "proactive_suggestions": self.proactive_suggestions,
+            "last_activity": updated_at_val
         })
         return base_dict
-    
-    def add_tag(self, tag: str):
-        """Add a tag to the conversation."""
-        if tag not in self.tags:
-            self.tags.append(tag)
-    
-    def remove_tag(self, tag: str):
-        """Remove a tag from the conversation."""
-        if tag in self.tags:
-            self.tags.remove(tag)
-    
-    def update_ui_context(self, context_data: dict):
-        """Update UI context with new data."""
-        self.ui_context.update(context_data)
-    
-    def update_ai_insights(self, insights_data: dict):
-        """Update AI insights with new data."""
-        self.ai_insights.update(insights_data)
-    
+
     def get_context_summary(self) -> Dict[str, Any]:
-        """Get a summary of conversation context for AI processing."""
+        """Get a summary of conversation context."""
+        updated_at = getattr(self, "updated_at", None)
+        last_activity = updated_at.isoformat() if updated_at and hasattr(updated_at, "isoformat") else "Never"
+        
         return {
-            "conversation_id": self.id,
+            "conversation_id": str(getattr(self, "id", "unknown")),
             "session_id": self.session_id,
-            "message_count": len(self.messages),
+            "message_count": len(getattr(self, "messages", []) or []),
             "tags": self.tags,
-            "priority": self.priority.value,
-            "status": self.status.value,
+            "priority": self.priority.value if hasattr(self.priority, "value") else str(self.priority),
+            "status": self.status.value if hasattr(self.status, "value") else str(self.status),
             "user_settings": self.user_settings,
-            "recent_memories": (self.context_memories[-5:] if len(self.context_memories) >= 5 else self.context_memories) if self.context_memories else [],
+            "recent_memories": (self.context_memories[-5:] if self.context_memories and len(self.context_memories) >= 5 else (self.context_memories or [])),
             "ai_insights": self.ai_insights,
-            "last_activity": self.updated_at.isoformat(),
+            "last_activity": last_activity,
             "summary": self.summary
         }
 
@@ -1838,11 +1783,12 @@ class WebUIConversationService:
             suggestions = []
             
             # Simple keyword-based suggestions
-            if "weather" in user_message.lower():
+            msg_lower = user_message.lower()
+            if "weather" in msg_lower:
                 suggestions.append("Would you like me to check the weather forecast for tomorrow?")
-            elif "remind" in user_message.lower():
+            elif "remind" in msg_lower:
                 suggestions.append("Should I set up a reminder for you?")
-            elif "schedule" in user_message.lower():
+            elif "schedule" in msg_lower:
                 suggestions.append("Would you like me to help you manage your calendar?")
             
             if suggestions:

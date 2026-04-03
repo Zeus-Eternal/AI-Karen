@@ -1,6 +1,6 @@
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "zai",
+  "model": "glm-4.7",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
@@ -36,10 +36,10 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "gemini-2.5-flash",
+  "last_selected_model": "glm-4.7",
   "model_providers": {
     "zai": {
-      "last_model": "glm-4.5",
+      "last_model": "glm-4.7",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
     "llama-cpp": {
@@ -59,7 +59,8 @@
       "base_url": "https://api.anthropic.com/v1"
     },
     "gemini": {
-      "last_model": "gemini-2.5-flash"
+      "last_model": "gemini-2.5-flash",
+      "base_url": "https://api.z.ai/api/paas/v4"
     }
   }
 }

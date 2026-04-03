@@ -7,6 +7,7 @@ mathematical operations, with automatic CPU fallback when GPU is unavailable.
 
 import asyncio
 import logging
+import os
 import platform
 import subprocess
 import sys
@@ -175,6 +176,11 @@ class GPUComputeOffloader:
                  enable_cpu_fallback: bool = True):
         self.max_workers = max_workers
         self.enable_cpu_fallback = enable_cpu_fallback
+        self.cuda_enabled = True
+        self.auto_detect_devices = True
+        self.preferred_device_id: Optional[int] = None
+        self.max_gpu_memory_usage = 0.8
+        self._config_manager: Optional[Any] = None
         self._gpu_info: Optional[GPUInfo] = None
         self._memory_manager = GPUMemoryManager(memory_strategy)
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -186,6 +192,53 @@ class GPUComputeOffloader:
         
         # Weak reference cleanup
         self._finalizer = weakref.finalize(self, self._cleanup_resources)
+        self._bind_runtime_configuration()
+
+    def _bind_runtime_configuration(self) -> None:
+        """Bind runtime GPU behavior to the shared optimization configuration manager."""
+        try:
+            from services.memory.optimization_configuration_manager import (
+                get_optimization_config_manager,
+            )
+
+            self._config_manager = get_optimization_config_manager()
+            self._apply_runtime_configuration(self._config_manager.get_configuration())
+            self._config_manager.add_config_callback(self._on_configuration_changed)
+        except Exception as exc:
+            logger.debug(f"GPU offloader could not bind optimization config manager: {exc}")
+            self._apply_environment_overrides()
+
+    def _on_configuration_changed(self, _old_config: Any, new_config: Any) -> None:
+        """React to optimization configuration changes."""
+        self._apply_runtime_configuration(new_config)
+
+    def _apply_environment_overrides(self) -> None:
+        """Fallback environment overrides when the config manager is unavailable."""
+        if os.getenv("KARI_ENABLE_CUDA"):
+            self.cuda_enabled = os.getenv("KARI_ENABLE_CUDA", "true").lower() in ("1", "true", "yes")
+        if os.getenv("KARI_CUDA_MEMORY_FRACTION"):
+            try:
+                self.max_gpu_memory_usage = float(
+                    os.getenv("KARI_CUDA_MEMORY_FRACTION", str(self.max_gpu_memory_usage))
+                )
+            except ValueError:
+                pass
+
+    def _apply_runtime_configuration(self, config: Any) -> None:
+        """Apply shared optimization/CUDA policy to the offloader."""
+        try:
+            from services.memory.optimization_configuration_manager import build_gpu_runtime_policy
+
+            policy = build_gpu_runtime_policy(config)
+        except Exception:
+            self._apply_environment_overrides()
+            return
+
+        self.cuda_enabled = policy.enable_cuda
+        self.auto_detect_devices = policy.auto_detect_devices
+        self.preferred_device_id = policy.preferred_device_id
+        self.max_gpu_memory_usage = policy.memory_fraction
+        self.enable_cpu_fallback = policy.fallback_to_cpu
     
     async def initialize(self) -> bool:
         """Initialize GPU compute offloader and detect available hardware"""
@@ -218,20 +271,24 @@ class GPUComputeOffloader:
         """Detect available GPU resources and capabilities"""
         try:
             # Try CUDA first
-            cuda_info = await self._detect_cuda()
-            if cuda_info.backend != GPUBackend.NONE:
-                return cuda_info
+            if self.cuda_enabled:
+                cuda_info = await self._detect_cuda()
+                if cuda_info.backend != GPUBackend.NONE:
+                    return cuda_info
+            else:
+                logger.info("CUDA detection disabled by optimization/admin configuration")
             
             # Try Metal on macOS
-            if platform.system() == "Darwin":
+            if self.auto_detect_devices and platform.system() == "Darwin":
                 metal_info = await self._detect_metal()
                 if metal_info.backend != GPUBackend.NONE:
                     return metal_info
             
             # Try OpenCL as fallback
-            opencl_info = await self._detect_opencl()
-            if opencl_info.backend != GPUBackend.NONE:
-                return opencl_info
+            if self.auto_detect_devices:
+                opencl_info = await self._detect_opencl()
+                if opencl_info.backend != GPUBackend.NONE:
+                    return opencl_info
             
             # No GPU available
             return GPUInfo(

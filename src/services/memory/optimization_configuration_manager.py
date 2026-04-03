@@ -103,6 +103,18 @@ class CudaConfig:
     enable_batch_processing: bool = True
     fallback_to_cpu: bool = True
 
+
+@dataclass(frozen=True)
+class GPURuntimePolicy:
+    """Normalized runtime policy shared by GPU acceleration components."""
+    enable_cuda: bool = True
+    auto_detect_devices: bool = True
+    preferred_device_id: Optional[int] = None
+    memory_fraction: float = 0.8
+    enable_memory_optimization: bool = True
+    enable_batch_processing: bool = True
+    fallback_to_cpu: bool = True
+
 @dataclass
 class MonitoringConfig:
     """Configuration for performance monitoring."""
@@ -567,3 +579,26 @@ def get_optimization_config_manager(config_path: Optional[Path] = None) -> Optim
 def get_optimization_config() -> OptimizationConfiguration:
     """Get the current optimization configuration."""
     return get_optimization_config_manager().get_configuration()
+
+
+def build_gpu_runtime_policy(config: Optional[OptimizationConfiguration] = None) -> GPURuntimePolicy:
+    """Normalize GPU/CUDA policy from optimization config for runtime consumers."""
+    config = config or get_optimization_config()
+    cuda_config = getattr(config, "cuda", None)
+    if cuda_config is None:
+        return GPURuntimePolicy()
+
+    return GPURuntimePolicy(
+        enable_cuda=bool(getattr(cuda_config, "enable_cuda", True)),
+        auto_detect_devices=bool(getattr(cuda_config, "auto_detect_devices", True)),
+        preferred_device_id=getattr(cuda_config, "preferred_device_id", None),
+        memory_fraction=float(getattr(cuda_config, "memory_fraction", 0.8)),
+        enable_memory_optimization=bool(getattr(cuda_config, "enable_memory_optimization", True)),
+        enable_batch_processing=bool(getattr(cuda_config, "enable_batch_processing", True)),
+        fallback_to_cpu=bool(getattr(cuda_config, "fallback_to_cpu", True)),
+    )
+
+
+def get_gpu_runtime_policy() -> GPURuntimePolicy:
+    """Return the current normalized GPU/CUDA runtime policy."""
+    return build_gpu_runtime_policy(get_optimization_config())

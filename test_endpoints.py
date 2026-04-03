@@ -19,19 +19,21 @@ async def test_ensure_session_endpoint():
         from ai_karen_engine.api_routes.conversation_routes import ensure_session_conversation
         from ai_karen_engine.core.dependencies import get_conversation_service
         
-        # Mock the conversation service
+        # Get the conversation service
         conversation_service = await get_conversation_service()
         
         # Test data
         test_session_id = "test-session-123"
-        test_request = {
-            "session_id": test_session_id,
-            "user_id": "test-user",
-            "initial_message": "Hello, I need help with my project"
-        }
+        tenant_id = "default"
+        user_ctx = {"user_id": "test-user", "tenant_id": "default"}
         
-        # Call the endpoint function directly
-        result = await ensure_session_conversation(test_session_id, test_request)
+        # Call the endpoint function directly with dependencies
+        result = await ensure_session_conversation(
+            session_id=test_session_id,
+            conversation_service=conversation_service,
+            tenant_id=tenant_id,
+            user_ctx=user_ctx
+        )
         print(f"✅ /ensure-session endpoint working: {result}")
         return True
         
@@ -50,23 +52,27 @@ async def test_copilot_assist_endpoint():
         from fastapi import Request
         from ai_karen_engine.core.dependencies import get_chat_orchestrator_service
         
-        # Mock the chat orchestrator service
-        chat_service = await get_chat_orchestrator_service()
+        # Get the chat orchestrator
+        chat_orchestrator = await get_chat_orchestrator_service()
         
-        # Test data
-        test_request = {
-            "message": "Can you help me debug this Python code?",
-            "session_id": "test-session-123",
-            "user_id": "test-user",
-            "context": {
+        # Test data using AssistRequest model
+        test_request = AssistRequest(
+            message="Can you help me debug this Python code?",
+            session_id="test-session-123",
+            user_id="test-user",
+            context={
                 "code_language": "python",
                 "difficulty_level": "intermediate"
             }
-        }
+        )
         
         # Call the endpoint function directly
         http_request = Request({"type": "http", "method": "POST", "headers": {}})
-        result = await copilot_assist(test_request, http_request)
+        result = await copilot_assist(
+            request=test_request, 
+            http_request=http_request,
+            chat_orchestrator=chat_orchestrator
+        )
         print(f"✅ /copilot/assist endpoint working: {type(result)}")
         return True
         
@@ -82,9 +88,9 @@ async def main():
     print("=" * 50)
     
     # Test both endpoints
-    ensure_session_success = await test_ensure_session_endpoint()
-    print()
     copilot_assist_success = await test_copilot_assist_endpoint()
+    print()
+    ensure_session_success = await test_ensure_session_endpoint()
     print()
     
     # Summary

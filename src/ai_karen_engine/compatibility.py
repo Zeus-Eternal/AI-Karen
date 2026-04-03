@@ -89,7 +89,7 @@ class CompatibilityImportManager:
         # Define all migration paths
         self.import_mappings = {
             # Core system mappings
-            "ai_karen_engine.plugin_manager": "ai_karen_engine.plugins.manager",
+            "ai_karen_engine.plugin_manager": "extensions.core.manager",
             "ai_karen_engine.plugin_router": "ai_karen_engine.plugins.router",
             
             # Plugin mappings organized by category

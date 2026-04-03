@@ -78,21 +78,31 @@ class LlamaCppRuntime:
     def _load_runtime_defaults() -> Dict[str, Any]:
         """Load llama.cpp runtime defaults from config when available."""
         config_path = Path("config/llamacpp/config.json")
-        if not config_path.exists():
-            return {}
-
-        try:
-            with open(config_path, "r", encoding="utf-8") as handle:
-                raw = json.load(handle)
-        except Exception as exc:
-            logger.warning("Failed to load llama.cpp runtime config from %s: %s", config_path, exc)
-            return {}
-
         defaults: Dict[str, Any] = {}
-        for key in ("model_path", "n_ctx", "n_batch", "n_gpu_layers", "n_threads", "use_mmap", "use_mlock", "verbose"):
-            value = raw.get(key)
-            if value is not None:
-                defaults[key] = value
+        if config_path.exists():
+            try:
+                with open(config_path, "r", encoding="utf-8") as handle:
+                    raw = json.load(handle)
+            except Exception as exc:
+                logger.warning("Failed to load llama.cpp runtime config from %s: %s", config_path, exc)
+                raw = {}
+
+            for key in ("model_path", "n_ctx", "n_batch", "n_gpu_layers", "n_threads", "use_mmap", "use_mlock", "verbose"):
+                value = raw.get(key)
+                if value is not None:
+                    defaults[key] = value
+
+        # Runtime optimization settings are the system source of truth for CUDA behavior.
+        try:
+            from services.memory.optimization_configuration_manager import get_optimization_config_manager
+
+            config = get_optimization_config_manager().get_configuration()
+            cuda_cfg = getattr(config, "cuda", None)
+            if cuda_cfg and getattr(cuda_cfg, "enable_cuda", False):
+                if defaults.get("n_gpu_layers") in (None, 0):
+                    defaults["n_gpu_layers"] = int(os.getenv("LLAMA_N_GPU_LAYERS", "-1"))
+        except Exception as exc:
+            logger.debug("Failed to apply optimization-driven llama.cpp GPU defaults: %s", exc)
         return defaults
 
     @classmethod

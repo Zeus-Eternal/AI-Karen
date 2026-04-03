@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 from dataclasses import dataclass, field
 
-from ai_karen_engine.plugin_manager import get_plugin_manager
+from extensions.core.manager import get_plugin_manager
 from ai_karen_engine.plugin_router import get_plugin_router
 from ai_karen_engine.hooks.hook_mixin import HookMixin
 from ai_karen_engine.hooks.hook_types import HookTypes

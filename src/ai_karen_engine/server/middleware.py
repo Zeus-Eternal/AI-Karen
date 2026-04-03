@@ -107,11 +107,7 @@ def configure_middleware(
     async def strip_content_length_for_streams(request: Request, call_next):
         try:
             response = await call_next(request)
-            if request.url.path.startswith("/api/copilot/assist"):
-                logger.warning(
-                    "strip_content_length_for_streams received response: %s",
-                    type(response).__name__ if response is not None else "None",
-                )
+
         except RuntimeError as exc:
             if (
                 request.url.path.startswith("/api/copilot/assist")
@@ -154,11 +150,7 @@ def configure_middleware(
         """
         try:
             response = await call_next(request)
-            if request.url.path.startswith("/api/copilot/assist"):
-                logger.warning(
-                    "fix_internal_redirects received response: %s",
-                    type(response).__name__ if response is not None else "None",
-                )
+
         except RuntimeError as exc:
             if (
                 request.url.path.startswith("/api/copilot/assist")
