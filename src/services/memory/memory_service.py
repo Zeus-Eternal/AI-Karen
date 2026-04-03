@@ -18,6 +18,12 @@ except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, desc, select, update
 
+from ai_karen_engine.core.memory.curated_recall import (
+    CURATED_MEMORY_KIND,
+    DEFAULT_CURATED_MEMORY_CLASSES,
+    build_curated_metadata_filter,
+    filter_curated_memories,
+)
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.core.milvus_client import MilvusClient
 from ai_karen_engine.database.client import MultiTenantPostgresClient
@@ -102,15 +108,24 @@ class WebUIMemoryQuery(BaseModel):
     top_k: int = 10
     similarity_threshold: float = 0.7
     include_embeddings: bool = False
+    curated_only: bool = False
+    memory_classes: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_CURATED_MEMORY_CLASSES)
+    )
 
     def to_memory_query(self) -> MemoryQuery:
         """Convert to base MemoryQuery for compatibility."""
+        metadata_filter: Dict[str, Any] = {}
+        if self.curated_only:
+            metadata_filter = build_curated_metadata_filter(metadata_filter)
         return MemoryQuery(
             text=self.text,
             user_id=self.user_id,
             session_id=self.session_id,
             conversation_id=self.conversation_id,
             tags=self.tags,
+            kind=CURATED_MEMORY_KIND if self.curated_only else None,
+            metadata_filter=metadata_filter,
             time_range=self.time_range,
             top_k=self.top_k,
             similarity_threshold=self.similarity_threshold,
@@ -154,6 +169,7 @@ class MemoryContextBuilder:
                 conversation_id=conversation_id,
                 top_k=20,  # Get more memories for context building
                 similarity_threshold=0.6,  # Lower threshold for context
+                curated_only=True,
             )
 
             memories = await self.memory_service.query_memories(tenant_id, memory_query)
@@ -202,7 +218,9 @@ class MemoryContextBuilder:
 
                     context_parts.append(
                         {
+                            "id": memory.id,
                             "type": mem_type.value,
+                            "memory_class": (memory.metadata or {}).get("memory_class"),
                             "content": memory.content,
                             "importance": memory.importance_score,
                             "similarity": memory.similarity_score,
@@ -211,6 +229,7 @@ class MemoryContextBuilder:
                             ),
                             "timestamp": memory.timestamp,
                             "tags": memory.tags,
+                            "metadata": memory.metadata,
                         }
                     )
                     total_tokens += memory_tokens
@@ -236,6 +255,10 @@ class MemoryContextBuilder:
                     "user_id": user_id,
                     "session_id": session_id,
                     "conversation_id": conversation_id,
+                    "curated_recall": memory_query.curated_only,
+                    "curated_memory_classes": list(memory_query.memory_classes)
+                    if memory_query.curated_only
+                    else [],
                     "total_tokens_estimate": total_tokens,
                     "generated_at": datetime.utcnow().isoformat(),
                 },
@@ -464,6 +487,39 @@ class WebUIMemoryService(UnifiedMemoryService):
             "facts_extracted": 0,
         }
 
+    @staticmethod
+    def _infer_web_memory_type(
+        web_data: Dict[str, Any],
+        base_memory: MemoryEntry,
+    ) -> MemoryType:
+        """Map stored curated metadata back onto the web UI memory taxonomy."""
+        explicit_type = web_data.get("memory_type")
+        if explicit_type:
+            try:
+                return MemoryType(str(explicit_type))
+            except Exception:
+                pass
+
+        metadata = getattr(base_memory, "metadata", {}) or {}
+        memory_class = str(metadata.get("memory_class") or "").strip()
+        if memory_class == "user_fact":
+            return MemoryType.PREFERENCE
+        if memory_class == "project_fact":
+            return MemoryType.FACT
+        if memory_class == "episodic":
+            return MemoryType.CONVERSATION
+        if memory_class == "semantic_long_term":
+            return MemoryType.INSIGHT
+
+        fallback_type = metadata.get("memory_type") or metadata.get("type")
+        if fallback_type:
+            try:
+                return MemoryType(str(fallback_type))
+            except Exception:
+                pass
+
+        return MemoryType.GENERAL
+
     async def build_context(
         self,
         *,
@@ -587,6 +643,11 @@ class WebUIMemoryService(UnifiedMemoryService):
             base_memories = await self.base_manager.query_memories(
                 tenant_id, base_query
             )
+            if query.curated_only:
+                base_memories = filter_curated_memories(
+                    base_memories,
+                    allowed_classes=query.memory_classes,
+                )
 
             # Get additional web UI data from database
             memory_ids = [m.id for m in base_memories]
@@ -618,7 +679,7 @@ class WebUIMemoryService(UnifiedMemoryService):
                     # Web UI specific fields
                     ui_source=UISource(web_data.get("ui_source", "api")),
                     conversation_id=web_data.get("conversation_id"),
-                    memory_type=MemoryType(web_data.get("memory_type", "general")),
+                    memory_type=self._infer_web_memory_type(web_data, base_memory),
                     importance_score=web_data.get("importance_score", 5),
                     access_count=web_data.get("access_count", 0),
                     last_accessed=web_data.get("last_accessed"),

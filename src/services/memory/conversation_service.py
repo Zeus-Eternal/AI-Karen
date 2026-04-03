@@ -13,6 +13,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union, Tuple, cast, Protocol, TypeGuard, ClassVar
 from dataclasses import dataclass, field
 from .production_cache_service import get_cache_service
+from .memory_service import (
+    WebUIMemoryService,
+    WebUIMemoryQuery,
+    MemoryType,
+    UISource,
+)
+from .unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 from enum import Enum
 
 try:
@@ -30,16 +37,85 @@ from ai_karen_engine.database.conversation_manager import (
     normalize_user_id,
 )
 from ai_karen_engine.database.models import TenantConversation
-from services.memory.memory_service import (
-    WebUIMemoryService,
-    WebUIMemoryQuery,
-    MemoryType,
-    UISource,
-)
-from services.memory.unified_memory_service import MemoryCommitRequest, MemoryQueryRequest
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 
 logger = logging.getLogger(__name__)
+
+
+class ConversationStatus(str, Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    DELETED = "deleted"
+    SPAM = "spam"
+
+
+class ConversationPriority(str, Enum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+    @classmethod
+    def from_any(cls, value: Any) -> "ConversationPriority":
+        """
+        Convert various types to ConversationPriority.
+        Handles:
+        - Enum members themselves
+        - String values ('low', 'normal', etc.)
+        - Integer levels (0=normal, 1=high, -1=low, 2=urgent)
+        """
+        if isinstance(value, cls):
+            return cast("ConversationPriority", value)
+
+        if value is None:
+            return cls.NORMAL
+
+        if isinstance(value, int):
+            # Map integer values to enum members
+            mapping = {
+                -1: cls.LOW,
+                0: cls.NORMAL,
+                1: cls.HIGH,
+                2: cls.URGENT
+            }
+            return mapping.get(value, cls.NORMAL)
+
+        if isinstance(value, str):
+            # Handle string conversion (case-insensitive)
+            val_lower = value.lower().strip()
+
+            # Simple string match
+            try:
+                # Direct string to enum conversion
+                return cast("ConversationPriority", cls(val_lower))
+            except ValueError:
+                # Map common alternative string representations
+                alt_mapping = {
+                    "normal": cls.NORMAL,
+                    "high": cls.HIGH,
+                    "low": cls.LOW,
+                    "urgent": cls.URGENT,
+                    "0": cls.NORMAL,
+                    "1": cls.HIGH,
+                    "2": cls.URGENT,
+                    "-1": cls.LOW
+                }
+
+                if val_lower in alt_mapping:
+                    return alt_mapping[val_lower]
+
+                # Handle numeric strings that aren't in the map
+                if val_lower.isdigit() or (val_lower.startswith('-') and len(val_lower) > 1 and val_lower[1:].isdigit()):
+                    try:
+                        return cls.from_any(int(val_lower))
+                    except (ValueError, TypeError):
+                        return cls.NORMAL
+
+                return cls.NORMAL
+
+        # Default fallback
+        return cls.NORMAL
+
 
 
 class _DataclassInstance(Protocol):
@@ -63,7 +139,7 @@ def _stats_to_dict(stats: Any) -> Dict[str, Any]:
 
     if _is_dataclass_instance(stats):
         try:
-            return cast(Dict[str, Any], asdict(stats))
+            return cast(Dict[str, Any], asdict(cast(Any, stats)))
         except Exception:
             pass
 
@@ -102,7 +178,7 @@ class ConversationPriority(str, Enum):
         - Integer levels (0=normal, 1=high, -1=low, 2=urgent)
         """
         if isinstance(value, cls):
-            return value
+            return cast("ConversationPriority", value)
             
         if value is None:
             return cls.NORMAL
@@ -123,7 +199,8 @@ class ConversationPriority(str, Enum):
             
             # Simple string match
             try:
-                return cls(val_lower)
+                # Direct string to enum conversion
+                return cast("ConversationPriority", cls(val_lower))
             except ValueError:
                 # Map common alternative string representations
                 alt_mapping = {
@@ -141,7 +218,7 @@ class ConversationPriority(str, Enum):
                     return alt_mapping[val_lower]
                     
                 # Handle numeric strings that aren't in the map
-                if val_lower.isdigit() or (val_lower.startswith('-') and val_lower[1:].isdigit()):
+                if val_lower.isdigit() or (val_lower.startswith('-') and len(val_lower) > 1 and val_lower[1:].isdigit()):
                     try:
                         return cls.from_any(int(val_lower))
                     except (ValueError, TypeError):
@@ -207,8 +284,8 @@ class WebUIConversation(Conversation):
             "summary": self.summary,
             "tags": self.tags,
             "last_ai_response_id": self.last_ai_response_id,
-            "status": self.status.value,
-            "priority": self.priority.value,
+            "status": self.status.value if hasattr(self.status, "value") else str(self.status),
+            "priority": self.priority.value if hasattr(self.priority, "value") else str(self.priority),
             "context_memories": self.context_memories,
             "proactive_suggestions": self.proactive_suggestions
         })
@@ -242,7 +319,7 @@ class WebUIConversation(Conversation):
             "priority": self.priority.value,
             "status": self.status.value,
             "user_settings": self.user_settings,
-            "recent_memories": (self.context_memories[-5:] if self.context_memories and len(self.context_memories) >= 5 else self.context_memories) if self.context_memories else [],
+            "recent_memories": (self.context_memories[-5:] if len(self.context_memories) >= 5 else self.context_memories) if self.context_memories else [],
             "ai_insights": self.ai_insights,
             "last_activity": self.updated_at.isoformat(),
             "summary": self.summary
@@ -340,7 +417,8 @@ class ConversationContextBuilder:
                 user_id=conversation.user_id,
                 conversation_id=conversation.id,
                 top_k=self.max_context_memories,
-                similarity_threshold=self.context_relevance_threshold
+                similarity_threshold=self.context_relevance_threshold,
+                curated_only=True,
             )
             
             memories = await self._query_memory_records(tenant_id, memory_query)
@@ -403,6 +481,8 @@ class ConversationContextBuilder:
                     query=query.text,
                     top_k=query.top_k,
                     similarity_threshold=query.similarity_threshold or 0.7,
+                    curated_only=query.curated_only,
+                    memory_classes=list(query.memory_classes),
                 ),
             )
             return result.hits

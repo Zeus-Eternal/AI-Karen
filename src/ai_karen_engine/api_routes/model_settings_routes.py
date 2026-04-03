@@ -31,6 +31,7 @@ from ai_karen_engine.config.llm_provider_config import (
     get_provider_config_manager,
 )
 from ai_karen_engine.config.model_registry import list_llama_cpp_models
+from ai_karen_engine.integrations.llm_registry import get_registry
 from services.memory.settings_manager import get_settings_manager
 from services.models.secret_manager import get_secret_manager
 
@@ -111,6 +112,7 @@ class ProviderPayload(BaseModel):
     models: List[ProviderModelPayload] = Field(default_factory=list)
     requires_api_key: bool = False
     api_key_configured: bool = False
+    api_key_masked: Optional[str] = None
     selectable: bool = True
     api_key_header: str = "Authorization"
     api_key_prefix: str = "Bearer"
@@ -145,6 +147,20 @@ class ProviderModelsResponse(BaseModel):
     base_url: Optional[str] = None
     models: List[ProviderModelPayload]
     discovered_at: str
+
+
+class ProviderSettingsValidationRequest(BaseModel):
+    provider: str
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+
+
+class ProviderSettingsValidationResponse(BaseModel):
+    provider: str
+    valid: bool
+    message: str
+    models_discovered: Optional[int] = None
 
 
 class OllamaPullRequest(BaseModel):
@@ -206,6 +222,17 @@ def _sanitize_custom_headers(headers: Dict[str, str]) -> Dict[str, str]:
     }
 
 
+def _mask_api_key(secret_value: Optional[str]) -> Optional[str]:
+    if not secret_value:
+        return None
+    trimmed = secret_value.strip()
+    if not trimmed:
+        return None
+    if len(trimmed) <= 8:
+        return "•" * len(trimmed)
+    return f"{trimmed[:4]}{'•' * max(4, len(trimmed) - 8)}{trimmed[-4:]}"
+
+
 def _normalize_base_url(base_url: Optional[str]) -> Optional[str]:
     if base_url is None:
         return None
@@ -245,10 +272,16 @@ def _iter_ollama_base_urls(base_url: Optional[str]) -> List[str]:
 def _resolve_provider_base_url(provider: ProviderConfig, override: Dict[str, Any]) -> str:
     saved = _normalize_base_url(override.get("base_url"))
     fallback = _normalize_base_url(provider.endpoint.base_url if provider.endpoint else None) or ""
+    if provider.name == "gemini":
+        return fallback
     resolved = saved if saved is not None else fallback
     if provider.name == "ollama":
         return _normalize_ollama_base_url(resolved)
     return resolved
+
+
+def _supports_base_url_override(provider: ProviderConfig) -> bool:
+    return provider.name not in {"gemini"}
 
 
 def _build_auth_headers(provider_id: str, provider: ProviderConfig, api_key: Optional[str]) -> Dict[str, str]:
@@ -531,6 +564,7 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
 
     requires_api_key = provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM}
     api_key_configured = _has_saved_api_key(provider.name, provider)
+    api_key_masked = _mask_api_key(_get_saved_api_key(provider.name, provider)) if api_key_configured else None
 
     return ProviderPayload(
         id=provider.name,
@@ -545,6 +579,7 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
         models=models,
         requires_api_key=requires_api_key,
         api_key_configured=api_key_configured,
+        api_key_masked=api_key_masked,
         selectable=(not requires_api_key) or api_key_configured,
         api_key_header=str(override.get("api_key_header") or provider.authentication.api_key_header or "Authorization"),
         api_key_prefix=str(
@@ -553,7 +588,7 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
             else (provider.authentication.api_key_prefix or "")
         ),
         custom_headers=_sanitize_custom_headers(override.get("custom_headers") or provider.authentication.custom_headers or {}),
-        supports_base_url_override=True,
+        supports_base_url_override=_supports_base_url_override(provider),
         supports_model_discovery=provider.name in {"ollama", "llama-cpp"} or bool(provider.endpoint and provider.endpoint.models_endpoint),
         supports_model_pull=provider.name == "ollama",
         supports_custom_auth=provider.name == "custom",
@@ -641,6 +676,68 @@ def _persist_provider_config(
     )
 
 
+def _refresh_runtime_provider_state(provider_name: str, model_name: Optional[str]) -> None:
+    """Invalidate cached runtime provider/model instances after settings changes."""
+    try:
+        registry = get_registry()
+        registry.invalidate_provider_cache(provider_name)
+    except Exception as exc:  # pragma: no cover - defensive hardening
+        logger.warning("Failed to invalidate provider registry cache for %s: %s", provider_name, exc)
+
+    try:
+        from ai_karen_engine.llm_orchestrator import LLMOrchestrator
+
+        orchestrator = LLMOrchestrator()
+        prefixes = {f"{provider_name}:"}
+        if provider_name == "llama-cpp":
+            prefixes.add("llamacpp:")
+        elif provider_name == "llamacpp":
+            prefixes.add("llama-cpp:")
+
+        with orchestrator.registry._lock:
+            stale_ids = [
+                mid for mid in orchestrator.registry._models.keys()
+                if any(mid.startswith(prefix) for prefix in prefixes)
+            ]
+            for mid in stale_ids:
+                orchestrator.registry._models.pop(mid, None)
+        if stale_ids:
+            logger.info(
+                "Invalidated %d orchestrator model cache entrie(s) for provider %s",
+                len(stale_ids),
+                provider_name,
+            )
+    except Exception as exc:  # pragma: no cover - defensive hardening
+        logger.warning("Failed to invalidate orchestrator cache for %s: %s", provider_name, exc)
+
+
+def _validate_runtime_provider(provider_name: str, model_name: str) -> None:
+    """Validate that the saved provider config can instantiate and authenticate."""
+    try:
+        registry = get_registry()
+        provider = registry.get_provider(provider_name, model=model_name)
+    except Exception as exc:  # pragma: no cover - defensive hardening
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to initialize {provider_name}: {exc}",
+        ) from exc
+
+    if provider is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to initialize {provider_name}.",
+        )
+
+    initialization_error = getattr(provider, "initialization_error", None)
+    if initialization_error:
+        error_text = str(initialization_error)
+        lowered = error_text.lower()
+        error_status = status.HTTP_400_BAD_REQUEST if any(
+            marker in lowered for marker in ("invalid", "unauthorized", "forbidden", "api key", "credential")
+        ) else status.HTTP_502_BAD_GATEWAY
+        raise HTTPException(status_code=error_status, detail=error_text)
+
+
 @router.get("", response_model=ModelSettingsResponse)
 async def get_model_settings() -> ModelSettingsResponse:
     """Return persisted provider/model settings plus provider metadata."""
@@ -680,7 +777,9 @@ async def update_model_settings(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Model is required")
 
     normalized_base_url = _normalize_base_url(request.base_url) if request.base_url is not None else None
-    if provider.name == "ollama" and normalized_base_url is not None:
+    if not _supports_base_url_override(provider):
+        normalized_base_url = None
+    elif provider.name == "ollama" and normalized_base_url is not None:
         normalized_base_url = _normalize_ollama_base_url(normalized_base_url)
 
     api_key_header = request.api_key_header.strip() if request.api_key_header else None
@@ -689,10 +788,17 @@ async def update_model_settings(
 
     settings.set_setting("provider", provider.name, save=False)
     settings.set_setting("model", selected_model, save=False)
+    settings.set_setting("last_selected_model", selected_model, save=False)
     settings.set_setting(f"model_providers.{provider.name}.last_model", selected_model, save=False)
 
     if normalized_base_url is not None:
         settings.set_setting(f"model_providers.{provider.name}.base_url", normalized_base_url, save=False)
+    elif not _supports_base_url_override(provider):
+        provider_overrides = settings.get_setting("model_providers", {}) or {}
+        if isinstance(provider_overrides, dict):
+            existing_override = provider_overrides.get(provider.name)
+            if isinstance(existing_override, dict):
+                existing_override.pop("base_url", None)
     if api_key_header is not None:
         settings.set_setting(f"model_providers.{provider.name}.api_key_header", api_key_header, save=False)
     if api_key_prefix is not None:
@@ -735,9 +841,97 @@ async def update_model_settings(
         api_key_prefix=api_key_prefix,
         custom_headers=custom_headers,
     )
+    _refresh_runtime_provider_state(provider.name, selected_model)
+    if requires_api_key and (provided_api_key or _has_saved_api_key(provider.name, provider)):
+        _validate_runtime_provider(provider.name, selected_model)
 
     settings._save_settings()
     return _build_response()
+
+
+@router.post("/validate", response_model=ProviderSettingsValidationResponse)
+async def validate_model_settings_provider(
+    request: ProviderSettingsValidationRequest,
+) -> ProviderSettingsValidationResponse:
+    """Validate a provider configuration using the same catalog/runtime path as settings save."""
+
+    provider_manager = get_provider_config_manager()
+    provider = provider_manager.get_provider(request.provider)
+    if not provider:
+        return ProviderSettingsValidationResponse(
+            provider=request.provider,
+            valid=False,
+            message=f"Provider '{request.provider}' not found",
+        )
+
+    requires_api_key = provider.authentication.type in {AuthenticationType.API_KEY, AuthenticationType.CUSTOM}
+    provided_api_key = (request.api_key or "").strip()
+    saved_api_key = _get_saved_api_key(provider.name, provider)
+    effective_api_key = provided_api_key or saved_api_key
+
+    if requires_api_key and not effective_api_key:
+        return ProviderSettingsValidationResponse(
+            provider=provider.name,
+            valid=False,
+            message=f"{provider.display_name} requires an API key.",
+        )
+
+    selected_model = (
+        (request.model or "").strip()
+        or str(_get_provider_override(provider.name).get("last_model") or provider.default_model or "").strip()
+    )
+    if not selected_model:
+        return ProviderSettingsValidationResponse(
+            provider=provider.name,
+            valid=False,
+            message="Model is required",
+        )
+
+    normalized_base_url = _normalize_base_url(request.base_url) if request.base_url is not None else None
+    if not _supports_base_url_override(provider):
+        normalized_base_url = None
+    elif provider.name == "ollama" and normalized_base_url is not None:
+        normalized_base_url = _normalize_ollama_base_url(normalized_base_url)
+
+    registry = get_registry()
+    registry.invalidate_provider_cache(provider.name)
+    runtime_provider = registry.get_provider(
+        provider.name,
+        model=selected_model,
+        api_key=effective_api_key,
+        base_url=normalized_base_url,
+    )
+
+    if runtime_provider is None:
+        return ProviderSettingsValidationResponse(
+            provider=provider.name,
+            valid=False,
+            message=f"Failed to initialize {provider.display_name}.",
+        )
+
+    initialization_error = getattr(runtime_provider, "initialization_error", None)
+    if initialization_error:
+        return ProviderSettingsValidationResponse(
+            provider=provider.name,
+            valid=False,
+            message=str(initialization_error),
+        )
+
+    models_discovered: Optional[int] = None
+    get_models = getattr(runtime_provider, "get_models", None)
+    if callable(get_models):
+        try:
+            models = get_models()
+            models_discovered = len(models) if isinstance(models, list) else None
+        except Exception:
+            models_discovered = None
+
+    return ProviderSettingsValidationResponse(
+        provider=provider.name,
+        valid=True,
+        message=f"{provider.display_name} credentials validated successfully.",
+        models_discovered=models_discovered,
+    )
 
 
 @router.get("/providers/{provider_id}/models", response_model=ProviderModelsResponse)

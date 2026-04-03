@@ -48,7 +48,7 @@ class MemoryServiceError(Exception):
         self,
         message: str,
         error_code: str = "MEMORY_ERROR",
-        details: Dict[str, Any] = None,
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.error_code = error_code
@@ -69,7 +69,8 @@ class MemoryStorageError(MemoryServiceError):
 
     def __init__(self, message: str, content: str = "", details: Optional[Dict[str, Any]] = None):
         super().__init__(message, "MEMORY_STORAGE_ERROR", details)
-        self.content = content[:100] + "..." if len(content) > 100 else content
+        content_str = str(content)
+        self.content = content_str[:100] + "..." if len(content_str) > 100 else content_str
 
 
 class CircuitBreakerState(Enum):
@@ -103,7 +104,7 @@ class CircuitBreakerStats:
 class CircuitBreaker:
     """Circuit breaker for vector store operations"""
 
-    def __init__(self, name: str, config: CircuitBreakerConfig = None):
+    def __init__(self, name: str, config: Optional[CircuitBreakerConfig] = None):
         self.name = name
         self.config = config or CircuitBreakerConfig()
         self.stats = CircuitBreakerStats()
@@ -178,14 +179,20 @@ class EnhancedMemoryService(WebUIMemoryService):
 
     def __init__(self, base_memory_manager: MemoryManager):
         """Initialize enhanced memory service"""
-        super().__init__(base_memory_manager=base_memory_manager)
+        # Explicitly pass all required UnifiedMemoryService arguments through WebUIMemoryService
+        super().__init__(
+            db_client=base_memory_manager.db_client,
+            milvus_client=base_memory_manager.milvus_client,
+            embedding_manager=base_memory_manager.embedding_manager,
+            base_memory_manager=base_memory_manager
+        )
 
         # Circuit breakers for different operations
         self.vector_circuit_breaker = CircuitBreaker("vector_store")
         self.sql_circuit_breaker = CircuitBreaker("sql_fallback")
 
         # Error tracking
-        self.error_stats = {
+        self.error_stats: Dict[str, Any] = {
             "vector_failures": 0,
             "sql_failures": 0,
             "total_queries": 0,
@@ -196,17 +203,20 @@ class EnhancedMemoryService(WebUIMemoryService):
         }
 
         # Performance tracking
-        self.performance_stats = {
+        self.performance_stats: Dict[str, float] = {
             "avg_query_time": 0.0,
             "avg_vector_time": 0.0,
             "avg_sql_time": 0.0,
-            "query_count": 0,
+            "query_count": 0.0,
         }
 
         logger.info("Enhanced memory service initialized with circuit breakers")
 
     async def query_memories(
-        self, tenant_id: Union[str, uuid.UUID], query: WebUIMemoryQuery
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        query: WebUIMemoryQuery,
+        tenant_filters: Optional[Dict[str, Any]] = None,
     ) -> List[WebUIMemoryEntry]:
         """Enhanced memory query with error handling and fallback mechanisms"""
         start_time = time.time()
@@ -301,7 +311,9 @@ class EnhancedMemoryService(WebUIMemoryService):
             )
 
             # Use parent class method with enhanced error handling
-            base_memories = await super().query_memories(tenant_id, query)
+            base_memories = await super().query_memories(
+                tenant_id, query, tenant_filters=None
+            )
 
             logger.debug(
                 f"Vector store returned {len(base_memories)} memories",
@@ -482,6 +494,7 @@ class EnhancedMemoryService(WebUIMemoryService):
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
         ttl_hours: Optional[int] = None,
+        tenant_filters: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         """Enhanced memory storage with error handling"""
         correlation_id = str(uuid.uuid4())
@@ -511,6 +524,7 @@ class EnhancedMemoryService(WebUIMemoryService):
                 ai_generated=ai_generated,
                 metadata=metadata,
                 ttl_hours=ttl_hours,
+                tenant_filters=tenant_filters,
             )
 
             if memory_id:

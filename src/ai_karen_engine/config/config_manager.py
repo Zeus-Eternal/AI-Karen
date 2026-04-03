@@ -86,6 +86,7 @@ class LLMConfig:
     default_nlp_model_id: str = "distilbert-base-uncased"
     default_classifier_model_id: str = "default-classifier-model"
     models_dir: str = "models"
+    transformers_dir: str = "models/transformers"
     fallback_chain: List[str] = field(
         default_factory=lambda: ["llamacpp", "openai", "gemini", "deepseek", "huggingface"]
     )
@@ -210,6 +211,7 @@ DEFAULT_CONFIG = {
         "default_nlp_model_id": "distilbert-base-uncased",
         "default_classifier_model_id": "default-classifier-model",
         "models_dir": "models",
+        "transformers_dir": "models/transformers",
         "fallback_chain": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
         "provider_defaults": {
             "openai": "gpt-4o-mini",

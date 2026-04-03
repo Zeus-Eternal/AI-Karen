@@ -11,13 +11,13 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union, TYPE_CHECKING
 import jinja2
 
 logger = logging.getLogger(__name__)
 
 try:
-    from llama_cpp import Llama, LlamaGrammar
+    from llama_cpp import Llama, LlamaGrammar # type: ignore
     # Patch noisy __del__ AttributeError in some llama-cpp-python versions
     try:  # defensive: best-effort monkey patch to suppress sampler AttributeError
         from llama_cpp import _internals as _ll_internals  # type: ignore
@@ -25,7 +25,9 @@ try:
         if callable(_orig_del):
             def _safe_del(self):  # type: ignore
                 try:
-                    return _orig_del(self)
+                    if _orig_del is not None and callable(_orig_del):
+                        return _orig_del(self)
+                    return None
                 except AttributeError:
                     # Older builds may not set attributes on failed init; ignore cleanup errors
                     return None
@@ -39,8 +41,18 @@ try:
 except ImportError:
     logger.warning("llama-cpp-python not available. LlamaCppRuntime will be disabled.")
     LLAMACPP_AVAILABLE = False
-    Llama = None
-    LlamaGrammar = None
+    
+    # Use dummy classes to satisfy type hints while LLAMACPP_AVAILABLE = False
+    class Llama: # type: ignore
+        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
+        def __call__(self, *args: Any, **kwargs: Any) -> Any: pass
+        def create_chat_completion(self, *args: Any, **kwargs: Any) -> Any: pass
+        def embed(self, *args: Any, **kwargs: Any) -> Any: pass
+        def tokenize(self, *args: Any, **kwargs: Any) -> Any: pass
+        def detokenize(self, *args: Any, **kwargs: Any) -> Any: pass
+        @property
+        def metadata(self) -> Dict[str, Any]: return {}
+    class LlamaGrammar: pass
 
 
 class LlamaCppRuntime:
@@ -87,12 +99,6 @@ class LlamaCppRuntime:
     def get_instance(cls, **kwargs) -> 'LlamaCppRuntime':
         """
         Get or create the global LlamaCppRuntime singleton.
-        
-        Args:
-            **kwargs: Initialization parameters if creating a new instance
-            
-        Returns:
-            The global LlamaCppRuntime instance
         """
         with cls._singleton_lock:
             if cls._instance is None:
@@ -103,6 +109,9 @@ class LlamaCppRuntime:
             elif kwargs:
                 # Optionally update parameters if specified, though usually we want consistency
                 logger.debug("LlamaCppRuntime singleton already exists, ignoring new kwargs")
+            
+            # Use assert to help type checkers know it's not None
+            assert cls._instance is not None
             return cls._instance
 
     def __init__(
@@ -177,8 +186,12 @@ class LlamaCppRuntime:
             True if model loaded successfully, False otherwise
         """
         with self._lock:
+            canonical_model_path = None
+            start_time = time.time()
+            _repo_id = "microsoft/Phi-3-mini-4k-instruct-gguf"
+            params: Dict[str, Any] = {}
             try:
-                start_time = time.time()
+                # Validate model file early for speed & correctness
 
                 # Validate model file early for speed & correctness
                 p = Path(model_path).expanduser()
@@ -231,7 +244,10 @@ class LlamaCppRuntime:
                 logger.debug(f"llama.cpp parameters: {params}")
                 
                 # Create llama.cpp instance
-                self._model = Llama(**params)
+                if Llama is not None:
+                    self._model = Llama(**params)
+                else:
+                    raise RuntimeError("Llama class is None even though LLAMACPP_AVAILABLE is True")
                 self.model_path = canonical_model_path
                 self._loaded = True
                 self._load_time = time.time() - start_time
@@ -244,10 +260,10 @@ class LlamaCppRuntime:
                 return True
                 
             except Exception as e:
-                logger.error(f"Failed to load model {canonical_model_path if 'canonical_model_path' in locals() else model_path}: {e}")
+                logger.error(f"Failed to load model {canonical_model_path or model_path}: {e}")
                 # Attempt automatic recovery for known default model
                 try:
-                    filename = Path(canonical_model_path if 'canonical_model_path' in locals() else model_path).name
+                    filename = Path(canonical_model_path or model_path).name
                     auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
                     # Get default model info from config
                     try:
@@ -259,7 +275,7 @@ class LlamaCppRuntime:
                         logger.warning(f"Attempting to re-download default model ({_default_model}) due to load failure...")
                         # Move corrupt file aside first
                         try:
-                            p = Path(canonical_model_path if 'canonical_model_path' in locals() else model_path)
+                            p = Path(canonical_model_path or model_path)
                             if p.exists():
                                 corrupt_path = p.with_suffix(p.suffix + ".corrupt")
                                 try:
@@ -275,10 +291,10 @@ class LlamaCppRuntime:
                         downloaded = False
                         try:
                             from huggingface_hub import hf_hub_download  # type: ignore
-                            target_dir = str(Path(canonical_model_path if 'canonical_model_path' in locals() else model_path).parent)
+                            target_dir = str(Path(canonical_model_path or model_path).parent)
                             token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
                             # Derive repo_id from default model filename pattern
-                            _repo_id = "microsoft/Phi-3-mini-4k-instruct-gguf"
+                            # _repo_id defined above
                             hf_hub_download(
                                 repo_id=_repo_id,
                                 filename=_default_model,
@@ -333,7 +349,10 @@ class LlamaCppRuntime:
                         if downloaded:
                             logger.info("Retrying model load after re-download...")
                             # Retry once
-                            self._model = Llama(**params)
+                            if Llama is not None:
+                                self._model = Llama(**params)
+                            else:
+                                raise RuntimeError("Llama class is None during retry")
                             self.model_path = model_path
                             self._loaded = True
                             self._load_time = time.time() - start_time
@@ -403,6 +422,12 @@ class LlamaCppRuntime:
                     "Assistant:",
                     "user:",
                     "assistant:",
+                    "Your task:",
+                    "Current conversation:",
+                    "Now complete the following instruction:",
+                    "response:",
+                    "Solution>",
+                    "provide a detailed solution.",
                     "<|user|>",
                     "<|assistant|>",
                     "<|end|>",
@@ -411,6 +436,12 @@ class LlamaCppRuntime:
                     "\n\nAssistant:",
                     "\n\nuser:",
                     "\n\nassistant:",
+                    "\n\nYour task:",
+                    "\n\nCurrent conversation:",
+                    "\n\nNow complete the following instruction:",
+                    "\n\nresponse:",
+                    "\n\nSolution>",
+                    "\n\nprovide a detailed solution.",
                 ]
                 
                 # Combine provided stop sequences with defaults, ensuring no duplicates
@@ -478,6 +509,12 @@ class LlamaCppRuntime:
                     "Assistant:",
                     "user:",
                     "assistant:",
+                    "Your task:",
+                    "Current conversation:",
+                    "Now complete the following instruction:",
+                    "response:",
+                    "Solution>",
+                    "provide a detailed solution.",
                     "<|user|>",
                     "<|assistant|>",
                     "<|end|>",
@@ -599,6 +636,8 @@ class LlamaCppRuntime:
 
     def _complete_chat(self, messages: List[Dict[str, str]], **params) -> str:
         """Complete chat response."""
+        if self._model is None:
+            raise RuntimeError("Model instance is None")
         response = self._model.create_chat_completion(messages=messages, **params)
         
         if isinstance(response, dict) and "choices" in response:
@@ -609,6 +648,8 @@ class LlamaCppRuntime:
     def _stream_chat(self, messages: List[Dict[str, str]], **params) -> Iterator[str]:
         """Stream chat response."""
         params["stream"] = True
+        if self._model is None:
+            raise RuntimeError("Model instance is None")
         for chunk in self._model.create_chat_completion(messages=messages, **params):
             if isinstance(chunk, dict):
                 if "choices" in chunk and chunk["choices"]:
@@ -618,6 +659,8 @@ class LlamaCppRuntime:
 
     def _complete_generate(self, prompt: str, **params) -> str:
         """Generate complete response (non-streaming)."""
+        if self._model is None:
+            raise RuntimeError("Model instance is None")
         response = self._model(prompt, **params)
         
         if isinstance(response, dict) and "choices" in response:
@@ -632,6 +675,8 @@ class LlamaCppRuntime:
     def _stream_generate(self, prompt: str, **params) -> Iterator[str]:
         """Generate streaming response."""
         params["stream"] = True
+        if self._model is None:
+            raise RuntimeError("Model instance is None")
         
         for chunk in self._model(prompt, **params):
             if isinstance(chunk, dict):
@@ -659,10 +704,8 @@ class LlamaCppRuntime:
         
         with self._lock:
             try:
-                # Check if model supports embeddings
-                if not hasattr(self._model, "embed"):
-                    raise RuntimeError("Model does not support embeddings")
-                
+                if self._model is None:
+                    raise RuntimeError("Model instance is None")
                 embedding = self._model.embed(text)
                 return embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
                 
@@ -685,6 +728,8 @@ class LlamaCppRuntime:
         
         with self._lock:
             try:
+                if self._model is None:
+                    raise RuntimeError("Model instance is None")
                 tokens = self._model.tokenize(text.encode('utf-8'))
                 return tokens
             except Exception as e:
@@ -706,6 +751,8 @@ class LlamaCppRuntime:
         
         with self._lock:
             try:
+                if self._model is None:
+                    raise RuntimeError("Model instance is None")
                 text = self._model.detokenize(tokens)
                 return text.decode('utf-8') if isinstance(text, bytes) else text
             except Exception as e:
@@ -746,9 +793,8 @@ class LlamaCppRuntime:
         Returns:
             Health status information
         """
+        start_time = time.time()
         try:
-            start_time = time.time()
-            
             # Check if llama.cpp is available
             if not LLAMACPP_AVAILABLE:
                 return {
@@ -808,10 +854,11 @@ class LlamaCppRuntime:
                 }
                 
         except Exception as e:
+            _stime = start_time if 'start_time' in locals() else time.time()
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "response_time": time.time() - start_time if 'start_time' in locals() else None
+                "response_time": time.time() - _stime
             }
     
     def get_resource_usage(self) -> Dict[str, Any]:

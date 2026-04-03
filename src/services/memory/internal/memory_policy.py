@@ -71,23 +71,43 @@ class MemoryPolicy:
     @staticmethod
     def load(path: Optional[str] = None) -> "MemoryPolicy":
         """Load memory policy from config/memory.yml with fallback defaults"""
-        if path is None:
-            path = os.path.join("config", "memory.yml")
-        
-        # Try to load from file
-        if os.path.exists(path):
+        candidate_paths: List[str] = []
+        if path:
+            candidate_paths.append(path)
+        env_override = os.getenv("KARI_MEMORY_POLICY_PATH", "").strip()
+        if env_override:
+            candidate_paths.append(env_override)
+        candidate_paths.extend(
+            [
+                os.path.join("config", "memory.yml"),
+                os.path.join("config", "memory.yaml"),
+            ]
+        )
+
+        seen = set()
+        ordered_candidates = [candidate for candidate in candidate_paths if candidate and not (candidate in seen or seen.add(candidate))]
+
+        for candidate in ordered_candidates:
+            if not os.path.exists(candidate):
+                continue
+
             try:
-                with open(path, 'r') as f:
-                    config = yaml.safe_load(f)
-                
-                logger.info(f"Loaded memory policy from {path}")
+                with open(candidate, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+
+                logger.info(f"Loaded memory policy from {candidate}")
                 return MemoryPolicy._from_config(config)
-                
+
             except Exception as e:
-                logger.warning(f"Failed to load memory policy from {path}: {e}")
+                logger.warning(f"Failed to load memory policy from {candidate}: {e}")
                 logger.info("Using default memory policy")
-        else:
-            logger.info(f"Memory policy file {path} not found, using defaults")
+                break
+
+        logger.info(
+            "Memory policy file not found; checked %s. Using defaults. "
+            "Set KARI_MEMORY_POLICY_PATH or add config/memory.yml to customize.",
+            ordered_candidates,
+        )
         
         return MemoryPolicy()
     

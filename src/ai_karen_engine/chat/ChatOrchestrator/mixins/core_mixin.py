@@ -11,6 +11,13 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union, AsyncIterat
 # Configure logger for this module
 logger = logging.getLogger(__name__)
 
+
+def _compact_session_turn(role: str, content: str, limit: int = 280) -> Dict[str, str]:
+    return {
+        "role": role,
+        "content": str(content or "").strip()[:limit],
+    }
+
 # Optional hooks import with fallback
 # Optional hooks import with fallback
 try:
@@ -73,6 +80,570 @@ else:
 
 class ChatCoreMixin(Base):
     """Main message processing logic for ChatOrchestrator."""
+
+    async def handle_chat(self, request: ChatRequest) -> ChatResponse:
+        """Canonical non-streaming chat lifecycle with durable persistence."""
+        if request.stream or request.streaming:
+            raise ValueError("handle_chat only supports non-streaming chat requests")
+
+        user_message_record = await self._persist_user_message(request)
+        conversation_state = await self._resolve_conversation_state(request, user_message_record)
+        working_context = await self._build_working_context(request, conversation_state)
+        execution_path = await self._select_execution_path(request, working_context)
+        generation_result = await self._execute_generation(request, working_context, execution_path)
+        finalized = await self._finalize_response(
+            request=request,
+            generation_result=generation_result,
+            execution_path=execution_path,
+            working_context=working_context,
+            user_message_record=user_message_record,
+        )
+        persisted = await self._persist_assistant_message(request, finalized)
+        await self._post_response_writeback(request, persisted, working_context)
+        await self._emit_chat_telemetry(request, persisted, working_context)
+        return persisted
+
+    async def handle_chat_stream(
+        self,
+        request: ChatRequest,
+    ) -> AsyncGenerator[ChatStreamChunk, None]:
+        """Canonical streaming chat lifecycle with durable persistence."""
+        if not (request.stream or request.streaming):
+            raise ValueError("handle_chat_stream requires a streaming chat request")
+
+        user_message_record = await self._persist_user_message(request)
+        conversation_state = await self._resolve_conversation_state(request, user_message_record)
+        working_context = await self._build_working_context(request, conversation_state)
+        execution_path = await self._select_execution_path(request, working_context)
+        raw_stream = await self.process_message(request)
+        if not hasattr(raw_stream, "__aiter__"):
+            raise RuntimeError("Non-streaming result returned during streaming Stage 1 execution")
+
+        async def canonical_stream() -> AsyncGenerator[ChatStreamChunk, None]:
+            collected_response = ""
+            final_chunk_metadata: Dict[str, Any] = {}
+            stream_failed = False
+
+            async for chunk in cast(AsyncIterator[ChatStreamChunk], raw_stream):
+                chunk_metadata = dict(chunk.metadata or {})
+                if chunk.type == "metadata":
+                    chunk_metadata.setdefault("request_id", request.request_id)
+                    chunk_metadata.setdefault("conversation_id", request.conversation_id)
+                    chunk_metadata.setdefault("execution_path", execution_path)
+                    yield ChatStreamChunk(
+                        type=chunk.type,
+                        content=chunk.content,
+                        correlation_id=request.correlation_id,
+                        metadata=chunk_metadata,
+                    )
+                    continue
+
+                if chunk.type == "content":
+                    collected_response += chunk.content or ""
+                    yield ChatStreamChunk(
+                        type=chunk.type,
+                        content=chunk.content,
+                        correlation_id=request.correlation_id,
+                        metadata=chunk_metadata,
+                    )
+                    continue
+
+                if chunk.type == "error":
+                    stream_failed = True
+                    yield ChatStreamChunk(
+                        type=chunk.type,
+                        content=chunk.content,
+                        correlation_id=request.correlation_id,
+                        metadata=chunk_metadata,
+                    )
+                    continue
+
+                if chunk.type == "complete":
+                    final_chunk_metadata = chunk_metadata
+                    continue
+
+                yield ChatStreamChunk(
+                    type=chunk.type,
+                    content=chunk.content,
+                    correlation_id=request.correlation_id,
+                    metadata=chunk_metadata,
+                )
+
+            if stream_failed or not collected_response.strip():
+                return
+
+            interim_response = ChatResponse(
+                request_id=request.request_id,
+                response=collected_response,
+                correlation_id=request.correlation_id,
+                conversation_id=request.conversation_id,
+                processing_time=float(final_chunk_metadata.get("processing_time") or 0.0),
+                status=ProcessingStatus.COMPLETED,
+                used_fallback=bool(final_chunk_metadata.get("used_fallback")),
+                context_used=bool(working_context.get("recent_messages")),
+                execution_path=execution_path,
+                metadata={
+                    "streaming": True,
+                    "retry_count": final_chunk_metadata.get("retry_count", 0),
+                    "memory_writeback": final_chunk_metadata.get("memory_writeback"),
+                },
+            )
+            finalized = await self._finalize_response(
+                request=request,
+                generation_result=interim_response,
+                execution_path=execution_path,
+                working_context=working_context,
+                user_message_record=user_message_record,
+            )
+            persisted = await self._persist_assistant_message(request, finalized)
+            await self._post_response_writeback(request, persisted, working_context)
+            await self._emit_chat_telemetry(request, persisted, working_context)
+
+            completion_metadata = dict(final_chunk_metadata)
+            completion_metadata.update(
+                {
+                    "request_id": persisted.request_id,
+                    "conversation_id": persisted.conversation_id,
+                    "assistant_message_id": persisted.assistant_message_id,
+                    "execution_path": persisted.execution_path,
+                    "status": persisted.status.value if hasattr(persisted.status, "value") else str(persisted.status),
+                    "telemetry": persisted.telemetry,
+                    "persistence": (persisted.metadata or {}).get("persistence", {}),
+                    "writeback": (persisted.metadata or {}).get("writeback", {}),
+                    "working_context": (persisted.metadata or {}).get("working_context", {}),
+                    "canonical_runtime": request.metadata.get("canonical_runtime", {}),
+                }
+            )
+            yield ChatStreamChunk(
+                type="complete",
+                content="",
+                correlation_id=request.correlation_id,
+                metadata=completion_metadata,
+            )
+
+        return canonical_stream()
+
+    async def _persist_user_message(self, request: ChatRequest) -> Dict[str, Any]:
+        """Persist the user turn before any generation occurs."""
+        if self.conversation_manager is None:
+            raise RuntimeError("Conversation manager is unavailable for durable user message persistence")
+        if not hasattr(self.conversation_manager, "create_user_message"):
+            raise RuntimeError("Conversation manager does not implement create_user_message")
+        return await self.conversation_manager.create_user_message(request)
+
+    async def _resolve_conversation_state(
+        self,
+        request: ChatRequest,
+        user_message_record: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Resolve the current durable conversation state from Postgres."""
+        if self.conversation_manager is None:
+            return {"user_message": user_message_record, "recent_messages": []}
+
+        recent_messages: List[Dict[str, Any]] = []
+        if hasattr(self.conversation_manager, "load_recent_messages"):
+            recent_messages = await self.conversation_manager.load_recent_messages(
+                tenant_id=request.tenant_id or request.org_id or "default",
+                conversation_id=request.conversation_id,
+                limit=20,
+            )
+
+        return {
+            "conversation_id": request.conversation_id,
+            "user_message": user_message_record,
+            "recent_messages": recent_messages,
+        }
+
+    async def _build_working_context(
+        self,
+        request: ChatRequest,
+        conversation_state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Assemble the Stage 2 working context from durable history plus Redis session state."""
+        session_scope_id = request.session_id or request.conversation_id
+        recent_messages = list(conversation_state.get("recent_messages") or [])
+        persisted_user_id = str((conversation_state.get("user_message") or {}).get("id") or "").strip()
+        if persisted_user_id:
+            recent_messages = [
+                item for item in recent_messages
+                if str(item.get("id") or "").strip() != persisted_user_id
+            ]
+
+        session_state: Dict[str, Any] = {}
+        session_state_status = "unavailable"
+        if getattr(self, "session_state_manager", None) and session_scope_id:
+            try:
+                session_state = await self.session_state_manager.get_session_state(
+                    tenant_id=request.tenant_id or request.org_id or "default",
+                    user_id=request.user_id,
+                    session_id=session_scope_id,
+                )
+                session_state_status = "loaded" if session_state else "empty"
+            except Exception as exc:
+                logger.warning(
+                    "Stage 2 session state load failed for %s: %s",
+                    request.correlation_id,
+                    exc,
+                )
+                session_state = {}
+                session_state_status = "error"
+
+        existing_request_context = dict(request.metadata.get("request_context") or {})
+        compact_summary = str(session_state.get("compact_summary") or "").strip() or None
+        recalled_items: List[Dict[str, Any]] = list(existing_request_context.get("recalled_items") or [])
+        user_facts: List[Dict[str, Any]] = list(existing_request_context.get("user_facts") or [])
+        project_facts: List[Dict[str, Any]] = list(existing_request_context.get("project_facts") or [])
+        episodic_items: List[Dict[str, Any]] = list(existing_request_context.get("episodic_items") or [])
+        semantic_long_term_items: List[Dict[str, Any]] = list(
+            existing_request_context.get("semantic_long_term_items") or []
+        )
+        curated_recall_status = (
+            "prefilled"
+            if (
+                recalled_items
+                or user_facts
+                or project_facts
+                or episodic_items
+                or semantic_long_term_items
+            )
+            else "unavailable"
+        )
+        if request.include_context and getattr(self, "memory_processor", None):
+            try:
+                parsed_message = await nlp_service_manager.parse_message(request.message)
+                embeddings = await nlp_service_manager.get_embeddings(request.message)
+                raw_context = await self._retrieve_context(
+                    embeddings,
+                    parsed_message,
+                    request.user_id,
+                    request.conversation_id,
+                )
+                recalled_items = list(
+                    raw_context.get("recalled_items")
+                    or raw_context.get("memories")
+                    or []
+                )
+                user_facts = list(raw_context.get("user_facts") or [])
+                project_facts = list(raw_context.get("project_facts") or [])
+                episodic_items = list(raw_context.get("episodic_items") or [])
+                semantic_long_term_items = list(raw_context.get("semantic_long_term_items") or [])
+                curated_recall_status = "loaded" if recalled_items else "empty"
+            except Exception as exc:
+                logger.warning(
+                    "Stage 4 canonical recall build failed for %s: %s",
+                    request.correlation_id,
+                    exc,
+                )
+                curated_recall_status = "error"
+
+        request_context = existing_request_context
+        request_context["recent_messages"] = recent_messages
+        request_context["session_state"] = session_state
+        request_context["recalled_items"] = recalled_items
+        request_context["user_facts"] = user_facts
+        request_context["project_facts"] = project_facts
+        request_context["episodic_items"] = episodic_items
+        request_context["semantic_long_term_items"] = semantic_long_term_items
+        if compact_summary:
+            request_context["compact_summary"] = compact_summary
+        else:
+            request_context.pop("compact_summary", None)
+        request.metadata["request_context"] = request_context
+        request.metadata["canonical_runtime"] = {
+            "stage": "stage2",
+            "recent_message_count": len(recent_messages),
+            "persistence_backend": "postgres",
+            "session_state_backend": "redis",
+            "session_state_status": session_state_status,
+            "session_scope_id": session_scope_id,
+            "session_turn_count": len(list(session_state.get("recent_turns") or [])) if isinstance(session_state, dict) else 0,
+            "compact_summary_present": bool(compact_summary),
+            "curated_recall_status": curated_recall_status,
+            "recalled_item_count": len(recalled_items),
+            "user_fact_count": len(user_facts),
+            "project_fact_count": len(project_facts),
+            "episodic_item_count": len(episodic_items),
+            "semantic_long_term_count": len(semantic_long_term_items),
+        }
+        request.metadata.setdefault("skip_memory_writeback", True)
+
+        return {
+            "recent_messages": recent_messages,
+            "session_state": session_state,
+            "recalled_items": recalled_items,
+            "user_facts": user_facts,
+            "project_facts": project_facts,
+            "episodic_items": episodic_items,
+            "semantic_long_term_items": semantic_long_term_items,
+            "system_context": {"mode": "standard_chat"},
+            "compact_summary": compact_summary,
+        }
+
+    async def _select_execution_path(
+        self,
+        request: ChatRequest,
+        working_context: Dict[str, Any],
+    ) -> str:
+        """Select the Stage 1 execution path."""
+        return "direct_llm"
+
+    async def _execute_generation(
+        self,
+        request: ChatRequest,
+        working_context: Dict[str, Any],
+        execution_path: str,
+    ) -> ChatResponse:
+        """Execute generation through the existing orchestrator path."""
+        response = await self.process_message(request)
+        if not isinstance(response, ChatResponse):
+            raise RuntimeError("Streaming result returned during non-streaming Stage 1 execution")
+        return response
+
+    async def _finalize_response(
+        self,
+        request: ChatRequest,
+        generation_result: ChatResponse,
+        execution_path: str,
+        working_context: Dict[str, Any],
+        user_message_record: Dict[str, Any],
+    ) -> ChatResponse:
+        """Finalize response metadata before assistant persistence."""
+        metadata = dict(generation_result.metadata or {})
+        metadata["execution_path"] = execution_path
+        metadata["canonical_runtime"] = dict(request.metadata.get("canonical_runtime") or {})
+        metadata["working_context"] = {
+            "recent_messages": len(working_context.get("recent_messages") or []),
+            "recalled_items": len(working_context.get("recalled_items") or []),
+            "user_facts": len(working_context.get("user_facts") or []),
+            "project_facts": len(working_context.get("project_facts") or []),
+            "episodic_items": len(working_context.get("episodic_items") or []),
+            "semantic_long_term_items": len(working_context.get("semantic_long_term_items") or []),
+            "session_turns": len(list((working_context.get("session_state") or {}).get("recent_turns") or [])),
+            "session_summary_present": bool(working_context.get("compact_summary")),
+        }
+        memory_classification = dict(
+            (generation_result.structured_content or {}).get("memory_classification") or {}
+        )
+        if memory_classification:
+            metadata["working_context"]["memory_classification"] = memory_classification
+        metadata["persistence"] = {
+            "canonical_store": "postgres",
+            "user_message_id": user_message_record.get("id"),
+            "assistant_message_id": None,
+            "assistant_persisted": False,
+        }
+
+        telemetry = dict(generation_result.telemetry or {})
+        telemetry.update(
+            {
+                "request_id": request.request_id,
+                "conversation_id": request.conversation_id,
+                "execution_path": execution_path,
+            }
+        )
+
+        generation_result.request_id = request.request_id
+        generation_result.correlation_id = request.correlation_id or generation_result.correlation_id
+        generation_result.conversation_id = request.conversation_id
+        generation_result.execution_path = execution_path
+        generation_result.metadata = metadata
+        generation_result.telemetry = telemetry
+
+        if generation_result.status == ProcessingStatus.COMPLETED and generation_result.used_fallback:
+            generation_result.status = ProcessingStatus.DEGRADED
+
+        return generation_result
+
+    async def _persist_assistant_message(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+    ) -> ChatResponse:
+        """Persist the finalized assistant response exactly once."""
+        if self.conversation_manager is None:
+            return response
+        if not hasattr(self.conversation_manager, "create_assistant_message"):
+            return response
+
+        assistant_record = await self.conversation_manager.create_assistant_message(request, response)
+        metadata = dict(response.metadata or {})
+        persistence = dict(metadata.get("persistence") or {})
+        persistence["assistant_message_id"] = assistant_record.get("id")
+        persistence["assistant_persisted"] = bool(assistant_record)
+        persistence["persisted_at"] = assistant_record.get("created_at")
+        metadata["persistence"] = persistence
+
+        response.assistant_message_id = assistant_record.get("id")
+        response.metadata = metadata
+        return response
+
+    async def _post_response_writeback(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+        working_context: Dict[str, Any],
+    ) -> None:
+        """Write Redis continuity and Stage 4 curated promotion from the canonical spine."""
+        metadata = dict(response.metadata or {})
+        session_writeback: Dict[str, Any] = {
+            "saved": False,
+            "backend": "redis",
+            "reason": "session_state_manager_unavailable",
+        }
+
+        session_scope_id = request.session_id or request.conversation_id
+        if getattr(self, "session_state_manager", None) and session_scope_id:
+            recent_messages = list(working_context.get("recent_messages") or [])
+            prior_session_state = dict(working_context.get("session_state") or {})
+            recent_turns = []
+            prior_turns = list(prior_session_state.get("recent_turns") or [])
+            for item in prior_turns[-4:]:
+                if not isinstance(item, dict):
+                    continue
+                role = str(item.get("role") or "").strip().lower()
+                content = str(item.get("content") or "").strip()
+                if role not in {"user", "assistant"} or not content:
+                    continue
+                recent_turns.append(_compact_session_turn(role, content))
+            for item in recent_messages[-4:]:
+                if not isinstance(item, dict):
+                    continue
+                role = str(item.get("role") or "").strip().lower()
+                content = str(item.get("content") or "").strip()
+                if role not in {"user", "assistant"} or not content:
+                    continue
+                recent_turns.append(_compact_session_turn(role, content))
+            recent_turns.extend(
+                [
+                    _compact_session_turn("user", request.message),
+                    _compact_session_turn("assistant", response.response),
+                ]
+            )
+            recent_turns = recent_turns[-6:]
+            compact_summary = " | ".join(
+                f"{turn['role']}: {turn['content'][:120]}" for turn in recent_turns[-4:]
+            )[:1000]
+            session_state = {
+                "conversation_id": request.conversation_id,
+                "last_user_message": str(request.message or "").strip()[:280],
+                "last_assistant_response": str(response.response or "").strip()[:280],
+                "recent_turns": recent_turns,
+                "compact_summary": compact_summary,
+            }
+            try:
+                await self.session_state_manager.put_session_state(
+                    tenant_id=request.tenant_id or request.org_id or "default",
+                    user_id=request.user_id,
+                    session_id=session_scope_id,
+                    state=session_state,
+                )
+                session_writeback = {
+                    "saved": True,
+                    "backend": "redis",
+                    "session_scope_id": session_scope_id,
+                    "recent_turn_count": len(recent_turns),
+                }
+            except Exception as exc:
+                logger.warning(
+                    "Stage 2 session state writeback failed for %s: %s",
+                    request.correlation_id,
+                    exc,
+                )
+                session_writeback = {
+                    "saved": False,
+                    "backend": "redis",
+                    "reason": "session_state_writeback_error",
+                    "error": str(exc),
+                }
+
+        stage4_writeback: Dict[str, Any] = {}
+        structured_content = dict(response.structured_content or {})
+        has_stage4_payload = bool(
+            structured_content.get("memory_classification")
+            or structured_content.get("curated_writeback_candidates")
+        )
+        if has_stage4_payload and hasattr(self, "_orchestrate_post_response_memory_writeback"):
+            request_context = dict(request.metadata.get("request_context") or {})
+            writeback_context_payload = dict(request.metadata.get("integrated_context") or {})
+            if not isinstance(writeback_context_payload.get("memories"), list):
+                writeback_context_payload["memories"] = list(request_context.get("recalled_items") or [])
+            writeback_context_payload.setdefault(
+                "user_facts", list(request_context.get("user_facts") or [])
+            )
+            writeback_context_payload.setdefault(
+                "project_facts", list(request_context.get("project_facts") or [])
+            )
+            writeback_context_payload.setdefault(
+                "episodic_items", list(request_context.get("episodic_items") or [])
+            )
+            writeback_context_payload.setdefault(
+                "semantic_long_term_items",
+                list(request_context.get("semantic_long_term_items") or []),
+            )
+            writeback_request = request.model_copy(deep=True)
+            writeback_request.metadata = dict(writeback_request.metadata or {})
+            writeback_request.metadata.pop("skip_memory_writeback", None)
+            writeback_context = ProcessingContext(request=writeback_request)
+            writeback_context.correlation_id = request.correlation_id
+            if request.org_id and not writeback_context.metadata.get("org_id"):
+                writeback_context.metadata["org_id"] = request.org_id
+            writeback_result = ProcessingResult(
+                success=response.status != ProcessingStatus.FAILED and bool(response.response),
+                response=response.response,
+                llm_metadata=dict(metadata.get("llm") or {}),
+                processing_time=response.processing_time,
+                used_fallback=response.used_fallback,
+                structured_content=structured_content,
+                actions=list(response.actions or []),
+                context=writeback_context_payload,
+                correlation_id=request.correlation_id,
+            )
+            try:
+                stage4_writeback = await self._orchestrate_post_response_memory_writeback(
+                    writeback_request,
+                    writeback_context,
+                    writeback_result,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Stage 4 canonical memory writeback failed for %s: %s",
+                    request.correlation_id,
+                    exc,
+                )
+                stage4_writeback = {
+                    "queued": False,
+                    "reason": "canonical_writeback_exception",
+                    "error": str(exc),
+                }
+
+        metadata["memory_writeback"] = stage4_writeback
+        metadata["writeback"] = {
+            "memory_promotion": "queued" if stage4_writeback.get("queued") else "skipped",
+            "reason": (
+                stage4_writeback.get("reason")
+                or ("stage4_canonical_runtime" if has_stage4_payload else "stage2_canonical_runtime")
+            ),
+            "memory_writeback": stage4_writeback,
+            "session_state": session_writeback,
+        }
+        response.metadata = metadata
+
+    async def _emit_chat_telemetry(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+        working_context: Dict[str, Any],
+    ) -> None:
+        """Emit lightweight Stage 1 lifecycle telemetry."""
+        telemetry = dict(response.telemetry or {})
+        telemetry["lifecycle"] = {
+            "request_id": request.request_id,
+            "correlation_id": request.correlation_id,
+            "conversation_id": request.conversation_id,
+            "assistant_message_id": response.assistant_message_id,
+            "status": response.status.value if hasattr(response.status, "value") else str(response.status),
+        }
+        response.telemetry = telemetry
 
     async def process_message(
         self,
@@ -626,11 +1197,18 @@ class ChatCoreMixin(Base):
             except Exception as e:
                 return ProcessingResult(success=False, error=f"Embedding generation failed: {str(e)}", error_type=ErrorType.EMBEDDING_ERROR, processing_time=time.time() - start_time, correlation_id=context.correlation_id)
             
+            extracted_memories = []
             if self.memory_processor:
                 try:
-                    await self.memory_processor.extract_memories(request.message, parsed_message, embeddings, request.user_id, request.conversation_id)
+                    extracted_memories = await self.memory_processor.extract_memories(
+                        request.message,
+                        parsed_message,
+                        embeddings,
+                        request.user_id,
+                        request.conversation_id,
+                    )
                 except Exception:
-                    pass
+                    extracted_memories = []
             
             attachment_context = {}
             if request.attachments and self.file_attachment_service:
@@ -647,8 +1225,22 @@ class ChatCoreMixin(Base):
                     if active_instructions:
                         raw_context["instructions"] = [{"type": inst.type.value, "content": inst.content, "priority": inst.priority.value, "scope": inst.scope.value, "confidence": inst.confidence} for inst in active_instructions]
                     integrated_context = await self.context_integrator.integrate_context(raw_context, request.message, request.user_id, request.conversation_id)
+                    context.metadata["integrated_context"] = integrated_context.to_dict() if integrated_context else {}
                 except Exception:
                     pass
+            elif active_instructions:
+                context.metadata["integrated_context"] = {
+                    "instructions": [
+                        {
+                            "type": inst.type.value,
+                            "content": inst.content,
+                            "priority": inst.priority.value,
+                            "scope": inst.scope.value,
+                            "confidence": inst.confidence,
+                        }
+                        for inst in active_instructions
+                    ]
+                }
             
             try:
                 result = await self._generate_ai_response_enhanced(
@@ -677,6 +1269,20 @@ class ChatCoreMixin(Base):
                 except Exception:
                     pass
 
+                structured_content: Dict[str, Any] = {}
+                if self.memory_processor and extracted_memories:
+                    try:
+                        structured_content.update(
+                            self.memory_processor.build_stage4_writeback_payload(
+                                request.message,
+                                ai_response,
+                                extracted_memories,
+                                include_episodic_summary=not (used_fallback or llm_used_fallback),
+                            )
+                        )
+                    except Exception:
+                        pass
+
                 synth_result = ProcessingResult(
                     success=True, 
                     response=ai_response, 
@@ -686,7 +1292,8 @@ class ChatCoreMixin(Base):
                     processing_time=time.time() - start_time, 
                     used_fallback=used_fallback or llm_used_fallback, 
                     correlation_id=context.correlation_id, 
-                    llm_metadata=llm_metadata
+                    llm_metadata=llm_metadata,
+                    structured_content=structured_content,
                 )
                 
                 return synth_result

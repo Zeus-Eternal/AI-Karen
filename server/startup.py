@@ -143,7 +143,7 @@ def register_startup_tasks(app: FastAPI) -> None:
     @app.on_event("startup")
     async def _warm_local_llm_stack() -> None:
         """Warm the local chat/LLM stack during startup so first chat request does not time out."""
-        if os.getenv("KARI_WARM_LOCAL_LLM_ON_STARTUP", "true").lower() not in ("1", "true", "yes"):
+        if os.getenv("KARI_WARM_LOCAL_LLM_ON_STARTUP", "false").lower() not in ("1", "true", "yes"):
             logger.info("Skipping local LLM warmup (disabled by environment)")
             return
 
@@ -269,12 +269,26 @@ def register_startup_tasks(app: FastAPI) -> None:
             # Check if memory service should be initialized
             import os
             enable_memory = os.getenv("KARI_ENABLE_MEMORY_SERVICE", "true").lower() in ("1", "true", "yes")
+            fast = os.getenv("KARI_FAST_STARTUP", os.getenv("FAST_STARTUP", "true")).lower() in ("1", "true", "yes")
             
             if enable_memory:
-                logger.info("Initializing memory service...")
                 from ai_karen_engine.core.service_registry import initialize_services
-                await initialize_services()
-                logger.info("Memory service initialized successfully")
+
+                if fast:
+                    logger.info("⚡ Fast startup: deferring memory service initialization to background")
+
+                    async def _bg_init_memory() -> None:
+                        try:
+                            await initialize_services()
+                            logger.info("Memory service initialized successfully (background)")
+                        except Exception as e:
+                            logger.warning(f"Background memory service initialization failed: {e}")
+
+                    asyncio.create_task(_bg_init_memory())
+                else:
+                    logger.info("Initializing memory service...")
+                    await initialize_services()
+                    logger.info("Memory service initialized successfully")
             else:
                 logger.info("Memory service initialization disabled by environment variable")
         except Exception as e:

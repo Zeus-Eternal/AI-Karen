@@ -32,11 +32,20 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
+from ai_karen_engine.core.memory.curated_recall import (
+    CURATED_MEMORY_KIND,
+    DEFAULT_CURATED_MEMORY_CLASSES,
+    build_curated_metadata_filter,
+    filter_curated_memories,
+)
 from ai_karen_engine.services.spacy_service import ParsedMessage, SpacyService
 from ai_karen_engine.services.distilbert_service import DistilBertService
 from ai_karen_engine.database.memory_manager import MemoryManager, MemoryEntry, MemoryQuery
 
 logger = logging.getLogger(__name__)
+
+
+ALLOWED_CURATED_MEMORY_CLASSES = set(DEFAULT_CURATED_MEMORY_CLASSES)
 
 
 class MemoryType(str, Enum):
@@ -101,19 +110,59 @@ class MemoryContext:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert context to dictionary format."""
+        user_facts = []
+        project_facts = []
+        episodic_items = []
+        semantic_long_term_items = []
+        recalled_items = []
+
+        for memory in self.memories:
+            memory_payload = {
+                "id": memory.id,
+                "content": memory.content,
+                "memory_class": (memory.metadata or {}).get("memory_class"),
+                "combined_score": memory.combined_score,
+                "similarity_score": memory.similarity_score,
+                "recency_score": memory.recency_score,
+                "created_at": memory.created_at.isoformat(),
+                "metadata": memory.metadata,
+            }
+            recalled_items.append(memory_payload)
+
+            memory_class = memory_payload["memory_class"]
+            if memory_class == "user_fact":
+                user_facts.append(memory_payload)
+            elif memory_class == "project_fact":
+                project_facts.append(memory_payload)
+            elif memory_class == "episodic":
+                episodic_items.append(memory_payload)
+            elif memory_class == "semantic_long_term":
+                semantic_long_term_items.append(memory_payload)
+
         return {
             "memories": [
                 {
+                    "id": m.id,
                     "content": m.content,
                     "type": m.memory_type.value,
+                    "memory_class": (m.metadata or {}).get("memory_class"),
+                    "similarity_score": m.similarity_score,
+                    "recency_score": m.recency_score,
+                    "combined_score": m.combined_score,
                     "score": m.combined_score,
-                    "created_at": m.created_at.isoformat()
+                    "created_at": m.created_at.isoformat(),
+                    "metadata": m.metadata,
                 } for m in self.memories
             ],
             "entities": self.entities,
             "preferences": self.preferences,
             "facts": self.facts,
             "relationships": self.relationships,
+            "recalled_items": recalled_items,
+            "user_facts": user_facts,
+            "project_facts": project_facts,
+            "episodic_items": episodic_items,
+            "semantic_long_term_items": semantic_long_term_items,
             "context_summary": self.context_summary,
             "retrieval_time": self.retrieval_time,
             "total_memories_considered": self.total_memories_considered
@@ -284,6 +333,51 @@ class MemoryProcessor:
                 exc_info=True
             )
             return []
+
+    def build_stage4_writeback_payload(
+        self,
+        user_message: str,
+        assistant_response: str,
+        extracted_memories: List[ExtractedMemory],
+        *,
+        include_episodic_summary: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Build Stage 4 classified memory payload for post-response writeback.
+
+        Extracted memories are already stored through the existing extraction path.
+        The Stage 4 writeback payload therefore focuses on:
+        - explicit classification summaries for runtime metadata
+        - intentional episodic turn summaries for post-response promotion
+        """
+        classified = self._group_extracted_memories_by_class(extracted_memories)
+        summary = {
+            "user_facts": len(classified["user_fact"]),
+            "project_facts": len(classified["project_fact"]),
+            "episodic": len(classified["episodic"]),
+            "semantic_long_term": len(classified["semantic_long_term"]),
+            "training_candidate": 0,
+            "total_classified": len(extracted_memories),
+        }
+
+        payload: Dict[str, Any] = {
+            "memory_classification": summary,
+            "classified_memories": {
+                key: [self._serialize_extracted_memory(memory) for memory in values]
+                for key, values in classified.items()
+            },
+        }
+
+        if include_episodic_summary:
+            episodic_candidate = self._build_episodic_turn_candidate(
+                user_message=user_message,
+                assistant_response=assistant_response,
+                extracted_memories=extracted_memories,
+            )
+            if episodic_candidate:
+                payload["curated_writeback_candidates"] = [episodic_candidate]
+
+        return payload
     
     async def get_relevant_context(
         self,
@@ -312,11 +406,14 @@ class MemoryProcessor:
         try:
             # Build memory query
             query = MemoryQuery(
-                text="",  # We're using embeddings directly
+                text=getattr(parsed_query, "text", "") or "",
                 user_id=user_id,
                 top_k=max_memories * 2,  # Get more for filtering
                 similarity_threshold=self.similarity_threshold,
-                include_embeddings=False
+                include_embeddings=False,
+                query_embedding=query_embedding,
+                kind=CURATED_MEMORY_KIND,
+                metadata_filter=build_curated_metadata_filter(),
             )
             
             # Add entity-based filtering if available
@@ -330,13 +427,26 @@ class MemoryProcessor:
                     f"Memory manager is not available for user {user_id}. "
                     "Skipping memory retrieval. Chat will continue without context."
                 )
-                return []
+                return MemoryContext(
+                    memories=[],
+                    entities=[],
+                    preferences=[],
+                    facts=[],
+                    relationships=[],
+                    context_summary="Memory manager not available",
+                    retrieval_time=time.time() - start_time,
+                    total_memories_considered=0,
+                )
             
             memories = await self.memory_manager.query_memories("default_tenant", query)
+            curated_memories = filter_curated_memories(
+                memories,
+                allowed_classes=DEFAULT_CURATED_MEMORY_CLASSES,
+            )
             
             # Calculate semantic similarity scores
             relevant_memories = []
-            for memory in memories:
+            for memory in curated_memories:
                 if memory.embedding:
                     similarity = await self._calculate_similarity(
                         query_embedding, memory.embedding
@@ -372,12 +482,12 @@ class MemoryProcessor:
             
             processing_time = time.time() - start_time
             context.retrieval_time = processing_time
-            context.total_memories_considered = len(memories)
+            context.total_memories_considered = len(curated_memories)
             
             self._retrieval_count += 1
             
             logger.info(
-                f"Retrieved {len(relevant_memories)} relevant memories "
+                f"Retrieved {len(relevant_memories)} curated relevant memories "
                 f"in {processing_time:.3f}s (user: {user_id})"
             )
             
@@ -725,10 +835,14 @@ class MemoryProcessor:
     async def _store_memory(self, memory: ExtractedMemory) -> Optional[str]:
         """Store extracted memory in the memory manager."""
         try:
+            memory_class = self._map_memory_class(memory.memory_type)
             metadata = {
                 "type": memory.memory_type.value,
+                "memory_class": memory_class,
+                "curated": True,
                 "confidence": memory.confidence.value,
                 "extraction_method": memory.extraction_method,
+                "user_id": memory.user_id,
                 "conversation_id": memory.conversation_id,
                 **memory.metadata
             }
@@ -740,9 +854,9 @@ class MemoryProcessor:
             memory_id = await self.memory_manager.store_memory(
                 tenant_id="default_tenant",
                 content=memory.content,
-                user_id=memory.user_id,
+                scope=f"user:{memory.user_id}",
+                kind=CURATED_MEMORY_KIND,
                 metadata=metadata,
-                tags=[memory.memory_type.value, memory.confidence.value]
             )
             
             return memory_id
@@ -750,6 +864,90 @@ class MemoryProcessor:
         except Exception as e:
             logger.error(f"Failed to store memory: {e}")
             return None
+
+    @staticmethod
+    def _map_memory_class(memory_type: MemoryType) -> str:
+        if memory_type == MemoryType.PREFERENCE:
+            return "user_fact"
+        if memory_type == MemoryType.TEMPORAL:
+            return "episodic"
+        if memory_type == MemoryType.FACT:
+            return "project_fact"
+        return "semantic_long_term"
+
+    def _group_extracted_memories_by_class(
+        self,
+        extracted_memories: List[ExtractedMemory],
+    ) -> Dict[str, List[ExtractedMemory]]:
+        grouped = {
+            "user_fact": [],
+            "project_fact": [],
+            "episodic": [],
+            "semantic_long_term": [],
+        }
+        seen: set[tuple[str, str]] = set()
+        for memory in extracted_memories:
+            memory_class = self._map_memory_class(memory.memory_type)
+            key = (memory_class, memory.content.strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            grouped[memory_class].append(memory)
+        return grouped
+
+    def _serialize_extracted_memory(self, memory: ExtractedMemory) -> Dict[str, Any]:
+        memory_class = self._map_memory_class(memory.memory_type)
+        return {
+            "content": memory.content,
+            "memory_type": memory.memory_type.value,
+            "memory_class": memory_class,
+            "confidence": memory.confidence.value,
+            "source_message": memory.source_message,
+            "metadata": dict(memory.metadata or {}),
+            "timestamp": memory.timestamp.isoformat(),
+        }
+
+    def _build_episodic_turn_candidate(
+        self,
+        *,
+        user_message: str,
+        assistant_response: str,
+        extracted_memories: List[ExtractedMemory],
+    ) -> Optional[Dict[str, Any]]:
+        if not user_message.strip() or not assistant_response.strip():
+            return None
+
+        user_excerpt = self._truncate_for_summary(user_message, limit=220)
+        assistant_excerpt = self._truncate_for_summary(assistant_response, limit=260)
+        extracted_classes = sorted(
+            {
+                self._map_memory_class(memory.memory_type)
+                for memory in extracted_memories
+            }
+        )
+        summary_content = (
+            f"Conversation turn summary: user said '{user_excerpt}'. "
+            f"Assistant replied '{assistant_excerpt}'."
+        )
+        return {
+            "content": summary_content,
+            "memory_class": "episodic",
+            "importance": 6,
+            "tags": ["stage4", "episodic", "turn_summary"],
+            "metadata": {
+                "source": "turn_summary",
+                "summary_type": "conversation_turn",
+                "extracted_memory_count": len(extracted_memories),
+                "derived_from_classes": extracted_classes,
+            },
+        }
+
+    @staticmethod
+    def _truncate_for_summary(text: str, limit: int = 240) -> str:
+        normalized = " ".join(text.split()).strip()
+        if len(normalized) <= limit:
+            return normalized
+        return normalized[: limit - 3].rstrip() + "..."
     
     async def _calculate_similarity(
         self,

@@ -16,6 +16,13 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import Field
 
+from ai_karen_engine.core.memory.curated_recall import (
+    CURATED_MEMORY_KIND,
+    DEFAULT_CURATED_MEMORY_CLASSES,
+    build_curated_metadata_filter,
+    filter_curated_memories,
+    is_curated_memory_metadata,
+)
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.core.milvus_client import MilvusClient
 from ai_karen_engine.database.client import MultiTenantPostgresClient
@@ -76,6 +83,10 @@ class MemoryQueryRequest(ISO8601Model):
     top_k: int = Field(12, ge=1, le=50)
     similarity_threshold: float = Field(0.7, ge=0.0, le=1.0)
     include_metadata: bool = Field(True)
+    curated_only: bool = Field(False)
+    memory_classes: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_CURATED_MEMORY_CLASSES)
+    )
 
 
 class MemorySearchResponse(ISO8601Model):
@@ -182,6 +193,8 @@ class UnifiedMemoryService:
             metadata_filter = {"user_id": request.user_id}
             if request.org_id:
                 metadata_filter["org_id"] = request.org_id
+            if request.curated_only:
+                metadata_filter = build_curated_metadata_filter(metadata_filter)
 
             # 2. Create base query with policy-driven parameters
             rerank_window = self.policy.calculate_rerank_window(request.top_k)
@@ -192,12 +205,18 @@ class UnifiedMemoryService:
                 top_k=rerank_window,  # Get more for reranking
                 similarity_threshold=request.similarity_threshold,
                 include_embeddings=False,
+                kind=CURATED_MEMORY_KIND if request.curated_only else None,
             )
 
             # 3. Execute vector similarity search
             base_memories = await self.base_manager.query_memories(
                 tenant_id, base_query
             )
+            if request.curated_only:
+                base_memories = filter_curated_memories(
+                    base_memories,
+                    allowed_classes=request.memory_classes,
+                )
 
             # 4. Apply policy-based filtering and ranking
             filtered_memories = await self._apply_policy_filtering(base_memories)
@@ -278,13 +297,27 @@ class UnifiedMemoryService:
                 "interface": "unified",  # Mark as coming from unified service
                 **request.metadata,
             }
+            if (
+                unified_metadata.get("memory_class") in DEFAULT_CURATED_MEMORY_CLASSES
+                and unified_metadata.get("curated") is not True
+            ):
+                unified_metadata["curated"] = True
+
+            memory_kind = (
+                CURATED_MEMORY_KIND
+                if is_curated_memory_metadata(
+                    unified_metadata,
+                    allowed_classes=DEFAULT_CURATED_MEMORY_CLASSES,
+                )
+                else "memory"
+            )
 
             # 3. Store using base manager
             memory_id = await self.base_manager.store_memory(
                 tenant_id=tenant_id,
                 content=request.text,
                 scope=f"user:{request.user_id}",
-                kind="memory",
+                kind=memory_kind,
                 metadata=unified_metadata,
             )
 

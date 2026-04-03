@@ -34,6 +34,7 @@ from ai_karen_engine.core.memory.manager import (
     update_memory,
 )
 from ai_karen_engine.core.memory.session_buffer import SessionBuffer
+from ai_karen_engine.core.memory.session_state_manager import SessionStateManager
 from ai_karen_engine.core.memory.np_memory import (
     load_jsonl,
     extract_pairs,
@@ -111,6 +112,7 @@ __all__ = [
     "_METRICS",
     "init_memory",
     "SessionBuffer",
+    "SessionStateManager",
 
     # AG-UI enhanced memory system
     "AGUIMemoryManager",

@@ -17,8 +17,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import {
+  deriveCompactBadgePresentation,
+  deriveDegradedPresentation,
+  deriveResponseDetailsPresentation,
+  sanitizeChatContent,
+} from '@/lib/chat-response';
+import { ChatRenderedContent } from '@/lib/chat-renderer';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -85,37 +90,45 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     // Future: API call to record feedback
   };
 
+  const {
+    visibleDegradedNotice,
+    shouldRenderDegradedState,
+  } = deriveDegradedPresentation(message.metadata);
   const llm = message.metadata?.llm;
-  const metadataKeys = message.metadata ? Object.keys(message.metadata) : [];
-  const hasMetadataDetails = metadataKeys.length > 0;
-  const failureCategory = message.metadata?.failure_category || llm?.failure_category;
-  const isSafetyBlocked = failureCategory === 'safety_blocked';
-  const usedFallback = message.metadata?.orchestrator?.used_fallback === true;
-  const isLocalFallbackSource =
-    llm?.source === 'chat_orchestrator_local_fallback' ||
-    llm?.source === 'configured_fallback_provider' ||
-    llm?.source === 'runtime_error_fallback' ||
-    llm?.fallback_level === 'local';
-  const isDegraded =
-    message.metadata?.degraded_mode === true ||
-    llm?.is_degraded === true ||
-    usedFallback ||
-    isLocalFallbackSource;
-  const hasLlmInfo = llm && (llm.provider || llm.model_id);
-  const normalizedContent = (message.content || '')
-    .replace(/^<div class="ui-[^"]+">\s*/i, '')
-    .replace(/<\/div>\s*$/i, '')
-    .replace(/^<section[^>]*>\s*/i, '')
-    .replace(/<\/section>\s*$/i, '')
-    .replace(/^<div role="article"[^>]*>\s*/i, '')
-    .replace(/<\/div>\s*$/i, '')
-    .trim();
+  const {
+    shouldRenderBadge,
+    providerLabel: badgeProviderLabel,
+    modelLabel: badgeModelLabel,
+    durationLabel: badgeDurationLabel,
+    speedLabel: badgeSpeedLabel,
+    statusLabel: badgeStatusLabel,
+    isDegraded: badgeIsDegraded,
+  } = deriveCompactBadgePresentation(message.metadata);
+  const {
+    hasMetadataDetails,
+    providerLabel,
+    modelLabel,
+    modelTitle,
+    sourceLabel,
+    speedLabel,
+    latencyLabel,
+    engineHeaderLabel,
+    showStatusRow,
+    statusLabel,
+    showFallbackRow,
+    fallbackLabel,
+    showReasonRow,
+    reasonLabel,
+    showTokensRow,
+    tokensLabel,
+  } = deriveResponseDetailsPresentation(message.metadata);
+  const normalizedContent = sanitizeChatContent(message.content);
 
   return (
     <div className={`user-bubble flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       {!isUser && (
-        <Avatar className={`h-10 w-10 self-start shrink-0 flex items-center justify-center rounded-full shadow-sm ${isDegraded || isSafetyBlocked ? 'bg-amber-500/20' : 'bg-muted'}`}>
-          <Bot className={`h-5 w-5 ${isDegraded || isSafetyBlocked ? 'text-amber-600' : 'text-primary'}`} />
+        <Avatar className={`h-10 w-10 self-start shrink-0 flex items-center justify-center rounded-full shadow-sm ${shouldRenderDegradedState ? 'bg-amber-500/20' : 'bg-muted'}`}>
+          <Bot className={`h-5 w-5 ${shouldRenderDegradedState ? 'text-amber-600' : 'text-primary'}`} />
         </Avatar>
       )}
       <Card className={`shadow-md rounded-2xl border-none transition-all duration-300 ${
@@ -126,80 +139,54 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
         <CardContent className="p-3 md:p-4">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 space-y-2 overflow-hidden">
+              {!isUser && message.role === 'assistant' && visibleDegradedNotice && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200/90">
+                  {visibleDegradedNotice}
+                </div>
+              )}
+
               {message.content && (
-                 <div className={`prose prose-sm md:prose-base dark:prose-invert max-w-none ${isSystemMessage ? 'text-foreground font-medium' : ''}`}>
-                   <ReactMarkdown 
-                     remarkPlugins={[remarkGfm]}
-                     components={{
-                       p: ({node, ...props}) => <p className="mb-2 last:mb-0 whitespace-pre-wrap leading-relaxed" {...props} />,
-                       a: ({node, ...props}) => <a className="text-blue-400 hover:underline font-medium" target="_blank" rel="noreferrer" {...props} />,
-                       ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
-                       ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
-                       li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                       code: ({node, className, children, ...props}: any) => {
-                         const match = /language-(\w+)/.exec(className || '');
-                         const isInline = !match && !String(children).includes('\n');
-                         return !isInline ? (
-                           <div className="relative group my-3">
-                             <pre className="p-3 md:p-4 bg-[#1e1e1e] text-[#d4d4d4] rounded-xl overflow-x-auto font-mono text-xs md:text-sm border border-white/5">
-                               <code className={className} {...props}>
-                                 {children}
-                               </code>
-                             </pre>
-                           </div>
-                         ) : (
-                           <code className="bg-muted px-1.5 py-0.5 rounded text-[0.9em] font-mono text-primary-foreground/90 bg-primary-foreground/10" {...props}>
-                             {children}
-                           </code>
-                         )
-                       }
-                     }}
-                   >
-                     {normalizedContent}
-                   </ReactMarkdown>
-                 </div>
+                <ChatRenderedContent
+                  content={normalizedContent}
+                  emphasize={isSystemMessage}
+                />
               )}
 
               {/* Compact Metadata Badge — always visible for assistant messages */}
-              {!isUser && message.role === 'assistant' && (hasLlmInfo || hasMetadataDetails || message.metadata?.degraded_mode) && (
+              {!isUser && message.role === 'assistant' && shouldRenderBadge && (
                 <div className="flex items-center gap-2 flex-wrap mt-2 overflow-hidden">
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide uppercase border transition-all duration-300 ${
-                    isDegraded || isSafetyBlocked
+                    badgeIsDegraded
                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-sm shadow-amber-500/5'
                       : 'bg-primary/5 text-primary/80 border-primary/10 shadow-sm shadow-primary/5'
                   }`}>
-                    {isDegraded || isSafetyBlocked ? (
+                    {badgeIsDegraded ? (
                       <AlertTriangle className="h-3 w-3 animate-pulse" />
                     ) : (
                       <Zap className="h-3 w-3" />
                     )}
-                    <span>{llm?.provider || 'system'}</span>
-                    <span className="text-muted-foreground/50">·</span>
-                    <span className="normal-case font-medium">
-                      {isSafetyBlocked
-                        ? 'Safety Blocked'
-                        : llm?.model_name || (llm?.model_id ? 
-                        llm.model_id.split(':').pop()?.split('/').pop()?.replace(/\.(gguf|bin)$/i, '').replace(/[-_]/g, ' ') 
-                        : (isDegraded ? 'Degraded-Mode' : 'auto')
-                      )}
-                    </span>
-                    {typeof llm?.duration === 'number' && (
+                      <span>{badgeProviderLabel}</span>
+                      <span className="text-muted-foreground/50">·</span>
+                      <span className="normal-case font-medium">
+                        {badgeModelLabel}
+                      </span>
+                    {badgeDurationLabel && (
                       <>
                         <span className="text-muted-foreground/50">·</span>
                         <Clock className="h-2.5 w-2.5" />
-                        <span className="normal-case font-medium">{llm.duration.toFixed(1)}s</span>
+                        <span className="normal-case font-medium">{badgeDurationLabel}</span>
                       </>
                     )}
-                    {llm?.tokens_per_second && (
+                    {badgeSpeedLabel && (
                       <>
                         <span className="text-muted-foreground/50">·</span>
-                        <span className="normal-case font-medium text-emerald-500">{llm.tokens_per_second} tok/s</span>
+                        <span className="normal-case font-medium text-emerald-500">{badgeSpeedLabel}</span>
                       </>
                     )}
                   </div>
-                  {(isDegraded || isSafetyBlocked) && (
+                  {badgeStatusLabel && (
                     <span className="text-[10px] text-amber-500/70 font-medium tracking-tight animate-pulse">
-                      {isSafetyBlocked ? 'provider policy block' : 'degraded mode'}
+                      {badgeStatusLabel}
                     </span>
                   )}
                 </div>
@@ -221,50 +208,54 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
                     <div className="mt-2 p-2.5 bg-muted/40 rounded-xl border border-border/30 text-[10px] grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono shadow-inner animate-in fade-in zoom-in-95 duration-200">
                       <div className="flex justify-between border-b border-border/20 pb-1 col-span-2 mb-1">
                           <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Engine Metadata</span>
-                          <span className="text-[8px] text-blue-500 font-bold uppercase">{llm?.provider || 'system'}</span>
+                          <span className="text-[8px] text-blue-500 font-bold uppercase">{engineHeaderLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Provider:</span>
-                        <span className="font-semibold">{llm?.provider || 'system'}</span>
+                      <span className="font-semibold">{providerLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Model:</span>
-                        <span className="font-semibold truncate max-w-[120px]" title={llm.model_id}>
-                          {llm?.model_id?.split(':').pop() || llm?.model_name || 'auto'}
+                        <span className="font-semibold truncate max-w-[120px]" title={modelTitle}>
+                          {modelLabel}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Source:</span>
-                        <span className="font-semibold">{llm?.source || 'direct'}</span>
+                        <span className="font-semibold">{sourceLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Speed:</span>
-                        <span className="font-semibold text-emerald-500">{llm?.tokens_per_second || 'N/A'} tok/s</span>
+                        <span className="font-semibold text-emerald-500">{speedLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Latency:</span>
-                        <span className="font-semibold text-blue-500">{typeof llm?.duration === 'number' ? llm.duration.toFixed(2) : 'N/A'}s</span>
+                        <span className="font-semibold text-blue-500">{latencyLabel}</span>
                       </div>
-                      {(isDegraded || isSafetyBlocked) && (
+                      {showStatusRow && (
                         <div className="flex justify-between col-span-2 pt-1 mt-1 border-t border-border/20">
                           <span className="text-muted-foreground">Status:</span>
                           <span className="font-semibold text-amber-500 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" /> {isSafetyBlocked ? 'Safety Blocked' : 'Degraded Mode'}
+                            <AlertTriangle className="h-3 w-3" /> {statusLabel}
                           </span>
                         </div>
                       )}
-                      {llm?.failure_reason && (
+                      {showFallbackRow && (
+                        <div className="col-span-2 pt-1 mt-1 border-t border-border/20">
+                          <span className="text-muted-foreground">Fallback:</span>
+                          <span className="font-semibold text-amber-300 ml-2 break-all">{fallbackLabel}</span>
+                        </div>
+                      )}
+                      {showReasonRow && (
                         <div className="col-span-2 pt-1 mt-1 border-t border-border/20">
                           <span className="text-muted-foreground">Reason:</span>
-                          <span className="font-semibold text-rose-400 ml-2 break-all">{llm.failure_reason}</span>
+                          <span className="font-semibold text-rose-400 ml-2 break-all">{reasonLabel}</span>
                         </div>
                       )}
-                      {llm?.usage && (
+                      {showTokensRow && (
                         <div className="col-span-2 pt-1 mt-1 border-t border-border/20 flex justify-between">
                           <span className="text-muted-foreground">Tokens:</span>
-                          <span className="font-semibold text-amber-500">
-                            {llm.usage.prompt_tokens || 0}i + {llm.usage.completion_tokens || 0}o
-                          </span>
+                          <span className="font-semibold text-amber-500">{tokensLabel}</span>
                         </div>
                       )}
                     </div>

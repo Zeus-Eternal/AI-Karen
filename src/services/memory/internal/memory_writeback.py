@@ -18,6 +18,11 @@ try:
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
+from ai_karen_engine.core.memory.curated_recall import (
+    DEFAULT_CURATED_MEMORY_CLASSES,
+    is_curated_memory_metadata,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -113,6 +118,7 @@ class MemoryWritebackSystem:
         # Performance metrics
         self.metrics = {
             "writebacks_processed": 0,
+            "writebacks_skipped_non_curated": 0,
             "shard_links_created": 0,
             "feedback_metrics_calculated": 0,
             "avg_writeback_time_ms": 0.0,
@@ -262,49 +268,14 @@ class MemoryWritebackSystem:
             for entry in batch:
                 try:
                     # Create memory commit request
-                    from services.memory.unified_memory_service import (
-                        MemoryCommitRequest,
-                    )
-
-                    # Determine decay tier based on interaction type and importance
-                    decay_tier = self._determine_decay_tier(
-                        entry.interaction_type, entry.importance
-                    )
-
-                    # Enhance metadata with shard links
-                    enhanced_metadata = {
-                        **entry.metadata,
-                        "interaction_type": entry.interaction_type.value,
-                        "source_shard_count": len(entry.source_shards),
-                        "source_shard_ids": [
-                            link.shard_id for link in entry.source_shards
-                        ],
-                        "session_id": entry.session_id,
-                        "writeback_id": entry.id,
-                        "writeback_timestamp": entry.created_at.isoformat(),
-                    }
-
-                    # Add shard link details
-                    if entry.source_shards:
-                        enhanced_metadata["shard_links"] = [
-                            {
-                                "shard_id": link.shard_id,
-                                "usage_type": link.usage_type.value,
-                                "relevance_score": link.relevance_score,
-                                "position": link.position_in_results,
-                            }
-                            for link in entry.source_shards
-                        ]
-
-                    commit_request = MemoryCommitRequest(
-                        user_id=entry.user_id,
-                        org_id=entry.org_id,
-                        text=entry.content,
-                        tags=entry.tags,
-                        importance=entry.importance,
-                        decay=decay_tier,
-                        metadata=enhanced_metadata,
-                    )
+                    commit_request = self._build_commit_request(entry)
+                    if commit_request is None:
+                        self.metrics["writebacks_skipped_non_curated"] += 1
+                        logger.debug(
+                            "Skipping non-curated writeback entry %s",
+                            entry.id,
+                        )
+                        continue
 
                     # Commit to memory service
                     # Assume we have access to tenant_id through the service
@@ -348,6 +319,59 @@ class MemoryWritebackSystem:
         except Exception as e:
             logger.error(f"Failed to process writeback batch: {e}")
             return 0
+
+    def _build_commit_request(self, entry: WritebackEntry) -> Optional[Any]:
+        """
+        Build a commit request only for explicitly curated artifacts.
+
+        Stage 3 promotion must never embed raw response text blindly. Entries
+        without curated metadata remain feedback-only and are skipped.
+        """
+        from services.memory.unified_memory_service import MemoryCommitRequest
+
+        metadata = dict(entry.metadata or {})
+        if not is_curated_memory_metadata(
+            metadata,
+            allowed_classes=DEFAULT_CURATED_MEMORY_CLASSES,
+        ):
+            return None
+
+        # Determine decay tier based on interaction type and importance
+        decay_tier = self._determine_decay_tier(
+            entry.interaction_type, entry.importance
+        )
+
+        enhanced_metadata = {
+            **metadata,
+            "interaction_type": entry.interaction_type.value,
+            "source_shard_count": len(entry.source_shards),
+            "source_shard_ids": [link.shard_id for link in entry.source_shards],
+            "session_id": entry.session_id,
+            "writeback_id": entry.id,
+            "writeback_timestamp": entry.created_at.isoformat(),
+            "curated": True,
+        }
+
+        if entry.source_shards:
+            enhanced_metadata["shard_links"] = [
+                {
+                    "shard_id": link.shard_id,
+                    "usage_type": link.usage_type.value,
+                    "relevance_score": link.relevance_score,
+                    "position": link.position_in_results,
+                }
+                for link in entry.source_shards
+            ]
+
+        return MemoryCommitRequest(
+            user_id=entry.user_id,
+            org_id=entry.org_id,
+            text=entry.content,
+            tags=entry.tags,
+            importance=entry.importance,
+            decay=decay_tier,
+            metadata=enhanced_metadata,
+        )
 
     async def calculate_feedback_metrics(
         self,

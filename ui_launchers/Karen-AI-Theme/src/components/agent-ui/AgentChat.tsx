@@ -76,6 +76,8 @@ export function AgentChat({ agent, className = '', onClose }: AgentChatProps) {
                     content: msg.content,
                     timestamp: new Date(msg.timestamp),
                     structuredContent: msg.structured_content,
+                    actions: msg.actions,
+                    metadata: msg.metadata,
                   }} 
                 />
               </div>

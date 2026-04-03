@@ -186,6 +186,18 @@ class ConversationManager:
             "avg_response_time": 0.0,
         }
 
+    @staticmethod
+    def _payload_value(payload: Any, *names: str, default: Any = None) -> Any:
+        """Read a value from either a dict-like payload or an object."""
+        for name in names:
+            if isinstance(payload, dict) and name in payload:
+                value = payload.get(name)
+            else:
+                value = getattr(payload, name, None)
+            if value is not None:
+                return value
+        return default
+
     async def create_conversation(
         self,
         tenant_id: Union[str, uuid.UUID],
@@ -290,6 +302,195 @@ class ConversationManager:
         except Exception as e:
             logger.error(f"Failed to create conversation: {e}")
             raise
+
+    async def ensure_conversation(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        user_id: str,
+        conversation_id: str,
+        *,
+        title: Optional[str] = None,
+        session_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Conversation:
+        """Ensure a durable conversation record exists for the supplied identifier."""
+        normalized_user_id = normalize_user_id(user_id)
+        conversation_uuid = uuid.UUID(str(conversation_id))
+        conversation_metadata = metadata or {}
+
+        async with self.db_client.get_async_session() as session:
+            result = await session.execute(
+                select(TenantConversation).where(TenantConversation.id == conversation_uuid)
+            )
+            db_conversation = result.scalar_one_or_none()
+
+            if db_conversation is None:
+                db_conversation = TenantConversation(
+                    id=conversation_uuid,
+                    user_id=normalized_user_id,
+                    title=title,
+                    conversation_metadata=conversation_metadata,
+                    session_id=session_id or conversation_id,
+                )
+                session.add(db_conversation)
+                await session.commit()
+                return Conversation(
+                    id=str(db_conversation.id),
+                    user_id=user_id,
+                    title=db_conversation.title,
+                    messages=[],
+                    metadata=db_conversation.conversation_metadata or {},
+                    is_active=db_conversation.is_active,
+                    created_at=db_conversation.created_at,
+                    updated_at=db_conversation.updated_at,
+                )
+
+            updates: Dict[str, Any] = {"updated_at": datetime.utcnow()}
+            if session_id and db_conversation.session_id != session_id:
+                updates["session_id"] = session_id
+            if title and not db_conversation.title:
+                updates["title"] = title
+            if conversation_metadata:
+                merged_metadata = dict(db_conversation.conversation_metadata or {})
+                merged_metadata.update(conversation_metadata)
+                updates["conversation_metadata"] = merged_metadata
+
+            if len(updates) > 1:
+                await session.execute(
+                    update(TenantConversation)
+                    .where(TenantConversation.id == conversation_uuid)
+                    .values(**updates)
+                )
+                await session.commit()
+                db_conversation = await session.get(TenantConversation, conversation_uuid)
+
+            return Conversation(
+                id=str(db_conversation.id),
+                user_id=user_id,
+                title=db_conversation.title,
+                messages=[],
+                metadata=db_conversation.conversation_metadata or {},
+                is_active=db_conversation.is_active,
+                created_at=db_conversation.created_at,
+                updated_at=db_conversation.updated_at,
+            )
+
+    async def create_user_message(self, request: Any) -> Dict[str, Any]:
+        """Persist the user turn as the canonical conversation truth."""
+        conversation_id = str(self._payload_value(request, "conversation_id") or "").strip()
+        if not conversation_id:
+            raise ValueError("conversation_id is required to persist a user message")
+
+        user_id = str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
+        tenant_id = self._payload_value(request, "tenant_id", "org_id", default="default")
+        metadata = dict(self._payload_value(request, "metadata", default={}) or {})
+        title = str(self._payload_value(request, "message", default="") or "").strip()[:120] or None
+
+        await self.ensure_conversation(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            title=title,
+            session_id=str(self._payload_value(request, "session_id", default=conversation_id) or conversation_id),
+            metadata={"source": metadata.get("source", "chat_orchestrator")},
+        )
+
+        message = await self.add_message(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            role=MessageRole.USER,
+            content=str(self._payload_value(request, "message") or ""),
+            metadata=metadata,
+        )
+        if message is None:
+            raise RuntimeError(f"Failed to persist user message for conversation {conversation_id}")
+
+        return {
+            "id": message.id,
+            "conversation_id": conversation_id,
+            "role": message.role.value,
+            "content": message.content,
+            "created_at": message.timestamp.isoformat(),
+            "metadata": message.metadata,
+        }
+
+    async def create_assistant_message(self, request: Any, response: Any) -> Dict[str, Any]:
+        """Persist the assistant turn once after final response finalization."""
+        conversation_id = str(self._payload_value(request, "conversation_id") or "").strip()
+        if not conversation_id:
+            raise ValueError("conversation_id is required to persist an assistant message")
+
+        assistant_content = str(self._payload_value(response, "response", default="") or "").strip()
+        if not assistant_content:
+            return {}
+
+        user_id = str(self._payload_value(request, "user_id") or "").strip() or "anonymous"
+        tenant_id = self._payload_value(request, "tenant_id", "org_id", default="default")
+        response_metadata = dict(self._payload_value(response, "metadata", default={}) or {})
+        response_status = self._payload_value(response, "status", default="completed")
+        if hasattr(response_status, "value"):
+            response_status = response_status.value
+        response_metadata.setdefault("status", str(response_status))
+        response_metadata.setdefault("execution_path", self._payload_value(response, "execution_path"))
+        response_metadata.setdefault("used_fallback", bool(self._payload_value(response, "used_fallback", default=False)))
+        response_metadata.setdefault("request_id", self._payload_value(response, "request_id"))
+        response_metadata.setdefault("correlation_id", self._payload_value(response, "correlation_id"))
+
+        await self.ensure_conversation(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            session_id=str(self._payload_value(request, "session_id", default=conversation_id) or conversation_id),
+            metadata={"last_request_id": self._payload_value(response, "request_id")},
+        )
+
+        message = await self.add_message(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            role=MessageRole.ASSISTANT,
+            content=assistant_content,
+            metadata=response_metadata,
+        )
+        if message is None:
+            raise RuntimeError(f"Failed to persist assistant message for conversation {conversation_id}")
+
+        return {
+            "id": message.id,
+            "conversation_id": conversation_id,
+            "role": message.role.value,
+            "content": message.content,
+            "created_at": message.timestamp.isoformat(),
+            "metadata": message.metadata,
+        }
+
+    async def load_recent_messages(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        conversation_id: str,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Load recent durable messages in chronological order for working context."""
+        conversation_uuid = uuid.UUID(str(conversation_id))
+        async with self.db_client.get_async_session() as session:
+            result = await session.execute(
+                select(TenantMessage)
+                .where(TenantMessage.conversation_id == conversation_uuid)
+                .order_by(TenantMessage.created_at.desc())
+                .limit(limit)
+            )
+            serialized_messages = [
+                {
+                    "id": str(message.id),
+                    "role": message.role,
+                    "content": message.content,
+                    "metadata": message.message_metadata or {},
+                    "created_at": message.created_at.isoformat(),
+                }
+                for message in result.scalars().all()
+            ]
+
+        serialized_messages.reverse()
+        return serialized_messages
 
     async def get_conversation(
         self,

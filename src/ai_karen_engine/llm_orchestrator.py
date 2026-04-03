@@ -244,6 +244,15 @@ class LLMRouteResult:
     def to_metadata(self) -> Dict[str, Any]:
         """Return a serialisable dictionary for downstream consumers."""
 
+        metadata_failure_reason = None
+        if isinstance(self.metadata, dict):
+            preferred = self.metadata.get("preferred_failure_reason")
+            override = self.metadata.get("failure_reason")
+            if isinstance(preferred, str) and preferred.strip():
+                metadata_failure_reason = preferred.strip()
+            elif isinstance(override, str) and override.strip():
+                metadata_failure_reason = override.strip()
+
         data: Dict[str, Any] = {
             "model_id": self.model_id,
             "model_name": self.model_name,
@@ -254,12 +263,18 @@ class LLMRouteResult:
 
         if self.attempted_models:
             data["attempted_models"] = list(self.attempted_models)
-        if self.failure_reason:
+        if metadata_failure_reason:
+            data["failure_reason"] = metadata_failure_reason
+            if self.failure_reason and self.failure_reason != metadata_failure_reason:
+                data["raw_failure_reason"] = self.failure_reason
+        elif self.failure_reason:
             data["failure_reason"] = self.failure_reason
         
         # Flatten metadata into the main dictionary
         if self.metadata:
             for k, v in self.metadata.items():
+                if k == "failure_reason" and metadata_failure_reason:
+                    continue
                 if k not in data:
                     data[k] = v
                 else:
@@ -397,6 +412,19 @@ class ModelRegistry:
         with self._lock:
             if model_id in self._models and self.verify(model_id):
                 return self._models[model_id]
+            return None
+
+    def get_provider_info(self, provider_name: str) -> Optional[Dict[str, Any]]:
+        """Return information for the requested provider if any models are registered."""
+        with self._lock:
+            for model_id, info in self._models.items():
+                if model_id.startswith(f"{provider_name}:"):
+                    return {
+                        "provider": provider_name,
+                        "status": info.status.name,
+                        "capabilities": info.capabilities,
+                        "error_message": getattr(info.model, "initialization_error", None)
+                    }
             return None
 
     def list_models(self) -> List[Dict[str, Any]]:
@@ -1059,6 +1087,114 @@ class LLMOrchestrator:
             aliases.append("local")
         return aliases
 
+    def _ensure_requested_model_registered(
+        self,
+        provider: Optional[str],
+        model_id: Optional[str],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Lazily instantiate/register a specifically requested provider model.
+
+        Returns a tuple of `(registered_model_id, failure_reason)`.
+        """
+        requested_provider = (provider or "").strip()
+        requested_model = (model_id or "").strip()
+        if not requested_provider or not requested_model:
+            return None, None
+
+        registration_failures: List[str] = []
+
+        for provider_name in self._provider_aliases(requested_provider) or [requested_provider]:
+            candidate_id = f"{provider_name}:{requested_model}"
+            with self.registry._lock:
+                existing = self.registry._models.get(candidate_id)
+                if existing:
+                    init_error = getattr(existing.model, "initialization_error", None)
+                    if not init_error:
+                        return candidate_id, None
+                    logger.info(
+                        "Refreshing stale requested provider model %s after initialization error: %s",
+                        candidate_id,
+                        init_error,
+                    )
+                    self.registry._models.pop(candidate_id, None)
+
+            try:
+                from ai_karen_engine.integrations.provider_registry import (
+                    get_provider_registry,
+                )
+
+                provider_registry = get_provider_registry()
+                provider_instance = provider_registry.get_provider(
+                    provider_name,
+                    model=requested_model,
+                )
+                if provider_instance is None:
+                    # Attempt to resolve info/error from registry
+                    provider_info = self.registry.get_provider_info(provider_name) or {}
+                    info_error = str(provider_info.get("error_message") or "").strip()
+                    if not info_error:
+                        try:
+                            # Try legacy provider registry directly for error metadata
+                            legacy_registry = get_provider_registry()
+                            legacy_info = legacy_registry.get_provider_info(provider_name)
+                            if legacy_info and legacy_info.error_message:
+                                info_error = str(legacy_info.error_message).strip()
+                        except Exception:
+                            pass
+                    
+                    if info_error:
+                        registration_failures.append(info_error)
+                    continue
+
+                init_error = getattr(provider_instance, "initialization_error", None)
+                if init_error:
+                    return None, f"Provider error: {init_error}"
+
+                capabilities = ["generic", "conversation", "text"]
+                try:
+                    if hasattr(provider_instance, "get_provider_info"):
+                        provider_info = provider_instance.get_provider_info() or {}
+                        caps = provider_info.get("capabilities")
+                        if isinstance(caps, list) and caps:
+                            capabilities = [str(cap) for cap in caps if cap]
+                except Exception:
+                    pass
+
+                self.registry.register(
+                    model_id=candidate_id,
+                    model=provider_instance,
+                    capabilities=capabilities,
+                    weight=1,
+                    status=ModelStatus.ACTIVE,
+                    tags=["requested"],
+                )
+                return candidate_id, None
+            except ValueError:
+                with self.registry._lock:
+                    if candidate_id in self.registry._models:
+                        return candidate_id, None
+            except Exception as exc:
+                registration_failures.append(str(exc).strip())
+                logger.warning(
+                    "Failed to lazily register requested provider/model %s/%s: %s",
+                    provider_name,
+                    requested_model,
+                    exc,
+                )
+
+        resolved_failure = next((reason for reason in registration_failures if reason), None)
+        if resolved_failure:
+            return None, resolved_failure
+
+        provider_info = self.registry.get_provider_info(requested_provider)
+        if not provider_info:
+            return None, f"Provider '{requested_provider}' is not configured or recognized in the system."
+
+        return None, (
+            f"Requested provider/model {requested_provider}/{requested_model} failed to "
+            "initialize or is currently offline."
+        )
+
     async def generate_response(
         self,
         model_id: str,
@@ -1186,6 +1322,13 @@ class LLMOrchestrator:
         pref_provider = kwargs.get("provider")
         pref_model = kwargs.get("model")
         if pref_provider and pref_model:
+            registered_id, registration_error = self._ensure_requested_model_registered(
+                pref_provider,
+                pref_model,
+            )
+            if registered_id:
+                preferred_models.appendleft(registered_id)
+
             # Try both name-based and ID-based matching
             potential_ids: List[Optional[str]] = [
                 f"{provider_id}:{pref_model}"
@@ -1202,6 +1345,13 @@ class LLMOrchestrator:
                     preferred_models.appendleft(pid)
                     logger.info(f"Routing: Prioritizing user-selected model {pid}")
                     break
+            else:
+                if registration_error:
+                    last_error = RuntimeError(registration_error)
+                    logger.warning(
+                        "Routing: requested provider/model unavailable: %s",
+                        registration_error,
+                    )
 
         # Use PerformanceAdaptiveRouter for intelligent routing if available
         use_performance_router = (
@@ -1926,6 +2076,8 @@ class LLMOrchestrator:
                         "mode": mode,
                         "skill": skill,
                         "fallback_type": "model",
+                        "preferred_failure_reason": reason,
+                        "failure_reason": reason,
                         "usage": usage,
                         "duration": fallback_duration,
                         "routing_confidence": getattr(routing_decision, 'confidence', 0.0) if routing_decision else 0.0,
@@ -1961,6 +2113,8 @@ class LLMOrchestrator:
                 "mode": mode,
                 "skill": skill,
                 "fallback_type": "rule_based",
+                "preferred_failure_reason": reason,
+                "failure_reason": reason,
             },
         )
 

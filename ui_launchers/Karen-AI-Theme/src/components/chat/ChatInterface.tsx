@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatMessage, ConversationResponse, MessageResponse } from '@/lib/types';
-import { useState, useRef, useEffect, FormEvent, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useRef, useEffect, FormEvent, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,14 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown, Server, KeyRound } from 'lucide-react';
-import { getSuggestedStarter } from '@/app/actions';
+import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { ApiError, apiClient } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { authService } from '@/lib/auth';
 import { Label } from '@/components/ui/label';
+import {
+  normalizeBackendChatResponse,
+  normalizeConversationMessage,
+  normalizeProviderName,
+} from '@/lib/chat-response';
 
 // Session Management Types
 interface Session {
@@ -455,15 +459,6 @@ const createSessionId = (): string => {
   ].join('-');
 };
 
-const normalizeProviderName = (provider?: string | null): string => {
-  const value = String(provider || '').trim().toLowerCase();
-  if (!value) return '';
-  if (value === 'local' || value === 'llama-cpp' || value === 'llama_cpp') {
-    return 'llamacpp';
-  }
-  return value;
-};
-
 export default function ChatInterface() {
   const { 
     currentSession, 
@@ -484,6 +479,8 @@ export default function ChatInterface() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
   const { toast } = useToast();
 
   const [isRecording, setIsRecording] = useState(false);
@@ -504,10 +501,13 @@ export default function ChatInterface() {
       api_key_configured?: boolean;
       base_url?: string | null;
       default_base_url?: string | null;
+      default_model?: string | null;
+      selected_model?: string | null;
       supports_base_url_override?: boolean;
       models: Array<{
         id: string;
         name: string;
+        source?: string;
       }>;
     }>;
   } | null>(null);
@@ -515,7 +515,6 @@ export default function ChatInterface() {
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
-  const [tempBaseUrl, setTempBaseUrl] = useState('');
   const [processingInputIndex, setProcessingInputIndex] = useState(0);
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
@@ -557,21 +556,83 @@ export default function ChatInterface() {
   const getDegradedResponseMessage = (error: unknown): string => {
     if (error instanceof ApiError) {
       const detail = error.message?.trim();
-
-      if (detail && !/^HTTP \d+: /i.test(detail)) {
+      
+      // If we have a specific informative detail, prioritize it.
+      // We no longer strip the "HTTP [code]:" prefix if it contains useful info.
+      if (detail && detail.length > 3) {
         return detail;
       }
 
+      // If we have detailed error content in the response body, use it specifically.
+      const errorPayload = error.details as any;
+      if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
+        return errorPayload.detail;
+      }
+      if (errorPayload?.error && typeof errorPayload.error === 'string') {
+        return errorPayload.error;
+      }
+
       if (error.status >= 500) {
-        return 'Karen is running in degraded mode right now. A response model is not available yet, so I cannot complete this message until local or remote model routing recovers.';
+        return detail || 'Karen is running in degraded mode right now. Model routing is currently unavailable or misconfigured.';
       }
 
       if (error.status === 401 || error.status === 403) {
         return 'Karen could not use the requested provider with your current session permissions. Sign in again or switch to an available model.';
       }
+
+      return detail || 'Karen encountered an API error while processing your request.';
+    }
+
+    if (error instanceof Error) {
+      return error.message;
     }
 
     return 'Karen is running in degraded mode right now and could not complete this message. Check model availability and try again.';
+  };
+
+  const getAssistFailureMetadata = (
+    error: unknown,
+    requestedProvider?: string,
+    requestedModel?: string,
+  ): Record<string, any> => {
+    const detail = getDegradedResponseMessage(error);
+    const normalizedProvider = normalizeProviderName(requestedProvider) || 'system';
+    const failureCategory =
+      error instanceof ApiError && (error.status === 401 || error.status === 403)
+        ? 'authorization'
+        : error instanceof TypeError
+          ? 'network'
+          : 'provider_error';
+
+    const metadata: Record<string, any> = {
+      degraded_mode: true,
+      failure_category: failureCategory,
+      orchestrator: {
+        used_fallback: true,
+      },
+      llm: {
+        provider: normalizedProvider,
+        model_id: requestedModel ? `${normalizedProvider}:${requestedModel}` : normalizedProvider,
+        model_name: requestedModel || undefined,
+        requested_provider: requestedProvider || undefined,
+        requested_model: requestedModel || undefined,
+        is_degraded: true,
+        source: 'assist_request_error',
+        fallback_level: 'error',
+        failure_reason: detail,
+        routing_rationale:
+          requestedProvider && requestedModel
+            ? `The request to ${requestedProvider}/${requestedModel} failed before Karen could complete the response.`
+            : 'The chat request failed before Karen could complete the response.',
+      },
+    };
+
+    if (error instanceof ApiError) {
+      metadata.http_status = error.status;
+      metadata.error_details = error.details;
+    }
+
+    return metadata;
   };
 
   const preferredAddressName =
@@ -656,14 +717,9 @@ export default function ChatInterface() {
         console.log('🔍 DEBUG: Session history response:', response);
         
         if (response && response.messages && response.messages.length > 0) {
-          const historyMessages: ChatMessage[] = response.messages.map(m => ({
-            id: m.id,
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-            timestamp: new Date(m.timestamp),
-            status: 'completed',
-            metadata: m.metadata,
-          }));
+          const historyMessages: ChatMessage[] = response.messages.map((m) =>
+            normalizeConversationMessage(m)
+          );
           console.log('🔍 DEBUG: Loaded', historyMessages.length, 'messages from session history');
           setMessages(historyMessages);
         } else {
@@ -739,10 +795,12 @@ export default function ChatInterface() {
             api_key_configured?: boolean;
             base_url?: string | null;
             default_base_url?: string | null;
+            default_model?: string | null;
             selected_model?: string;
             models: Array<{
               id: string;
               name: string;
+              source?: string;
             }>;
           }>;
         }>('/api/settings/model');
@@ -752,23 +810,33 @@ export default function ChatInterface() {
         }
 
         setModelSettings(response);
-        const allowedProviders = response.providers.filter((provider) => provider.selectable !== false);
+        const allowedProviders = response.providers
+          .filter((provider) => provider.selectable !== false)
+          .map((provider) => {
+            const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
+            return {
+              ...provider,
+              models: configuredModels.length > 0
+                ? configuredModels
+                : (
+                    provider.selected_model || provider.default_model
+                      ? [{ id: provider.selected_model || provider.default_model || '', name: provider.selected_model || provider.default_model || '', source: 'saved' }]
+                      : []
+                  ),
+            };
+          });
         const resolvedProvider =
           allowedProviders.find((provider) => provider.id === response.selected_provider)?.id ||
           allowedProviders[0]?.id ||
           '';
         setSelectedProvider(resolvedProvider);
         const resolvedModel = response.selected_model ||
-          response.providers.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
+          allowedProviders.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
           '';
         setSelectedModel(resolvedModel);
         
         // Sync temp values for modal
         const activeProvider = response.providers.find(p => p.id === resolvedProvider);
-        if (activeProvider) {
-          setTempBaseUrl(activeProvider.base_url || activeProvider.default_base_url || '');
-        }
-        
         setIsBackendOffline(false);
       } catch {
         setIsBackendOffline(true);
@@ -783,11 +851,28 @@ export default function ChatInterface() {
     };
   }, []);
 
-  const selectedProviderDetails = modelSettings?.providers.find((provider) => provider.id === selectedProvider) ?? null;
-  const selectableProviders = modelSettings?.providers.filter((provider) => provider.selectable !== false) ?? [];
+  const selectableProviders = useMemo(() => {
+    const providers = modelSettings?.providers ?? [];
+    return providers
+      .filter((provider) => provider.selectable !== false)
+      .map((provider) => {
+        const configuredModels = (provider.models || []).filter((model) => model.source !== 'discovered');
+        return {
+          ...provider,
+          models: configuredModels.length > 0
+            ? configuredModels
+            : (
+                provider.selected_model || provider.default_model
+                  ? [{ id: provider.selected_model || provider.default_model || '', name: provider.selected_model || provider.default_model || '', source: 'saved' }]
+                  : []
+              ),
+        };
+      });
+  }, [modelSettings]);
+  const selectedProviderDetails = selectableProviders.find((provider) => provider.id === selectedProvider) ?? null;
   const availableModels = selectedProviderDetails?.models ?? [];
 
-  const applyModelSelection = useCallback(async (providerId: string, modelId: string, customBaseUrl?: string, customApiKey?: string) => {
+  const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
     if (!modelSettings) {
       return;
     }
@@ -806,20 +891,32 @@ export default function ChatInterface() {
       }>('/api/settings/model', {
         provider: providerId,
         model: modelId,
-        base_url: (customBaseUrl || provider.base_url || provider.default_base_url || '').replace(/\/api$/, ''),
-        api_key: customApiKey?.trim() || undefined,
       });
 
       setModelSettings(response as any);
-      const allowedProviders = response.providers.filter((item) => item.selectable !== false);
+      const allowedProviders = response.providers
+        .filter((item) => item.selectable !== false)
+        .map((item) => {
+          const configuredModels = (item.models || []).filter((model: any) => model.source !== 'discovered');
+          return {
+            ...item,
+            models: configuredModels.length > 0
+              ? configuredModels
+              : (
+                  item.selected_model || item.default_model
+                    ? [{ id: item.selected_model || item.default_model || '', name: item.selected_model || item.default_model || '', source: 'saved' }]
+                    : []
+                ),
+          };
+        });
       const resolvedProvider =
         allowedProviders.find((item) => item.id === response.selected_provider)?.id ||
         allowedProviders[0]?.id ||
         '';
       setSelectedProvider(resolvedProvider);
       setSelectedModel(
-        response.providers.find((item) => item.id === resolvedProvider)?.selected_model ||
-        response.providers.find((item) => item.id === resolvedProvider)?.models[0]?.id ||
+        allowedProviders.find((item) => item.id === resolvedProvider)?.selected_model ||
+        allowedProviders.find((item) => item.id === resolvedProvider)?.models[0]?.id ||
         response.selected_model
       );
       toast({
@@ -842,7 +939,7 @@ export default function ChatInterface() {
       return;
     }
 
-    const provider = modelSettings.providers.find((item) => item.id === providerId);
+    const provider = selectableProviders.find((item) => item.id === providerId);
     if (!provider || provider.selectable === false) {
       return;
     }
@@ -993,45 +1090,23 @@ export default function ChatInterface() {
 
       setIsBackendOffline(false);
 
-      const responseMetadata = response.metadata ? { ...response.metadata } : {};
-      const responseLlm = responseMetadata.llm ? { ...responseMetadata.llm } : {};
-      const requestedProvider = normalizeProviderName(selectedProvider);
-      const actualProvider = normalizeProviderName(responseLlm.provider);
-      const localProviderReturned =
-        Boolean(requestedProvider) &&
-        requestedProvider !== 'llamacpp' &&
-        actualProvider === 'llamacpp';
-
-      if (localProviderReturned) {
-        responseMetadata.degraded_mode = true;
-        responseMetadata.orchestrator = {
-          ...(responseMetadata.orchestrator || {}),
-          used_fallback: true,
-        };
-        responseLlm.is_degraded = true;
-        responseLlm.fallback_level = responseLlm.fallback_level || 'local';
-        responseLlm.source = responseLlm.source || 'provider_selection_fallback';
-        responseLlm.failure_reason =
-          responseLlm.failure_reason ||
-          `Selected provider ${selectedProvider} was unavailable; Karen continued with local llama.cpp.`;
-        responseLlm.routing_rationale =
-          responseLlm.routing_rationale ||
-          `Requested provider ${selectedProvider} failed, so the conversation continued in degraded mode on local llama.cpp.`;
-        responseMetadata.llm = responseLlm;
-      }
+      const normalizedResponse = normalizeBackendChatResponse(response, {
+        requestedProvider: selectedProvider,
+        requestedModel: selectedModel,
+      });
 
       const assistantMessage: ChatMessage = {
-        id: response.correlation_id || 'assistant-' + Date.now(),
+        id: normalizedResponse.correlationId || 'assistant-' + Date.now(),
         role: 'assistant',
-        content: response.answer?.trim() || 'Karen returned an empty response.',
+        content: normalizedResponse.answer,
         timestamp: new Date(),
         status: 'completed',
-        structuredContent: response.structured_content,
-        actions: response.actions,
-        metadata: responseMetadata,
-        aiData: responseMetadata?.context && responseMetadata.context.length > 0
+        structuredContent: normalizedResponse.structuredContent,
+        actions: normalizedResponse.actions,
+        metadata: normalizedResponse.metadata,
+        aiData: normalizedResponse.metadata?.context && normalizedResponse.metadata.context.length > 0
           ? {
-              knowledgeGraphInsights: responseMetadata.context
+              knowledgeGraphInsights: normalizedResponse.metadata.context
                 .map((item: any) => item.preview || item.text)
                 .filter(Boolean)
                 .join('\n'),
@@ -1061,6 +1136,7 @@ export default function ChatInterface() {
         content: getDegradedResponseMessage(error),
         timestamp: new Date(),
         status: 'failed',
+        metadata: getAssistFailureMetadata(error, selectedProvider, selectedModel),
       };
       setMessages((prev) => {
         // Update user message to failed and add error response
@@ -1157,23 +1233,65 @@ export default function ChatInterface() {
     }
   }, [shouldSubmitVoiceInput, input, isLoading, handleSubmit]);
 
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
 
-  // Smooth scroll to bottom on new messages
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior,
+    });
+  }, []);
+
   useEffect(() => {
-    if (viewportRef.current) {
-      const viewport = viewportRef.current;
-      const isAtBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 150;
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
 
-      if (isAtBottom) {
+    const updateStickiness = () => {
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      shouldStickToBottomRef.current = distanceFromBottom < 120;
+    };
+
+    updateStickiness();
+    viewport.addEventListener('scroll', updateStickiness, { passive: true });
+
+    return () => {
+      viewport.removeEventListener('scroll', updateStickiness);
+    };
+  }, []);
+
+
+  // Keep the latest response pinned at the bottom while the user is already near the bottom.
+  useEffect(() => {
+    if (shouldStickToBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollChatToBottom(messages.length <= 1 ? 'auto' : 'smooth');
+      });
+    }
+  }, [messages, isLoading, scrollChatToBottom]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const container = messagesContainerRef.current;
+    if (!viewport || !container || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      if (shouldStickToBottomRef.current) {
         requestAnimationFrame(() => {
-          viewport.scrollTo({
-            top: viewport.scrollHeight,
-            behavior: 'smooth'
-          });
+          scrollChatToBottom('auto');
         });
       }
-    }
-  }, [messages]);
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scrollChatToBottom]);
 
 
   const handleMicClick = async () => {
@@ -1207,8 +1325,7 @@ export default function ChatInterface() {
   const handleSuggestStarter = async () => {
     setIsSuggestingStarter(true);
     try {
-      const starter = await getSuggestedStarter("a helpful assistant");
-      setInput(starter);
+      setInput('Tell me a fun fact about space.');
     } finally {
       setIsSuggestingStarter(false);
     }
@@ -1552,24 +1669,28 @@ export default function ChatInterface() {
     const [isOpen, setIsOpen] = useState(false);
     const [localProvider, setLocalProvider] = useState(selectedProvider);
     const [localModel, setLocalModel] = useState(selectedModel);
-    const [apiKeyInput, setApiKeyInput] = useState('');
-    const [baseUrlInput, setBaseUrlInput] = useState(tempBaseUrl);
     
     // Sync local state when modal opens
     useEffect(() => {
       if (isOpen) {
         setLocalProvider(selectedProvider);
         setLocalModel(selectedModel);
-        setApiKeyInput('');
-        setBaseUrlInput(tempBaseUrl);
       }
-    }, [isOpen, selectedProvider, selectedModel, tempBaseUrl]);
+    }, [isOpen, selectedProvider, selectedModel]);
 
-    const activeProviderDetails = modelSettings?.providers.find(p => p.id === localProvider);
+    const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
     const providerModels = activeProviderDetails?.models || [];
 
+    useEffect(() => {
+      if (!isOpen || !activeProviderDetails) {
+        return;
+      }
+
+      setLocalModel(activeProviderDetails.selected_model || activeProviderDetails.models[0]?.id || '');
+    }, [isOpen, activeProviderDetails]);
+
     const handleApply = async () => {
-      await applyModelSelection(localProvider, localModel, baseUrlInput, apiKeyInput);
+      await applyModelSelection(localProvider, localModel);
       setIsOpen(false);
     };
 
@@ -1595,13 +1716,11 @@ export default function ChatInterface() {
             {/* Sidebar: Provider Selection */}
             <div className="w-[180px] bg-muted/30 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto">
               <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 px-2">AI Providers</div>
-              {modelSettings?.providers.map((p) => (
+              {selectableProviders.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => {
                     setLocalProvider(p.id);
-                    setLocalModel(p.models[0]?.id || '');
-                    setBaseUrlInput(p.base_url || p.default_base_url || '');
                   }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
                     localProvider === p.id 
@@ -1619,91 +1738,36 @@ export default function ChatInterface() {
             <div className="flex-1 flex flex-col min-w-0">
               <DialogHeader className="p-6 pb-2">
                 <DialogTitle className="flex items-center gap-2">
-                  {activeProviderDetails?.display_name || 'Select Provider'} Settings
+                  {activeProviderDetails?.display_name || 'Select Provider'} Models
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  Configure models and authentication for this provider.
+                  Choose from the providers and models already configured in settings.
                 </DialogDescription>
               </DialogHeader>
 
               <ScrollArea className="flex-1 p-6 pt-2">
-                <div className="space-y-6">
-                  {/* Model Selection section */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Models</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {providerModels.map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => setLocalModel(m.id)}
-                          className={`p-3 rounded-lg border text-left transition-all ${
-                            localModel === m.id 
-                              ? 'bg-primary/5 border-primary ring-1 ring-primary' 
-                              : 'border-border hover:bg-muted/50 hover:border-muted-foreground/30'
-                          }`}
-                        >
-                          <div className="text-sm font-medium leading-tight truncate">{m.name}</div>
-                          <div className="text-[10px] text-muted-foreground mt-1 truncate">{m.id}</div>
-                        </button>
-                      ))}
-                      {providerModels.length === 0 && (
-                        <div className="col-span-2 py-8 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
-                          No models found for this provider.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Configuration section */}
-                  <div className="space-y-4 pt-2 border-t border-border">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider Configuration</Label>
-                    
-                    <div className="grid gap-4">
-                      {activeProviderDetails?.supports_base_url_override && (
-                        <div className="space-y-2">
-                          <Label htmlFor="modal-base-url">Base URL</Label>
-                          <div className="relative">
-                            <Server className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="modal-base-url"
-                              value={baseUrlInput}
-                              onChange={e => setBaseUrlInput(e.target.value)}
-                              placeholder={activeProviderDetails.default_base_url || 'https://api.openai.com/v1'}
-                              className="pl-9 h-9 text-sm"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {activeProviderDetails?.requires_api_key && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="modal-api-key">API Key</Label>
-                            {activeProviderDetails.api_key_configured && (
-                              <Badge variant="outline" className="text-[10px] font-normal h-4 text-green-500 border-green-500/30">
-                                Stored
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="relative">
-                            <KeyRound className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="modal-api-key"
-                              type="password"
-                              value={apiKeyInput}
-                              onChange={e => setApiKeyInput(e.target.value)}
-                              placeholder={activeProviderDetails.api_key_configured ? '••••••••••••••••' : 'Enter API Key'}
-                              className="pl-9 h-9 text-sm"
-                            />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground italic">
-                            {activeProviderDetails.api_key_configured 
-                              ? 'Enter a new key only if you wish to override the currently stored one.' 
-                              : 'Credentials are stored securely on the backend.'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Models</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {providerModels.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setLocalModel(m.id)}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          localModel === m.id 
+                            ? 'bg-primary/5 border-primary ring-1 ring-primary' 
+                            : 'border-border hover:bg-muted/50 hover:border-muted-foreground/30'
+                        }`}
+                      >
+                        <div className="text-sm font-medium leading-tight truncate">{m.name}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1 truncate">{m.id}</div>
+                      </button>
+                    ))}
+                    {providerModels.length === 0 && (
+                      <div className="col-span-2 py-8 text-center border border-dashed rounded-lg text-muted-foreground text-sm">
+                        No configured models found for this provider. Use Application Settings to configure one.
+                      </div>
+                    )}
                   </div>
                 </div>
               </ScrollArea>
@@ -1759,7 +1823,7 @@ export default function ChatInterface() {
         </div>
       )}
       <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={viewportRef}>
-        <div className="w-full space-y-1 pb-4">
+        <div ref={messagesContainerRef} className="w-full space-y-1 pb-4">
           {messages.map((msg) => (
             <MessageBubble 
               key={msg.id} 

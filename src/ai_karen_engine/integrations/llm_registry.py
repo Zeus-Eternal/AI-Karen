@@ -730,9 +730,18 @@ class LLMRegistry:
         model_key = init_kwargs.get("model") or self._registrations[name].default_model or ""
         cache_key = f"{name}|{model_key}"
 
-        # Return cached instance if available
+        # Return cached instance if available, unless it is a stale failed instance
         if cache_key in self._providers:
-            return self._providers[cache_key]
+            cached = self._providers[cache_key]
+            if not getattr(cached, "initialization_error", None):
+                return cached
+            logger.info(
+                "Discarding stale cached provider instance for %s (model=%s) due to initialization error: %s",
+                name,
+                model_key,
+                getattr(cached, "initialization_error", None),
+            )
+            self._providers.pop(cache_key, None)
 
         # Create new instance
         try:
@@ -794,6 +803,15 @@ class LLMRegistry:
                     logger.debug("Failed to persist registry after provider error", exc_info=True)
 
         return None
+
+    def invalidate_provider_cache(self, name: str) -> None:
+        """Remove cached provider instances for a provider so new config/secrets take effect."""
+        prefix = f"{name}|"
+        stale_keys = [cache_key for cache_key in self._providers.keys() if cache_key.startswith(prefix)]
+        for cache_key in stale_keys:
+            self._providers.pop(cache_key, None)
+        if stale_keys:
+            logger.info("Invalidated %d cached provider instance(s) for %s", len(stale_keys), name)
 
     def _apply_saved_provider_settings(self, name: str, init_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """Augment provider init args from persisted provider config and local secrets."""

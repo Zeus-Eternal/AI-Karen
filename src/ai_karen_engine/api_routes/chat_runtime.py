@@ -10,6 +10,7 @@ This module provides secure chat API endpoints with:
 """
 
 import asyncio
+import json
 import logging
 import time
 from typing import Dict, List, Optional, Any
@@ -30,12 +31,43 @@ from ..chat.chat_orchestrator import (
     ChatRequest as OrchestratorChatRequest,
     ChatResponse as OrchestratorChatResponse,
 )
+from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
 from ..chat.stream_processor import AsyncStreamProcessor as StreamProcessor
 from ..core.metrics_manager import get_metrics_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 security = HTTPBearer()
+
+
+def _runtime_metadata_from_orchestrator_response(
+    response: OrchestratorChatResponse,
+    *,
+    response_id: str,
+    requested_model: Optional[str],
+) -> Dict[str, Any]:
+    """Expose a stable backend-confirmed metadata shape for chat runtime clients."""
+    metadata = dict(response.metadata or {})
+    metadata.setdefault("response_id", response_id)
+    metadata.setdefault("request_id", getattr(response, "request_id", None))
+    metadata.setdefault("correlation_id", response.correlation_id)
+    metadata.setdefault("conversation_id", getattr(response, "conversation_id", None))
+    metadata.setdefault("assistant_message_id", getattr(response, "assistant_message_id", None))
+    metadata.setdefault("status", response.status.value if hasattr(response.status, "value") else str(response.status))
+    metadata.setdefault("execution_path", getattr(response, "execution_path", None))
+    metadata.setdefault("processing_time", response.processing_time)
+    metadata.setdefault("used_fallback", response.used_fallback)
+    metadata.setdefault("context_used", response.context_used)
+    metadata.setdefault("telemetry", getattr(response, "telemetry", {}) or {})
+    metadata.setdefault(
+        "persistence",
+        {
+            "canonical_store": "postgres",
+            "assistant_persisted": bool(getattr(response, "assistant_message_id", None)),
+        },
+    )
+    metadata.setdefault("model", requested_model or "orchestrated")
+    return metadata
 
 # Pydantic models for request/response validation
 class ChatMessage(BaseModel):
@@ -258,15 +290,19 @@ async def create_chat_response(
             }
         )
         
-        conversation_id = session_id or f"chat_{uuid.uuid4().hex[:12]}"
+        conversation_id = normalize_chat_session_id(session_id)
         flattened_prompt = "\n".join(
             msg["content"] for msg in validated_messages if msg.get("message_type") == "user"
         ).strip()
         chat_request = OrchestratorChatRequest(
+            request_id=response_id,
+            correlation_id=correlation_id,
+            tenant_id=str(user.get("tenant_id") or "default"),
             message=flattened_prompt,
             user_id=user["user_id"],
             conversation_id=conversation_id,
-            session_id=session_id,
+            session_id=conversation_id,
+            message_id=str(uuid.uuid4()),
             stream=bool(request.stream),
             include_context=True,
             attachments=[],
@@ -283,9 +319,15 @@ async def create_chat_response(
         if request.stream:
             async def generate_stream():
                 try:
-                    stream_result = await orchestrator.process_message(chat_request)
+                    stream_result = await orchestrator.handle_chat_stream(chat_request)
                     async for chunk in stream_result:
-                        yield chunk.content
+                        chunk_payload = {
+                            "type": chunk.type,
+                            "content": chunk.content,
+                            "correlation_id": chunk.correlation_id,
+                            "metadata": chunk.metadata or {},
+                        }
+                        yield f"data: {json.dumps(chunk_payload)}\n\n"
                 except Exception as e:
                     structured_logger.log_error(
                         error=str(e),
@@ -298,7 +340,7 @@ async def create_chat_response(
             
             return StreamingResponse(
                 generate_stream(),
-                media_type="text/plain",
+                media_type="text/event-stream",
                 headers={
                     "X-Correlation-Id": correlation_id,
                     "X-Response-Id": response_id
@@ -306,7 +348,7 @@ async def create_chat_response(
             )
         else:
             # Non-streaming response
-            response_data = await orchestrator.process_message(chat_request)
+            response_data = await orchestrator.handle_chat(chat_request)
             
             # Note: Rate limiter update skipped - needs implementation
             
@@ -335,8 +377,8 @@ async def create_chat_response(
                 correlation_id=correlation_id,
                 response_data={
                     'response_id': response_id,
-                    'model': response_data.get('model'),
-                    'tokens_used': response_data.get('usage', {}).get('total_tokens', 0),
+                    'model': request.model or "orchestrated",
+                    'tokens_used': ((response_data.metadata or {}).get('llm', {}).get('usage', {}) if isinstance(response_data, OrchestratorChatResponse) else {}).get('total_tokens', 0),
                     'processing_time': processing_time
                 }
             )
@@ -346,7 +388,11 @@ async def create_chat_response(
                 content=response_data.response if isinstance(response_data, OrchestratorChatResponse) else "",
                 model=request.model or "orchestrated",
                 usage=(response_data.metadata or {}).get('llm', {}).get('usage', {}) if isinstance(response_data, OrchestratorChatResponse) else {},
-                metadata=response_data.metadata if isinstance(response_data, OrchestratorChatResponse) else {},
+                metadata=_runtime_metadata_from_orchestrator_response(
+                    response_data,
+                    response_id=response_id,
+                    requested_model=request.model,
+                ) if isinstance(response_data, OrchestratorChatResponse) else {},
                 timestamp=datetime.utcnow()
             )
             

@@ -36,6 +36,7 @@ from ..core.response.factory import (
 from ..core.response.scheduler_manager import AutonomousConfig
 from ..core.response.config import PipelineConfig
 from ..chat.chat_orchestrator import ChatOrchestrator, ChatRequest as LegacyChatRequest, ChatResponse as LegacyChatResponse
+from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
 from services.memory.internal.auth_utils import get_current_user
 from ..core.dependencies import get_current_user_context
 
@@ -168,6 +169,36 @@ def _normalize_response_payload(
         "used_fallback": used_fallback,
         "context_used": context_used,
     }
+
+
+def _ensure_stage1_metadata(
+    metadata: Optional[Dict[str, Any]],
+    *,
+    correlation_id: str,
+    conversation_id: Optional[str],
+    status: str,
+    execution_path: str,
+    assistant_message_id: Optional[str] = None,
+    telemetry: Optional[Dict[str, Any]] = None,
+    persistence: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Expose a stable completion/persistence metadata contract across adapters."""
+    shaped = dict(metadata or {})
+    shaped.setdefault("correlation_id", correlation_id)
+    shaped.setdefault("conversation_id", conversation_id)
+    shaped.setdefault("assistant_message_id", assistant_message_id)
+    shaped.setdefault("status", status)
+    shaped.setdefault("execution_path", execution_path)
+    shaped.setdefault("telemetry", telemetry or {})
+    shaped.setdefault(
+        "persistence",
+        persistence
+        or {
+            "canonical_store": "postgres" if assistant_message_id else "response_core",
+            "assistant_persisted": bool(assistant_message_id),
+        },
+    )
+    return shaped
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -580,7 +611,13 @@ async def chat_compatible(
             )
 
             response_metadata = {
-                **normalized["metadata"],
+                **_ensure_stage1_metadata(
+                    normalized["metadata"],
+                    correlation_id=normalized["correlation_id"],
+                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    status="completed",
+                    execution_path="response_core",
+                ),
                 "intent": normalized["intent"],
                 "persona": normalized["persona"],
                 "mood": normalized["mood"],
@@ -603,11 +640,16 @@ async def chat_compatible(
             chat_orchestrator = get_chat_orchestrator()
             
             # Convert request format
+            conversation_id = normalize_chat_session_id(request.conversation_id or request.session_id)
             legacy_request = LegacyChatRequest(
+                request_id=correlation_id,
+                correlation_id=correlation_id,
+                tenant_id=tenant_id,
                 message=request.message,
                 user_id=request.user_id or current_user.get("id", "anonymous"),
-                conversation_id=request.conversation_id or str(uuid.uuid4()),
-                session_id=request.session_id,
+                conversation_id=conversation_id,
+                session_id=conversation_id,
+                message_id=str(uuid.uuid4()),
                 stream=False,  # Force non-streaming for compatibility
                 include_context=request.include_context,
                 attachments=request.attachments,
@@ -615,10 +657,20 @@ async def chat_compatible(
             )
             
             # Process with legacy orchestrator
-            legacy_response = await chat_orchestrator.process_message(legacy_request)
+            legacy_response = await chat_orchestrator.handle_chat(legacy_request)
             
             # Convert response format
             if isinstance(legacy_response, LegacyChatResponse):
+                response_metadata = _ensure_stage1_metadata(
+                    legacy_response.metadata,
+                    correlation_id=legacy_response.correlation_id,
+                    conversation_id=getattr(legacy_response, "conversation_id", conversation_id),
+                    status=legacy_response.status.value if hasattr(legacy_response.status, "value") else str(legacy_response.status),
+                    execution_path=getattr(legacy_response, "execution_path", "direct_llm") or "direct_llm",
+                    assistant_message_id=getattr(legacy_response, "assistant_message_id", None),
+                    telemetry=getattr(legacy_response, "telemetry", {}) or {},
+                    persistence=(legacy_response.metadata or {}).get("persistence"),
+                )
                 return {
                     "response": legacy_response.response,
                     "correlation_id": legacy_response.correlation_id,
@@ -626,7 +678,7 @@ async def chat_compatible(
                     "used_fallback": True,
                     "context_used": legacy_response.context_used,
                     "metadata": {
-                        **legacy_response.metadata,
+                        **response_metadata,
                         "orchestrator": "chat_orchestrator",
                         "fallback_reason": str(e)
                     }
@@ -700,13 +752,18 @@ async def chat_stream(
                 "type": "metadata",
                 "content": "",
                 "correlation_id": normalized["correlation_id"],
-                "metadata": {
-                    **normalized["metadata"],
-                    "intent": normalized["intent"],
-                    "persona": normalized["persona"],
-                    "mood": normalized["mood"],
-                    "status": "processing",
-                },
+                "metadata": _ensure_stage1_metadata(
+                    {
+                        **normalized["metadata"],
+                        "intent": normalized["intent"],
+                        "persona": normalized["persona"],
+                        "mood": normalized["mood"],
+                    },
+                    correlation_id=normalized["correlation_id"],
+                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    status="processing",
+                    execution_path="response_core",
+                ),
             }
             yield f"data: {json.dumps(metadata_chunk)}\n\n"
 
@@ -724,12 +781,18 @@ async def chat_stream(
             completion = {
                 "type": "complete",
                 "correlation_id": normalized["correlation_id"],
-                "metadata": {
-                    **normalized["metadata"],
-                    "processing_time": normalized["processing_time"],
-                    "used_fallback": normalized["used_fallback"],
-                    "context_used": normalized["context_used"],
-                },
+                "metadata": _ensure_stage1_metadata(
+                    {
+                        **normalized["metadata"],
+                        "processing_time": normalized["processing_time"],
+                        "used_fallback": normalized["used_fallback"],
+                        "context_used": normalized["context_used"],
+                    },
+                    correlation_id=normalized["correlation_id"],
+                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    status="completed",
+                    execution_path="response_core",
+                ),
             }
             yield f"data: {json.dumps(completion)}\n\n"
 
@@ -748,11 +811,17 @@ async def chat_stream(
             chat_orchestrator = get_chat_orchestrator()
             
             # Convert request format
+            tenant_id = request.tenant_id or current_user.get("tenant_id")
+            conversation_id = normalize_chat_session_id(request.conversation_id or request.session_id)
             legacy_request = LegacyChatRequest(
+                request_id=correlation_id,
+                correlation_id=correlation_id,
+                tenant_id=tenant_id,
                 message=request.message,
                 user_id=request.user_id or current_user.get("id", "anonymous"),
-                conversation_id=request.conversation_id or str(uuid.uuid4()),
-                session_id=request.session_id,
+                conversation_id=conversation_id,
+                session_id=conversation_id,
+                message_id=str(uuid.uuid4()),
                 stream=True,
                 include_context=request.include_context,
                 attachments=request.attachments,
@@ -760,7 +829,7 @@ async def chat_stream(
             )
             
             # Process with legacy orchestrator
-            stream_generator = await chat_orchestrator.process_message(legacy_request)
+            stream_generator = await chat_orchestrator.handle_chat_stream(legacy_request)
             
             # Forward stream chunks
             async for chunk in stream_generator:
@@ -769,7 +838,16 @@ async def chat_stream(
                     "content": chunk.content,
                     "correlation_id": chunk.correlation_id,
                     "metadata": {
-                        **chunk.metadata,
+                        **_ensure_stage1_metadata(
+                            chunk.metadata,
+                            correlation_id=chunk.correlation_id,
+                            conversation_id=conversation_id,
+                            status="processing" if chunk.type != "complete" else str((chunk.metadata or {}).get("status") or "completed"),
+                            execution_path=str((chunk.metadata or {}).get("execution_path") or "direct_llm"),
+                            assistant_message_id=(chunk.metadata or {}).get("assistant_message_id"),
+                            telemetry=(chunk.metadata or {}).get("telemetry") or {},
+                            persistence=(chunk.metadata or {}).get("persistence"),
+                        ),
                         "orchestrator": "chat_orchestrator",
                         "used_fallback": True
                     }

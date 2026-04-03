@@ -1,4 +1,5 @@
 import apiClient from '../api';
+import { normalizeBackendChatResponse } from '../chat-response';
 
 type BackendExecutionMode = 'native' | 'langgraph' | 'deep_agents';
 type BackendAgentStatus =
@@ -136,16 +137,33 @@ export class AgentUIService {
       throw new Error(response.error.message);
     }
 
+    const normalized = normalizeBackendChatResponse(
+      {
+        answer: response.response,
+        structured_content: {},
+        actions: [],
+        metadata: response.metadata,
+        correlation_id: response.request_id,
+        processing_time: response.processing_time,
+      },
+      {}
+    );
+
     return {
-      answer: response.response,
-      structured_content: {},
-      actions: [],
+      answer: normalized.answer,
+      structured_content: normalized.structuredContent,
+      actions: normalized.actions.map((action) => ({
+        type: action.type,
+        params: action.params || {},
+        confidence: action.confidence ?? 0.9,
+        description: action.description,
+      })),
       metadata: {
-        ...response.metadata,
+        ...normalized.metadata,
         execution_mode: response.execution_mode,
         processing_time: response.processing_time,
       },
-      correlation_id: response.request_id,
+      correlation_id: normalized.correlationId,
     };
   }
 }

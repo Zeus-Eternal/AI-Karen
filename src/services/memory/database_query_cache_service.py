@@ -8,9 +8,9 @@ and reduce database load in production environments.
 import logging
 import hashlib
 import json
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, List, Any, Optional, Union, Tuple, Callable, cast
 from datetime import datetime, timedelta
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from functools import wraps
 import asyncio
 
@@ -96,7 +96,7 @@ class DatabaseQueryCacheService:
         }
         
         fingerprint_str = json.dumps(fingerprint_data, sort_keys=True, default=str)
-        return hashlib.sha256(fingerprint_str.encode()).hexdigest()[:16]
+        return cast(str, hashlib.sha256(fingerprint_str.encode()).hexdigest())[:16]
     
     def _extract_table_names(self, query: str) -> List[str]:
         """
@@ -186,7 +186,7 @@ class DatabaseQueryCacheService:
             config.ttl = min_ttl
         
         # Add table-based tags
-        config.tags = config.tags + [f"table:{table}" for table in tables]
+        config.tags = (config.tags or []) + [f"table:{table}" for table in tables]
         
         return config
     
@@ -353,7 +353,7 @@ class DatabaseQueryCacheService:
     def cached_query(
         self,
         cache_config: Optional[QueryCacheConfig] = None,
-        extract_query_func: Optional[callable] = None
+        extract_query_func: Optional[Callable] = None
     ):
         """
         Decorator for caching database query results.

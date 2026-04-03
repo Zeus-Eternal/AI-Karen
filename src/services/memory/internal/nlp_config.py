@@ -53,15 +53,22 @@ class DistilBertConfig(BaseModel):
     
     def __init__(self, **data):
         # Set defaults
+        local_model_root = os.getenv("KARI_TRANSFORMERS_DIR", "models/transformers")
+        transformers_cache_dir = os.getenv("TRANSFORMERS_CACHE_DIR", "")
+        hf_home = os.getenv("HF_HOME", "")
         try:
             from ai_karen_engine.config.config_manager import get_config
             config = get_config()
             model_name = config.llm.default_nlp_model_id
+            local_model_root = getattr(config.llm, "transformers_dir", local_model_root) or local_model_root
         except Exception:
             model_name = os.getenv("TRANSFORMER_MODEL", "distilbert-base-uncased")
 
         defaults = {
             "model_name": model_name,
+            "local_model_root": local_model_root,
+            "transformers_cache_dir": transformers_cache_dir,
+            "hf_home": hf_home,
             "max_length": 512,
             "batch_size": 32,
             "enable_gpu": os.getenv("DISTILBERT_ENABLE_GPU", "false").lower() in ("1", "true", "yes"),
@@ -75,6 +82,9 @@ class DistilBertConfig(BaseModel):
         super().__init__(**defaults)
     
     model_name: str = "default-nlp-model"
+    local_model_root: str = "models/transformers"
+    transformers_cache_dir: str = ""
+    hf_home: str = ""
     max_length: int = 512
     batch_size: int = 32
     enable_gpu: bool = False

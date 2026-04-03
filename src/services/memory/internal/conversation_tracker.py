@@ -334,6 +334,10 @@ class ConversationTracker:
                 
                 if not conversation:
                     return None
+
+                created_at = conversation.created_at
+                last_activity = conversation.updated_at
+                metadata = conversation.ui_context
                 
                 # Create session from database data
                 session = ConversationSession(
@@ -341,9 +345,9 @@ class ConversationTracker:
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=str(conversation.id),
-                    created_at=conversation.created_at,
-                    last_activity=conversation.updated_at,
-                    metadata=conversation.ui_context or {}
+                    created_at=created_at if isinstance(created_at, datetime) else datetime.utcnow(),
+                    last_activity=last_activity if isinstance(last_activity, datetime) else datetime.utcnow(),
+                    metadata=metadata if isinstance(metadata, dict) else {}
                 )
                 
                 # Load conversation turns from memory entries

@@ -18,6 +18,7 @@ class ProcessingStatus(str, Enum):
     RECORDING_MEMORY = "recording_memory"
     POST_PROCESSING = "post_processing"
     COMPLETED = "completed"
+    DEGRADED = "degraded"
     FAILED = "failed"
     CANCELLED = "cancelled"
     RETRYING = "retrying"
@@ -38,33 +39,44 @@ class ErrorType(str, Enum):
 class ChatRequest(BaseModel):
     """Input payload for a chat orchestration request."""
     model_config = ConfigDict(protected_namespaces=())
-    
+
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Stable request identifier")
+    correlation_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Cross-service correlation identifier")
+    tenant_id: Optional[str] = Field(None, description="Tenant identifier when available")
     message: str = Field(..., description="The user's message content")
     user_id: str = Field(..., description="Unique user identifier")
     org_id: Optional[str] = Field(None, description="Organization or Tenant ID")
     conversation_id: str = Field(..., description="Active conversation context ID")
     session_id: Optional[str] = Field(None, description="Optional session tracking ID")
+    message_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Stable user message identifier")
     attachments: List[Dict[str, Any]] = Field(default_factory=list, description="Associated file or media links")
     include_context: bool = Field(True, description="Whether to perform RAG recall")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional request-specific metadata")
     streaming: bool = Field(False, description="Whether to return a stream generator")
     stream: bool = Field(False, description="Alias for streaming")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Request creation timestamp")
 
 class ChatResponse(BaseModel):
     """Structured output from the orchestrator."""
     model_config = ConfigDict(protected_namespaces=())
-    
+
+    request_id: Optional[str] = Field(None, description="Source request identifier")
     response: str = Field(..., description="The final generated response")
     correlation_id: str = Field(..., description="Request tracking identifier")
+    conversation_id: Optional[str] = Field(None, description="Conversation identifier")
+    assistant_message_id: Optional[str] = Field(None, description="Persisted assistant message identifier")
     processing_time: float = Field(..., description="Total execution time in seconds")
     status: ProcessingStatus = Field(..., description="Terminal processing state")
     used_fallback: bool = Field(False, description="Whether a fallback model was used")
     context_used: bool = Field(False, description="Whether RAG context was utilized")
+    execution_path: Optional[str] = Field(None, description="Execution path selected by the orchestrator")
     structured_content: Dict[str, Any] = Field(default_factory=dict, description="Rich JSON output or application state")
     actions: List[Dict[str, Any]] = Field(default_factory=list, description="Suggested or triggered automation actions")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Detailed execution and model metadata")
+    telemetry: Dict[str, Any] = Field(default_factory=dict, description="Telemetry payload for frontend/runtime inspection")
     error: Optional[str] = Field(None, description="Error message if failed")
     error_type: Optional[ErrorType] = Field(None, description="Error classification")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Response creation timestamp")
 
 class ChatStreamChunk(BaseModel):
     """Granular output chunk for streaming responses."""

@@ -41,6 +41,10 @@
     "tool_service": {},
     "analytics_service": {}
   },
+  "llm": {
+    "default_nlp_model_id": "distilbert-base-uncased",
+    "transformers_dir": "models/transformers"
+  },
   "security": {
     "jwt_secret": "dev-jwt-secret-change-in-production",
     "jwt_algorithm": "HS256",

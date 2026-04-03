@@ -7,7 +7,7 @@ import asyncio
 import logging
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -44,8 +44,8 @@ class ContextualMemoryQuery:
     context_window_size: int = 5
     top_k: int = 10
     similarity_threshold: float = 0.7
-    memory_types: List[MemoryType] = None
-    tags: List[str] = None
+    memory_types: List[MemoryType] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
 
 
 @dataclass

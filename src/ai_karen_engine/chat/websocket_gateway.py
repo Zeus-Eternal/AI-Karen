@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
 from ai_karen_engine.chat.chat_orchestrator import ChatRequest
+from ai_karen_engine.chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
 from ai_karen_engine.event_bus import get_event_bus
 
 logger = logging.getLogger(__name__)
@@ -1083,17 +1084,24 @@ class WebSocketGateway:
                     f"Processing chat message from user {user_id}: {message_content[:50]}..."
                 )
 
+                normalized_conversation_id = normalize_chat_session_id(
+                    conversation_id or connection_info.get("session_id")
+                )
                 chat_request = ChatRequest(
+                    request_id=str(uuid.uuid4()),
+                    correlation_id=str(uuid.uuid4()),
+                    tenant_id=str(connection_info.get("tenant_id") or "default"),
                     message=message_content,
                     user_id=user_id,
-                    conversation_id=conversation_id or str(uuid.uuid4()),
-                    session_id=connection_info.get("session_id"),
+                    conversation_id=normalized_conversation_id,
+                    session_id=normalized_conversation_id,
+                    message_id=str(uuid.uuid4()),
                     stream=False,
                     include_context=True,
                     metadata={},
                 )
 
-                response = await self.chat_orchestrator.process_message(chat_request)
+                response = await self.chat_orchestrator.handle_chat(chat_request)
 
                 await self._send_message(
                     connection_info["websocket"],

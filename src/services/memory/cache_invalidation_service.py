@@ -340,7 +340,7 @@ class CacheInvalidationService:
         
         # Also invalidate user-specific response formatting cache
         try:
-            from extensions.response_formatting.cache_integration import get_cached_formatter_registry
+            from extensions.sys_ext.response_formatting.cache_integration import get_cached_formatter_registry
             cached_registry = get_cached_formatter_registry()
             user_invalidated = await cached_registry.invalidate_user_cache(user_id)
             total_invalidated += user_invalidated

@@ -6,10 +6,10 @@ from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING, Tuple, cast,
 from types import SimpleNamespace
 
 from ai_karen_engine.chat.ChatOrchestrator.models import ProcessingResult
+from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
 
 if TYPE_CHECKING:
     import time
-    from ai_karen_engine.models.shared_types import ChatMessage
     from ..models import ChatRequest, ProcessingContext, ProcessingResult
     from ..base import ChatOrchestratorProtocol
     Base = ChatOrchestratorProtocol
@@ -18,6 +18,25 @@ else:
     Base = object
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_provider_name(provider: Optional[str]) -> str:
+    value = str(provider or "").strip().lower()
+    if value in {"llama-cpp", "llama_cpp", "local"}:
+        return "llamacpp"
+    return value
+
+
+def _normalize_model_name(model_id: Optional[str]) -> str:
+    value = str(model_id or "").strip().lower()
+    if not value:
+        return ""
+    value = value.split(":", 1)[-1].split("/", 1)[-1]
+    if value.endswith(".gguf"):
+        value = value[:-5]
+    elif value.endswith(".bin"):
+        value = value[:-4]
+    return value.replace("_", "-")
 
 class ChatLLMMixin(Base):
     """Methods for LLM routing, trials, and fallback logic with enhanced metrics."""
@@ -63,7 +82,7 @@ class ChatLLMMixin(Base):
         
         # 3. Try Trial Plan
         # A) User-chosen model
-        result = await orch._try_user_chosen_llm(
+        user_result, user_failure_reason = await orch._try_user_chosen_llm(
             request=request,
             context=context,
             persona_prompt=persona_prompt,
@@ -71,8 +90,10 @@ class ChatLLMMixin(Base):
             stream=stream
         )
         
-        if stream and isinstance(result, AsyncIterator):
-            return result
+        if stream and isinstance(user_result, AsyncIterator):
+            return user_result
+        
+        result = user_result
         
         # 3. Fallback to system defaults if no user selection or trial failed
         if not result or (not isinstance(result, AsyncIterator) and not result.success):
@@ -82,7 +103,8 @@ class ChatLLMMixin(Base):
                 context=context,
                 persona_prompt=persona_prompt,
                 message_history=message_history,
-                stream=stream
+                stream=stream,
+                initial_failure_reason=user_failure_reason
             )
             
             if stream and isinstance(result, AsyncIterator):
@@ -105,14 +127,14 @@ class ChatLLMMixin(Base):
         persona_prompt: str,
         message_history: List[ChatMessage],
         stream: bool = False
-    ) -> Union[Optional[ProcessingResult], AsyncIterator[str]]:
+    ) -> Tuple[Optional[ProcessingResult], Optional[str]]:
         """Try the specific LLM requested by the user, if any."""
         metadata = getattr(request, "metadata", {})
         model_id = metadata.get("model_id") or metadata.get("preferred_model")
         provider = metadata.get("provider") or metadata.get("preferred_llm_provider")
 
         if not model_id:
-            return None
+            return None, None
 
         logger.info(f"Attempting user-chosen model: {model_id} ({provider})")
         
@@ -128,17 +150,36 @@ class ChatLLMMixin(Base):
             )
             
             if stream and hasattr(result, "__aiter__"):
-                return cast(AsyncIterator[str], result)
-            
+                return cast(AsyncIterator[str], result), None
+
+            if isinstance(result, dict):
+                self._verify_model_output(result, model_id)
+                metadata = self._build_llm_metadata(
+                    result,
+                    source="requested_model",
+                    additional={
+                        "requested_provider": provider,
+                        "requested_model": model_id,
+                    },
+                )
+                return ProcessingResult(
+                    success=True,
+                    response=result.get("content", ""),
+                    structured_content=result.get("structured_content") or {},
+                    actions=result.get("actions") or [],
+                    llm_metadata=metadata,
+                    context=context.metadata,
+                    used_fallback=False,
+                ), None
+
             final_res = cast(ProcessingResult, result)
-            # Verify non-empty output
             self._verify_model_output(final_res.response, model_id)
-            
-            return final_res
+            return final_res, None
         except Exception as exc:
             logger.warning(f"User-chosen model {model_id} failed: {exc}")
+            return None, str(exc).strip()
             
-        return None
+        return None, None
 
     async def _try_system_default_llms(
         self,
@@ -146,7 +187,8 @@ class ChatLLMMixin(Base):
         context: ProcessingContext,
         persona_prompt: str,
         message_history: List[ChatMessage],
-        stream: bool = False
+        stream: bool = False,
+        initial_failure_reason: Optional[str] = None
     ) -> Union[ProcessingResult, AsyncIterator[str]]:
         """Execute the fallback chain through system defaults and local models."""
         trial_plan = self.fallback_router.get_trial_plan(request)
@@ -155,6 +197,7 @@ class ChatLLMMixin(Base):
         preferred_provider = request_metadata.get("provider") or request_metadata.get("preferred_llm_provider")
         
         attempted_models = []
+        preferred_failure_reason: Optional[str] = initial_failure_reason
         for trial in trial_plan:
             model_id = trial.get("model_id")
             provider = trial.get("provider")
@@ -186,33 +229,47 @@ class ChatLLMMixin(Base):
                     preferred_selection_failed = bool(preferred_model or preferred_provider)
                     actual_provider = result.get("provider") or provider
                     actual_model_id = result.get("model_id") or model_id
+                    normalized_preferred_model = _normalize_model_name(preferred_model)
+                    normalized_actual_model = _normalize_model_name(actual_model_id)
+                    normalized_preferred_provider = _normalize_provider_name(preferred_provider)
+                    normalized_actual_provider = _normalize_provider_name(actual_provider)
                     selection_mismatch = (
-                        bool(preferred_model and actual_model_id and preferred_model != actual_model_id)
-                        or bool(preferred_provider and actual_provider and preferred_provider != actual_provider)
+                        bool(normalized_preferred_model and normalized_actual_model and normalized_preferred_model != normalized_actual_model)
+                        or bool(normalized_preferred_provider and normalized_actual_provider and normalized_preferred_provider != normalized_actual_provider)
                     )
                     is_degraded = bool(result.get("is_degraded", False)) or used_fallback or (preferred_selection_failed and selection_mismatch)
+                    resolved_failure_reason = (
+                        result.get("failure_reason")
+                        or preferred_failure_reason
+                        or (
+                            f"Requested provider/model {preferred_provider or 'default'}"
+                            f"{('/' + preferred_model) if preferred_model else ''} could not be used; "
+                            f"continued with {actual_provider or 'fallback'}"
+                            f"{('/' + actual_model_id) if actual_model_id else ''}."
+                            if preferred_selection_failed and selection_mismatch
+                            else None
+                        )
+                    )
                     metadata = self._build_llm_metadata(
                         {
                             **result,
                             "provider": actual_provider,
                             "model_id": actual_model_id,
                             "is_degraded": is_degraded,
-                            "failure_reason": result.get("failure_reason")
-                            or (
-                                f"Requested provider/model {preferred_provider or 'default'}"
-                                f"{('/' + preferred_model) if preferred_model else ''} was unavailable; "
-                                f"continued with {actual_provider or 'fallback'}"
-                                f"{('/' + actual_model_id) if actual_model_id else ''}."
-                                if preferred_selection_failed and selection_mismatch
-                                else None
-                            ),
+                            "failure_reason": resolved_failure_reason,
                             "routing_rationale": result.get("routing_rationale")
                             or (
-                                f"Preferred selection could not be used; fallback chain selected "
+                                f"Preferred selection failed with: {preferred_failure_reason}. Fallback chain selected "
                                 f"{actual_provider or 'fallback'}"
                                 f"{('/' + actual_model_id) if actual_model_id else ''}."
-                                if preferred_selection_failed and selection_mismatch
-                                else None
+                                if preferred_selection_failed and selection_mismatch and preferred_failure_reason
+                                else (
+                                    f"Preferred selection could not be used; fallback chain selected "
+                                    f"{actual_provider or 'fallback'}"
+                                    f"{('/' + actual_model_id) if actual_model_id else ''}."
+                                    if preferred_selection_failed and selection_mismatch
+                                    else None
+                                )
                             ),
                             "fallback_level": result.get("fallback_level")
                             or ("provider_selection" if preferred_selection_failed and selection_mismatch else ("system_default" if used_fallback else None)),
@@ -224,6 +281,7 @@ class ChatLLMMixin(Base):
                             "duration": duration,
                             "requested_provider": preferred_provider,
                             "requested_model": preferred_model,
+                            "preferred_failure_reason": preferred_failure_reason,
                         }
                     )
                     return ProcessingResult(
@@ -238,6 +296,24 @@ class ChatLLMMixin(Base):
                     )
             except Exception as exc:
                 logger.warning(f"Trial failed for {provider}:{model_id}: {exc}")
+                should_capture_failure = False
+                if preferred_provider or preferred_model:
+                    provider_matches = bool(
+                        _normalize_provider_name(preferred_provider)
+                        and _normalize_provider_name(provider)
+                        and _normalize_provider_name(preferred_provider) == _normalize_provider_name(provider)
+                    )
+                    model_matches = bool(
+                        _normalize_model_name(preferred_model)
+                        and _normalize_model_name(model_id)
+                        and _normalize_model_name(preferred_model) == _normalize_model_name(model_id)
+                    )
+                    should_capture_failure = provider_matches or model_matches
+                elif len(attempted_models) == 1:
+                    should_capture_failure = True
+
+                if should_capture_failure and not preferred_failure_reason:
+                    preferred_failure_reason = str(exc).strip() or f"{provider}:{model_id} failed"
                 continue
                 
         return self._generate_degraded_response(context, attempted_models)
@@ -260,15 +336,29 @@ class ChatLLMMixin(Base):
         # mixin, including the active system prompt and current user turn.
         # Duplicating those entries here causes completion-style models to keep
         # extending a synthetic multi-turn transcript.
-        messages: List[Dict[str, str]] = []
+        messages: List[Dict[str, Any]] = []
         for m in history:
-            role = m.role.value if hasattr(m.role, "value") else str(m.role)
-            messages.append({"role": role, "content": m.content})
+            if hasattr(m, "model_dump"):
+                payload = m.model_dump(mode="json")
+            else:
+                role = m.role.value if hasattr(m.role, "value") else str(m.role)
+                timestamp = getattr(m, "timestamp", None)
+                payload = {
+                    "id": str(getattr(m, "id", "") or ""),
+                    "role": role,
+                    "content": m.content,
+                    "timestamp": (
+                        timestamp.isoformat()
+                        if hasattr(timestamp, "isoformat")
+                        else str(timestamp or "")
+                    ),
+                }
+            messages.append(payload)
 
         if not messages:
             messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
+                ChatMessage(role=MessageRole.SYSTEM, content=system_prompt).model_dump(mode="json"),
+                ChatMessage(role=MessageRole.USER, content=prompt).model_dump(mode="json"),
             ]
         
         if stream:
@@ -286,7 +376,31 @@ class ChatLLMMixin(Base):
             correlation_id=context.correlation_id,
             stream=False 
         )
-        
+
+        if isinstance(response, dict):
+            nested_metadata = response.get("metadata")
+            if isinstance(nested_metadata, dict):
+                for key in (
+                    "provider",
+                    "model_id",
+                    "model_name",
+                    "is_degraded",
+                    "failure_reason",
+                    "preferred_failure_reason",
+                    "routing_rationale",
+                    "routing_strategy",
+                    "routing_confidence",
+                    "fallback_level",
+                    "attempted_models",
+                    "requested_provider",
+                    "requested_model",
+                    "duration",
+                    "usage",
+                    "tokens_per_second",
+                ):
+                    if key not in response and key in nested_metadata:
+                        response[key] = nested_metadata[key]
+
         return response
 
     def _verify_model_output(self, result: Union[Dict[str, Any], str, None], model_id: str) -> None:
@@ -347,6 +461,18 @@ class ChatLLMMixin(Base):
         metadata["routing_confidence"] = extra.get("routing_confidence") or getattr(result, "routing_confidence", 0.0) if not isinstance(result, dict) else result.get("routing_confidence", 0.0)
         metadata["routing_rationale"] = extra.get("routing_rationale") or getattr(result, "routing_rationale", None) if not isinstance(result, dict) else result.get("routing_rationale")
         metadata["routing_strategy"] = extra.get("routing_strategy") or getattr(result, "routing_strategy", None) if not isinstance(result, dict) else result.get("routing_strategy")
+
+        for key in (
+            "requested_provider",
+            "requested_model",
+            "fallback_level",
+            "attempted_models",
+            "trial_index",
+            "preferred_failure_reason",
+        ):
+            value = extra.get(key)
+            if value is not None:
+                metadata[key] = value
 
         if duration is not None: metadata["duration"] = duration
         if usage is not None: metadata["usage"] = usage

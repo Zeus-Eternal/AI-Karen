@@ -268,6 +268,51 @@ class PrettyOutputLayer:
     def _sanitize(self, content: str) -> str:
         content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'on\w+\s*=', '', content, flags=re.IGNORECASE)
+        content = re.sub(
+            r'^\s*Your task:\s*Respond to the user\'s question based on the recent conversation history\.\s*',
+            '',
+            content,
+            flags=re.IGNORECASE,
+        )
+        content = re.sub(r'^\s*response:\s*', '', content, flags=re.IGNORECASE)
+        content = re.sub(
+            r'^\s*(Your task:.*?\n)+(response:\s*)?',
+            '',
+            content,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        content = re.sub(
+            r'\n?\s*Your task:\s*Respond to the user\'s question based on the recent conversation history\.\s*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(
+            r'\n?\s*Now complete the following instruction:\s*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(
+            r'\n?\s*Current conversation:\s*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(r'\n?\s*Solution>\s*$', '', content, flags=re.IGNORECASE | re.MULTILINE)
+        content = re.sub(r'\n?\s*\*\*\s*$', '', content, flags=re.MULTILINE)
+        content = re.sub(
+            r'\n?\s*[A-Z][^.:\n]*\band\b[^.:\n]*\bprovide a detailed solution\.\s*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        content = re.sub(
+            r'\n?\s*[A-Z][^.:\n]*\bissue\b.*$',
+            '',
+            content,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
         return content.strip()
 
     def _run_internal_detectors(self, content: str, context: ResponseContext) -> LayoutHint:

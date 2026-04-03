@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+import json
 from dataclasses import dataclass
 
 try:
@@ -1164,8 +1165,6 @@ Respond with only the JSON object, no additional text."""
     def _parse_ai_error_response(self, ai_response: str, context: ErrorContext) -> Optional[IntelligentErrorResponse]:
         """Parse and validate AI-generated error response"""
         try:
-            import json
-            
             # Clean the response to extract JSON
             response_text = ai_response.strip()
             if response_text.startswith("```json"):
@@ -1240,8 +1239,6 @@ Respond with only the JSON object, no additional text."""
     ) -> Optional[IntelligentErrorResponse]:
         """Merge AI enhancement with base response"""
         try:
-            import json
-            
             # Parse AI enhancement
             enhancement_text = ai_enhancement.strip()
             if enhancement_text.startswith("```json"):

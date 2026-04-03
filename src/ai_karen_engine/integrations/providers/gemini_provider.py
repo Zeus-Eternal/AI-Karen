@@ -39,6 +39,7 @@ class GeminiProvider(LLMProviderBase):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.timeout = timeout
         self.max_retries = max_retries
+        self.transport = (os.getenv("KARI_GEMINI_TRANSPORT") or "rest").strip() or "rest"
         self.initialization_error: Optional[str] = None
         self.genai: Optional[Any] = None
         
@@ -64,7 +65,7 @@ class GeminiProvider(LLMProviderBase):
                 logger.warning(self.initialization_error)
                 return
                 
-            genai.configure(api_key=self.api_key)
+            genai.configure(api_key=self.api_key, transport=self.transport)
             
             # Validate API key by listing models
             self._validate_api_key()
@@ -466,7 +467,8 @@ class GeminiProvider(LLMProviderBase):
             "supports_multimodal": True,
             "safety_settings": self.safety_settings,
             "timeout": self.timeout,
-            "max_retries": self.max_retries
+            "max_retries": self.max_retries,
+            "transport": self.transport,
         }
     
     def health_check(self) -> Dict[str, Any]:

@@ -72,6 +72,7 @@ class ChatOrchestrator(
         instruction_processor: Optional[InstructionProcessor] = None,
         context_integrator: Optional[ContextIntegrator] = None,
         conversation_manager: Optional[Any] = None,
+        session_state_manager: Optional[Any] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
         enable_monitoring: bool = True,
@@ -86,6 +87,7 @@ class ChatOrchestrator(
         self.instruction_processor = instruction_processor or InstructionProcessor()
         self.context_integrator = context_integrator or ContextIntegrator()
         self.conversation_manager = conversation_manager
+        self.session_state_manager = session_state_manager
         self.auth_service = auth_service
         self.output_layer = PrettyOutputLayer()
         

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Bot, ExternalLink, KeyRound, Loader2, RefreshCw, Save, Server } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle2, ExternalLink, KeyRound, Loader2, RefreshCw, Save, Server, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -34,6 +34,7 @@ interface ProviderDetails {
   models: ProviderModel[];
   requires_api_key: boolean;
   api_key_configured: boolean;
+  api_key_masked?: string | null;
   api_key_header: string;
   api_key_prefix: string;
   custom_headers: Record<string, string>;
@@ -147,6 +148,7 @@ export default function ModelSettings() {
   const [selectedModel, setSelectedModel] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [isEditingApiKey, setIsEditingApiKey] = useState(false);
   const [apiKeyHeader, setApiKeyHeader] = useState('Authorization');
   const [apiKeyPrefix, setApiKeyPrefix] = useState('Bearer');
   const [availableModels, setAvailableModels] = useState<ProviderModel[]>([]);
@@ -154,6 +156,9 @@ export default function ModelSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isClearingKey, setIsClearingKey] = useState(false);
+  const [apiKeyValidationState, setApiKeyValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [apiKeyValidationMessage, setApiKeyValidationMessage] = useState('');
+  const validationRequestId = useRef(0);
   const { toast } = useToast();
 
   const selectedProviderDetails = useMemo(() => {
@@ -249,6 +254,9 @@ export default function ModelSettings() {
 
     setBaseUrl(displayBaseUrl);
     setApiKey('');
+    setIsEditingApiKey(false);
+    setApiKeyValidationState('idle');
+    setApiKeyValidationMessage('');
     setApiKeyHeader(selectedProviderDetails.api_key_header || 'Authorization');
     setApiKeyPrefix(selectedProviderDetails.api_key_prefix ?? 'Bearer');
     setAvailableModels(selectedProviderDetails.models);
@@ -256,6 +264,62 @@ export default function ModelSettings() {
 
     void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
   }, [selectedProviderDetails]);
+
+  useEffect(() => {
+    if (!selectedProviderDetails?.requires_api_key) {
+      setApiKeyValidationState('idle');
+      setApiKeyValidationMessage('');
+      return;
+    }
+
+    const candidateKey = apiKey.trim();
+    if (!candidateKey) {
+      setApiKeyValidationState(selectedProviderDetails.api_key_configured ? 'valid' : 'idle');
+      setApiKeyValidationMessage(
+        selectedProviderDetails.api_key_configured
+          ? `${selectedProviderDetails.display_name} key is stored.`
+          : '',
+      );
+      return;
+    }
+
+    const currentRequestId = ++validationRequestId.current;
+    setApiKeyValidationState('validating');
+    setApiKeyValidationMessage(`Validating ${selectedProviderDetails.display_name} key...`);
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await apiClient.post<{
+          valid: boolean;
+          message: string;
+          models_discovered?: number;
+        }>('/api/settings/model/validate', {
+          provider: selectedProviderDetails.id,
+          model: selectedModel,
+          api_key: candidateKey,
+          base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() || undefined : undefined,
+        });
+
+        if (validationRequestId.current !== currentRequestId) {
+          return;
+        }
+
+        setApiKeyValidationState(response.valid ? 'valid' : 'invalid');
+        setApiKeyValidationMessage(response.message);
+      } catch (error) {
+        if (validationRequestId.current !== currentRequestId) {
+          return;
+        }
+
+        setApiKeyValidationState('invalid');
+        setApiKeyValidationMessage(formatErrorMessage(error, `Unable to validate ${selectedProviderDetails.display_name} key.`));
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [apiKey, baseUrl, selectedModel, selectedProviderDetails]);
 
   const handleSave = async () => {
     if (!selectedProviderDetails) {
@@ -274,10 +338,13 @@ export default function ModelSettings() {
     setIsSaving(true);
     try {
       const submittedApiKey = apiKey.trim();
+      if (selectedProviderDetails.requires_api_key && submittedApiKey && apiKeyValidationState === 'invalid') {
+        throw new Error(apiKeyValidationMessage || `${selectedProviderDetails.display_name} API key validation failed.`);
+      }
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
-        base_url: baseUrl.trim(),
+        base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() : undefined,
         api_key: submittedApiKey || undefined,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
@@ -297,6 +364,7 @@ export default function ModelSettings() {
       setSelectedModel(response.selected_model);
       if (!selectedProviderDetails.requires_api_key || updatedProvider?.api_key_configured) {
         setApiKey('');
+        setIsEditingApiKey(false);
       }
 
       toast({
@@ -324,7 +392,7 @@ export default function ModelSettings() {
       const response = await apiClient.put<ModelSettingsResponse>('/api/settings/model', {
         provider: selectedProvider,
         model: selectedModel.trim(),
-        base_url: baseUrl.trim(),
+        base_url: selectedProviderDetails.supports_base_url_override ? baseUrl.trim() : undefined,
         clear_api_key: true,
         api_key_header: selectedProviderDetails.supports_custom_auth ? apiKeyHeader.trim() : undefined,
         api_key_prefix: selectedProviderDetails.supports_custom_auth ? apiKeyPrefix : undefined,
@@ -332,6 +400,7 @@ export default function ModelSettings() {
 
       setSettings(response);
       setApiKey('');
+      setIsEditingApiKey(false);
       toast({
         title: 'API key removed',
         description: `${selectedProviderDetails.display_name} credentials were cleared from Karen.`,
@@ -497,18 +566,36 @@ export default function ModelSettings() {
                     <Label htmlFor="provider-api-key" className="flex items-center">
                       <KeyRound className="mr-2 h-4 w-4 text-primary/80" /> API Key
                     </Label>
-                    <Input
-                      id="provider-api-key"
-                      type="password"
-                      value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
-                      placeholder={`Enter your ${selectedProviderDetails.display_name} API key`}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="provider-api-key"
+                        type="text"
+                        value={isEditingApiKey ? apiKey : (apiKey || selectedProviderDetails.api_key_masked || '')}
+                        onFocus={() => {
+                          setIsEditingApiKey(true);
+                        }}
+                        onBlur={() => {
+                          if (!apiKey.trim()) {
+                            setIsEditingApiKey(false);
+                          }
+                        }}
+                        onChange={(event) => setApiKey(event.target.value)}
+                        placeholder={`Enter your ${selectedProviderDetails.display_name} API key`}
+                        className="pr-10 font-mono"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                        {apiKeyValidationState === 'validating' && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {apiKeyValidationState === 'valid' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                        {apiKeyValidationState === 'invalid' && <XCircle className="h-4 w-4 text-destructive" />}
+                      </div>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>
-                        {selectedProviderDetails.api_key_configured
-                          ? 'A credential is already stored securely. Enter a new key only if you want to replace it.'
-                          : 'Karen stores provider credentials on the backend, not in the browser.'}
+                        {apiKeyValidationMessage || (
+                          selectedProviderDetails.api_key_configured
+                            ? `Stored securely as ${selectedProviderDetails.api_key_masked}. Enter a new key only if you want to replace it.`
+                            : 'Karen stores provider credentials on the backend, not in the browser.'
+                        )}
                       </span>
                       {selectedProviderDetails.api_key_configured && (
                         <Button type="button" variant="outline" size="sm" onClick={handleClearApiKey} disabled={isClearingKey}>

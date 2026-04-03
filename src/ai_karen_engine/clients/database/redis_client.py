@@ -46,6 +46,9 @@ class RedisClient:
     def _k(self, tenant_id: str, user_id: str, kind: str) -> str:
         return f"{self.prefix}:{tenant_id}:{user_id}:{kind}"
 
+    def _session_k(self, tenant_id: str, user_id: str, session_id: str, kind: str) -> str:
+        return f"{self.prefix}:{tenant_id}:{user_id}:session:{session_id}:{kind}"
+
     def flush_short_term(self, tenant_id: str, user_id: str) -> None:
         """Flush all short-term cache for user."""
         if not self.r:
@@ -86,16 +89,42 @@ class RedisClient:
         return self._decode_json_value(val)
 
     def set_session(
-        self, tenant_id: str, user_id: str, sess_data: Dict[str, Any]
+        self,
+        tenant_id: str,
+        user_id: str,
+        sess_data: Dict[str, Any],
+        *,
+        session_id: Optional[str] = None,
+        ttl_seconds: Optional[int] = None,
     ) -> None:
         if not self.r:
             return
-        self.r.set(self._k(tenant_id, user_id, "session"), json.dumps(sess_data))
+        key = (
+            self._session_k(tenant_id, user_id, session_id, "state")
+            if session_id
+            else self._k(tenant_id, user_id, "session")
+        )
+        payload = json.dumps(sess_data)
+        if ttl_seconds and ttl_seconds > 0:
+            self.r.setex(key, ttl_seconds, payload)
+        else:
+            self.r.set(key, payload)
 
-    def get_session(self, tenant_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_session(
+        self,
+        tenant_id: str,
+        user_id: str,
+        *,
+        session_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
         if not self.r:
             return None
-        val = self.r.get(self._k(tenant_id, user_id, "session"))
+        key = (
+            self._session_k(tenant_id, user_id, session_id, "state")
+            if session_id
+            else self._k(tenant_id, user_id, "session")
+        )
+        val = self.r.get(key)
         return self._decode_json_value(val)
 
     # Health

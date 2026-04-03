@@ -337,7 +337,7 @@ async def copilot_assist(
     http_request: Request,
     chat_orchestrator: Any = Depends(ChatOrchestrator_Dep),  # Use ChatOrchestrator as absolute source of truth
 ):
-    """Production-ready copilot assist endpoint with delegation to ChatOrchestrator."""
+    """Thin copilot ingress that delegates chat lifecycle authority to ChatOrchestrator."""
     start_time = time.time()
     correlation_id = get_correlation_id(http_request) or f"copilot_{int(time.time())}"
     
@@ -353,10 +353,16 @@ async def copilot_assist(
     
     # Extract request data
     message = request.message
-    user_id = request.user_id
     org_id = request.org_id
-    session_id = _normalize_session_id(request.session_id)
     request_context = dict(request.context) if isinstance(request.context, dict) else {}
+    session_id = _normalize_session_id(
+        request.session_id
+        or request_context.get("session_id")
+        or request_context.get("conversation_id")
+    )
+    conversation_id = _normalize_session_id(
+        request_context.get("conversation_id") or session_id
+    )
     
     # Get user context from request state first, then fall back to authenticated context
     user_context = None
@@ -381,6 +387,12 @@ async def copilot_assist(
 
     request_user_id = str(request.user_id or "").strip() or None
     user_id = authenticated_user_id or request_user_id or "anonymous"
+    tenant_id = str(
+        (user_context or {}).get("tenant_id")
+        or (authenticated_context or {}).get("tenant_id")
+        or org_id
+        or "default"
+    )
     
     allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
     auth_context = {
@@ -394,29 +406,17 @@ async def copilot_assist(
         if access_token:
             auth_context["access_token"] = access_token
 
-    start_time = time.time()
     try:
-        # Check NLP asset readiness for production-grade processing
-        from services.memory.nlp_service_manager import nlp_service_manager
-        nlp_status = await nlp_service_manager.ensure_assets_ready()
-        if not nlp_status.get("ready", False):
-            logger.warning(
-                "NLP assets are unready (degraded mode active). "
-                "Production-grade parsing is restricted. Status: %s",
-                nlp_status,
-                extra={"correlation_id": correlation_id}
-            )
-            if "auth_context" in auth_context:
-                auth_context["nlp_degraded"] = True
-                auth_context["nlp_status"] = nlp_status
-
-        # Create a ChatRequest for the orchestrator
         chat_request = ChatRequest(
+            request_id=str(uuid.uuid4()),
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
             message=message,
             user_id=user_id,
-            conversation_id=session_id,
+            org_id=org_id or tenant_id,
+            conversation_id=conversation_id,
             session_id=session_id,
-            org_id=org_id,
+            message_id=str(uuid.uuid4()),
             stream=request.stream,
             streaming=request.stream,
             include_context=True,
@@ -435,7 +435,7 @@ async def copilot_assist(
         logger.info("ChatRequest created successfully", extra={"correlation_id": correlation_id})
         
         if request.stream:
-            orchestrator_gen = await chat_orchestrator.process_message(chat_request)
+            orchestrator_gen = await chat_orchestrator.handle_chat_stream(chat_request)
             
             if orchestrator_gen is None:
                 logger.error("ChatOrchestrator returned None for streaming request", extra={"correlation_id": correlation_id})
@@ -465,7 +465,7 @@ async def copilot_assist(
                 headers={"X-Correlation-Id": correlation_id}
             )
             
-        response_raw = await chat_orchestrator.process_message(chat_request)
+        response_raw = await chat_orchestrator.handle_chat(chat_request)
         if response_raw is None:
             logger.error("ChatOrchestrator returned None for non-streaming request", extra={"correlation_id": correlation_id})
             raise HTTPException(status_code=503, detail="Chat service returned no response")
@@ -485,7 +485,22 @@ async def copilot_assist(
         # Extract response data
         metadata_dict: Dict[str, Any] = getattr(response, "metadata", {}) or {}
         metadata_dict["total_ms"] = total_time_ms
-        
+        metadata_dict["conversation_id"] = getattr(response, "conversation_id", conversation_id)
+        metadata_dict["assistant_message_id"] = getattr(response, "assistant_message_id", None)
+        metadata_dict["execution_path"] = getattr(response, "execution_path", None)
+        telemetry = getattr(response, "telemetry", {}) or {}
+        if telemetry:
+            metadata_dict["telemetry"] = telemetry
+
+        llm_metadata = metadata_dict.get("llm")
+        if isinstance(llm_metadata, dict):
+            preferred_failure_reason = str(llm_metadata.get("preferred_failure_reason") or "").strip()
+            failure_reason = str(llm_metadata.get("failure_reason") or "").strip()
+            if preferred_failure_reason:
+                llm_metadata["failure_reason"] = preferred_failure_reason
+                if not llm_metadata.get("raw_failure_reason") and failure_reason and failure_reason != preferred_failure_reason:
+                    llm_metadata["raw_failure_reason"] = failure_reason
+
         # Handle failures explicitly
         if getattr(response_raw, "status", None) == ProcessingStatus.FAILED:
             logger.warning(f"Orchestrator reported failure for {correlation_id}: {getattr(response_raw, 'error', 'Unknown error')}")
@@ -532,7 +547,31 @@ async def copilot_assist(
         )
         
         if _is_production_env():
-            raise HTTPException(status_code=503, detail="Copilot service unavailable") from e
+            if isinstance(e, HTTPException):
+                safe_detail = e.detail
+                if not isinstance(safe_detail, dict):
+                    safe_detail = {
+                        "message": str(e.detail) if e.detail else "Copilot request failed",
+                }
+                safe_detail = {
+                    **safe_detail,
+                    "correlation_id": correlation_id,
+                }
+                raise HTTPException(status_code=e.status_code, detail=safe_detail) from e
+
+            error_message = str(e).strip() or "Copilot request failed"
+            error_code = f"copilot_{type(e).__name__.lower()}"
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "user_message": error_message,
+                    "error": error_message,
+                    "detail": error_message,
+                    "error_code": error_code,
+                    "exception_type": type(e).__name__,
+                    "correlation_id": correlation_id,
+                },
+            )
         
         return _assist_response_json(
             answer="I'm sorry, but I'm experiencing technical difficulties right now. Please try again later.",

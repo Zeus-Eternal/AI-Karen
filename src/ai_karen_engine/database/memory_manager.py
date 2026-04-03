@@ -91,6 +91,7 @@ class MemoryQuery:
     scope: Optional[str] = None
     kind: Optional[str] = None
     metadata_filter: Dict[str, Any] = field(default_factory=dict)
+    query_embedding: Optional[List[float]] = None
     time_range: Optional[Tuple[datetime, datetime]] = None
     top_k: int = 10
     similarity_threshold: float = 0.7
@@ -106,6 +107,7 @@ class MemoryQuery:
             "scope": self.scope,
             "kind": self.kind,
             "metadata_filter": self.metadata_filter,
+            "has_query_embedding": self.query_embedding is not None,
             "time_range": (
                 [t.isoformat() for t in self.time_range] if self.time_range else None
             ),
@@ -349,12 +351,19 @@ class MemoryManager:
                     return cached
 
             # Query embedding
-            q_emb_raw = await self.embedding_manager.get_embedding(query.text)
-            q_emb = (
-                np.array(q_emb_raw)
-                if not isinstance(q_emb_raw, np.ndarray)
-                else q_emb_raw
-            )
+            if query.query_embedding is not None:
+                q_emb = (
+                    np.array(query.query_embedding)
+                    if not isinstance(query.query_embedding, np.ndarray)
+                    else query.query_embedding
+                )
+            else:
+                q_emb_raw = await self.embedding_manager.get_embedding(query.text)
+                q_emb = (
+                    np.array(q_emb_raw)
+                    if not isinstance(q_emb_raw, np.ndarray)
+                    else q_emb_raw
+                )
 
             # Metadata filter for vector DB
             metadata_filter = self._build_metadata_filter(query)

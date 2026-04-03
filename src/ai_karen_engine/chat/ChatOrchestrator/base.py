@@ -44,6 +44,7 @@ class ChatOrchestratorProtocol(Protocol):
     instruction_processor: InstructionProcessor
     context_integrator: ContextIntegrator
     conversation_manager: Optional[Any]
+    session_state_manager: Optional[Any]
     auth_service: Optional[Any]
     output_layer: PrettyOutputLayer
     fallback_router: FallbackRouter
@@ -67,9 +68,74 @@ class ChatOrchestratorProtocol(Protocol):
     _tasks_lock: asyncio.Lock
 
     # Core Methods
+    async def handle_chat(self, request: ChatRequest) -> ChatResponse:
+        ...
+
+    async def handle_chat_stream(
+        self, request: ChatRequest
+    ) -> AsyncGenerator[ChatStreamChunk, None]:
+        ...
+
     async def process_message(
         self, request: ChatRequest
     ) -> Union[ChatResponse, AsyncGenerator[ChatStreamChunk, None]]:
+        ...
+
+    async def _persist_user_message(self, request: ChatRequest) -> Dict[str, Any]:
+        ...
+
+    async def _resolve_conversation_state(
+        self, request: ChatRequest, user_message_record: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        ...
+
+    async def _build_working_context(
+        self, request: ChatRequest, conversation_state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        ...
+
+    async def _select_execution_path(
+        self, request: ChatRequest, working_context: Dict[str, Any]
+    ) -> str:
+        ...
+
+    async def _execute_generation(
+        self,
+        request: ChatRequest,
+        working_context: Dict[str, Any],
+        execution_path: str,
+    ) -> ChatResponse:
+        ...
+
+    async def _finalize_response(
+        self,
+        request: ChatRequest,
+        generation_result: ChatResponse,
+        execution_path: str,
+        working_context: Dict[str, Any],
+        user_message_record: Dict[str, Any],
+    ) -> ChatResponse:
+        ...
+
+    async def _persist_assistant_message(
+        self, request: ChatRequest, response: ChatResponse
+    ) -> ChatResponse:
+        ...
+
+    async def _post_response_writeback(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+        working_context: Dict[str, Any],
+    ) -> None:
+        ...
+
+    async def _emit_chat_telemetry(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+        working_context: Dict[str, Any],
+    ) -> None:
         ...
 
     async def _process_traditional(

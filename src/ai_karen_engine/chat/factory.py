@@ -16,8 +16,10 @@ from ai_karen_engine.chat.instruction_processor import InstructionProcessor
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
 from ai_karen_engine.chat.stream_processor import AsyncStreamProcessor as StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
-from ai_karen_engine.chat.conversation_manager import ConversationManager
 from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.conversation_manager import ConversationManager
+from ai_karen_engine.core.memory.session_state_manager import SessionStateManager
+from ai_karen_engine.clients.factory import get_redis_client
 from services.memory.memory_service import WebUIMemoryService
 
 logger = logging.getLogger(__name__)
@@ -212,6 +214,18 @@ class ChatServiceFactory:
             logger.error(f"Failed to create conversation manager: {e}")
             return None
 
+    def create_session_state_manager(self) -> Optional[SessionStateManager]:
+        """Create and configure the Redis-backed session continuity manager."""
+        try:
+            redis_client = get_redis_client()
+            manager = SessionStateManager(redis_client=redis_client)
+            self._services["session_state_manager"] = manager
+            logger.info("Session state manager created successfully")
+            return manager
+        except Exception as e:
+            logger.error(f"Failed to create session state manager: {e}")
+            return None
+
     def create_chat_orchestrator(self) -> ChatOrchestrator:
         """
         Create and configure chat orchestrator with all services wired.
@@ -229,6 +243,7 @@ class ChatServiceFactory:
         tool_integration_service = self.create_tool_integration_service()
         instruction_processor = self.create_instruction_processor()
         context_integrator = self.create_context_integrator()
+        session_state_manager = self.create_session_state_manager()
 
         # Create retry configuration
         retry_config = RetryConfig(
@@ -262,6 +277,7 @@ class ChatServiceFactory:
             instruction_processor=instruction_processor,
             context_integrator=context_integrator,
             conversation_manager=self.create_conversation_manager(),
+            session_state_manager=session_state_manager,
             retry_config=retry_config,
             timeout_seconds=self.config.timeout_seconds,
             enable_monitoring=self.config.enable_monitoring,

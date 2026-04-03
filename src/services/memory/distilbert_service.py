@@ -31,6 +31,11 @@ AutoModel = None  # type: ignore[assignment]
 _TRANSFORMERS_STACK_STATUS: Optional[bool] = None
 
 
+def _default_huggingface_hub_dir() -> Path:
+    """Return the conventional Hugging Face hub path for the current user."""
+    return Path.home() / ".cache" / "huggingface" / "hub"
+
+
 def _ensure_transformers_stack() -> bool:
     """Lazily import torch/transformers to avoid expensive startup costs."""
     global torch, AutoTokenizer, AutoModel, _TRANSFORMERS_STACK_STATUS
@@ -223,8 +228,8 @@ class DistilBertService:
             import os as os_module
             transformers_offline = os_module.getenv("TRANSFORMERS_OFFLINE", "")
             hf_hub_offline = os_module.getenv("HF_HUB_OFFLINE", "")
-            transformers_cache_dir = os_module.getenv("TRANSFORMERS_CACHE_DIR", "")
-            hf_home = os_module.getenv("HF_HOME", "")
+            transformers_cache_dir = self.config.transformers_cache_dir or os_module.getenv("TRANSFORMERS_CACHE_DIR", "")
+            hf_home = self.config.hf_home or os_module.getenv("HF_HOME", "")
             
             offline = (
                 transformers_offline.lower() in ("1", "true", "yes") or
@@ -234,6 +239,7 @@ class DistilBertService:
             # Add diagnostic logging
             logger.info("=== DISTILBERT MODEL LOADING DIAGNOSTICS ===")
             logger.info(f"Model name: {self.config.model_name}")
+            logger.info(f"Configured local model root: {self.config.local_model_root}")
             logger.info(f"TRANSFORMERS_OFFLINE: {transformers_offline}")
             logger.info(f"HF_HUB_OFFLINE: {hf_hub_offline}")
             logger.info(f"TRANSFORMERS_CACHE_DIR: {transformers_cache_dir}")
@@ -248,11 +254,13 @@ class DistilBertService:
             logger.info(f"Resolved model source: {resolved_model_source}")
             
             # Check if model files exist in expected locations
+            huggingface_hub_dir = _default_huggingface_hub_dir()
+            configured_local_model_dir = Path(self.config.local_model_root) / self.config.model_name
             model_paths_to_check = [
-                f"./models/transformers/{self.config.model_name}",
+                str(configured_local_model_dir),
                 f"{transformers_cache_dir}/{self.config.model_name}" if transformers_cache_dir else None,
                 f"{hf_home}/hub/{self.config.model_name}" if hf_home else None,
-                f"/root/.cache/huggingface/hub/models--{self.config.model_name.replace('/', '--')}",
+                str(huggingface_hub_dir / f"models--{self.config.model_name.replace('/', '--')}"),
             ]
             
             for path in model_paths_to_check:
@@ -320,13 +328,14 @@ class DistilBertService:
 
     def _resolve_model_source(self, model_name: str, transformers_cache_dir: str, hf_home: str) -> str:
         """Prefer explicit local model directories before falling back to model ids."""
+        huggingface_hub_dir = _default_huggingface_hub_dir()
         candidate_dirs = [
-            Path("models/transformers") / model_name,
+            Path(self.config.local_model_root) / model_name,
             Path(transformers_cache_dir) / model_name if transformers_cache_dir else None,
             Path(transformers_cache_dir) / "models--" / model_name if transformers_cache_dir else None,
             Path(transformers_cache_dir) / "hub" / f"models--{model_name.replace('/', '--')}" if transformers_cache_dir else None,
             Path(hf_home) / "hub" / f"models--{model_name.replace('/', '--')}" if hf_home else None,
-            Path("/root/.cache/huggingface/hub") / f"models--{model_name.replace('/', '--')}",
+            huggingface_hub_dir / f"models--{model_name.replace('/', '--')}",
         ]
 
         for candidate in candidate_dirs:

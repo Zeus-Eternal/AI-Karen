@@ -652,6 +652,10 @@ class AuthService {
     const accessToken = this.getAccessToken();
     
     if (!accessToken) {
+      const sessionStillValid = await this.validateSession();
+      if (sessionStillValid) {
+        return '';
+      }
       throw new Error('No access token available');
     }
 

@@ -47,8 +47,8 @@ async def test_copilot_assist_endpoint():
     
     try:
         from ai_karen_engine.api_routes.copilot_routes import copilot_assist, AssistRequest
-from fastapi import Request
-from ai_karen_engine.core.dependencies import get_chat_orchestrator_service
+        from fastapi import Request
+        from ai_karen_engine.core.dependencies import get_chat_orchestrator_service
         
         # Mock the chat orchestrator service
         chat_service = await get_chat_orchestrator_service()

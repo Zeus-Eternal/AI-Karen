@@ -76,8 +76,6 @@ async def update_user_model_preferences(request: UpdatePreferencesRequest) -> Di
             # Update default model if provided
             if request.defaultModel is not None:
                 settings_manager.set_setting("default_model", request.defaultModel, save=True)
-                # Also update the main model setting for consistency
-                settings_manager.set_setting("model", request.defaultModel, save=True)
                 logger.info(f"Updated default model to: {request.defaultModel}")
             
             return {"status": "success", "message": "Preferences updated successfully"}
