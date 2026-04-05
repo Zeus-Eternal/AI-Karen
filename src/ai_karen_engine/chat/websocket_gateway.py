@@ -4,7 +4,7 @@ import json
 import logging
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
@@ -24,11 +24,9 @@ class CollaborationUser:
     status: str = "online"
     last_seen: Optional[datetime] = None
     typing_in: Optional[str] = None
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
         if self.last_seen is None:
             self.last_seen = datetime.utcnow()
 
@@ -42,11 +40,9 @@ class CollaborationSession:
     participants: List[CollaborationUser]
     session_type: str = "chat"
     started_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
         if self.started_at is None:
             self.started_at = datetime.utcnow()
 
@@ -535,6 +531,62 @@ class WebSocketGateway:
             self._collaboration_cleanup_task,
         ]
 
+    async def _cleanup_expired_typing(self) -> None:  # pragma: no cover - loop
+        """Periodically remove expired typing indicators."""
+        try:
+            while True:
+                await asyncio.sleep(max(1.0, self.cleanup_interval / 6))
+                await self.typing_manager.cleanup_expired_typing()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed typing cleanup loop: {e}")
+
+    async def _cleanup_expired_presence(self) -> None:  # pragma: no cover - loop
+        """Periodically mark stale presence records offline."""
+        try:
+            while True:
+                await asyncio.sleep(self.cleanup_interval)
+                await self.presence_manager.cleanup_expired_presence()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed presence cleanup loop: {e}")
+
+    async def _cleanup_expired_messages(self) -> None:  # pragma: no cover - loop
+        """Drop queued offline messages that have aged out."""
+        try:
+            while True:
+                await asyncio.sleep(self.cleanup_interval)
+                cutoff = datetime.utcnow() - timedelta(hours=1)
+                for user_id in list(self.message_queue.keys()):
+                    retained = [
+                        message
+                        for message in self.message_queue[user_id]
+                        if datetime.fromisoformat(message.get("timestamp", datetime.utcnow().isoformat())) > cutoff
+                    ]
+                    if retained:
+                        self.message_queue[user_id] = retained
+                    else:
+                        del self.message_queue[user_id]
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed message cleanup loop: {e}")
+
+    async def _heartbeat_loop(self) -> None:  # pragma: no cover - loop
+        """Refresh connection heartbeats for active websocket clients."""
+        try:
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                now = datetime.utcnow().isoformat()
+                for connection in self.active_connections.values():
+                    connection["last_heartbeat"] = now
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed heartbeat loop: {e}")
+
     async def _cleanup_collaboration_sessions(self) -> None:  # pragma: no cover - loop
         """Clean up inactive collaboration sessions."""
         try:
@@ -568,734 +620,19 @@ class WebSocketGateway:
                 # End inactive sessions
                 for session_id in inactive_sessions:
                     await self.collaboration_manager.end_session(session_id)
-                    logger.info(
-                        f"Cleaned up inactive collaboration session: {session_id}"
-                    )
 
         except asyncio.CancelledError:
-            pass
+            raise
         except Exception as e:
-            logger.error(f"Failed to cleanup collaboration sessions: {e}")
+            logger.error(f"Failed collaboration session cleanup: {e}")
 
-    async def shutdown(self) -> None:
-        """Cancel and await background tasks."""
+    async def stop(self) -> None:
+        """Stop background maintenance tasks."""
         for task in self._tasks:
-            task.cancel()
+            if task and not task.done():
+                task.cancel()
         for task in self._tasks:
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-        # Reset references so any pending coroutines are not left dangling
-        # which previously triggered 'coroutine was never awaited' warnings
-        # during shutdown.
-        self._typing_cleanup_task = None
-        self._presence_cleanup_task = None
-        self._message_cleanup_task = None
-        self._heartbeat_task = None
-        self._tasks.clear()
-
-    async def _cleanup_expired_typing(self) -> None:  # pragma: no cover - loop
-        try:
-            while True:
-                await asyncio.sleep(self.cleanup_interval)
-                await self.typing_manager.cleanup_expired_typing()
-        except asyncio.CancelledError:
-            pass
-
-    async def _cleanup_expired_presence(self) -> None:  # pragma: no cover - loop
-        try:
-            while True:
-                await asyncio.sleep(self.cleanup_interval)
-                await self.presence_manager.cleanup_expired_presence()
-        except asyncio.CancelledError:
-            pass
-
-    async def _cleanup_expired_messages(self) -> None:  # pragma: no cover - loop
-        try:
-            while True:
-                await asyncio.sleep(self.cleanup_interval)
-                await self._cleanup_message_queue()
-        except asyncio.CancelledError:
-            pass
-
-    async def _heartbeat_loop(self) -> None:  # pragma: no cover - loop
-        try:
-            while True:
-                await asyncio.sleep(self.heartbeat_interval)
-                await self._send_heartbeat_to_connections()
-        except asyncio.CancelledError:
-            pass
-
-    async def _cleanup_message_queue(self) -> None:
-        """Clean up expired messages from the message queue."""
-        try:
-            current_time = datetime.utcnow()
-            for user_id in list(self.message_queue.keys()):
-                # Remove messages older than 24 hours
-                cutoff_time = current_time - timedelta(hours=24)
-                self.message_queue[user_id] = [
-                    msg
-                    for msg in self.message_queue[user_id]
-                    if datetime.fromisoformat(
-                        msg.get("timestamp", current_time.isoformat())
-                    )
-                    > cutoff_time
-                ]
-
-                # Remove empty queues
-                if not self.message_queue[user_id]:
-                    del self.message_queue[user_id]
-
-            logger.debug("Cleaned up expired messages from queue")
-
-        except Exception as e:
-            logger.error(f"Failed to cleanup message queue: {e}")
-
-    async def _send_heartbeat_to_connections(self) -> None:
-        """Send heartbeat to all active connections."""
-        try:
-            heartbeat_message = {
-                "type": MessageType.PING,
-                "timestamp": datetime.utcnow().isoformat(),
-                "data": {"heartbeat": True},
-            }
-
-            # Send to all active connections
-            for connection_id, connection_info in self.active_connections.items():
-                try:
-                    websocket = connection_info.get("websocket")
-                    if websocket:
-                        await websocket.send_text(json.dumps(heartbeat_message))
-                except Exception as e:
-                    logger.debug(
-                        f"Failed to send heartbeat to connection {connection_id}: {e}"
-                    )
-                    # Mark connection for cleanup
-                    connection_info["needs_cleanup"] = True
-
-            # Clean up failed connections
-            failed_connections = [
-                conn_id
-                for conn_id, conn_info in self.active_connections.items()
-                if conn_info.get("needs_cleanup", False)
-            ]
-
-            for conn_id in failed_connections:
-                await self._cleanup_connection(conn_id)
-
-        except Exception as e:
-            logger.error(f"Failed to send heartbeat: {e}")
-
-    async def handle_websocket_connection(self, websocket) -> str:
-        """Handle a new WebSocket connection with collaboration features."""
-        connection_id = str(uuid.uuid4())
-
-        try:
-            # Accept the connection
-            await websocket.accept()
-
-            # Initialize connection info
-            connection_info = {
-                "connection_id": connection_id,
-                "websocket": websocket,
-                "connected_at": datetime.utcnow(),
-                "user_id": None,
-                "conversation_id": None,
-                "authenticated": False,
-                "last_activity": datetime.utcnow(),
-            }
-
-            self.active_connections[connection_id] = connection_info
-
-            logger.info(f"WebSocket connection established: {connection_id}")
-
-            # Handle messages
-            while True:
-                try:
-                    # Receive message
-                    data = await websocket.receive_text()
-                    message_data = json.loads(data)
-
-                    # Update last activity
-                    connection_info["last_activity"] = datetime.utcnow()
-
-                    # Process message
-                    await self._process_websocket_message(connection_id, message_data)
-
-                except Exception as e:
-                    logger.error(f"Error processing WebSocket message: {e}")
-                    await self._send_error_message(websocket, str(e))
-
-        except Exception as e:
-            logger.error(f"WebSocket connection error: {e}")
-        finally:
-            await self._cleanup_connection(connection_id)
-
-        return connection_id
-
-    async def _process_websocket_message(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Process incoming WebSocket message with collaboration features."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info:
-                return
-
-            message_type = message_data.get("type")
-
-            # Handle different message types
-            if message_type == "auth":
-                await self._handle_auth_message(connection_id, message_data)
-
-            elif message_type == "chat":
-                await self._handle_chat_message(connection_id, message_data)
-
-            elif message_type == MessageType.PRESENCE_UPDATE:
-                await self._handle_presence_update(connection_id, message_data)
-
-            elif message_type == MessageType.TYPING_INDICATOR:
-                await self._handle_typing_indicator(connection_id, message_data)
-
-            elif message_type == MessageType.COLLABORATION_INVITE:
-                await self._handle_collaboration_invite(connection_id, message_data)
-
-            elif message_type == MessageType.COLLABORATION_JOIN:
-                await self._handle_collaboration_join(connection_id, message_data)
-
-            elif message_type == MessageType.COLLABORATION_LEAVE:
-                await self._handle_collaboration_leave(connection_id, message_data)
-
-            elif message_type == MessageType.COLLABORATIVE_EDIT:
-                await self._handle_collaborative_edit(connection_id, message_data)
-
-            elif message_type == MessageType.PONG:
-                # Handle pong response
-                logger.debug(f"Received pong from connection {connection_id}")
-
-            else:
-                logger.warning(f"Unknown message type: {message_type}")
-
-        except Exception as e:
-            logger.error(f"Failed to process WebSocket message: {e}")
-
-    async def _handle_auth_message(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle authentication message."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info:
-                return
-
-            user_id = message_data.get("user_id")
-            conversation_id = message_data.get("conversation_id")
-
-            if user_id:
-                # Update connection info
-                connection_info["user_id"] = user_id
-                connection_info["conversation_id"] = conversation_id
-                connection_info["authenticated"] = True
-
-                # Track user connections
-                if user_id not in self.user_connections:
-                    self.user_connections[user_id] = set()
-                self.user_connections[user_id].add(connection_id)
-
-                # Track conversation connections
-                if conversation_id:
-                    if conversation_id not in self.conversation_connections:
-                        self.conversation_connections[conversation_id] = set()
-                    self.conversation_connections[conversation_id].add(connection_id)
-
-                # Update presence
-                await self.presence_manager.update_presence(
-                    user_id=user_id,
-                    status="online",
-                    conversation_id=conversation_id,
-                    metadata={"username": message_data.get("username", user_id)},
-                )
-
-                # Send authentication success
-                await self._send_message(
-                    connection_info["websocket"],
-                    {
-                        "type": "auth_success",
-                        "user_id": user_id,
-                        "connection_id": connection_id,
-                    },
-                )
-
-                logger.info(
-                    f"User {user_id} authenticated on connection {connection_id}"
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle auth message: {e}")
-
-    async def _handle_presence_update(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle presence update message."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            status = message_data.get("status", "online")
-            conversation_id = connection_info.get("conversation_id")
-
-            await self.presence_manager.update_presence(
-                user_id=user_id,
-                status=status,
-                conversation_id=conversation_id,
-                metadata=message_data.get("metadata", {}),
-            )
-
-            # Broadcast presence update to conversation participants
-            if conversation_id:
-                await self._broadcast_to_conversation(
-                    conversation_id,
-                    {
-                        "type": MessageType.PRESENCE_UPDATE,
-                        "user_id": user_id,
-                        "status": status,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    },
-                    exclude_user=user_id,
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle presence update: {e}")
-
-    async def _handle_typing_indicator(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle typing indicator message."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            conversation_id = connection_info.get("conversation_id")
-            is_typing = message_data.get("is_typing", False)
-
-            if conversation_id:
-                await self.typing_manager.set_typing(
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    is_typing=is_typing,
-                )
-
-                # Broadcast typing indicator to conversation participants
-                await self._broadcast_to_conversation(
-                    conversation_id,
-                    {
-                        "type": MessageType.TYPING_INDICATOR,
-                        "user_id": user_id,
-                        "is_typing": is_typing,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    },
-                    exclude_user=user_id,
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle typing indicator: {e}")
-
-    async def _handle_collaboration_invite(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle collaboration session invite."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            conversation_id = connection_info.get("conversation_id")
-            invited_users = message_data.get("invited_users", [])
-            session_type = message_data.get("session_type", "chat")
-
-            if conversation_id:
-                # Create collaboration session
-                session_id = await self.collaboration_manager.create_session(
-                    conversation_id=conversation_id,
-                    initiator_user_id=user_id,
-                    session_type=session_type,
-                    metadata={
-                        "initiator_username": message_data.get("username", user_id),
-                        "invited_users": invited_users,
-                    },
-                )
-
-                # Send invites to invited users
-                for invited_user_id in invited_users:
-                    await self._send_to_user(
-                        invited_user_id,
-                        {
-                            "type": MessageType.COLLABORATION_INVITE,
-                            "session_id": session_id,
-                            "initiator": user_id,
-                            "conversation_id": conversation_id,
-                            "session_type": session_type,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    )
-
-                # Confirm to initiator
-                await self._send_message(
-                    connection_info["websocket"],
-                    {
-                        "type": "collaboration_session_created",
-                        "session_id": session_id,
-                        "invited_users": invited_users,
-                    },
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle collaboration invite: {e}")
-
-    async def _handle_collaboration_join(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle joining a collaboration session."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            session_id = message_data.get("session_id")
-            username = message_data.get("username", user_id)
-
-            if session_id:
-                success = await self.collaboration_manager.join_session(
-                    session_id=session_id, user_id=user_id, username=username
-                )
-
-                if success:
-                    session = self.collaboration_manager.get_session(session_id)
-                    if session:
-                        # Notify all session participants
-                        for participant in session.participants:
-                            await self._send_to_user(
-                                participant.user_id,
-                                {
-                                    "type": "user_joined_collaboration",
-                                    "session_id": session_id,
-                                    "user_id": user_id,
-                                    "username": username,
-                                    "timestamp": datetime.utcnow().isoformat(),
-                                },
-                            )
-
-                # Send join result
-                await self._send_message(
-                    connection_info["websocket"],
-                    {
-                        "type": "collaboration_join_result",
-                        "session_id": session_id,
-                        "success": success,
-                    },
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle collaboration join: {e}")
-
-    async def _handle_collaboration_leave(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle leaving a collaboration session."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            session_id = message_data.get("session_id")
-
-            if session_id:
-                success = await self.collaboration_manager.leave_session(
-                    session_id=session_id, user_id=user_id
-                )
-
-                # Send leave result
-                await self._send_message(
-                    connection_info["websocket"],
-                    {
-                        "type": "collaboration_leave_result",
-                        "session_id": session_id,
-                        "success": success,
-                    },
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle collaboration leave: {e}")
-
-    async def _handle_collaborative_edit(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle collaborative editing message."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            session_id = message_data.get("session_id")
-            edit_data = message_data.get("edit_data", {})
-
-            if session_id:
-                session = self.collaboration_manager.get_session(session_id)
-                if session and any(p.user_id == user_id for p in session.participants):
-                    # Broadcast edit to other session participants
-                    for participant in session.participants:
-                        if participant.user_id != user_id:
-                            await self._send_to_user(
-                                participant.user_id,
-                                {
-                                    "type": MessageType.COLLABORATIVE_EDIT,
-                                    "session_id": session_id,
-                                    "user_id": user_id,
-                                    "edit_data": edit_data,
-                                    "timestamp": datetime.utcnow().isoformat(),
-                                },
-                            )
-
-        except Exception as e:
-            logger.error(f"Failed to handle collaborative edit: {e}")
-
-    async def _handle_chat_message(
-        self, connection_id: str, message_data: Dict[str, Any]
-    ) -> None:
-        """Handle regular chat message."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info or not connection_info.get("authenticated"):
-                return
-
-            user_id = connection_info["user_id"]
-            conversation_id = connection_info.get("conversation_id")
-            message_content = message_data.get("message", "")
-
-            if self.chat_orchestrator and message_content:
-                logger.info(
-                    f"Processing chat message from user {user_id}: {message_content[:50]}..."
-                )
-
-                normalized_conversation_id = normalize_chat_session_id(
-                    conversation_id or connection_info.get("session_id")
-                )
-                chat_request = ChatRequest(
-                    request_id=str(uuid.uuid4()),
-                    correlation_id=str(uuid.uuid4()),
-                    tenant_id=str(connection_info.get("tenant_id") or "default"),
-                    message=message_content,
-                    user_id=user_id,
-                    conversation_id=normalized_conversation_id,
-                    session_id=normalized_conversation_id,
-                    message_id=str(uuid.uuid4()),
-                    stream=False,
-                    include_context=True,
-                    metadata={},
-                )
-
-                response = await self.chat_orchestrator.handle_chat(chat_request)
-
-                await self._send_message(
-                    connection_info["websocket"],
-                    {
-                        "type": "chat_response",
-                        "message": response.response,
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "metadata": {
-                            "correlation_id": response.correlation_id,
-                            "processing_time": response.processing_time,
-                            **response.metadata,
-                        },
-                    },
-                )
-
-        except Exception as e:
-            logger.error(f"Failed to handle chat message: {e}")
-
-    async def _send_message(self, websocket, message_data: Dict[str, Any]) -> None:
-        """Send message to a WebSocket connection."""
-        try:
-            await websocket.send_text(json.dumps(message_data))
-        except Exception as e:
-            logger.error(f"Failed to send WebSocket message: {e}")
-
-    async def _send_error_message(self, websocket, error_message: str) -> None:
-        """Send error message to WebSocket connection."""
-        try:
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "error",
-                        "message": error_message,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    }
-                )
-            )
-        except Exception as e:
-            logger.error(f"Failed to send error message: {e}")
-
-    async def _send_to_user(self, user_id: str, message_data: Dict[str, Any]) -> None:
-        """Send message to all connections of a specific user."""
-        try:
-            if user_id not in self.user_connections:
-                # Queue message for offline user
-                if user_id not in self.message_queue:
-                    self.message_queue[user_id] = []
-
-                self.message_queue[user_id].append(
-                    {**message_data, "queued_at": datetime.utcnow().isoformat()}
-                )
-                return
-
-            # Send to all user connections
-            for connection_id in self.user_connections[user_id]:
-                connection_info = self.active_connections.get(connection_id)
-                if connection_info:
-                    await self._send_message(connection_info["websocket"], message_data)
-
-        except Exception as e:
-            logger.error(f"Failed to send message to user {user_id}: {e}")
-
-    async def _broadcast_to_conversation(
-        self,
-        conversation_id: str,
-        message_data: Dict[str, Any],
-        exclude_user: Optional[str] = None,
-    ) -> None:
-        """Broadcast message to all participants in a conversation."""
-        try:
-            if conversation_id not in self.conversation_connections:
-                return
-
-            for connection_id in self.conversation_connections[conversation_id]:
-                connection_info = self.active_connections.get(connection_id)
-                if connection_info and connection_info.get("user_id") != exclude_user:
-                    await self._send_message(connection_info["websocket"], message_data)
-
-        except Exception as e:
-            logger.error(f"Failed to broadcast to conversation {conversation_id}: {e}")
-
-    async def _cleanup_connection(self, connection_id: str) -> None:
-        """Clean up a WebSocket connection."""
-        try:
-            connection_info = self.active_connections.get(connection_id)
-            if not connection_info:
-                return
-
-            user_id = connection_info.get("user_id")
-            conversation_id = connection_info.get("conversation_id")
-
-            # Remove from tracking
-            if user_id and user_id in self.user_connections:
-                self.user_connections[user_id].discard(connection_id)
-                if not self.user_connections[user_id]:
-                    del self.user_connections[user_id]
-                    # Update presence to offline
-                    await self.presence_manager.update_presence(user_id, "offline")
-
-            if conversation_id and conversation_id in self.conversation_connections:
-                self.conversation_connections[conversation_id].discard(connection_id)
-                if not self.conversation_connections[conversation_id]:
-                    del self.conversation_connections[conversation_id]
-
-            # Remove connection
-            del self.active_connections[connection_id]
-
-            logger.info(f"Cleaned up WebSocket connection: {connection_id}")
-
-        except Exception as e:
-            logger.error(f"Failed to cleanup connection {connection_id}: {e}")
-
-    def get_connection_stats(self) -> Dict[str, Any]:
-        """Get WebSocket connection statistics."""
-        try:
-            online_users = self.presence_manager.get_online_users()
-
-            return {
-                "total_connections": len(self.active_connections),
-                "authenticated_connections": len(
-                    [
-                        c
-                        for c in self.active_connections.values()
-                        if c.get("authenticated", False)
-                    ]
-                ),
-                "unique_users": len(self.user_connections),
-                "active_conversations": len(self.conversation_connections),
-                "typing_users": sum(
-                    len(self.typing_manager.get_typing_users(conv_id))
-                    for conv_id in self.conversation_connections.keys()
-                ),
-                "online_users": len(online_users),
-                "queue_stats": {
-                    "queued_users": len(self.message_queue),
-                    "total_queued_messages": sum(
-                        len(msgs) for msgs in self.message_queue.values()
-                    ),
-                },
-            }
-        except Exception as e:
-            logger.error(f"Failed to get connection stats: {e}")
-            return {}
-
-    def get_user_connections(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get all active connections for a user."""
-        try:
-            if user_id not in self.user_connections:
-                return []
-
-            connections = []
-            for connection_id in self.user_connections[user_id]:
-                connection_info = self.active_connections.get(connection_id)
-                if connection_info:
-                    connections.append(
-                        {
-                            "connection_id": connection_id,
-                            "connected_at": connection_info["connected_at"].isoformat(),
-                            "last_activity": connection_info[
-                                "last_activity"
-                            ].isoformat(),
-                            "conversation_id": connection_info.get("conversation_id"),
-                        }
-                    )
-
-            return connections
-        except Exception as e:
-            logger.error(f"Failed to get user connections: {e}")
-            return []
-
-    def get_conversation_connections(
-        self, conversation_id: str
-    ) -> List[Dict[str, Any]]:
-        """Get all active connections for a conversation."""
-        try:
-            if conversation_id not in self.conversation_connections:
-                return []
-
-            connections = []
-            for connection_id in self.conversation_connections[conversation_id]:
-                connection_info = self.active_connections.get(connection_id)
-                if connection_info:
-                    connections.append(
-                        {
-                            "connection_id": connection_id,
-                            "user_id": connection_info.get("user_id"),
-                            "connected_at": connection_info["connected_at"].isoformat(),
-                            "last_activity": connection_info[
-                                "last_activity"
-                            ].isoformat(),
-                        }
-                    )
-
-            return connections
-        except Exception as e:
-            logger.error(f"Failed to get conversation connections: {e}")
-            return []
+            if task:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+        self._tasks = []

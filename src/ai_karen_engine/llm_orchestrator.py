@@ -900,13 +900,20 @@ class LLMOrchestrator:
                     "outlining",
                     "summarization",
                 ]
-                self.registry.register(
-                    model_id,
-                    slm_provider,
-                    capabilities,
-                    weight=5,
-                    tags=["small-language-model", "local"],
-                )
+                with self.registry._lock:
+                    existing = self.registry._models.get(model_id)
+                    if existing:
+                        existing.model = slm_provider
+                        existing.status = ModelStatus.ACTIVE
+                        existing.tags = list({*existing.tags, "small-language-model", "local"})
+                    else:
+                        self.registry.register(
+                            model_id,
+                            slm_provider,
+                            capabilities,
+                            weight=5,
+                            tags=["small-language-model", "local"],
+                        )
                 logger.info(f"Successfully registered SmallLanguageModelService: {model_id}")
             except Exception as e:
                 logger.warning(f"Failed to register SmallLanguageModelService: {e}")
@@ -973,7 +980,14 @@ class LLMOrchestrator:
                 local_provider = LocalGGUFProvider(str(chosen))
                 model_id = f"local:{chosen.name}"
                 capabilities = ["generic", "conversation", "text"]
-                self.registry.register(model_id, local_provider, capabilities, weight=10, tags=["local", "fallback"])
+                with self.registry._lock:
+                    existing = self.registry._models.get(model_id)
+                    if existing:
+                        existing.model = local_provider
+                        existing.status = ModelStatus.ACTIVE
+                        existing.tags = list({*existing.tags, "local", "fallback"})
+                    else:
+                        self.registry.register(model_id, local_provider, capabilities, weight=10, tags=["local", "fallback"])
                 logger.info(f"Successfully registered local model: {model_id}")
             else:
                 logger.debug("No local GGUF models found under models/llama-cpp/")

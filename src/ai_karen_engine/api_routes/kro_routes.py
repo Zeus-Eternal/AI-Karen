@@ -81,16 +81,12 @@ if FASTAPI_AVAILABLE:
 @router.post("/process")
 async def process_user_request(request: UserRequestModel):
     """
-    Process user request through KRO orchestrator.
+    Process user request through the governed chat runtime.
 
-    This endpoint provides the complete AI-Karen pipeline:
-    - Intent classification
-    - Intelligent routing via KIRE
-    - Model selection and execution
-    - Content optimization
-    - Dynamic prompt suggestions
+    KIRE/KRO contributes routing and reasoning support here, but the
+    authoritative standard chat lifecycle remains with ChatOrchestrator.
 
-    Returns complete response envelope with metadata.
+    Returns a KIRE/KRO-shaped response envelope backed by the canonical chat path.
     """
     try:
         from ai_karen_engine.core.kire_kro_integration import get_integration
@@ -109,6 +105,33 @@ async def process_user_request(request: UserRequestModel):
     except Exception as e:
         logger.error(f"KRO processing failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+
+
+@router.post("/process-specialized")
+async def process_specialized_user_request(request: UserRequestModel):
+    """
+    Execute an explicit KRO-native specialized flow.
+
+    This endpoint is intentionally out-of-band from Karen's governed standard
+    chat lifecycle and should only be used for KRO-specific orchestration cases.
+    """
+    try:
+        from ai_karen_engine.core.kire_kro_integration import get_integration
+
+        integration = get_integration()
+
+        response = await integration.process_specialized_request(
+            user_input=request.user_input,
+            user_id=request.user_id,
+            conversation_history=request.conversation_history,
+            context=request.context,
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"KRO specialized processing failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Specialized processing failed: {str(e)}")
 
 
 @router.get("/models")

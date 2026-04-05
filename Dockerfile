@@ -67,6 +67,42 @@ RUN poetry install --no-interaction --no-ansi --only main --no-root || \
 RUN python -m spacy download en_core_web_sm || true
 
 # -----------------------------
+# Runtime-cuda stage (CUDA-enabled llama.cpp build)
+# Use API_BUILD_TARGET=runtime-cuda when building the API image on GPU hosts.
+# -----------------------------
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS runtime-cuda
+WORKDIR /app
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    curl \
+    git \
+    build-essential \
+    cmake \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    python -m pip install --no-cache-dir --upgrade pip setuptools wheel poetry
+
+ENV CC=/usr/bin/gcc \
+    CXX=/usr/bin/g++ \
+    CMAKE_ARGS="-DGGML_CUDA=on -DLLAMA_CUBLAS=on -DLLAMA_METAL=off -DLLAMA_BLAS=off"
+
+COPY pyproject.toml poetry.lock* ./
+
+RUN poetry config virtualenvs.create false
+RUN poetry config installer.max-workers 4
+RUN poetry config installer.parallel true
+RUN poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root || \
+    poetry install --no-interaction --no-ansi --only main --no-root
+RUN python -m spacy download en_core_web_sm || true
+
+# -----------------------------
 # Final stage (select by target)
 # -----------------------------
 FROM ${PROFILE}

@@ -5,8 +5,10 @@ Wraps existing memory service with multi-tenant data isolation capabilities.
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from enum import Enum
+from typing import Dict, List, Optional, Any, Union, cast
 
 from services.audit_logging import get_audit_logger
 from services.memory.memory_service import (
@@ -14,14 +16,76 @@ from services.memory.memory_service import (
     WebUIMemoryQuery,
     WebUIMemoryService,
 )
-from src.services.tenant_isolation import (
-    TenantIsolationService,
-    TenantContext,
-    TenantAccessLevel,
-    SecurityIncidentType,
-    get_tenant_isolation_service,
-    create_tenant_context
-)
+
+try:
+    from services.tenant_isolation import (
+        TenantIsolationService,
+        TenantContext,
+        TenantAccessLevel,
+        SecurityIncidentType,
+        get_tenant_isolation_service,
+        create_tenant_context,
+    )
+except ImportError:
+    class TenantAccessLevel(str, Enum):
+        STRICT = "strict"
+        RELAXED = "relaxed"
+
+    class SecurityIncidentType(str, Enum):
+        CROSS_TENANT_ACCESS_ATTEMPT = "cross_tenant_access_attempt"
+
+    @dataclass
+    class TenantContext:
+        tenant_id: str
+        user_id: str
+        org_id: Optional[str] = None
+        access_level: TenantAccessLevel = TenantAccessLevel.STRICT
+
+    class TenantIsolationService:
+        def validate_data_access(
+            self,
+            context: TenantContext,
+            target_tenant_id: str,
+            resource_type: str,
+            correlation_id: Optional[str] = None,
+        ) -> bool:
+            return str(context.tenant_id) == str(target_tenant_id)
+
+        def log_security_incident(
+            self,
+            incident_type: SecurityIncidentType,
+            context: TenantContext,
+            attempted_access: Dict[str, Any],
+            correlation_id: Optional[str] = None,
+        ) -> None:
+            logger.warning(
+                "Tenant isolation fallback incident: %s",
+                {
+                    "incident_type": incident_type.value,
+                    "tenant_id": context.tenant_id,
+                    "user_id": context.user_id,
+                    "attempted_access": attempted_access,
+                    "correlation_id": correlation_id,
+                },
+            )
+
+    _tenant_isolation_service = TenantIsolationService()
+
+    def get_tenant_isolation_service() -> TenantIsolationService:
+        return _tenant_isolation_service
+
+    def create_tenant_context(
+        tenant_id: str,
+        user_id: str,
+        org_id: Optional[str] = None,
+        access_level: TenantAccessLevel = TenantAccessLevel.STRICT,
+    ) -> TenantContext:
+        return TenantContext(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            org_id=org_id,
+            access_level=access_level,
+        )
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +244,7 @@ class TenantIsolatedMemoryService:
         conversation_id: Optional[str] = None,
         memory_type=None,
         tags: Optional[List[str]] = None,
-        importance_score: int = None,
+        importance_score: Optional[int] = None,
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
         ttl_hours: Optional[int] = None,
@@ -252,6 +316,9 @@ class TenantIsolatedMemoryService:
             })
             
             # Store using base service
+            resolved_importance = importance_score if importance_score is not None else 5
+            resolved_memory_type = memory_type if memory_type is not None else "conversation"
+
             memory_id = await self.base_service.store_web_ui_memory(
                 tenant_id=tenant_id,
                 content=content,
@@ -259,9 +326,9 @@ class TenantIsolatedMemoryService:
                 ui_source=ui_source,
                 session_id=session_id,
                 conversation_id=conversation_id,
-                memory_type=memory_type,
+                memory_type=cast(Any, resolved_memory_type),
                 tags=tags,
-                importance_score=importance_score,
+                importance_score=resolved_importance,
                 ai_generated=ai_generated,
                 metadata=tenant_metadata,
                 ttl_hours=ttl_hours,

@@ -9,12 +9,16 @@ from dotenv import load_dotenv
 import os
 import sys
 try:
-    from pydantic import Field, BaseModel
+    from pydantic import Field, BaseModel, field_validator
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ImportError:
     # Fallback to pydantic stub
     from ai_karen_engine.pydantic_stub import Field, BaseModel, BaseSettings
     SettingsConfigDict = dict
+    def field_validator(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
 
 # Load .env file and ensure critical variables are set
 load_dotenv(dotenv_path=".env")
@@ -242,6 +246,45 @@ class Settings(BaseSettings):
         default=RUNTIME_ENV in {"production", "prod"},
         env="EXTENSION_PRODUCTION_MODE"
     )
+
+    @field_validator(
+        "debug",
+        "https_redirect",
+        "prometheus_enabled",
+        "enable_long_lived_tokens",
+        "enable_performance_optimization",
+        "enable_lazy_loading",
+        "enable_gpu_offloading",
+        "enable_service_consolidation",
+        "enable_request_validation",
+        "enable_security_analysis",
+        "log_invalid_requests",
+        "enable_protocol_error_handling",
+        "db_pool_pre_ping",
+        "db_echo",
+        "enable_graceful_shutdown",
+        "extension_auth_enabled",
+        "extension_dev_bypass_enabled",
+        "extension_require_https",
+        "extension_enable_rate_limiting",
+        "extension_token_blacklist_enabled",
+        "extension_audit_logging_enabled",
+        "extension_development_mode",
+        "extension_staging_mode",
+        "extension_production_mode",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_boolish_values(cls, value):
+        if isinstance(value, bool) or value is None:
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "enable", "enabled", "debug", "development", "dev"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "disable", "disabled", "release", "production", "prod"}:
+                return False
+        return value
 
     def validate_extension_auth_config(self) -> bool:
         """Validate extension authentication configuration."""

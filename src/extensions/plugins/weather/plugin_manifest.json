@@ -1,0 +1,141 @@
+{
+  "id": "weather-query",
+  "name": "weather-query",
+  "display_name": "Weather",
+  "version": "0.2.0",
+  "description": "Fetches current weather information using OpenWeatherMap when an API key is set, otherwise returns mocked data.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "category": "integration",
+  "tags": ["weather", "forecast", "location", "prompt-first"],
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  "entrypoint": "handler:WeatherExtension",
+  "hook_points": ["post_llm_result"],
+  "prompt_files": {
+    "system": null,
+    "user": null,
+    "templates": {}
+  },
+  "permissions": {
+    "memory_read": false,
+    "memory_write": false,
+    "tools": [],
+    "user_data_read": false,
+    "user_data_write": false,
+    "system_config_read": false,
+    "system_config_write": false,
+    "data_access": [],
+    "plugin_access": [],
+    "system_access": [],
+    "network_access": ["outbound_https"]
+  },
+  "rbac": {
+    "allowed_roles": ["user", "admin", "developer"],
+    "default_enabled": true
+  },
+  "dependencies": {
+    "plugins": [],
+    "extensions": [],
+    "system_services": []
+  },
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": false,
+    "provides_background_tasks": false,
+    "provides_webhooks": false
+  },
+  "purpose": "Answer current weather questions for a user-specified location.",
+  "invocation_guidance": {
+    "when_to_use": [
+      "The user asks about current weather conditions in a specific city, region, or place",
+      "The user asks if it is hot, cold, rainy, sunny, windy, or humid in a location right now"
+    ],
+    "when_not_to_use": [
+      "The user asks for multi-day forecasts or historical climate analysis",
+      "The user asks for severe weather alerts, UV index, air quality, or astronomy data not implemented by this plugin"
+    ]
+  },
+  "actions": [
+    {
+      "name": "get_weather",
+      "description": "Get current weather for a location.",
+      "when_to_use": [
+        "User asks about current weather conditions",
+        "User asks if it is raining, sunny, hot, cold, windy, or humid in a place"
+      ],
+      "when_not_to_use": [
+        "User asks for historical climate analysis",
+        "User asks for severe weather alerts or other unsupported weather subfeatures"
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "City, region, or place name (for example 'Boston, MA' or 'London, UK')"
+          }
+        },
+        "required": ["location"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "Human-readable current weather summary"
+          },
+          "ref_id": {
+            "type": "string",
+            "description": "Stable reference identifier for the response"
+          }
+        },
+        "required": ["summary", "ref_id"]
+      },
+      "examples": [
+        {
+          "user": "What's the weather in Boston?",
+          "args": {
+            "location": "Boston, MA"
+          }
+        },
+        {
+          "user": "Is it rainy in London right now?",
+          "args": {
+            "location": "London, UK"
+          }
+        }
+      ],
+      "limitations": [
+        "Current implementation supports current weather lookup only",
+        "Forecasts, alerts, UV index, air quality, astronomy, and historical climate analysis are not implemented yet",
+        "If no weather API key is configured, the plugin returns mocked fallback data"
+      ],
+      "auth_requirements": {
+        "environment_variables": ["OPENWEATHER_API_KEY"],
+        "optional": true
+      },
+      "safety_notes": [
+        "This plugin makes outbound weather API requests when an API key is configured",
+        "Location strings should be treated as user input and passed through without interpretation"
+      ]
+    }
+  ],
+  "ui": {
+    "has_component": true,
+    "component_id": "weather-query",
+    "purpose": "Displays the weather plugin overview and UI entry point in the theme",
+    "menu": [
+      {
+        "placement": "sidebar",
+        "label": "Weather",
+        "icon": "weather-query---sidebar_00.svg",
+        "order": 0
+      }
+    ]
+  },
+  "status": {
+    "lifecycle": "experimental",
+    "runtime_contract": "class-based-extension"
+  }
+}

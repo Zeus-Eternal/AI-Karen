@@ -1,0 +1,156 @@
+import { z } from 'zod';
+
+export const PluginCategorySchema = z.enum([
+  'productivity',
+  'communication',
+  'automation',
+  'analytics',
+  'utilities',
+  'development',
+  'integration',
+  'security',
+  'ai_ml',
+]);
+
+export type PluginCategory = z.infer<typeof PluginCategorySchema>;
+
+export const PluginSortOrderSchema = z.enum([
+  'popularity',
+  'newest',
+  'name',
+  'updated',
+  'rating',
+]);
+
+export type PluginSortOrder = z.infer<typeof PluginSortOrderSchema>;
+
+export const PluginStatusSchema = z.enum([
+  'installed',
+  'available',
+  'compatible',
+  'incompatible',
+]);
+
+export type PluginStatus = z.infer<typeof PluginStatusSchema>;
+
+export const PluginSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  display_name: z.string(),
+  description: z.string(),
+  author: z.string(),
+  version: z.string(),
+  status: PluginStatusSchema,
+  category: PluginCategorySchema.optional(),
+  downloads: z.number().optional(),
+  rating: z.number().optional(),
+  rating_count: z.number().optional(),
+  latest_version: z.string().optional(),
+  installed_at: z.string().optional(),
+  icon: z.string().optional(),
+  marketplace_url: z.string().optional(),
+  homepage_url: z.string().optional(),
+  repository_url: z.string().optional(),
+  license: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  compatibility: z.object({
+    min_karen_version: z.string().optional(),
+    max_karen_version: z.string().optional(),
+    requirements: z.array(z.string()).optional(),
+  }).optional(),
+  dependencies: z.array(z.string()).optional(),
+});
+
+export type Plugin = z.infer<typeof PluginSchema>;
+
+export const PluginSearchParamsSchema = z.object({
+  query: z.string().optional(),
+  category: PluginCategorySchema.optional(),
+  sort_by: PluginSortOrderSchema.default('popularity'),
+  page: z.number().min(1).default(1),
+  per_page: z.number().min(1).max(100).default(20),
+  min_version: z.string().optional(),
+  max_version: z.string().optional(),
+});
+
+export type PluginSearchParams = z.infer<typeof PluginSearchParamsSchema>;
+
+export const PluginSearchResponseSchema = z.object({
+  plugins: z.array(PluginSchema),
+  total: z.number(),
+  page: z.number(),
+  per_page: z.number(),
+  total_pages: z.number(),
+  has_next: z.boolean(),
+});
+
+export type PluginSearchResponse = z.infer<typeof PluginSearchResponseSchema>;
+
+export const PluginDetailsSchema = z.object({
+  plugin: PluginSchema.optional(),
+  marketplace_info: z.any().optional(),
+  analytics: z.any().optional(),
+  installed: z.boolean(),
+  update_available: z.boolean(),
+});
+
+export type PluginDetails = z.infer<typeof PluginDetailsSchema>;
+
+export const PluginInstallRequestSchema = z.object({
+  plugin_id: z.string(),
+  version: z.string().optional(),
+});
+
+export type PluginInstallRequest = z.infer<typeof PluginInstallRequestSchema>;
+
+export const PluginInstallResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  plugin_id: z.string().optional(),
+  version: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type PluginInstallResponse = z.infer<typeof PluginInstallResponseSchema>;
+
+export const PluginRatingRequestSchema = z.object({
+  plugin_id: z.string(),
+  rating: z.number().min(1).max(5),
+  review: z.string().min(10).max(1000),
+});
+
+export type PluginRatingRequest = z.infer<typeof PluginRatingRequestSchema>;
+
+export const PluginRatingResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type PluginRatingResponse = z.infer<typeof PluginRatingResponseSchema>;
+
+export const PluginStoreStatsSchema = z.object({
+  total_plugins: z.number(),
+  active_plugins: z.number(),
+  total_downloads: z.number(),
+  total_ratings: z.number(),
+  recent_updates: z.number(),
+});
+
+export type PluginStoreStats = z.infer<typeof PluginStoreStatsSchema>;
+
+export const CategoryInfoSchema = z.object({
+  name: z.string(),
+  display_name: z.string(),
+  plugin_count: z.number(),
+});
+
+export type CategoryInfo = z.infer<typeof CategoryInfoSchema>;
+
+export const PluginUpdateSchema = z.object({
+  plugin_id: z.string(),
+  current_version: z.string(),
+  latest_version: z.string(),
+  update_available: z.boolean(),
+});
+
+export type PluginUpdate = z.infer<typeof PluginUpdateSchema>;

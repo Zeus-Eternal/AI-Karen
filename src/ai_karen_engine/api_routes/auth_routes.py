@@ -17,7 +17,13 @@ logger = logging.getLogger("kari.auth_routes")
 try:
     from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, EmailStr, Field, field_validator, model_validator
+    from ai_karen_engine.pydantic_stub import (
+        BaseModel,
+        EmailStr,
+        Field,
+        field_validator,
+        model_validator,
+    )
 
 from ..auth.models import UserData
 from ..auth.session import get_current_user as get_authenticated_user
@@ -29,20 +35,22 @@ from ..core.services.base import ServiceConfig
 # Request/Response Models
 class LoginRequest(BaseModel):
     """Login request model."""
+
     email: Optional[EmailStr] = None
     username: Optional[str] = None
     password: str = Field(..., min_length=1)
-    
-    @model_validator(mode='after')
+
+    @model_validator(mode="after")
     def validate_login_identifier(self):
         """Ensure either email or username is provided."""
         if not self.email and not self.username:
-            raise ValueError('Either email or username must be provided')
+            raise ValueError("Either email or username must be provided")
         return self
 
 
 class LoginResponse(BaseModel):
     """Login response model."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -53,11 +61,13 @@ class LoginResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request model."""
+
     refresh_token: str
 
 
 class FirstRunSetupRequest(BaseModel):
     """First-run admin setup request."""
+
     email: EmailStr
     password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=1)
@@ -66,6 +76,7 @@ class FirstRunSetupRequest(BaseModel):
 
 class CreateUserRequest(BaseModel):
     """Create user request model."""
+
     email: EmailStr
     password: str = Field(..., min_length=8)
     full_name: str = Field(..., min_length=1)
@@ -74,6 +85,7 @@ class CreateUserRequest(BaseModel):
 
 class UserResponse(BaseModel):
     """User response model."""
+
     user_id: str
     email: str
     full_name: str
@@ -87,11 +99,12 @@ class UserResponse(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     """Update the current user's profile."""
+
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(default=None, min_length=1)
     preferences: Optional[Dict[str, Any]] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_payload(self):
         if self.email is None and self.full_name is None and self.preferences is None:
             raise ValueError("At least one profile field must be provided")
@@ -100,11 +113,12 @@ class UpdateProfileRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     """Change the current user's password."""
+
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=1)
     confirm_password: str = Field(..., min_length=1)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_passwords(self):
         if self.new_password != self.confirm_password:
             raise ValueError("New password and confirmation do not match")
@@ -114,10 +128,8 @@ class ChangePasswordRequest(BaseModel):
 # Initialize service with default configuration
 # Use model_construct to bypass Pydantic validation for required fields
 from ai_karen_engine.services.auth_service import AuthConfig
-auth_config = AuthConfig.model_construct(
-    name="auth_service",
-    version="1.0.0"
-)
+
+auth_config = AuthConfig.model_construct(name="auth_service", version="1.0.0")
 auth_service = AuthService(config=auth_config)
 
 # Router - now with explicit /auth prefix for API gateway consistency
@@ -127,26 +139,31 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 async def _get_authenticated_user_from_request(request: Request):
     """Prefer the middleware-resolved user already attached to the request."""
     import os
+
     # Support multiple ways to enable auth bypass for development
     bypass_env = os.getenv("KARI_AUTH_BYPASS", "false").lower()
     auth_bypass = bypass_env in ("true", "1", "yes")
-    
+
     # Check for direct marker in request state (set by middleware)
     request_user = getattr(request.state, "user", None)
     if request_user:
         return UserData.ensure(request_user)
-        
+
     if auth_bypass:
-        logger.debug("Authentication bypass active in _get_authenticated_user_from_request")
-        return UserData.from_dict({
-            "user_id": "dev-user",
-            "email": "admin@karen.ai",
-            "roles": ["admin", "user"],
-            "full_name": "Developer Admin",
-            "tenant_id": "default",
-            "preferences": {}
-        })
-        
+        logger.debug(
+            "Authentication bypass active in _get_authenticated_user_from_request"
+        )
+        return UserData.from_dict(
+            {
+                "user_id": "dev-user",
+                "email": "admin@karen.ai",
+                "roles": ["admin", "user"],
+                "full_name": "Developer Admin",
+                "tenant_id": "default",
+                "preferences": {},
+            }
+        )
+
     # Standard authentication path
     try:
         user = await get_authenticated_user(request)
@@ -155,7 +172,7 @@ async def _get_authenticated_user_from_request(request: Request):
         logger.warning(f"Authentication failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed or session expired"
+            detail="Authentication failed or session expired",
         )
 
 
@@ -164,11 +181,11 @@ def get_client_ip(request: Request) -> str:
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
-    
+
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip
-    
+
     return request.client.host if request.client else "unknown"
 
 
@@ -219,7 +236,9 @@ def _ensure_authenticated_user_payload(user: Any) -> Dict[str, Any]:
         )
 
     payload["user_id"] = user_id
-    payload["tenant_id"] = str(payload.get("tenant_id") or payload.get("org_id") or "default")
+    payload["tenant_id"] = str(
+        payload.get("tenant_id") or payload.get("org_id") or "default"
+    )
     payload["roles"] = list(payload.get("roles") or [])
     payload["preferences"] = dict(payload.get("preferences") or {})
     payload["full_name"] = payload.get("full_name") or payload.get("name") or ""
@@ -247,7 +266,9 @@ def _serialize_user_response(user: Any) -> Dict[str, Any]:
         "full_name": payload["full_name"],
         "roles": payload["roles"],
         "is_active": is_active,
-        "created_at": created_at.isoformat() if created_at else datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at.isoformat()
+        if created_at
+        else datetime.now(timezone.utc).isoformat(),
         "last_login": last_login.isoformat() if last_login else None,
         "tenant_id": tenant_id,
         "preferences": payload["preferences"],
@@ -279,7 +300,7 @@ def _resolve_current_user_id(user: Any) -> str:
 async def auth_status() -> Dict[str, Any]:
     """Get authentication service status."""
     stats = await auth_service.get_auth_stats()
-    
+
     return {
         "status": "healthy",
         "service": "production-auth",
@@ -291,9 +312,9 @@ async def auth_status() -> Dict[str, Any]:
             "rate_limiting": True,
             "account_lockout": True,
             "password_strength": True,
-            "audit_logging": True
+            "audit_logging": True,
         },
-        "stats": stats
+        "stats": stats,
     }
 
 
@@ -301,7 +322,7 @@ async def auth_status() -> Dict[str, Any]:
 async def auth_health() -> Dict[str, Any]:
     """Authentication service health check."""
     is_healthy = await auth_service.health_check()
-    
+
     return {
         "status": "healthy" if is_healthy else "unhealthy",
         "service": "production-auth",
@@ -313,55 +334,56 @@ async def auth_health() -> Dict[str, Any]:
 async def check_first_run() -> Dict[str, Any]:
     """Check if first-run setup is required."""
     is_first_run = await auth_service.is_first_run()
-    
+
     return {
         "first_run_required": is_first_run,
-        "message": "First-run setup required" if is_first_run else "System already configured"
+        "message": "First-run setup required"
+        if is_first_run
+        else "System already configured",
     }
 
 
 @router.post("/first-run/setup")
-async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) -> JSONResponse:
+async def first_run_setup(
+    request: FirstRunSetupRequest, http_request: Request
+) -> JSONResponse:
     """Set up the first admin user."""
     # Check if first-run setup is actually needed
     if not await auth_service.is_first_run():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="First-run setup already completed"
+            detail="First-run setup already completed",
         )
-    
+
     # Validate password confirmation
     if request.password != request.confirm_password:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match"
         )
-    
+
     try:
         # Create first admin user
         user = await auth_service.create_first_admin(
-            email=request.email,
-            password=request.password,
-            full_name=request.full_name
+            email=request.email, password=request.password, full_name=request.full_name
         )
-        
+
         # Authenticate the new admin user
         ip_address = get_client_ip(http_request)
         user_agent = get_user_agent(http_request)
-        
+
         auth_user, access_token, refresh_token = await auth_service.authenticate_user(
             email=request.email,
             password=request.password,
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
-        
+
         if not auth_user:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to authenticate newly created admin user"
+                detail="Failed to authenticate newly created admin user",
             )
-        
+
         # Return login response
         user_data = {
             "user_id": user.id,
@@ -370,9 +392,9 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "roles": user.roles,
             "is_active": user.status.value == "active",
             "tenant_id": user.tenant_id,
-            "preferences": user.preferences
+            "preferences": user.preferences,
         }
-        
+
         permissions = _serialize_permissions(user_data)
         user_data["permissions"] = permissions
 
@@ -383,10 +405,12 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "expires_in": auth_service.config.access_token_expire_minutes * 60,
             "user": user_data,
             "permissions": permissions,
-            "message": "First admin user created and authenticated successfully"
+            "message": "First admin user created and authenticated successfully",
         }
-        
-        response = JSONResponse(content=response_data, status_code=status.HTTP_201_CREATED)
+
+        response = JSONResponse(
+            content=response_data, status_code=status.HTTP_201_CREATED
+        )
 
         is_secure = http_request.url.scheme == "https"
         response.set_cookie(
@@ -400,16 +424,13 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
         )
 
         return response
-        
+
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create admin user: {str(e)}"
+            detail=f"Failed to create admin user: {str(e)}",
         )
 
 
@@ -418,18 +439,18 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     """Authenticate user and return tokens."""
     ip_address = get_client_ip(http_request)
     user_agent = get_user_agent(http_request)
-    
+
     # Determine login identifier (email or username)
     login_identifier = request.email or request.username
-    
+
     coro = auth_service.authenticate_user(
         login_identifier,  # positional string
         request.password,  # positional string
         ip_address=ip_address,
-        user_agent=user_agent
+        user_agent=user_agent,
     )
     user, access_token, refresh_token_or_error = await coro
-    
+
     if not user:
         # refresh_token_or_error contains error message
         raise HTTPException(
@@ -437,7 +458,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
             detail=refresh_token_or_error,
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user_data = {
         "user_id": user.id,
         "email": user.email,
@@ -446,7 +467,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "is_active": user.status.value == "active",
         "tenant_id": user.tenant_id,
         "preferences": user.preferences,
-        "last_login": user.last_login.isoformat() if user.last_login else None
+        "last_login": user.last_login.isoformat() if user.last_login else None,
     }
     permissions = _serialize_permissions(user_data)
     user_data["permissions"] = permissions
@@ -457,7 +478,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "token_type": "bearer",
         "expires_in": auth_service.config.access_token_expire_minutes * 60,
         "user": user_data,
-        "permissions": permissions
+        "permissions": permissions,
     }
     response = JSONResponse(content=response_data)
 
@@ -469,7 +490,8 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     response.set_cookie(
         key="kari_session",
         value=access_token,
-        max_age=auth_service.config.access_token_expire_minutes * 60,  # Convert to seconds
+        max_age=auth_service.config.access_token_expire_minutes
+        * 60,  # Convert to seconds
         httponly=True,  # Prevent JavaScript access (XSS protection)
         secure=is_secure,  # Only send over HTTPS in production
         samesite="lax",  # CSRF protection while allowing navigation
@@ -480,21 +502,23 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
 
 
 @router.post("/refresh")
-async def refresh_token(request: RefreshTokenRequest, http_request: Request) -> JSONResponse:
+async def refresh_token(
+    request: RefreshTokenRequest, http_request: Request
+) -> JSONResponse:
     """Refresh access token using refresh token."""
     access_token, error = await auth_service.refresh_access_token(request.refresh_token)
-    
+
     if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=error,
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     response_data = {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": auth_service.config.access_token_expire_minutes * 60
+        "expires_in": auth_service.config.access_token_expire_minutes * 60,
     }
 
     response = JSONResponse(content=response_data)
@@ -527,10 +551,16 @@ async def logout(
 
 
 @router.get("/validate-session")
-async def validate_session(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
+async def validate_session(
+    current_user=Depends(_get_authenticated_user_from_request),
+) -> Dict[str, Any]:
     """Validate current session and return user information."""
     # current_user is already a UserData instance from the dependency
-    user_payload = current_user.to_dict() if hasattr(current_user, "to_dict") else dict(current_user)
+    user_payload = (
+        current_user.to_dict()
+        if hasattr(current_user, "to_dict")
+        else dict(current_user)
+    )
     permissions = _serialize_permissions(user_payload)
     user_payload["permissions"] = permissions
     return {
@@ -539,12 +569,14 @@ async def validate_session(current_user=Depends(_get_authenticated_user_from_req
         "permissions": permissions,
         "authenticated": True,
         "session_valid": True,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user=Depends(_get_authenticated_user_from_request)) -> Dict[str, Any]:
+async def get_current_user_info(
+    current_user=Depends(_get_authenticated_user_from_request),
+) -> Dict[str, Any]:
     """Get current user information."""
     response = _serialize_user_response(current_user)
     response["authenticated"] = True
@@ -574,7 +606,9 @@ async def update_current_user_info(
             status_code = status.HTTP_404_NOT_FOUND
         elif error == "User with this email already exists":
             status_code = status.HTTP_409_CONFLICT
-        raise HTTPException(status_code=status_code, detail=error or "Failed to update profile")
+        raise HTTPException(
+            status_code=status_code, detail=error or "Failed to update profile"
+        )
 
     return _serialize_user_response(updated_user)
 
@@ -607,30 +641,26 @@ async def change_password(
 
 @router.post("/create-user", response_model=UserResponse)
 async def create_user(
-    request: CreateUserRequest,
-    current_user=Depends(get_authenticated_user)
+    request: CreateUserRequest, current_user=Depends(get_authenticated_user)
 ) -> JSONResponse:
     """Create a new user (admin only)."""
     # Check if current user has admin privileges
     if "admin" not in current_user.roles and "super_admin" not in current_user.roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient privileges to create users"
+            detail="Insufficient privileges to create users",
         )
-    
+
     user, error = await auth_service.create_user(
         email=request.email,
         password=request.password,
         full_name=request.full_name,
-        roles=request.roles
+        roles=request.roles,
     )
-    
+
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
-        )
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+
     user_data = {
         "user_id": user.id,
         "email": user.email,
@@ -640,32 +670,271 @@ async def create_user(
         "created_at": user.created_at.isoformat(),
         "last_login": None,
         "tenant_id": user.tenant_id,
-        "preferences": user.preferences
+        "preferences": user.preferences,
     }
-    
+
     return JSONResponse(content=user_data, status_code=status.HTTP_201_CREATED)
 
 
 @router.get("/stats", response_model=None)
-async def get_auth_stats(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def get_auth_stats(
+    current_user=Depends(get_authenticated_user),
+) -> Dict[str, Any]:
     """Get authentication statistics (admin only)."""
     # Check if current user has admin privileges
     if "admin" not in current_user.roles and "super_admin" not in current_user.roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient privileges to view authentication statistics"
+            detail="Insufficient privileges to view authentication statistics",
         )
-    
+
     stats = await auth_service.get_auth_stats()
     return stats
 
 
 @router.get("/security/context")
-async def get_security_context(current_user=Depends(get_authenticated_user)) -> Dict[str, Any]:
+async def get_security_context(
+    current_user=Depends(get_authenticated_user),
+) -> Dict[str, Any]:
     """Get security context for authenticated user."""
     return {
         "userRoles": current_user.get("roles", []),
         "securityMode": "safe",  # Default to safe mode
-        "canAccessSensitive": current_user.get("roles", []).intersection(["admin", "super_admin"]) != set(),
-        "redactionLevel": "partial"  # Default to partial redaction
+        "canAccessSensitive": current_user.get("roles", []).intersection(
+            ["admin", "super_admin"]
+        )
+        != set(),
+        "redactionLevel": "partial",  # Default to partial redaction
     }
+
+
+# Temporary plugin store endpoints for development
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+
+class PluginSearchParams(BaseModel):
+    query: Optional[str] = Field(None, description="Search query string")
+    category: Optional[str] = Field(None, description="Filter by category")
+    sort_by: Optional[str] = Field("popularity", description="Sort order")
+    page: int = Field(1, ge=1, description="Page number")
+    per_page: int = Field(20, ge=1, le=100, description="Items per page")
+
+
+class PluginInstallRequest(BaseModel):
+    plugin_id: str = Field(..., description="Plugin identifier")
+    version: Optional[str] = Field(None, description="Specific version to install")
+
+
+class PluginRatingRequest(BaseModel):
+    plugin_id: str = Field(..., description="Plugin identifier")
+    rating: int = Field(..., ge=1, le=5, description="Rating (1-5)")
+    review: str = Field(..., min_length=10, max_length=1000, description="Review text")
+
+
+# Mock data for development
+MOCK_PLUGINS = [
+    {
+        "id": "weather-plugin",
+        "name": "Weather Plugin",
+        "display_name": "Weather Plugin",
+        "description": "Get weather information for any location",
+        "version": "1.0.0",
+        "author": "Karen AI Team",
+        "category": "utilities",
+        "rating": 4.5,
+        "rating_count": 42,
+        "downloads": 1250,
+        "status": "available",
+        "tags": ["weather", "forecast", "utilities"],
+        "latest_version": "1.0.0",
+        "license": "MIT",
+        "compatibility": {"min_karen_version": "1.0.0", "requirements": []},
+        "dependencies": [],
+    },
+    {
+        "id": "gmail-plugin",
+        "name": "Gmail Integration",
+        "display_name": "Gmail Integration",
+        "description": "Connect and manage your Gmail account",
+        "version": "2.1.0",
+        "author": "Karen AI Team",
+        "category": "communication",
+        "rating": 4.2,
+        "rating_count": 38,
+        "downloads": 890,
+        "status": "available",
+        "tags": ["gmail", "email", "communication"],
+        "latest_version": "2.1.0",
+        "license": "MIT",
+        "compatibility": {"min_karen_version": "1.0.0", "requirements": []},
+        "dependencies": [],
+    },
+    {
+        "id": "data-connector",
+        "name": "Data Connector",
+        "display_name": "Data Connector",
+        "description": "Connect to various data sources and databases",
+        "version": "1.2.0",
+        "author": "Karen AI Team",
+        "category": "integration",
+        "rating": 4.7,
+        "rating_count": 65,
+        "downloads": 2100,
+        "status": "available",
+        "tags": ["data", "database", "integration"],
+        "latest_version": "1.2.0",
+        "license": "MIT",
+        "compatibility": {"min_karen_version": "1.0.0", "requirements": []},
+        "dependencies": [],
+    },
+]
+
+MOCK_CATEGORIES = [
+    {"name": "utilities", "display_name": "Utilities", "plugin_count": 1},
+    {"name": "communication", "display_name": "Communication", "plugin_count": 1},
+    {"name": "integration", "display_name": "Integration", "plugin_count": 1},
+    {"name": "productivity", "display_name": "Productivity", "plugin_count": 0},
+    {"name": "development", "display_name": "Development", "plugin_count": 0},
+]
+
+
+@router.get("/store/test")
+async def test_store_endpoint():
+    """Test endpoint for plugin store."""
+    return {"message": "Plugin store endpoint working", "status": "ok"}
+
+
+@router.get("/store/search")
+async def search_plugins(
+    query: str = "",
+    category: str = "",
+    sort_by: str = "popularity",
+    page: int = 1,
+    per_page: int = 20,
+):
+    """Search for plugins."""
+    # Filter mock plugins based on search params
+    filtered_plugins = MOCK_PLUGINS.copy()
+
+    if query:
+        query_lower = query.lower()
+        filtered_plugins = [
+            p
+            for p in filtered_plugins
+            if query_lower in p["name"].lower()
+            or query_lower in p["description"].lower()
+        ]
+
+    if category:
+        filtered_plugins = [p for p in filtered_plugins if p["category"] == category]
+
+    # Apply pagination
+    offset = (page - 1) * per_page
+    paginated_plugins = filtered_plugins[offset : offset + per_page]
+
+    return {
+        "plugins": paginated_plugins,
+        "total": len(filtered_plugins),
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (len(filtered_plugins) + per_page - 1) // per_page,
+        "has_next": offset + per_page < len(filtered_plugins),
+    }
+
+
+@router.get("/store/plugins/{plugin_id}")
+async def get_plugin_details(plugin_id: str):
+    """Get plugin details."""
+    plugin = next((p for p in MOCK_PLUGINS if p["id"] == plugin_id), None)
+
+    if not plugin:
+        return {"error": "Plugin not found", "plugin_id": plugin_id}
+
+    return {
+        "plugin": plugin,
+        "marketplace_info": {
+            "repository": "https://github.com/karen-ai/plugins",
+            "documentation": f"https://docs.karen.ai/plugins/{plugin_id}",
+            "changelog": f"https://github.com/karen-ai/plugins/{plugin_id}/CHANGELOG.md",
+        },
+        "analytics": {
+            "downloads": plugin["downloads"],
+            "rating": plugin["rating"],
+            "installations": int(plugin["downloads"] * 0.8),  # Mock installation count
+        },
+        "installed": False,
+        "update_available": False,
+    }
+
+
+@router.post("/store/install")
+async def install_plugin(request: PluginInstallRequest):
+    """Install plugin from store."""
+    plugin = next((p for p in MOCK_PLUGINS if p["id"] == request.plugin_id), None)
+
+    if not plugin:
+        return {
+            "success": False,
+            "error": "Plugin not found",
+            "plugin_id": request.plugin_id,
+        }
+
+    return {
+        "success": True,
+        "message": f"Plugin '{plugin['name']}' installed successfully",
+        "plugin_id": request.plugin_id,
+        "version": request.version or plugin["version"],
+    }
+
+
+@router.post("/store/rate")
+async def rate_plugin(request: PluginRatingRequest):
+    """Rate a plugin."""
+    plugin = next((p for p in MOCK_PLUGINS if p["id"] == request.plugin_id), None)
+
+    if not plugin:
+        return {
+            "success": False,
+            "error": "Plugin not found",
+            "plugin_id": request.plugin_id,
+        }
+
+    return {
+        "success": True,
+        "message": "Rating saved successfully",
+        "plugin_id": request.plugin_id,
+        "rating": request.rating,
+    }
+
+
+@router.get("/store/statistics")
+async def get_statistics():
+    """Get store statistics."""
+    return {
+        "total_plugins": len(MOCK_PLUGINS),
+        "active_plugins": len([p for p in MOCK_PLUGINS if p["status"] == "active"]),
+        "total_downloads": sum(p["downloads"] for p in MOCK_PLUGINS),
+        "total_ratings": len(MOCK_PLUGINS) * 50,  # Mock rating count
+        "recent_updates": 1,
+    }
+
+
+@router.get("/store/categories")
+async def get_categories():
+    """Get plugin categories."""
+    return MOCK_CATEGORIES
+
+
+@router.get("/store/trending")
+async def get_trending(limit: int = 10):
+    """Get trending plugins."""
+    # Return mock plugins sorted by downloads
+    trending = sorted(MOCK_PLUGINS, key=lambda p: p["downloads"], reverse=True)
+    return trending[:limit]
+
+
+@router.get("/store/updates")
+async def get_updates():
+    """Get available updates for installed plugins."""
+    return []  # No updates available in mock

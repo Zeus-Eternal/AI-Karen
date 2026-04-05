@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 from ai_karen_engine.core.logging import get_logger
-from src.services.structured_logging_service import LogLevel, LogCategory
+from services.monitoring.structured_logging_service import LogLevel, LogCategory
 
 logger = get_logger(__name__)
 

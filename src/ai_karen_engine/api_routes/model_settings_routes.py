@@ -26,6 +26,7 @@ from ai_karen_engine.config.llm_provider_config import (
     ProviderAuthentication,
     ProviderConfig,
     ProviderEndpoint,
+    ProviderLimits,
     ProviderModel,
     ProviderType,
     get_provider_config_manager,
@@ -42,15 +43,26 @@ DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/a
 
 LEADING_PROVIDER_ORDER = [
     "openai",
-    "gemini",
     "anthropic",
+    "gemini",
+    "meta",
     "deepseek",
+    "azure",
+    "amazon-nova",
+    "moonshot",
     "mistral",
-    "groq",
     "xai",
     "qwen",
     "zai",
+    "siliconflow",
+    "together",
+    "groq",
+    "fireworks",
+    "deepinfra",
     "huggingface",
+    "cohere",
+    "novita",
+    "gmi-cloud",
     "ollama",
     "llama-cpp",
     "custom",
@@ -60,13 +72,24 @@ PROVIDER_DOC_URLS = {
     "openai": "https://platform.openai.com/docs",
     "gemini": "https://ai.google.dev/gemini-api/docs",
     "anthropic": "https://docs.anthropic.com/en/api/messages",
+    "meta": "https://www.llama.com/docs/overview/",
     "deepseek": "https://api-docs.deepseek.com/",
+    "azure": "https://learn.microsoft.com/en-us/azure/ai-services/openai/reference",
+    "amazon-nova": "https://docs.aws.amazon.com/nova/latest/userguide/getting-started.html",
+    "moonshot": "https://platform.moonshot.ai/docs/api-reference",
     "mistral": "https://docs.mistral.ai/",
     "groq": "https://console.groq.com/docs/overview",
     "xai": "https://docs.x.ai/docs/overview",
     "qwen": "https://www.alibabacloud.com/help/en/model-studio/developer-reference/compatibility-of-openai-with-dashscope",
     "zai": "https://docs.z.ai/api-reference/introduction",
+    "siliconflow": "https://docs.siliconflow.cn/en/api-reference/chat-completions/chat-completions",
+    "together": "https://docs.together.ai/docs/chat-overview",
+    "fireworks": "https://docs.fireworks.ai/api-reference/post-chatcompletions",
+    "deepinfra": "https://deepinfra.com/docs/openai_api",
     "huggingface": "https://huggingface.co/docs/api-inference/index",
+    "cohere": "https://docs.cohere.com/docs/chat-api",
+    "novita": "https://novita.ai/docs/api-reference/model-apis-llm-create-chat-completion",
+    "gmi-cloud": "https://docs.gmicloud.ai/",
     "ollama": "https://github.com/ollama/ollama/blob/main/docs/api.md",
     "llama-cpp": "https://github.com/ggml-org/llama.cpp/tree/master/examples/server",
 }
@@ -75,15 +98,37 @@ SECRET_NAMES = {
     "openai": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
+    "meta": "META_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "azure": "AZURE_OPENAI_API_KEY",
+    "amazon-nova": "AWS_BEDROCK_API_KEY",
+    "moonshot": "MOONSHOT_API_KEY",
     "mistral": "MISTRAL_API_KEY",
     "groq": "GROQ_API_KEY",
     "xai": "XAI_API_KEY",
     "qwen": "QWEN_API_KEY",
     "zai": "ZAI_API_KEY",
+    "siliconflow": "SILICONFLOW_API_KEY",
+    "together": "TOGETHER_API_KEY",
+    "fireworks": "FIREWORKS_API_KEY",
+    "deepinfra": "DEEPINFRA_API_KEY",
     "huggingface": "HUGGINGFACE_API_KEY",
+    "cohere": "COHERE_API_KEY",
+    "novita": "NOVITA_API_KEY",
+    "gmi-cloud": "GMI_CLOUD_API_KEY",
     "custom": "CUSTOM_LLM_API_KEY",
 }
+
+
+class CustomProviderCreateRequest(BaseModel):
+    name: str
+    display_name: str
+    base_url: str
+    model: str
+    description: Optional[str] = None
+    api_key_header: Optional[str] = None
+    api_key_prefix: Optional[str] = None
+    custom_headers: Optional[Dict[str, str]] = None
 
 
 class ProviderModelPayload(BaseModel):
@@ -282,6 +327,10 @@ def _resolve_provider_base_url(provider: ProviderConfig, override: Dict[str, Any
 
 def _supports_base_url_override(provider: ProviderConfig) -> bool:
     return provider.name not in {"gemini"}
+
+
+def _is_custom_provider(provider: ProviderConfig) -> bool:
+    return provider.name == "custom" or provider.authentication.type == AuthenticationType.CUSTOM
 
 
 def _build_auth_headers(provider_id: str, provider: ProviderConfig, api_key: Optional[str]) -> Dict[str, str]:
@@ -593,8 +642,8 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
         supports_base_url_override=_supports_base_url_override(provider),
         supports_model_discovery=provider.name in {"ollama", "llama-cpp"} or bool(provider.endpoint and provider.endpoint.models_endpoint),
         supports_model_pull=provider.name == "ollama",
-        supports_custom_auth=provider.name == "custom",
-        supports_manual_model_entry=provider.name in {"custom", "ollama", "llama-cpp"},
+        supports_custom_auth=_is_custom_provider(provider),
+        supports_manual_model_entry=_is_custom_provider(provider) or provider.name in {"ollama", "llama-cpp"},
     )
 
 
@@ -606,8 +655,6 @@ def _build_response() -> ModelSettingsResponse:
 
     providers: List[ProviderPayload] = []
     for provider in sorted(provider_manager.list_providers(), key=_provider_sort_key):
-        if provider.name not in LEADING_PROVIDER_ORDER:
-            continue
         try:
             providers.append(_build_provider_payload(provider, selected_provider, selected_model))
         except Exception as exc:  # pragma: no cover - defensive response hardening
@@ -728,6 +775,10 @@ def _refresh_runtime_provider_state(provider_name: str, model_name: Optional[str
 
 def _validate_runtime_provider(provider_name: str, model_name: str) -> None:
     """Validate that the saved provider config can instantiate and authenticate."""
+    provider_config = get_provider_config_manager().get_provider(provider_name)
+    if provider_config and _is_custom_provider(provider_config) and provider_name != "custom":
+        return
+
     try:
         registry = get_registry()
         provider = registry.get_provider(provider_name, model=model_name)
@@ -864,6 +915,79 @@ async def update_model_settings(
     return _build_response()
 
 
+@router.post("/providers/custom", response_model=ModelSettingsResponse)
+async def create_custom_provider(
+    request: CustomProviderCreateRequest,
+) -> ModelSettingsResponse:
+    """Create a persisted custom provider entry that appears in the model settings list."""
+
+    provider_manager = get_provider_config_manager()
+    settings = get_settings_manager()
+
+    normalized_name = request.name.strip().lower().replace(" ", "-").replace("_", "-")
+    normalized_name = "".join(ch for ch in normalized_name if ch.isalnum() or ch == "-").strip("-")
+    if not normalized_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Custom provider name is required")
+
+    if provider_manager.get_provider(normalized_name):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A provider with that name already exists")
+
+    model_id = (request.model or "").strip()
+    if not model_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A default model is required")
+
+    base_url = _normalize_base_url(request.base_url)
+    if not base_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Base URL is required")
+
+    custom_headers = _sanitize_custom_headers(request.custom_headers or {})
+    custom_template = provider_manager.get_provider("custom")
+    provider = ProviderConfig(
+        name=normalized_name,
+        display_name=request.display_name.strip() or normalized_name,
+        description=(request.description or f"Custom provider: {request.display_name.strip() or normalized_name}").strip(),
+        provider_type=ProviderType.HYBRID,
+        priority=55,
+        endpoint=ProviderEndpoint(
+            base_url=base_url,
+            chat_endpoint="/chat/completions",
+            models_endpoint="/models",
+        ),
+        authentication=ProviderAuthentication(
+            type=AuthenticationType.CUSTOM,
+            api_key_env_var=f"{normalized_name.upper().replace('-', '_')}_API_KEY",
+            api_key_header=(request.api_key_header or "Authorization").strip() or "Authorization",
+            api_key_prefix=(request.api_key_prefix if request.api_key_prefix is not None else "Bearer").strip(),
+            custom_headers=custom_headers,
+        ),
+        models=[
+            ProviderModel(
+                id=model_id,
+                name=model_id,
+                family=_infer_family(model_id),
+                capabilities={"text"},
+                supports_streaming=True,
+            )
+        ],
+        default_model=model_id,
+        capabilities={"custom_endpoint"},
+        limits=custom_template.limits if custom_template else ProviderLimits(
+            concurrent_requests=5,
+            max_context_length=32768,
+            max_output_tokens=4096,
+        ),
+    )
+
+    provider_manager.add_provider(provider)
+    settings.set_setting("provider", provider.name, save=False)
+    settings.set_setting("model", model_id, save=False)
+    settings.set_setting("last_selected_model", model_id, save=False)
+    settings.set_setting(f"model_providers.{provider.name}.last_model", model_id, save=False)
+    settings.set_setting(f"model_providers.{provider.name}.base_url", base_url, save=False)
+    settings._save_settings()
+    return _build_response()
+
+
 @router.post("/validate", response_model=ProviderSettingsValidationResponse)
 async def validate_model_settings_provider(
     request: ProviderSettingsValidationRequest,
@@ -907,6 +1031,13 @@ async def validate_model_settings_provider(
         normalized_base_url = None
     elif provider.name == "ollama" and normalized_base_url is not None:
         normalized_base_url = _normalize_ollama_base_url(normalized_base_url)
+
+    if _is_custom_provider(provider) and provider.name != "custom":
+        return ProviderSettingsValidationResponse(
+            provider=provider.name,
+            valid=True,
+            message=f"{provider.display_name} saved. Runtime validation is deferred to the provider endpoint.",
+        )
 
     registry = get_registry()
     registry.invalidate_provider_cache(provider.name)

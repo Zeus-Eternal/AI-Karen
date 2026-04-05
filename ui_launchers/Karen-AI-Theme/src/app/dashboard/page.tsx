@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { AuthWrapper } from '@/components/AuthWrapper';
-import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, PanelLeft, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap, Binary, Bot as BotIcon, ScrollText, Clock, Workflow, UserCircle } from 'lucide-react';
+import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, Bell, SlidersHorizontal, LayoutGrid, PlugZap, Binary, Bot as BotIcon, ScrollText, UserCircle, Loader2 } from 'lucide-react';
 import SettingsDialogComponent from '@/components/settings/SettingsDialog';
-import DataConnectorPluginPage from '@/components/plugins/DataConnectorPluginPage';
-import FacebookPluginPage from '@/components/plugins/FacebookPluginPage';
-import GmailPluginPage from '@/components/plugins/GmailPluginPage';
-import DateTimePluginPage from '@/components/plugins/DateTimePluginPage';
-import WeatherPluginPage from '@/components/plugins/WeatherPluginPage';
+import { PluginHost } from '@/components/plugins/PluginHost';
+import { PluginErrorBoundary } from '@/plugin_host/PluginErrorBoundary';
 import PluginOverviewPage from '@/components/plugins/PluginOverviewPage';
 import AutomationOverviewPage from '@/components/automation/AutomationOverviewPage';
 import AgentsPage from '@/components/automation/AgentsPage';
@@ -43,11 +40,29 @@ import ChatInterface, { SessionProvider } from '@/components/chat/ChatInterface'
 import CommsCenterPage from '@/components/comms/CommsCenterPage';
 import AdminSettingsPage from '@/components/admin/AdminSettingsPage';
 import { Shield } from 'lucide-react';
+import { usePluginRegistry } from '@/plugin_host/registry';
+import { usePluginRoutes } from '@/plugin_host/route-injector';
+import { PermissionGuard } from '@/plugin_host/permission-guard';
 
-type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDataConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview' | 'automationOverview' | 'agents' | 'tasks' | 'sequences' | 'cronJobs' | 'account' | 'admin';
+type ActiveView = string;
 
 export default function DashboardPage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
+  const { loading: pluginsLoading, getPlugin } = usePluginRegistry();
+  const { sidebarEntries, viewMap } = usePluginRoutes();
+
+  function renderPluginMenuIcon(pluginId: string, iconPath?: string) {
+    if (iconPath) {
+      return (
+        <img
+          src={`/api/extensions/${pluginId}/assets/${iconPath}`}
+          alt=""
+          className="h-4 w-4 shrink-0 rounded-sm object-contain"
+        />
+      );
+    }
+    return <PlugZap className="h-4 w-4" />;
+  }
 
   return (
     <AuthWrapper>
@@ -206,7 +221,7 @@ export default function DashboardPage() {
                   {/* Plugins Sub-group */}
                   <div>
                     <p className="text-[10px] uppercase font-semibold text-muted-foreground/60 mb-2 flex items-center">
-                      <PlugZap className="mr-1.5 h-3 w-3"/> Dynamic Plugins
+                      <PlugZap className="mr-1.5 h-3 w-3"/> Plugins
                     </p>
                     <SidebarMenu>
                       <SidebarMenuItem>
@@ -216,9 +231,27 @@ export default function DashboardPage() {
                           className="w-full h-8 text-xs"
                         >
                           <LayoutGrid className="h-3.5 w-3.5" />
-                          Plugin Inventory
+                          Plugin Overview
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+                      {!pluginsLoading && sidebarEntries.map((entry) => (
+                        <PermissionGuard
+                          key={entry.viewKey}
+                          pluginId={entry.pluginId}
+                          requiredRoles={getPlugin(entry.pluginId)?.allowedRoles}
+                        >
+                          <SidebarMenuItem>
+                            <SidebarMenuButton
+                              onClick={() => setActiveMainView(entry.viewKey)}
+                              isActive={activeMainView === entry.viewKey}
+                              className="w-full h-8 text-xs"
+                            >
+                              {renderPluginMenuIcon(entry.pluginId, entry.iconPath)}
+                              {entry.label}
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        </PermissionGuard>
+                      ))}
                     </SidebarMenu>
                   </div>
                 </div>
@@ -240,12 +273,21 @@ export default function DashboardPage() {
                 </SessionProvider>
               )}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
-              {activeMainView === 'pluginDataConnector' && <DataConnectorPluginPage />}
-              {activeMainView === 'pluginFacebook' && <FacebookPluginPage />}
-              {activeMainView === 'pluginGmail' && <GmailPluginPage />}
-              {activeMainView === 'pluginDateTime' && <DateTimePluginPage />}
-              {activeMainView === 'pluginWeather' && <WeatherPluginPage />}
               {activeMainView === 'pluginOverview' && <PluginOverviewPage />}
+              
+              {/* Dynamic Plugin UI — driven by route-injector viewMap */}
+              {viewMap[activeMainView] && (
+                <Suspense fallback={
+                  <div className="flex items-center justify-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+                  </div>
+                }>
+                  <PluginErrorBoundary pluginId={viewMap[activeMainView]}>
+                    <PluginHost pluginId={viewMap[activeMainView]} />
+                  </PluginErrorBoundary>
+                </Suspense>
+              )}
+
               {activeMainView === 'automationOverview' && <AutomationOverviewPage />}
               {activeMainView === 'agents' && <AgentsPage />}
               {activeMainView === 'tasks' && <TasksPage />}

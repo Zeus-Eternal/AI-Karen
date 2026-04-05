@@ -124,7 +124,7 @@ class MetricsCollector:
     
     def __init__(self, max_metrics: int = 10000):
         self.metrics: deque = deque(maxlen=max_metrics)
-        self.counters: Dict[str, int] = defaultdict(int)
+        self.counters: Dict[str, float] = defaultdict(float)
         self.gauges: Dict[str, float] = {}
         self.histograms: Dict[str, List[float]] = defaultdict(list)
         self.timers: Dict[str, List[float]] = defaultdict(list)
@@ -144,9 +144,9 @@ class MetricsCollector:
             elif metric.metric_type == MetricType.TIMER:
                 self.timers[metric.name].append(metric.value)
     
-    def get_counter(self, name: str) -> int:
+    def get_counter(self, name: str) -> float:
         """Get counter value"""
-        return self.counters.get(name, 0)
+        return self.counters.get(name, 0.0)
     
     def get_gauge(self, name: str) -> Optional[float]:
         """Get gauge value"""
@@ -387,7 +387,7 @@ class AlertManager:
         }
     
     def create_alert(self, level: AlertLevel, message: str, source: str, 
-                    metadata: Dict[str, Any] = None) -> Alert:
+                    metadata: Optional[Dict[str, Any]] = None) -> Alert:
         """Create and process an alert"""
         alert = Alert(
             id=f"{source}_{int(time.time())}",
@@ -615,7 +615,7 @@ class AnalyticsService:
         "m": 24 * 30,
     }
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
         self.logger = logging.getLogger(__name__)
         
@@ -887,8 +887,8 @@ class AnalyticsService:
     
     # Metrics Collection Methods
     def record_metric(self, name: str, value: Union[int, float], 
-                     metric_type: MetricType, tags: Dict[str, str] = None,
-                     metadata: Dict[str, Any] = None):
+                     metric_type: MetricType, tags: Optional[Dict[str, str]] = None,
+                     metadata: Optional[Dict[str, Any]] = None):
         """Record a metric"""
         metric = Metric(
             name=name,
@@ -902,26 +902,26 @@ class AnalyticsService:
         # Check thresholds
         self.alert_manager.check_metric_thresholds(metric)
     
-    def increment_counter(self, name: str, value: int = 1, tags: Dict[str, str] = None):
+    def increment_counter(self, name: str, value: int = 1, tags: Optional[Dict[str, str]] = None):
         """Increment a counter metric"""
         self.record_metric(name, value, MetricType.COUNTER, tags)
     
-    def set_gauge(self, name: str, value: float, tags: Dict[str, str] = None):
+    def set_gauge(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
         """Set a gauge metric"""
         self.record_metric(name, value, MetricType.GAUGE, tags)
     
-    def record_histogram(self, name: str, value: float, tags: Dict[str, str] = None):
+    def record_histogram(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
         """Record a histogram value"""
         self.record_metric(name, value, MetricType.HISTOGRAM, tags)
     
-    def record_timer(self, name: str, duration_ms: float, tags: Dict[str, str] = None):
+    def record_timer(self, name: str, duration_ms: float, tags: Optional[Dict[str, str]] = None):
         """Record a timer value"""
         self.record_metric(name, duration_ms, MetricType.TIMER, tags)
     
     # Performance Tracking Methods
     def record_performance(self, service_name: str, operation: str, 
                           duration_ms: float, success: bool,
-                          error_message: str = None, metadata: Dict[str, Any] = None):
+                          error_message: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
         """Record performance metrics for a service operation"""
         metric = PerformanceMetrics(
             service_name=service_name,

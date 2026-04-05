@@ -127,7 +127,7 @@ class ChatLLMMixin(Base):
         persona_prompt: str,
         message_history: List[ChatMessage],
         stream: bool = False
-    ) -> Tuple[Optional[ProcessingResult], Optional[str]]:
+    ) -> Tuple[Optional[Union[ProcessingResult, AsyncIterator[str]]], Optional[str]]:
         """Try the specific LLM requested by the user, if any."""
         metadata = getattr(request, "metadata", {})
         model_id = metadata.get("model_id") or metadata.get("preferred_model")

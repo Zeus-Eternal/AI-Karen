@@ -14,7 +14,7 @@ import logging
 import time
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, Set, Union
+from typing import Dict, List, Optional, Any, Tuple, Set, Union, cast
 from enum import Enum
 from pathlib import Path
 import json
@@ -114,8 +114,8 @@ class ModelRouter:
         self.llm_registry = get_registry()
         
         # Initialize existing routers (preserve existing logic)
-        self.existing_llm_router = LLMRouter(registry=self.llm_registry)
-        self.intelligent_router = IntelligentLLMRouter(registry=self.llm_registry)
+        self.existing_llm_router = LLMRouter(registry=cast(Any, self.llm_registry))
+        self.intelligent_router = IntelligentLLMRouter(registry=cast(Any, self.llm_registry))
         
         # Model connections and routing state
         self.model_connections: Dict[str, ModelConnection] = {}
@@ -187,11 +187,11 @@ class ModelRouter:
         
         for provider_name in providers:
             try:
-                # Get provider models
-                provider_info = self.llm_registry.get_provider_info(provider_name)
-                if provider_info and provider_info.get("default_model"):
-                    model_id = f"{provider_name}:{provider_info['default_model']}"
-                    
+                provider_models = self.llm_registry.list_models(provider_name)
+                if provider_models:
+                    default_model_id = provider_models[0].id
+                    model_id = f"{provider_name}:{default_model_id}"
+
                     if model_id not in self.performance_metrics:
                         self.performance_metrics[model_id] = ModelPerformanceMetrics(
                             model_id=model_id,
@@ -292,12 +292,10 @@ class ModelRouter:
             # For API-based providers, verify connection
             else:
                 try:
-                    # Use existing provider health check
-                    provider_info = self.llm_registry.get_provider_info(connection.provider)
-                    if provider_info:
-                        # Attempt a simple health check
+                    provider_spec = self.llm_registry.get_provider_spec(connection.provider)
+                    if provider_spec:
                         health = self.llm_registry.health_check(f"provider:{connection.provider}")
-                        return health.get("status") == "healthy"
+                        return health.status == "healthy"
                 except Exception as e:
                     logger.error(f"Provider health check failed: {e}")
                     return False
@@ -555,7 +553,7 @@ class ModelRouter:
     async def filter_models_by_capability(
         self, 
         task_type: str,
-        modalities: List[ModalityType] = None
+        modalities: Optional[List[ModalityType]] = None
     ) -> List[str]:
         """Filter models by capability and modality requirements."""
         suitable_models = []
@@ -787,7 +785,12 @@ class ModelRouter:
         
         return active_models
     
-    async def _update_request_metrics(self, model_id: str, success: bool, response_time: float = None):
+    async def _update_request_metrics(
+        self,
+        model_id: str,
+        success: bool,
+        response_time: Optional[float] = None,
+    ):
         """Update performance metrics for a model."""
         with self._lock:
             if model_id not in self.performance_metrics:

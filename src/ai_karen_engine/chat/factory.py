@@ -253,7 +253,7 @@ class ChatServiceFactory:
         )
 
         # Get auth service
-        from auth.auth_service import get_auth_service
+        from ai_karen_engine.auth.auth_service import get_auth_service
         import asyncio
         
         try:
@@ -264,7 +264,7 @@ class ChatServiceFactory:
             # but for factory initialization it's usually fine or we just use the getter inside orchestrator.
             # Actually, the orchestrator can call the getter itself if it's async.
         except RuntimeError:
-            from auth.auth_service import get_auth_service_sync
+            from ai_karen_engine.auth.auth_service import get_auth_service_sync
             auth_service = get_auth_service_sync()
 
         # Create orchestrator with all services

@@ -2,23 +2,34 @@
 
 ## Overview
 
-The KIRE-KRO system is the production-grade AI orchestration layer for AI-Karen, providing intelligent LLM routing, reasoning coordination, and response optimization.
+KIRE-KRO is a production routing-and-reasoning support subsystem for Karen AI.
+
+It is not a rival chat runtime.
+
+For standard chat:
+- API ingress normalizes requests
+- `ChatOrchestrator` owns the request lifecycle
+- KIRE contributes routing intelligence
+- KRO may contribute specialized reasoning or sub-orchestration support when explicitly invoked
+- persistence, writeback, and frontend completion truth remain under the canonical chat runtime
+
+KIRE-KRO therefore operates under Karen's main chat authority model rather than beside it.
 
 ### Components
 
 1. **KIRE** (Kari Intelligent Routing Engine)
-   - Intelligent LLM provider and model selection
+   - Intent-aware provider and model selection
    - Profile-based routing with fallback chains
-   - Health monitoring and graceful degradation
-   - RBAC enforcement and rate limiting
-   - Comprehensive OSIRIS logging
+   - Task analysis, capability matching, and routing confidence
+   - Decision logging and routing metrics
+   - Advisory routing output for the governed chat runtime
 
 2. **KRO** (Kari Reasoning Orchestrator)
-   - Prompt-first controller for response generation
-   - Intent classification and planning
+   - Specialized reasoning/orchestration support
+   - Intent classification and planning for KRO-native or specialized flows
    - Helper model coordination (TinyLlama, DistilBERT, spaCy)
-   - Dynamic prompt suggestions
-   - Structured response envelopes
+   - Structured reasoning artifacts for subflows
+   - Not the top-level owner of standard chat lifecycle
 
 3. **Model Discovery Engine**
    - Comprehensive model scanning (GGUF, Transformers, Stable Diffusion)
@@ -36,26 +47,43 @@ The KIRE-KRO system is the production-grade AI orchestration layer for AI-Karen,
    - Progressive content delivery
    - Format optimization
 
+## Authority Model
+
+Core law:
+
+Routes accept.
+Routers classify.
+Reasoners support.
+Main chat orchestrator decides.
+Services execute.
+Persistence stores.
+Frontend reflects backend truth.
+
+KIRE-KRO must fit inside that law.
+
 ## Architecture
 
 ```
 User Request
     ↓
-[KRO Orchestrator]
-    ├─→ Intent Classification (DistilBERT)
-    ├─→ Planning (TinyLlama scaffolding)
-    ├─→ Routing (KIRE)
+[Thin API Route]
+    ↓
+[ChatOrchestrator]
+    ├─→ Working context + memory assembly
+    ├─→ KIRE advisory routing
     │     ├─→ Profile Resolution
     │     ├─→ Task Analysis
     │     ├─→ Cognitive Reasoning
     │     ├─→ Health Checks
-    │     └─→ Provider Selection
-    ├─→ Execution (Main LLM + CUDA)
-    ├─→ Optimization (Content Engine)
-    └─→ Suggestions (Dynamic Engine)
+    │     └─→ Provider Selection Recommendation
+    ├─→ Optional KRO specialized subflow
+    ├─→ Governed execution path selection
+    ├─→ Persistence / writeback / telemetry
     ↓
-Response Envelope
+Backend-confirmed response
 ```
+
+Out-of-band KRO endpoints may still exist for diagnostics or specialized orchestration, but they do not define standard chat completion truth.
 
 ## Quick Start
 
@@ -72,20 +100,20 @@ python -m ai_karen_engine.initialize_kire_kro
 ### Basic Usage
 
 ```python
-from ai_karen_engine.core import process_request
+from ai_karen_engine.core.kire_kro_integration import get_integration
 
-# Process a user request
-response = await process_request(
+# Standard chat handoff still goes through the canonical chat runtime
+integration = get_integration()
+response = await integration.process_user_request(
     user_input="Explain quantum computing",
     user_id="user123",
     conversation_history=[],
 )
 
-# Access response
-print(response["message"])  # User-facing message
-print(response["meta"]["provider"])  # Used provider
-print(response["meta"]["model"])  # Used model
-print(response["suggestions"])  # Next-step suggestions
+# Access normalized response
+print(response["message"])
+print(response["meta"]["provider"])
+print(response["_integration"]["authority"])  # chat_orchestrator
 ```
 
 ### API Usage
@@ -94,12 +122,42 @@ print(response["suggestions"])  # Next-step suggestions
 # Start API server
 uvicorn ai_karen_engine.main:app --host 0.0.0.0 --port 8000
 
-# Process request
+# Process standard chat through governed runtime
 curl -X POST http://localhost:8000/api/kro/process \
   -H "Content-Type: application/json" \
   -d '{
     "user_input": "What is machine learning?",
     "user_id": "user123"
+  }'
+
+# Execute an explicit KRO-native specialized flow
+curl -X POST http://localhost:8000/api/kro/process-specialized \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_input": "Plan a specialized reasoning workflow for this dataset",
+    "user_id": "user123",
+    "context": {
+      "kro_native": true
+    }
+  }'
+
+# Legacy orchestration chat routes still exist as compatibility ingress,
+# but they now delegate to ChatOrchestrator instead of owning chat lifecycle.
+curl -X POST http://localhost:8000/api/orchestration/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Hello Karen",
+    "session_id": "session-123"
+  }'
+
+# LangGraph admin and diagnostic endpoints now live under an explicit admin namespace.
+curl http://localhost:8000/api/admin/orchestration/status
+curl http://localhost:8000/api/admin/orchestration/health
+curl -X POST http://localhost:8000/api/admin/orchestration/debug/dry-run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Analyze this orchestration path",
+    "session_id": "session-123"
   }'
 
 # Get available models
@@ -165,13 +223,13 @@ Create user profiles for custom routing:
 
 ## Response Format
 
-### Response Envelope
+### Standard Chat Envelope
 
 ```json
 {
   "meta": {
     "timestamp": "2025-01-05T12:00:00Z",
-    "agent": "KRO",
+    "agent": "ChatOrchestrator",
     "confidence": 0.92,
     "latency_ms": 1250,
     "tokens_used": 150,
@@ -179,49 +237,24 @@ Create user profiles for custom routing:
     "model": "gpt-4o-mini",
     "degraded_mode": false
   },
-  "classification": {
-    "intent": "General",
-    "category": "factual",
-    "sentiment": "neutral",
-    "style": "factual",
-    "importance": 5,
-    "keywords": "machine|learning|explanation"
+  "routing": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "reasoning": "profile assignment for chat",
+    "confidence": 0.92
   },
-  "reasoning_summary": "Classified as general query and routed to OpenAI GPT-4o-mini for factual explanation.",
-  "plan": [
-    {
-      "step": 1,
-      "action": "classify",
-      "detail": "Classified as General"
-    },
-    {
-      "step": 2,
-      "action": "synthesize",
-      "detail": "Compose answer from knowledge"
-    }
-  ],
-  "evidence": [],
-  "memory_writes": [],
-  "ui": {
-    "layout_hint": "default",
-    "components": [
-      {
-        "type": "text",
-        "body_md": "Machine learning is..."
-      }
-    ]
-  },
+  "structured_content": {},
+  "actions": [],
   "telemetry": {
-    "tools_called": [],
-    "errors": [],
-    "notes": ""
+    "route": "canonical"
   },
-  "suggestions": [
-    "Explain the types of machine learning",
-    "How does supervised learning work?",
-    "Show me a practical example"
-  ],
-  "message": "Machine learning is..."
+  "message": "Machine learning is...",
+  "_integration": {
+    "authority": "chat_orchestrator",
+    "kire_enabled": true,
+    "kro_specialized_available": true,
+    "routing_advisory_used": true
+  }
 }
 ```
 
@@ -292,6 +325,19 @@ All operations emit structured logs:
   "reasoning": "Profile assignment for chat"
 }
 
+# Governed routing outcome
+{
+  "event": "routing.outcome",
+  "correlation_id": "abc123",
+  "outcome": "used",
+  "advisory_provider": "openai",
+  "advisory_model": "gpt-4o-mini",
+  "final_provider": "openai",
+  "final_model": "gpt-4o-mini",
+  "final_status": "completed",
+  "execution_path": "direct_llm"
+}
+
 # KRO completion
 {
   "event": "kro.done",
@@ -309,10 +355,18 @@ kire_decisions_total{status="success", task_type="chat"}
 kire_latency_seconds{task_type="chat"}
 kire_provider_selection_total{provider="openai", model="gpt-4o-mini"}
 kire_decision_confidence{provider="openai"}
+kire_advisory_outcomes_total{outcome="used", final_status="completed", execution_path="direct_llm"}
 
 # KRO metrics
 kro_events_total{event_type="kro.done", status="success"}
+kro_specialized_path_total{path="kro_orchestrator.process_request", status="success"}
 ```
+
+Operationally, this means operators can now answer:
+- whether KIRE advice was actually used or overridden downstream
+- which final provider/model completed the governed chat path
+- how often specialized KRO execution paths were invoked
+- which correlation ID ties the original advisory route to the final chat outcome
 
 ## Testing
 

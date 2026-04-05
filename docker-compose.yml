@@ -259,11 +259,19 @@ services:
       - "8080:8080"
     volumes:
       - ./models:/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     command:
       - "-m"
       - "/models/llama-cpp/Phi-3-mini-4k-instruct-q4.gguf"
       - "-c"
       - "4096"
+      - "--n-gpu-layers"
+      - "-1"
+      - "--main-gpu"
+      - "0"
+      - "--flash-attn"
       - "--host"
       - "0.0.0.0"
       - "--port"
@@ -293,6 +301,8 @@ services:
       - ./models/ollama:/root/.ollama
     environment:
       OLLAMA_HOST: "0.0.0.0:11434"
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:11434/api/tags >/dev/null || exit 1"]
       interval: 30s
@@ -380,7 +390,7 @@ services:
     container_name: ai-karen-api
     build:
       context: .
-      target: ${PROFILE:-runtime}
+      target: ${API_BUILD_TARGET:-runtime}
     restart: unless-stopped
     env_file:
       - .env
@@ -498,6 +508,8 @@ services:
       MODEL_ORCHESTRATOR_ENABLE_RBAC: "true"
       MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434/api}"
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
     ports:
       - "8000:8000"
       - "9092:9091"  # Model orchestrator metrics port
@@ -551,6 +563,9 @@ services:
         reservations:
           memory: 2G      # Reserve 2GB minimum
           cpus: '2.0'     # Reserve 2 CPU cores
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
     networks:
       - ai-karen-net
 

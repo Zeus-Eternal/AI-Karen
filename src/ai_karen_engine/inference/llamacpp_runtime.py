@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 try:
     from llama_cpp import Llama, LlamaGrammar # type: ignore
+    try:
+        from llama_cpp import llama_supports_gpu_offload  # type: ignore
+    except ImportError:
+        llama_supports_gpu_offload = None  # type: ignore[assignment]
     # Patch noisy __del__ AttributeError in some llama-cpp-python versions
     try:  # defensive: best-effort monkey patch to suppress sampler AttributeError
         from llama_cpp import _internals as _ll_internals  # type: ignore
@@ -53,6 +57,7 @@ except ImportError:
         @property
         def metadata(self) -> Dict[str, Any]: return {}
     class LlamaGrammar: pass
+    llama_supports_gpu_offload = None  # type: ignore[assignment]
 
 
 class LlamaCppRuntime:
@@ -87,7 +92,20 @@ class LlamaCppRuntime:
                 logger.warning("Failed to load llama.cpp runtime config from %s: %s", config_path, exc)
                 raw = {}
 
-            for key in ("model_path", "n_ctx", "n_batch", "n_gpu_layers", "n_threads", "use_mmap", "use_mlock", "verbose"):
+            for key in (
+                "model_path",
+                "n_ctx",
+                "n_batch",
+                "n_gpu_layers",
+                "n_threads",
+                "use_mmap",
+                "use_mlock",
+                "verbose",
+                "main_gpu",
+                "tensor_split",
+                "offload_kqv",
+                "flash_attn",
+            ):
                 value = raw.get(key)
                 if value is not None:
                     defaults[key] = value
@@ -99,8 +117,15 @@ class LlamaCppRuntime:
             config = get_optimization_config_manager().get_configuration()
             cuda_cfg = getattr(config, "cuda", None)
             if cuda_cfg and getattr(cuda_cfg, "enable_cuda", False):
-                if defaults.get("n_gpu_layers") in (None, 0):
+                if int(defaults.get("n_gpu_layers", 0) or 0) <= 0:
                     defaults["n_gpu_layers"] = int(os.getenv("LLAMA_N_GPU_LAYERS", "-1"))
+                if defaults.get("main_gpu") is None and getattr(cuda_cfg, "preferred_device_id", None) is not None:
+                    defaults["main_gpu"] = int(cuda_cfg.preferred_device_id)
+                defaults.setdefault("offload_kqv", True)
+                defaults.setdefault(
+                    "flash_attn",
+                    os.getenv("LLAMA_FLASH_ATTN", "true").lower() in {"1", "true", "yes"},
+                )
         except Exception as exc:
             logger.debug("Failed to apply optimization-driven llama.cpp GPU defaults: %s", exc)
         return defaults
@@ -131,6 +156,10 @@ class LlamaCppRuntime:
         n_batch: Optional[int] = None,
         n_gpu_layers: Optional[int] = None,
         n_threads: Optional[int] = None,
+        main_gpu: Optional[int] = None,
+        tensor_split: Optional[List[float]] = None,
+        offload_kqv: Optional[bool] = None,
+        flash_attn: Optional[bool] = None,
         use_mmap: Optional[bool] = None,
         use_mlock: Optional[bool] = None,
         verbose: Optional[bool] = None,
@@ -166,6 +195,33 @@ class LlamaCppRuntime:
             env_threads = 0
         default_threads = int(defaults.get("n_threads", 4))
         self.n_threads = n_threads or (env_threads if env_threads > 0 else default_threads)
+        env_main_gpu = os.getenv("LLAMA_MAIN_GPU")
+        self.main_gpu = (
+            main_gpu
+            if main_gpu is not None
+            else defaults.get("main_gpu", int(env_main_gpu) if env_main_gpu is not None else 0)
+        )
+        raw_tensor_split = tensor_split if tensor_split is not None else defaults.get("tensor_split")
+        if raw_tensor_split is None and os.getenv("LLAMA_TENSOR_SPLIT"):
+            try:
+                raw_tensor_split = [
+                    float(part.strip())
+                    for part in os.getenv("LLAMA_TENSOR_SPLIT", "").split(",")
+                    if part.strip()
+                ]
+            except ValueError:
+                raw_tensor_split = None
+        self.tensor_split = raw_tensor_split
+        self.offload_kqv = bool(
+            offload_kqv
+            if offload_kqv is not None
+            else defaults.get("offload_kqv", os.getenv("LLAMA_OFFLOAD_KQV", "true").lower() in ("1", "true", "yes"))
+        )
+        self.flash_attn = bool(
+            flash_attn
+            if flash_attn is not None
+            else defaults.get("flash_attn", os.getenv("LLAMA_FLASH_ATTN", "true").lower() in ("1", "true", "yes"))
+        )
         self.use_mmap = bool(use_mmap if use_mmap is not None else defaults.get("use_mmap", True))
         # Enable mlock via env if requested
         env_mlock = os.getenv("LLAMA_MLOCK", "false").lower() in ("1", "true", "yes")
@@ -179,7 +235,26 @@ class LlamaCppRuntime:
         self._load_time: Optional[float] = None
         self._memory_usage: Optional[int] = None
         self.last_usage: Dict[str, Any] = {}
-        
+
+        gpu_requested = self.n_gpu_layers != 0
+        if gpu_requested:
+            gpu_support_enabled = False
+            if callable(llama_supports_gpu_offload):
+                try:
+                    gpu_support_enabled = bool(llama_supports_gpu_offload())
+                except Exception:
+                    gpu_support_enabled = False
+            if not gpu_support_enabled:
+                logger.warning(
+                    "llama.cpp GPU offload requested but this llama-cpp-python build does not expose GPU offload. "
+                    "Use the CUDA image target and run the container with GPU devices enabled."
+                )
+            elif not (os.getenv("NVIDIA_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")):
+                logger.warning(
+                    "llama.cpp GPU offload requested but no GPU devices are visible inside the container. "
+                    "Set NVIDIA_VISIBLE_DEVICES/CUDA_VISIBLE_DEVICES and start Docker with GPU access."
+                )
+
         # Load model if path provided
         if model_path:
             self.load_model(model_path)
@@ -244,11 +319,16 @@ class LlamaCppRuntime:
                     "n_batch": self.n_batch,
                     "n_gpu_layers": self.n_gpu_layers,
                     "n_threads": self.n_threads,
+                    "main_gpu": self.main_gpu,
+                    "offload_kqv": self.offload_kqv,
+                    "flash_attn": self.flash_attn,
                     "use_mlock": self.use_mlock,
                     "verbose": self.verbose,
                     **self.kwargs,
                     **override_kwargs
                 }
+                if self.tensor_split:
+                    params["tensor_split"] = self.tensor_split
 
                 logger.info(f"Loading GGUF model: {canonical_model_path}")
                 logger.debug(f"llama.cpp parameters: {params}")

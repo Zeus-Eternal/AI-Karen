@@ -28,6 +28,7 @@ from .models import (
     ProcessingResult,
     RetryConfig,
 )
+from ai_karen_engine.models.shared_types import ChatMessage
 
 
 class ChatOrchestratorProtocol(Protocol):
@@ -143,7 +144,7 @@ class ChatOrchestratorProtocol(Protocol):
     ) -> ChatResponse:
         ...
 
-    async def _process_streaming(
+    def _process_streaming(
         self, request: ChatRequest, context: ProcessingContext
     ) -> AsyncGenerator[ChatStreamChunk, None]:
         ...
@@ -192,7 +193,7 @@ class ChatOrchestratorProtocol(Protocol):
         persona_prompt: str,
         message_history: List[ChatMessage],
         stream: bool = False
-    ) -> Optional[Union[ProcessingResult, AsyncIterator[str]]]:
+    ) -> tuple[Optional[Union[ProcessingResult, AsyncIterator[str]]], Optional[str]]:
         ...
 
     async def _try_system_default_llms(
@@ -201,7 +202,8 @@ class ChatOrchestratorProtocol(Protocol):
         context: ProcessingContext,
         persona_prompt: str,
         message_history: List[ChatMessage],
-        stream: bool = False
+        stream: bool = False,
+        initial_failure_reason: Optional[str] = None,
     ) -> Union[ProcessingResult, AsyncIterator[str]]:
         ...
 

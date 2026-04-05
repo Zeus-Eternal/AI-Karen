@@ -10,6 +10,14 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.codex
+.coveragerc
+.dockerignore
+.kilocodemodes
+.pre-commit-config.yaml
+.env.local
+config/secrets/*
+config/archive/auth/*
 
 # testing
 /coverage

@@ -1,9 +1,9 @@
 """
-Kari Reasoning Orchestrator (KRO) - Production-grade prompt-first controller.
+Kari Reasoning Orchestrator (KRO) - specialized prompt-first sub-orchestrator.
 
-This orchestrator plans, routes, and synthesizes answers for the front-end UI following
-the prompt-first integration framework. It manages helper models, implements graceful
-degradation, and maintains comprehensive observability through OSIRIS logging.
+KRO is not Karen's standard chat authority. It exists for explicit, KRO-native
+specialized subflows that need structured planning, reasoning artifacts, and
+specialized telemetry outside the normal ChatOrchestrator lifecycle.
 """
 
 from __future__ import annotations
@@ -18,6 +18,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+from ai_karen_engine.monitoring.kire_metrics import KRO_SPECIALIZED_PATH_TOTAL
 
 logger = logging.getLogger(__name__)
 
@@ -331,15 +333,20 @@ class SuggestionEngine:
 
 class KROOrchestrator:
     """
-    Kari Reasoning Orchestrator - prompt-first controller for AI-Karen.
+    Kari Reasoning Orchestrator for explicit specialized flows.
 
     Responsibilities:
-    1. Plan minimal path to correct answer
-    2. Route requests to appropriate models via KIRE
+    1. Plan specialized reasoning paths
+    2. Route specialized requests to appropriate models via KIRE
     3. Coordinate helper models (default model, DistilBERT, spaCy)
-    4. Implement graceful degradation
+    4. Implement graceful degradation for KRO-native paths
     5. Generate dynamic prompt suggestions
-    6. Maintain comprehensive observability
+    6. Maintain specialized-path observability
+
+    Non-responsibilities:
+    - standard chat lifecycle ownership
+    - standard chat persistence/writeback timing
+    - frontend completion truth for governed chat
     """
 
     def __init__(
@@ -396,7 +403,7 @@ class KROOrchestrator:
         correlation_id: Optional[str] = None,
     ) -> Tuple[KROResponse, str]:
         """
-        Process user request through KRO pipeline.
+        Process an explicit specialized request through the KRO pipeline.
 
         Returns:
             Tuple of (KROResponse JSON envelope, user-facing message)
@@ -408,6 +415,7 @@ class KROOrchestrator:
         await self.helpers.initialize()
 
         # Emit OSIRIS start event
+        KRO_SPECIALIZED_PATH_TOTAL.labels(path="kro_orchestrator.process_request", status="started").inc()
         await self._log_osiris_event("kro.start", {
             "correlation_id": corr_id,
             "user_id": user_id,
@@ -472,7 +480,7 @@ class KROOrchestrator:
 
             meta = ResponseMeta(
                 timestamp=datetime.utcnow().isoformat() + "Z",
-                agent="KRO",
+                agent="KRO-specialized",
                 confidence=routing_decision.get("confidence", 0.85),
                 latency_ms=elapsed_ms,
                 tokens_used=self._estimate_tokens(user_input, response_text),
@@ -495,6 +503,7 @@ class KROOrchestrator:
                 telemetry=telemetry,
                 suggestions=suggestions,
             )
+            response.telemetry.notes = "specialized_kro_path"
 
             # Emit OSIRIS completion event
             await self._log_osiris_event("kro.done", {
@@ -505,11 +514,16 @@ class KROOrchestrator:
                 "model": routing_decision.get("model"),
                 "degraded_mode": self.degraded_mode,
             })
+            KRO_SPECIALIZED_PATH_TOTAL.labels(
+                path="kro_orchestrator.process_request",
+                status="degraded" if self.degraded_mode else "success",
+            ).inc()
 
             return response, ui_message
 
         except Exception as e:
             logger.error(f"KRO processing failed: {e}", exc_info=True)
+            KRO_SPECIALIZED_PATH_TOTAL.labels(path="kro_orchestrator.process_request", status="error").inc()
 
             # Attempt degraded mode response
             degraded_response, degraded_message = await self._handle_degraded_mode(
@@ -915,6 +929,7 @@ Provide a clear, concise, and actionable answer."""
             telemetry=Telemetry(errors=[error]),
             suggestions=["Try again", "Contact support", "Check system status"],
         )
+        response.telemetry.notes = "specialized_kro_path"
 
         return response, degraded_text
 

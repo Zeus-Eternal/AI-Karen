@@ -1,0 +1,29 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "time_query",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "user"
+  ],
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.time_query.handler",
+  "name": "time-query",
+  "display_name": "Date Time",
+  "version": "0.1.0",
+  "description": "Responds with the current time.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "category": "productivity",
+  "entry_point": "run",
+  "plugin_type": "core",
+  "ui": {
+    "menu": [
+      {
+        "placement": "sidebar",
+        "label": "Date Time",
+        "icon": "time-query---sidebar_00.svg",
+        "order": 0
+      }
+    ]
+  }
+}

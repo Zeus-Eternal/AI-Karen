@@ -9,7 +9,7 @@ import logging
 import asyncio
 from typing import Dict, List, Any, Optional, Set, Callable
 from datetime import datetime, timedelta
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
 
@@ -37,7 +37,7 @@ class InvalidationRule:
     trigger: InvalidationTrigger
     target_namespaces: List[str]
     target_tags: List[str]
-    condition_func: Optional[Callable] = None
+    condition_func: Optional[Callable[[Dict[str, Any]], bool]] = None
     delay_seconds: int = 0
     description: str = ""
 
@@ -48,11 +48,7 @@ class InvalidationEvent:
     trigger: InvalidationTrigger
     timestamp: datetime
     metadata: Dict[str, Any]
-    affected_keys: List[str] = None  # type: ignore
-    
-    def __post_init__(self):
-        if self.affected_keys is None:
-            self.affected_keys = []
+    affected_keys: List[str] = field(default_factory=list)
 
 
 class CacheInvalidationService:
@@ -338,14 +334,15 @@ class CacheInvalidationService:
             metadata
         )
         
-        # Also invalidate user-specific response formatting cache
+        # Response-formatting cache integration was removed from the active system.
+        # Keep this branch as a best-effort no-op for compatibility.
         try:
-            from extensions.sys_ext.response_formatting.cache_integration import get_cached_formatter_registry
-            cached_registry = get_cached_formatter_registry()
-            user_invalidated = await cached_registry.invalidate_user_cache(user_id)
-            total_invalidated += user_invalidated
-        except Exception as e:
-            logger.error(f"Error invalidating user response formatting cache: {e}")
+            logger.debug(
+                "Skipping response formatting cache invalidation for user %s; no active formatter cache integration",
+                user_id,
+            )
+        except Exception:
+            pass
         
         return total_invalidated
     

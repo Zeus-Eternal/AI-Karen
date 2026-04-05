@@ -38,6 +38,16 @@ try:  # pragma: no cover - optional dependency
         ["task_type", "provider", "model"],
         buckets=(0.0, 0.25, 0.5, 0.65, 0.8, 0.9, 0.96, 1.01),
     )
+    KIRE_ADVISORY_OUTCOMES_TOTAL = Counter(
+        "kire_advisory_outcomes_total",
+        "Outcome of KIRE advisory routing after governed chat execution",
+        ["outcome", "final_status", "execution_path"],
+    )
+    KRO_SPECIALIZED_PATH_TOTAL = Counter(
+        "kro_specialized_path_total",
+        "Invocations of specialized KRO orchestration paths",
+        ["path", "status"],
+    )
 except Exception:  # pragma: no cover - fallback
 
     class _Dummy:
@@ -56,6 +66,8 @@ except Exception:  # pragma: no cover - fallback
     KIRE_ACTIONS_TOTAL = _Dummy()
     KIRE_PROVIDER_SELECTION_TOTAL = _Dummy()
     KIRE_DECISION_CONFIDENCE = _Dummy()
+    KIRE_ADVISORY_OUTCOMES_TOTAL = _Dummy()
+    KRO_SPECIALIZED_PATH_TOTAL = _Dummy()
 
 __all__ = [
     "KIRE_DECISIONS_TOTAL",
@@ -64,4 +76,6 @@ __all__ = [
     "KIRE_ACTIONS_TOTAL",
     "KIRE_PROVIDER_SELECTION_TOTAL",
     "KIRE_DECISION_CONFIDENCE",
+    "KIRE_ADVISORY_OUTCOMES_TOTAL",
+    "KRO_SPECIALIZED_PATH_TOTAL",
 ]

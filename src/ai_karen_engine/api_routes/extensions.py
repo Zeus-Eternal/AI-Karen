@@ -1,11 +1,31 @@
 """Extension management API routes."""
 
+from datetime import datetime
+from pathlib import Path
+import sys
 from typing import Any, Dict, List
+from fastapi.responses import FileResponse
+
+
+def _ensure_src_on_path() -> None:
+    current = Path(__file__).resolve()
+    repo_root = current.parents[3]
+    src_root = repo_root / "src"
+    src_str = str(src_root)
+    if src_root.is_dir() and src_str not in sys.path:
+        sys.path.insert(0, src_str)
+
+
+_ensure_src_on_path()
 
 try:
-    from extensions.core.manager import get_plugin_manager as get_extension_manager
-    from ai_karen_engine.utils.dependency_checks import import_fastapi
+    from pydantic import BaseModel, Field
+except ImportError:  # pragma: no cover - fallback only
     from ai_karen_engine.pydantic_stub import BaseModel, Field
+
+try:
+    from extensions.core.manager import get_extension_core_manager as get_extension_manager
+    from ai_karen_engine.utils.dependency_checks import import_fastapi
 
     class ExtensionStatusAPI(BaseModel):
         name: str
@@ -13,12 +33,11 @@ try:
         description: str | None = Field(default=None)
         version: str
         status: str
-        loaded_at: Any | None = Field(default=None)
+        loaded_at: datetime | None = Field(default=None)
         error_message: str | None = Field(default=None)
 except ImportError:
     # Fallback when extension host is unavailable; still use real FastAPI if installed
     from ai_karen_engine.utils.dependency_checks import import_fastapi
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
     class ExtensionStatusAPI(BaseModel):
         name: str
@@ -26,30 +45,41 @@ except ImportError:
         description: str | None = Field(default=None)
         version: str
         status: str
-        loaded_at: Any | None = Field(default=None)
+        loaded_at: datetime | None = Field(default=None)
         error_message: str | None = Field(default=None)
 
     def get_extension_manager():
         return None
 
-APIRouter, Depends, HTTPException = import_fastapi(
-    "APIRouter", "Depends", "HTTPException"
+APIRouter, Depends, HTTPException, Request = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Request"
 )
 
 router = APIRouter()
 
 # Import authentication dependencies
 try:
-    from ai_karen_engine.auth.auth_middleware import get_current_user
+    from ai_karen_engine.auth.auth_middleware import AuthenticationError, get_current_user
     AUTH_AVAILABLE = True
 except ImportError:
     AUTH_AVAILABLE = False
+    AuthenticationError = Exception  # type: ignore[assignment]
     async def get_current_user():
         return None
 
 
+async def get_optional_current_user(request: Request):
+    """Best-effort auth dependency for routes that can be viewed anonymously."""
+    if not AUTH_AVAILABLE:
+        return None
+    try:
+        return await get_current_user(request)
+    except AuthenticationError:
+        return None
+
+
 @router.get("/", response_model=Dict[str, Any])
-async def list_extensions_root(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
+async def list_extensions_root(current_user=Depends(get_optional_current_user) if AUTH_AVAILABLE else None):
     """List all extensions and their status (root endpoint)."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -60,28 +90,26 @@ async def list_extensions_root(current_user=Depends(get_current_user) if AUTH_AV
             "status": "unavailable"
         }
 
-    extensions = {}
-    extension_list = []
     try:
-        for record in extension_manager.registry.list_extensions():
+        records = extension_manager.list_extension_statuses()
+        if not records:
+            records = await extension_manager.discover_extensions()
+
+        extensions = {}
+        for record in records:
             ext_data = {
-                "id": record.manifest.name,
-                "name": record.manifest.name,
-                "display_name": record.manifest.display_name or record.manifest.name,
-                "description": record.manifest.description or "No description available",
-                "version": record.manifest.version,
-                "status": record.status.value,
-                "loaded_at": record.loaded_at.isoformat() if record.loaded_at else None,
-                "error_message": record.error_message,
-                "capabilities": {
-                    "provides_ui": getattr(record.manifest, 'provides_ui', False),
-                    "provides_api": getattr(record.manifest, 'provides_api', False),
-                    "provides_background_tasks": getattr(record.manifest, 'provides_background_tasks', False),
-                    "provides_webhooks": getattr(record.manifest, 'provides_webhooks', False)
-                }
+                "id": record["id"],
+                "name": record["name"],
+                "display_name": record["display_name"],
+                "description": record["description"],
+                "version": record["version"],
+                "status": record["status"],
+                "loaded_at": record["loaded_at"].isoformat() if record["loaded_at"] else None,
+                "error_message": record["error_message"],
+                "capabilities": record["capabilities"],
+                "menu_contributions": record.get("menu_contributions", []),
             }
-            extensions[record.manifest.name] = ext_data
-            extension_list.append(ext_data)
+            extensions[record["name"]] = ext_data
     except Exception as e:
         return {
             "extensions": {},
@@ -93,40 +121,54 @@ async def list_extensions_root(current_user=Depends(get_current_user) if AUTH_AV
     return {
         "extensions": extensions,
         "total": len(extensions),
-        "message": "Extensions loaded successfully" if extensions else "No extensions found",
+        "message": "Extensions available" if extensions else "No extensions found",
         "status": "available" if extensions else "empty"
     }
 
 
-@router.get("/list", response_model=List[Dict[str, Any]])
-async def list_extensions(current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
+@router.get("/list")
+async def list_extensions(current_user=Depends(get_optional_current_user) if AUTH_AVAILABLE else None):
     """List all extensions and their status."""
-    extension_manager = get_extension_manager()
-    if not extension_manager:
-        raise HTTPException(
-            status_code=503,
-            detail="Extension manager not initialized",
-        )
+    manager = get_extension_manager()
+    if not manager:
+        return []
 
-    extensions = []
-    for record in extension_manager.registry.list_extensions():
-        extensions.append(
-            ExtensionStatusAPI(
-                name=record.manifest.name,
-                display_name=record.manifest.display_name,
-                description=record.manifest.description,
-                version=record.manifest.version,
-                status=record.status.value,
-                loaded_at=record.loaded_at,
-                error_message=record.error_message,
+    try:
+        records = manager.list_extension_statuses()
+        if not records:
+            records = await manager.discover_extensions()
+
+        extensions: List[Dict[str, Any]] = []
+        for record in records:
+            loaded_at = record.get("loaded_at")
+            # Get category from registry if available
+            category = "plugins"
+            if manager.registry:
+                metadata = manager.registry.get_metadata(record.get("name"))
+                if metadata:
+                    category = metadata.category
+
+            extensions.append(
+                {
+                    "name": record.get("name"),
+                    "display_name": record.get("display_name"),
+                    "description": record.get("description"),
+                    "version": record.get("version") or "unknown",
+                    "status": record.get("status") or "unknown",
+                    "category": category,
+                    "loaded_at": loaded_at.isoformat() if hasattr(loaded_at, "isoformat") else loaded_at,
+                    "error_message": record.get("error_message"),
+                    "menu_contributions": record.get("menu_contributions", []),
+                }
             )
-        )
+    except Exception:
+        return []
 
     return extensions
 
 
 @router.get("/{extension_name}")
-async def get_extension_status(extension_name: str, current_user=Depends(get_current_user) if AUTH_AVAILABLE else None):
+async def get_extension_status(extension_name: str, current_user=Depends(get_optional_current_user) if AUTH_AVAILABLE else None):
     """Get detailed status of a specific extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -137,9 +179,43 @@ async def get_extension_status(extension_name: str, current_user=Depends(get_cur
 
     status = extension_manager.get_extension_status(extension_name)
     if not status:
+        await extension_manager.refresh_registry()
+        status = extension_manager.get_extension_status(extension_name)
+    if not status:
         raise HTTPException(status_code=404, detail="Extension not found")
 
     return status
+
+
+@router.get("/{extension_name}/assets/{asset_path:path}")
+async def get_extension_asset(
+    extension_name: str,
+    asset_path: str,
+    current_user=Depends(get_optional_current_user) if AUTH_AVAILABLE else None,
+):
+    """Serve a static asset from a discovered extension directory."""
+    extension_manager = get_extension_manager()
+    if not extension_manager:
+        raise HTTPException(status_code=404, detail="Extension manager not initialized")
+
+    metadata = extension_manager.registry.get_metadata(extension_name)
+    if not metadata:
+        await extension_manager.refresh_registry()
+        metadata = extension_manager.registry.get_metadata(extension_name)
+    if not metadata:
+        raise HTTPException(status_code=404, detail="Extension not found")
+
+    base_dir = metadata.directory.resolve()
+    target = (base_dir / asset_path).resolve()
+    try:
+        target.relative_to(base_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid asset path") from exc
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    return FileResponse(Path(target))
 
 
 @router.post("/{extension_name}/load")
@@ -210,19 +286,19 @@ async def discover_extensions(current_user=Depends(get_current_user) if AUTH_AVA
         )
 
     try:
-        manifests = await extension_manager.discover_extensions()
+        items = await extension_manager.discover_extensions()
         return {
-            "discovered": len(manifests),
+            "discovered": len(items),
             "extensions": [
                 {
-                    "name": manifest.name,
-                    "version": manifest.version,
-                    "display_name": manifest.display_name,
-                    "description": manifest.description,
-                    "category": manifest.category,
-                    "author": manifest.author,
+                    "name": m["name"],
+                    "version": m["version"],
+                    "display_name": m["display_name"],
+                    "description": m["description"],
+                    "status": m["status"],
+                    "error_message": m["error_message"],
                 }
-                for manifest in getattr(manifests, "values", lambda: manifests.values())()
+                for m in items
             ],
         }
     except Exception as e:  # pragma: no cover - runtime errors

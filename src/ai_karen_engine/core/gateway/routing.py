@@ -205,20 +205,40 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
 def discover_and_mount_plugin_routes(app: FastAPI) -> None:
     """
     Discover and mount plugin routes.
-    
-    Args:
-        app: FastAPI application
     """
     try:
-        from ai_karen_engine.plugins.router import get_plugin_router
-        
-        plugin_router = get_plugin_router()
-        if plugin_router:
-            app.include_router(plugin_router, prefix="/plugins", tags=["plugins"])
-            logger.info("Mounted plugin router: /plugins")
+        from extensions.core import get_plugin_router
+        router = get_plugin_router()
+        # Get dynamic FastAPI router from the modular runtime
+        api_router = router.get_api_router()
+        app.include_router(api_router, prefix="/plugins", tags=["plugins"])
+        logger.info("Mounted dynamic plugin API router at /plugins")
             
     except Exception as e:
         logger.error(f"Failed to mount plugin router: {e}")
+
+
+def discover_and_mount_plugin_ui(app: FastAPI) -> None:
+    """
+    Discover and mount static UI assets for all plugins.
+    Allows plugins to serve their own modern frontends.
+    """
+    try:
+        from fastapi.staticfiles import StaticFiles
+        from extensions.core import get_plugin_manager
+        
+        manager = get_plugin_manager()
+        registry = manager.registry
+        
+        for plugin_id, record in registry.get_all_manifests().items():
+            ui_path = record.dir_path / "ui"
+            if ui_path.exists() and ui_path.is_dir():
+                mount_path = f"/extensions/{plugin_id}/ui"
+                app.mount(mount_path, StaticFiles(directory=str(ui_path), html=True), name=f"ui_{plugin_id}")
+                logger.info(f"Mounted UI for plugin '{plugin_id}' at {mount_path}")
+                
+    except Exception as e:
+        logger.error(f"Failed to mount plugin UIs: {e}")
 
 
 def setup_service_routes(app: FastAPI, service_container: ServiceContainer) -> None:
@@ -296,7 +316,8 @@ def setup_routing(app: FastAPI, service_container: ServiceContainer) -> None:
     # Discover and mount API routes
     discover_and_mount_api_routes(app)
     
-    # Discover and mount plugin routes
+    # Discover and mount plugin routes & UI
     discover_and_mount_plugin_routes(app)
+    discover_and_mount_plugin_ui(app)
     
     logger.info("Routing setup completed")

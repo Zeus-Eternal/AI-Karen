@@ -23,6 +23,17 @@ except ImportError:
 
 if pydantic_version.startswith("2"):
     try:
+        from pydantic import field_validator
+    except ImportError:
+        field_validator = None  # type: ignore[assignment]
+else:
+    try:
+        from pydantic import validator
+    except ImportError:
+        validator = None  # type: ignore[assignment]
+
+if pydantic_version.startswith("2"):
+    try:
         from pydantic_settings import BaseSettings, SettingsConfigDict
     except ImportError as exc:
         raise ImportError(
@@ -132,6 +143,28 @@ class ProductionAuthSettings(BaseSettings):
         json_schema_extra={"env": "COOKIE_SECURE"},
     )
 
+    @classmethod
+    def _parse_boolish(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+            return True
+        if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+            return False
+        return value
+
+    if V2 and field_validator is not None:
+        @field_validator("cookie_secure", mode="before")
+        @classmethod
+        def _normalize_cookie_secure(cls, value: object) -> object:
+            return cls._parse_boolish(value)
+    elif not V2 and validator is not None:
+        @validator("cookie_secure", pre=True)
+        def _normalize_cookie_secure(cls, value: object) -> object:
+            return cls._parse_boolish(value)
+
     if V2:
         model_config = SettingsConfigDict(
             env_file=".env",
@@ -178,6 +211,28 @@ class ProductionSettings(BaseSettings):
     # Logging
     log_level: str = Field("INFO", description="Global log level")
     log_format: str = Field("json", description="Log format")
+
+    @classmethod
+    def _parse_boolish(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+            return True
+        if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+            return False
+        return value
+
+    if V2 and field_validator is not None:
+        @field_validator("debug", mode="before")
+        @classmethod
+        def _normalize_debug(cls, value: object) -> object:
+            return cls._parse_boolish(value)
+    elif not V2 and validator is not None:
+        @validator("debug", pre=True)
+        def _normalize_debug(cls, value: object) -> object:
+            return cls._parse_boolish(value)
 
     if V2:
         model_config = SettingsConfigDict(

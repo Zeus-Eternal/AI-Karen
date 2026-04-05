@@ -1,0 +1,147 @@
+import { create } from 'zustand';
+import { Plugin, PluginSearchParams, PluginSearchResponse, PluginDetails, CategoryInfo, PluginUpdate } from '@/types/plugin';
+import pluginStoreService from '@/lib/PluginStoreService';
+
+interface PluginStoreState {
+  plugins: Plugin[];
+  loading: boolean;
+  error: string | null;
+  searchParams: PluginSearchParams;
+  searchResponse: PluginSearchResponse | null;
+  selectedPlugin: PluginDetails | null;
+  categories: CategoryInfo[];
+  trendingPlugins: Plugin[];
+  updates: PluginUpdate[];
+  installingPlugins: Set<string>;
+  
+  setSearchParams: (params: Partial<PluginSearchParams>) => void;
+  searchPlugins: () => Promise<void>;
+  refreshPlugins: () => Promise<void>;
+  getPluginDetails: (pluginId: string) => Promise<void>;
+  installPlugin: (pluginId: string, version?: string) => Promise<void>;
+  loadCategories: () => Promise<void>;
+  loadTrending: () => Promise<void>;
+  loadUpdates: (installedPluginIds?: string[]) => Promise<void>;
+  clearSelectedPlugin: () => void;
+  clearError: () => void;
+}
+
+export const usePluginStore = create<PluginStoreState>((set, get) => ({
+  plugins: [],
+  loading: false,
+  error: null,
+  searchParams: {
+    page: 1,
+    per_page: 20,
+    sort_by: 'popularity',
+  },
+  searchResponse: null,
+  selectedPlugin: null,
+  categories: [],
+  trendingPlugins: [],
+  updates: [],
+  installingPlugins: new Set(),
+
+  setSearchParams: (params: Partial<PluginSearchParams>) => {
+    set((state) => ({
+      searchParams: { ...state.searchParams, ...params },
+    }));
+  },
+
+  searchPlugins: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await pluginStoreService.searchPlugins(get().searchParams);
+      set({
+        plugins: response.plugins,
+        searchResponse: response,
+        loading: false,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to search plugins',
+        loading: false,
+      });
+    }
+  },
+
+  refreshPlugins: async () => {
+    await get().searchPlugins();
+  },
+
+  getPluginDetails: async (pluginId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const details = await pluginStoreService.getPluginDetails(pluginId);
+      set({
+        selectedPlugin: details,
+        loading: false,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to get plugin details',
+        loading: false,
+      });
+    }
+  },
+
+  installPlugin: async (pluginId: string, version?: string) => {
+    set((state) => ({
+      installingPlugins: new Set([...state.installingPlugins, pluginId]),
+    }));
+
+    try {
+      await pluginStoreService.installPlugin({ plugin_id: pluginId, version });
+      set((state) => {
+        const newInstalling = new Set(state.installingPlugins);
+        newInstalling.delete(pluginId);
+        return { installingPlugins: newInstalling };
+      });
+      await get().searchPlugins();
+    } catch (error) {
+      set((state) => {
+        const newInstalling = new Set(state.installingPlugins);
+        newInstalling.delete(pluginId);
+        return {
+          error: error instanceof Error ? error.message : 'Failed to install plugin',
+          installingPlugins: newInstalling,
+        };
+      });
+    }
+  },
+
+  loadCategories: async () => {
+    try {
+      const categories = await pluginStoreService.getCategories();
+      set({ categories });
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  },
+
+  loadTrending: async () => {
+    try {
+      const trending = await pluginStoreService.getTrendingPlugins();
+      set({ trendingPlugins: trending });
+    } catch (error) {
+      console.error('Failed to load trending plugins:', error);
+    }
+  },
+
+  loadUpdates: async (installedPluginIds?: string[]) => {
+    try {
+      const updates = await pluginStoreService.getUpdates(installedPluginIds);
+      set({ updates });
+    } catch (error) {
+      console.error('Failed to load updates:', error);
+    }
+  },
+
+  clearSelectedPlugin: () => {
+    set({ selectedPlugin: null });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  },
+}));

@@ -1,0 +1,10 @@
+{
+  "plugin_id": "example-plugin",
+  "component": "ExamplePluginPage",
+  "slots": ["sidebar.plugins"],
+  "permissions": ["user", "admin"],
+  "display_name": "Example Plugin",
+  "icon": "example-plugin---sidebar_00.svg",
+  "order": 10,
+  "label": "Example"
+}

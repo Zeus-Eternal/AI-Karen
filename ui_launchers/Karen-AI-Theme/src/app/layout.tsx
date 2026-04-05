@@ -4,6 +4,7 @@ import { Inter, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
+import { PluginRegistryProvider } from '@/plugin_host/registry';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -31,8 +32,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased`}>
         <FirebaseClientProvider>
-          {children}
-          <Toaster />
+          <PluginRegistryProvider>
+            {children}
+            <Toaster />
+          </PluginRegistryProvider>
         </FirebaseClientProvider>
       </body>
     </html>

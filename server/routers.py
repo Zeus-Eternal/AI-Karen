@@ -96,7 +96,13 @@ from ai_karen_engine.api_routes.model_organization_routes import router as model
 from ai_karen_engine.api_routes.user_preferences_routes import router as user_preferences_router
 from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
 from ai_karen_engine.api_routes.users import router as users_router
-from ai_karen_engine.api_routes.training_data_routes import router as training_data_router
+try:
+    from ai_karen_engine.api_routes.training_data_routes import router as training_data_router
+    TRAINING_DATA_AVAILABLE = True
+except ImportError as e:
+    training_data_router = None
+    TRAINING_DATA_AVAILABLE = False
+    logger.warning(f"🚫 Training data routes not available: {e}")
 from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
 from ai_karen_engine.api_routes.maintenance import router as maintenance_router
 
@@ -232,7 +238,10 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(communications_center_router, prefix="/api/communications-center", tags=["communications-center"])
-    app.include_router(training_data_router, tags=["training-data"])
+    if TRAINING_DATA_AVAILABLE and training_data_router:
+        app.include_router(training_data_router, tags=["training-data"])
+    else:
+        logger.warning("🚫 Training data router not available")
     app.include_router(privacy_router, prefix="/api", tags=["privacy"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
     app.include_router(agent_integration_router, tags=["agents"])

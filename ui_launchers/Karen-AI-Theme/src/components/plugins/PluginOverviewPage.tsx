@@ -1,44 +1,136 @@
-
 "use client";
-
-import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { PlugZap, MessageSquare, Info, Settings2, Puzzle, Loader2 } from "lucide-react";
-import apiClient from "@/lib/api";
-import { PluginHost } from "./PluginHost";
-
-interface Plugin {
-  name: string;
-  display_name?: string;
-  description?: string;
-  version: string;
-  status: string;
-  loaded_at?: string;
-  error_message?: string;
-}
 
 /**
  * @file PluginOverviewPage.tsx
- * @description Displays an overview of Karen AI's integrated tools/plugins and the vision for its plugin architecture.
+ * @description Displays an overview of Karen AI's integrated plugins with
+ * combined health records (backend state + frontend mount state + permissions).
+ *
+ * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
  */
-export default function PluginOverviewPage() {
-  const [plugins, setPlugins] = useState<Plugin[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchPlugins() {
-      try {
-        const data = await apiClient.get<any[]>('/api/extensions/list');
-        setPlugins(data || []);
-      } catch (error) {
-        console.error("Failed to fetch plugins", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPlugins();
-  }, []);
+import React from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PlugZap, MessageSquare, Info, Settings2, Puzzle, Loader2, CheckCircle2, XCircle, AlertTriangle, EyeOff, Clock } from "lucide-react";
+import { usePluginRegistry, usePluginHealth, type PluginHealthRecord, type FrontendMountState } from "@/plugin_host/registry";
+import { PluginHost } from "./PluginHost";
+
+// ─── Health badge helpers ─────────────────────────────────────────────────────
+
+function BackendStateBadge({ state }: { state: string }) {
+  if (state === 'active') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+        <CheckCircle2 className="h-3 w-3" /> active
+      </span>
+    );
+  }
+  if (state === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-destructive">
+        <XCircle className="h-3 w-3" /> error
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <AlertTriangle className="h-3 w-3" /> {state}
+    </span>
+  );
+}
+
+function FrontendStateBadge({ state }: { state: FrontendMountState }) {
+  switch (state) {
+    case 'mounted':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+          <CheckCircle2 className="h-3 w-3" /> mounted
+        </span>
+      );
+    case 'error':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-destructive">
+          <XCircle className="h-3 w-3" /> render error
+        </span>
+      );
+    case 'not_registered':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <AlertTriangle className="h-3 w-3" /> not registered
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" /> loading
+        </span>
+      );
+  }
+}
+
+// ─── Per-plugin health card ───────────────────────────────────────────────────
+
+function PluginHealthCard({ pluginId, displayName, description, version }: {
+  pluginId: string;
+  displayName: string;
+  description: string;
+  version: string;
+}) {
+  const health: PluginHealthRecord = usePluginHealth(pluginId);
+
+  const hasDiscrepancy =
+    health.backendState === 'active' && health.frontendMountState === 'error';
+
+  return (
+    <div className="p-4 border rounded-lg bg-muted/30 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h4 className="font-semibold text-sm">
+            {displayName}
+            <span className="text-xs font-normal opacity-50 ml-2">v{version}</span>
+          </h4>
+          <p className="text-xs text-muted-foreground">{description || "No description provided."}</p>
+        </div>
+        {!health.permissionVisible && (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+            <EyeOff className="h-3 w-3" /> hidden
+          </span>
+        )}
+      </div>
+
+      {/* Health status row */}
+      <div className="flex flex-wrap gap-3 text-xs">
+        <span className="text-muted-foreground">Backend:</span>
+        <BackendStateBadge state={health.backendState} />
+        <span className="text-muted-foreground ml-2">Frontend:</span>
+        <FrontendStateBadge state={health.frontendMountState} />
+      </div>
+
+      {/* Discrepancy warning */}
+      {hasDiscrepancy && (
+        <Alert variant="destructive" className="py-2 px-3">
+          <AlertTriangle className="h-3 w-3" />
+          <AlertDescription className="text-xs">
+            Backend reports active but the UI component failed to render.
+            {health.errorMessage && <> Error: {health.errorMessage}</>}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Plugin UI */}
+      {health.permissionVisible && (
+        <div className="mt-2 bg-background/50 border border-border p-2 rounded">
+          <PluginHost pluginId={pluginId} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function PluginOverviewPage() {
+  const { plugins, loading, error } = usePluginRegistry();
 
   return (
     <div className="space-y-8">
@@ -56,18 +148,22 @@ export default function PluginOverviewPage() {
         <CardHeader>
           <CardTitle className="text-lg">Current Plugin & Tool Integration</CardTitle>
           <CardDescription>
-            Karen AI uses a "prompt-first" framework. This means her core AI is instructed on how to use available tools and capabilities based on your conversational requests.
+            Karen AI uses a "prompt-first" framework. Her core AI is instructed on how to use
+            available tools and capabilities based on your conversational requests.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm">
-            When you interact with Karen, her central AI decision-making flow (`decide-action-flow`) determines if a specialized tool is needed to fulfill your request. If so, it invokes the tool and then crafts a response based on the tool's output.
+            When you interact with Karen, her central AI decision-making flow determines if a
+            specialized tool is needed. If so, it invokes the tool and crafts a response based
+            on the tool's output.
           </p>
           <Alert>
             <MessageSquare className="h-4 w-4" />
             <AlertTitle>Interaction Method</AlertTitle>
             <AlertDescription>
-              Most of these tools are used by Karen when you ask relevant questions or make requests directly in the chat interface.
+              Most of these tools are used by Karen when you ask relevant questions or make
+              requests directly in the chat interface.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -75,9 +171,9 @@ export default function PluginOverviewPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Registered Plugin Components (Hook Zones)</CardTitle>
+          <CardTitle className="text-lg">Registered Plugin Components</CardTitle>
           <CardDescription>
-            These plugins conform to the new UI Hook Contract, automatically resolving their GUI components or headless APIs.
+            Each card shows the combined backend + frontend health state for the plugin.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,20 +181,26 @@ export default function PluginOverviewPage() {
             <div className="flex justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
+          ) : error ? (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Failed to load plugin catalog</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : plugins.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No dynamic extensions registered yet. Ensure the python manager discovered them.</div>
+            <div className="text-sm text-muted-foreground">
+              No dynamic extensions registered yet. Ensure the Python manager discovered them.
+            </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {plugins.map((plugin) => (
-                <div key={plugin.name} className="p-4 border rounded-lg bg-muted/30">
-                  <h4 className="font-semibold text-sm">{plugin.display_name || plugin.name} <span className="text-xs font-normal opacity-50 ml-2">v{plugin.version}</span></h4>
-                  <p className="text-xs text-muted-foreground mb-4">{plugin.description || "No description provided."}</p>
-                  
-                  {/* Plugin UI Hook Binding - Attempt to load plugin GUI if requested */}
-                  <div className="mt-2 bg-background/50 border border-border p-2 rounded">
-                    <PluginHost pluginId={plugin.name} />
-                  </div>
-                </div>
+                <PluginHealthCard
+                  key={plugin.id}
+                  pluginId={plugin.id}
+                  displayName={plugin.displayName}
+                  description={plugin.description}
+                  version={plugin.version}
+                />
               ))}
             </div>
           )}
@@ -117,31 +219,37 @@ export default function PluginOverviewPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Imagine a system where new capabilities (plugins) could be added, and Karen AI could understand how to use them based on their defined schemas and purposes without requiring manual updates to her core logic for each new plugin. This would involve:
+            Imagine a system where new capabilities could be added and Karen AI could understand
+            how to use them based on their defined schemas without requiring manual updates to
+            her core logic. This would involve:
           </p>
           <ul className="list-disc list-inside pl-5 text-xs text-muted-foreground space-y-1">
             <li>Standardized plugin schemas describing inputs, outputs, and purpose.</li>
-            <li>An AI meta-learning capability for Karen to dynamically understand and decide when to use new tools.</li>
-            <li>A secure way to manage and "install" or "register" these plugins.</li>
+            <li>An AI meta-learning capability for Karen to dynamically understand new tools.</li>
+            <li>A secure way to manage and register these plugins.</li>
           </ul>
           <Alert variant="default" className="bg-background">
             <Info className="h-4 w-4" />
             <AlertTitle className="text-sm font-semibold">Developer Note</AlertTitle>
             <AlertDescription className="text-xs">
-              Achieving true "drag-and-drop" dynamic plugin integration with autonomous learning is a complex AI research and engineering challenge. The current system relies on developers explicitly defining tools and guiding Karen's use of them through prompt engineering.
+              Achieving true "drag-and-drop" dynamic plugin integration with autonomous learning
+              is a complex AI research and engineering challenge. The current system relies on
+              developers explicitly defining tools and guiding Karen's use of them through
+              prompt engineering.
             </AlertDescription>
           </Alert>
         </CardContent>
       </Card>
-      
-      <Alert className="mt-6">
-          <Puzzle className="h-4 w-4" />
-          <AlertTitle>Connecting to the Automation Hub</AlertTitle>
-          <AlertDescription>
-          The tools provided by these conceptual plugins are the building blocks for creating agent skills in the Automation Hub. You can assign these tools to agents, enabling them to perform complex automated tasks.
-          </AlertDescription>
-      </Alert>
 
+      <Alert className="mt-6">
+        <Puzzle className="h-4 w-4" />
+        <AlertTitle>Connecting to the Automation Hub</AlertTitle>
+        <AlertDescription>
+          The tools provided by these plugins are the building blocks for creating agent skills
+          in the Automation Hub. You can assign these tools to agents, enabling them to perform
+          complex automated tasks.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

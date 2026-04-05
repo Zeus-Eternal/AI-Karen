@@ -1,0 +1,395 @@
+{
+  "annotations": {
+    "list": "Plugin Ecosystem Monitoring Dashboard"
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": false,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 6
+      },
+      "id": 1,
+      "panels": [
+        {
+          "datasource": "Karen-Plugins",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": {
+                "value": "latest"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 12
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": ["lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "expr": "plugin_count_total",
+              "legendFormat": "Total Plugins",
+              "refId": "total_plugins",
+              "text": "Total Plugins",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Total Plugins",
+          "type": "stat"
+        },
+        {
+          "datasource": "Karen-Plugins",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": ["lastNotNull"],
+              "displayMode": "valueAndName",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "expr": "plugin_active_count",
+              "legendFormat": "Active Plugins",
+              "refId": "active_plugins",
+              "text": "Active Plugins",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Active Plugins",
+          "type": "gauge"
+        },
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 9,
+            "w": 12
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "calcs": ["lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "expr": "plugin_installation_rate_5m",
+              "legendFormat": "Installations",
+              "refId": "installations",
+              "text": "Installations (5m)",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Installation Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 12,
+            "w": 12
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "lastNotNull"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "expr": "plugin_error_rate",
+              "legendFormat": "Error Rate",
+              "refId": "error_rate",
+              "text": "Error Rate",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Error Rate",
+          "type": "stat"
+        }
+      ],
+      "title": "Plugin Overview"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12
+      },
+      "id": 6,
+      "panels": [
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 3,
+            "w": 12
+          },
+          "id": 7,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "valueName": "Status"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "expr": "plugin_healthy_count",
+              "legendFormat": "Healthy",
+              "refId": "healthy",
+              "text": "Healthy",
+              "colorMode": "value"
+            },
+            {
+              "expr": "plugin_degraded_count",
+              "legendFormat": "Degraded",
+              "refId": "degraded",
+              "text": "Degraded",
+              "colorMode": "value"
+            },
+            {
+              "expr": "plugin_unhealthy_count",
+              "legendFormat": "Unhealthy",
+              "refId": "unhealthy",
+              "text": "Unhealthy",
+              "colorMode": "value"
+            }
+          ],
+          "title": "Plugin Health Status",
+          "type": "piechart"
+        },
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 9,
+            "w": 12
+          },
+          "id": 8,
+          "options": {
+            "legend": {
+              "calcs": ["mean"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(plugin_memory_usage_mb)",
+              "legendFormat": "Memory",
+              "refId": "memory",
+              "text": "Memory (MB)",
+              "textMode": "auto"
+            },
+            {
+              "expr": "avg(plugin_cpu_percent)",
+              "legendFormat": "CPU",
+              "refId": "cpu",
+              "text": "CPU %",
+              "textMode": "auto"
+            },
+            {
+              "expr": "avg(plugin_disk_usage_mb)",
+              "legendFormat": "Disk",
+              "refId": "disk",
+              "text": "Disk (MB)",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Resource Usage",
+          "type": "timeseries"
+        }
+      ],
+      "title": "System Resources"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 13,
+        "w": 12
+      },
+      "id": 11,
+      "panels": [
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 3,
+            "w": 12
+          },
+          "id": 12,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "max"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "expr": "rate(plugin_installation_success[5m])",
+              "legendFormat": "Success",
+              "refId": "install_success",
+              "text": "Success Rate",
+              "textMode": "auto"
+            },
+            {
+              "expr": "rate(plugin_installation_failure[5m])",
+              "legendFormat": "Failure",
+              "refId": "install_failure",
+              "text": "Failure Rate",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Installation Success Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Karen-Plugins",
+          "gridPos": {
+            "h": 9,
+            "w": 12
+          },
+          "id": 13,
+          "options": {
+            "legend": {
+              "calcs": ["mean", "max"],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(plugin_render_time_ms)",
+              "legendFormat": "Avg Render",
+              "refId": "avg_render",
+              "text": "Avg Render Time (ms)",
+              "textMode": "auto"
+            },
+            {
+              "expr": "max(plugin_render_time_ms)",
+              "legendFormat": "Max Render",
+              "refId": "max_render",
+              "text": "Max Render Time (ms)",
+              "textMode": "auto"
+            }
+          ],
+          "title": "Prompt Render Performance",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Performance Metrics"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["plugins"],
+  "templating": {
+    "list": [
+      "Name",
+      "Version",
+      "Category",
+      "Status",
+      "Description"
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "Karen Plugin Ecosystem - Monitoring Dashboard",
+  "uid": "plugin-ecosystem-dashboard",
+  "version": 1
+}

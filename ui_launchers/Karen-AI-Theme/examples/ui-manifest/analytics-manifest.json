@@ -1,0 +1,10 @@
+{
+  "plugin_id": "analytics-dashboard",
+  "component": "AnalyticsDashboardPage",
+  "slots": ["sidebar.plugins", "page.plugins.overview"],
+  "permissions": ["admin"],
+  "display_name": "Analytics Dashboard",
+  "icon": "analytics-dashboard---sidebar_00.svg",
+  "order": 5,
+  "label": "Analytics"
+}

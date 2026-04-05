@@ -3,7 +3,7 @@ KIRE-KRO Integration Module - Production Wiring
 
 This module integrates:
 - KIRE (Kari Intelligent Routing Engine) for LLM selection
-- KRO (Kari Reasoning Orchestrator) for prompt-first control
+- KRO (Kari Reasoning Orchestrator) for explicit specialized subflows
 - Model Discovery Engine for comprehensive model awareness
 - CUDA Acceleration Engine for GPU offloading
 - Content Optimization Engine for response improvement
@@ -17,8 +17,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
+
+from ai_karen_engine.monitoring.kire_metrics import (
+    KIRE_ADVISORY_OUTCOMES_TOTAL,
+    KRO_SPECIALIZED_PATH_TOTAL,
+)
+from ai_karen_engine.routing.decision_logger import get_decision_logger
+from ai_karen_engine.routing.types import RouteDecision
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +68,7 @@ class KIREKROIntegration:
         # State
         self._initialized = False
         self._initialization_lock = asyncio.Lock()
+        self._decision_logger = get_decision_logger()
 
         logger.info("KIRE-KRO Integration initialized")
 
@@ -146,16 +155,6 @@ class KIREKROIntegration:
                     except Exception as e:
                         logger.warning(f"Content Optimization initialization failed: {e}")
 
-                # Initialize KRO Orchestrator
-                from ai_karen_engine.core.kro_orchestrator import KROOrchestrator
-                self.kro_orchestrator = KROOrchestrator(
-                    llm_registry=self.llm_registry,
-                    kire_router=self.kire_router,
-                    enable_cuda=bool(self.cuda_engine),
-                    enable_optimization=bool(self.optimization_engine),
-                )
-                logger.info("✓ KRO Orchestrator initialized")
-
                 self._initialized = True
                 logger.info("✅ KIRE-KRO integration fully initialized")
 
@@ -171,7 +170,7 @@ class KIREKROIntegration:
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Process user request through the complete pipeline.
+        Process a standard chat request through Karen's canonical chat runtime.
 
         Args:
             user_input: User's message/query
@@ -180,34 +179,122 @@ class KIREKROIntegration:
             context: Additional context (session_id, tenant_id, etc.)
 
         Returns:
-            Complete response envelope with content, metadata, and suggestions
+            Standardized response envelope shaped for KIRE/KRO-facing APIs
         """
-        # Ensure initialization
         await self.initialize()
 
         try:
-            # Process through KRO
-            kro_response, user_message = await self.kro_orchestrator.process_request(
-                user_input=user_input,
-                user_id=user_id,
-                conversation_history=conversation_history or [],
-                ui_context=context,
-                correlation_id=(context or {}).get("correlation_id"),
+            from ai_karen_engine.chat.ChatOrchestrator import (
+                ChatRequest as OrchestratorChatRequest,
+                ProcessingStatus,
+            )
+            from ai_karen_engine.chat.factory import get_chat_orchestrator
+
+            context = dict(context or {})
+            correlation_id = str(context.get("correlation_id") or uuid.uuid4())
+            context["correlation_id"] = correlation_id
+            conversation_id = str(
+                context.get("conversation_id")
+                or context.get("thread_id")
+                or context.get("session_id")
+                or uuid.uuid4()
+            )
+            session_id = (
+                context.get("session_id")
+                or context.get("conversation_id")
+                or conversation_id
             )
 
-            # Convert KRO response to dict for JSON serialization
-            response_dict = self._kro_response_to_dict(kro_response)
+            routing_advisory: Optional[Dict[str, Any]] = None
+            if self.kire_router:
+                try:
+                    routing_advisory = await self.get_routing_decision(
+                        user_input=user_input,
+                        user_id=user_id,
+                        task_type=context.get("task_type"),
+                        context=context,
+                    )
+                except Exception as route_exc:
+                    logger.debug(f"KIRE advisory routing unavailable: {route_exc}")
 
-            # Add user-facing message
-            response_dict["message"] = user_message
+            chat_request = OrchestratorChatRequest(
+                correlation_id=correlation_id,
+                message=user_input,
+                user_id=user_id,
+                tenant_id=context.get("tenant_id"),
+                org_id=context.get("org_id"),
+                conversation_id=conversation_id,
+                session_id=session_id,
+                metadata={
+                    "source": "kire_kro_integration",
+                    "channel": context.get("channel", "kro"),
+                    "conversation_history": conversation_history or [],
+                    "kire_routing_advisory": routing_advisory,
+                    **context,
+                },
+            )
+            orchestrator = get_chat_orchestrator()
+            chat_response = await orchestrator.handle_chat(chat_request)
 
-            # Add integration metadata
-            response_dict["_integration"] = {
-                "kire_enabled": self.config.enable_kire_routing,
-                "cuda_enabled": bool(self.cuda_engine),
-                "optimization_enabled": bool(self.optimization_engine),
+            advisory_decision = self._route_decision_from_advisory(routing_advisory)
+            routing_outcome = self._determine_routing_outcome(
+                advisory_provider=advisory_decision.provider if advisory_decision else None,
+                advisory_model=advisory_decision.model if advisory_decision else None,
+                final_provider=chat_response.metadata.get("provider"),
+                final_model=chat_response.metadata.get("model"),
+            )
+            KIRE_ADVISORY_OUTCOMES_TOTAL.labels(
+                outcome=routing_outcome,
+                final_status=chat_response.status.value,
+                execution_path=chat_response.execution_path or "unknown",
+            ).inc()
+            self._decision_logger.log_outcome(
+                correlation_id,
+                user_id,
+                context.get("task_type", "chat"),
+                outcome=routing_outcome,
+                final_status=chat_response.status.value,
+                execution_path=chat_response.execution_path,
+                advisory_decision=advisory_decision,
+                final_provider=chat_response.metadata.get("provider"),
+                final_model=chat_response.metadata.get("model"),
+                metadata={
+                    "assistant_message_id": chat_response.assistant_message_id,
+                    "degraded": chat_response.status == ProcessingStatus.DEGRADED,
+                },
+            )
+
+            response_dict = {
+                "success": chat_response.status in {ProcessingStatus.COMPLETED, ProcessingStatus.DEGRADED},
+                "message": chat_response.response,
+                "meta": {
+                    "timestamp": chat_response.created_at.isoformat(),
+                    "agent": "ChatOrchestrator",
+                    "confidence": float(chat_response.metadata.get("confidence", 0.0)),
+                    "latency_ms": round(chat_response.processing_time * 1000, 2),
+                    "tokens_used": chat_response.metadata.get("tokens_used"),
+                    "provider": chat_response.metadata.get("provider"),
+                    "model": chat_response.metadata.get("model"),
+                    "degraded_mode": chat_response.status == ProcessingStatus.DEGRADED,
+                    "status": chat_response.status.value,
+                    "execution_path": chat_response.execution_path,
+                    "assistant_message_id": chat_response.assistant_message_id,
+                    "correlation_id": chat_response.correlation_id,
+                },
+                "routing": routing_advisory,
+                "structured_content": chat_response.structured_content,
+                "actions": chat_response.actions,
+                "telemetry": chat_response.telemetry,
+                "error": chat_response.error,
             }
-
+            response_dict["_integration"] = {
+                "authority": "chat_orchestrator",
+                "kire_enabled": self.config.enable_kire_routing,
+                "kro_specialized_available": bool(self.kro_orchestrator),
+                "routing_advisory_used": bool(routing_advisory),
+                "routing_outcome": routing_outcome,
+                "correlation_id": correlation_id,
+            }
             return response_dict
 
         except Exception as e:
@@ -220,11 +307,84 @@ class KIREKROIntegration:
                 "message": "I apologize, but I encountered an error processing your request. Please try again.",
                 "meta": {
                     "timestamp": "",
-                    "agent": "KRO",
+                    "agent": "ChatOrchestrator",
                     "confidence": 0.0,
                     "degraded_mode": True,
                 },
             }
+
+    async def process_specialized_request(
+        self,
+        user_input: str,
+        user_id: str = "anon",
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Execute an explicit KRO-native specialized flow.
+
+        This path is intentionally out-of-band from Karen's standard chat lifecycle.
+        """
+        await self.initialize()
+        kro = await self._get_or_create_kro_orchestrator()
+        ctx = dict(context or {})
+        corr_id = str(ctx.get("correlation_id") or uuid.uuid4())
+        ctx["correlation_id"] = corr_id
+        ctx["kro_specialized"] = True
+
+        response, ui_message = await kro.process_request(
+            user_input=user_input,
+            user_id=user_id,
+            conversation_history=conversation_history,
+            ui_context=ctx,
+            correlation_id=corr_id,
+        )
+
+        response_dict = self._kro_response_to_dict(response)
+        response_dict["success"] = True
+        response_dict["message"] = ui_message
+        response_dict["_integration"] = {
+            "authority": "kro_specialized",
+            "standard_chat_authority": "chat_orchestrator",
+            "correlation_id": corr_id,
+            "specialized_flow": True,
+        }
+        return response_dict
+
+    @staticmethod
+    def _route_decision_from_advisory(routing_advisory: Optional[Dict[str, Any]]) -> Optional[RouteDecision]:
+        """Rebuild a RouteDecision from a serialized advisory payload when available."""
+        if not routing_advisory or routing_advisory.get("error"):
+            return None
+        provider = routing_advisory.get("provider")
+        model = routing_advisory.get("model")
+        if not provider or not model:
+            return None
+        return RouteDecision(
+            provider=provider,
+            model=model,
+            reasoning=routing_advisory.get("reasoning", ""),
+            confidence=float(routing_advisory.get("confidence", 0.0)),
+            fallback_chain=list(routing_advisory.get("fallback_chain", [])),
+            metadata=dict(routing_advisory.get("metadata", {})),
+        )
+
+    @staticmethod
+    def _determine_routing_outcome(
+        *,
+        advisory_provider: Optional[str],
+        advisory_model: Optional[str],
+        final_provider: Optional[str],
+        final_model: Optional[str],
+    ) -> str:
+        """Classify whether KIRE advisory routing was used or overridden downstream."""
+        if not advisory_provider or not advisory_model:
+            return "unavailable"
+        if advisory_provider == final_provider and advisory_model == final_model:
+            return "used"
+        if final_provider or final_model:
+            return "overridden"
+        return "missing_final"
 
     def _kro_response_to_dict(self, kro_response) -> Dict[str, Any]:
         """Convert KRO response dataclass to dictionary."""
@@ -377,6 +537,7 @@ class KIREKROIntegration:
             "initialized": self._initialized,
             "components": {
                 "kro_orchestrator": bool(self.kro_orchestrator),
+                "kro_specialized_supported": self._can_initialize_kro(),
                 "kire_router": bool(self.kire_router),
                 "llm_registry": bool(self.llm_registry),
                 "model_discovery": bool(self.model_discovery),
@@ -434,12 +595,13 @@ class KIREKROIntegration:
                 "components": {},
             }
 
-            # Check KRO
+            # KRO is specialized-only and should not degrade standard chat when idle.
             if self.kro_orchestrator:
-                health["components"]["kro"] = "healthy"
+                health["components"]["kro"] = "initialized_specialized"
+            elif self._can_initialize_kro():
+                health["components"]["kro"] = "available_on_demand"
             else:
                 health["components"]["kro"] = "unavailable"
-                health["status"] = "degraded"
 
             # Check KIRE
             if self.kire_router:
@@ -476,6 +638,28 @@ class KIREKROIntegration:
                 "status": "unhealthy",
                 "error": str(e),
             }
+
+    def _can_initialize_kro(self) -> bool:
+        """Return whether the integration has enough dependencies for specialized KRO use."""
+        return self.llm_registry is not None and self.kire_router is not None
+
+    async def _get_or_create_kro_orchestrator(self):
+        """Lazily instantiate the specialized KRO orchestrator only when explicitly needed."""
+        if self.kro_orchestrator is not None:
+            return self.kro_orchestrator
+        if not self._can_initialize_kro():
+            raise RuntimeError("KRO specialized orchestrator is not available")
+
+        from ai_karen_engine.core.kro_orchestrator import KROOrchestrator
+
+        self.kro_orchestrator = KROOrchestrator(
+            llm_registry=self.llm_registry,
+            kire_router=self.kire_router,
+            enable_cuda=bool(self.cuda_engine),
+            enable_optimization=bool(self.optimization_engine),
+        )
+        logger.info("✓ KRO Orchestrator initialized on demand for specialized flow")
+        return self.kro_orchestrator
 
 
 # ===================================

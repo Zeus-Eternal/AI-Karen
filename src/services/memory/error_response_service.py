@@ -163,7 +163,7 @@ class ErrorResponseService:
         """Lazily initialize AI orchestrator to avoid circular imports."""
         if self._ai_orchestrator is None:
             try:
-                from src.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+                from services.ai_orchestrator.ai_orchestrator import AIOrchestrator
                 from ai_karen_engine.core.services.base import ServiceConfig
                 config = ServiceConfig(name="error_response_ai_orchestrator")
                 self._ai_orchestrator = AIOrchestrator(config)

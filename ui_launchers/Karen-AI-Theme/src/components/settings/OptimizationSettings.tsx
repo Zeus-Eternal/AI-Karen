@@ -243,12 +243,13 @@ export default function OptimizationSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const preferredDeviceIdForSave = normalizedPreferredDeviceId;
       const updates: Record<string, unknown> = {
         enable_optimization_system: form.enableOptimizationSystem,
         optimization_level: form.optimizationLevel,
         "cuda.enable_cuda": form.enableCuda,
         "cuda.auto_detect_devices": form.autoDetectDevices,
-        "cuda.preferred_device_id": form.preferredDeviceId === "auto" ? null : parseNumber(form.preferredDeviceId, 0),
+        "cuda.preferred_device_id": preferredDeviceIdForSave === "auto" ? null : parseNumber(preferredDeviceIdForSave, 0),
         "cuda.memory_fraction": parseNumber(form.memoryFraction, 0.8),
         "cuda.enable_memory_optimization": form.enableMemoryOptimization,
         "cuda.enable_batch_processing": form.enableBatchProcessing,

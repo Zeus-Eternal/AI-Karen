@@ -1,0 +1,10 @@
+{
+  "plugin_id": "custom-settings",
+  "component": "CustomSettingsPage",
+  "slots": ["page.settings.sections"],
+  "permissions": ["user"],
+  "display_name": "Custom Settings",
+  "icon": "custom-settings---sidebar_00.svg",
+  "order": 15,
+  "label": "Custom Settings"
+}

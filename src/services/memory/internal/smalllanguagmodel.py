@@ -17,9 +17,52 @@ import os
 import time
 from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
-from cachetools import TTLCache
 import threading
 import importlib
+
+try:
+    from cachetools import TTLCache
+except ImportError:
+    class TTLCache(dict):
+        """Minimal fallback TTL cache when cachetools is unavailable."""
+
+        def __init__(self, maxsize: int, ttl: float):
+            super().__init__()
+            self.maxsize = maxsize
+            self.ttl = ttl
+            self._expires: Dict[Any, float] = {}
+
+        def _purge_expired(self) -> None:
+            now = time.time()
+            expired = [key for key, deadline in self._expires.items() if deadline <= now]
+            for key in expired:
+                self._expires.pop(key, None)
+                super().pop(key, None)
+
+        def __contains__(self, key) -> bool:
+            self._purge_expired()
+            return super().__contains__(key)
+
+        def __getitem__(self, key):
+            self._purge_expired()
+            return super().__getitem__(key)
+
+        def get(self, key, default=None):
+            self._purge_expired()
+            return super().get(key, default)
+
+        def __setitem__(self, key, value) -> None:
+            self._purge_expired()
+            if key not in self and len(self) >= self.maxsize:
+                oldest_key = min(self._expires, key=self._expires.get)
+                self._expires.pop(oldest_key, None)
+                super().pop(oldest_key, None)
+            self._expires[key] = time.time() + self.ttl
+            super().__setitem__(key, value)
+
+        def __len__(self) -> int:
+            self._purge_expired()
+            return super().__len__()
 
 try:
     from src.services.nlp_config import SmallLanguageModelConfig

@@ -19,12 +19,12 @@ from ai_karen_engine.routing.kire_router import KIRERouter
 from ai_karen_engine.routing.types import RouteRequest
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.task_analyzer import TaskAnalyzer
-from ai_karen_engine.routing.decision_logger import DecisionLogger
+from ai_karen_engine.routing.decision_logger import get_decision_logger
 from ai_karen_engine.monitoring.kire_metrics import KIRE_ACTIONS_TOTAL
 
 
 _router = KIRERouter(llm_registry=get_registry())
-_logger = DecisionLogger()
+_logger = get_decision_logger()
 
 _RATE_LIMIT_WINDOW_SECONDS = 60
 _RATE_LIMIT_MAX_CALLS = 45
