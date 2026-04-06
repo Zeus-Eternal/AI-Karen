@@ -118,7 +118,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
 
             logger.info("SecureAuthMiddleware initialized with full services")
         except Exception as e:
-            logger.warning(f"Failed to initialize full auth services, using fallback mode: {e}")
+            logger.warning(
+                f"Failed to initialize full auth services, using fallback mode: {e}"
+            )
 
         self.auth_rate_limits = {
             "login_attempts": {"window": 300, "limit": 5},
@@ -137,7 +139,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
 
             config = self.config_manager.get_config()
             if config is None or not hasattr(config, "redis"):
-                logger.warning("Config or redis config is None, skipping Redis initialization")
+                logger.warning(
+                    "Config or redis config is None, skipping Redis initialization"
+                )
                 self.redis_client = None
                 return
 
@@ -159,7 +163,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
 
             try:
                 self.redis_client.ping()
-                logger.info(f"Connected to token revocation store at {redis_host}:{redis_port}")
+                logger.info(
+                    f"Connected to token revocation store at {redis_host}:{redis_port}"
+                )
             except Exception as e:
                 logger.warning(
                     f"Could not connect to Redis at {redis_host}:{redis_port}: {e}. Revocation checks may be skipped."
@@ -190,7 +196,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
     def _generate_token_id(self) -> str:
         return secrets.token_urlsafe(32)
 
-    def _create_jwt_payload(self, user_data: Dict[str, Any], token_id: str) -> Dict[str, Any]:
+    def _create_jwt_payload(
+        self, user_data: Dict[str, Any], token_id: str
+    ) -> Dict[str, Any]:
         now = datetime.utcnow()
         return {
             "sub": user_data["user_id"],
@@ -204,7 +212,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "aud": "ai-karen-users",
         }
 
-    def _create_refresh_token_payload(self, user_data: Dict[str, Any], token_id: str) -> Dict[str, Any]:
+    def _create_refresh_token_payload(
+        self, user_data: Dict[str, Any], token_id: str
+    ) -> Dict[str, Any]:
         now = datetime.utcnow()
         return {
             "sub": user_data["user_id"],
@@ -251,7 +261,9 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         if self.redis_client is None:
             return False
         try:
-            return bool(self.redis_client.exists(self._get_redis_key("revoked", token_id)))
+            return bool(
+                self.redis_client.exists(self._get_redis_key("revoked", token_id))
+            )
         except Exception as e:
             logger.warning(f"Failed to check token revocation: {e}")
             return False
@@ -274,7 +286,11 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
 
         now = time.time()
         attempts = self.failed_attempts.get(user_id, [])
-        attempts = [attempt for attempt in attempts if now - attempt["timestamp"] < limit_config["window"]]
+        attempts = [
+            attempt
+            for attempt in attempts
+            if now - attempt["timestamp"] < limit_config["window"]
+        ]
         self.failed_attempts[user_id] = attempts
         return len(attempts) < limit_config["limit"]
 
@@ -294,6 +310,11 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         return None
 
     def _extract_session_token_from_request(self, request: Request) -> Optional[str]:
+        # Check for kari_session cookie (set by login endpoint)
+        session_token = request.cookies.get("kari_session")
+        if session_token:
+            return session_token
+        # Fallback to session_token for backward compatibility
         return request.cookies.get("session_token")
 
     def _extract_basic_auth(self, request: Request) -> Optional[tuple[str, str]]:
@@ -391,13 +412,15 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
         refresh_token_id = self._generate_token_id()
 
         access_payload = self._create_jwt_payload(user_data, access_token_id)
-        refresh_payload = self._create_refresh_token_payload(user_data, refresh_token_id)
+        refresh_payload = self._create_refresh_token_payload(
+            user_data, refresh_token_id
+        )
 
         return {
             "access_token": self._encode_jwt(access_payload),
             "refresh_token": self._encode_jwt(refresh_payload),
             "token_type": "bearer",
-            "expires_in": self.jwt_expiration_hours * 3600,
+            "expires_in": str(self.jwt_expiration_hours * 3600),
         }
 
     def validate_token(self, token: str) -> Dict[str, Any]:

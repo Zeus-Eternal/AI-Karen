@@ -234,24 +234,18 @@ export default function DashboardPage() {
                           Plugin Overview
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                      {!pluginsLoading && sidebarEntries.map((entry) => (
-                        <PermissionGuard
-                          key={entry.viewKey}
-                          pluginId={entry.pluginId}
-                          requiredRoles={getPlugin(entry.pluginId)?.allowedRoles}
-                        >
-                          <SidebarMenuItem>
-                            <SidebarMenuButton
-                              onClick={() => setActiveMainView(entry.viewKey)}
-                              isActive={activeMainView === entry.viewKey}
-                              className="w-full h-8 text-xs"
-                            >
-                              {renderPluginMenuIcon(entry.pluginId, entry.iconPath)}
-                              {entry.label}
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        </PermissionGuard>
-                      ))}
+                       {!pluginsLoading && sidebarEntries.map((entry) => (
+                         <SidebarMenuItem key={entry.viewKey}>
+                           <SidebarMenuButton
+                             onClick={() => setActiveMainView(entry.viewKey)}
+                             isActive={activeMainView === entry.viewKey}
+                             className="w-full h-8 text-xs"
+                           >
+                             {renderPluginMenuIcon(entry.pluginId, entry.iconPath)}
+                             {entry.label}
+                           </SidebarMenuButton>
+                         </SidebarMenuItem>
+                       ))}
                     </SidebarMenu>
                   </div>
                 </div>

@@ -1,11 +1,7 @@
-
 'use client';
 
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import type { DependencyList, ReactNode } from 'react';
-import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
-import { Auth } from 'firebase/auth';
 import { authService, AuthUser } from '@/lib/auth';
 
 // Theme context
@@ -31,23 +27,16 @@ interface UserAuthState {
   userError: Error | null;
 }
 
-// Combined state for the Firebase context
+// Combined state for the Firebase context (now simplified without Firebase services)
 export interface FirebaseContextState {
-  areServicesAvailable: boolean; // True if core services (app, firestore, auth instance) are provided
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null; // The Auth service instance
   // User authentication state - now using JWT-based auth
   user: AuthUser | null;
   isUserLoading: boolean; // True during initial auth check
-  userError: Error | null; // Error from auth listener
+  userError: Error | null; // Error from auth operations
 }
 
 // Return type for useFirebase()
 export interface FirebaseServicesAndUser {
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
   user: AuthUser | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -62,9 +51,6 @@ export interface UserHookResult {
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null;
 }
 
 // React Context
@@ -73,12 +59,10 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 /**
  * FirebaseProvider manages and provides Firebase services.
  * Now using JWT-based authentication instead of Firebase.
+ * The name is kept for compatibility but only provides auth/user state.
  */
 export function FirebaseProvider({
   children,
-  firebaseApp,
-  firestore,
-  auth,
 }: FirebaseProviderProps) {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -139,17 +123,12 @@ export function FirebaseProvider({
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
-    const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
-      areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
     };
-  }, [firebaseApp, firestore, auth, userAuthState]);
+  }, [userAuthState]);
 
   // Theme logic
   const [theme, setTheme] = useState<Theme>('dark');
@@ -175,7 +154,7 @@ export function FirebaseProvider({
     localStorage.setItem('theme', newTheme);
     setTheme(newTheme);
   };
-  
+
   const themeContextValue = { theme, setTheme: handleSetTheme };
 
   return (
@@ -189,7 +168,7 @@ export function FirebaseProvider({
 
 /**
  * Hook to access core Firebase services and user authentication state.
- * Throws error if core services are not available or used outside provider.
+ * Now simplified to only provide auth/user state since Firebase services are removed.
  */
 export const useFirebase = (): FirebaseServicesAndUser => {
   const context = useContext(FirebaseContext);
@@ -198,14 +177,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
 
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
-  }
-
   return {
-    firebaseApp: context.firebaseApp,
-    firestore: context.firestore,
-    auth: context.auth,
     user: context.user,
     isUserLoading: context.isUserLoading,
     userError: context.userError,
@@ -213,21 +185,24 @@ export const useFirebase = (): FirebaseServicesAndUser => {
 };
 
 /** Hook to access Firebase Auth instance. */
-export const useAuth = (): Auth => {
-  const { auth } = useFirebase();
-  return auth;
+export const useAuth = (): any => {
+  // Returning any type since we're not actually providing Firebase Auth anymore
+  // Components using this should migrate to useAuthWithJWT or the lib/auth directly
+  return null;
 };
 
 /** Hook to access Firestore instance. */
-export const useFirestore = (): Firestore => {
-  const { firestore } = useFirebase();
-  return firestore;
+export const useFirestore = (): any => {
+  // Returning any type since we're not actually providing Firestore anymore
+  // Components using this should migrate to proper backend services
+  return null;
 };
 
 /** Hook to access Firebase App instance. */
-export const useFirebaseApp = (): FirebaseApp => {
-  const { firebaseApp } = useFirebase();
-  return firebaseApp;
+export const useFirebaseApp = (): any => {
+  // Returning any type since we're not actually providing Firebase App anymore
+  // Components using this should migrate to proper backend services
+  return null;
 };
 
 type MemoFirebase <T> = T & {__memo?: boolean};

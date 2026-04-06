@@ -1,0 +1,14 @@
+{
+  "plugin_id": "gmail-plugin",
+  "display_name": "Gmail Plugin",
+  "menus": [
+    {
+      "placement": "sidebar",
+      "title": "Gmail",
+      "icon": "mail",
+      "order": 20
+    }
+  ],
+  "icons": [],
+  "generated_at": "2026-04-05T13:43:55.378018"
+}

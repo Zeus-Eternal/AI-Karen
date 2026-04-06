@@ -13,7 +13,7 @@ import logging
 
 from pydantic import ValidationError as PydanticValidationError
 
-from extensions.core.manifest import ExtensionManifest, NAME_PATTERN
+from ..manifest import ExtensionManifest, NAME_PATTERN
 
 # Import unified validation utilities
 try:

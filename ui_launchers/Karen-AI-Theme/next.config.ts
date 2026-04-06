@@ -89,24 +89,25 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     const fs = require('fs');
 
-    // 1. Ensure require.context('@/plugins', ...) doesn't fail at build time
-    //    if the user hasn't installed any plugins. In Docker, creating folders
-    //    can fail due to permissions, so we gracefully alias it instead.
-    const pluginsDir = path.resolve(__dirname, 'src/plugins');
-    if (!fs.existsSync(pluginsDir)) {
-      if (!config.resolve) config.resolve = {};
-      if (!config.resolve.alias) config.resolve.alias = {};
-      
-      // Alias to a directory that definitely exists so require.context succeeds.
-      // The regex /ui\/.*PluginPage\.(tsx|jsx)$/ won't match anything here anyway.
-      config.resolve.alias['@/plugins'] = path.resolve(__dirname, 'src/plugin_host');
-      console.log('🧩 [PluginLoader] src/plugins missing, aliasing to plugin_host for safe require.context');
+    // 1. Set up plugin repo alias for dynamic loading
+    if (!config.resolve) config.resolve = {};
+    if (!config.resolve.alias) config.resolve.alias = {};
+
+    const pluginsDir = path.resolve(__dirname, 'src/plugin_repo');
+    if (fs.existsSync(pluginsDir)) {
+      // Plugin repo exists, alias @plugins to it (note: no slash after @)
+      config.resolve.alias['@plugins'] = pluginsDir;
+      console.log('🧩 [PluginLoader] Aliasing @plugins to src/plugin_repo');
+    } else {
+      // Fallback to plugin_host for safe require.context
+      config.resolve.alias['@plugins'] = path.resolve(__dirname, 'src/plugin_host');
+      console.log('🧩 [PluginLoader] src/plugin_repo missing, aliasing @plugins to plugin_host');
     }
 
     // 2. Gracefully handle optional legacy plugins that may not be installed.
     //    If the file doesn't exist, we alias the path to false so Webpack 
     //    ignores it instead of throwing a "Module not found" error that stalls the app.
-    const legacyDataConnector = path.resolve(__dirname, 'src/plugins/data_connector/ui/DataConnectorPluginPage');
+    const legacyDataConnector = path.resolve(__dirname, 'src/plugin_repo/data_connector/ui/DataConnectorPluginPage');
     if (!fs.existsSync(`${legacyDataConnector}.tsx`) && !fs.existsSync(`${legacyDataConnector}.jsx`)) {
       if (!config.resolve) config.resolve = {};
       if (!config.resolve.alias) config.resolve.alias = {};

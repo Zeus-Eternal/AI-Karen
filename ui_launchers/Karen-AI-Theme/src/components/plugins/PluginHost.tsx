@@ -3,17 +3,21 @@
 /**
  * PluginHost — renders a plugin's UI component by ID.
  *
- * Resolution: looks up the normalised plugin ID in the auto-discovered
- * PLUGIN_IMPORT_MAP (built at compile time by loader.ts via require.context).
- * No manual registration needed — just drop a PluginPage.tsx in the plugin's
- * ui/ folder.
+ * Resolution: delegates to loader.ts as the single frontend loading authority.
+  * Uses generated import map from plugin_repo for dynamic loading.
+ * No hardcoded importer maps - everything resolved through loader service.
  *
- * Requirements: 3.1, 3.2, 3.3, 3.4, 7.1, 7.2, 7.3, 7.4, 7.5, 9.3, 9.4
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 7.1, 7.2, 7.3, 7.4, 7.5, 9.3, 9.4, 29, 30
  */
 
-import React, { Suspense, lazy, useMemo, useEffect } from 'react';
+import React, { Suspense, lazy, useMemo, useEffect, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { PLUGIN_IMPORT_MAP, normalizePluginId } from '../../plugin_host/loader';
+import { 
+  resolvePluginComponent, 
+  resolvePluginComponentAsync, 
+  normalizePluginId,
+  getRegisteredPluginIds 
+} from '../../plugin_host/loader';
 import { setPluginMountState } from '../../plugin_host/registry';
 import { PluginErrorBoundary } from '../../plugin_host/PluginErrorBoundary';
 
@@ -28,24 +32,42 @@ export interface PluginHostProps {
 
 export function PluginHost({ pluginId, fallback }: PluginHostProps) {
   const normalizedId = useMemo(() => normalizePluginId(pluginId), [pluginId]);
+  const [pluginComponent, setPluginComponent] = useState<React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const PluginComponent = useMemo(() => {
-    const importer = PLUGIN_IMPORT_MAP[normalizedId] ?? PLUGIN_IMPORT_MAP[pluginId];
-    if (!importer) return null;
-    return lazy(importer);
-  }, [normalizedId, pluginId]);
-
-  // Mark as not_registered when no importer is found
+  // Resolve plugin component using loader as single authority
   useEffect(() => {
-    if (!PluginComponent) {
-      setPluginMountState(pluginId, 'not_registered');
-    } else {
-      // Mark as loading until the component mounts
-      setPluginMountState(pluginId, 'loading');
-    }
-  }, [pluginId, PluginComponent]);
+    const loadPlugin = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Use async loader to resolve component from installed packages only
+        const component = await resolvePluginComponentAsync(pluginId);
+        
+        if (component) {
+          setPluginComponent(component);
+          setPluginMountState(pluginId, 'loading');
+        } else {
+          setPluginMountState(pluginId, 'not_registered');
+        }
+      } catch (error) {
+        console.error(`Failed to resolve plugin ${pluginId}:`, error);
+        setPluginMountState(pluginId, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  if (!PluginComponent) {
+    loadPlugin();
+  }, [pluginId]);
+
+  // Check if plugin is registered in generated registry
+  const isRegistered = useMemo(() => {
+    return getRegisteredPluginIds().includes(normalizedId);
+  }, [normalizedId]);
+
+  // Show safe fallback when no component is found
+  if (!pluginComponent && !isLoading) {
     return (
       <div className="p-8 border rounded-lg bg-destructive/5 text-center text-destructive text-sm flex flex-col items-center justify-center gap-2">
         <AlertCircle className="h-5 w-5" />
@@ -54,12 +76,30 @@ export function PluginHost({ pluginId, fallback }: PluginHostProps) {
           <span className="font-mono font-bold">{normalizedId}</span>.
         </p>
         <p className="text-xs opacity-70 italic">
-          Add a PluginPage.tsx inside the plugin&apos;s ui/ folder.
+          {isRegistered 
+            ? "Plugin is installed but UI component not found. Check plugin manifest."
+            : "Install plugin UI first using the plugin overview page."
+          }
         </p>
       </div>
     );
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      fallback ?? (
+        <div className="flex flex-col items-center justify-center p-12 space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+          <p className="text-xs text-muted-foreground animate-pulse">
+            Loading {pluginId} UI module…
+          </p>
+        </div>
+      )
+    );
+  }
+
+  // Render plugin component with error boundaries
   return (
     <Suspense
       fallback={
@@ -75,7 +115,7 @@ export function PluginHost({ pluginId, fallback }: PluginHostProps) {
     >
       <PluginErrorBoundary pluginId={pluginId}>
         <PluginMountTracker pluginId={pluginId}>
-          <PluginComponent />
+          {pluginComponent && React.createElement(pluginComponent)}
         </PluginMountTracker>
       </PluginErrorBoundary>
     </Suspense>

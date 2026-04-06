@@ -19,7 +19,7 @@ from .database_models import (
     ExtensionUsageMetrics,
     Base,
 )
-from extensions.core.manifest import ExtensionStatus, ExtensionRecord
+from .manifest import ExtensionStatus, ExtensionRecord
 from .plugin_registry import PluginRegistry
 
 logger = logging.getLogger("kari.extension_database")

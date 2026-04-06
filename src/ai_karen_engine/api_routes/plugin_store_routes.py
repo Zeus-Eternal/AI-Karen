@@ -273,6 +273,42 @@ class PluginStore:
             session, request.plugin_id, version=request.version
         )
 
+        # If plugin installation succeeded and plugin has UI capabilities, install UI
+        if install_result["success"]:
+            try:
+                # Check if plugin has UI capabilities by looking at the manifest
+                plugin_manifest = await self._get_plugin_manifest(request.plugin_id)
+                if plugin_manifest and plugin_manifest.get("capabilities", {}).get(
+                    "provides_ui", False
+                ):
+                    logger.info(
+                        f"Plugin {request.plugin_id} has UI capabilities, installing UI..."
+                    )
+                    # Import UI installer service
+                    from extensions.core.registry.ui_installer import get_ui_service
+
+                    ui_service = get_ui_service()
+                    ui_install_result = ui_service.install_ui(
+                        request.plugin_id, plugin_manifest.get("category", "plugins")
+                    )
+
+                    if ui_install_result.status == "success":
+                        logger.info(
+                            f"UI installed successfully for plugin {request.plugin_id}"
+                        )
+                        install_result["ui_installed"] = True
+                    else:
+                        logger.warning(
+                            f"UI installation failed for plugin {request.plugin_id}: {ui_install_result.message}"
+                        )
+                        install_result["ui_install_error"] = ui_install_result.message
+            except Exception as e:
+                logger.warning(
+                    f"Failed to install UI for plugin {request.plugin_id}: {e}"
+                )
+                # Don't fail the whole installation if UI installation fails
+                install_result["ui_install_error"] = str(e)
+
         # Record installation in analytics
         if self.enable_analytics and install_result["success"]:
             await self._record_installation(session, request.plugin_id)
@@ -434,6 +470,39 @@ class PluginStore:
                 )
 
         return updates
+
+    async def _get_plugin_manifest(self, plugin_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get plugin manifest from the extensions registry.
+
+        Args:
+            plugin_id: Plugin ID
+
+        Returns:
+            Plugin manifest or None
+        """
+        try:
+            # Try to get from registry first
+            if hasattr(self, "registry") and self.registry:
+                extension = await self.registry.get_extension(plugin_id)
+                if extension:
+                    return extension.to_dict()
+
+            # Fallback: try to read from filesystem
+            import os
+            from pathlib import Path
+
+            extensions_dir = Path("src/extensions")
+            for category in ["plugins", "sys_extensions", "channels"]:
+                manifest_path = extensions_dir / category / plugin_id / "manifest.json"
+                if manifest_path.exists():
+                    with open(manifest_path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+
+        except Exception as e:
+            logger.warning(f"Failed to get manifest for plugin {plugin_id}: {e}")
+
+        return None
 
     def _get_plugin_category(self, plugin: Any) -> Optional[PluginCategory]:
         """

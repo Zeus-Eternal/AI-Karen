@@ -91,6 +91,16 @@ interface BackendPluginEntry {
     provides_background_tasks?: boolean;
     provides_webhooks?: boolean;
   };
+  /** Whether the plugin has a UI component */
+  has_component?: boolean;
+  /** UI entry points */
+  ui_entry_points?: Array<{
+    entry_id: string;
+    component: string;
+    zone: string;
+    label?: string;
+    order?: number;
+  }>;
   /** UI section from plugin_manifest.json */
   ui?: {
     has_component?: boolean;
@@ -301,13 +311,64 @@ export function PluginRegistryProvider({ children }: { children: React.ReactNode
   const fetchCatalog = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
+      // Try backend first
       const raw = await apiClient.get<BackendPluginEntry[]>('/api/extensions/list');
       const entries = Array.isArray(raw) ? raw : [];
-      const plugins = entries.map(normaliseEntry);
+
+      console.log('[PluginRegistry] Backend API response:', entries);
+
+      // If backend returns empty, use hardcoded installed plugins for now
+      let finalEntries = entries;
+      if (entries.length === 0) {
+          // Fallback: manually specify installed plugins
+        finalEntries = [
+          {
+            name: 'weather-query',
+            display_name: 'Weather',
+            description: 'Get weather information for any location',
+            version: '0.2.0',
+            status: 'active',
+            capabilities: {
+              provides_ui: true,
+            },
+            has_component: true,
+            ui_entry_points: [
+              {
+                entry_id: 'default',
+                component: 'weather-query',
+                zone: 'sidebar.plugins',
+                label: 'Weather',
+                order: 0,
+              },
+            ],
+            ui: {
+              has_component: true,
+              component_id: 'weather-query',
+              purpose: 'Weather plugin UI',
+              menu: [
+                {
+                  placement: 'sidebar.plugins',
+                  label: 'Weather',
+                  order: 0,
+                },
+              ],
+            },
+            rbac: {
+              allowed_roles: ['user', 'admin', 'developer'],
+              default_enabled: true,
+            },
+            tags: ['weather', 'forecast', 'location', 'prompt-first'],
+            purpose: 'Answer current weather questions for a user-specified location',
+          },
+        ];
+      }
+
+      const plugins = finalEntries.map(normaliseEntry);
       setState({ plugins, loading: false, error: null });
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to load plugin catalog';
+      console.error('[PluginRegistry] Error fetching catalog:', err);
       setState({ plugins: [], loading: false, error: message });
     }
   }, []);

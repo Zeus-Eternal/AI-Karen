@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Mail, Camera, Save, Lock, LogOut, Sun, Moon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { useTheme } from '@/firebase';
+import { useTheme } from '@/firebase/provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ApiError, apiClient } from '@/lib/api';
 import { authService } from '@/lib/auth';
@@ -92,45 +92,45 @@ export default function AccountPage() {
     useEffect(() => {
         let isMounted = true;
 
-        const loadAccount = async () => {
-            try {
-                setIsLoading(true);
-                const currentUser = await apiClient.get<AccountUser>('/api/auth/me');
-                if (!isMounted) {
-                    return;
-                }
+         const loadAccount = async () => {
+             try {
+                 setIsLoading(true);
+                 const currentUser = await apiClient.get<AccountUser>('/api/auth/me');
+                 if (!isMounted) {
+                     return;
+                 }
 
-                setAccount(currentUser);
-                setName(currentUser.full_name || '');
-                setEmail(currentUser.email || '');
-                authService.updateCurrentUser(currentUser);
+                 setAccount(currentUser);
+                 setName(currentUser.full_name || '');
+                 setEmail(currentUser.email || '');
+                 authService.updateCurrentUser(currentUser);
 
-                const preferredTheme = currentUser.preferences?.theme;
-                if ((preferredTheme === 'light' || preferredTheme === 'dark') && preferredTheme !== theme) {
-                    setTheme(preferredTheme);
-                }
-            } catch (error) {
-                if (!isMounted) {
-                    return;
-                }
+                 const preferredTheme = currentUser.preferences?.theme;
+                 if ((preferredTheme === 'light' || preferredTheme === 'dark') && preferredTheme !== theme) {
+                     setTheme(preferredTheme);
+                 }
+             } catch (error) {
+                 if (!isMounted) {
+                     return;
+                 }
 
-                if (error instanceof ApiError && error.status === 401) {
-                    authService.clearAuth();
-                    router.replace('/login');
-                    return;
-                }
+                 if (error instanceof ApiError && error.status === 401) {
+                     authService.clearAuth();
+                     router.replace('/login');
+                     return;
+                 }
 
-                toast({
-                    title: 'Failed to load account',
-                    description: error instanceof Error ? error.message : 'Unable to load account details.',
-                    variant: 'destructive',
-                });
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        };
+                 toast({
+                     title: 'Failed to load account',
+                     description: error instanceof Error ? error.message : 'Unable to load account details.',
+                     variant: 'destructive',
+                 });
+             } finally {
+                 if (isMounted) {
+                     setIsLoading(false);
+                 }
+             }
+         };
 
         loadAccount();
 
@@ -149,49 +149,55 @@ export default function AccountPage() {
         });
     };
 
-    const handleProfileSave = async () => {
-        try {
-            setIsProfileSaving(true);
-            const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', {
-                full_name: name,
-                email,
-            });
-            syncAccount(updatedAccount);
-            toast({
-                title: 'Profile updated',
-                description: 'Your account details have been saved.',
-            });
-        } catch (error) {
-            toast({
-                title: 'Profile update failed',
-                description: error instanceof Error ? error.message : 'Unable to save profile changes.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsProfileSaving(false);
-        }
-    };
+       const handleProfileSave = async () => {
+           try {
+               setIsProfileSaving(true);
+               const payload: any = {
+                   email,
+               };
+               // Only include full_name if it's not empty
+               if (name.trim()) {
+                   payload.full_name = name;
+               }
+               console.log('Profile update payload:', payload);
+               const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', payload);
+               syncAccount(updatedAccount);
+               toast({
+                   title: 'Profile updated',
+                   description: 'Your account details have been saved.',
+               });
+           } catch (error) {
+               console.error('Profile update error:', error);
+               toast({
+                   title: 'Profile update failed',
+                   description: error instanceof Error ? error.message : 'Unable to save profile changes.',
+                   variant: 'destructive',
+               });
+           } finally {
+               setIsProfileSaving(false);
+           }
+       };
 
-    const handleThemeChange = async (value: 'light' | 'dark') => {
-        const previousTheme = theme;
-        setTheme(value);
+      const handleThemeChange = async (value: 'light' | 'dark') => {
+          const previousTheme = theme;
+          setTheme(value);
 
-        try {
-            const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', {
-                preferences: {
-                    theme: value,
-                },
-            });
-            syncAccount(updatedAccount);
-        } catch (error) {
-            setTheme(previousTheme);
-            toast({
-                title: 'Theme update failed',
-                description: error instanceof Error ? error.message : 'Unable to save theme preference.',
-                variant: 'destructive',
-            });
-        }
-    };
+          try {
+              const updatedAccount = await apiClient.put<AccountUser>('/api/auth/me', {
+                  preferences: {
+                      theme: value,
+                  },
+              });
+              syncAccount(updatedAccount);
+          } catch (error) {
+              setTheme(previousTheme);
+              toast({
+                  title: 'Theme update failed',
+                  description: error instanceof Error ? error.message : 'Unable to save theme preference.',
+                  variant: 'destructive',
+              });
+          }
+      };
 
     const handlePasswordUpdate = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {

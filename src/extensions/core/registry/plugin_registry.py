@@ -4,7 +4,7 @@ import uuid
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
-from extensions.core.manifest import (
+from ..manifest import (
     ExtensionManifest,
     ExtensionRecord,
     ExtensionStatus,

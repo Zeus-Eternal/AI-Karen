@@ -277,8 +277,8 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const sendLogin = async (baseUrl: string | null): Promise<Response> =>
-        this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/login')), {
+      const sendLogin = async (): Promise<Response> =>
+        this.fetchWithTimeout('/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -287,22 +287,8 @@ class AuthService {
           body: JSON.stringify(credentials),
         });
 
-      const preferredBaseUrl = this.getPreferredBaseUrl();
-      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
-
       let response: Response;
-      try {
-        response = await sendLogin(preferredBaseUrl);
-      } catch (error) {
-        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-          throw error;
-        }
-        response = await sendLogin(fallbackBaseUrl);
-      }
-
-      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
-        response = await sendLogin(fallbackBaseUrl);
-      }
+      response = await sendLogin();
 
       if (!response.ok) {
         throw new Error(await this.getErrorMessage(response, 'Login failed'));
@@ -338,31 +324,15 @@ class AuthService {
       const refreshToken = localStorage.getItem('refresh_token');
       const accessToken = localStorage.getItem('access_token');
       if (refreshToken) {
-        const sendLogout = async (baseUrl: string | null): Promise<Response> =>
-          this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/logout')), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-            },
-            credentials: 'include',
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-
-        const preferredBaseUrl = this.getPreferredBaseUrl();
-        const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
-
-        try {
-          const response = await sendLogout(preferredBaseUrl);
-          if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
-            await sendLogout(fallbackBaseUrl);
-          }
-        } catch (error) {
-          if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-            throw error;
-          }
-          await sendLogout(fallbackBaseUrl);
-        }
+        await this.fetchWithTimeout('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -388,34 +358,14 @@ class AuthService {
         throw new Error('No refresh token available');
       }
 
-      const sendRefresh = async (baseUrl: string | null): Promise<Response> => {
-        const url = this.buildUrl(baseUrl, '/api/auth/refresh');
-        return this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(url), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-      };
-
-      const preferredBaseUrl = this.getPreferredBaseUrl();
-      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
-
-      let response: Response;
-      try {
-        response = await sendRefresh(preferredBaseUrl);
-      } catch (error) {
-        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-          throw error;
-        }
-        response = await sendRefresh(fallbackBaseUrl);
-      }
-
-      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl || '')) {
-        response = await sendRefresh(fallbackBaseUrl);
-      }
+      const response = await this.fetchWithTimeout('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
 
       if (!response.ok) {
         throw new Error('Token refresh failed');
@@ -539,29 +489,11 @@ class AuthService {
         requestHeaders.Authorization = `Bearer ${accessToken}`;
       }
 
-      const sendValidate = async (baseUrl: string | null, headers: Record<string, string>): Promise<Response> =>
-        this.fetchWithTimeout(this.forceBrowserRelativeApiUrl(this.buildUrl(baseUrl, '/api/auth/validate-session')), {
-          method: 'GET',
-          headers,
-          credentials: 'include',
-        }, this.SESSION_VALIDATION_TIMEOUT_MS);
-
-      const preferredBaseUrl = this.getPreferredBaseUrl();
-      const fallbackBaseUrl = this.getFallbackBaseUrl(preferredBaseUrl);
-
-      let response: Response;
-      try {
-        response = await sendValidate(preferredBaseUrl, requestHeaders);
-      } catch (error) {
-        if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-          throw error;
-        }
-        response = await sendValidate(fallbackBaseUrl, requestHeaders);
-      }
-
-      if (this.shouldRetryWithDirectBackend(response, fallbackBaseUrl)) {
-        response = await sendValidate(fallbackBaseUrl, requestHeaders);
-      }
+      const response = await this.fetchWithTimeout('/api/auth/validate-session', {
+        method: 'GET',
+        headers: requestHeaders,
+        credentials: 'include',
+      }, this.SESSION_VALIDATION_TIMEOUT_MS);
 
       if (!response.ok) {
         // Try to refresh token if validation fails and we have a refresh token available.
@@ -577,18 +509,12 @@ class AuthService {
             refreshedHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
           }
 
-          let newResponse: Response;
-          try {
-            newResponse = await sendValidate(preferredBaseUrl, refreshedHeaders);
-          } catch (error) {
-            if (!this.shouldRetryWithSameOrigin(error) || !fallbackBaseUrl) {
-              throw error;
-            }
-            newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
-          }
-          if (this.shouldRetryWithDirectBackend(newResponse, fallbackBaseUrl || '')) {
-            newResponse = await sendValidate(fallbackBaseUrl, refreshedHeaders);
-          }
+          const newResponse = await this.fetchWithTimeout('/api/auth/validate-session', {
+            method: 'GET',
+            headers: refreshedHeaders,
+            credentials: 'include',
+          }, this.SESSION_VALIDATION_TIMEOUT_MS);
+
           if (!newResponse.ok) {
             this.clearSessionMarker();
             return false;

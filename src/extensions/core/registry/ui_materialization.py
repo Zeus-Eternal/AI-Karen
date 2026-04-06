@@ -90,10 +90,10 @@ class UIMaterializationPipeline:
         self.plugins_ui_dir = (
             Path(plugins_ui_dir)
             if plugins_ui_dir
-            else Path("ui_launchers/Karen-AI-Theme/src/plugins")
+            else Path("ui_launchers/Karen-AI-Theme/src/plugin_repo")
         )
-        self.registry = get_registry()
-        self.database_service = get_database_service()
+        self.registry = None
+        self.database_service = None
         self._artifact_cache: Dict[str, UIArtifact] = {}
 
         # Ensure directories exist
@@ -105,6 +105,28 @@ class UIMaterializationPipeline:
         logger.info(f"  Artifacts dir: {self.artifacts_dir}")
         logger.info(f"  Plugins UI dir: {self.plugins_ui_dir}")
 
+    def _get_registry(self):
+        """Lazily get registry, handling the case where it's not initialized."""
+        if self.registry is None:
+            try:
+                self.registry = get_registry()
+            except Exception as e:
+                logger.warning(f"Registry not available: {e}")
+                # Return None to indicate registry is not available
+                return None
+        return self.registry
+
+    def _get_database_service(self):
+        """Lazily get database service, handling the case where it's not initialized."""
+        if self.database_service is None:
+            try:
+                self.database_service = get_database_service()
+            except ValueError as e:
+                logger.warning(f"Database service not available: {e}")
+                # Return None to indicate database service is not available
+                return None
+        return self.database_service
+
     async def discover_ui_plugins(self) -> List[Dict[str, Any]]:
         """
         Discover all plugins that declare UI capabilities.
@@ -112,7 +134,20 @@ class UIMaterializationPipeline:
         Returns:
             List of plugin UI metadata
         """
-        plugins = await self.registry.list_all_extensions()
+        # First, try to get plugins from registry if available
+        registry = self._get_registry()
+        if registry is not None:
+            try:
+                plugins = await registry.list_all_extensions()
+                if plugins:
+                    return await self._process_registry_plugins(plugins)
+            except Exception as e:
+                logger.warning(f"Failed to get extensions from registry: {e}")
+
+        # Fallback: Direct filesystem discovery
+        logger.info("Registry not available, using filesystem discovery")
+        return await self._discover_plugins_filesystem()
+
         ui_plugins = []
 
         for plugin in plugins:
@@ -210,6 +245,149 @@ class UIMaterializationPipeline:
                 icons.append(icon_data)
 
         return icons
+
+    async def _process_registry_plugins(self, plugins) -> List[Dict[str, Any]]:
+        """Process plugins obtained from registry."""
+        ui_plugins = []
+
+        for plugin in plugins:
+            if not hasattr(plugin, "capabilities") or not plugin.capabilities.get(
+                "provides_ui", False
+            ):
+                continue
+
+            plugin_dir = self.extensions_dir / plugin.name
+            if not plugin_dir.exists():
+                logger.warning(f"Plugin directory not found: {plugin_dir}")
+                continue
+
+            # Load manifest to get UI configuration
+            manifest_path = plugin_dir / "plugin_manifest.json"
+            if not manifest_path.exists():
+                manifest_path = plugin_dir / "manifest.json"
+
+            if not manifest_path.exists():
+                continue
+
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest_data = json.load(f)
+
+                ui_config = manifest_data.get("ui", {})
+                if not ui_config:
+                    continue
+
+                # Check for UI component
+                ui_component_dir = plugin_dir / "ui"
+                has_component = ui_component_dir.exists() and any(
+                    f.suffix == ".tsx" or f.suffix == ".jsx"
+                    for f in ui_component_dir.iterdir()
+                    if f.is_file()
+                )
+
+                # Check for icons
+                icons = self._discover_plugin_icons(plugin_dir, plugin.name)
+
+                plugin_ui_data = {
+                    "plugin_id": plugin.name,
+                    "display_name": plugin.display_name,
+                    "version": plugin.version,
+                    "status": plugin.status.value
+                    if hasattr(plugin, "status")
+                    else "active",
+                    "has_component": has_component
+                    or ui_config.get("has_component", False),
+                    "component_path": str(ui_component_dir / "PluginPage.tsx")
+                    if has_component
+                    else None,
+                    "menu_config": ui_config.get("menu", []),
+                    "icons": icons,
+                    "ui_config": ui_config,
+                }
+
+                ui_plugins.append(plugin_ui_data)
+
+            except Exception as e:
+                logger.error(f"Failed to load UI config for {plugin.name}: {e}")
+
+        logger.info(f"Discovered {len(ui_plugins)} UI-capable plugins from registry")
+        return ui_plugins
+
+    async def _discover_plugins_filesystem(self) -> List[Dict[str, Any]]:
+        """Discover plugins directly from filesystem when registry is not available."""
+        ui_plugins = []
+
+        # Scan extensions directory for plugin manifests
+        for extension_dir in self.extensions_dir.iterdir():
+            if not extension_dir.is_dir():
+                continue
+
+            # Skip if it's a system directory
+            if extension_dir.name.startswith(".") or extension_dir.name in [
+                "core",
+                "api_routes",
+                "channels",
+                "__pycache__",
+            ]:
+                continue
+
+            # Look for manifest files
+            manifest_path = extension_dir / "plugin_manifest.json"
+            if not manifest_path.exists():
+                manifest_path = extension_dir / "manifest.json"
+
+            if not manifest_path.exists():
+                continue
+
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest_data = json.load(f)
+
+                # Check if plugin has UI capabilities
+                ui_config = manifest_data.get("ui", {})
+                if not ui_config and not manifest_data.get("capabilities", {}).get(
+                    "provides_ui", False
+                ):
+                    continue
+
+                # Get plugin info
+                plugin_id = manifest_data.get("name", extension_dir.name)
+                display_name = manifest_data.get("display_name", plugin_id)
+                version = manifest_data.get("version", "1.0.0")
+
+                # Check for UI component
+                ui_component_dir = extension_dir / "ui"
+                has_component = ui_component_dir.exists() and any(
+                    f.suffix == ".tsx" or f.suffix == ".jsx"
+                    for f in ui_component_dir.iterdir()
+                    if f.is_file()
+                )
+
+                # Check for icons
+                icons = self._discover_plugin_icons(extension_dir, plugin_id)
+
+                plugin_ui_data = {
+                    "plugin_id": plugin_id,
+                    "display_name": display_name,
+                    "version": version,
+                    "status": "active",  # Assume active when discovered from filesystem
+                    "has_component": has_component
+                    or ui_config.get("has_component", False),
+                    "component_path": str(ui_component_dir / "PluginPage.tsx")
+                    if has_component
+                    else None,
+                    "menu_config": ui_config.get("menu", []),
+                    "icons": icons,
+                    "ui_config": ui_config,
+                }
+
+                ui_plugins.append(plugin_ui_data)
+
+            except Exception as e:
+                logger.error(f"Failed to load UI config for {extension_dir.name}: {e}")
+
+        logger.info(f"Discovered {len(ui_plugins)} UI-capable plugins from filesystem")
+        return ui_plugins
 
     async def materialize_all(self) -> Dict[str, Any]:
         """

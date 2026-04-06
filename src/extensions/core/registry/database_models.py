@@ -25,7 +25,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import expression
 
-from extensions.core.registry.manifest import ExtensionStatus
+from .manifest import ExtensionStatus
 
 Base = declarative_base()
 

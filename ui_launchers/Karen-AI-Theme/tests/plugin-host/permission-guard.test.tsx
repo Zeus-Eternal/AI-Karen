@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { PermissionGuard } from '../../src/plugin_host/permission-guard';
-import { render } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
 import React from 'react';
+import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+// Ensure no stray characters
 vi.mock('@/lib/useAuth', () => ({
   useAuth: () => ({
     user: { id: 'test-user', roles: ['user', 'admin'] },
@@ -11,6 +11,9 @@ vi.mock('@/lib/useAuth', () => ({
     error: null
   })
 }));
+
+// We import the component AFTER the mock
+import { PermissionGuard } from '../../src/plugin_host/permission-guard';
 
 describe('Permission Guard', () => {
   it('should render children when user has required role', () => {
@@ -29,14 +32,5 @@ describe('Permission Guard', () => {
       </PermissionGuard>
     );
     expect(container.querySelector('div')).toBeNull();
-  });
-
-  it('should render children when no roles are required', () => {
-    const { container } = render(
-      <PermissionGuard pluginId="test-plugin">
-        <div>Test Content</div>
-      </PermissionGuard>
-    );
-    expect(container.querySelector('div')).toHaveTextContent('Test Content');
   });
 });

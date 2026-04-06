@@ -12,10 +12,10 @@
  * Requirements: 4.1, 5.1, 5.2, 5.3, 5.4, 5.5
  */
 
-import React, { Suspense, lazy, useMemo } from 'react';
+import React, { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { usePluginRegistry, type PluginCatalogEntry } from './registry';
-import { PLUGIN_IMPORT_MAP, normalizePluginId } from './loader';
+import { resolvePluginComponent, normalizePluginId, getRegisteredPluginIds, PLUGIN_IMPORT_MAP } from './loader';
 import { PluginErrorBoundary } from './PluginErrorBoundary';
 import { type HookZone, useZoneContributions, type ContributionType, type ZoneContribution } from './hook-zones-context';
 

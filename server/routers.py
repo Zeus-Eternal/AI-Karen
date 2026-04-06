@@ -33,6 +33,7 @@ def _http_exception_response(exc: HTTPException) -> FastAPIResponse:
             response.headers[header] = value
     return response
 
+
 logger = logging.getLogger("kari")
 
 # Original route imports
@@ -49,55 +50,98 @@ try:
         AuthenticationError,
         get_auth_middleware,
     )
+
     logger.info("✅ Auth router imported successfully")
 except ImportError as e:
     # Fallback - disable auth routes if auth not available
     auth_router = None
     logger.warning(f"🚫 Auth system not available - auth routes disabled: {e}")
-from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
+from ai_karen_engine.api_routes.code_execution_routes import (
+    router as code_execution_router,
+)
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
-from ai_karen_engine.api_routes.communications_center_routes import router as communications_center_router
+from ai_karen_engine.api_routes.communications_center_routes import (
+    router as communications_center_router,
+)
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.extensions import router as extensions_router
-from ai_karen_engine.api_routes.file_attachment_routes import router as file_attachment_router
+from ai_karen_engine.api_routes.file_attachment_routes import (
+    router as file_attachment_router,
+)
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
-from ai_karen_engine.api_routes.plugin_routes import public_router as plugin_public_router
+from ai_karen_engine.api_routes.plugin_routes import (
+    public_router as plugin_public_router,
+)
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
 from ai_karen_engine.api_routes.chat_runtime import router as chat_runtime_router
 from ai_karen_engine.api_routes.llm_routes import router as llm_router
 from ai_karen_engine.api_routes.provider_routes import router as provider_router
-from ai_karen_engine.api_routes.provider_routes import public_router as provider_public_router
+from ai_karen_engine.api_routes.provider_routes import (
+    public_router as provider_public_router,
+)
 from ai_karen_engine.api_routes.profile_routes import router as profile_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
-from ai_karen_engine.api_routes.model_settings_routes import router as model_settings_router
-from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
+from ai_karen_engine.api_routes.model_settings_routes import (
+    router as model_settings_router,
+)
+from ai_karen_engine.api_routes.error_response_routes import (
+    router as error_response_router,
+)
 from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
-from ai_karen_engine.api_routes.agent_integration_routes import router as agent_integration_router
+from ai_karen_engine.api_routes.agent_integration_routes import (
+    router as agent_integration_router,
+)
 from ai_karen_engine.api_routes.tasks_routes import router as tasks_router
-from ai_karen_engine.api_routes.automation_jobs_routes import router as automation_jobs_router
+from ai_karen_engine.api_routes.automation_jobs_routes import (
+    router as automation_jobs_router,
+)
 from ai_karen_engine.api_routes.health import router as health_router
-from ai_karen_engine.api_routes.model_management_routes import router as model_management_router
-from ai_karen_engine.api_routes.huggingface_routes import router as enhanced_huggingface_router
-from ai_karen_engine.api_routes.response_core_routes import router as response_core_router
+from ai_karen_engine.api_routes.model_management_routes import (
+    router as model_management_router,
+)
+from ai_karen_engine.api_routes.huggingface_routes import (
+    router as enhanced_huggingface_router,
+)
+from ai_karen_engine.api_routes.response_core_routes import (
+    router as response_core_router,
+)
 from ai_karen_engine.api_routes.scheduler_routes import router as scheduler_router
 from ai_karen_engine.api_routes.public_routes import router as public_router
-from ai_karen_engine.api_routes.model_library_routes import router as model_library_router
-from ai_karen_engine.api_routes.model_library_routes import public_router as model_library_public_router
-from ai_karen_engine.api_routes.provider_compatibility_routes import router as provider_compatibility_router
-from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
-from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
+from ai_karen_engine.api_routes.model_library_routes import (
+    router as model_library_router,
+)
+from ai_karen_engine.api_routes.model_library_routes import (
+    public_router as model_library_public_router,
+)
+from ai_karen_engine.api_routes.provider_compatibility_routes import (
+    router as provider_compatibility_router,
+)
+from ai_karen_engine.api_routes.model_orchestrator_routes import (
+    router as model_orchestrator_router,
+)
+from ai_karen_engine.api_routes.validation_metrics_routes import (
+    router as validation_metrics_router,
+)
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
 from ai_karen_engine.api_routes.persona_routes import router as persona_router
-from ai_karen_engine.api_routes.model_organization_routes import router as model_organization_router
-from ai_karen_engine.api_routes.user_preferences_routes import router as user_preferences_router
+from ai_karen_engine.api_routes.model_organization_routes import (
+    router as model_organization_router,
+)
+from ai_karen_engine.api_routes.user_preferences_routes import (
+    router as user_preferences_router,
+)
 from ai_karen_engine.api_routes.user_data_routes import router as user_data_router
 from ai_karen_engine.api_routes.users import router as users_router
+
 try:
-    from ai_karen_engine.api_routes.training_data_routes import router as training_data_router
+    from ai_karen_engine.api_routes.training_data_routes import (
+        router as training_data_router,
+    )
+
     TRAINING_DATA_AVAILABLE = True
 except ImportError as e:
     training_data_router = None
@@ -105,6 +149,9 @@ except ImportError as e:
     logger.warning(f"🚫 Training data routes not available: {e}")
 from ai_karen_engine.api_routes.privacy_routes import router as privacy_router
 from ai_karen_engine.api_routes.maintenance import router as maintenance_router
+from extensions.api_routes.ui_materialization_routes import (
+    router as ui_materialization_router,
+)
 
 
 # Multi-modal and AI enhancement routes
@@ -115,6 +162,7 @@ MULTIMODAL_AVAILABLE = False
 try:
     from ai_karen_engine.api_routes.multimodal_routes import router as multimodal_router
     from ai_karen_engine.api_routes.ai_routes import router as ai_enhancement_router
+
     MULTIMODAL_AVAILABLE = True
     logger.info("✅ Multi-modal and AI enhancement routers imported successfully")
 except ImportError as e:
@@ -124,6 +172,7 @@ except ImportError as e:
 # Extension monitoring system
 try:
     from .extension_monitoring_api import monitoring_router
+
     EXTENSION_MONITORING_AVAILABLE = True
     logger.info("✅ Extension monitoring router imported successfully")
 except ImportError as e:
@@ -134,9 +183,9 @@ except ImportError as e:
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:
     """Wire all routers to the FastAPI app with simplified auth system"""
-    
+
     logger.info("🔧 Starting router wiring...")
-    
+
     # NEW: Simple authentication system
     logger.info(f"🔍 Auth router status: {auth_router is not None}")
     if auth_router:
@@ -144,13 +193,15 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         logger.info("🔐 Auth router loaded successfully")
     else:
         logger.warning("🚫 Auth router not available")
-    
+
     # Environment check for auth mode
-    effective_env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or settings.environment).lower()
+    effective_env = (
+        os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or settings.environment
+    ).lower()
     auth_mode = os.getenv("AUTH_MODE", "production").lower()
-    
+
     logger.info(f"🔐 Using auth system - AUTH_MODE={auth_mode}")
-    
+
     # Add auth middleware globally (if available)
     try:
         auth_middleware = get_auth_middleware()
@@ -160,23 +211,36 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         async def auth_middleware_handler(request, call_next):
             # Check for development bypass mode first
             import os
+
             auth_bypass = os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true"
-            
+
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
-            
+
+            logger.info(
+                f"🔓 MIDDLEWARE CALLED: path={request.url.path}, auth_bypass={auth_bypass}, X-Mock-User-ID={request.headers.get('X-Mock-User-ID')}"
+            )
+
             if auth_bypass or (skip_auth_header == "dev" and dev_mode_header == "true"):
                 # Development mode - set mock user context directly
-                mock_user_id = request.headers.get("X-Mock-User-ID", "dev-user")
+                mock_user_id = request.headers.get("X-Mock-User-ID", "admin")
                 request.state.user = {
-                    'user_id': mock_user_id,
-                    'email': f"{mock_user_id}@localhost",
-                    'user_type': 'developer',
-                    'permissions': ['extension:*', 'chat:write', 'memory:read', 'memory:write', 'admin:*'],
-                    'token_id': 'dev-token-id',
-                    'tenant_id': 'default'
+                    "user_id": mock_user_id,
+                    "email": "admin@karen.ai",
+                    "user_type": "developer",
+                    "permissions": [
+                        "extension:*",
+                        "chat:write",
+                        "memory:read",
+                        "memory:write",
+                        "admin:*",
+                    ],
+                    "token_id": "dev-token-id",
+                    "tenant_id": "default",
                 }
-                logger.info(f"🔓 Development mode bypass active (KARI_AUTH_BYPASS={auth_bypass}) for user: {mock_user_id}")
+                logger.info(
+                    f"🔓 Middleware bypass: auth_bypass={auth_bypass}, mock_user_id={mock_user_id}, path={request.url.path}"
+                )
             else:
                 # Skip auth for public endpoints
                 if auth_middleware.is_public_endpoint(request.url.path):
@@ -185,7 +249,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
                 # For protected endpoints, authenticate and add user to request state
                 try:
-                    authenticate_request = getattr(auth_middleware, "authenticate_request", None)
+                    authenticate_request = getattr(
+                        auth_middleware, "authenticate_request", None
+                    )
                     if callable(authenticate_request):
                         user_data = await authenticate_request(request)
                     else:
@@ -207,10 +273,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                         request.url.path,
                         exc.message,
                     )
-                    return _http_exception_response(HTTPException(
-                        status_code=exc.status_code,
-                        detail=exc.message
-                    ))
+                    return _http_exception_response(
+                        HTTPException(status_code=exc.status_code, detail=exc.message)
+                    )
                 except Exception as exc:
                     # Log unexpected authentication errors with full context
                     logger.exception(
@@ -220,10 +285,12 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
                         str(exc),
                     )
                     # Return a generic authentication error without exposing internal details
-                    return _http_exception_response(HTTPException(
-                        status_code=500,
-                        detail="Authentication service temporarily unavailable"
-                    ))
+                    return _http_exception_response(
+                        HTTPException(
+                            status_code=500,
+                            detail="Authentication service temporarily unavailable",
+                        )
+                    )
 
             response = await call_next(request)
             return _ensure_asgi_response(response)
@@ -231,13 +298,17 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         logger.info("🔐 Auth middleware loaded successfully")
     except ImportError:
         logger.warning("🚫 Auth middleware not available")
-    
+
     # Core API routers
     app.include_router(events_router, prefix="/api/events", tags=["events"])
     app.include_router(websocket_router, prefix="/api/ws", tags=["websocket"])
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
-    app.include_router(communications_center_router, prefix="/api/communications-center", tags=["communications-center"])
+    app.include_router(
+        communications_center_router,
+        prefix="/api/communications-center",
+        tags=["communications-center"],
+    )
     if TRAINING_DATA_AVAILABLE and training_data_router:
         app.include_router(training_data_router, tags=["training-data"])
     else:
@@ -249,10 +320,12 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(automation_jobs_router, prefix="/api", tags=["automation-jobs"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
     app.include_router(persona_router, prefix="/api/personas", tags=["personas"])
-    
+
     # Align copilot routes under /api to match frontend expectations
     app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
-    app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
+    app.include_router(
+        conversation_router, prefix="/api/conversations", tags=["conversations"]
+    )
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
     app.include_router(plugin_public_router, tags=["plugins-public"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
@@ -260,17 +333,22 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
     # Extensions router
     app.include_router(extensions_router, prefix="/api/extensions", tags=["extensions"])
+    app.include_router(ui_materialization_router, tags=["ui-materialization"])
     app.include_router(file_attachment_router, prefix="/api/files", tags=["files"])
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])
     app.include_router(llm_router, prefix="/api/llm", tags=["llm"])
-    
+
     # Mock provider routes removed for production
     logger.info("🚫 Mock provider routes disabled for production")
-    
+
     # Provider and model routers
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
-    app.include_router(provider_public_router, prefix="/api/public/providers", tags=["public-providers"])
+    app.include_router(
+        provider_public_router,
+        prefix="/api/public/providers",
+        tags=["public-providers"],
+    )
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(users_router, prefix="/api", tags=["users"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
@@ -278,7 +356,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     # to expose endpoints like "/api/health" and "/api/health/degraded-mode".
     app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(model_management_router, tags=["model-management"])
-    app.include_router(enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"])
+    app.include_router(
+        enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"]
+    )
     app.include_router(response_core_router, tags=["response-core"])
     app.include_router(scheduler_router, tags=["scheduler"])
     app.include_router(public_router, tags=["public"])
@@ -295,7 +375,6 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(model_settings_router, prefix="/api", tags=["model-settings"])
     app.include_router(maintenance_router, prefix="/api", tags=["maintenance"])
 
-    
     # Multi-modal and AI enhancement routes
     if MULTIMODAL_AVAILABLE:
         if multimodal_router:
@@ -306,7 +385,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
             logger.info("🧠 AI enhancement router loaded successfully")
     else:
         logger.warning("🚫 Multi-modal and AI enhancement routes not available")
-    
+
     # Extension monitoring system
     if EXTENSION_MONITORING_AVAILABLE and monitoring_router:
         app.include_router(monitoring_router, tags=["extension-monitoring"])
