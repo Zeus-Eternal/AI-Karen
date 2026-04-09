@@ -4,7 +4,7 @@ Comprehensive factory for initializing and wiring all chat-related services.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, RetryConfig
 from ai_karen_engine.chat.memory_processor import MemoryProcessor
@@ -14,7 +14,9 @@ from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 from ai_karen_engine.chat.instruction_processor import InstructionProcessor
 from ai_karen_engine.chat.context_integrator import ContextIntegrator
-from ai_karen_engine.chat.stream_processor import AsyncStreamProcessor as StreamProcessor
+from ai_karen_engine.chat.stream_processor import (
+    AsyncStreamProcessor as StreamProcessor,
+)
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.conversation_manager import ConversationManager
@@ -74,17 +76,30 @@ class ChatServiceFactory:
 
         try:
             from services.memory.nlp_service_manager import nlp_service_manager
-            memory_service = self.get_service("memory_service") or self.create_memory_service()
-            memory_manager = getattr(memory_service, "base_manager", None) if memory_service else None
+
+            memory_service = (
+                self.get_service("memory_service") or self.create_memory_service()
+            )
+            memory_manager = (
+                getattr(memory_service, "base_manager", None)
+                if memory_service
+                else None
+            )
 
             if memory_manager is None:
-                logger.warning("Memory manager unavailable - chat memory processor will be disabled")
+                logger.warning(
+                    "Memory manager unavailable - chat memory processor will be disabled"
+                )
                 return None
 
             spacy_service = getattr(nlp_service_manager, "spacy_service", None)
-            distilbert_service = getattr(nlp_service_manager, "distilbert_service", None)
+            distilbert_service = getattr(
+                nlp_service_manager, "distilbert_service", None
+            )
             if spacy_service is None or distilbert_service is None:
-                logger.warning("NLP services unavailable - chat memory processor will be disabled")
+                logger.warning(
+                    "NLP services unavailable - chat memory processor will be disabled"
+                )
                 return None
 
             # Create memory processor
@@ -94,7 +109,7 @@ class ChatServiceFactory:
                 memory_manager=memory_manager,
             )
 
-            self._services['memory_processor'] = memory_processor
+            self._services["memory_processor"] = memory_processor
 
             logger.info("Memory processor created successfully")
             return memory_processor
@@ -126,7 +141,7 @@ class ChatServiceFactory:
 
         try:
             service = FileAttachmentService()
-            self._services['file_attachment_service'] = service
+            self._services["file_attachment_service"] = service
             logger.info("File attachment service created successfully")
             return service
         except Exception as e:
@@ -141,7 +156,7 @@ class ChatServiceFactory:
 
         try:
             service = MultimediaService()
-            self._services['multimedia_service'] = service
+            self._services["multimedia_service"] = service
             logger.info("Multimedia service created successfully")
             return service
         except Exception as e:
@@ -156,7 +171,7 @@ class ChatServiceFactory:
 
         try:
             service = CodeExecutionService()
-            self._services['code_execution_service'] = service
+            self._services["code_execution_service"] = service
             logger.info("Code execution service created successfully")
             return service
         except Exception as e:
@@ -171,7 +186,7 @@ class ChatServiceFactory:
 
         try:
             service = ToolIntegrationService()
-            self._services['tool_integration_service'] = service
+            self._services["tool_integration_service"] = service
             logger.info("Tool integration service created successfully")
             return service
         except Exception as e:
@@ -182,7 +197,7 @@ class ChatServiceFactory:
         """Create and configure instruction processor."""
         try:
             processor = InstructionProcessor()
-            self._services['instruction_processor'] = processor
+            self._services["instruction_processor"] = processor
             logger.info("Instruction processor created successfully")
             return processor
         except Exception as e:
@@ -194,7 +209,7 @@ class ChatServiceFactory:
         """Create and configure context integrator."""
         try:
             integrator = ContextIntegrator()
-            self._services['context_integrator'] = integrator
+            self._services["context_integrator"] = integrator
             logger.info("Context integrator created successfully")
             return integrator
         except Exception as e:
@@ -202,19 +217,19 @@ class ChatServiceFactory:
             # Return default instance as fallback
             return ContextIntegrator()
 
-    def create_conversation_manager(self) -> Optional[ConversationManager]:
+    async def create_conversation_manager(self) -> Optional[ConversationManager]:
         """Create and configure the authoritative conversation manager."""
         try:
             db_client = MultiTenantPostgresClient()
             manager = ConversationManager(db_client)
-            self._services['conversation_manager'] = manager
+            self._services["conversation_manager"] = manager
             logger.info("Enhanced conversation manager created successfully")
             return manager
         except Exception as e:
             logger.error(f"Failed to create conversation manager: {e}")
             return None
 
-    def create_session_state_manager(self) -> Optional[SessionStateManager]:
+    async def create_session_state_manager(self) -> Optional[SessionStateManager]:
         """Create and configure the Redis-backed session continuity manager."""
         try:
             redis_client = get_redis_client()
@@ -226,7 +241,7 @@ class ChatServiceFactory:
             logger.error(f"Failed to create session state manager: {e}")
             return None
 
-    def create_chat_orchestrator(self) -> ChatOrchestrator:
+    async def create_chat_orchestrator(self) -> ChatOrchestrator:
         """
         Create and configure chat orchestrator with all services wired.
 
@@ -235,66 +250,93 @@ class ChatServiceFactory:
         """
         logger.info("Creating chat orchestrator with all services")
 
-        # Create all dependent services
-        memory_processor = self.create_memory_processor()
-        file_attachment_service = self.create_file_attachment_service()
-        multimedia_service = self.create_multimedia_service()
-        code_execution_service = self.create_code_execution_service()
-        tool_integration_service = self.create_tool_integration_service()
-        instruction_processor = self.create_instruction_processor()
-        context_integrator = self.create_context_integrator()
-        session_state_manager = self.create_session_state_manager()
+        # Create all dependent services (with error handling for production robustness)
+        memory_processor = await self.create_memory_processor()
+        file_attachment_service = await self.create_file_attachment_service()
+        multimedia_service = await self.create_multimedia_service()
+        code_execution_service = await self.create_code_execution_service()
+        tool_integration_service = await self.create_tool_integration_service()
+        instruction_processor = await self.create_instruction_processor()
+        context_integrator = await self.create_context_integrator()
+
+        # Session state manager (optional - may fail in some environments)
+        session_state_manager = None
+        try:
+            session_state_manager = await self.create_session_state_manager()
+        except Exception as e:
+            logger.warning(f"Session state manager not available: {e}")
+
+        # Conversation manager (optional - may fail if database not configured)
+        conversation_manager = None
+        try:
+            conversation_manager = await self.create_conversation_manager()
+        except Exception as e:
+            logger.warning(f"Conversation manager not available: {e}")
 
         # Create retry configuration
         retry_config = RetryConfig(
             max_attempts=self.config.retry_max_attempts,
             backoff_factor=self.config.retry_backoff_factor,
-            exponential_backoff=True
+            exponential_backoff=True,
         )
 
-        # Get auth service
-        from ai_karen_engine.auth.auth_service import get_auth_service
-        import asyncio
-        
+        # Get auth service (optional - may not be configured in all environments)
+        auth_service = None
         try:
-            # Check if we have a running loop
-            loop = asyncio.get_running_loop()
-            auth_service = loop.run_until_complete(get_auth_service()) if not loop.is_running() else None
-            # If loop is running, we might need a different approach, 
-            # but for factory initialization it's usually fine or we just use the getter inside orchestrator.
-            # Actually, the orchestrator can call the getter itself if it's async.
-        except RuntimeError:
-            from ai_karen_engine.auth.auth_service import get_auth_service_sync
-            auth_service = get_auth_service_sync()
+            from ai_karen_engine.auth.auth_service import get_auth_service
+            import asyncio
+
+            try:
+                # Check if we have a running loop
+                loop = asyncio.get_running_loop()
+                auth_service = (
+                    loop.run_until_complete(get_auth_service())
+                    if not loop.is_running()
+                    else None
+                )
+                # If loop is running, we might need a different approach,
+                # but for factory initialization it's usually fine or we just use the getter inside orchestrator.
+                # Actually, the orchestrator can call the getter itself if it's async.
+            except RuntimeError:
+                from ai_karen_engine.auth.auth_service import get_auth_service_sync
+
+                auth_service = get_auth_service_sync()
+        except Exception as e:
+            logger.warning(f"Auth service not available: {e}")
 
         # Create orchestrator with all services
-        orchestrator = ChatOrchestrator(
-            memory_processor=memory_processor,
-            file_attachment_service=file_attachment_service,
-            multimedia_service=multimedia_service,
-            code_execution_service=code_execution_service,
-            tool_integration_service=tool_integration_service,
-            instruction_processor=instruction_processor,
-            context_integrator=context_integrator,
-            conversation_manager=self.create_conversation_manager(),
-            session_state_manager=session_state_manager,
-            retry_config=retry_config,
-            timeout_seconds=self.config.timeout_seconds,
-            enable_monitoring=self.config.enable_monitoring,
-            auth_service=auth_service
-        )
+        try:
+            orchestrator = ChatOrchestrator(
+                memory_processor=memory_processor,
+                file_attachment_service=file_attachment_service,
+                multimedia_service=multimedia_service,
+                code_execution_service=code_execution_service,
+                tool_integration_service=tool_integration_service,
+                instruction_processor=instruction_processor,
+                context_integrator=context_integrator,
+                conversation_manager=conversation_manager,
+                session_state_manager=session_state_manager,
+                retry_config=retry_config,
+                timeout_seconds=self.config.timeout_seconds,
+                enable_monitoring=self.config.enable_monitoring,
+                auth_service=auth_service,
+            )
+            logger.info("✅ ChatOrchestrator created successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to create ChatOrchestrator: {e}")
+            # Create a minimal fallback orchestrator
+            orchestrator = self._create_minimal_orchestrator()
 
-        self._services['chat_orchestrator'] = orchestrator
+        self._services["chat_orchestrator"] = orchestrator
 
         logger.info("Chat orchestrator created successfully with all services wired")
         return orchestrator
-
 
     def create_stream_processor(self) -> StreamProcessor:
         """Create and configure stream processor."""
         try:
             processor = StreamProcessor()
-            self._services['stream_processor'] = processor
+            self._services["stream_processor"] = processor
             logger.info("Stream processor created successfully")
             return processor
         except Exception as e:
@@ -309,12 +351,12 @@ class ChatServiceFactory:
 
         try:
             # Get orchestrator for WebSocket gateway
-            orchestrator = self.get_service('chat_orchestrator')
+            orchestrator = self.get_service("chat_orchestrator")
             if not orchestrator:
                 orchestrator = self.create_chat_orchestrator()
 
             gateway = WebSocketGateway(chat_orchestrator=orchestrator)
-            self._services['websocket_gateway'] = gateway
+            self._services["websocket_gateway"] = gateway
             logger.info("WebSocket gateway created successfully")
             return gateway
 
@@ -322,7 +364,7 @@ class ChatServiceFactory:
             logger.error(f"Failed to create WebSocket gateway: {e}")
             return None
 
-    def create_all_services(self):
+    async def create_all_services(self):
         """
         Create all chat services and wire them together.
 
@@ -331,12 +373,53 @@ class ChatServiceFactory:
         logger.info("Creating all chat services")
 
         # Create services in dependency order
-        self.create_chat_orchestrator()
+        _ = await self.create_chat_orchestrator()
         self.create_stream_processor()
         self.create_websocket_gateway()
 
         logger.info(f"All chat services created: {list(self._services.keys())}")
         return self._services
+
+    def _create_minimal_orchestrator(self):
+        """Create a minimal ChatOrchestrator for fallback when full initialization fails."""
+        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, RetryConfig
+
+        logger.warning("🔄 Creating minimal ChatOrchestrator for production fallback")
+
+        try:
+            # Minimal configuration
+            retry_config = RetryConfig(max_attempts=1, backoff_factor=1.0)
+
+            orchestrator = ChatOrchestrator(
+                retry_config=retry_config,
+                timeout_seconds=30.0,
+                enable_monitoring=False,
+            )
+            logger.info("✅ Minimal ChatOrchestrator created successfully")
+            return orchestrator
+        except Exception as e:
+            logger.error(f"❌ Even minimal ChatOrchestrator creation failed: {e}")
+
+            # Return a mock orchestrator that can respond to basic requests
+            class MockChatOrchestrator:
+                async def handle_chat(self, request):
+                    from ai_karen_engine.chat.ChatOrchestrator import (
+                        ChatResponse,
+                        ProcessingStatus,
+                    )
+
+                    return ChatResponse(
+                        request_id=request.request_id,
+                        correlation_id=request.correlation_id,
+                        response="I'm sorry, but the chat service is currently experiencing technical difficulties. Please try again later.",
+                        status=ProcessingStatus.COMPLETED,
+                        metadata={"fallback": True},
+                    )
+
+                async def handle_chat_stream(self, request):
+                    return None
+
+            return MockChatOrchestrator()
 
     def get_service(self, service_name: str):
         """Get a service by name."""
@@ -351,7 +434,9 @@ class ChatServiceFactory:
 _global_factory: Optional[ChatServiceFactory] = None
 
 
-def get_chat_service_factory(config: Optional[ChatServiceConfig] = None) -> ChatServiceFactory:
+def get_chat_service_factory(
+    config: Optional[ChatServiceConfig] = None,
+) -> ChatServiceFactory:
     """
     Get or create global chat service factory.
 
@@ -370,7 +455,7 @@ def get_chat_service_factory(config: Optional[ChatServiceConfig] = None) -> Chat
     return _global_factory
 
 
-def get_chat_orchestrator() -> ChatOrchestrator:
+async def get_chat_orchestrator() -> Any:
     """
     Get or create global chat orchestrator.
 
@@ -378,19 +463,17 @@ def get_chat_orchestrator() -> ChatOrchestrator:
         ChatOrchestrator instance
     """
     factory = get_chat_service_factory()
-    orchestrator = factory.get_service('chat_orchestrator')
+    orchestrator = factory.get_service("chat_orchestrator")
 
     if orchestrator is None:
-        orchestrator = factory.create_chat_orchestrator()
+        orchestrator = await factory.create_chat_orchestrator()
 
     return orchestrator
 
 
-
-
 __all__ = [
-    'ChatServiceConfig',
-    'ChatServiceFactory',
-    'get_chat_service_factory',
-    'get_chat_orchestrator',
+    "ChatServiceConfig",
+    "ChatServiceFactory",
+    "get_chat_service_factory",
+    "get_chat_orchestrator",
 ]

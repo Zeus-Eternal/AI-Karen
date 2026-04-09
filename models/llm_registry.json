@@ -7,9 +7,9 @@
     "supports_embeddings": true,
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
-    "health_status": "healthy",
-    "last_health_check": 1774889050.9836848,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1775494042.3679993,
+    "error_message": "LlamaCpp initialization failed: llama-cpp-python is not available. Please install it to use LlamaCppRuntime."
   },
   {
     "name": "openai",

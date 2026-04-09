@@ -11,7 +11,7 @@
  * frontend UI installation lifecycle.
  */
 
-import { PluginCatalogEntry } from './registry';
+
 
 /**
  * Frontend UI installation status
@@ -118,8 +118,6 @@ export class UIInstallerService {
         };
       }
 
-      const data = await response.json();
-
       // Save successful installation state
       const installations = this.loadInstallations();
       installations[pluginId] = 'installed';
@@ -172,8 +170,6 @@ export class UIInstallerService {
           status: 'error',
         };
       }
-
-      const data = await response.json();
 
       return {
         success: true,
@@ -237,8 +233,6 @@ export class UIInstallerService {
         }
         throw new Error(`Failed to get UI status: ${response.status}`);
       }
-
-      const data = await response.json();
 
       // If we get UI data back, the UI is installable/available
       // In a more sophisticated implementation, we'd check if it's actually installed

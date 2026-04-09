@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { KarenSettings, TemperatureUnit, WeatherServiceOption } from '@/lib/types';
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from '../ui/separator';
+import { Separator } from "@/components/ui/separator";
 
 /**
  * @file WeatherPluginPage.tsx
@@ -104,8 +104,8 @@ export default function WeatherPluginPage() {
         <Info className="h-4 w-4" />
         <AlertTitle>How to Use Weather Features</AlertTitle>
         <AlertDescription>
-          Ask Karen for the weather in a specific location directly in the chat (e.g., "What's the weather in London?").
-          She can use different services based on your configuration below. The "Default Location" can be used if you ask for weather without specifying a place.
+          Ask Karen for the weather in a specific location directly in the chat (e.g., &quot;What&apos;s the weather in London?&quot;).
+          She can use different services based on your configuration below. The &quot;Default Location&quot; can be used if you ask for weather without specifying a place.
         </AlertDescription>
       </Alert>
 
@@ -119,10 +119,10 @@ export default function WeatherPluginPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="weather-service-select">Weather Service Source</Label>
-            <Select
-              value={settings.weatherService}
-              onValueChange={(value) => handleServiceChange(value as WeatherServiceOption)}
-            >
+             <Select
+               value={settings.weatherService}
+               onValueChange={(value: string) => handleServiceChange(value as WeatherServiceOption)}
+             >
               <SelectTrigger id="weather-service-select">
                 <SelectValue placeholder="Select a weather service" />
               </SelectTrigger>
@@ -132,7 +132,7 @@ export default function WeatherPluginPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Select the service Karen should use. "Custom API" is a placeholder for future integration with services requiring an API key.
+              Select the service Karen should use. &quot;Custom API&quot; is a placeholder for future integration with services requiring an API key.
             </p>
           </div>
 
@@ -143,7 +143,7 @@ export default function WeatherPluginPage() {
                 id="weather-api-key"
                 type="password"
                 value={settings.weatherApiKey || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
                 placeholder="Enter your API key for the custom service"
                 disabled /* Keep disabled until actual custom service logic is implemented */
               />
@@ -160,7 +160,7 @@ export default function WeatherPluginPage() {
             <Input
               id="default-weather-location"
               value={settings.defaultWeatherLocation || ''}
-              onChange={(e) => setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, defaultWeatherLocation: e.target.value.trim() ? e.target.value : null }))}
               placeholder="e.g., London, UK or New York, US"
             />
             <p className="text-xs text-muted-foreground">
@@ -207,8 +207,8 @@ export default function WeatherPluginPage() {
         <AlertTitle>Developer Note</AlertTitle>
         <AlertDescription>
           The weather fetching logic currently defaults to using `wttr.in`.
-          Integrating a "Custom API" service requires modifying the `getWeather` tool in `src/ai/tools/core-tools.ts` to handle the specific API calls and data parsing for that service.
-          The `defaultWeatherLocation` is passed to the tool but its usage in `getWeather` would need to be prioritized if no specific location is given in the user's query.
+          Integrating a &quot;Custom API&quot; service requires modifying the `getWeather` tool in `src/ai/tools/core-tools.ts` to handle the specific API calls and data parsing for that service.
+          The `defaultWeatherLocation` is passed to the tool but its usage in `getWeather` would need to be prioritized if no specific location is given in the user&apos;s query.
         </AlertDescription>
       </Alert>
     </div>

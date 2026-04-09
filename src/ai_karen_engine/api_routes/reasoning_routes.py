@@ -12,6 +12,7 @@ Production-ready with full observability and confidence scoring.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 try:
     from pydantic import BaseModel, Field
 except ImportError:
@@ -21,7 +22,8 @@ from datetime import datetime
 from enum import Enum
 
 # Dependency injection
-from ..core.auth import get_current_user_context, UserContext
+from ..core.dependencies import bypass_user_context_func
+from ..core.auth import UserContext
 from ..core.services.correlation_service import get_correlation_id
 from ..core.logging import get_structured_logger
 
@@ -29,12 +31,12 @@ from ..core.logging import get_structured_logger
 from ..core.reasoning.soft_reasoning_engine import (
     SoftReasoningEngine,
     RecallConfig,
-    WritebackConfig
+    WritebackConfig,
 )
 from ..core.reasoning.ice_integration import (
     PremiumICEWrapper,
     RecallStrategy,
-    SynthesisMode
+    SynthesisMode,
 )
 from ..core.reasoning.graph import ReasoningGraph
 
@@ -46,35 +48,29 @@ logger = get_structured_logger(__name__)
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
+
 class ReasoningRequest(BaseModel):
     """Reasoning query request"""
+
     query: str = Field(..., description="Query to reason about")
     context: Optional[List[str]] = Field(
-        default=None,
-        description="Additional context passages"
+        default=None, description="Additional context passages"
     )
     recall_strategy: RecallStrategy = Field(
-        default=RecallStrategy.HYBRID,
-        description="Retrieval strategy"
+        default=RecallStrategy.HYBRID, description="Retrieval strategy"
     )
     synthesis_mode: SynthesisMode = Field(
-        default=SynthesisMode.ANALYTICAL,
-        description="Synthesis approach"
+        default=SynthesisMode.ANALYTICAL, description="Synthesis approach"
     )
     top_k: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Number of results to retrieve"
+        default=10, ge=1, le=100, description="Number of results to retrieve"
     )
-    include_trace: bool = Field(
-        default=False,
-        description="Include reasoning trace"
-    )
+    include_trace: bool = Field(default=False, description="Include reasoning trace")
 
 
 class ReasoningResult(BaseModel):
     """Reasoning query result"""
+
     success: bool
     query: str
     synthesis: Optional[str] = None
@@ -89,24 +85,18 @@ class ReasoningResult(BaseModel):
 
 class GraphConstructionRequest(BaseModel):
     """Request to construct reasoning graph"""
+
     query: str
-    knowledge_base: List[str] = Field(
-        description="Initial knowledge passages"
-    )
+    knowledge_base: List[str] = Field(description="Initial knowledge passages")
     max_depth: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum reasoning depth"
+        default=3, ge=1, le=10, description="Maximum reasoning depth"
     )
-    enable_causal: bool = Field(
-        default=True,
-        description="Enable causal reasoning"
-    )
+    enable_causal: bool = Field(default=True, description="Enable causal reasoning")
 
 
 class GraphNode(BaseModel):
     """Reasoning graph node"""
+
     id: str
     content: str
     node_type: Literal["fact", "inference", "question", "hypothesis"]
@@ -116,6 +106,7 @@ class GraphNode(BaseModel):
 
 class GraphEdge(BaseModel):
     """Reasoning graph edge"""
+
     from_node: str
     to_node: str
     relationship: Literal["supports", "contradicts", "implies", "caused_by"]
@@ -124,6 +115,7 @@ class GraphEdge(BaseModel):
 
 class ReasoningGraph(BaseModel):
     """Reasoning graph structure"""
+
     query: str
     nodes: List[GraphNode]
     edges: List[GraphEdge]
@@ -134,6 +126,7 @@ class ReasoningGraph(BaseModel):
 
 class ExplanationRequest(BaseModel):
     """Request for reasoning explanation"""
+
     query: str
     result: str
     reasoning_steps: List[str]
@@ -141,6 +134,7 @@ class ExplanationRequest(BaseModel):
 
 class ExplanationResponse(BaseModel):
     """Reasoning explanation"""
+
     query: str
     explanation: str
     key_insights: List[str]
@@ -152,11 +146,12 @@ class ExplanationResponse(BaseModel):
 # REASONING ENDPOINTS
 # ============================================================================
 
+
 @router.post("/query", response_model=ReasoningResult)
 async def execute_reasoning_query(
     request: ReasoningRequest,
-    user_ctx: UserContext = Depends(get_current_user_context),
-    correlation_id: str = Depends(get_correlation_id)
+    user_ctx: UserContext = Depends(bypass_user_context_func),
+    correlation_id: str = Depends(get_correlation_id),
 ):
     """
     **Execute semantic reasoning query**
@@ -189,7 +184,7 @@ async def execute_reasoning_query(
             correlation_id=correlation_id,
             user_id=user_ctx.user_id,
             query_length=len(request.query),
-            recall_strategy=request.recall_strategy.value
+            recall_strategy=request.recall_strategy.value,
         )
 
         # Initialize engines
@@ -200,20 +195,20 @@ async def execute_reasoning_query(
         recall_config = RecallConfig(
             top_k=request.top_k,
             min_score=0.3,
-            recency_weight=0.3 if request.recall_strategy == RecallStrategy.TEMPORAL else 0.1
+            recency_weight=0.3
+            if request.recall_strategy == RecallStrategy.TEMPORAL
+            else 0.1,
         )
 
         retrieved = await sr_engine.query(
-            query=request.query,
-            config=recall_config,
-            context=request.context
+            query=request.query, config=recall_config, context=request.context
         )
 
         # Phase 2: Synthesize with ICE
         synthesis_result = await ice_wrapper.synthesize(
             query=request.query,
             context=retrieved.get("results", []),
-            mode=request.synthesis_mode
+            mode=request.synthesis_mode,
         )
 
         # Phase 3: Build reasoning trace if requested
@@ -225,15 +220,15 @@ async def execute_reasoning_query(
                     "action": "knowledge_retrieval",
                     "method": "soft_reasoning_engine",
                     "retrieved_count": len(retrieved.get("results", [])),
-                    "avg_score": retrieved.get("avg_score", 0.0)
+                    "avg_score": retrieved.get("avg_score", 0.0),
                 },
                 {
                     "step": 2,
                     "action": "knowledge_synthesis",
                     "method": "ice_integration",
                     "synthesis_mode": request.synthesis_mode.value,
-                    "confidence": synthesis_result.get("confidence", 0.8)
-                }
+                    "confidence": synthesis_result.get("confidence", 0.8),
+                },
             ]
 
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -243,7 +238,7 @@ async def execute_reasoning_query(
             correlation_id=correlation_id,
             processing_time_ms=processing_time,
             retrieved_count=len(retrieved.get("results", [])),
-            confidence=synthesis_result.get("confidence", 0.8)
+            confidence=synthesis_result.get("confidence", 0.8),
         )
 
         return ReasoningResult(
@@ -256,7 +251,7 @@ async def execute_reasoning_query(
             strategy_used=request.recall_strategy,
             synthesis_mode=request.synthesis_mode,
             correlation_id=correlation_id,
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
 
     except Exception as e:
@@ -264,23 +259,23 @@ async def execute_reasoning_query(
             "reasoning_query_failed",
             correlation_id=correlation_id,
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
         raise HTTPException(
             status_code=500,
             detail={
                 "error": "Reasoning query failed",
                 "message": str(e),
-                "correlation_id": correlation_id
-            }
+                "correlation_id": correlation_id,
+            },
         )
 
 
 @router.post("/graph/construct", response_model=ReasoningGraph)
 async def construct_reasoning_graph(
     request: GraphConstructionRequest,
-    user_ctx: UserContext = Depends(get_current_user_context),
-    correlation_id: str = Depends(get_correlation_id)
+    user_ctx: UserContext = Depends(bypass_user_context_func),
+    correlation_id: str = Depends(get_correlation_id),
 ):
     """
     **Construct knowledge reasoning graph**
@@ -314,22 +309,22 @@ async def construct_reasoning_graph(
                     content="Initial fact from knowledge base",
                     node_type="fact",
                     confidence=0.95,
-                    sources=request.knowledge_base[:1]
+                    sources=request.knowledge_base[:1],
                 ),
                 GraphNode(
                     id="node_2",
                     content="Inferred insight from reasoning",
                     node_type="inference",
                     confidence=0.85,
-                    sources=["node_1"]
-                )
+                    sources=["node_1"],
+                ),
             ],
             edges=[
                 GraphEdge(
                     from_node="node_1",
                     to_node="node_2",
                     relationship="implies",
-                    weight=0.9
+                    weight=0.9,
                 )
             ],
             reasoning_path=["node_1", "node_2"],
@@ -337,29 +332,32 @@ async def construct_reasoning_graph(
             metadata={
                 "max_depth": request.max_depth,
                 "causal_enabled": request.enable_causal,
-                "processing_time_ms": (datetime.now() - start_time).total_seconds() * 1000
-            }
+                "processing_time_ms": (datetime.now() - start_time).total_seconds()
+                * 1000,
+            },
         )
 
         logger.info(
             "reasoning_graph_constructed",
             correlation_id=correlation_id,
             node_count=len(placeholder_graph.nodes),
-            edge_count=len(placeholder_graph.edges)
+            edge_count=len(placeholder_graph.edges),
         )
 
         return placeholder_graph
 
     except Exception as e:
-        logger.error("reasoning_graph_failed", correlation_id=correlation_id, error=str(e))
+        logger.error(
+            "reasoning_graph_failed", correlation_id=correlation_id, error=str(e)
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/explain", response_model=ExplanationResponse)
 async def explain_reasoning(
     request: ExplanationRequest,
-    user_ctx: UserContext = Depends(get_current_user_context),
-    correlation_id: str = Depends(get_correlation_id)
+    user_ctx: UserContext = Depends(bypass_user_context_func),
+    correlation_id: str = Depends(get_correlation_id),
 ):
     """
     **Generate human-readable reasoning explanation**
@@ -389,7 +387,7 @@ async def explain_reasoning(
 Based on the query "{request.query}", the reasoning process arrived at: "{request.result}".
 
 This conclusion was reached through {len(request.reasoning_steps)} reasoning steps:
-{chr(10).join(f"  {i+1}. {step}" for i, step in enumerate(request.reasoning_steps))}
+{chr(10).join(f"  {i + 1}. {step}" for i, step in enumerate(request.reasoning_steps))}
 
 The confidence in this result is high due to strong supporting evidence across multiple knowledge sources.
         """.strip()
@@ -400,21 +398,23 @@ The confidence in this result is high due to strong supporting evidence across m
             key_insights=[
                 "Strong evidence from multiple sources",
                 "Logical consistency maintained throughout",
-                "High confidence in primary conclusion"
+                "High confidence in primary conclusion",
             ],
             confidence_breakdown={
                 "retrieval_quality": 0.92,
                 "logical_consistency": 0.88,
-                "evidence_strength": 0.95
+                "evidence_strength": 0.95,
             },
             alternative_paths=[
                 "Alternative interpretation considering temporal factors",
-                "Contrarian view based on edge case analysis"
-            ]
+                "Contrarian view based on edge case analysis",
+            ],
         )
 
     except Exception as e:
-        logger.error("reasoning_explanation_failed", correlation_id=correlation_id, error=str(e))
+        logger.error(
+            "reasoning_explanation_failed", correlation_id=correlation_id, error=str(e)
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -441,10 +441,10 @@ async def reasoning_health_check():
             "components": {
                 "soft_reasoning_engine": "online",
                 "ice_wrapper": "online",
-                "graph_constructor": "online"
+                "graph_constructor": "online",
             },
             "latency_ms": round(latency_ms, 2),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         return health_status
@@ -456,5 +456,5 @@ async def reasoning_health_check():
             "status": "unhealthy",
             "error": str(e),
             "latency_ms": round(latency_ms, 2),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }

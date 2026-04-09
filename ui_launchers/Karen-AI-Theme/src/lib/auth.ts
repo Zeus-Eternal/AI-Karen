@@ -294,18 +294,24 @@ class AuthService {
         throw new Error(await this.getErrorMessage(response, 'Login failed'));
       }
 
-      const data: LoginResponse = await response.json();
-      
-      // The backend session cookie is the authoritative browser auth state.
-      // Keep refresh token only for legacy/logout flows and avoid persisting
-      // a browser-side access token that can drift from the cookie session.
-      localStorage.removeItem('access_token');
-      localStorage.setItem('refresh_token', data.refresh_token);
-      localStorage.setItem('user_data', JSON.stringify(data.user));
-      this.setSessionMarker();
+       const data: LoginResponse = await response.json();
 
-      // The backend owns the production session cookie. Clear legacy client cookies
-      // so the app relies on the authenticated backend session instead.
+       // Store both tokens in localStorage for proper session management.
+       // The access_token is used for session validation and fallback auth.
+       // The kari_session cookie is the primary auth mechanism.
+       localStorage.setItem('access_token', data.access_token);
+       localStorage.setItem('refresh_token', data.refresh_token);
+       localStorage.setItem('user_data', JSON.stringify(data.user));
+        this.setSessionMarker();
+
+       console.log('[AuthService] Login successful, tokens stored:', {
+         hasAccessToken: !!data.access_token,
+         hasRefreshToken: !!data.refresh_token,
+         hasSessionMarker: this.hasSessionMarker(),
+       });
+
+       // The backend owns the production session cookie. Clear legacy client cookies
+       // so the app relies on the authenticated backend session instead.
       this.clearBrowserCookie(this.LEGACY_ACCESS_COOKIE_NAME);
       this.clearBrowserCookie(this.LEGACY_REFRESH_COOKIE_NAME);
       

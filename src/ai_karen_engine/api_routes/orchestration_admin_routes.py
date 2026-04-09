@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
+
 try:
     from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
@@ -30,7 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - compatibility for 3.10
 
 from ..core.langgraph_orchestrator import (
     get_default_orchestrator,
-    LangGraphOrchestrator
+    LangGraphOrchestrator,
 )
 from ..services.auth_utils import get_current_user
 from ai_karen_engine.chat.ChatOrchestrator import (
@@ -44,8 +45,12 @@ from ai_karen_engine.services.metrics_service import get_metrics_service
 
 logger = logging.getLogger(__name__)
 
-compatibility_router = APIRouter(prefix="/api/orchestration", tags=["orchestration-compat"])
-admin_router = APIRouter(prefix="/api/admin/orchestration", tags=["orchestration-admin"])
+compatibility_router = APIRouter(
+    prefix="/api/orchestration", tags=["orchestration-compat"]
+)
+admin_router = APIRouter(
+    prefix="/api/admin/orchestration", tags=["orchestration-admin"]
+)
 
 _METRICS_INTERVAL_SECONDS = 30
 _metrics_task: Optional[asyncio.Task] = None
@@ -93,20 +98,26 @@ async def orchestration_router_lifespan(app):
 
 class ChatRequest(BaseModel):
     """Request model for chat conversations"""
+
     message: str = Field(..., description="User message")
     session_id: Optional[str] = Field(None, description="Session identifier")
     context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
     streaming: bool = Field(False, description="Enable streaming response")
-    config: Optional[Dict[str, Any]] = Field(None, description="Orchestration configuration")
+    config: Optional[Dict[str, Any]] = Field(
+        None, description="Orchestration configuration"
+    )
 
 
 class ChatResponse(BaseModel):
     """Response model for chat conversations"""
+
     response: str = Field(..., description="AI response")
     session_id: str = Field(..., description="Session identifier")
     metadata: Dict[str, Any] = Field(..., description="Response metadata")
     processing_time: float = Field(..., description="Processing time in seconds")
-    errors: List[str] = Field(default_factory=list, description="Any errors encountered")
+    errors: List[str] = Field(
+        default_factory=list, description="Any errors encountered"
+    )
     warnings: List[str] = Field(default_factory=list, description="Any warnings")
 
 
@@ -119,11 +130,15 @@ class OrchestrationStatus(BaseModel):
     total_processed: int = Field(..., description="Total conversations processed")
     uptime: float = Field(..., description="System uptime in seconds")
     failed_sessions: int = Field(..., description="Sessions that ended with errors")
-    average_latency: float = Field(..., description="Average processing latency in seconds")
+    average_latency: float = Field(
+        ..., description="Average processing latency in seconds"
+    )
     p95_latency: float = Field(..., description="95th percentile latency in seconds")
     metrics_backend: str = Field(..., description="Active metrics backend")
     last_error: Optional[str] = Field(None, description="Most recent error message")
-    last_error_at: Optional[datetime] = Field(None, description="Timestamp of the most recent error")
+    last_error_at: Optional[datetime] = Field(
+        None, description="Timestamp of the most recent error"
+    )
 
 
 def _resolve_version() -> str:
@@ -156,6 +171,7 @@ ORCHESTRATION_VERSION = _resolve_version()
 
 class ConfigUpdateRequest(BaseModel):
     """Request model for configuration updates"""
+
     enable_auth_gate: Optional[bool] = None
     enable_safety_gate: Optional[bool] = None
     enable_memory_fetch: Optional[bool] = None
@@ -189,7 +205,9 @@ def _build_compatibility_chat_request(
         or f"session_{user_id}"
     )
     session_id = str(request.session_id or context.get("session_id") or conversation_id)
-    correlation_id = str(context.get("correlation_id") or f"orchestration-{conversation_id}")
+    correlation_id = str(
+        context.get("correlation_id") or f"orchestration-{conversation_id}"
+    )
 
     return CanonicalChatRequest(
         correlation_id=correlation_id,
@@ -258,8 +276,10 @@ async def _execute_canonical_chat(
     compatibility_route: str,
 ) -> ChatResponse:
     """Run a legacy compatibility request through the canonical chat orchestrator."""
-    orchestrator = get_chat_orchestrator()
-    canonical_request = _build_compatibility_chat_request(request, current_user, streaming=False)
+    orchestrator = await get_chat_orchestrator()
+    canonical_request = _build_compatibility_chat_request(
+        request, current_user, streaming=False
+    )
     chat_response = await orchestrator.handle_chat(canonical_request)
     return _translate_chat_response(
         chat_response,
@@ -270,8 +290,7 @@ async def _execute_canonical_chat(
 
 @compatibility_router.post("/chat", response_model=ChatResponse, deprecated=True)
 async def chat(
-    request: ChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    request: ChatRequest, current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Legacy compatibility ingress for standard chat.
@@ -291,8 +310,7 @@ async def chat(
 
 @compatibility_router.post("/chat/stream", deprecated=True)
 async def chat_stream(
-    request: ChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    request: ChatRequest, current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Legacy compatibility ingress for streaming standard chat.
@@ -301,8 +319,10 @@ async def chat_stream(
     canonical chunks into the older SSE envelope.
     """
     try:
-        orchestrator = get_chat_orchestrator()
-        canonical_request = _build_compatibility_chat_request(request, current_user, streaming=True)
+        orchestrator = await get_chat_orchestrator()
+        canonical_request = _build_compatibility_chat_request(
+            request, current_user, streaming=True
+        )
         chunk_stream = await orchestrator.handle_chat_stream(canonical_request)
 
         async def generate_stream():
@@ -328,10 +348,10 @@ async def chat_stream(
                 error_chunk = {
                     "type": "error",
                     "content": f"Streaming error: {str(e)}",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 yield f"data: {json.dumps(error_chunk)}\n\n"
-        
+
         return StreamingResponse(
             generate_stream(),
             media_type="text/event-stream",
@@ -339,24 +359,24 @@ async def chat_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*"
-            }
+                "Access-Control-Allow-Headers": "*",
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Stream setup error: {e}")
         raise HTTPException(status_code=500, detail=f"Stream setup error: {str(e)}")
 
 
 async def _get_langgraph_status(
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
+    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
 ) -> OrchestrationStatus:
     """
     Get orchestration system status
-    
+
     Args:
         orchestrator: Orchestrator instance
-        
+
     Returns:
         System status information
     """
@@ -409,9 +429,7 @@ async def _get_langgraph_status(
 
 
 @admin_router.get("/status", response_model=OrchestrationStatus)
-async def get_status(
-    orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)
-):
+async def get_status(orchestrator: LangGraphOrchestrator = Depends(get_orchestrator)):
     """Get LangGraph orchestration status from the explicit admin namespace."""
     return await _get_langgraph_status(orchestrator)
 
@@ -419,15 +437,15 @@ async def get_status(
 async def _update_langgraph_config(
     request: ConfigUpdateRequest,
     orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Update orchestration configuration
-    
+
     Args:
         request: Configuration update request
         current_user: Current authenticated user
-        
+
     Returns:
         Success message
     """
@@ -435,12 +453,10 @@ async def _update_langgraph_config(
         # Check if user has admin permissions
         if not current_user.get("is_admin", False):
             raise HTTPException(status_code=403, detail="Admin permissions required")
-        
+
         config_updates = request.dict(exclude_unset=True)
         sanitized_updates = {
-            key: value
-            for key, value in config_updates.items()
-            if value is not None
+            key: value for key, value in config_updates.items() if value is not None
         }
 
         if not sanitized_updates:
@@ -467,7 +483,7 @@ async def _update_langgraph_config(
             "message": "Configuration updated successfully",
             "updates": asdict(updated_config),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -479,7 +495,7 @@ async def _update_langgraph_config(
 async def update_config(
     request: ConfigUpdateRequest,
     orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Update LangGraph orchestration configuration from the admin namespace."""
     return await _update_langgraph_config(request, orchestrator, current_user)
@@ -488,27 +504,27 @@ async def update_config(
 async def _langgraph_health_check():
     """
     Simple health check endpoint
-    
+
     Returns:
         Health status
     """
     try:
         # Basic health check
         orchestrator = get_default_orchestrator()
-        
+
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "orchestrator": "available",
-            "streaming": "available"
+            "streaming": "available",
         }
-        
+
     except Exception as e:
         logger.error(f"Health check error: {e}")
         return {
             "status": "unhealthy",
             "timestamp": datetime.now().isoformat(),
-            "error": str(e)
+            "error": str(e),
         }
 
 
@@ -518,10 +534,11 @@ async def health_check():
     return await _langgraph_health_check()
 
 
-@compatibility_router.post("/chat/response-core", response_model=ChatResponse, deprecated=True)
+@compatibility_router.post(
+    "/chat/response-core", response_model=ChatResponse, deprecated=True
+)
 async def chat_with_response_core(
-    request: ChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    request: ChatRequest, current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Legacy alias retained for older callers.
@@ -537,22 +554,24 @@ async def chat_with_response_core(
         )
     except Exception as e:
         logger.error(f"Response-core compatibility chat error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Response-core compatibility error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Response-core compatibility error: {str(e)}"
+        )
 
 
 async def _debug_langgraph_dry_run(
     request: ChatRequest,
     orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Debug endpoint for dry-run analysis of orchestration decisions
-    
+
     Args:
         request: Chat request for analysis
         orchestrator: Orchestrator instance
         current_user: Current authenticated user
-        
+
     Returns:
         Dry-run analysis results
     """
@@ -560,7 +579,7 @@ async def _debug_langgraph_dry_run(
         # Check if user has debug permissions
         if not current_user.get("is_admin", False):
             raise HTTPException(status_code=403, detail="Admin permissions required")
-        
+
         analysis = await orchestrator.run_dry_run_analysis(
             message=request.message,
             session_id=request.session_id,
@@ -571,9 +590,9 @@ async def _debug_langgraph_dry_run(
         return {
             "dry_run": True,
             "analysis": analysis,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -585,7 +604,7 @@ async def _debug_langgraph_dry_run(
 async def debug_dry_run(
     request: ChatRequest,
     orchestrator: LangGraphOrchestrator = Depends(get_orchestrator),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Run LangGraph dry-run analysis from the explicit admin namespace."""
     return await _debug_langgraph_dry_run(request, orchestrator, current_user)

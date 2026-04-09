@@ -5,8 +5,8 @@ import type { ChatMessage } from '@/lib/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  User, Bot, Speaker, Copy, Check, Info, 
+import {
+  User, Bot, Speaker, Copy, Check, Info,
   ThumbsUp, ThumbsDown, ChevronDown, ChevronUp, AlertTriangle, Zap, Clock, PlusCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -24,10 +24,11 @@ import {
   sanitizeChatContent,
 } from '@/lib/chat-response';
 import { ChatRenderedContent } from '@/lib/chat-renderer';
+import type { SuggestedAction } from '@/lib/agent-ui/service';
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  onActionClick?: (action: any) => void;
+  onActionClick?: (action: SuggestedAction) => void;
 }
 
 export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
@@ -94,7 +95,6 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     visibleDegradedNotice,
     shouldRenderDegradedState,
   } = deriveDegradedPresentation(message.metadata);
-  const llm = message.metadata?.llm;
   const {
     shouldRenderBadge,
     providerLabel: badgeProviderLabel,

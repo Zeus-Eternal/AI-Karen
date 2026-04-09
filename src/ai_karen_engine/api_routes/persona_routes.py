@@ -7,12 +7,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+
 try:
     from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
-from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.models.persona_models import (
     LanguageEnum,
     PersonaStyleOverride,
@@ -25,7 +26,7 @@ router = APIRouter(tags=["personas"])
 
 
 # Alias core dependency for convenience
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 
 
 # Request/Response Models

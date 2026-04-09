@@ -24,6 +24,7 @@ from starlette.responses import Response
 from ai_karen_engine.llm_orchestrator import get_orchestrator
 from ai_karen_engine.hooks import get_hook_manager
 from ai_karen_engine.server.http_validator import HTTPRequestValidator
+from ai_karen_engine.core.auth_config import auth_config
 
 logger = logging.getLogger(__name__)
 
@@ -630,18 +631,36 @@ class EnhancedErrorMiddleware(BaseHTTPMiddleware):
             )
             return self._create_error_response(fallback_response, 200)  # Graceful degradation
         
+        elif isinstance(error, HTTPException):
+            # Respect explicit HTTP exceptions from routes
+            logger.error(f"HTTP error {error.status_code}: {error.detail}")
+            return JSONResponse(
+                status_code=error.status_code,
+                content={
+                    "error": "HTTP Error",
+                    "status_code": error.status_code,
+                    "detail": error.detail,
+                    "request_id": error_context["request_id"],
+                    "timestamp": error_context["timestamp"]
+                }
+            )
+        
         else:
             # Handle as general error
             import traceback
+            # Ensure the traceback is logged to both stdout and structured logs
+            tb_str = traceback.format_exc()
             print(f"!!! ENHANCED ERROR MIDDLEWARE TRAPPING UNHANDLED ERROR: {error}")
-            traceback.print_exc()
-            logger.error(f"Unhandled error: {error}", exc_info=True)
+            print(tb_str)
+            logger.error(f"Unhandled error: {error}\n{tb_str}", exc_info=True)
+            
             return JSONResponse(
                 status_code=500,
                 content={
                     "error": "Internal server error",
                     "fallback_type": "generic_error",
-                    "message": "An unexpected error occurred. Please try again.",
+                    "message": f"An unexpected error occurred: {str(error)}",
+                    "detail": str(error) if not auth_config.is_production() else "Please contact support",
                     "request_id": error_context["request_id"],
                     "timestamp": error_context["timestamp"]
                 }

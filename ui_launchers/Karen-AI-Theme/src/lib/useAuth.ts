@@ -22,13 +22,24 @@ export function useAuth() {
   const initializeAuth = useCallback(async () => {
     try {
       setState((prev: AuthState) => ({ ...prev, isLoading: true, error: null }));
+      console.log('[useAuth] Initializing auth state...');
+
       const isValid = await authService.validateSession();
       const currentUser = isValid ? authService.getCurrentUser() : null;
 
+      console.log('[useAuth] Session validation result:', {
+        isValid,
+        hasCurrentUser: !!currentUser,
+        hasAccessToken: !!authService.getAccessToken(),
+        hasRefreshToken: !!authService.getRefreshToken(),
+        isAuthenticated: authService.isAuthenticated(),
+      });
+
       if (!isValid || !currentUser) {
+        console.log('[useAuth] Session invalid, clearing auth');
         authService.clearAuth();
       }
-      
+
       setState({
         user: isValid ? currentUser : null,
         isAuthenticated: isValid && !!currentUser,

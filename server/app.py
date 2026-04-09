@@ -832,3 +832,7 @@ def create_app() -> FastAPI:
 
     logger.info("FastAPI application created and configured successfully")
     return app
+
+
+# Create the FastAPI app instance for uvicorn
+app = create_app()

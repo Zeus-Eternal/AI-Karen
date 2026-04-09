@@ -590,6 +590,7 @@ services:
       CHOKIDAR_INTERVAL: "800"
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
+      KAREN_DOCKER: "true"
       # Client-side (browser) should call the backend directly
     ports:
       - "8010:8010"

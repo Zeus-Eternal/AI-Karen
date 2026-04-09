@@ -1,16 +1,17 @@
 "use client";
 
-import type { ChatMessage, ConversationResponse, MessageResponse } from '@/lib/types';
+import type { ChatMessage, ConversationResponse } from '@/lib/types';
+import type { SuggestedAction } from '@/lib/agent-ui/service';
 import { useState, useRef, useEffect, FormEvent, useCallback, useMemo, createContext, useContext, ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Cpu, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check, ChevronDown } from 'lucide-react';
+import { Loader2, SendHorizontal, Mic, MicOff, Sparkles, Bot, Square, PlusCircle, ServerCrash, History, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Edit2, Check } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { ApiError, apiClient } from '@/lib/api';
@@ -34,6 +35,20 @@ interface Session {
   lastMessage?: string;
 }
 
+interface ConversationApiResponse {
+  conversations: Array<{
+    id: string;
+    title?: string;
+    created_at: string;
+    updated_at: string;
+    message_count?: number;
+    messages?: Array<{ content: string }>;
+    last_message?: string;
+  }>;
+  total_count: number;
+  has_more: boolean;
+}
+
 interface SessionContextType {
   currentSession: Session | null;
   sessions: Session[];
@@ -45,6 +60,32 @@ interface SessionContextType {
   deleteSession: (sessionId: string) => Promise<boolean | void>;
   deleteSessions: (sessionIds: string[]) => Promise<boolean>;
   updateSessionTitle: (sessionId: string, newTitle: string) => Promise<boolean>;
+}
+
+interface ProviderDetails {
+  id: string;
+  display_name: string;
+  description?: string;
+  provider_type?: string;
+  selectable?: boolean;
+  requires_api_key?: boolean;
+  api_key_configured?: boolean;
+  base_url?: string | null;
+  default_base_url?: string | null;
+  default_model?: string | null;
+  selected_model?: string | null;
+  supports_base_url_override?: boolean;
+  models: Array<{
+    id: string;
+    name: string;
+    source?: string;
+  }>;
+}
+
+interface ModelSettingsResponse {
+  selected_provider: string;
+  selected_model: string;
+  providers: ProviderDetails[];
 }
 
 // Session Context
@@ -106,14 +147,15 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     try {
       // Load session metadata and history
       // We use the same endpoint for both since ConversationResponse includes all metadata
-      const conversationResponse: ConversationResponse = await apiClient.get<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
+      const conversationResponse = await apiClient.get<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
       
       const session: Session = {
         id: sessionId,
         title: conversationResponse.title || generateSessionTitle(conversationResponse.messages?.map(m => ({
-          ...m, 
+          ...m,
           role: m.role as 'user' | 'assistant',
-          timestamp: new Date(m.timestamp)
+          timestamp: new Date(m.timestamp),
+          actions: m.actions?.map(a => a as SuggestedAction)
         })) || []),
         createdAt: new Date(conversationResponse.created_at || Date.now()),
         updatedAt: new Date(conversationResponse.updated_at || Date.now()),
@@ -130,9 +172,9 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
         isActive: s.id === sessionId
       })));
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load session:', err);
-      
+
       // If session not found (404), explicit recovery
       if (err instanceof ApiError && err.status === 404) {
         console.warn('Session was not found on server, starting fresh.');
@@ -153,8 +195,8 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     setError(null);
     
     try {
-      const response: any = await apiClient.get('/api/conversations/');
-      const sessionsData: Session[] = response.conversations?.map((session: any) => ({
+      const response = await apiClient.get<ConversationApiResponse>('/api/conversations/');
+      const sessionsData: Session[] = response.conversations?.map((session) => ({
         id: session.id,
         title: session.title || 'Untitled Chat',
         createdAt: new Date(session.created_at),
@@ -248,8 +290,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
         document.removeEventListener(event, updateActivity);
       });
     };
-    // Removed currentSession from deps to avoid loop; updateActivity uses functional update
-  }, [createNewSession]);
+  }, [createNewSession, currentSession]);
 
   // Delete a session
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -436,10 +477,50 @@ const PROCESSING_INPUT_STATES = [
   'Karen is reasoning through the next response...',
 ];
 
+interface SpeechRecognitionConstructor {
+  new(): SpeechRecognition;
+  prototype: SpeechRecognition;
+}
+
+interface SpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start(): void;
+  stop(): void;
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message: string;
+}
+
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition: SpeechRecognitionConstructor | undefined;
+    webkitSpeechRecognition: SpeechRecognitionConstructor | undefined;
   }
 }
 
@@ -485,7 +566,7 @@ export default function ChatInterface() {
   const { toast } = useToast();
 
   const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(true);
   const [shouldSubmitVoiceInput, setShouldSubmitVoiceInput] = useState(false);
   const [isSuggestingStarter, setIsSuggestingStarter] = useState(false);
@@ -515,25 +596,18 @@ export default function ChatInterface() {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [isUpdatingModelSelection, setIsUpdatingModelSelection] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState('');
+  
   const [processingInputIndex, setProcessingInputIndex] = useState(0);
   const [isEditingDuringProcessing, setIsEditingDuringProcessing] = useState(false);
   const activeRequestControllerRef = useRef<AbortController | null>(null);
   const [isBackendOffline, setIsBackendOffline] = useState(false);
 
-  type ActionParam = Record<string, any>;
-  type SuggestedAction = {
-    type: string;
-    params: ActionParam;
-    confidence: number;
-    description?: string;
-  };
-  
+
   type AssistResponse = {
     answer: string;
-    structured_content?: Record<string, any>;
+    structured_content?: Record<string, unknown>;
     actions?: SuggestedAction[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     correlation_id?: string;
   };
 
@@ -564,9 +638,9 @@ export default function ChatInterface() {
         return detail;
       }
 
-      // If we have detailed error content in the response body, use it specifically.
-      const errorPayload = error.details as any;
-      if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
+       // If we have detailed error content in the response body, use it specifically.
+       const errorPayload = error.details as Record<string, unknown>;
+       if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
         return errorPayload.detail;
       }
       if (errorPayload?.error && typeof errorPayload.error === 'string') {
@@ -591,11 +665,11 @@ export default function ChatInterface() {
     return 'Karen is running in degraded mode right now and could not complete this message. Check model availability and try again.';
   };
 
-  const getAssistFailureMetadata = (
+   const getAssistFailureMetadata = useCallback((
     error: unknown,
     requestedProvider?: string,
     requestedModel?: string,
-  ): Record<string, any> => {
+  ): Record<string, unknown> => {
     const detail = getDegradedResponseMessage(error);
     const normalizedProvider = normalizeProviderName(requestedProvider) || 'system';
     const failureCategory =
@@ -605,7 +679,7 @@ export default function ChatInterface() {
           ? 'network'
           : 'provider_error';
 
-    const metadata: Record<string, any> = {
+    const metadata: Record<string, unknown> = {
       degraded_mode: true,
       failure_category: failureCategory,
       orchestrator: {
@@ -634,7 +708,9 @@ export default function ChatInterface() {
     }
 
     return metadata;
-  };
+  },
+  [],
+);
 
   const preferredAddressName =
     typeof user?.preferences?.preferred_address_name === 'string'
@@ -778,7 +854,7 @@ export default function ChatInterface() {
     };
 
     void loadHistory();
-  }, [isAuthenticated, isAuthLoading]);
+  }, [isAuthenticated, isAuthLoading, displayName, firstNameOption, fullName, shouldPromptForPreferredName, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -835,9 +911,7 @@ export default function ChatInterface() {
           allowedProviders.find((provider) => provider.id === resolvedProvider)?.models[0]?.id ||
           '';
         setSelectedModel(resolvedModel);
-        
-        // Sync temp values for modal
-        const activeProvider = response.providers.find(p => p.id === resolvedProvider);
+
         setIsBackendOffline(false);
       } catch {
         setIsBackendOffline(true);
@@ -868,12 +942,10 @@ export default function ChatInterface() {
                   : []
               ),
         };
-      });
-  }, [modelSettings]);
-  const selectedProviderDetails = selectableProviders.find((provider) => provider.id === selectedProvider) ?? null;
-  const availableModels = selectedProviderDetails?.models ?? [];
+       });
+    }, [modelSettings]);
 
-  const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
+    const applyModelSelection = useCallback(async (providerId: string, modelId: string) => {
     if (!modelSettings) {
       return;
     }
@@ -888,17 +960,35 @@ export default function ChatInterface() {
       const response = await apiClient.put<{
         selected_provider: string;
         selected_model: string;
-        providers: Array<any>;
+        providers: Array<{
+          id: string;
+          display_name: string;
+          description?: string;
+          provider_type?: string;
+          selectable?: boolean;
+          requires_api_key?: boolean;
+          api_key_configured?: boolean;
+          base_url?: string | null;
+          default_base_url?: string | null;
+          default_model?: string | null;
+          selected_model?: string | null;
+          supports_base_url_override?: boolean;
+          models: Array<{
+            id: string;
+            name: string;
+            source?: string;
+          }>;
+        }>;
       }>('/api/settings/model', {
         provider: providerId,
         model: modelId,
       });
 
-      setModelSettings(response as any);
+      setModelSettings(response as ModelSettingsResponse);
       const allowedProviders = response.providers
         .filter((item) => item.selectable !== false)
         .map((item) => {
-          const configuredModels = (item.models || []).filter((model: any) => model.source !== 'discovered');
+          const configuredModels = (item.models || []).filter((model: { id: string; name: string; source?: string }) => model.source !== 'discovered');
           return {
             ...item,
             models: configuredModels.length > 0
@@ -924,41 +1014,16 @@ export default function ChatInterface() {
         title: 'Settings applied',
         description: `Karen is now using ${modelId} via ${provider.display_name}.`,
       });
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: 'Model switch failed',
-        description: err.message || 'Karen could not update the active provider and model.',
+        description: err instanceof Error ? err.message : 'Karen could not update the active provider and model.',
         variant: 'destructive',
       });
     } finally {
       setIsUpdatingModelSelection(false);
     }
   }, [modelSettings, toast]);
-
-  const handleProviderChange = async (providerId: string) => {
-    if (!modelSettings) {
-      return;
-    }
-
-    const provider = selectableProviders.find((item) => item.id === providerId);
-    if (!provider || provider.selectable === false) {
-      return;
-    }
-    const nextModel = provider?.models[0]?.id || '';
-    setSelectedProvider(providerId);
-    setSelectedModel(nextModel);
-
-    if (nextModel) {
-      await applyModelSelection(providerId, nextModel);
-    }
-  };
-
-  const handleModelChange = async (modelId: string) => {
-    setSelectedModel(modelId);
-    if (selectedProvider) {
-      await applyModelSelection(selectedProvider, modelId);
-    }
-  };
 
   const savePreferredAddressName = useCallback(async (preferredName: string) => {
     if (!user) {
@@ -1105,10 +1170,10 @@ export default function ChatInterface() {
         structuredContent: normalizedResponse.structuredContent,
         actions: normalizedResponse.actions,
         metadata: normalizedResponse.metadata,
-        aiData: normalizedResponse.metadata?.context && normalizedResponse.metadata.context.length > 0
+        aiData: normalizedResponse.metadata?.context && Array.isArray(normalizedResponse.metadata.context) && normalizedResponse.metadata.context.length > 0
           ? {
               knowledgeGraphInsights: normalizedResponse.metadata.context
-                .map((item: any) => item.preview || item.text)
+                .map((item: { preview?: string; text?: string }) => item.preview || item.text)
                 .filter(Boolean)
                 .join('\n'),
             }
@@ -1158,7 +1223,7 @@ export default function ChatInterface() {
       setProcessingInputIndex(0);
     }
 
-  }, [displayName, input, isAuthLoading, isAuthenticated, isLoading, messages, preferredAddressName, recentMessages, savePreferredAddressName, selectedProvider, selectedModel, toast, user]); 
+  }, [displayName, input, isAuthLoading, isAuthenticated, isLoading, messages, preferredAddressName, recentMessages, savePreferredAddressName, selectedProvider, selectedModel, toast, user, getAssistFailureMetadata]); 
 
   useEffect(() => {
     if (!isLoading || isEditingDuringProcessing) {
@@ -1193,7 +1258,7 @@ export default function ChatInterface() {
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
 
-    recognitionInstance.onresult = (event: any) => {
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = '';
       let finalTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -1206,8 +1271,8 @@ export default function ChatInterface() {
       setInput(finalTranscript || interimTranscript);
     };
 
-    recognitionInstance.onerror = (event: any) => {
-      setIsRecording(false); 
+    recognitionInstance.onerror = () => {
+      setIsRecording(false);
     };
 
     recognitionInstance.onend = () => {
@@ -1797,7 +1862,7 @@ export default function ChatInterface() {
         setLocalProvider(selectedProvider);
         setLocalModel(selectedModel);
       }
-    }, [isOpen, selectedProvider, selectedModel]);
+    }, [isOpen]);
 
     const activeProviderDetails = selectableProviders.find(p => p.id === localProvider);
     const providerModels = activeProviderDetails?.models || [];

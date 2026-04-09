@@ -212,7 +212,7 @@ export default function FallbackModelSettings() {
               placeholder="http://localhost:8080"
               className="font-mono text-sm"
             />
-            <p className="text-xs text-muted-foreground">Override the provider's default API endpoint.</p>
+            <p className="text-xs text-muted-foreground">Override the provider&apos;s default API endpoint.</p>
           </div>
 
           <Separator />

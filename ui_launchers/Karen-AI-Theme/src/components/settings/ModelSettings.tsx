@@ -1,27 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  AlertCircle, 
-  Bot, 
-  CheckCircle2, 
-  ExternalLink, 
-  KeyRound, 
-  Loader2, 
-  RefreshCw, 
-  Save, 
-  Server, 
+import {
+  Bot,
+  CheckCircle2,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  RefreshCw,
+  Save,
+  Server,
   HardDrive,
-  XCircle, 
-  PlusCircle, 
-  ChevronRight,
+  XCircle,
+  PlusCircle,
   ShieldCheck,
   Settings2,
   Info,
   InfoIcon
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Alert, AlertDescription } from '../ui/alert';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue, SelectSeparator } from '../ui/select';
@@ -30,7 +28,6 @@ import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import OllamaModelManager from './OllamaModelManager';
 import { useToast } from '@/hooks/use-toast';
 import { ApiError, apiClient } from '@/lib/api';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -195,7 +192,7 @@ export default function ModelSettings() {
     return buildProviderGroups(settings?.providers ?? []);
   }, [settings]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get<ModelSettingsResponse>('/api/settings/model');
@@ -211,9 +208,9 @@ export default function ModelSettings() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  const loadProviderModels = async (providerId: string, providerBaseUrl?: string) => {
+  const loadProviderModels = useCallback(async (providerId: string, providerBaseUrl?: string) => {
     if (!providerId) return;
     setIsLoadingModels(true);
     try {
@@ -235,9 +232,9 @@ export default function ModelSettings() {
     } finally {
       setIsLoadingModels(false);
     }
-  };
+  }, [toast]);
 
-  useEffect(() => { void loadSettings(); }, []);
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
 
   useEffect(() => {
     if (!selectedProviderDetails) return;
@@ -253,7 +250,7 @@ export default function ModelSettings() {
     setAvailableModels(selectedProviderDetails.models);
     setSelectedModel(providerDefaultModel);
     void loadProviderModels(selectedProviderDetails.id, providerBaseUrl);
-  }, [selectedProviderDetails]);
+  }, [selectedProviderDetails, loadProviderModels]);
 
   useEffect(() => {
     if (!selectedProviderDetails?.requires_api_key) {
@@ -578,17 +575,8 @@ export default function ModelSettings() {
               {/* Dynamic Contextual Configuration */}
               {selectedProviderDetails && (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-8">
-                  {selectedProvider === 'ollama' ? (
-                    <OllamaModelManager
-                      ollamaAddress={baseUrl}
-                      selectedModel={selectedModel}
-                      onAddressChange={setBaseUrl}
-                      onModelSelect={setSelectedModel}
-                      onModelsDiscovered={setAvailableModels}
-                    />
-                  ) : (
-                    <div className="grid gap-8">
-                      {/* Endpoint & Discovery Row */}
+                  <div className="grid gap-8">
+                    {/* Endpoint & Discovery Row */}
                       <div className="grid gap-6 md:grid-cols-2">
                         {selectedProviderDetails.supports_base_url_override && (
                           <div className="space-y-3">
@@ -666,7 +654,6 @@ export default function ModelSettings() {
                         </div>
                       )}
                     </div>
-                  )}
 
                   <div className="flex justify-end pt-4">
                     <Button onClick={handleSave} disabled={isSaving} className="h-11 w-full sm:w-auto px-8 font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95">
@@ -698,7 +685,7 @@ export default function ModelSettings() {
               <CardContent className="pt-4 space-y-6">
                 <div className="space-y-4">
                   <div className="rounded-xl border border-border/60 bg-muted/5 px-4 py-3">
-                    <p className="text-xs leading-relaxed text-muted-foreground/90 font-medium italic">"{selectedProviderDetails.description}"</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground/90 font-medium italic">&quot;{selectedProviderDetails.description}&quot;</p>
                   </div>
                   
                   <div className="grid gap-2">

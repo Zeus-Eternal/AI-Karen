@@ -63,8 +63,8 @@ export interface StructuredContent {
 
 export interface SuggestedAction {
   type: string;
-  params: Record<string, any>;
-  confidence: number;
+  params?: Record<string, any>;
+  confidence?: number;
   description?: string;
 }
 

@@ -22,7 +22,7 @@ from ai_karen_engine.chat.tool_integration_service import (
     ToolExecutionResult,
     ToolIntegrationService,
 )
-from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
@@ -42,7 +42,7 @@ router = APIRouter(tags=["code-execution"])
 
 
 # Alias core dependency for convenience
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 
 
 # Request/Response Models

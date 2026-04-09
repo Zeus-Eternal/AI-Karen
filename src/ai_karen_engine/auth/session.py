@@ -25,16 +25,16 @@ def _get_auth_middleware():
 
 
 async def _authenticate_request(request: Request) -> Dict[str, Any]:
-    import os
-    auth_bypass = os.getenv("KARI_AUTH_BYPASS", "true").lower() == "true"
-    if auth_bypass:
+    from ai_karen_engine.core.auth_config import auth_config
+
+    if auth_config.should_bypass_auth():
         logger.debug("Auth bypass active in session helper")
         return {
             "user_id": "dev-user",
             "email": "dev-user@localhost",
             "user_type": "developer",
             "permissions": ["extension:*", "chat:*", "admin:*"],
-            "token_id": "dev-token-id"
+            "token_id": "dev-token-id",
         }
 
     middleware = _get_auth_middleware()

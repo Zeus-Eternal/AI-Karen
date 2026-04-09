@@ -7,7 +7,7 @@
     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   },
   "models": {
-    "default_provider": "transformers",
+    "default_provider": "openai",
     "model_dir": "models",
     "cache_enabled": true
   },

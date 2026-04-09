@@ -8,14 +8,14 @@ import { Separator } from "@/components/ui/separator";
 import { apiClient } from "@/lib/api";
 import {
   Activity, CheckCircle2, XCircle, RefreshCw, Loader2,
-  Cpu, HardDrive, Wifi, Globe, Shield, Clock, Server
+  Cpu, HardDrive, Shield, Server
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 type HealthData = {
   status: string;
   timestamp?: string;
-  services?: Record<string, any>;
+  services?: Record<string, unknown>;
   nlp_assets?: {
     spacy_installed: boolean;
     spacy_model_name: string;
@@ -25,7 +25,7 @@ type HealthData = {
     runtime_downloads_enabled: boolean;
     ready: boolean;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export default function SystemConfigPanel() {
@@ -128,7 +128,7 @@ export default function SystemConfigPanel() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-4">
                   {Object.entries(health.services).map(([name, info]) => {
                     const svcHealthy = typeof info === 'object' && info !== null
-                      ? info.status === 'healthy' || info.status === 'ok' || info.connected === true
+                      ? (info as { status?: string; connected?: boolean }).status === 'healthy' || (info as { status?: string; connected?: boolean }).status === 'ok' || (info as { status?: string; connected?: boolean }).connected === true
                       : info === true;
                     return (
                       <div key={name} className={`flex items-center gap-2 p-3 rounded-xl border ${
@@ -141,8 +141,8 @@ export default function SystemConfigPanel() {
                         )}
                         <div className="min-w-0">
                           <p className="text-sm font-medium capitalize truncate">{name.replace(/_/g, ' ')}</p>
-                          {typeof info === 'object' && info?.status && (
-                            <p className="text-[10px] text-muted-foreground">{info.status}</p>
+                          {typeof info === 'object' && info !== null && (info as { status?: string }).status && (
+                            <p className="text-[10px] text-muted-foreground">{(info as { status: string }).status}</p>
                           )}
                         </div>
                       </div>

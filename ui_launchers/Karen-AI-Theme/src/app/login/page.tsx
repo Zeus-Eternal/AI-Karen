@@ -142,7 +142,7 @@ function LoginForm() {
                 />
                 {loginMode === 'username' && (
                   <p className="text-xs text-muted-foreground">
-                    Try "admin" for testing
+                    Try &quot;admin&quot; for testing
                   </p>
                 )}
               </div>
@@ -168,7 +168,7 @@ function LoginForm() {
                 />
                 {loginMode === 'username' && (
                   <p className="text-xs text-muted-foreground">
-                    Try "admin123" for testing
+                    Try &quot;admin123&quot; for testing
                   </p>
                 )}
               </div>

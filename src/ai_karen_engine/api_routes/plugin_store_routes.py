@@ -632,7 +632,7 @@ class PluginStore:
 
 
 # Create router
-router = APIRouter(prefix="/api/store", tags=["plugin-store"])
+router = APIRouter(prefix="/store", tags=["plugin-store"])
 
 
 @router.get("/search", response_model=Dict[str, Any])
@@ -674,10 +674,18 @@ async def get_plugin_details_endpoint(
 @router.post("/install", response_model=Dict[str, Any])
 async def install_plugin_endpoint(
     request: PluginInstallRequest,
-    api_key: APIKey = Depends(APIKeyHeader(name="X-API-Key")),
+    api_key: Optional[str] = Depends(APIKeyHeader(name="X-API-Key", auto_error=False)),
+    current_user=Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> Dict[str, Any]:
     """Install plugin from store."""
+    # Check authentication - either API key or JWT user
+    if not api_key and not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required (API key or JWT token)",
+        )
+
     # Initialize plugin store
     from src.extensions.core.registry.marketplace_discovery import MarketplaceDiscovery
     from src.extensions.core.host.lifecycle_manager import LifecycleManager

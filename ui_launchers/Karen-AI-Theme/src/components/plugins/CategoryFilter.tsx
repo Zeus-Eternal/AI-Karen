@@ -1,7 +1,6 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Filter, X } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { PluginCategory, CategoryInfo } from '@/types/plugin';
 
 interface CategoryFilterProps {

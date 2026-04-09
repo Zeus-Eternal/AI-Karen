@@ -2,7 +2,7 @@ import type { ChatMessage, MessageResponse } from '@/lib/types';
 
 type SuggestedAction = {
   type: string;
-  params?: Record<string, any>;
+  params?: Record<string, string | number | boolean | null | undefined>;
   confidence?: number;
   description?: string;
 };
@@ -11,10 +11,10 @@ type BackendChatEnvelope = {
   answer?: string;
   content?: string;
   response?: string;
-  structured_content?: Record<string, any>;
-  structuredContent?: Record<string, any>;
+  structured_content?: Record<string, unknown>;
+  structuredContent?: Record<string, unknown>;
   actions?: SuggestedAction[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   correlation_id?: string;
   request_id?: string;
   response_id?: string;
@@ -23,16 +23,16 @@ type BackendChatEnvelope = {
   assistant_message_id?: string;
   conversation_id?: string;
   model?: string;
-  usage?: Record<string, any>;
+  usage?: Record<string, unknown>;
   used_fallback?: boolean;
   context_used?: boolean;
 };
 
 export type NormalizedChatResponse = {
   answer: string;
-  structuredContent: Record<string, any>;
+  structuredContent: Record<string, unknown>;
   actions: SuggestedAction[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   correlationId: string;
 };
 

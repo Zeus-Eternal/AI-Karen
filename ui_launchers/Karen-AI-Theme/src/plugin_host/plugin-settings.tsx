@@ -14,7 +14,7 @@
  * Requirements: 4.3
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -233,7 +233,7 @@ export function PluginSettingsProvider({ children }: { children: React.ReactNode
       });
       return false;
     }
-  }, [pluginSettings]);
+  }, []);
 
   const loadAllSettings = useCallback(async () => {
     try {

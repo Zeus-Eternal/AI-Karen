@@ -4,13 +4,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 try:
     from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.core.dependencies import (
-    get_current_user_context,
+    bypass_user_context_func,
     get_plugin_service,
 )
 from ai_karen_engine.core.logging import get_logger
@@ -21,6 +22,7 @@ from ai_karen_engine.models.web_api_error_responses import (
     get_http_status_for_error_code,
 )
 from services.infra.plugin_service import PluginService
+
 # REMOVED: RBAC access control - replaced with simple role checking
 from services.memory.internal.plugin_execution import ExecutionRequest
 
@@ -30,7 +32,7 @@ public_router = APIRouter(tags=["plugins-public"], prefix="/api/public/plugins")
 
 
 # Alias core dependency for convenience
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 
 
 logger = get_logger(__name__)
@@ -192,7 +194,10 @@ async def list_plugins_public(
         return await list_plugins(category, enabled_only, plugin_service)  # type: ignore[arg-type]
     except Exception:
         # Never fail hard on public endpoint; return empty response
-        return PluginListResponse(plugins=[], total_count=0, enabled_count=0, disabled_count=0)
+        return PluginListResponse(
+            plugins=[], total_count=0, enabled_count=0, disabled_count=0
+        )
+
 
 __all__ = [
     "router",

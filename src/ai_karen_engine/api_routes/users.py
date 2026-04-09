@@ -2,7 +2,9 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-from ai_karen_engine.auth.auth_middleware import get_current_user as get_current_user_context
+from ai_karen_engine.auth.auth_middleware import (
+    get_current_user as bypass_user_context_func,
+)
 from ai_karen_engine.core.dependencies import get_analytics_service
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 from ai_karen_engine.auth.auth_service import AuthService, get_auth_service
@@ -124,7 +126,7 @@ error_responses = {
 )
 async def get_profile(
     user_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow access to own profile or for admin roles
@@ -132,7 +134,8 @@ async def get_profile(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail=error_detail("Not authorized to access this profile")
+            status_code=403,
+            detail=error_detail("Not authorized to access this profile"),
         )
 
     profile = await asyncio.to_thread(db.get_profile, user_id)
@@ -150,7 +153,7 @@ async def get_profile(
 async def save_profile(
     user_id: str,
     profile: UserProfile,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow modifications to own profile or for admin roles
@@ -158,7 +161,8 @@ async def save_profile(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail=error_detail("Not authorized to modify this profile")
+            status_code=403,
+            detail=error_detail("Not authorized to modify this profile"),
         )
 
     data = profile.dict(exclude={"user_id"})
@@ -174,7 +178,7 @@ async def save_profile(
 )
 async def create_user(
     request: CreateUserRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
 ) -> UserResponse:
     """Create a new user (admin only)."""
     # Only allow admin users to create new users
@@ -196,13 +200,15 @@ async def create_user(
         return UserResponse(
             user_id=user_data.user_id,
             email=user_data.email,
-            full_name=getattr(user_data, 'full_name', None),
+            full_name=getattr(user_data, "full_name", None),
             tenant_id=user_data.tenant_id,
             roles=user_data.roles,
-            preferences=getattr(user_data, 'preferences', {}),
+            preferences=getattr(user_data, "preferences", {}),
             is_active=user_data.is_active,
             is_verified=user_data.is_verified,
-            last_login=user_data.last_login.isoformat() if getattr(user_data, "last_login", None) else None,
+            last_login=user_data.last_login.isoformat()
+            if getattr(user_data, "last_login", None)
+            else None,
             created_at=user_data.created_at.isoformat(),
             updated_at=user_data.updated_at.isoformat(),
         )
@@ -210,9 +216,13 @@ async def create_user(
     except UserAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=error_detail(str(e)))
     except RateLimitExceededError as e:
-        retry_after = e.details.get("retry_after") if isinstance(e.details, dict) else None
+        retry_after = (
+            e.details.get("retry_after") if isinstance(e.details, dict) else None
+        )
         headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
-        raise HTTPException(status_code=429, detail=error_detail(str(e)), headers=headers)
+        raise HTTPException(
+            status_code=429, detail=error_detail(str(e)), headers=headers
+        )
     except SecurityError as e:
         raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
@@ -231,7 +241,7 @@ async def create_user(
 )
 async def get_user(
     user_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
 ) -> UserResponse:
     """Get user details (own profile or admin only)."""
     # Only allow access to own profile or for admin roles
@@ -252,13 +262,15 @@ async def get_user(
         return UserResponse(
             user_id=user_data.user_id,
             email=user_data.email,
-            full_name=getattr(user_data, 'full_name', None),
+            full_name=getattr(user_data, "full_name", None),
             tenant_id=user_data.tenant_id,
             roles=user_data.roles,
-            preferences=getattr(user_data, 'preferences', {}),
+            preferences=getattr(user_data, "preferences", {}),
             is_active=user_data.is_active,
             is_verified=user_data.is_verified,
-            last_login=user_data.last_login.isoformat() if getattr(user_data, "last_login", None) else None,
+            last_login=user_data.last_login.isoformat()
+            if getattr(user_data, "last_login", None)
+            else None,
             created_at=user_data.created_at.isoformat(),
             updated_at=user_data.updated_at.isoformat(),
         )
@@ -279,14 +291,17 @@ async def get_user(
 )
 async def get_user_metrics(
     user_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
     analytics_service: Any = Depends(get_analytics_service),
     hours: int = 168,
 ) -> UserMetricsResponse:
     """Get backend-derived per-user metrics (own profile or admin only)."""
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get("roles", []):
+    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
+        "roles", []
+    ):
         raise HTTPException(
-            status_code=403, detail=error_detail("Not authorized to access this user's metrics")
+            status_code=403,
+            detail=error_detail("Not authorized to access this user's metrics"),
         )
 
     try:
@@ -295,7 +310,9 @@ async def get_user_metrics(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
     except Exception:
-        raise HTTPException(status_code=500, detail=error_detail("Failed to get user metrics"))
+        raise HTTPException(
+            status_code=500, detail=error_detail("Failed to get user metrics")
+        )
 
 
 @router.put(
@@ -307,7 +324,7 @@ async def get_user_metrics(
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
 ) -> UserResponse:
     """Update user details (own profile or admin only)."""
     # Only allow modifications to own profile or for admin roles
@@ -320,14 +337,17 @@ async def update_user(
         )
 
     # Only admin can modify roles and is_active status
-    if (request.roles is not None or request.is_active is not None) and "admin" not in current_user.get("roles", []):
+    if (
+        request.roles is not None or request.is_active is not None
+    ) and "admin" not in current_user.get("roles", []):
         raise HTTPException(
-            status_code=403, detail=error_detail("Not authorized to modify user roles or status")
+            status_code=403,
+            detail=error_detail("Not authorized to modify user roles or status"),
         )
 
     try:
         auth_service = await get_auth_service_instance()
-        
+
         # Get current user data
         user_data = await auth_service.get_user_by_id(user_id)
         if not user_data:
@@ -345,13 +365,15 @@ async def update_user(
         return UserResponse(
             user_id=updated_user.user_id,
             email=updated_user.email,
-            full_name=getattr(updated_user, 'full_name', None),
+            full_name=getattr(updated_user, "full_name", None),
             tenant_id=updated_user.tenant_id,
             roles=updated_user.roles,
-            preferences=getattr(updated_user, 'preferences', {}),
+            preferences=getattr(updated_user, "preferences", {}),
             is_active=updated_user.is_active,
             is_verified=updated_user.is_verified,
-            last_login=updated_user.last_login.isoformat() if getattr(updated_user, "last_login", None) else None,
+            last_login=updated_user.last_login.isoformat()
+            if getattr(updated_user, "last_login", None)
+            else None,
             created_at=updated_user.created_at.isoformat(),
             updated_at=updated_user.updated_at.isoformat(),
         )
@@ -363,7 +385,9 @@ async def update_user(
     except AuthError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
     except Exception:
-        raise HTTPException(status_code=500, detail=error_detail("Failed to update user"))
+        raise HTTPException(
+            status_code=500, detail=error_detail("Failed to update user")
+        )
 
 
 @router.delete(
@@ -373,7 +397,7 @@ async def update_user(
 )
 async def delete_user(
     user_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
 ) -> Response:
     """Delete a user (admin only)."""
     # Only allow admin users to delete users
@@ -404,7 +428,9 @@ async def delete_user(
     except AuthError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
     except Exception:
-        raise HTTPException(status_code=500, detail=error_detail("Failed to delete user"))
+        raise HTTPException(
+            status_code=500, detail=error_detail("Failed to delete user")
+        )
 
 
 @router.get(
@@ -414,7 +440,7 @@ async def delete_user(
     responses=error_responses,
 )
 async def list_users(
-    current_user: Dict[str, Any] = Depends(get_current_user_context),
+    current_user: Dict[str, Any] = Depends(bypass_user_context_func),
     tenant_id: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
@@ -438,13 +464,15 @@ async def list_users(
             UserResponse(
                 user_id=user.user_id,
                 email=user.email,
-                full_name=getattr(user, 'full_name', None),
+                full_name=getattr(user, "full_name", None),
                 tenant_id=user.tenant_id,
                 roles=user.roles,
-                preferences=getattr(user, 'preferences', {}),
+                preferences=getattr(user, "preferences", {}),
                 is_active=user.is_active,
                 is_verified=user.is_verified,
-                last_login=user.last_login.isoformat() if getattr(user, "last_login", None) else None,
+                last_login=user.last_login.isoformat()
+                if getattr(user, "last_login", None)
+                else None,
                 created_at=user.created_at.isoformat(),
                 updated_at=user.updated_at.isoformat(),
             )
@@ -454,4 +482,6 @@ async def list_users(
     except AuthError as e:
         raise HTTPException(status_code=400, detail=error_detail(str(e)))
     except Exception:
-        raise HTTPException(status_code=500, detail=error_detail("Failed to list users"))
+        raise HTTPException(
+            status_code=500, detail=error_detail("Failed to list users")
+        )

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,21 @@ type User = {
   lastLogin: string | null;
   timeSpent: string;
   tokenUsage: number;
+};
+
+type MaintenanceAction = {
+  action_type: string;
+  timestamp: string;
+  description: string;
+  target: string;
+  size_bytes: number;
+};
+
+type MaintenanceReport = {
+  total_actions: number;
+  bytes_cleaned: number;
+  dry_run: boolean;
+  actions: MaintenanceAction[];
 };
 
 const initialUsers: User[] = [
@@ -113,7 +128,7 @@ export default function AdminPage() {
     const [selectedCollection, setSelectedCollection] = useState<keyof typeof dbDocuments>('users');
     
     // Maintenance State
-    const [maintenanceReport, setMaintenanceReport] = useState<any>(null);
+    const [maintenanceReport, setMaintenanceReport] = useState<MaintenanceReport | null>(null);
     const [isCleaning, setIsCleaning] = useState(false);
     const [dryRun, setDryRun] = useState(true);
     const [lastCleanupStatus, setLastCleanupStatus] = useState<{ status: string; last_run: string | null }>({ status: 'ready', last_run: null });
@@ -136,7 +151,7 @@ export default function AdminPage() {
     const handleRunCleanup = async () => {
         setIsCleaning(true);
         try {
-            const report = await apiClient.post<any>(`/api/maintenance/cleanup?dry_run=${dryRun}`);
+            const report = await apiClient.post<MaintenanceReport>(`/api/maintenance/cleanup?dry_run=${dryRun}`);
             setMaintenanceReport(report);
             setLastCleanupStatus({
                 status: 'completed',
@@ -477,7 +492,7 @@ export default function AdminPage() {
                             <div className="lg:col-span-2 space-y-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="flex items-center"><FileJson className="mr-2 h-5 w-5"/> Documents in <span className="text-primary mx-1">'{selectedCollection}'</span></CardTitle>
+                                        <CardTitle className="flex items-center"><FileJson className="mr-2 h-5 w-5"/> Documents in <span className="text-primary mx-1">&apos;{selectedCollection}&apos;</span></CardTitle>
                                         <CardDescription>Browse and manage documents within the selected collection.</CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -564,7 +579,7 @@ export default function AdminPage() {
                                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{(maintenanceReport?.bytes_cleaned / (1024 * 1024)).toFixed(2) || '0.00'} MB</div>
+                                    <div className="text-2xl font-bold">{((maintenanceReport?.bytes_cleaned ?? 0) / (1024 * 1024)).toFixed(2)} MB</div>
                                     <p className="text-xs text-muted-foreground">Disk space recovered</p>
                                 </CardContent>
                             </Card>
@@ -638,7 +653,7 @@ export default function AdminPage() {
                                     {maintenanceReport ? (
                                         <ScrollArea className="h-[400px] rounded-md border p-4 bg-muted/20">
                                             <div className="space-y-4">
-                                                {maintenanceReport.actions.map((action: any, i: number) => (
+                                                {maintenanceReport.actions.map((action: MaintenanceAction, i: number) => (
                                                     <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-background border shadow-sm">
                                                         <div className={`mt-1 p-1 rounded-full ${action.action_type.includes('error') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                                                             {action.action_type.includes('error') ? <AlertCircle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}

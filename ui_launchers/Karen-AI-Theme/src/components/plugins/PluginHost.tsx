@@ -10,13 +10,12 @@
  * Requirements: 3.1, 3.2, 3.3, 3.4, 7.1, 7.2, 7.3, 7.4, 7.5, 9.3, 9.4, 29, 30
  */
 
-import React, { Suspense, lazy, useMemo, useEffect, useState } from 'react';
+import React, { Suspense, useMemo, useEffect, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { 
-  resolvePluginComponent, 
-  resolvePluginComponentAsync, 
+import {
+  resolvePluginComponentAsync,
   normalizePluginId,
-  getRegisteredPluginIds 
+  getRegisteredPluginIds
 } from '../../plugin_host/loader';
 import { setPluginMountState } from '../../plugin_host/registry';
 import { PluginErrorBoundary } from '../../plugin_host/PluginErrorBoundary';
@@ -42,12 +41,15 @@ export function PluginHost({ pluginId, fallback }: PluginHostProps) {
         setIsLoading(true);
         
         // Use async loader to resolve component from installed packages only
+        console.log(`[PluginHost] Resolving component for ${pluginId}`);
         const component = await resolvePluginComponentAsync(pluginId);
-        
+        console.log(`[PluginHost] Resolved component for ${pluginId}:`, !!component);
+
         if (component) {
           setPluginComponent(component);
           setPluginMountState(pluginId, 'loading');
         } else {
+          console.warn(`[PluginHost] No component found for ${pluginId}`);
           setPluginMountState(pluginId, 'not_registered');
         }
       } catch (error) {
@@ -140,11 +142,6 @@ function PluginMountTracker({
 }
 
 // ─── PluginErrorBoundary ──────────────────────────────────────────────────────
-
-interface ErrorBoundaryProps {
-  pluginId: string;
-  children: React.ReactNode;
-}
 
 // ─── Plugin_Error_Boundary Usage ─────────────────────────────────────────────
 // The PluginErrorBoundary component is imported from plugin_host/PluginErrorBoundary.tsx

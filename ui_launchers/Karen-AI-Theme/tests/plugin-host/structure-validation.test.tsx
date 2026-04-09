@@ -25,14 +25,26 @@ describe('Structure Validation Tests', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Property 5: Root Manifest Detection', () => {
+describe('Property 5: Root Manifest Detection', () => {
     it('should only recognize root manifest at canonical plugin root', () => {
       // Test that root manifest is detected only at the correct location
       const canonicalRoot = 'src/extensions/plugins/weather-query/manifest.json';
       const incorrectLocation = 'src/extensions/plugins/weather-query/subdir/manifest.json';
       
-      expect(canonicalRoot).toMatch(/src\/extensions\/(plugins|sys_extensions|channels)\/.*\/manifest\.json$/);
+      expect(canonicalRoot).toMatch(/^src\/extensions\/(plugins|sys_extensions|channels)\/[^\/]+\/manifest\.json$/);
       expect(incorrectLocation).not.toMatch(/^src\/extensions\/(plugins|sys_extensions|channels)\/[^\/]+\/manifest\.json$/);
+    });
+
+    it('should reject GUI manifests in non-canonical locations', () => {
+      const invalidLocations = [
+        'src/extensions/plugins/weather-query/prompts/manifest.json', // This is prompts directory
+        'src/extensions/plugins/manifest.json', // This is category level
+        'src/extensions/plugins/weather-query/subdir/manifest.json', // This is subdir
+      ];
+
+      invalidLocations.forEach(location => {
+        expect(location).not.toMatch(/^src\/extensions\/(plugins|sys_extensions|channels)\/[^\/]+\/[^\/]+\/manifest\.json$/);
+      });
     });
 
     it('should reject root manifests in non-canonical locations', () => {
@@ -63,9 +75,9 @@ describe('Structure Validation Tests', () => {
 
     it('should reject GUI manifests in non-canonical locations', () => {
       const invalidLocations = [
-        'src/extensions/plugins/weather-query/manifest.json', // This is root manifest location
         'src/extensions/plugins/weather-query/prompts/manifest.json', // This is prompts directory
         'src/extensions/plugins/manifest.json', // This is category level
+        'src/extensions/plugins/weather-query/subdir/manifest.json', // This is subdir
       ];
 
       invalidLocations.forEach(location => {

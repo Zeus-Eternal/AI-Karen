@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useAgentStore } from '@/lib/agent-ui/store';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,7 +19,7 @@ export function AgentChat({ agent, className = '', onClose }: AgentChatProps) {
   const { messages, sendMessage, initSession, loading } = useAgentStore();
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const agentMessages = messages[agent.id] || [];
+  const agentMessages = useMemo(() => messages[agent.id] || [], [messages, agent.id]);
   const isAgentLoading = loading[agent.id] || false;
 
   useEffect(() => {

@@ -5,17 +5,19 @@ export interface AiData {
   knowledgeGraphInsights?: string;
 }
 
+import type { SuggestedAction } from '@/lib/agent-ui/service';
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
   content: string;
   timestamp: Date;
   aiData?: AiData;
-  imageDataUri?: string; 
+  imageDataUri?: string;
   shouldAutoPlay?: boolean;
-  structuredContent?: Record<string, any>;
-  actions?: any[];
-  metadata?: Record<string, any>;
+  structuredContent?: Record<string, unknown>;
+  actions?: SuggestedAction[];
+  metadata?: Record<string, unknown>;
   status?: 'pending' | 'streaming' | 'completed' | 'failed';
 }
 
@@ -60,19 +62,23 @@ export interface MessageResponse {
   role: string;
   content: string;
   timestamp: string;
-  metadata: Record<string, any>;
-  function_call?: Record<string, any>;
-  function_response?: Record<string, any>;
+  metadata: Record<string, unknown>;
+  function_call?: Record<string, unknown>;
+  function_response?: Record<string, unknown>;
   ui_source?: string;
   ai_confidence?: number;
   processing_time_ms?: number;
   tokens_used?: number;
   model_used?: string;
   user_feedback?: string;
-  structured_content?: Record<string, any>;
-  actions?: any[];
+  structured_content?: Record<string, unknown>;
+  actions?: Array<{
+    type: string;
+    description?: string;
+    confidence?: number;
+  }>;
   edited: boolean;
-  edit_history: any[];
+  edit_history: unknown[];
 }
 
 export interface ConversationResponse {
@@ -80,7 +86,7 @@ export interface ConversationResponse {
   user_id: string;
   title?: string;
   messages: MessageResponse[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;

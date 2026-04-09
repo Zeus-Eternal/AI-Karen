@@ -6,7 +6,6 @@ import {
   BookText,
   Bot,
   Cog,
-  Cpu,
   GraduationCap,
   KeyRound,
   MessageSquareMore,
@@ -127,7 +126,7 @@ export default function SettingsDialog({ inSheet = false, adminMode = false }: S
             <h2 className="text-3xl font-bold tracking-tight text-foreground">Application Settings</h2>
           </div>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Fine-tune Karen's intelligence, manage your personal data, and configure system runtime parameters.
+            Fine-tune Karen&apos;s intelligence, manage your personal data, and configure system runtime parameters.
           </p>
         </div>
       )}

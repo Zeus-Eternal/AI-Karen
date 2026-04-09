@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,6 @@ import {
   Package,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Calendar,
   Shield,
   Link as LinkIcon,
@@ -66,11 +66,14 @@ export function PluginDetailsModal({
         <DialogHeader>
           <div className="flex items-start gap-4">
             {plugin.icon && (
-              <img
+              <Image
                 src={plugin.icon}
                 alt={`${plugin.display_name} icon`}
+                width={64}
+                height={64}
                 className="h-16 w-16 rounded-lg object-cover"
               />
+
             )}
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-xl">{plugin.display_name}</DialogTitle>

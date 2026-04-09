@@ -22,8 +22,8 @@ from .security import (
     validate_content, sanitize_content, get_content_validator, 
     SecurityLevel, ThreatLevel
 )
-from .monitoring import (
-    record_chat_metric, start_chat_session, update_chat_session, 
+from .security_monitoring import (
+    record_chat_metric, start_chat_session, update_chat_session,
     end_chat_session, MetricType, log_security_event, get_chat_monitoring_service
 )
 

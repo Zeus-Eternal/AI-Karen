@@ -1,0 +1,102 @@
+{
+  "model_discovery": {
+    "enable_discovery": true,
+    "scan_interval_minutes": 30,
+    "models_directory": "models",
+    "supported_formats": [
+      "gguf",
+      "safetensors",
+      "bin",
+      "pt",
+      "pth"
+    ],
+    "enable_metadata_extraction": true,
+    "enable_capability_detection": true,
+    "max_model_size_gb": 50.0,
+    "enable_background_validation": true
+  },
+  "model_routing": {
+    "enable_routing": true,
+    "enable_fallback": true,
+    "connection_timeout_seconds": 30,
+    "max_retry_attempts": 3,
+    "enable_load_balancing": false,
+    "routing_strategy": "capability_based",
+    "enable_model_switching": true,
+    "preserve_profile_routing": true
+  },
+  "cache": {
+    "enable_caching": true,
+    "cache_size_mb": 500,
+    "default_ttl_seconds": 3600,
+    "enable_intelligent_invalidation": true,
+    "enable_cache_warming": true,
+    "cache_hit_threshold": 0.7,
+    "enable_distributed_cache": false,
+    "compression_enabled": true
+  },
+  "performance": {
+    "enable_optimization": true,
+    "cpu_threshold_percent": 5.0,
+    "memory_threshold_mb": 500.0,
+    "enable_resource_monitoring": true,
+    "enable_automatic_optimization": true,
+    "optimization_interval_seconds": 60,
+    "enable_performance_alerts": true,
+    "alert_cooldown_seconds": 300
+  },
+  "content_optimization": {
+    "enable_optimization": true,
+    "enable_redundancy_elimination": true,
+    "enable_relevance_analysis": true,
+    "enable_depth_adaptation": true,
+    "enable_format_optimization": true,
+    "max_response_length": 4000,
+    "enable_progressive_delivery": true
+  },
+  "streaming": {
+    "enable_streaming": true,
+    "chunk_size_bytes": 1024,
+    "enable_priority_ordering": true,
+    "enable_real_time_feedback": true,
+    "streaming_timeout_seconds": 30,
+    "enable_error_recovery": true
+  },
+  "cuda": {
+    "enable_cuda": true,
+    "auto_detect_devices": true,
+    "preferred_device_id": null,
+    "memory_fraction": 0.8,
+    "enable_memory_optimization": true,
+    "enable_batch_processing": true,
+    "fallback_to_cpu": true
+  },
+  "monitoring": {
+    "enable_monitoring": true,
+    "metrics_retention_hours": 24,
+    "enable_real_time_alerts": true,
+    "enable_dashboard": true,
+    "alert_thresholds": {
+      "response_time_ms": 5000,
+      "cpu_usage_percent": 80,
+      "memory_usage_mb": 1000,
+      "error_rate_percent": 10,
+      "cache_hit_rate_percent": 30
+    }
+  },
+  "reasoning_preservation": {
+    "preserve_decision_engine": true,
+    "preserve_flow_manager": true,
+    "preserve_scaffolding_service": true,
+    "preserve_profile_routing": true,
+    "preserve_memory_integration": true,
+    "preserve_personality_application": true,
+    "enable_reasoning_hooks": true,
+    "enable_performance_tracking": true
+  },
+  "enable_optimization_system": true,
+  "optimization_level": "balanced",
+  "enable_experimental_features": false,
+  "config_version": "1.0",
+  "last_updated": 1775489311.056028
+}

@@ -150,11 +150,7 @@
             "class": "DatabaseQueryCacheService",
             "description": "DB-specific query caching"
           },
-          {
-            "module": "cache_invalidation_service",
-            "class": "CacheInvalidationService",
-            "description": "Cache invalidation management"
-          },
+
           {
             "module": "database_optimization_service",
             "class": "DatabaseOptimizationService",
@@ -211,11 +207,7 @@
             "class": "ResponsePerformanceMetrics",
             "description": "Response performance metrics"
           },
-          {
-            "module": "slo_monitoring",
-            "class": "SLOMonitoring",
-            "description": "SLO monitoring"
-          },
+
           {
             "module": "performance_benchmarking",
             "class": "PerformanceBenchmarking",

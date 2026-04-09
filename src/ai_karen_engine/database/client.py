@@ -110,6 +110,7 @@ class DatabaseClient:
             self.AsyncSessionLocal = async_sessionmaker(
                 autocommit=False,
                 autoflush=False,
+                expire_on_commit=False,
                 bind=self.async_engine,
                 class_=AsyncSession
             )
@@ -356,16 +357,20 @@ class DatabaseClient:
     
     @asynccontextmanager
     async def get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """Get async database session with automatic cleanup"""
-        
+        """Get async database session with automatic cleanup and commit."""
         if not self.AsyncSessionLocal:
             raise RuntimeError("Async database not initialized")
         
         async with self.AsyncSessionLocal() as session:
+            yield session
+            # The async_sessionmaker's context manager handles rollback/close on exception.
+            # We only need to commit if everything succeeded.
             try:
-                yield session
+                logger.debug("DatabaseClient: Attempting to commit async session")
                 await session.commit()
-            except Exception:
+                logger.debug("DatabaseClient: Async session committed successfully")
+            except Exception as e:
+                logger.error(f"DatabaseClient: Error committing async session: {e}", exc_info=True)
                 await session.rollback()
                 raise
     

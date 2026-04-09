@@ -6,17 +6,17 @@ It integrates with the existing extensions SDK and theme system to provide beaut
 contextual formatting for different types of AI responses.
 """
 
-from base import ResponseFormatter, FormattedResponse, ContentType
-from registry import ResponseFormatterRegistry
-from content_detector import ContentTypeDetector
-from integration import ResponseFormattingIntegration
+from .base import ResponseFormatter, FormattedResponse, ContentType
+from .registry import ResponseFormatterRegistry
+from .content_detector import ContentTypeDetector
+from .integration import ResponseFormattingIntegration
 
 __version__ = "1.0.0"
 __all__ = [
     "ResponseFormatter",
-    "FormattedResponse", 
+    "FormattedResponse",
     "ContentType",
     "ResponseFormatterRegistry",
     "ContentTypeDetector",
-    "ResponseFormattingIntegration"
+    "ResponseFormattingIntegration",
 ]

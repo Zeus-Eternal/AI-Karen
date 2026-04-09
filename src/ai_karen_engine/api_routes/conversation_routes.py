@@ -4,11 +4,12 @@ FastAPI routes for enhanced conversation management with web UI integration.
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, cast
+import inspect
 
 from ai_karen_engine.core.dependencies import (
     get_conversation_service,
     get_current_tenant_id,
-    get_current_user_context,
+    bypass_user_context_func,
 )
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.conversation_manager import MessageRole, normalize_user_id
@@ -48,7 +49,8 @@ def _require_user_id(user_ctx: Dict[str, Any]) -> str:
 
 
 def _get_total_conversations_from_stats(
-    stats: Any, fallback: int,
+    stats: Any,
+    fallback: int,
 ) -> int:
     """Read total conversation count from either dict or model-like stats."""
     if isinstance(stats, dict):
@@ -67,9 +69,7 @@ class CreateConversationRequest(BaseModel):
     """Request model for creating conversation."""
 
     session_id: str = Field(..., description="Session ID")
-    ui_source: UISource = Field(
-        ..., description="Source UI (web, desktop, api, ag_ui)"
-    )
+    ui_source: UISource = Field(..., description="Source UI (web, desktop, api, ag_ui)")
     title: Optional[str] = Field(None, description="Conversation title")
     initial_message: Optional[str] = Field(None, description="Initial user message")
     user_settings: Optional[Dict[str, Any]] = Field(None, description="User settings")
@@ -85,9 +85,7 @@ class AddMessageRequest(BaseModel):
 
     role: MessageRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
-    ui_source: UISource = Field(
-        ..., description="Source UI (web, desktop, api, ag_ui)"
-    )
+    ui_source: UISource = Field(..., description="Source UI (web, desktop, api, ag_ui)")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
     ai_confidence: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="AI confidence score"
@@ -238,11 +236,11 @@ def _convert_conversation_to_response(conversation) -> ConversationResponse:
     for msg_data in conversation_dict["messages"]:
         messages.append(
             MessageResponse(
-                id=msg_data["id"],
-                role=msg_data["role"],
-                content=msg_data["content"],
-                timestamp=msg_data["timestamp"],
-                metadata=msg_data["metadata"],
+                id=str(msg_data["id"]),
+                role=str(msg_data["role"]),
+                content=str(msg_data["content"]),
+                timestamp=str(msg_data["timestamp"]),
+                metadata=msg_data.get("metadata", {}),
                 function_call=msg_data.get("function_call"),
                 function_response=msg_data.get("function_response"),
                 ui_source=msg_data.get("ui_source"),
@@ -251,33 +249,33 @@ def _convert_conversation_to_response(conversation) -> ConversationResponse:
                 tokens_used=msg_data.get("tokens_used"),
                 model_used=msg_data.get("model_used"),
                 user_feedback=msg_data.get("user_feedback"),
-                edited=msg_data.get("edited", False),
+                edited=bool(msg_data.get("edited", False)),
                 edit_history=msg_data.get("edit_history", []),
             )
         )
 
     return ConversationResponse(
-        id=conversation_dict["id"],
-        user_id=conversation_dict["user_id"],
-        title=conversation_dict["title"],
+        id=str(conversation_dict["id"]),
+        user_id=str(conversation_dict["user_id"]),
+        title=conversation_dict.get("title"),
         messages=messages,
-        metadata=conversation_dict["metadata"],
-        is_active=conversation_dict["is_active"],
-        created_at=conversation_dict["created_at"],
-        updated_at=conversation_dict["updated_at"],
-        message_count=conversation_dict["message_count"],
-        last_message_at=conversation_dict["last_message_at"],
-        session_id=conversation_dict["session_id"],
-        ui_context=conversation_dict["ui_context"],
-        ai_insights=conversation_dict["ai_insights"],
-        user_settings=conversation_dict["user_settings"],
-        summary=conversation_dict["summary"],
-        tags=conversation_dict["tags"],
-        last_ai_response_id=conversation_dict["last_ai_response_id"],
-        status=conversation_dict["status"],
-        priority=conversation_dict["priority"],
-        context_memories=conversation_dict["context_memories"],
-        proactive_suggestions=conversation_dict["proactive_suggestions"],
+        metadata=conversation_dict.get("metadata", {}),
+        is_active=bool(conversation_dict.get("is_active", True)),
+        created_at=str(conversation_dict["created_at"]),
+        updated_at=str(conversation_dict["updated_at"]),
+        message_count=int(conversation_dict.get("message_count", 0)),
+        last_message_at=conversation_dict.get("last_message_at"),
+        session_id=conversation_dict.get("session_id"),
+        ui_context=conversation_dict.get("ui_context", {}),
+        ai_insights=conversation_dict.get("ai_insights", {}),
+        user_settings=conversation_dict.get("user_settings", {}),
+        summary=conversation_dict.get("summary"),
+        tags=conversation_dict.get("tags", []),
+        last_ai_response_id=conversation_dict.get("last_ai_response_id"),
+        status=str(conversation_dict.get("status", "active")),
+        priority=str(conversation_dict.get("priority", "normal")),
+        context_memories=conversation_dict.get("context_memories", []),
+        proactive_suggestions=conversation_dict.get("proactive_suggestions", []),
     )
 
 
@@ -286,7 +284,7 @@ async def create_conversation(
     request: CreateConversationRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Create a new conversation with web UI features."""
     try:
@@ -347,21 +345,23 @@ async def get_conversation(
     include_context: bool = Query(True, description="Include context data"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Get conversation by ID with web UI features."""
     try:
         # DEBUG: Log service availability
-        logger.info(f"🔍 DEBUG: Getting conversation {conversation_id} with service: {type(conversation_service).__name__}")
+        logger.info(
+            f"🔍 DEBUG: Getting conversation {conversation_id} with service: {type(conversation_service).__name__}"
+        )
         logger.info(f"🔍 DEBUG: Service registry status: {conversation_service}")
-        
+
         conversation = await conversation_service.get_web_ui_conversation(
             tenant_id=tenant_id,
             conversation_id=conversation_id,
             include_context=include_context,
             user_id=user_ctx.get("user_id"),
         )
-        
+
         logger.info(f"🔍 DEBUG: Successfully retrieved conversation {conversation_id}")
 
         if not conversation:
@@ -402,30 +402,42 @@ async def get_conversation_by_session(
     include_context: bool = Query(True, description="Include context data"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Retrieve a conversation using its session identifier."""
 
     try:
         # DEBUG: Log session lookup details
-        logger.info("🔍 DEBUG: Attempting to retrieve conversation by session ID: %s", session_id)
+        logger.info(
+            "🔍 DEBUG: Attempting to retrieve conversation by session ID: %s",
+            session_id,
+        )
         logger.info("🔍 DEBUG: Tenant ID: %s", tenant_id)
         logger.info("🔍 DEBUG: User context: %s", user_ctx)
-        logger.info("🔍 DEBUG: Conversation service type: %s", type(conversation_service).__name__)
-        
+        logger.info(
+            "🔍 DEBUG: Conversation service type: %s",
+            type(conversation_service).__name__,
+        )
+
         conversation = await conversation_service.get_web_ui_conversation_by_session(
             tenant_id=tenant_id,
             session_id=session_id,
             user_id=user_ctx.get("user_id"),
             include_context=include_context,
         )
-        
-        logger.info("🔍 DEBUG: Conversation lookup result: %s", conversation is not None)
+
+        logger.info(
+            "🔍 DEBUG: Conversation lookup result: %s", conversation is not None
+        )
 
         if not conversation:
-            logger.warning("🔍 DEBUG: No conversation found for session ID: %s", session_id)
-            logger.info("🔍 DEBUG: This indicates a new session that hasn't been used to create a conversation yet")
-            
+            logger.warning(
+                "🔍 DEBUG: No conversation found for session ID: %s", session_id
+            )
+            logger.info(
+                "🔍 DEBUG: This indicates a new session that hasn't been used to create a conversation yet"
+            )
+
             # Instead of returning a 404, return an empty conversation response
             # This allows the frontend to handle new sessions gracefully
             empty_conversation = ConversationResponse(
@@ -451,17 +463,22 @@ async def get_conversation_by_session(
                 context_memories=[],
                 proactive_suggestions=[],
             )
-            
+
             logger.info("🔍 DEBUG: Returning empty conversation for new session")
             return empty_conversation
 
-        logger.info("🔍 DEBUG: Successfully retrieved conversation with %d messages", len(conversation.messages))
+        logger.info(
+            "🔍 DEBUG: Successfully retrieved conversation with %d messages",
+            len(conversation.messages),
+        )
         return _convert_conversation_to_response(conversation)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("🔍 DEBUG: Failed to get conversation by session", error=str(e))
+        logger.exception(
+            "🔍 DEBUG: Failed to get conversation by session", error=str(e)
+        )
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
@@ -730,19 +747,25 @@ async def add_tags(
         )
 
 
-@router.get("/", response_model=ConversationListResponse)
+@router.get("")
 async def list_conversations(
     active_only: bool = Query(True, description="Only return active conversations"),
     limit: int = Query(50, ge=1, le=100, description="Maximum number of conversations"),
     offset: int = Query(0, ge=0, description="Number of conversations to skip"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """List conversations for current user."""
+    logger.info(
+        f"🔍 DEBUG: list_conversations called with active_only={active_only}, limit={limit}, offset={offset}"
+    )
+    logger.info(
+        f"🔍 DEBUG: user_ctx keys: {list(user_ctx.keys()) if user_ctx else 'None'}"
+    )
     try:
-        import inspect
         user_id = _require_user_id(user_ctx)
+        logger.info(f"🔍 DEBUG: user_id extracted: {user_id}")
 
         base_manager = conversation_service.base_manager
         sig = inspect.signature(base_manager.list_conversations)
@@ -765,6 +788,7 @@ async def list_conversations(
                 ConversationFilters as _ConversationFilters,
                 ConversationStatus as _ConversationStatus,
             )
+
             filters: Optional[Any] = None
             if active_only:
                 filters = _ConversationFilters(status=_ConversationStatus.ACTIVE)
@@ -776,7 +800,6 @@ async def list_conversations(
                 limit=limit,
                 offset=offset,
             )
-
 
         # Convert to web UI conversations
         web_ui_conversations = []
@@ -809,14 +832,69 @@ async def list_conversations(
             len(web_ui_conversations),
         )
 
-        return ConversationListResponse(
-            conversations=web_ui_conversations,
-            total_count=total_count,
-            has_more=len(web_ui_conversations) == limit,
+        logger.info(
+            f"🔍 DEBUG: About to return response with {len(web_ui_conversations)} conversations"
         )
+        try:
+            response = ConversationListResponse(
+                conversations=web_ui_conversations,
+                total_count=total_count,
+                has_more=len(web_ui_conversations) == limit,
+            )
+            logger.info(f"🔍 DEBUG: Response created successfully: {response}")
+            return response
+        except Exception as validation_error:
+            logger.error(
+                f"🔍 DEBUG: Validation error creating response: {validation_error}"
+            )
+            logger.error(
+                f"🔍 DEBUG: web_ui_conversations type: {type(web_ui_conversations)}"
+            )
+            logger.error(
+                f"🔍 DEBUG: First conversation type: {type(web_ui_conversations[0]) if web_ui_conversations else 'None'}"
+            )
+            if web_ui_conversations:
+                logger.error(f"🔍 DEBUG: First conversation: {web_ui_conversations[0]}")
+                logger.error(
+                    f"🔍 DEBUG: First conversation dict: {web_ui_conversations[0].dict() if hasattr(web_ui_conversations[0], 'dict') else 'No dict method'}"
+                )
+            raise
 
     except Exception as e:
-        logger.exception("❌ API: Failed to list conversations for user %s: %s", user_ctx.get("user_id"), str(e))
+        logger.exception(
+            "❌ API: Failed to list conversations for user %s: %s",
+            user_ctx.get("user_id"),
+            str(e),
+        )
+        # Check if it's a validation error and provide more details
+        if "Validation error" in str(e) or "pydantic" in str(e).lower():
+            logger.error(f"🔍 DEBUG: Pydantic validation details: {e}")
+            if "web_ui_conversations" in locals():
+                logger.error(
+                    f"🔍 DEBUG: web_ui_conversations length: {len(web_ui_conversations)}"
+                )
+                if web_ui_conversations:
+                    for i, conv in enumerate(
+                        web_ui_conversations[:3]
+                    ):  # Check first 3 conversations
+                        logger.error(f"🔍 DEBUG: Conversation {i}: {conv}")
+                        logger.error(f"🔍 DEBUG: Conversation {i} type: {type(conv)}")
+                        if hasattr(conv, "dict"):
+                            logger.error(
+                                f"🔍 DEBUG: Conversation {i} dict: {conv.dict()}"
+                            )
+                        elif hasattr(conv, "__dict__"):
+                            logger.error(
+                                f"🔍 DEBUG: Conversation {i} __dict__: {conv.__dict__}"
+                            )
+                        else:
+                            logger.error(
+                                f"🔍 DEBUG: Conversation {i} dir: {[attr for attr in dir(conv) if not attr.startswith('_')][:10]}"
+                            )
+            else:
+                logger.error(
+                    f"🔍 DEBUG: web_ui_conversations variable not available in locals()"
+                )
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
@@ -934,7 +1012,7 @@ async def get_analytics(
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Get conversation analytics for dashboard."""
     try:
@@ -973,7 +1051,7 @@ async def get_analytics(
 @router.get("/stats")
 async def get_conversation_stats(
     tenant_id: str = Depends(get_current_tenant),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Get basic conversation statistics."""
@@ -1057,28 +1135,34 @@ async def ensure_session_conversation(
     session_id: str,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
     tenant_id: str = Depends(get_current_tenant_id),
-    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
 ):
     """Ensure a conversation record exists for the given session ID. Creates one if it doesn't exist."""
 
     try:
-        logger.info("🔍 DEBUG: Ensuring conversation exists for session ID: %s", session_id)
-        
-        # First, try to get existing conversation
-        existing_conversation = await conversation_service.get_web_ui_conversation_by_session(
-            tenant_id=tenant_id,
-            session_id=session_id,
-            user_id=user_ctx.get("user_id"),
-            include_context=False,
+        logger.info(
+            "🔍 DEBUG: Ensuring conversation exists for session ID: %s", session_id
         )
-        
+
+        # First, try to get existing conversation
+        existing_conversation = (
+            await conversation_service.get_web_ui_conversation_by_session(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                user_id=user_ctx.get("user_id"),
+                include_context=False,
+            )
+        )
+
         if existing_conversation:
-            logger.info("🔍 DEBUG: Existing conversation found for session: %s", session_id)
+            logger.info(
+                "🔍 DEBUG: Existing conversation found for session: %s", session_id
+            )
             return _convert_conversation_to_response(existing_conversation)
-        
+
         # Create new conversation for this session
         logger.info("🔍 DEBUG: Creating new conversation for session: %s", session_id)
-        
+
         try:
             new_conversation = await conversation_service.create_web_ui_conversation(
                 tenant_id=tenant_id,
@@ -1095,27 +1179,35 @@ async def ensure_session_conversation(
         except Exception as create_err:
             logger.exception(
                 "❌ API: create_web_ui_conversation raised for session %s: %s",
-                session_id, create_err,
+                session_id,
+                create_err,
             )
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to create conversation: {type(create_err).__name__}: {create_err}",
             )
-        
-        if not new_conversation:
-             logger.error("❌ API: Service returned None for session: %s", session_id)
-             raise HTTPException(
-                status_code=500,
-                detail="Failed to create conversation record (service returned None)."
-             )
 
-        logger.info("🔍 DEBUG: Successfully created new conversation for session: %s", session_id)
+        if not new_conversation:
+            logger.error("❌ API: Service returned None for session: %s", session_id)
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create conversation record (service returned None).",
+            )
+
+        logger.info(
+            "🔍 DEBUG: Successfully created new conversation for session: %s",
+            session_id,
+        )
         return _convert_conversation_to_response(new_conversation)
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("❌ API: Failed to ensure session conversation for session %s: %s", session_id, str(e))
+        logger.exception(
+            "❌ API: Failed to ensure session conversation for session %s: %s",
+            session_id,
+            str(e),
+        )
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,

@@ -16,16 +16,16 @@ interface RequireContext {
   <T>(id: string): T;
   resolve(id: string): string;
   id: string;
-}
-
-interface NodeRequire {
-  context(
-    directory: string,
-    useSubdirectories: boolean,
-    regExp: RegExp
-  ): RequireContext;
+  // Interface has members, so no-empty-object-type error is resolved
 }
 
 declare namespace NodeJS {
-  interface Require extends NodeRequire {}
+  interface Require {
+    context(
+      directory: string,
+      useSubdirectories: boolean,
+      regExp: RegExp
+    ): RequireContext;
+  }
 }
+

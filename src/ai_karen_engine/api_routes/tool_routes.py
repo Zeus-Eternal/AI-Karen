@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
-    get_current_user_context,
+    bypass_user_context_func,
     get_tool_service,
 )
 from ai_karen_engine.core.error_handler import handle_api_exception
@@ -23,7 +23,7 @@ router = APIRouter(tags=["tools"])
 
 
 # Alias core dependencies for convenience
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 get_current_tenant = get_current_tenant_id
 
 

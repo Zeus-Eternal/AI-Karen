@@ -63,9 +63,13 @@ from ai_karen_engine.api_routes.conversation_routes import router as conversatio
 from ai_karen_engine.api_routes.communications_center_routes import (
     router as communications_center_router,
 )
+
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.extensions import router as extensions_router
+from ai_karen_engine.api_routes.plugin_management import (
+    router as plugin_management_router,
+)
 from ai_karen_engine.api_routes.file_attachment_routes import (
     router as file_attachment_router,
 )
@@ -189,8 +193,11 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     # NEW: Simple authentication system
     logger.info(f"🔍 Auth router status: {auth_router is not None}")
     if auth_router:
-        app.include_router(auth_router, prefix="/api", tags=["authentication"])
-        logger.info("🔐 Auth router loaded successfully")
+        try:
+            app.include_router(auth_router, prefix="/api", tags=["authentication"])
+            logger.info("🔐 Auth router loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to include auth router: {e}", exc_info=True)
     else:
         logger.warning("🚫 Auth router not available")
 
@@ -210,9 +217,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
         @app.middleware("http")
         async def auth_middleware_handler(request, call_next):
             # Check for development bypass mode first
-            import os
+            from ai_karen_engine.core.auth_config import auth_config
 
-            auth_bypass = os.getenv("KARI_AUTH_BYPASS", "false").lower() == "true"
+            auth_bypass = auth_config.should_bypass_auth()
 
             skip_auth_header = request.headers.get("X-Skip-Auth")
             dev_mode_header = request.headers.get("X-Development-Mode")
@@ -223,7 +230,7 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
             if auth_bypass or (skip_auth_header == "dev" and dev_mode_header == "true"):
                 # Development mode - set mock user context directly
-                mock_user_id = request.headers.get("X-Mock-User-ID", "admin")
+                mock_user_id = request.headers.get("X-Mock-User-ID", "dev-user")
                 request.state.user = {
                     "user_id": mock_user_id,
                     "email": "admin@karen.ai",
@@ -314,7 +321,11 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     else:
         logger.warning("🚫 Training data router not available")
     app.include_router(privacy_router, prefix="/api", tags=["privacy"])
-    app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+    try:
+        app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+        logger.info("🤖 AI router loaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to include AI router: {e}", exc_info=True)
     app.include_router(agent_integration_router, tags=["agents"])
     app.include_router(tasks_router, tags=["tasks"])
     app.include_router(automation_jobs_router, prefix="/api", tags=["automation-jobs"])
@@ -323,9 +334,13 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
 
     # Align copilot routes under /api to match frontend expectations
     app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
-    app.include_router(
-        conversation_router, prefix="/api/conversations", tags=["conversations"]
-    )
+    try:
+        app.include_router(
+            conversation_router, prefix="/api/conversations", tags=["conversations"]
+        )
+        logger.info("💬 Conversation router loaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to include conversation router: {e}", exc_info=True)
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
     app.include_router(plugin_public_router, tags=["plugins-public"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
@@ -333,6 +348,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
     # Extensions router
     app.include_router(extensions_router, prefix="/api/extensions", tags=["extensions"])
+    app.include_router(
+        plugin_management_router, prefix="/api/plugins", tags=["plugin-management"]
+    )
     app.include_router(ui_materialization_router, tags=["ui-materialization"])
     app.include_router(file_attachment_router, prefix="/api/files", tags=["files"])
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])

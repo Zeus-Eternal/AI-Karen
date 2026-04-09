@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Inter, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { ThemeProvider } from '@/providers/theme-provider';
 import { PluginRegistryProvider } from '@/plugin_host/registry';
 
 const inter = Inter({
@@ -31,12 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased`}>
-        <FirebaseClientProvider>
+        <ThemeProvider>
           <PluginRegistryProvider>
             {children}
             <Toaster />
           </PluginRegistryProvider>
-        </FirebaseClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

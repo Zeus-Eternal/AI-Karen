@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
+
 try:
     from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
@@ -35,10 +36,14 @@ from ..core.response.factory import (
 )
 from ..core.response.scheduler_manager import AutonomousConfig
 from ..core.response.config import PipelineConfig
-from ..chat.chat_orchestrator import ChatOrchestrator, ChatRequest as LegacyChatRequest, ChatResponse as LegacyChatResponse
+from ..chat.chat_orchestrator import (
+    ChatOrchestrator,
+    ChatRequest as LegacyChatRequest,
+    ChatResponse as LegacyChatResponse,
+)
 from ..chat.ChatOrchestrator import normalize_session_id as normalize_chat_session_id
 from services.memory.internal.auth_utils import get_current_user
-from ..core.dependencies import get_current_user_context
+from ..core.dependencies import bypass_user_context_func
 
 logger = logging.getLogger(__name__)
 
@@ -48,52 +53,59 @@ router = APIRouter(prefix="/api/response-core", tags=["response-core"])
 # Request/Response Models
 class ResponseCoreRequest(BaseModel):
     """Request model for Response Core orchestrator"""
+
     message: str = Field(..., description="User message")
     user_id: Optional[str] = Field(None, description="User identifier")
     tenant_id: Optional[str] = Field(None, description="Tenant identifier")
     conversation_id: Optional[str] = Field(None, description="Conversation identifier")
     session_id: Optional[str] = Field(None, description="Session identifier")
-    
+
     # UI capabilities
     ui_caps: Dict[str, Any] = Field(
         default_factory=dict,
-        description="UI capabilities (copilotkit, persona_set, project_name, etc.)"
+        description="UI capabilities (copilotkit, persona_set, project_name, etc.)",
     )
-    
+
     # Configuration overrides
     config_overrides: Optional[Dict[str, Any]] = Field(
-        None,
-        description="Pipeline configuration overrides"
+        None, description="Pipeline configuration overrides"
     )
-    
+
     # Compatibility with existing chat orchestrator
     stream: bool = Field(True, description="Enable streaming response")
     include_context: bool = Field(True, description="Include memory context")
     attachments: List[str] = Field(default_factory=list, description="File attachments")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class ResponseCoreResponse(BaseModel):
     """Response model for Response Core orchestrator"""
+
     intent: str = Field(..., description="Detected user intent")
     persona: str = Field(..., description="Selected persona")
     mood: str = Field(..., description="Sentiment analysis result")
     content: str = Field(..., description="Formatted response content")
-    
+
     # Processing metadata
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Processing metadata (model_used, context_tokens, etc.)"
+        description="Processing metadata (model_used, context_tokens, etc.)",
     )
-    
+
     # Compatibility fields
     correlation_id: str = Field(..., description="Request correlation ID")
     processing_time: float = Field(..., description="Total processing time in seconds")
-    used_fallback: bool = Field(False, description="Whether fallback processing was used")
+    used_fallback: bool = Field(
+        False, description="Whether fallback processing was used"
+    )
     context_used: bool = Field(False, description="Whether memory context was used")
 
 
-def _compose_ui_caps(request: ResponseCoreRequest, current_user: Dict[str, Any]) -> Dict[str, Any]:
+def _compose_ui_caps(
+    request: ResponseCoreRequest, current_user: Dict[str, Any]
+) -> Dict[str, Any]:
     """Merge UI capability overrides with request context for the orchestrator."""
 
     ui_caps = dict(request.ui_caps or {})
@@ -137,7 +149,10 @@ def _normalize_response_payload(
     correlation_id = metadata.get("correlation_id") or str(uuid.uuid4())
     metadata["correlation_id"] = correlation_id
 
-    used_fallback = bool(metadata.get("fallback_used")) or metadata.get("routing_decision") == "fallback"
+    used_fallback = (
+        bool(metadata.get("fallback_used"))
+        or metadata.get("routing_decision") == "fallback"
+    )
     metadata["fallback_used"] = used_fallback
     metadata.setdefault("orchestrator", "response_core")
 
@@ -253,10 +268,14 @@ def _load_model_registry() -> List[Dict[str, Any]]:
         raw_registry = json.loads(MODEL_REGISTRY_FILE.read_text())
     except FileNotFoundError as exc:
         logger.error("Model registry file is missing: %s", MODEL_REGISTRY_FILE)
-        raise HTTPException(status_code=500, detail="Model registry is unavailable") from exc
+        raise HTTPException(
+            status_code=500, detail="Model registry is unavailable"
+        ) from exc
     except json.JSONDecodeError as exc:
         logger.error("Model registry file is corrupted: %s", exc)
-        raise HTTPException(status_code=500, detail="Model registry is invalid") from exc
+        raise HTTPException(
+            status_code=500, detail="Model registry is invalid"
+        ) from exc
 
     registry: List[Dict[str, Any]] = []
     for entry in raw_registry:
@@ -285,7 +304,9 @@ def _store_model_overrides(overrides: Dict[str, Any]) -> None:
     MODEL_OVERRIDES_FILE.write_text(json.dumps(overrides, indent=2, sort_keys=True))
 
 
-def _summarize_model_entry(entry: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+def _summarize_model_entry(
+    entry: Dict[str, Any], overrides: Dict[str, Any]
+) -> Dict[str, Any]:
     """Build a structured summary for a registry entry."""
 
     model_id = entry["name"]
@@ -335,7 +356,9 @@ def _categorize_models(models: List[Dict[str, Any]]) -> Dict[str, Any]:
     return categories
 
 
-def _apply_model_filters(model: Dict[str, Any], filters: Optional[Dict[str, Any]]) -> bool:
+def _apply_model_filters(
+    model: Dict[str, Any], filters: Optional[Dict[str, Any]]
+) -> bool:
     """Check whether a model summary matches the provided filters."""
 
     if not filters:
@@ -353,7 +376,9 @@ def _apply_model_filters(model: Dict[str, Any], filters: Optional[Dict[str, Any]
     return True
 
 
-def _find_registry_entry(model_id: str, registry: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _find_registry_entry(
+    model_id: str, registry: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
     """Locate a model entry by identifier."""
 
     for entry in registry:
@@ -401,8 +426,7 @@ def _schedule_training_job(
             learner = create_autonomous_learner(user_id=user_id, tenant_id=tenant_id)
             force_training = bool(job_record["config"].get("force_training"))
             result = await learner.trigger_learning_cycle(
-                job_record["tenant_id"],
-                force_training=force_training
+                job_record["tenant_id"], force_training=force_training
             )
 
             job_record["result"] = result.to_dict()
@@ -429,9 +453,13 @@ def _schedule_training_job(
     job_record["task"] = task
     TRAINING_JOBS[job_id] = job_record
 
+
 class ModelManagementRequest(BaseModel):
     """Request model for model management operations"""
-    operation: str = Field(..., description="Operation type: list, configure, download, delete")
+
+    operation: str = Field(
+        ..., description="Operation type: list, configure, download, delete"
+    )
     model_id: Optional[str] = Field(None, description="Model identifier")
     config: Optional[Dict[str, Any]] = Field(None, description="Model configuration")
     filters: Optional[Dict[str, Any]] = Field(None, description="Filters for listing")
@@ -439,6 +467,7 @@ class ModelManagementRequest(BaseModel):
 
 class ModelManagementResponse(BaseModel):
     """Response model for model management operations"""
+
     success: bool = Field(..., description="Operation success status")
     data: Dict[str, Any] = Field(..., description="Operation result data")
     message: str = Field(..., description="Operation result message")
@@ -446,15 +475,21 @@ class ModelManagementResponse(BaseModel):
 
 class TrainingRequest(BaseModel):
     """Request model for training operations"""
-    operation: str = Field(..., description="Operation type: start, stop, status, schedule")
+
+    operation: str = Field(
+        ..., description="Operation type: start, stop, status, schedule"
+    )
     model_id: Optional[str] = Field(None, description="Model to train")
     dataset_id: Optional[str] = Field(None, description="Training dataset")
     config: Optional[Dict[str, Any]] = Field(None, description="Training configuration")
-    schedule: Optional[str] = Field(None, description="Cron schedule for autonomous training")
+    schedule: Optional[str] = Field(
+        None, description="Cron schedule for autonomous training"
+    )
 
 
 class TrainingResponse(BaseModel):
     """Response model for training operations"""
+
     success: bool = Field(..., description="Operation success status")
     job_id: Optional[str] = Field(None, description="Training job ID")
     status: str = Field(..., description="Training status")
@@ -463,18 +498,18 @@ class TrainingResponse(BaseModel):
 
 
 # Dependency functions
-def get_chat_orchestrator() -> ChatOrchestrator:
+async def get_chat_orchestrator() -> ChatOrchestrator:
     """Get existing chat orchestrator instance"""
     # Import here to avoid circular dependencies
     from ..chat.factory import get_chat_orchestrator as get_factory_chat_orchestrator
 
-    return get_factory_chat_orchestrator()
+    return await get_factory_chat_orchestrator()
 
 
 def get_response_orchestrator(
     user_id: str = "default",
     tenant_id: Optional[str] = None,
-    config_overrides: Optional[Dict[str, Any]] = None
+    config_overrides: Optional[Dict[str, Any]] = None,
 ):
     """Get Response Core orchestrator instance"""
     try:
@@ -493,14 +528,15 @@ def get_response_orchestrator(
 
 # API Endpoints
 
+
 @router.post("/chat", response_model=ResponseCoreResponse)
 async def chat_with_response_core(
     request: ResponseCoreRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Process chat message using Response Core orchestrator
-    
+
     This endpoint uses the new ResponseOrchestrator while maintaining
     compatibility with existing chat functionality.
     """
@@ -513,14 +549,11 @@ async def chat_with_response_core(
         orchestrator = get_response_orchestrator(
             user_id=user_id,
             tenant_id=tenant_id,
-            config_overrides=request.config_overrides
+            config_overrides=request.config_overrides,
         )
 
         ui_caps = _compose_ui_caps(request, current_user)
-        raw_response = orchestrator.respond(
-            user_text=request.message,
-            ui_caps=ui_caps
-        )
+        raw_response = orchestrator.respond(user_text=request.message, ui_caps=ui_caps)
 
         measured_duration = time.time() - start_time
         normalized = _normalize_response_payload(
@@ -528,13 +561,14 @@ async def chat_with_response_core(
             orchestrator.config.persona_default,
             measured_duration=measured_duration,
             extra_metadata={
-                "conversation_id": request.conversation_id or ui_caps.get("conversation_id"),
+                "conversation_id": request.conversation_id
+                or ui_caps.get("conversation_id"),
                 "session_id": request.session_id,
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "request_metadata": request.metadata or None,
                 "attachments": request.attachments or None,
-            }
+            },
         )
 
         return ResponseCoreResponse(
@@ -546,7 +580,7 @@ async def chat_with_response_core(
             correlation_id=normalized["correlation_id"],
             processing_time=normalized["processing_time"],
             used_fallback=normalized["used_fallback"],
-            context_used=normalized["context_used"]
+            context_used=normalized["context_used"],
         )
 
     except Exception as e:
@@ -563,18 +597,18 @@ async def chat_with_response_core(
             correlation_id=error_correlation_id,
             processing_time=processing_time,
             used_fallback=True,
-            context_used=False
+            context_used=False,
         )
 
 
 @router.post("/chat/compatible")
 async def chat_compatible(
     request: ResponseCoreRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Compatible chat endpoint that can use either ResponseOrchestrator or ChatOrchestrator
-    
+
     This endpoint provides backward compatibility by falling back to the existing
     ChatOrchestrator if ResponseOrchestrator fails.
     """
@@ -589,14 +623,13 @@ async def chat_compatible(
             orchestrator = get_response_orchestrator(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                config_overrides=request.config_overrides
+                config_overrides=request.config_overrides,
             )
 
             start_time = time.time()
             ui_caps = _compose_ui_caps(request, current_user)
             raw_response = orchestrator.respond(
-                user_text=request.message,
-                ui_caps=ui_caps
+                user_text=request.message, ui_caps=ui_caps
             )
 
             normalized = _normalize_response_payload(
@@ -604,17 +637,19 @@ async def chat_compatible(
                 orchestrator.config.persona_default,
                 measured_duration=time.time() - start_time,
                 extra_metadata={
-                    "conversation_id": request.conversation_id or ui_caps.get("conversation_id"),
+                    "conversation_id": request.conversation_id
+                    or ui_caps.get("conversation_id"),
                     "tenant_id": tenant_id,
                     "user_id": user_id,
-                }
+                },
             )
 
             response_metadata = {
                 **_ensure_stage1_metadata(
                     normalized["metadata"],
                     correlation_id=normalized["correlation_id"],
-                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    conversation_id=request.conversation_id
+                    or ui_caps.get("conversation_id"),
                     status="completed",
                     execution_path="response_core",
                 ),
@@ -634,13 +669,17 @@ async def chat_compatible(
             }
 
         except Exception as e:
-            logger.warning(f"Response Core failed, falling back to ChatOrchestrator: {e}")
+            logger.warning(
+                f"Response Core failed, falling back to ChatOrchestrator: {e}"
+            )
 
             # Fallback to existing ChatOrchestrator
-            chat_orchestrator = get_chat_orchestrator()
-            
+            chat_orchestrator = await get_chat_orchestrator()
+
             # Convert request format
-            conversation_id = normalize_chat_session_id(request.conversation_id or request.session_id)
+            conversation_id = normalize_chat_session_id(
+                request.conversation_id or request.session_id
+            )
             legacy_request = LegacyChatRequest(
                 request_id=correlation_id,
                 correlation_id=correlation_id,
@@ -653,21 +692,30 @@ async def chat_compatible(
                 stream=False,  # Force non-streaming for compatibility
                 include_context=request.include_context,
                 attachments=request.attachments,
-                metadata=request.metadata
+                metadata=request.metadata,
             )
-            
+
             # Process with legacy orchestrator
             legacy_response = await chat_orchestrator.handle_chat(legacy_request)
-            
+
             # Convert response format
             if isinstance(legacy_response, LegacyChatResponse):
                 response_metadata = _ensure_stage1_metadata(
                     legacy_response.metadata,
                     correlation_id=legacy_response.correlation_id,
-                    conversation_id=getattr(legacy_response, "conversation_id", conversation_id),
-                    status=legacy_response.status.value if hasattr(legacy_response.status, "value") else str(legacy_response.status),
-                    execution_path=getattr(legacy_response, "execution_path", "direct_llm") or "direct_llm",
-                    assistant_message_id=getattr(legacy_response, "assistant_message_id", None),
+                    conversation_id=getattr(
+                        legacy_response, "conversation_id", conversation_id
+                    ),
+                    status=legacy_response.status.value
+                    if hasattr(legacy_response.status, "value")
+                    else str(legacy_response.status),
+                    execution_path=getattr(
+                        legacy_response, "execution_path", "direct_llm"
+                    )
+                    or "direct_llm",
+                    assistant_message_id=getattr(
+                        legacy_response, "assistant_message_id", None
+                    ),
                     telemetry=getattr(legacy_response, "telemetry", {}) or {},
                     persistence=(legacy_response.metadata or {}).get("persistence"),
                 )
@@ -680,8 +728,8 @@ async def chat_compatible(
                     "metadata": {
                         **response_metadata,
                         "orchestrator": "chat_orchestrator",
-                        "fallback_reason": str(e)
-                    }
+                        "fallback_reason": str(e),
+                    },
                 }
             else:
                 # Handle streaming response (shouldn't happen with stream=False)
@@ -691,9 +739,9 @@ async def chat_compatible(
                     "processing_time": 0.0,
                     "used_fallback": True,
                     "context_used": False,
-                    "metadata": {"error": "Unexpected streaming response"}
+                    "metadata": {"error": "Unexpected streaming response"},
                 }
-                
+
     except Exception as e:
         logger.error(f"Compatible chat error: {e}")
         return {
@@ -702,22 +750,22 @@ async def chat_compatible(
             "processing_time": 0.0,
             "used_fallback": True,
             "context_used": False,
-            "metadata": {"error": str(e)}
+            "metadata": {"error": str(e)},
         }
 
 
 @router.post("/chat/stream")
 async def chat_stream(
     request: ResponseCoreRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Streaming chat endpoint using Response Core orchestrator
-    
+
     Falls back to existing ChatOrchestrator streaming if Response Core fails.
     """
     correlation_id = str(uuid.uuid4())
-    
+
     async def generate_response_core_stream():
         """Generate streaming response using Response Core"""
         try:
@@ -727,14 +775,13 @@ async def chat_stream(
             orchestrator = get_response_orchestrator(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                config_overrides=request.config_overrides
+                config_overrides=request.config_overrides,
             )
 
             start_time = time.time()
             ui_caps = _compose_ui_caps(request, current_user)
             raw_response = orchestrator.respond(
-                user_text=request.message,
-                ui_caps=ui_caps
+                user_text=request.message, ui_caps=ui_caps
             )
 
             normalized = _normalize_response_payload(
@@ -742,10 +789,11 @@ async def chat_stream(
                 orchestrator.config.persona_default,
                 measured_duration=time.time() - start_time,
                 extra_metadata={
-                    "conversation_id": request.conversation_id or ui_caps.get("conversation_id"),
+                    "conversation_id": request.conversation_id
+                    or ui_caps.get("conversation_id"),
                     "tenant_id": tenant_id,
                     "user_id": user_id,
-                }
+                },
             )
 
             metadata_chunk = {
@@ -760,7 +808,8 @@ async def chat_stream(
                         "mood": normalized["mood"],
                     },
                     correlation_id=normalized["correlation_id"],
-                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    conversation_id=request.conversation_id
+                    or ui_caps.get("conversation_id"),
                     status="processing",
                     execution_path="response_core",
                 ),
@@ -789,7 +838,8 @@ async def chat_stream(
                         "context_used": normalized["context_used"],
                     },
                     correlation_id=normalized["correlation_id"],
-                    conversation_id=request.conversation_id or ui_caps.get("conversation_id"),
+                    conversation_id=request.conversation_id
+                    or ui_caps.get("conversation_id"),
                     status="completed",
                     execution_path="response_core",
                 ),
@@ -801,18 +851,20 @@ async def chat_stream(
             error_chunk = {
                 "type": "error",
                 "content": f"Response Core error: {str(e)}",
-                "correlation_id": correlation_id
+                "correlation_id": correlation_id,
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
 
     async def generate_fallback_stream():
         """Generate streaming response using existing ChatOrchestrator"""
         try:
-            chat_orchestrator = get_chat_orchestrator()
-            
+            chat_orchestrator = await get_chat_orchestrator()
+
             # Convert request format
             tenant_id = request.tenant_id or current_user.get("tenant_id")
-            conversation_id = normalize_chat_session_id(request.conversation_id or request.session_id)
+            conversation_id = normalize_chat_session_id(
+                request.conversation_id or request.session_id
+            )
             legacy_request = LegacyChatRequest(
                 request_id=correlation_id,
                 correlation_id=correlation_id,
@@ -825,12 +877,14 @@ async def chat_stream(
                 stream=True,
                 include_context=request.include_context,
                 attachments=request.attachments,
-                metadata=request.metadata
+                metadata=request.metadata,
             )
-            
+
             # Process with legacy orchestrator
-            stream_generator = await chat_orchestrator.handle_chat_stream(legacy_request)
-            
+            stream_generator = await chat_orchestrator.handle_chat_stream(
+                legacy_request
+            )
+
             # Forward stream chunks
             async for chunk in stream_generator:
                 chunk_data = {
@@ -842,27 +896,36 @@ async def chat_stream(
                             chunk.metadata,
                             correlation_id=chunk.correlation_id,
                             conversation_id=conversation_id,
-                            status="processing" if chunk.type != "complete" else str((chunk.metadata or {}).get("status") or "completed"),
-                            execution_path=str((chunk.metadata or {}).get("execution_path") or "direct_llm"),
-                            assistant_message_id=(chunk.metadata or {}).get("assistant_message_id"),
+                            status="processing"
+                            if chunk.type != "complete"
+                            else str(
+                                (chunk.metadata or {}).get("status") or "completed"
+                            ),
+                            execution_path=str(
+                                (chunk.metadata or {}).get("execution_path")
+                                or "direct_llm"
+                            ),
+                            assistant_message_id=(chunk.metadata or {}).get(
+                                "assistant_message_id"
+                            ),
                             telemetry=(chunk.metadata or {}).get("telemetry") or {},
                             persistence=(chunk.metadata or {}).get("persistence"),
                         ),
                         "orchestrator": "chat_orchestrator",
-                        "used_fallback": True
-                    }
+                        "used_fallback": True,
+                    },
                 }
                 yield f"data: {json.dumps(chunk_data)}\n\n"
-                
+
         except Exception as e:
             logger.error(f"Fallback streaming error: {e}")
             error_chunk = {
                 "type": "error",
                 "content": f"Fallback streaming error: {str(e)}",
-                "correlation_id": correlation_id
+                "correlation_id": correlation_id,
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
-    
+
     try:
         # Try Response Core streaming first
         return StreamingResponse(
@@ -872,8 +935,8 @@ async def chat_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*"
-            }
+                "Access-Control-Allow-Headers": "*",
+            },
         )
     except Exception as e:
         logger.warning(f"Response Core streaming failed, using fallback: {e}")
@@ -885,15 +948,15 @@ async def chat_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*"
-            }
+                "Access-Control-Allow-Headers": "*",
+            },
         )
 
 
 @router.post("/models", response_model=ModelManagementResponse)
 async def manage_models(
     request: ModelManagementRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Model management endpoint for system models, HuggingFace models, and training
@@ -901,19 +964,20 @@ async def manage_models(
     try:
         # Check admin permissions for model management
         if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required for model management")
+            raise HTTPException(
+                status_code=403,
+                detail="Admin permissions required for model management",
+            )
 
         if request.operation == "list":
             registry = _load_model_registry()
             overrides = _load_model_overrides()
 
-            summaries = [
-                _summarize_model_entry(entry, overrides)
-                for entry in registry
-            ]
+            summaries = [_summarize_model_entry(entry, overrides) for entry in registry]
 
             filtered = [
-                summary for summary in summaries
+                summary
+                for summary in summaries
                 if _apply_model_filters(summary, request.filters)
             ]
 
@@ -921,21 +985,25 @@ async def manage_models(
             categorized["filters"] = request.filters or {}
 
             return ModelManagementResponse(
-                success=True,
-                data=categorized,
-                message="Models listed successfully"
+                success=True, data=categorized, message="Models listed successfully"
             )
 
         elif request.operation == "configure":
             if not request.model_id or not request.config:
-                raise HTTPException(status_code=400, detail="Model ID and config required for configuration")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Model ID and config required for configuration",
+                )
 
             registry = _load_model_registry()
             overrides = _load_model_overrides()
             entry = _find_registry_entry(request.model_id, registry)
 
             if not entry:
-                raise HTTPException(status_code=404, detail=f"Model {request.model_id} is not registered")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model {request.model_id} is not registered",
+                )
 
             overrides[request.model_id] = {
                 "config": request.config,
@@ -949,32 +1017,46 @@ async def manage_models(
             return ModelManagementResponse(
                 success=True,
                 data=summary,
-                message=f"Model {request.model_id} configured successfully"
+                message=f"Model {request.model_id} configured successfully",
             )
 
         elif request.operation == "download":
             if not request.model_id:
-                raise HTTPException(status_code=400, detail="Model ID required for download")
+                raise HTTPException(
+                    status_code=400, detail="Model ID required for download"
+                )
 
             registry = _load_model_registry()
             entry = _find_registry_entry(request.model_id, registry)
 
             if not entry:
-                raise HTTPException(status_code=404, detail=f"Model {request.model_id} is not registered")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model {request.model_id} is not registered",
+                )
 
             source = (entry.get("source") or "").lower()
             if source not in {"huggingface", "remote"}:
-                raise HTTPException(status_code=400, detail="Only remote models support managed downloads")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only remote models support managed downloads",
+                )
 
             try:
-                from ai_karen_engine.inference.huggingface_service import download_model as hf_download_model
+                from ai_karen_engine.inference.huggingface_service import (
+                    download_model as hf_download_model,
+                )
 
                 job = hf_download_model(request.model_id)
             except Exception as download_error:
-                logger.error("Failed to start download for %s: %s", request.model_id, download_error)
+                logger.error(
+                    "Failed to start download for %s: %s",
+                    request.model_id,
+                    download_error,
+                )
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to start download for model {request.model_id}"
+                    detail=f"Failed to start download for model {request.model_id}",
                 ) from download_error
 
             return ModelManagementResponse(
@@ -985,22 +1067,30 @@ async def manage_models(
                     "status": job.status,
                     "queued_at": job.created_at,
                 },
-                message=f"Download started for model {request.model_id}"
+                message=f"Download started for model {request.model_id}",
             )
 
         elif request.operation == "delete":
             if not request.model_id:
-                raise HTTPException(status_code=400, detail="Model ID required for deletion")
+                raise HTTPException(
+                    status_code=400, detail="Model ID required for deletion"
+                )
 
             registry = _load_model_registry()
             entry = _find_registry_entry(request.model_id, registry)
 
             if not entry:
-                raise HTTPException(status_code=404, detail=f"Model {request.model_id} is not registered")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model {request.model_id} is not registered",
+                )
 
             model_path = _resolve_model_path(entry.get("path", request.model_id))
             if not model_path.exists():
-                raise HTTPException(status_code=404, detail=f"Model {request.model_id} is not present on disk")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Model {request.model_id} is not present on disk",
+                )
 
             _remove_model_path(model_path)
 
@@ -1011,20 +1101,20 @@ async def manage_models(
             return ModelManagementResponse(
                 success=True,
                 data={"model_id": request.model_id},
-                message=f"Model {request.model_id} deleted successfully"
+                message=f"Model {request.model_id} deleted successfully",
             )
-            
+
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown operation: {request.operation}")
-            
+            raise HTTPException(
+                status_code=400, detail=f"Unknown operation: {request.operation}"
+            )
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Model management error: {e}")
         return ModelManagementResponse(
-            success=False,
-            data={},
-            message=f"Model management error: {str(e)}"
+            success=False, data={}, message=f"Model management error: {str(e)}"
         )
 
 
@@ -1032,7 +1122,7 @@ async def manage_models(
 async def manage_training(
     request: TrainingRequest,
     background_tasks: BackgroundTasks,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Training management endpoint for autonomous learning and model training
@@ -1040,7 +1130,10 @@ async def manage_training(
     try:
         # Check admin permissions for training operations
         if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required for training operations")
+            raise HTTPException(
+                status_code=403,
+                detail="Admin permissions required for training operations",
+            )
 
         operation = request.operation.lower()
         tenant_id = current_user.get("tenant_id")
@@ -1048,7 +1141,9 @@ async def manage_training(
 
         if operation == "start":
             if not request.model_id:
-                raise HTTPException(status_code=400, detail="Model ID required for training")
+                raise HTTPException(
+                    status_code=400, detail="Model ID required for training"
+                )
 
             job_id = str(uuid.uuid4())
             _schedule_training_job(
@@ -1064,17 +1159,21 @@ async def manage_training(
                 job_id=job_id,
                 status="running",
                 data={"model_id": request.model_id},
-                message=f"Training started for model {request.model_id}"
+                message=f"Training started for model {request.model_id}",
             )
 
         elif operation == "stop":
             job_id = (request.config or {}).get("job_id")
             if not job_id:
-                raise HTTPException(status_code=400, detail="job_id required to stop training")
+                raise HTTPException(
+                    status_code=400, detail="job_id required to stop training"
+                )
 
             job = TRAINING_JOBS.get(job_id)
             if not job:
-                raise HTTPException(status_code=404, detail=f"Training job {job_id} not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Training job {job_id} not found"
+                )
 
             task: Optional[asyncio.Task] = job.get("task")
             if task and not task.done():
@@ -1092,7 +1191,7 @@ async def manage_training(
                 job_id=job_id,
                 status="cancelled",
                 data={"model_id": job.get("model_id")},
-                message=f"Training job {job_id} cancelled"
+                message=f"Training job {job_id} cancelled",
             )
 
         elif operation == "status":
@@ -1100,7 +1199,9 @@ async def manage_training(
             if job_id:
                 job = TRAINING_JOBS.get(job_id)
                 if not job:
-                    raise HTTPException(status_code=404, detail=f"Training job {job_id} not found")
+                    raise HTTPException(
+                        status_code=404, detail=f"Training job {job_id} not found"
+                    )
 
                 job_info = {k: v for k, v in job.items() if k != "task"}
                 return TrainingResponse(
@@ -1108,7 +1209,7 @@ async def manage_training(
                     job_id=job_id,
                     status=job_info.get("status", "unknown"),
                     data=job_info,
-                    message="Training status retrieved"
+                    message="Training status retrieved",
                 )
 
             summary = [
@@ -1120,12 +1221,14 @@ async def manage_training(
                 job_id=None,
                 status="summary",
                 data={"jobs": summary},
-                message="Training status retrieved"
+                message="Training status retrieved",
             )
 
         elif operation == "schedule":
             if not request.schedule:
-                raise HTTPException(status_code=400, detail="Schedule required for autonomous training")
+                raise HTTPException(
+                    status_code=400, detail="Schedule required for autonomous training"
+                )
 
             scheduler = create_scheduler_manager(user_id=user_id, tenant_id=tenant_id)
 
@@ -1140,7 +1243,8 @@ async def manage_training(
 
             schedule_id = scheduler.create_training_schedule(
                 tenant_id or "default",
-                schedule_name or f"Autonomous training for {request.model_id or 'global'}",
+                schedule_name
+                or f"Autonomous training for {request.model_id or 'global'}",
                 request.schedule,
                 autonomous_config,
                 description=schedule_description,
@@ -1158,11 +1262,13 @@ async def manage_training(
                     "schedule": request.schedule,
                     "config": config_data,
                 },
-                message="Autonomous training scheduled"
+                message="Autonomous training scheduled",
             )
 
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown operation: {request.operation}")
+            raise HTTPException(
+                status_code=400, detail=f"Unknown operation: {request.operation}"
+            )
 
     except HTTPException:
         raise
@@ -1173,7 +1279,7 @@ async def manage_training(
             job_id=None,
             status="error",
             data={},
-            message=f"Training management error: {str(e)}"
+            message=f"Training management error: {str(e)}",
         )
 
 
@@ -1186,36 +1292,34 @@ async def health_check():
         # Check Response Core orchestrator health
         orchestrator = get_global_orchestrator()
         diagnostics = orchestrator.diagnostics()
-        
+
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "response_core": "available",
             "diagnostics": diagnostics,
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
-        
+
     except Exception as e:
         logger.error(f"Health check error: {e}")
         return {
             "status": "unhealthy",
             "timestamp": datetime.now().isoformat(),
             "error": str(e),
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
 
 @router.get("/config")
-async def get_config(
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
+async def get_config(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
     Get current Response Core configuration
     """
     try:
         orchestrator = get_global_orchestrator(
             user_id=current_user.get("id", "default"),
-            tenant_id=current_user.get("tenant_id")
+            tenant_id=current_user.get("tenant_id"),
         )
 
         config = asdict(orchestrator.config)
@@ -1231,14 +1335,14 @@ async def get_config(
         return {
             "success": False,
             "config": {},
-            "message": f"Config retrieval error: {str(e)}"
+            "message": f"Config retrieval error: {str(e)}",
         }
 
 
 @router.post("/config")
 async def update_config(
     config_updates: Dict[str, Any],
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Update Response Core configuration
@@ -1246,14 +1350,19 @@ async def update_config(
     try:
         # Check admin permissions
         if not current_user.get("is_admin", False):
-            raise HTTPException(status_code=403, detail="Admin permissions required for configuration updates")
+            raise HTTPException(
+                status_code=403,
+                detail="Admin permissions required for configuration updates",
+            )
 
         if not isinstance(config_updates, dict) or not config_updates:
-            raise HTTPException(status_code=400, detail="Configuration updates must be provided")
+            raise HTTPException(
+                status_code=400, detail="Configuration updates must be provided"
+            )
 
         orchestrator = get_global_orchestrator(
             user_id=current_user.get("id", "default"),
-            tenant_id=current_user.get("tenant_id")
+            tenant_id=current_user.get("tenant_id"),
         )
 
         allowed_fields = {field.name for field in fields(PipelineConfig)}
@@ -1261,7 +1370,7 @@ async def update_config(
         if invalid_keys:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid configuration keys: {', '.join(invalid_keys)}"
+                detail=f"Invalid configuration keys: {', '.join(invalid_keys)}",
             )
 
         updated_config_data = asdict(orchestrator.config)
@@ -1271,7 +1380,7 @@ async def update_config(
         rebuild_global_orchestrator(
             new_config,
             user_id=current_user.get("id", "default"),
-            tenant_id=current_user.get("tenant_id")
+            tenant_id=current_user.get("tenant_id"),
         )
 
         return {
@@ -1289,5 +1398,5 @@ async def update_config(
         return {
             "success": False,
             "updates": {},
-            "message": f"Config update error: {str(e)}"
+            "message": f"Config update error: {str(e)}",
         }

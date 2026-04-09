@@ -10,8 +10,8 @@ import { Database, AlertCircle, Loader2, ShieldAlert, HardDrive, Layers3, Workfl
 type HealthSnapshot = {
   status: string;
   timestamp?: string;
-  services?: Record<string, any>;
-  components?: Record<string, any>;
+  services?: Record<string, unknown>;
+  components?: Record<string, unknown>;
 };
 
 type ObservabilitySnapshot = {
@@ -32,7 +32,7 @@ type ObservabilitySnapshot = {
   }>;
 };
 
-function getComponentStatus(payload: Record<string, any> | undefined, key: string): string {
+function getComponentStatus(payload: Record<string, unknown> | undefined, key: string): string {
   const value = payload?.[key];
   if (value == null) {
     return "Unknown";
@@ -43,12 +43,12 @@ function getComponentStatus(payload: Record<string, any> | undefined, key: strin
   if (typeof value === "boolean") {
     return value ? "healthy" : "unavailable";
   }
-  if (typeof value === "object") {
-    if (typeof value.status === "string") {
-      return value.status;
+  if (typeof value === "object" && value !== null) {
+    if (typeof (value as { status?: unknown }).status === "string") {
+      return (value as { status: string }).status;
     }
-    if (typeof value.connected === "boolean") {
-      return value.connected ? "connected" : "disconnected";
+    if (typeof (value as { connected?: unknown }).connected === "boolean") {
+      return (value as { connected: boolean }).connected ? "connected" : "disconnected";
     }
   }
   return "Unknown";

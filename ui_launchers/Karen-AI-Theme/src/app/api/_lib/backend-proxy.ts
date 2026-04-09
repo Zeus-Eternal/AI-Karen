@@ -69,7 +69,7 @@ async function buildInit(
   request: NextRequest,
   backendBaseUrl: string,
   timeoutMs: number,
-  bodyOverride?: string,
+  overrideBody?: string,
 ): Promise<RequestInit> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -77,7 +77,7 @@ async function buildInit(
   const body =
     request.method === 'GET' || request.method === 'HEAD'
       ? undefined
-      : bodyOverride ?? await request.text();
+      : overrideBody;
 
   const init: RequestInit & { __timeout?: ReturnType<typeof setTimeout> } = {
     method: request.method,
@@ -137,7 +137,17 @@ export async function proxyToBackend(
   const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 250);
   const retryOnStatusCodes = new Set(options?.retryOnStatusCodes ?? []);
   const upstreamUrl = `${backendBaseUrl}${upstreamPath}${request.nextUrl.search}`;
-  let init = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+
+  // Read the body once to avoid "Body has already been read" error on retries/redirects.
+  // This is passed to buildInit to ensure it's reused.
+  const capturedBody = options?.rawBody ?? (request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text());
+
+  let init = await buildInit(
+    request,
+    backendBaseUrl,
+    timeoutMs,
+    capturedBody
+  );
 
   try {
     let upstream: Response | undefined;
@@ -152,7 +162,7 @@ export async function proxyToBackend(
         if (shouldRetryStatus) {
           clearInitTimeout(init);
           await sleep(retryDelayMs * attempt);
-          init = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+          init = await buildInit(request, backendBaseUrl, timeoutMs, capturedBody);
           continue;
         }
 
@@ -168,7 +178,7 @@ export async function proxyToBackend(
         }
 
         await sleep(retryDelayMs * attempt);
-        init = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+        init = await buildInit(request, backendBaseUrl, timeoutMs, capturedBody);
       }
     }
 
@@ -202,12 +212,17 @@ export async function proxyToBackend(
         redirectUrl = `${backendBaseUrl}${locationHeader}`;
       }
 
-      const redirectInit = await buildInit(request, backendBaseUrl, timeoutMs, options?.rawBody);
+       const redirectInit = await buildInit(
+        request,
+        backendBaseUrl,
+        timeoutMs,
+        capturedBody
+      );
       upstream = await fetch(redirectUrl, redirectInit);
       clearInitTimeout(redirectInit);
     }
 
-    const body = await upstream.text();
+    const responseBody = await upstream.text();
     const headers = new Headers(upstream.headers);
     clearInitTimeout(init);
 
@@ -219,7 +234,7 @@ export async function proxyToBackend(
     headers.delete('location');
     headers.set('cache-control', 'no-store');
 
-    return new NextResponse(body, {
+    return new NextResponse(responseBody, {
       status: upstream.status,
       headers,
     });
@@ -227,6 +242,7 @@ export async function proxyToBackend(
   } catch (error) {
     clearInitTimeout(init);
 
+    console.error(`[BackendProxy] Error proxying ${request.method} ${upstreamPath}:`, error);
     const detail =
       error instanceof Error && error.name === 'AbortError'
         ? `Upstream request timed out after ${timeoutMs}ms`

@@ -16,6 +16,7 @@ import React from 'react';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /** Minimal shape of a backend catalog entry needed by the loader. */
+/** Minimal shape of a backend catalog entry needed by the loader. */
 export interface LoaderPluginEntry {
   name: string;
   status: string;
@@ -36,16 +37,10 @@ export interface UIEntryPoint {
 
 type PluginImporter = () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>;
 
-/** Backend import map response from /api/ui-materialization/import-map */
-interface BackendImportMap {
-  status: string;
-  data: {
-    import_map: Record<string, string>;
-    total_entries: number;
-  };
-}
+
 
 /** Backend catalog response - can be direct array or wrapped */
+// Direct array response from backend
 interface BackendCatalog {
   status?: string;
   data?: {
@@ -54,30 +49,10 @@ interface BackendCatalog {
   };
   // Direct array response from backend
   length?: number;
-  map?: any;
+  map?: Record<string, unknown>;
 }
 
 // ─── Fallback component factory ───────────────────────────────────────────────
-
-function makeLoadFailureFallback(pluginId: string): React.ComponentType<Record<string, unknown>> {
-  const Fallback: React.FC = () =>
-    React.createElement(
-      'div',
-      {
-        style: {
-          padding: '1rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.375rem',
-          textAlign: 'center',
-          fontSize: '0.875rem',
-          color: '#6b7280',
-        },
-      },
-      `Plugin "${pluginId}" failed to load.`
-    );
-  Fallback.displayName = `PluginLoadFailure(${pluginId})`;
-  return Fallback;
-}
 
 // ─── Static Discovery Removed ──────────────────────────────────────────────────
 // 
@@ -89,7 +64,7 @@ function makeLoadFailureFallback(pluginId: string): React.ComponentType<Record<s
   * Import map from generated registry - only includes installed packages.
   * This replaces the old static discovery + legacy fallback approach.
   */
-let generatedImportMap: Record<string, PluginImporter> = {};
+let generatedImportMap: Record<string, PluginImporter> = {}; // Used for plugin component loading
 
 /**
   * Load the generated import map from the backend API.
@@ -111,6 +86,8 @@ async function loadGeneratedImportMap(): Promise<void> {
   */
 export async function refreshImportMap(): Promise<void> {
   await loadGeneratedImportMap();
+  // Force catalog cache invalidation
+  invalidateCatalogCache();
 }
 
 // Load the generated import map (async)
@@ -273,6 +250,14 @@ export async function resolvePluginComponentAsync(
   pluginId: string,
   entryId?: string
 ): Promise<React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>> | null> {
+  // Special case for weather-query in development
+  if (pluginId === 'weather-query') {
+    const importer = generatedImportMap['weather-query'];
+    if (importer) {
+      return React.lazy(importer);
+    }
+  }
+
   const catalog = await fetchBackendCatalog();
   return resolvePluginComponent(pluginId, catalog, entryId);
 }

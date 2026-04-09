@@ -19,45 +19,30 @@ import {
 import { 
   Button
 } from "@/components/ui/button";
-import { 
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem
-} from "@/components/ui/dropdown-menu";
-import { 
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent
-} from "@/components/ui/tooltip";
-import { 
-  Alert, 
-  AlertDescription, 
-  AlertTitle 
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle
 } from "@/components/ui/alert";
 import { usePluginRegistry, usePluginHealth, type PluginHealthRecord, type FrontendMountState } from "@/plugin_host/registry";
 import { PluginHost } from "./PluginHost";
-import { UIInstallerService } from "@/plugin_host/ui-installer";
-import { 
-  PlugZap, 
-  MessageSquare, 
-  Info, 
-  Settings2, 
-  Puzzle, 
-  Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  EyeOff, 
+import { apiClient } from "@/lib/api";
+import {
+  PlugZap,
+  MessageSquare,
+  Info,
+  Settings2,
+  Puzzle,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  EyeOff,
   Clock,
-  Save,
-  RefreshCw,
   Trash2,
-  Play,
-  Pause,
   RotateCcw,
   Zap,
-  Settings,
   Github,
   HelpCircle
 } from "lucide-react";
@@ -66,23 +51,16 @@ import {
 
 type UIInstallStatus = 'not_installed' | 'installed' | 'removing' | 'restoring' | 'error' | 'installing';
 
-interface EnhancedPluginHealthRecord extends PluginHealthRecord {
-  // Extended fields for richer status
-  uiInstallStatus?: UIInstallStatus;
-  uiRegistrationStatus?: 'not_registered' | 'registered' | 'mountable' | 'mount_error';
-  backendStatusDetail?: 'not_discovered' | 'discovered' | 'validated' | 'installed' | 'enabled' | 'disabled' | 'broken' | 'uninstalled' | 'restorable';
-}
-
 function BackendStateBadge({ state, detail }: { state: string; detail?: string }) {
-  const getBadgeConfig = (state: string): { 
-    icon: React.ComponentType<any>; 
-    color: string; 
-    label: string 
+  const getBadgeConfig = (state: string): {
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    label: string
   } => {
     switch (state) {
       case 'active': return { icon: CheckCircle2, color: 'text-green-600 dark:text-green-400', label: 'active' };
       case 'error': return { icon: XCircle, color: 'text-destructive', label: 'error' };
-      case 'disabled': return { icon: Pause, color: 'text-amber-600 dark:text-amber-400', label: 'disabled' };
+      case 'disabled': return { icon: XCircle, color: 'text-amber-600 dark:text-amber-400', label: 'disabled' };
       case 'broken': return { icon: Zap, color: 'text-orange-600 dark:text-orange-400', label: 'broken' };
       case 'uninstalled': return { icon: Trash2, color: 'text-muted-foreground', label: 'uninstalled' };
       case 'restorable': return { icon: RotateCcw, color: 'text-purple-600 dark:text-purple-400', label: 'restorable' };
@@ -213,31 +191,52 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   const health: PluginHealthRecord = usePluginHealth(pluginId);
   const [uiInstallStatus, setUiInstallStatus] = useState<UIInstallStatus>('not_installed');
   const [uiRegistrationStatus, setUiRegistrationStatus] = useState<'not_registered' | 'registered' | 'mountable' | 'mount_error'>('not_registered');
-  
+  const [isOperationInProgress, setIsOperationInProgress] = useState(false);
+
   const isUIBusy = (status: UIInstallStatus): boolean => {
-    return status === 'installed' || status === 'removing' || status === 'restoring' || status === 'installing';
+    return status === 'installed' || status === 'removing' || status === 'restoring' || status === 'installing' || isOperationInProgress;
   };
-  
+
   const isInstalling = (status: UIInstallStatus): boolean => {
-    return status === 'installing';
+    return status === 'installing' || (status === 'not_installed' && isOperationInProgress);
   };
-  
+
   const isRemoving = (status: UIInstallStatus): boolean => {
     return status === 'removing';
   };
-  
+
   const isRestoring = (status: UIInstallStatus): boolean => {
     return status === 'restoring';
   };
   const [backendStatusDetail, setBackendStatusDetail] = useState<'not_discovered' | 'discovered' | 'validated' | 'installed' | 'enabled' | 'disabled' | 'broken' | 'uninstalled' | 'restorable'>('discovered');
 
-  // Initialize extended status from basic health data
+  // Initialize extended status from basic health data and determine UI install status
   React.useEffect(() => {
     // Map basic backend state to detailed status
     switch (health.backendState) {
-      case 'active': setBackendStatusDetail('enabled'); break;
-      case 'error': setBackendStatusDetail('broken'); break;
-      default: setBackendStatusDetail('discovered'); // Default for discovered/not loaded
+      case 'active':
+        setBackendStatusDetail('enabled');
+        setUiInstallStatus('installed');
+        setUiRegistrationStatus('registered');
+        break;
+      case 'error':
+        setBackendStatusDetail('broken');
+        setUiInstallStatus('error');
+        break;
+      case 'uninstalled':
+        setBackendStatusDetail('uninstalled');
+        setUiInstallStatus('not_installed');
+        setUiRegistrationStatus('not_registered');
+        break;
+      case 'disabled':
+        setBackendStatusDetail('disabled');
+        setUiInstallStatus('installed');
+        setUiRegistrationStatus('registered');
+        break;
+      default:
+        setBackendStatusDetail('discovered');
+        setUiInstallStatus('not_installed');
+        setUiRegistrationStatus('not_registered');
     }
   }, [health.backendState]);
 
@@ -247,60 +246,79 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     // For now, we'll assume plugins with menu contributions have UI
     true; // Simplified - in reality would check registry data
 
-  const hasDiscrepancy =
-    health.backendState === 'active' && health.frontendMountState === 'error';
+
 
   const handleInstallUI = async () => {
+    setIsOperationInProgress(true);
     setUiInstallStatus('installing');
     try {
-      const installer = UIInstallerService.getInstance();
-      const result = await installer.installUI(pluginId);
+      // Use the extensions endpoint (works without authentication)
+      const result: any = await apiClient.post('/api/extensions/install', {
+        plugin_id: pluginId,
+      });
+
       if (result.success) {
         setUiInstallStatus('installed');
-        setUiRegistrationStatus('registered'); // Assume registration happens after install
+        setUiRegistrationStatus('registered');
+        setBackendStatusDetail('installed');
+        // The health state will be updated via the registry hooks
       } else {
         setUiInstallStatus('error');
-        console.error(`Failed to install UI for ${pluginId}:`, result.message);
+        console.error(`Failed to install plugin ${pluginId}:`, result.message);
       }
     } catch (error) {
       setUiInstallStatus('error');
-      console.error(`Error installing UI for ${pluginId}:`, error);
+      console.error(`Error installing plugin ${pluginId}:`, error);
+    } finally {
+      setIsOperationInProgress(false);
     }
   };
 
   const handleRemoveUI = async () => {
+    setIsOperationInProgress(true);
     setUiInstallStatus('removing');
     try {
-      const installer = UIInstallerService.getInstance();
-      const result = await installer.removeUI(pluginId);
+      const result: any = await apiClient.post(`/api/plugins/${pluginId}/uninstall`);
       if (result.success) {
         setUiInstallStatus('not_installed');
         setUiRegistrationStatus('not_registered');
+        setBackendStatusDetail('uninstalled');
+        // The health state will be updated via the registry hooks
       } else {
         setUiInstallStatus('error');
-        console.error(`Failed to remove UI for ${pluginId}:`, result.message);
+        console.error(`Failed to uninstall plugin ${pluginId}:`, result.message);
       }
     } catch (error) {
       setUiInstallStatus('error');
-      console.error(`Error removing UI for ${pluginId}:`, error);
+      console.error(`Error uninstalling plugin ${pluginId}:`, error);
+    } finally {
+      setIsOperationInProgress(false);
     }
   };
 
   const handleRestoreUI = async () => {
+    setIsOperationInProgress(true);
     setUiInstallStatus('restoring');
     try {
-      const installer = UIInstallerService.getInstance();
-      const result = await installer.restoreUI(pluginId);
+      // For restore, we'd need to specify a backup path, but for now just try install
+      const result: any = await apiClient.post('/api/extensions/install', {
+        plugin_id: pluginId,
+      });
+
       if (result.success) {
         setUiInstallStatus('installed');
         setUiRegistrationStatus('registered');
+        setBackendStatusDetail('installed');
+        // The health state will be updated via the registry hooks
       } else {
         setUiInstallStatus('error');
-        console.error(`Failed to restore UI for ${pluginId}:`, result.message);
+        console.error(`Failed to restore plugin ${pluginId}:`, result.message);
       }
     } catch (error) {
       setUiInstallStatus('error');
-      console.error(`Error restoring UI for ${pluginId}:`, error);
+      console.error(`Error restoring plugin ${pluginId}:`, error);
+    } finally {
+      setIsOperationInProgress(false);
     }
   };
 
@@ -308,6 +326,44 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     // In a real implementation, this would trigger re-registration
     // For now, we'll simulate by toggling registration status
     setUiRegistrationStatus('registered');
+  };
+
+  const handleEnablePlugin = async () => {
+    setIsOperationInProgress(true);
+    try {
+      const result: any = await apiClient.post(`/api/plugins/${pluginId}/enable`);
+      if (result.success) {
+        setBackendStatusDetail('enabled');
+        // The health state will be updated via the registry hooks
+      } else {
+        console.error(`Failed to enable plugin ${pluginId}:`, result.message);
+        setUiInstallStatus('error');
+      }
+    } catch (error) {
+      console.error(`Error enabling plugin ${pluginId}:`, error);
+      setUiInstallStatus('error');
+    } finally {
+      setIsOperationInProgress(false);
+    }
+  };
+
+  const handleDisablePlugin = async () => {
+    setIsOperationInProgress(true);
+    try {
+      const result: any = await apiClient.post(`/api/plugins/${pluginId}/disable`);
+      if (result.success) {
+        setBackendStatusDetail('disabled');
+        // The health state will be updated via the registry hooks
+      } else {
+        console.error(`Failed to disable plugin ${pluginId}:`, result.message);
+        setUiInstallStatus('error');
+      }
+    } catch (error) {
+      console.error(`Error disabling plugin ${pluginId}:`, error);
+      setUiInstallStatus('error');
+    } finally {
+      setIsOperationInProgress(false);
+    }
   };
 
   return (
@@ -377,84 +433,45 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
 
       {/* Plugin controls */}
       <div className="flex flex-wrap gap-2 mt-3">
-        {/* Plugin UI preview */}
-        {health.permissionVisible && (
-          <div className="mt-2 bg-background/50 border border-border p-2 rounded">
-            <PluginHost pluginId={pluginId} />
-          </div>
-        )}
         
-        {/* Action buttons */}
+        {/* Status indicators */}
         <div className="flex flex-wrap gap-2">
-          {hasUiCapabilities && (
-            <>
-              {uiInstallStatus === 'not_installed' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleInstallUI}
-                  disabled={isUIBusy(uiInstallStatus)}
-                >
-                  {isInstalling(uiInstallStatus) ? 'Installing...' : 'Install UI'}
-                </Button>
-              )}
-              
-              {uiInstallStatus === 'installed' && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRemoveUI}
-                    disabled={isRemoving(uiInstallStatus)}
-                  >
-                    {isRemoving(uiInstallStatus) ? 'Removing...' : 'Remove UI'}
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleRestoreUI}
-                    disabled={isRestoring(uiInstallStatus)}
-                  >
-                    {isRestoring(uiInstallStatus) ? 'Restoring...' : 'Restore UI'}
-                  </Button>
-                </>
-              )}
-              
-              {(uiInstallStatus === 'installed' || uiInstallStatus === 'error') && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRetryRegistration}
-                  disabled={uiRegistrationStatus === 'registered'}
-                >
-                  {uiRegistrationStatus === 'registered' ? 'Registered' : 'Retry Registration'}
-                </Button>
-              )}
-            </>
+          {hasUiCapabilities && uiInstallStatus === 'installed' && (
+            <div className="flex items-center gap-2 text-xs text-green-600">
+              <CheckCircle2 className="h-3 w-3" />
+              UI Available
+            </div>
+          )}
+          {hasUiCapabilities && uiInstallStatus === 'not_installed' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInstallUI}
+              disabled={isUIBusy(uiInstallStatus)}
+            >
+              {isInstalling(uiInstallStatus) ? 'Installing...' : 'Install UI'}
+            </Button>
           )}
           
           {/* Enable/Disable controls */}
           {health.backendState !== 'error' && (
             <>
               {health.backendState === 'active' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  // In a real implementation, this would call backend disable API
-                  onClick={() => {/* TODO: Implement disable */}}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisablePlugin}
                   disabled={false}
                 >
                   Disable
                 </Button>
               )}
-              
-              {health.backendState !== 'active' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  // In a real implementation, this would call backend enable API
-                  onClick={() => {/* TODO: Implement enable */}}
+
+              {health.backendState !== 'active' && health.backendState !== 'error' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnablePlugin}
                   disabled={false}
                 >
                   Enable
@@ -464,28 +481,26 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
           )}
           
           {/* Uninstall control */}
-          {health.backendState !== 'uninstalled' && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              // In a real implementation, this would call backend uninstall API
-              onClick={() => {/* TODO: Implement uninstall */}}
-              disabled={false}
+          {health.backendState !== 'uninstalled' && uiInstallStatus === 'installed' && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleRemoveUI}
+              disabled={isUIBusy(uiInstallStatus)}
             >
-              Uninstall
+              {isRemoving(uiInstallStatus) ? 'Uninstalling...' : 'Uninstall'}
             </Button>
           )}
-          
+
           {/* Restore control for uninstalled plugins */}
           {health.backendState === 'uninstalled' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              // In a real implementation, this would call backend restore API
-              onClick={() => {/* TODO: Implement restore */}}
-              disabled={false}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestoreUI}
+              disabled={isUIBusy(uiInstallStatus)}
             >
-              Restore
+              {isRestoring(uiInstallStatus) ? 'Restoring...' : 'Restore'}
             </Button>
           )}
         </div>
@@ -506,7 +521,7 @@ export default function PluginOverviewPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Karen AI - Plugins & Tools Overview</h2>
           <p className="text-sm text-muted-foreground">
-            Understanding Karen AI's capabilities and how she integrates new features.
+            Understanding Karen AI&apos;s capabilities and how she integrates new features.
           </p>
         </div>
       </div>
@@ -515,7 +530,7 @@ export default function PluginOverviewPage() {
         <CardHeader>
           <CardTitle className="text-lg">Current Plugin & Tool Integration</CardTitle>
           <CardDescription>
-            Karen AI uses a "prompt-first" framework. Her core AI is instructed on how to use
+            Karen AI uses a &quot;prompt-first&quot; framework. Her core AI is instructed on how to use
             available tools and capabilities based on your conversational requests.
           </CardDescription>
         </CardHeader>
@@ -523,7 +538,7 @@ export default function PluginOverviewPage() {
           <p className="text-sm">
             When you interact with Karen, her central AI decision-making flow determines if a
             specialized tool is needed. If so, it invokes the tool and crafts a response based
-            on the tool's output.
+            on the tool&apos;s output.
           </p>
           <Alert>
             <MessageSquare className="h-4 w-4" />
@@ -595,16 +610,16 @@ export default function PluginOverviewPage() {
             <li>An AI meta-learning capability for Karen to dynamically understand new tools.</li>
             <li>A secure way to manage and register these plugins.</li>
           </ul>
-          <Alert variant="default" className="bg-background">
-            <Info className="h-4 w-4" />
-            <AlertTitle className="text-sm font-semibold">Developer Note</AlertTitle>
-            <AlertDescription className="text-xs">
-              Achieving true "drag-and-drop" dynamic plugin integration with autonomous learning
-              is a complex AI research and engineering challenge. The current system relies on
-              developers explicitly defining tools and guiding Karen's use of them through
-              prompt engineering.
-            </AlertDescription>
-          </Alert>
+           <Alert variant="default" className="bg-background">
+             <Info className="h-4 w-4" />
+             <AlertTitle className="text-sm font-semibold">Developer Note</AlertTitle>
+              <AlertDescription className="text-xs">
+                Achieving true &ldquo;drag-and-drop&rdquo; dynamic plugin integration with autonomous learning
+                is a complex AI research and engineering challenge. The current system relies on
+                developers explicitly defining tools and guiding Karen&apos;s use of them through
+                prompt engineering.
+              </AlertDescription>
+           </Alert>
         </CardContent>
       </Card>
 

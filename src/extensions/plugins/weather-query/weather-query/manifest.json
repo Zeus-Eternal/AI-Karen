@@ -27,7 +27,7 @@
         "id": "weather-query-sidebar",
         "placement": "sidebar.plugins",
         "label": "Weather",
-        "icon": "assets/weather-query---sidebar_00.svg",
+        "icon": "assets/weather-query---sidebar--main_00.svg",
         "order": 0
       }
     ],
@@ -52,9 +52,7 @@
   },
   "assets": {
     "icons": [
-      "assets/weather-query---sidebar_00.svg",
-      "assets/weather-query---plugin-overview_00.svg",
-      "assets/weather-query---application-settings--personal_00.svg"
+      "assets/weather-query---sidebar--main_00.svg"
     ]
   },
   "rbac": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { AlertCircle, Cpu, Gauge, RefreshCw, Save, ServerCog, Zap } from "lucide-react";
 
 import { apiClient } from "@/lib/api";
@@ -196,7 +196,7 @@ export default function OptimizationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
       const [configSummaryResponse, performanceConfigResponse, statusResponse] = await Promise.all([
@@ -217,11 +217,11 @@ export default function OptimizationSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     void loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   const availableRuntimeComponents = useMemo(() => {
     const summaryComponents = configSummary?.components ?? {};
@@ -235,7 +235,7 @@ export default function OptimizationSettings() {
   const gpuRuntime = status?.gpu_runtime;
   const gpuSnapshot = gpuRuntime?.snapshot;
   const gpuSummary = gpuRuntime?.summary;
-  const detectedDevices = gpuSnapshot?.cuda?.devices ?? [];
+  const detectedDevices = useMemo(() => gpuSnapshot?.cuda?.devices ?? [], [gpuSnapshot]);
   const detectedDeviceIds = useMemo(() => new Set(detectedDevices.map((device) => String(device.id))), [detectedDevices]);
   const normalizedPreferredDeviceId =
     form.preferredDeviceId === "auto" || detectedDeviceIds.has(form.preferredDeviceId) ? form.preferredDeviceId : "auto";

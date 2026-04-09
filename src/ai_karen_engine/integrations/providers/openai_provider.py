@@ -46,14 +46,20 @@ class OpenAIProvider(LLMProviderBase):
             max_retries: Maximum number of retry attempts
         """
         self.provider_name = str(provider_name or "openai").strip().lower()
-        self.provider_defaults = get_openai_compatible_provider_defaults(self.provider_name)
+        self.provider_defaults = get_openai_compatible_provider_defaults(
+            self.provider_name
+        )
         self.api_key_env_var = str(self.provider_defaults["api_key_env"])
         self.display_name = str(self.provider_defaults["display_name"])
         self.model = model
         self.api_key = api_key or os.getenv(self.api_key_env_var)
-        self.base_url = self._normalize_base_url(base_url or str(self.provider_defaults["base_url"]))
+        self.base_url = self._normalize_base_url(
+            base_url or str(self.provider_defaults["base_url"])
+        )
         self.timeout = timeout
-        self.max_retries = min(max_retries, 2) if self.provider_name == "zai" else max_retries
+        self.max_retries = (
+            min(max_retries, 2) if self.provider_name == "zai" else max_retries
+        )
         self.last_usage: Dict[str, Any] = {}
         self.initialization_error: Optional[str] = None
         self.client: Optional[Any] = None
@@ -65,6 +71,7 @@ class OpenAIProvider(LLMProviderBase):
         """Initialize OpenAI client with graceful error handling."""
         try:
             import openai
+
             self.openai = openai
 
             if not self.api_key:
@@ -86,24 +93,24 @@ class OpenAIProvider(LLMProviderBase):
                 client_kwargs["base_url"] = self.base_url
 
             self.client = openai.OpenAI(**client_kwargs)
-            
+
             # Validate API key by making a simple request
             self._validate_api_key()
-            
+
         except ImportError:
-            self.initialization_error = (
-                f"{self.display_name} client dependency not installed. Install with: pip install openai"
-            )
+            self.initialization_error = f"{self.display_name} client dependency not installed. Install with: pip install openai"
             logger.error(self.initialization_error)
         except Exception as ex:
-            self.initialization_error = f"{self.display_name} client initialization failed: {ex}"
+            self.initialization_error = (
+                f"{self.display_name} client initialization failed: {ex}"
+            )
             logger.error(self.initialization_error)
 
     def _validate_api_key(self):
         """Validate API key with a minimal request."""
         if not self.client or not self.api_key:
             return
-            
+
         try:
             # Make a minimal request to validate the API key
             self.client.models.list()
@@ -117,10 +124,12 @@ class OpenAIProvider(LLMProviderBase):
                 )
             elif "rate limit" in error_msg or "quota" in error_msg:
                 # Rate limit during validation is not a fatal error
-                logger.warning("Rate limited during API key validation, but key appears valid")
+                logger.warning(
+                    "Rate limited during API key validation, but key appears valid"
+                )
             else:
                 self.initialization_error = f"API key validation failed: {ex}"
-            
+
             if self.initialization_error:
                 logger.error(self.initialization_error)
 
@@ -146,7 +155,11 @@ class OpenAIProvider(LLMProviderBase):
                 error_str = str(ex).lower()
 
                 # Handle rate limiting with specific retry-after logic
-                if "rate limit" in error_str or "too many requests" in error_str or "429" in error_str:
+                if (
+                    "rate limit" in error_str
+                    or "too many requests" in error_str
+                    or "429" in error_str
+                ):
                     retry_after = self._extract_retry_after(ex, attempt)
                     if retry_after and attempt < self.max_retries - 1:
                         logger.warning(
@@ -174,43 +187,45 @@ class OpenAIProvider(LLMProviderBase):
 
     def _default_backoff_seconds(self, attempt: int) -> int:
         base_delay = 2 if self.provider_name == "zai" else 1
-        return min(base_delay * (2 ** attempt), 60)
+        return min(base_delay * (2**attempt), 60)
 
     def _extract_retry_after(self, error: Exception, attempt: int = 0) -> Optional[int]:
         """Extract retry-after value from rate limit error."""
         try:
             # Try to extract from OpenAI error response
-            if hasattr(error, 'response') and hasattr(error.response, 'headers'):
+            if hasattr(error, "response") and hasattr(error.response, "headers"):
                 headers = error.response.headers
-                retry_after = headers.get('retry-after')
+                retry_after = headers.get("retry-after")
                 if retry_after:
                     return int(retry_after)
 
-                reset_at = headers.get('x-ratelimit-reset')
+                reset_at = headers.get("x-ratelimit-reset")
                 if reset_at:
                     try:
                         if str(reset_at).isdigit():
                             wait_seconds = int(reset_at) - int(time.time())
                         else:
                             wait_seconds = int(
-                                parsedate_to_datetime(str(reset_at)).timestamp() - time.time()
+                                parsedate_to_datetime(str(reset_at)).timestamp()
+                                - time.time()
                             )
                         if wait_seconds > 0:
                             return min(wait_seconds, 60)
                     except Exception:
                         pass
-            
+
             # Fallback to parsing error message
             error_str = str(error)
             if "retry after" in error_str.lower():
                 import re
-                match = re.search(r'retry after (\d+)', error_str.lower())
+
+                match = re.search(r"retry after (\d+)", error_str.lower())
                 if match:
                     return int(match.group(1))
-                    
+
         except Exception:
             pass
-            
+
         # Default backoff for rate limits
         return self._default_backoff_seconds(attempt)
 
@@ -230,7 +245,7 @@ class OpenAIProvider(LLMProviderBase):
             "500",
             "internal server error",
             "service unavailable",
-            "bad gateway"
+            "bad gateway",
         ]
 
         # Non-retryable errors (fail fast)
@@ -243,7 +258,7 @@ class OpenAIProvider(LLMProviderBase):
             "400",
             "401",
             "403",
-            "404"
+            "404",
         ]
 
         # Check non-retryable first
@@ -265,7 +280,7 @@ class OpenAIProvider(LLMProviderBase):
         # Check initialization status
         if self.initialization_error:
             raise GenerationFailed(self.initialization_error)
-            
+
         if not self.client:
             raise GenerationFailed("OpenAI client not initialized")
 
@@ -315,12 +330,18 @@ class OpenAIProvider(LLMProviderBase):
             else:
                 self.last_usage = {}
 
-            record_llm_metric("generate_text", time.time() - t0, True, self.provider_name)
+            record_llm_metric(
+                "generate_text", time.time() - t0, True, self.provider_name
+            )
             return text
 
         except Exception as ex:
             record_llm_metric(
-                "generate_text", time.time() - t0, False, self.provider_name, error=str(ex)
+                "generate_text",
+                time.time() - t0,
+                False,
+                self.provider_name,
+                error=str(ex),
             )
 
             # Provide more specific error messages
@@ -345,7 +366,7 @@ class OpenAIProvider(LLMProviderBase):
         # Check initialization status
         if self.initialization_error:
             raise GenerationFailed(self.initialization_error)
-            
+
         if not self.client:
             raise GenerationFailed("OpenAI client not initialized")
 
@@ -404,7 +425,7 @@ class OpenAIProvider(LLMProviderBase):
         # Check initialization status
         if self.initialization_error:
             raise EmbeddingFailed(self.initialization_error)
-            
+
         if not self.client:
             raise EmbeddingFailed("OpenAI client not initialized")
 
@@ -437,7 +458,9 @@ class OpenAIProvider(LLMProviderBase):
             return embeddings
 
         except Exception as ex:
-            record_llm_metric("embed", time.time() - t0, False, self.provider_name, error=str(ex))
+            record_llm_metric(
+                "embed", time.time() - t0, False, self.provider_name, error=str(ex)
+            )
 
             error_msg = str(ex).lower()
             if "api key" in error_msg or "unauthorized" in error_msg:
@@ -453,6 +476,18 @@ class OpenAIProvider(LLMProviderBase):
 
     def get_models(self) -> List[str]:
         """Get list of available models from OpenAI with fallback to static list."""
+        # Skip network calls in offline/development mode
+        offline_mode = os.getenv("KARI_OPENAI_OFFLINE", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if offline_mode:
+            logger.info(
+                f"{self.display_name} offline mode enabled, using static model list"
+            )
+            return self._get_common_models()
+
         try:
             if self.initialization_error or not self.client:
                 # Return common models as fallback
@@ -464,12 +499,14 @@ class OpenAIProvider(LLMProviderBase):
                 return [model.id for model in models.data]
 
             discovered_models = self._retry_with_backoff(_list_models)
-            
+
             # Merge with common models to ensure we have a comprehensive list
             common_models = self._get_common_models()
             all_models = list(set(discovered_models + common_models))
-            
-            logger.info(f"Discovered {len(discovered_models)} models from API, total available: {len(all_models)}")
+
+            logger.info(
+                f"Discovered {len(discovered_models)} models from API, total available: {len(all_models)}"
+            )
             return sorted(all_models)
 
         except Exception as ex:
@@ -492,7 +529,8 @@ class OpenAIProvider(LLMProviderBase):
             "model": self.model,
             "base_url": self.base_url or str(self.provider_defaults["base_url"]),
             "has_api_key": bool(self.api_key),
-            "api_key_valid": self.initialization_error is None and self.client is not None,
+            "api_key_valid": self.initialization_error is None
+            and self.client is not None,
             "initialization_error": self.initialization_error,
             "available_models": models,
             "supports_streaming": True,
@@ -510,7 +548,7 @@ class OpenAIProvider(LLMProviderBase):
                 "status": "unhealthy",
                 "error": self.initialization_error,
                 "provider": self.provider_name,
-                "initialization_status": "failed"
+                "initialization_status": "failed",
             }
 
         if not self.client:
@@ -518,7 +556,7 @@ class OpenAIProvider(LLMProviderBase):
                 "status": "unhealthy",
                 "error": f"{self.display_name} client not initialized",
                 "provider": self.provider_name,
-                "initialization_status": "failed"
+                "initialization_status": "failed",
             }
 
         try:
@@ -540,7 +578,7 @@ class OpenAIProvider(LLMProviderBase):
                 "model_tested": self.model,
                 "initialization_status": "success",
                 "api_key_status": "valid",
-                "connectivity": "ok"
+                "connectivity": "ok",
             }
 
             # Test model discovery
@@ -549,46 +587,49 @@ class OpenAIProvider(LLMProviderBase):
                 health_result["model_discovery"] = {
                     "status": "success",
                     "models_found": len(available_models),
-                    "sample_models": available_models[:5]  # First 5 models
+                    "sample_models": available_models[:5],  # First 5 models
                 }
             except Exception as e:
-                health_result["model_discovery"] = {
-                    "status": "failed",
-                    "error": str(e)
-                }
+                health_result["model_discovery"] = {"status": "failed", "error": str(e)}
                 health_result["warnings"] = health_result.get("warnings", [])
-                health_result["warnings"].append("Model discovery failed, using fallback list")
+                health_result["warnings"].append(
+                    "Model discovery failed, using fallback list"
+                )
 
             # Add Model Library compatibility check
             try:
-                from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+                from ai_karen_engine.services.provider_model_compatibility import (
+                    ProviderModelCompatibilityService,
+                )
+
                 compatibility_service = ProviderModelCompatibilityService()
-                validation = compatibility_service.validate_provider_model_setup(self.provider_name)
-                
+                validation = compatibility_service.validate_provider_model_setup(
+                    self.provider_name
+                )
+
                 health_result["model_library"] = {
                     "available": True,
                     "compatible_models_count": validation.get("total_compatible", 0),
-                    "validation_status": validation.get("status", "unknown")
+                    "validation_status": validation.get("status", "unknown"),
                 }
-                
+
                 # Add recommendations if no compatible models
                 if validation.get("total_compatible", 0) == 0:
                     health_result["warnings"] = health_result.get("warnings", [])
-                    health_result["warnings"].append("No compatible models found in Model Library")
-                
+                    health_result["warnings"].append(
+                        "No compatible models found in Model Library"
+                    )
+
             except Exception as e:
-                health_result["model_library"] = {
-                    "available": False,
-                    "error": str(e)
-                }
+                health_result["model_library"] = {"available": False, "error": str(e)}
                 health_result["warnings"] = health_result.get("warnings", [])
                 health_result["warnings"].append(f"Model Library unavailable: {e}")
 
             return health_result
-            
+
         except Exception as ex:
             error_msg = str(ex).lower()
-            
+
             # Classify the error for better diagnostics
             if "api key" in error_msg or "unauthorized" in error_msg:
                 error_type = "authentication_error"
@@ -605,18 +646,20 @@ class OpenAIProvider(LLMProviderBase):
             else:
                 error_type = "unknown_error"
                 specific_error = str(ex)
-            
+
             return {
                 "status": "unhealthy",
                 "provider": self.provider_name,
                 "error": specific_error,
                 "error_type": error_type,
                 "raw_error": str(ex),
-                "initialization_status": "success" if not self.initialization_error else "failed",
+                "initialization_status": "success"
+                if not self.initialization_error
+                else "failed",
                 "model_library": {
                     "available": False,
-                    "error": "Provider health check failed"
-                }
+                    "error": "Provider health check failed",
+                },
             }
 
     # Lightweight status helpers -------------------------------------------------

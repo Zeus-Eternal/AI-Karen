@@ -1,17 +1,32 @@
 
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Workflow, PlusCircle, Trash2, Edit, AlertTriangle, Info, Play, GripVertical, FilePlus2, Bot, Settings, ScrollText } from "lucide-react";
+import { Workflow, PlusCircle, Trash2, Edit, Info, Play, GripVertical, FilePlus2, Bot, Settings, ScrollText } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+
+interface Job {
+  id: string;
+  name: string;
+  description: string;
+  tasks?: Task[];
+  trigger?: string;
+}
+
+interface Task {
+  id: string;
+  name: string;
+  description?: string;
+  instructions?: string;
+  agent?: string;
+}
 import {
   Dialog,
   DialogContent,
@@ -34,11 +49,11 @@ type SequenceTask = {
  */
 export default function SequencesPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const [jobs, setJobs] = React.useState<any[]>([]);
+  const [jobs, setJobs] = React.useState<Job[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState("");
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     if (!isAuthenticated) {
       setJobs([]);
       setErrorMsg("Sign in to manage jobs.");
@@ -50,22 +65,22 @@ export default function SequencesPage() {
     setErrorMsg("");
     try {
       const { apiClient } = await import('@/lib/api');
-      const data = await apiClient.get<any[]>('/api/automation/jobs/');
+      const data: Job[] = await apiClient.get<Job[]>('/api/automation/jobs/');
       setJobs(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to fetch jobs.');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to fetch jobs.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
-  React.useEffect(() => {
+  React.  useEffect(() => {
     if (isAuthLoading) {
       return;
     }
     fetchJobs();
-  }, [isAuthenticated, isAuthLoading]);
+  }, [isAuthenticated, isAuthLoading, fetchJobs]);
 
   const definedTasks = [
     { name: "Generate Weekly Sales Report", description: "Queries the sales database and formats it into a PDF." },
@@ -118,8 +133,8 @@ export default function SequencesPage() {
       const { apiClient } = await import('@/lib/api');
       await apiClient.delete(`/api/automation/jobs/${id}`);
       fetchJobs();
-    } catch (err: any) {
-      alert("Failed to delete job: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to delete job: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -132,8 +147,8 @@ export default function SequencesPage() {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/automation/jobs/${id}/execute`, {});
       alert("Job execution started.");
-    } catch (err: any) {
-      alert("Failed to execute job: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to execute job: " + (err as Error).message);
     }
   };
 
@@ -151,8 +166,8 @@ export default function SequencesPage() {
         trigger: "Manual Run"
       });
       fetchJobs();
-    } catch (err: any) {
-      alert("Failed to create job: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to create job: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -191,7 +206,7 @@ export default function SequencesPage() {
               <div className="text-center p-8 text-muted-foreground animate-pulse">Loading jobs from backend...</div>
             ) : jobs.length === 0 ? (
               <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No jobs defined yet.</div>
-            ) : jobs.map((job: any, index: number) => (
+            ) : jobs.map((job: Job, index: number) => (
               <Card key={job.id || index}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -215,7 +230,7 @@ export default function SequencesPage() {
                 <CardContent>
                   <Label className="text-xs font-semibold">Task & Agent Chain</Label>
                   <div className="relative flex flex-wrap items-start gap-x-2 gap-y-4 mt-3 text-sm">
-                    {job.tasks && job.tasks.map((task: any, i: number) => (
+                    {job.tasks && job.tasks.map((task: Task, i: number) => (
                       <React.Fragment key={i}>
                         <div className="flex flex-col items-center text-center gap-1.5">
                           <Badge variant="secondary" className="px-3 py-1 text-xs">{task.name}</Badge>
@@ -224,7 +239,7 @@ export default function SequencesPage() {
                               <span>{task.agent}</span>
                           </div>
                         </div>
-                        {i < job.tasks.length - 1 && (
+                        {job.tasks && i < job.tasks.length - 1 && (
                           <div className="mt-2.5 h-px w-6 bg-border -mx-1" />
                         )}
                       </React.Fragment>
@@ -258,7 +273,7 @@ export default function SequencesPage() {
                   <Label>Add Tasks to the Chain</Label>
                   <div className="p-3 border rounded-md h-64 overflow-y-auto space-y-2 bg-muted/30">
                       {newJobTasks.length === 0 ? (
-                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in job. Click "Add Task" to begin.</p>
+                          <p className="text-xs text-center text-muted-foreground py-2">No tasks in job. Click &quot;Add Task&quot; to begin.</p>
                       ) : (
                           newJobTasks.map((task, index) => (
                           <div key={task.name} className="flex items-center space-x-2 p-2 rounded-md bg-background border">
@@ -350,7 +365,7 @@ export default function SequencesPage() {
           <DialogHeader>
             <DialogTitle>Configure Step: <span className="text-primary">{editingConfig?.taskName}</span></DialogTitle>
             <DialogDescription>
-              Provide specific instructions or parameters for this task, just for this step in the job. This will override the task's default instructions.
+               Provide specific instructions or parameters for this task, just for this step in the job. This will override the task&apos;s default instructions.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

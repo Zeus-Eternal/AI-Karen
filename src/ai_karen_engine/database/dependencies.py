@@ -123,7 +123,7 @@ async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-def get_async_db_session_dependency() -> AsyncGenerator[AsyncSession, None]:
+async def get_async_db_session_dependency() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency for async database session.
 
@@ -140,7 +140,8 @@ def get_async_db_session_dependency() -> AsyncGenerator[AsyncSession, None]:
     if not db_client:
         raise RuntimeError("Database client not initialized")
 
-    return db_client.get_async_session()
+    async with db_client.get_async_session() as session:
+        yield session
 
 
 # Health check dependency

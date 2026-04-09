@@ -5,14 +5,15 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends
 
-from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.dependencies import (
+    bypass_user_context_func as get_current_user,
+)
 from ai_karen_engine.services.audit_logging import get_audit_logger
 
 router = APIRouter(tags=["audit"])
 
 
-# Alias core dependency for convenience
-get_current_user = get_current_user_context
+# Alias already created in import
 
 _AUDIT_LOGS: List[dict] = [
     {

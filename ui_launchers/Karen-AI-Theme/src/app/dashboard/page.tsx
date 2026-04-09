@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from 'react';
+import Image from 'next/image';
 import { AuthWrapper } from '@/components/AuthWrapper';
 import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, Bell, SlidersHorizontal, LayoutGrid, PlugZap, Binary, Bot as BotIcon, ScrollText, UserCircle, Loader2 } from 'lucide-react';
 import SettingsDialogComponent from '@/components/settings/SettingsDialog';
@@ -42,22 +43,31 @@ import AdminSettingsPage from '@/components/admin/AdminSettingsPage';
 import { Shield } from 'lucide-react';
 import { usePluginRegistry } from '@/plugin_host/registry';
 import { usePluginRoutes } from '@/plugin_host/route-injector';
-import { PermissionGuard } from '@/plugin_host/permission-guard';
+
 
 type ActiveView = string;
 
 export default function DashboardPage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
-  const { loading: pluginsLoading, getPlugin } = usePluginRegistry();
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const { loading: pluginsLoading } = usePluginRegistry();
   const { sidebarEntries, viewMap } = usePluginRoutes();
 
   function renderPluginMenuIcon(pluginId: string, iconPath?: string) {
-    if (iconPath) {
+    const imgKey = `${pluginId}-${iconPath}`;
+
+    if (iconPath && !imgErrors[imgKey]) {
+      // Strip "assets/" prefix for frontend static serving
+      const cleanIconPath = iconPath.startsWith('assets/') ? iconPath.substring(7) : iconPath;
+      const frontendPath = `/plugin_repo/${pluginId}/assets/${cleanIconPath}`;
       return (
-        <img
-          src={`/api/extensions/${pluginId}/assets/${iconPath}`}
+        <Image
+          src={frontendPath}
           alt=""
+          width={16}
+          height={16}
           className="h-4 w-4 shrink-0 rounded-sm object-contain"
+          onError={() => setImgErrors(prev => ({ ...prev, [imgKey]: true }))}
         />
       );
     }

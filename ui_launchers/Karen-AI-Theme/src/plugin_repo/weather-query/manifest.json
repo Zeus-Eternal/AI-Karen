@@ -27,6 +27,7 @@
         "id": "weather-query-sidebar",
         "placement": "sidebar.plugins",
         "label": "Weather",
+        "icon": "assets/weather-query---sidebar--main_00.svg",
         "order": 0
       }
     ],
@@ -47,6 +48,11 @@
         "zone": "dashboard.widgets",
         "order": 0
       }
+    ]
+  },
+  "assets": {
+    "icons": [
+      "assets/weather-query---sidebar--main_00.svg"
     ]
   },
 

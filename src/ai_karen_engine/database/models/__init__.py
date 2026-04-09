@@ -115,9 +115,7 @@ class TenantConversation(Base):
 
     __tablename__ = "conversations"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), nullable=False)
     title = Column(String(255))
     conversation_metadata = Column(JSON, default={})
@@ -857,3 +855,177 @@ class ApiKey(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - simple repr
         return f"<ApiKey(key_id={self.key_id}, tenant_id={self.tenant_id})>"
+
+
+# Chat Runtime Control Plane Models
+
+
+class SystemRuntimeState(Base):
+    """Current runtime control plane state and readiness summary."""
+
+    __tablename__ = "system_runtime_state"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    current_mode = Column(
+        String(50), nullable=False, default="normal"
+    )  # normal, degraded, maintenance, emergency_fallback
+    normal_ready = Column(Boolean, default=False, nullable=False)
+    degraded_ready = Column(Boolean, default=False, nullable=False)
+    maintenance_enabled = Column(Boolean, default=False, nullable=False)
+    maintenance_reason = Column(Text)
+    estimated_completion_time = Column(DateTime)
+    last_transition_at = Column(DateTime, default=datetime.utcnow)
+    last_transition_reason = Column(Text)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_runtime_state_mode", "current_mode"),
+        Index("idx_runtime_state_updated", "updated_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<SystemRuntimeState(mode={self.current_mode}, normal_ready={self.normal_ready})>"
+
+
+class MaintenanceWindow(Base):
+    """Planned maintenance entries/history."""
+
+    __tablename__ = "maintenance_windows"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    enabled = Column(Boolean, default=False, nullable=False)
+    message = Column(Text)
+    reason = Column(Text)
+    estimated_completion_time = Column(DateTime)
+    notifications_supported = Column(Boolean, default=True, nullable=False)
+    started_at = Column(DateTime)
+    ended_at = Column(DateTime)
+    auto_end_policy = Column(
+        String(100), default="manual"
+    )  # manual, after_healthy_check, at_time
+    created_by = Column(
+        UUID(as_uuid=True), ForeignKey("auth_users.user_id", ondelete="SET NULL")
+    )
+    updated_by = Column(
+        UUID(as_uuid=True), ForeignKey("auth_users.user_id", ondelete="SET NULL")
+    )
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    creator = relationship("AuthUser", foreign_keys=[created_by])
+    updater = relationship("AuthUser", foreign_keys=[updated_by])
+
+    notification_requests = relationship(
+        "MaintenanceNotificationRequest",
+        back_populates="maintenance_window",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("idx_maintenance_enabled", "enabled"),
+        Index("idx_maintenance_started", "started_at"),
+        Index("idx_maintenance_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MaintenanceWindow(id={self.id}, enabled={self.enabled})>"
+
+
+class MaintenanceNotificationRequest(Base):
+    """User/session notification requests for maintenance completion."""
+
+    __tablename__ = "maintenance_notification_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    maintenance_window_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("maintenance_windows.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("auth_users.user_id", ondelete="CASCADE")
+    )
+    session_id = Column(String(255))  # Allow anonymous sessions
+    notification_channel = Column(
+        String(50), default="in_app"
+    )  # in_app, websocket, email
+    status = Column(
+        String(50), default="active"
+    )  # active, pending, completed, cancelled
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    dispatched_at = Column(DateTime)
+    cancelled_at = Column(DateTime)
+
+    # Relationships
+    maintenance_window = relationship(
+        "MaintenanceWindow", back_populates="notification_requests"
+    )
+    user = relationship("AuthUser")
+
+    __table_args__ = (
+        Index("idx_notification_maintenance", "maintenance_window_id"),
+        Index("idx_notification_user", "user_id"),
+        Index("idx_notification_session", "session_id"),
+        Index("idx_notification_status", "status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<MaintenanceNotificationRequest(id={self.id}, status={self.status})>"
+
+
+class RuntimeDependencyHealth(Base):
+    """Health snapshots for dependencies."""
+
+    __tablename__ = "runtime_dependency_health"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dependency_name = Column(String(100), nullable=False)
+    status = Column(String(50), nullable=False)  # healthy, unhealthy, unknown
+    reason = Column(Text)
+    checked_at = Column(DateTime, default=datetime.utcnow)
+    consecutive_successes = Column(Integer, default=0)
+    consecutive_failures = Column(Integer, default=0)
+    last_failure_at = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_dependency_name", "dependency_name"),
+        Index("idx_dependency_status", "status"),
+        Index("idx_dependency_checked", "checked_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<RuntimeDependencyHealth(name={self.dependency_name}, status={self.status})>"
+
+
+class ChatRuntimeEvent(Base):
+    """Auditable runtime state transitions and maintenance responses."""
+
+    __tablename__ = "chat_runtime_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type = Column(
+        String(100), nullable=False
+    )  # mode_transition, maintenance_response, etc.
+    mode = Column(String(50))  # normal, degraded, maintenance, emergency_fallback
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("auth_users.user_id", ondelete="SET NULL")
+    )
+    session_id = Column(String(255))
+    conversation_id = Column(UUID(as_uuid=True))
+    details_json = Column("details", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("AuthUser")
+
+    __table_args__ = (
+        Index("idx_runtime_event_type", "event_type"),
+        Index("idx_runtime_event_user", "user_id"),
+        Index("idx_runtime_event_session", "session_id"),
+        Index("idx_runtime_event_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChatRuntimeEvent(id={self.id}, type={self.event_type}, mode={self.mode})>"

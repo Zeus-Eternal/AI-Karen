@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
 
-from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.dependencies import bypass_user_context_func
 from ai_karen_engine.core.service_registry import get_service_registry
 from ai_karen_engine.services.audit_logging import get_audit_logger
 from services.memory.internal.training_audit_logger import get_training_audit_logger
@@ -13,7 +13,7 @@ from services.memory.internal.training_audit_logger import get_training_audit_lo
 router = APIRouter(tags=["communications-center"])
 
 
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 
 
 @router.get("/observability")
@@ -61,9 +61,17 @@ async def get_communications_center_observability(
                 if hasattr(memory_service, "get_writeback_feedback_metrics")
                 else {}
             )
-            writeback_metrics = service_metrics.get("writeback_system", {}) if isinstance(service_metrics, dict) else {}
-            pending_writebacks = int(writeback_metrics.get("pending_writebacks", 0) or 0)
-            active_shard_links = int(writeback_metrics.get("active_shard_links", 0) or 0)
+            writeback_metrics = (
+                service_metrics.get("writeback_system", {})
+                if isinstance(service_metrics, dict)
+                else {}
+            )
+            pending_writebacks = int(
+                writeback_metrics.get("pending_writebacks", 0) or 0
+            )
+            active_shard_links = int(
+                writeback_metrics.get("active_shard_links", 0) or 0
+            )
 
             memory_observability = {
                 "available": True,

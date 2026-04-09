@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Mail, Camera, Save, Lock, LogOut, Sun, Moon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { useTheme } from '@/firebase/provider';
+import { useTheme } from '@/providers/theme-provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ApiError, apiClient } from '@/lib/api';
 import { authService } from '@/lib/auth';
@@ -26,8 +26,18 @@ interface AccountUser {
   created_at: string;
   last_login?: string | null;
   tenant_id: string;
-  preferences: Record<string, any>;
+  preferences: UserPreferences;
   avatarUrl?: string;
+}
+
+interface UserPreferences {
+  theme?: string;
+  [key: string]: unknown;
+}
+
+interface ProfileUpdatePayload {
+  email: string;
+  full_name?: string;
 }
 
 interface PasswordPayloadResponse {
@@ -152,7 +162,7 @@ export default function AccountPage() {
        const handleProfileSave = async () => {
            try {
                setIsProfileSaving(true);
-               const payload: any = {
+                const payload: ProfileUpdatePayload = {
                    email,
                };
                // Only include full_name if it's not empty

@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollText, PlusCircle, Trash2, Play, Settings, AlertTriangle, Bot, Info, Users, FileCog } from "lucide-react";
+import { ScrollText, PlusCircle, Trash2, Play, Settings, Bot, Info, Users, FileCog } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -29,17 +29,30 @@ type SubAgent = {
   instructions: string;
 };
 
+type Task = {
+  id: string;
+  name: string;
+  description?: string;
+  instructions?: string;
+  agent?: string;
+  subAgents?: SubAgent[];
+  primaryAgent?: string;
+  primaryAgentInstructions?: string;
+  lastRun?: string;
+  status?: string;
+};
+
 /**
  * @file TasksPage.tsx
  * @description Page for defining and managing Tasks for AI agents via /api/tasks.
  */
 export default function TasksPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!isAuthenticated) {
       setTasks([]);
       setErrorMsg("Sign in to manage tasks.");
@@ -51,22 +64,22 @@ export default function TasksPage() {
     setErrorMsg("");
     try {
       const { apiClient } = await import('@/lib/api');
-      const data = await apiClient.get<any[]>('/api/tasks/');
+      const data = await apiClient.get<Task[]>('/api/tasks/');
       setTasks(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to fetch tasks.');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to fetch tasks.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthLoading) {
       return;
     }
     fetchTasks();
-  }, [isAuthenticated, isAuthLoading]);
+  }, [isAuthenticated, isAuthLoading, fetchTasks]);
 
   
   // State for the mock form
@@ -114,8 +127,8 @@ export default function TasksPage() {
       const { apiClient } = await import('@/lib/api');
       await apiClient.delete(`/api/tasks/${taskId}`);
       fetchTasks();
-    } catch (err: any) {
-      alert("Failed to delete task: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to delete task: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -128,8 +141,8 @@ export default function TasksPage() {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post(`/api/tasks/${taskId}/execute`, {});
       fetchTasks();
-    } catch (err: any) {
-      alert("Failed to execute task: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to execute task: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -152,8 +165,8 @@ export default function TasksPage() {
         subAgents: newSubAgents
       });
       fetchTasks();
-    } catch (err: any) {
-      alert("Failed to create task: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to create task: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -200,7 +213,7 @@ export default function TasksPage() {
             <div className="text-center p-8 text-muted-foreground animate-pulse">Loading tasks from backend...</div>
           ) : tasks.length === 0 ? (
             <div className="p-8 text-center border rounded-xl bg-muted/20 text-muted-foreground">No tasks defined yet.</div>
-          ) : tasks.map((task: any, index: number) => (
+          ) : tasks.map((task: Task, index: number) => (
             <Card key={task.id || index}>
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -241,7 +254,7 @@ export default function TasksPage() {
                     {task.subAgents && task.subAgents.length > 0 && (
                         <div className="flex items-center gap-2">
                             <Users className="h-4 w-4" />
-                            <span>Sub-Agents: <strong className="font-semibold text-foreground">{task.subAgents.map((sa: any) => sa.name).join(', ')}</strong></span>
+                            <span>Sub-Agents: <strong className="font-semibold text-foreground">{task.subAgents.map((sa: SubAgent) => sa.name).join(', ')}</strong></span>
                         </div>
                     )}
                 </div>

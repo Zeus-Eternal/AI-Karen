@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,9 +55,11 @@ export function PluginCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {plugin.icon && (
-                <img 
-                  src={plugin.icon} 
-                  alt={`${plugin.display_name} icon`} 
+                <Image
+                  src={plugin.icon}
+                  alt={`${plugin.display_name} icon`}
+                  width={32}
+                  height={32}
                   className="h-8 w-8 rounded-md object-cover"
                 />
               )}

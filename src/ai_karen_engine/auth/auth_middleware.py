@@ -205,6 +205,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "email": user_data.get("email", ""),
             "user_type": user_data.get("user_type", "user"),
             "permissions": user_data.get("permissions", []),
+            "tenant_id": user_data.get("tenant_id", "default"),
             "token_id": token_id,
             "iat": now,
             "exp": now + timedelta(hours=self.jwt_expiration_hours),
@@ -359,6 +360,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "email": payload.get("email"),
             "user_type": payload.get("user_type", "user"),
             "permissions": payload.get("permissions", []),
+            "tenant_id": payload.get("tenant_id", "default"),
             "token_id": payload.get("token_id"),
         }
 
@@ -381,14 +383,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             if session_token:
                 token_result = self.validate_token(session_token)
                 if token_result["status"] == TokenStatus.VALID:
-                    payload = token_result["payload"]
-                    return {
-                        "user_id": payload["sub"],
-                        "email": payload.get("email"),
-                        "user_type": payload.get("user_type", "user"),
-                        "permissions": payload.get("permissions", []),
-                        "token_id": payload.get("token_id"),
-                    }
+                    return self._get_user_from_payload(token_result["payload"])
 
             basic_auth = self._extract_basic_auth(request)
             if basic_auth:
@@ -503,6 +498,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                         "email": payload.get("email"),
                         "user_type": payload.get("user_type", "user"),
                         "permissions": payload.get("permissions", []),
+                        "tenant_id": payload.get("tenant_id", "default"),
                         "token_id": payload.get("token_id"),
                     }
 
@@ -516,6 +512,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                         "email": payload.get("email"),
                         "user_type": payload.get("user_type", "user"),
                         "permissions": payload.get("permissions", []),
+                        "tenant_id": payload.get("tenant_id", "default"),
                         "token_id": payload.get("token_id"),
                     }
 

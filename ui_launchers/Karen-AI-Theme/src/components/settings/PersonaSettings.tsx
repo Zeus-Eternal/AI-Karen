@@ -30,6 +30,11 @@ interface PersonaRecord {
   is_system_persona: boolean;
 }
 
+interface UserPreferences {
+  preferred_address_name?: string;
+  [key: string]: unknown;
+}
+
 interface PersonaPreferences {
   active_persona_id?: string | null;
 }
@@ -287,10 +292,10 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
       }
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(currentFullSettings));
 
-      const nextPreferences = {
-        ...((user?.preferences as Record<string, any> | undefined) || {}),
-        preferred_address_name: normalized,
-      };
+       const nextPreferences = {
+         ...((user?.preferences as UserPreferences | undefined) || {}),
+         preferred_address_name: normalized,
+       };
 
       authService.updateCurrentUser({
         preferences: nextPreferences,
@@ -310,7 +315,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
           created_at?: string;
           last_login?: string | null;
           tenant_id: string;
-          preferences: Record<string, any>;
+          preferences: UserPreferences;
         }>('/api/auth/me', {
           preferences: nextPreferences,
         }).catch((error) => {
@@ -338,7 +343,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
         title: 'Preferred name saved',
         description: `Karen will address you as ${normalized}.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Save failed',
         description: 'Karen could not save your preferred form of address.',
@@ -360,9 +365,9 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Customize Karen's Core Persona</CardTitle>
+        <CardTitle className="text-lg">Customize Karen&apos;s Core Persona</CardTitle>
         <CardDescription>
-          Define Karen's foundational behavior, expertise, or specific rules she should always follow. These instructions are given high priority in her decision-making.
+          Define Karen&apos;s foundational behavior, expertise, or specific rules she should always follow. These instructions are given high priority in her decision-making.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -421,7 +426,7 @@ export default function PersonaSettings({ inSheet = false }: PersonaSettingsProp
             className="text-sm font-mono"
           />
            <p className="text-xs text-muted-foreground mt-2">
-            These instructions will directly influence Karen's responses. Be concise and clear for best results. Long or overly complex instructions might be less effective.
+            These instructions will directly influence Karen&apos;s responses. Be concise and clear for best results. Long or overly complex instructions might be less effective.
           </p>
         </div>
       </CardContent>

@@ -43,7 +43,7 @@ export default function PluginStorePage() {
     loadCategories();
     loadTrending();
     searchPlugins();
-  }, []);
+  }, [loadCategories, loadTrending, searchPlugins]);
 
   useEffect(() => {
     setSearchParams({ category: selectedCategory });
@@ -141,7 +141,7 @@ export default function PluginStorePage() {
             <CardHeader>
               <CardTitle>Discover Plugins</CardTitle>
               <CardDescription>
-                Browse the marketplace and install plugins to extend Karen AI's capabilities
+                Browse the marketplace and install plugins to extend Karen AI&apos;s capabilities
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

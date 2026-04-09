@@ -16,8 +16,8 @@ vi.hoisted(() => {
 
 // Now import the module that calls require.context at top level
 import { resolvePluginComponent, normalizePluginId, PLUGIN_IMPORT_MAP, type LoaderPluginEntry } from '../../src/plugin_host/loader';
-import '@testing-library/jest-dom';
 import React from 'react';
+import '@testing-library/jest-dom';
 
 vi.mock('@/lib/api', () => ({
   default: { get: vi.fn() }

@@ -8,9 +8,16 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, AsyncIterator, cast
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 
-# Import ChatOrchestrator dependency
-from ai_karen_engine.core.dependencies import ChatOrchestrator_Dep
-from ai_karen_engine.chat.ChatOrchestrator import ProcessingStatus, ChatRequest, ChatResponse
+
+from ai_karen_engine.chat.ChatOrchestrator import (
+    ProcessingStatus,
+    ChatRequest,
+    ChatResponse,
+)
+from ai_karen_engine.core.chat_runtime_control_plane import (
+    get_chat_runtime_control_plane,
+)
+
 if TYPE_CHECKING:
     from pydantic import BaseModel, ConfigDict, Field
 else:
@@ -31,9 +38,10 @@ else:
 
 logger = logging.getLogger(__name__)
 
-# Mount under /api/copilot when included with the global /api prefix
-# No prefix here since it's already mounted at /api/copilot in routers.py
+# Create router without prefix for automatic discovery alignment
 router = APIRouter(tags=["copilot"])
+
+print("DEBUG: Copilot router created")
 
 
 class SuggestedAction(BaseModel):
@@ -66,7 +74,9 @@ class AssistResponse(BaseModel):
 
 
 class StartActionRequest(BaseModel):
-    action: str = Field(..., description="Registered action/predictor name, e.g. routing.select")
+    action: str = Field(
+        ..., description="Registered action/predictor name, e.g. routing.select"
+    )
     payload: Dict[str, Any] = Field(default_factory=dict)
     context: Dict[str, Any] = Field(default_factory=dict)
 
@@ -112,24 +122,31 @@ from ai_karen_engine.chat.ChatOrchestrator import (
 )
 
 
-def _get_chat_orchestrator():
+async def _get_chat_orchestrator():
     """Return the ChatOrchestrator for processing chat requests."""
     try:
         from ai_karen_engine.chat.factory import get_chat_orchestrator
-        orchestrator = get_chat_orchestrator()
-        logger.info("Successfully retrieved ChatOrchestrator", extra={"correlation_id": "debug"})
+
+        orchestrator = await get_chat_orchestrator()
+        logger.info(
+            "Successfully retrieved ChatOrchestrator", extra={"correlation_id": "debug"}
+        )
         return orchestrator
     except Exception as exc:
-        logger.error("Failed to get chat orchestrator: %s", exc, extra={"correlation_id": "debug"})
+        logger.error(
+            "Failed to get chat orchestrator: %s",
+            exc,
+            extra={"correlation_id": "debug"},
+        )
         raise HTTPException(status_code=503, detail="Chat service unavailable")
 
 
 def _get_predictor_registry():
     """Return the predictor registry with graceful fallback."""
-    
+
     try:
         from ai_karen_engine.core.predictors import predictor_registry as registry
-        
+
         return registry
     except Exception:
         return {}
@@ -137,25 +154,24 @@ def _get_predictor_registry():
 
 def _get_audit_logger():
     """Lazily import the audit logger to avoid heavy startup costs."""
-    
+
     try:
         from ai_karen_engine.services.audit_logger import get_audit_logger as _getter
-        
+
         return _getter()
     except Exception:
         return None
 
 
 class _AuditLoggerProtocol:
-    async def log_event(self, *args: Any, **kwargs: Any) -> Any:
-        ...
+    async def log_event(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 async def _log_audit_event(**kwargs: Any) -> None:
     """Best-effort audit logging with compatibility for partial shims."""
     try:
         audit_logger = _get_audit_logger()
-        if audit_logger is not None and hasattr(audit_logger, 'log_audit_event'):
+        if audit_logger is not None and hasattr(audit_logger, "log_audit_event"):
             audit_logger.log_audit_event(**kwargs)
     except Exception:
         pass
@@ -167,7 +183,7 @@ def _ensure_routing_actions_registered() -> None:
         from ai_karen_engine.integrations.copilotkit.routing_actions import (
             ensure_kire_actions_registered,
         )
-        
+
         ensure_kire_actions_registered()
     except Exception:
         # Best-effort; if not present, action registry may be empty until lazily imported elsewhere
@@ -177,7 +193,7 @@ def _ensure_routing_actions_registered() -> None:
 @router.get("/health")
 async def copilot_health():
     """Lightweight health check for copilot routes to verify wiring.
-    
+
     Returns minimal info without invoking heavy dependencies.
     """
     try:
@@ -204,8 +220,10 @@ async def copilot_start_action(
 ):
     """Generic CopilotKit action starter. Routes to predictor-registered actions."""
     _ensure_routing_actions_registered()
-    correlation_id = http_request.headers.get("X-Correlation-Id") or f"copilot_{int(time.time())}"
-    
+    correlation_id = (
+        http_request.headers.get("X-Correlation-Id") or f"copilot_{int(time.time())}"
+    )
+
     # Parse request body manually
     try:
         body = await http_request.json()
@@ -216,11 +234,17 @@ async def copilot_start_action(
     # Resolve user context: prefer provided; otherwise permissive in dev/bypass
     if user_ctx is None:
         auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
-        allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
-        if not _is_production_env() and (
-            allow_public or auth_mode == "bypass"
-        ):
-            user_ctx = {"user_id": "anonymous", "roles": ["admin"], "scopes": ["chat:write"]}
+        allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if not _is_production_env() and (allow_public or auth_mode == "bypass"):
+            user_ctx = {
+                "user_id": "anonymous",
+                "roles": ["admin"],
+                "scopes": ["chat:write"],
+            }
         else:
             try:
                 # Try to resolve real context if available
@@ -233,12 +257,19 @@ async def copilot_start_action(
 
     # RBAC: basic scope check; allow admin or chat:write by default
     try:
-        allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
+        allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         if not allow_public:
             # Simple role checking - admin or user role required
             user_roles = user_ctx.get("roles", [])
             if not any(role in user_roles for role in ["admin", "user"]):
-                raise HTTPException(status_code=403, detail="Insufficient permissions - user or admin role required")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Insufficient permissions - user or admin role required",
+                )
     except Exception:
         # If RBAC service not configured, proceed in permissive mode
         pass
@@ -263,6 +294,7 @@ async def copilot_start_action(
             from ai_karen_engine.integrations.copilotkit.routing_actions import (
                 ensure_kire_actions_registered,
             )
+
             ensure_kire_actions_registered()
             # Also import actions directly for side-effects if available
             try:
@@ -281,7 +313,10 @@ async def copilot_start_action(
                 available = list(registry.keys()) if hasattr(registry, "keys") else []
             except Exception:
                 available = []
-            raise HTTPException(status_code=404, detail=f"Unknown action: {req.action}. Available: {available}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown action: {req.action}. Available: {available}",
+            )
 
     try:
         import inspect
@@ -303,7 +338,9 @@ async def copilot_start_action(
             surface="copilot",
         )
 
-        return StartActionResponse(status="ok", output=output or {}, correlation_id=correlation_id)
+        return StartActionResponse(
+            status="ok", output=output or {}, correlation_id=correlation_id
+        )
     except Exception as e:
         # Audit: action failed
         await _log_audit_event(
@@ -323,7 +360,7 @@ async def copilot_start_action(
 @router.get("/start", response_model=StartActionResponse)
 async def copilot_start_action_get(action: str, http_request: Request):
     """Shallow wrapper that maps GET to the same start action handler.
-    
+
     Accepts `action` as a query param and calls the POST handler with empty payload/context.
     Keeps legacy or misconfigured clients working without 404s.
     """
@@ -331,259 +368,107 @@ async def copilot_start_action_get(action: str, http_request: Request):
     return await copilot_start_action(http_request=http_request)
 
 
-@router.post("/assist", response_model=AssistResponse)
+@router.post("/assist")
 async def copilot_assist(
     request: AssistRequest,
     http_request: Request,
-    chat_orchestrator: Any = Depends(ChatOrchestrator_Dep),  # Use ChatOrchestrator as absolute source of truth
 ):
-    """Thin copilot ingress that delegates chat lifecycle authority to ChatOrchestrator."""
+    """Copilot assist endpoint using runtime control plane."""
     start_time = time.time()
     correlation_id = get_correlation_id(http_request) or f"copilot_{int(time.time())}"
-    
-    # Log input parameters
-    logger.info("Starting copilot assist", extra={
-        "correlation_id": correlation_id,
-        "user_id": request.user_id,
-        "message_length": len(request.message),
-        "session_id": request.session_id,
-        "preferred_llm_provider": request.preferred_llm_provider,
-        "preferred_model": request.preferred_model,
-    })
-    
-    # Extract request data
-    message = request.message
-    org_id = request.org_id
-    request_context = dict(request.context) if isinstance(request.context, dict) else {}
-    session_id = _normalize_session_id(
-        request.session_id
-        or request_context.get("session_id")
-        or request_context.get("conversation_id")
-    )
-    conversation_id = _normalize_session_id(
-        request_context.get("conversation_id") or session_id
-    )
-    
-    # Get user context from request state first, then fall back to authenticated context
-    user_context = None
-    try:
-        user_context = getattr(http_request.state, "user", None)
-    except AttributeError:
-        user_context = None
 
-    authenticated_context = (
-        request_context.get("authenticated_user")
-        if isinstance(request_context.get("authenticated_user"), dict)
-        else None
-    )
-    if not isinstance(user_context, dict) and authenticated_context:
-        user_context = authenticated_context
-
-    authenticated_user_id = None
-    if isinstance(user_context, dict):
-        authenticated_user_id = str(user_context.get("user_id") or "").strip() or None
-    if not authenticated_user_id and authenticated_context:
-        authenticated_user_id = str(authenticated_context.get("user_id") or "").strip() or None
-
-    request_user_id = str(request.user_id or "").strip() or None
-    user_id = authenticated_user_id or request_user_id or "anonymous"
-    tenant_id = str(
-        (user_context or {}).get("tenant_id")
-        or (authenticated_context or {}).get("tenant_id")
-        or org_id
-        or "default"
-    )
-    
-    allow_public_copilot = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
-    auth_context = {
-        "allow_anonymous": not bool(authenticated_user_id),
-        "public_copilot_enabled": allow_public_copilot,
-        "request_user_id": request.user_id,
-    }
-    if isinstance(user_context, dict):
-        auth_context["user_context"] = _json_safe(user_context)
-        access_token = user_context.get("access_token") or user_context.get("token")
-        if access_token:
-            auth_context["access_token"] = access_token
-
-    try:
-        chat_request = ChatRequest(
-            request_id=str(uuid.uuid4()),
-            correlation_id=correlation_id,
-            tenant_id=tenant_id,
-            message=message,
-            user_id=user_id,
-            org_id=org_id or tenant_id,
-            conversation_id=conversation_id,
-            session_id=session_id,
-            message_id=str(uuid.uuid4()),
-            stream=request.stream,
-            streaming=request.stream,
-            include_context=True,
-            metadata={
-                "source": "copilot",
-                "platform": "copilot",
-                "request_context": request_context,
-                "auth_context": auth_context,
-                "preferred_llm_provider": request.preferred_llm_provider,
-                "preferred_model": request.preferred_model,
-                "top_k": request.top_k,
-                "correlation_id": correlation_id,
-            },
-        )
-        
-        logger.info("ChatRequest created successfully", extra={"correlation_id": correlation_id})
-        
-        if request.stream:
-            orchestrator_gen = await chat_orchestrator.handle_chat_stream(chat_request)
-            
-            if orchestrator_gen is None:
-                logger.error("ChatOrchestrator returned None for streaming request", extra={"correlation_id": correlation_id})
-                return JSONResponse(
-                    content={"error": "Chat service unavailable", "correlation_id": correlation_id},
-                    status_code=503
-                )
-            
-            async def stream_generator():
-                import json
-                try:
-                    async for chunk in orchestrator_gen:
-                        chunk_dict = {
-                            "type": chunk.type,
-                            "content": chunk.content,
-                            "correlation_id": chunk.correlation_id,
-                            "metadata": _json_safe(chunk.metadata) if chunk.metadata else {}
-                        }
-                        yield f"data: {json.dumps(chunk_dict)}\n\n"
-                except Exception as e:
-                    logger.error(f"Error in stream generator: {e}", extra={"correlation_id": correlation_id})
-                    yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-                    
-            return StreamingResponse(
-                stream_generator(),
-                media_type="text/event-stream",
-                headers={"X-Correlation-Id": correlation_id}
-            )
-            
-        response_raw = await chat_orchestrator.handle_chat(chat_request)
-        if response_raw is None:
-            logger.error("ChatOrchestrator returned None for non-streaming request", extra={"correlation_id": correlation_id})
-            raise HTTPException(status_code=503, detail="Chat service returned no response")
-            
-        response = cast(ChatResponse, response_raw)
-        
-        # Calculate timing
-        total_time_ms = (time.time() - start_time) * 1000
-        
-        # Log ChatResponse
-        logger.info("Received ChatResponse", extra={
+    logger.info(
+        "Copilot assist request received",
+        extra={
             "correlation_id": correlation_id,
-            "response_length": len(getattr(response, "response", "") or ""),
-            "status": str(getattr(response, "status", "unknown")),
-        })
-        
-        # Extract response data
-        metadata_dict: Dict[str, Any] = getattr(response, "metadata", {}) or {}
-        metadata_dict["total_ms"] = total_time_ms
-        metadata_dict["conversation_id"] = getattr(response, "conversation_id", conversation_id)
-        metadata_dict["assistant_message_id"] = getattr(response, "assistant_message_id", None)
-        metadata_dict["execution_path"] = getattr(response, "execution_path", None)
-        telemetry = getattr(response, "telemetry", {}) or {}
-        if telemetry:
-            metadata_dict["telemetry"] = telemetry
+            "user_id": request.user_id,
+            "message_length": len(request.message),
+        },
+    )
 
-        llm_metadata = metadata_dict.get("llm")
-        if isinstance(llm_metadata, dict):
-            preferred_failure_reason = str(llm_metadata.get("preferred_failure_reason") or "").strip()
-            failure_reason = str(llm_metadata.get("failure_reason") or "").strip()
-            if preferred_failure_reason:
-                llm_metadata["failure_reason"] = preferred_failure_reason
-                if not llm_metadata.get("raw_failure_reason") and failure_reason and failure_reason != preferred_failure_reason:
-                    llm_metadata["raw_failure_reason"] = failure_reason
+    try:
+        # Get runtime control plane
+        runtime_plane = await get_chat_runtime_control_plane()
 
-        # Handle failures explicitly
-        if getattr(response_raw, "status", None) == ProcessingStatus.FAILED:
-            logger.warning(f"Orchestrator reported failure for {correlation_id}: {getattr(response_raw, 'error', 'Unknown error')}")
-            metadata_dict["is_error_response"] = True
-            metadata_dict["error_type"] = str(getattr(response_raw, "error_type", "unknown"))
-
-        # Map actions safely
-        raw_actions = getattr(response, "actions", []) or []
-        mapped_actions = []
-        for a in raw_actions:
-            if isinstance(a, dict) and "type" in a:
-                mapped_actions.append(SuggestedAction(
-                    type=a["type"],
-                    params=a.get("params", {}),
-                    confidence=a.get("confidence", 0.9),
-                    description=a.get("description")
-                ))
-
-        logger.warning(
-            "copilot_assist returning JSON response",
-            extra={
-                "correlation_id": correlation_id,
-                "status": str(getattr(response, "status", "unknown")),
-                "answer_length": len(str(getattr(response, "response", "") or "")),
-                "metadata_keys": list(metadata_dict.keys()),
-            },
-        )
-
-        return _assist_response_json(
-            answer=str(getattr(response, "response", "No response generated")),
-            structured_content=_json_safe(getattr(response, "structured_content", {})),
-            actions=mapped_actions,
-            metadata=_json_safe(metadata_dict),
+        # Get runtime response based on current mode
+        response = await runtime_plane.get_runtime_response(
+            user_id=request.user_id,
+            message=request.message,
+            session_id=request.session_id,
             correlation_id=correlation_id,
         )
-        
+
+        # Handle different response types
+        if hasattr(response, "mode"):
+            # Structured runtime response (maintenance, emergency, etc.)
+            if response.mode == "maintenance":
+                return JSONResponse(
+                    status_code=response.system_status_code,
+                    content={
+                        "mode": response.mode,
+                        "message": response.message,
+                        "estimated_completion_time": response.estimated_completion_time.isoformat()
+                        if response.estimated_completion_time
+                        else None,
+                        "notification_supported": response.notification_supported,
+                        "notification_request_allowed": response.notification_request_allowed,
+                        "retry_after_seconds": response.retry_after_seconds,
+                        "correlation_id": correlation_id,
+                    },
+                    headers={"X-Correlation-Id": correlation_id},
+                )
+            elif response.mode == "emergency_fallback":
+                return JSONResponse(
+                    status_code=response.system_status_code,
+                    content={
+                        "mode": response.mode,
+                        "message": response.message,
+                        "retry_after_seconds": response.retry_after_seconds,
+                        "correlation_id": correlation_id,
+                    },
+                    headers={"X-Correlation-Id": correlation_id},
+                )
+            elif response.mode == "degraded":
+                # For now, return degraded response
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "mode": response.mode,
+                        "message": response.message,
+                        "correlation_id": correlation_id,
+                    },
+                    headers={"X-Correlation-Id": correlation_id},
+                )
+
+        # Normal mode response - would be chat orchestrator output
+        # For now, return a placeholder
+        return JSONResponse(
+            status_code=200,
+            content={
+                "mode": "normal",
+                "answer": "Chat functionality is temporarily disabled for maintenance.",
+                "correlation_id": correlation_id,
+            },
+            headers={"X-Correlation-Id": correlation_id},
+        )
+
     except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
         logger.error(
-            "Copilot assist failed with %s: %s\n%s",
-            type(e).__name__, e, error_trace,
-            extra={"correlation_id": correlation_id, "user_id": user_id, "session_id": session_id},
+            f"Copilot assist failed: {e}",
+            extra={"correlation_id": correlation_id},
         )
-        
-        if _is_production_env():
-            if isinstance(e, HTTPException):
-                safe_detail = e.detail
-                if not isinstance(safe_detail, dict):
-                    safe_detail = {
-                        "message": str(e.detail) if e.detail else "Copilot request failed",
-                }
-                safe_detail = {
-                    **safe_detail,
-                    "correlation_id": correlation_id,
-                }
-                raise HTTPException(status_code=e.status_code, detail=safe_detail) from e
 
-            error_message = str(e).strip() or "Copilot request failed"
-            error_code = f"copilot_{type(e).__name__.lower()}"
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "user_message": error_message,
-                    "error": error_message,
-                    "detail": error_message,
-                    "error_code": error_code,
-                    "exception_type": type(e).__name__,
-                    "correlation_id": correlation_id,
-                },
-            )
-        
-        return _assist_response_json(
-            answer="I'm sorry, but I'm experiencing technical difficulties right now. Please try again later.",
-            structured_content={},
-            actions=[],
-            metadata={
-                "error": str(e),
+        # Return emergency fallback on any error
+        return JSONResponse(
+            status_code=503,
+            content={
+                "mode": "emergency_fallback",
+                "message": "Service temporarily unavailable",
+                "retry_after_seconds": 60,
                 "correlation_id": correlation_id,
-                "total_ms": (time.time() - start_time) * 1000,
             },
-            correlation_id=correlation_id,
+            headers={"X-Correlation-Id": correlation_id},
         )
-        
+
 
 __all__ = ["router"]

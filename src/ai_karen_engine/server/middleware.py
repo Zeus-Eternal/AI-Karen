@@ -13,7 +13,10 @@ from fastapi.responses import StreamingResponse
 
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
-from ai_karen_engine.middleware.intelligent_error_handler import IntelligentErrorHandlerMiddleware
+from ai_karen_engine.middleware.intelligent_error_handler import (
+    IntelligentErrorHandlerMiddleware,
+)
+
 # REMOVED: RBAC and session persistence middleware - replaced with simple auth
 from ai_karen_engine.server.http_validator import HTTPRequestValidator, ValidationConfig
 
@@ -42,6 +45,7 @@ def configure_middleware(
     # Resolve CORS origins from multiple sources for compatibility
     # Priority: explicit env CORS_ORIGINS -> env KARI_CORS_ORIGINS -> settings -> defaults
     import os as _os
+
     _origins_source = (
         _os.getenv("CORS_ORIGINS")
         or _os.getenv("KARI_CORS_ORIGINS")
@@ -49,7 +53,7 @@ def configure_middleware(
         or ""
     )
     origins = [o.strip() for o in _origins_source.split(",") if o.strip()]
-    
+
     # Add default development origins if none specified
     env_name = (getattr(settings, "environment", "") or "").lower()
     if not origins and env_name in ("development", "dev", "local", ""):
@@ -73,17 +77,23 @@ def configure_middleware(
             "https://localhost:8010",
             "https://127.0.0.1:8010",
             "https://localhost:8080",
-            "https://127.0.0.1:8080"
+            "https://127.0.0.1:8080",
         ]
-    
+
     # Safety: de-duplicate while preserving order
     _seen = set()
     origins = [o for o in origins if not (o in _seen or _seen.add(o))]
     # Optional regex-based allowance, useful for dev ports/hosts
     cors_regex = _os.getenv("CORS_ALLOW_ORIGIN_REGEX")
-    allow_dev_origins = _os.getenv("ALLOW_DEV_ORIGINS", "false").lower() in ("1", "true", "yes")
+    allow_dev_origins = _os.getenv("ALLOW_DEV_ORIGINS", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     # Default to permissive localhost regex in non-production or when explicitly enabled
-    if not cors_regex and (allow_dev_origins or env_name in ("development", "dev", "local", "")):
+    if not cors_regex and (
+        allow_dev_origins or env_name in ("development", "dev", "local", "")
+    ):
         cors_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     app.add_middleware(
@@ -109,10 +119,9 @@ def configure_middleware(
             response = await call_next(request)
 
         except RuntimeError as exc:
-            if (
-                request.url.path.startswith("/api/copilot/assist")
-                and "No response returned" in str(exc)
-            ):
+            if request.url.path.startswith(
+                "/api/copilot/assist"
+            ) and "No response returned" in str(exc):
                 from ai_karen_engine.server.exception_handlers import (
                     _build_copilot_degraded_response,
                 )
@@ -152,10 +161,9 @@ def configure_middleware(
             response = await call_next(request)
 
         except RuntimeError as exc:
-            if (
-                request.url.path.startswith("/api/copilot/assist")
-                and "No response returned" in str(exc)
-            ):
+            if request.url.path.startswith(
+                "/api/copilot/assist"
+            ) and "No response returned" in str(exc):
                 from ai_karen_engine.server.exception_handlers import (
                     _build_copilot_degraded_response,
                 )
@@ -169,27 +177,49 @@ def configure_middleware(
                     content=_build_copilot_degraded_response(request, exc),
                 )
             raise
-        
+
         # We only care about redirects (301, 302, 307, 308)
         if response.status_code in (301, 302, 307, 308):
             location = response.headers.get("location")
             if location:
                 # Internal hostnames commonly used in Docker/K8s
-                internal_hosts = ["api:8000", "api-copilot:8000", "localhost:8000", "host.docker.internal:8000"]
+                internal_hosts = [
+                    "api:8000",
+                    "api-copilot:8000",
+                    "localhost:8000",
+                    "host.docker.internal:8000",
+                ]
                 for host in internal_hosts:
                     if f"http://{host}" in location or f"https://{host}" in location:
                         # Extract the forwarded host if provided by a proxy (like Next.js)
                         # Otherwise fall back to the Host header
-                        external_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+                        external_host = request.headers.get(
+                            "x-forwarded-host"
+                        ) or request.headers.get("host")
                         if external_host:
                             # Reconstruct the URL using the correct host and protocol
                             from urllib.parse import urlparse, urlunparse
+
                             parsed = urlparse(location)
                             # Preserve the original protocol (http/https) from the redirect unless we are explicitly TLS terminated
-                            scheme = request.headers.get("x-forwarded-proto") or parsed.scheme
-                            new_location = urlunparse((scheme, external_host, parsed.path, parsed.params, parsed.query, parsed.fragment))
-                            
-                            logger.info(f"🔄 Rewriting internal redirect: {location} -> {new_location}")
+                            scheme = (
+                                request.headers.get("x-forwarded-proto")
+                                or parsed.scheme
+                            )
+                            new_location = urlunparse(
+                                (
+                                    scheme,
+                                    external_host,
+                                    parsed.path,
+                                    parsed.params,
+                                    parsed.query,
+                                    parsed.fragment,
+                                )
+                            )
+
+                            logger.info(
+                                f"🔄 Rewriting internal redirect: {location} -> {new_location}"
+                            )
                             response.headers["location"] = new_location
                             break
         return response
@@ -197,10 +227,9 @@ def configure_middleware(
     # REMOVED: RBAC middleware - replaced with simple auth role checking
     logger.info("🔐 Using simple auth system - RBAC middleware removed")
 
-
     # REMOVED: Session persistence middleware - replaced with simple JWT auth
     logger.info("🔐 Using simple JWT auth - session persistence middleware removed")
-    
+
     # Add extension authentication middleware
     @app.middleware("http")
     async def extension_auth_middleware(request: Request, call_next):
@@ -210,30 +239,34 @@ def configure_middleware(
             try:
                 # Import here to avoid circular imports
                 from server.security import extension_auth_manager
-                
+
                 # Skip authentication for health endpoints
-                if request.url.path.endswith("/health") or request.url.path.endswith("/system/health"):
+                if request.url.path.endswith("/health") or request.url.path.endswith(
+                    "/system/health"
+                ):
                     response = await call_next(request)
                     return response
-                
+
                 # Skip authentication for OPTIONS requests (CORS preflight)
                 if request.method == "OPTIONS":
                     response = await call_next(request)
                     return response
-                
+
                 # For extension endpoints, ensure authentication context is available
                 # The actual authentication will be handled by the endpoint dependencies
                 # This middleware just adds logging and context preparation
-                
-                logger.debug(f"Extension API request: {request.method} {request.url.path}")
-                
+
+                logger.debug(
+                    f"Extension API request: {request.method} {request.url.path}"
+                )
+
                 # Add request metadata for extension authentication
                 request.state.extension_api = True
                 request.state.auth_required = True
-                
+
                 response = await call_next(request)
                 return response
-                
+
             except Exception as e:
                 logger.error(f"Extension authentication middleware error: {e}")
                 # Don't block the request, let endpoint handle authentication
@@ -246,15 +279,19 @@ def configure_middleware(
 
     # Configure and register enhanced rate limiting middleware
     from ai_karen_engine.middleware.rate_limit import configure_rate_limiter
-    
+
     # Check if rate limiting is enabled globally
-    enable_rate_limiting = os.getenv("ENABLE_RATE_LIMITING", "false").lower() in ("1", "true", "yes")
-    
+    enable_rate_limiting = os.getenv("ENABLE_RATE_LIMITING", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
     if enable_rate_limiting:
         # Configure rate limiter based on environment
         storage_type = "memory"  # Default to memory storage
         redis_url = None
-        
+
         # Try to get Redis configuration from environment
         if os.getenv("REDIS_URL"):
             storage_type = "redis"
@@ -262,9 +299,9 @@ def configure_middleware(
         elif os.getenv("RATE_LIMIT_REDIS_URL"):
             storage_type = "redis"
             redis_url = os.getenv("RATE_LIMIT_REDIS_URL")
-        
+
         configure_rate_limiter(storage_type=storage_type, redis_url=redis_url)
-        
+
         # Register enhanced rate limiting middleware - disabled in bypass mode
         auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
         if auth_mode != "bypass":
@@ -272,7 +309,9 @@ def configure_middleware(
         else:
             logger.info("🔓 Skipping rate limiting middleware - AUTH_MODE=bypass")
     else:
-        logger.info("🔓 Rate limiting disabled via ENABLE_RATE_LIMITING environment variable")
+        logger.info(
+            "🔓 Rate limiting disabled via ENABLE_RATE_LIMITING environment variable"
+        )
     # Temporarily disabled to fix runaway usage counter loop
     # app.middleware("http")(error_counter_middleware)
 
@@ -301,9 +340,7 @@ def configure_middleware(
                 "font-src 'self' data:; "
                 "connect-src 'self'"
             )
-            response.headers["Permissions-Policy"] = (
-                "geolocation=(), microphone=(self)"
-            )
+            response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self)"
         else:
             # Development: permissive CSP to allow cross-port API calls
             response.headers["Content-Security-Policy"] = (
@@ -314,17 +351,16 @@ def configure_middleware(
                 "font-src 'self' data:; "
                 "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*"
             )
-            response.headers["Permissions-Policy"] = (
-                "geolocation=(), microphone=(self)"
-            )
+            response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self)"
         return response
 
     # Use globally configured validation framework or create default
     import sys
+
     current_module = sys.modules[__name__]
-    validation_config = getattr(current_module, '_validation_config', None)
-    enhanced_logger = getattr(current_module, '_enhanced_logger', None)
-    
+    validation_config = getattr(current_module, "_validation_config", None)
+    enhanced_logger = getattr(current_module, "_enhanced_logger", None)
+
     if validation_config is None:
         # Fallback configuration if initialization failed
         validation_config = ValidationConfig(
@@ -333,7 +369,7 @@ def configure_middleware(
             enable_security_analysis=True,
         )
         logger.warning("Using fallback validation configuration")
-    
+
     # Ensure an enhanced logger is available even if initialization path was skipped
     if enhanced_logger is None:
         try:
@@ -341,6 +377,7 @@ def configure_middleware(
                 EnhancedLogger,
                 LoggingConfig,
             )
+
             default_logging_cfg = LoggingConfig(
                 log_level="INFO",
                 enable_security_logging=True,
@@ -348,6 +385,7 @@ def configure_middleware(
             )
             # Store on this module so other imports can find it
             import sys as _sys
+
             _mod = _sys.modules[__name__]
             setattr(_mod, "_enhanced_logger", EnhancedLogger(default_logging_cfg))
             enhanced_logger = getattr(_mod, "_enhanced_logger")
@@ -364,8 +402,9 @@ def configure_middleware(
         request.state.request_id = request_id
 
         # Skip validation in dev/bypass mode
-        auth_bypass = os.getenv("KARI_AUTH_BYPASS", "true").lower() == "true"
-        if auth_bypass:
+        from ai_karen_engine.core.auth_config import auth_config
+
+        if auth_config.should_bypass_auth():
             start_time = datetime.now(timezone.utc)
             response = await call_next(request)
             if request.url.path.startswith("/api/copilot/assist"):
@@ -397,7 +436,7 @@ def configure_middleware(
                         "sanitized_request": sanitized_data,
                         "validation_details": validation_result.validation_details,
                     },
-                    error_type=validation_result.error_type or "validation_error"
+                    error_type=validation_result.error_type or "validation_error",
                 )
             else:
                 # Fallback to standard logger
@@ -509,5 +548,5 @@ def configure_middleware(
     app.add_middleware(
         IntelligentErrorHandlerMiddleware,
         enable_intelligent_responses=True,
-        debug_mode=getattr(settings, "environment", "").lower() != "production"
+        debug_mode=getattr(settings, "environment", "").lower() != "production",
     )

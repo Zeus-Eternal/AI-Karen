@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+
 import { Clock, PlusCircle, Trash2, Edit, AlertTriangle, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
@@ -129,7 +129,7 @@ export default function CronJobsPage() {
                   <Label htmlFor="cron-schedule">Cron Schedule</Label>
                   <Input id="cron-schedule" placeholder="e.g., 0 9 * * 1-5" disabled />
                    <p className="text-xs text-muted-foreground">
-                    Standard cron syntax. E.g., "*/5 * * * *" for every 5 minutes.
+                     Standard cron syntax. E.g., &quot;*/5 * * * *&quot; for every 5 minutes.
                    </p>
                </div>
                <div className="flex items-center space-x-2 pt-2">

@@ -13,7 +13,7 @@ import {
 } from '@/types/plugin';
 
 class PluginStoreService {
-  private readonly baseUrl = '/api/auth/store';
+  private readonly baseUrl = '/api/store';
 
   async searchPlugins(params: PluginSearchParams): Promise<PluginSearchResponse> {
     const searchParams = new URLSearchParams();

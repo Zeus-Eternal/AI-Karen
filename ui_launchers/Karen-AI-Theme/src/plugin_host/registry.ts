@@ -311,8 +311,8 @@ export function PluginRegistryProvider({ children }: { children: React.ReactNode
   const fetchCatalog = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      // Try backend first
-      const raw = await apiClient.get<BackendPluginEntry[]>('/api/extensions/list');
+      // Try backend first (unauthenticated since extensions should be publicly accessible)
+      const raw = await apiClient.getUnauthenticated<BackendPluginEntry[]>('/api/extensions/list');
       const entries = Array.isArray(raw) ? raw : [];
 
       console.log('[PluginRegistry] Backend API response:', entries);
@@ -345,13 +345,14 @@ export function PluginRegistryProvider({ children }: { children: React.ReactNode
               has_component: true,
               component_id: 'weather-query',
               purpose: 'Weather plugin UI',
-              menu: [
-                {
-                  placement: 'sidebar.plugins',
-                  label: 'Weather',
-                  order: 0,
-                },
-              ],
+                menu: [
+                    {
+                        placement: 'sidebar.plugins',
+                        label: 'Weather',
+                        icon: 'assets/weather-query---sidebar--main_00.svg',
+                        order: 0,
+                    },
+                ],
             },
             rbac: {
               allowed_roles: ['user', 'admin', 'developer'],

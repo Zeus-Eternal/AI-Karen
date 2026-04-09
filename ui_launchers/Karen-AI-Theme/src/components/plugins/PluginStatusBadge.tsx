@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Clock, Download } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PluginStatus } from '@/types/plugin';

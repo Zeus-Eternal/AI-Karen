@@ -18,6 +18,20 @@ type AuditEntry = {
   category: "user" | "settings" | "model" | "security" | "system";
 };
 
+type RawAuditEntry = {
+  id?: string | number;
+  timestamp?: string;
+  created_at?: string;
+  message?: string;
+  event_type?: string;
+  action?: string;
+  user_id?: string;
+  actor?: string;
+  resource_id?: string;
+   metadata?: Record<string, unknown>;
+  details?: string;
+};
+
 const mockAuditLog: AuditEntry[] = [
   {
     id: "audit_001",
@@ -97,7 +111,7 @@ const categoryConfig: Record<AuditEntry["category"], { icon: React.ReactNode; co
   system: { icon: <Clock className="h-3.5 w-3.5" />, color: "text-muted-foreground bg-muted/40 border-border/30" },
 };
 
-function mapAuditCategory(entry: Record<string, any>): AuditEntry["category"] {
+function mapAuditCategory(entry: RawAuditEntry): AuditEntry["category"] {
   const eventType = String(entry.event_type || entry.action || "").toLowerCase();
   if (eventType.includes("auth") || eventType.includes("security") || eventType.includes("privacy")) {
     return "security";
@@ -114,7 +128,7 @@ function mapAuditCategory(entry: Record<string, any>): AuditEntry["category"] {
   return "system";
 }
 
-function mapAuditEntry(entry: Record<string, any>, index: number): AuditEntry {
+function mapAuditEntry(entry: RawAuditEntry, index: number): AuditEntry {
   return {
     id: String(entry.id || `${entry.timestamp || "event"}-${index}`),
     timestamp: String(entry.timestamp || entry.created_at || new Date().toISOString()),
@@ -152,7 +166,7 @@ export default function AuditLogPanel() {
       setAuthRequired(false);
       setAccessDenied(false);
       try {
-        const response = await apiClient.get<Array<Record<string, any>>>("/api/audit/logs");
+        const response = await apiClient.get<Array<RawAuditEntry>>("/api/audit/logs");
         if (!mounted) {
           return;
         }

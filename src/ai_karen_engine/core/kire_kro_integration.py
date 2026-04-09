@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class IntegrationConfig:
     """Configuration for KIRE-KRO integration."""
+
     enable_kire_routing: bool = True
     enable_cuda_acceleration: bool = True
     enable_content_optimization: bool = True
@@ -86,6 +87,7 @@ class KIREKROIntegration:
 
                 # Initialize LLM Registry
                 from ai_karen_engine.integrations.llm_registry import get_registry
+
                 self.llm_registry = get_registry()
 
                 # Check if registry has any providers
@@ -97,7 +99,9 @@ class KIREKROIntegration:
                             "Model discovery will attempt to populate the registry."
                         )
                     else:
-                        logger.info(f"✓ LLM Registry initialized with {len(providers)} providers")
+                        logger.info(
+                            f"✓ LLM Registry initialized with {len(providers)} providers"
+                        )
                 except Exception as e:
                     logger.warning(f"Could not check LLM Registry providers: {e}")
                     logger.info("✓ LLM Registry initialized")
@@ -105,14 +109,19 @@ class KIREKROIntegration:
                 # Initialize Model Discovery
                 if self.config.enable_model_discovery:
                     try:
-                        from ai_karen_engine.services.model_discovery_engine import ModelDiscoveryEngine
+                        from ai_karen_engine.services.model_discovery_engine import (
+                            ModelDiscoveryEngine,
+                        )
+
                         self.model_discovery = ModelDiscoveryEngine()
                         await self.model_discovery.discover_all_models()
                         stats = self.model_discovery.get_discovery_statistics()
-                        logger.info(f"✓ Model Discovery initialized: {stats['total_models']} models discovered")
+                        logger.info(
+                            f"✓ Model Discovery initialized: {stats['total_models']} models discovered"
+                        )
 
                         # Validate that at least some models were found
-                        if stats.get('total_models', 0) == 0:
+                        if stats.get("total_models", 0) == 0:
                             logger.warning(
                                 "⚠ Model Discovery completed but found no models. "
                                 "The system will operate in degraded mode. "
@@ -125,6 +134,7 @@ class KIREKROIntegration:
                 if self.config.enable_kire_routing:
                     try:
                         from ai_karen_engine.routing.kire_router import KIRERouter
+
                         self.kire_router = KIRERouter(llm_registry=self.llm_registry)
                         logger.info("✓ KIRE Router initialized")
                     except Exception as e:
@@ -134,14 +144,21 @@ class KIREKROIntegration:
                 # Initialize CUDA Acceleration
                 if self.config.enable_cuda_acceleration:
                     try:
-                        from ai_karen_engine.services.cuda_acceleration_engine import CUDAAccelerationEngine
+                        from ai_karen_engine.services.cuda_acceleration_engine import (
+                            CUDAAccelerationEngine,
+                        )
+
                         self.cuda_engine = CUDAAccelerationEngine()
                         await self.cuda_engine.initialize()
                         info = self.cuda_engine.get_cuda_info()
                         if info.available:
-                            logger.info(f"✓ CUDA Acceleration initialized: {info.device_count} GPU(s)")
+                            logger.info(
+                                f"✓ CUDA Acceleration initialized: {info.device_count} GPU(s)"
+                            )
                         else:
-                            logger.info("✓ CUDA Acceleration initialized (no GPU available)")
+                            logger.info(
+                                "✓ CUDA Acceleration initialized (no GPU available)"
+                            )
                     except Exception as e:
                         logger.warning(f"CUDA Acceleration initialization failed: {e}")
                         self.cuda_engine = None
@@ -149,17 +166,24 @@ class KIREKROIntegration:
                 # Initialize Content Optimization
                 if self.config.enable_content_optimization:
                     try:
-                        from ai_karen_engine.services.content_optimization_engine import ContentOptimizationEngine
+                        from ai_karen_engine.services.content_optimization_engine import (
+                            ContentOptimizationEngine,
+                        )
+
                         self.optimization_engine = ContentOptimizationEngine()
                         logger.info("✓ Content Optimization initialized")
                     except Exception as e:
-                        logger.warning(f"Content Optimization initialization failed: {e}")
+                        logger.warning(
+                            f"Content Optimization initialization failed: {e}"
+                        )
 
                 self._initialized = True
                 logger.info("✅ KIRE-KRO integration fully initialized")
 
             except Exception as e:
-                logger.error(f"Failed to initialize KIRE-KRO integration: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to initialize KIRE-KRO integration: {e}", exc_info=True
+                )
                 raise
 
     async def process_user_request(
@@ -233,12 +257,14 @@ class KIREKROIntegration:
                     **context,
                 },
             )
-            orchestrator = get_chat_orchestrator()
+            orchestrator = await get_chat_orchestrator()
             chat_response = await orchestrator.handle_chat(chat_request)
 
             advisory_decision = self._route_decision_from_advisory(routing_advisory)
             routing_outcome = self._determine_routing_outcome(
-                advisory_provider=advisory_decision.provider if advisory_decision else None,
+                advisory_provider=advisory_decision.provider
+                if advisory_decision
+                else None,
                 advisory_model=advisory_decision.model if advisory_decision else None,
                 final_provider=chat_response.metadata.get("provider"),
                 final_model=chat_response.metadata.get("model"),
@@ -265,7 +291,8 @@ class KIREKROIntegration:
             )
 
             response_dict = {
-                "success": chat_response.status in {ProcessingStatus.COMPLETED, ProcessingStatus.DEGRADED},
+                "success": chat_response.status
+                in {ProcessingStatus.COMPLETED, ProcessingStatus.DEGRADED},
                 "message": chat_response.response,
                 "meta": {
                     "timestamp": chat_response.created_at.isoformat(),
@@ -352,7 +379,9 @@ class KIREKROIntegration:
         return response_dict
 
     @staticmethod
-    def _route_decision_from_advisory(routing_advisory: Optional[Dict[str, Any]]) -> Optional[RouteDecision]:
+    def _route_decision_from_advisory(
+        routing_advisory: Optional[Dict[str, Any]],
+    ) -> Optional[RouteDecision]:
         """Rebuild a RouteDecision from a serialized advisory payload when available."""
         if not routing_advisory or routing_advisory.get("error"):
             return None
@@ -391,6 +420,7 @@ class KIREKROIntegration:
         try:
             # Use dataclasses.asdict if available
             from dataclasses import asdict
+
             return asdict(kro_response)
         except Exception:
             # Manual conversion fallback
@@ -469,7 +499,9 @@ class KIREKROIntegration:
             return [
                 {
                     "provider": p,
-                    "models": [self.llm_registry.get_provider(p).get("default_model", "auto")],
+                    "models": [
+                        self.llm_registry.get_provider(p).get("default_model", "auto")
+                    ],
                     "status": "available",
                 }
                 for p in providers
@@ -485,7 +517,7 @@ class KIREKROIntegration:
                 "category": model.category.value,
                 "capabilities": model.capabilities,
                 "status": model.status.value,
-                "size_gb": model.size / (1024 ** 3),
+                "size_gb": model.size / (1024**3),
                 "modalities": [mod.type.value for mod in model.modalities],
             }
             for model in models
@@ -559,7 +591,9 @@ class KIREKROIntegration:
                 status["cuda"] = {
                     "available": cuda_info.available,
                     "device_count": cuda_info.device_count,
-                    "total_memory_gb": cuda_info.total_memory / (1024 ** 3) if cuda_info.total_memory else 0,
+                    "total_memory_gb": cuda_info.total_memory / (1024**3)
+                    if cuda_info.total_memory
+                    else 0,
                 }
             except Exception:
                 status["cuda"] = {"available": False}
@@ -615,10 +649,13 @@ class KIREKROIntegration:
                 try:
                     providers = self.llm_registry.list_providers()
                     healthy_providers = sum(
-                        1 for p in providers
+                        1
+                        for p in providers
                         if self.llm_registry.health_check(p).get("status") == "healthy"
                     )
-                    health["components"]["llm_registry"] = f"{healthy_providers}/{len(providers)} healthy"
+                    health["components"]["llm_registry"] = (
+                        f"{healthy_providers}/{len(providers)} healthy"
+                    )
                 except Exception:
                     health["components"]["llm_registry"] = "error"
                     health["status"] = "degraded"
@@ -627,7 +664,9 @@ class KIREKROIntegration:
             if self.cuda_engine:
                 try:
                     cuda_info = self.cuda_engine.get_cuda_info()
-                    health["components"]["cuda"] = "available" if cuda_info.available else "unavailable"
+                    health["components"]["cuda"] = (
+                        "available" if cuda_info.available else "unavailable"
+                    )
                 except Exception:
                     health["components"]["cuda"] = "error"
 
@@ -668,6 +707,7 @@ class KIREKROIntegration:
 
 _integration_instance = None
 
+
 def get_integration() -> KIREKROIntegration:
     """Get singleton integration instance."""
     global _integration_instance
@@ -688,6 +728,7 @@ async def initialize_integration(config: Optional[IntegrationConfig] = None):
 # ===================================
 # CONVENIENCE FUNCTIONS
 # ===================================
+
 
 async def process_request(
     user_input: str,

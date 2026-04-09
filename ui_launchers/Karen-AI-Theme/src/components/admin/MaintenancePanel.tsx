@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AlertCircle, CheckCircle2, Info, Loader2, RefreshCw, ShieldAlert, Trash2, Zap } from "lucide-react";
-import { apiClient, ApiError } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 
 interface CleanupAction {
   action_type: string;
@@ -45,7 +44,7 @@ export default function MaintenancePanel() {
   const [report, setReport] = useState<CleanupReport | null>(null);
   const [lastCheck, setLastCheck] = useState<string | null>(null);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     try {
       const response = await apiClient.get<RecommendationResponse>("/api/maintenance/recommendations");
@@ -61,7 +60,7 @@ export default function MaintenancePanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const runCleanup = async (dryRun: boolean = true) => {
     setCleaning(true);
@@ -94,7 +93,7 @@ export default function MaintenancePanel() {
 
   useEffect(() => {
     void fetchRecommendations();
-  }, []);
+  }, [fetchRecommendations]);
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';

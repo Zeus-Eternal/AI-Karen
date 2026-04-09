@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Activity,
   BadgeCheck,
@@ -127,7 +127,7 @@ export default function TrainingSettingsPanel() {
   const [minConfidence, setMinConfidence] = useState("0.7");
   const [maxExamples, setMaxExamples] = useState("250");
 
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     setIsLoadingDatasets(true);
     try {
       setDatasetAuthRequired(false);
@@ -157,11 +157,11 @@ export default function TrainingSettingsPanel() {
     } finally {
       setIsLoadingDatasets(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     void loadDatasets();
-  }, []);
+  }, [loadDatasets]);
 
   const readiness = useMemo(() => {
     if (datasets.length === 0) {

@@ -1,9 +1,9 @@
 
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Binary, Bot, ScrollText, Clock, Info, ArrowRight, LayoutDashboard, Lightbulb, PlusCircle, Workflow, Puzzle } from "lucide-react";
+import { Bot, Clock, Info, ArrowRight, LayoutDashboard, Lightbulb, PlusCircle, Workflow, Puzzle, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -25,7 +25,7 @@ export default function AutomationOverviewPage() {
     <div className="space-y-8">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
-          <Binary className="h-8 w-8 text-primary" />
+          <Settings className="h-8 w-8 text-primary" />
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Automation Hub</h2>
             <p className="text-sm text-muted-foreground">
@@ -74,7 +74,7 @@ export default function AutomationOverviewPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Tasks Executed Today</CardTitle>
-                    <ScrollText className="h-4 w-4 text-muted-foreground" />
+                    <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{conceptualStats.tasksToday}</div>
@@ -128,7 +128,7 @@ export default function AutomationOverviewPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                    An <span className="font-semibold text-foreground">Email Agent</span> can perform a <span className="font-semibold text-foreground">"Check for VIP Emails"</span> task every 15 minutes, alerting you to what's important.
+                    An <span className="font-semibold text-foreground">Email Agent</span> can perform a <span className="font-semibold text-foreground">&ldquo;Check for VIP Emails&rdquo;</span> task every 15 minutes, alerting you to what&apos;s important.
                 </p>
               </CardContent>
             </Card>
@@ -139,7 +139,7 @@ export default function AutomationOverviewPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                    A <span className="font-semibold text-foreground">Data Analyst Agent</span> can be tasked to <span className="font-semibold text-foreground">"Generate Weekly Sales PDF"</span> and run it automatically every Friday evening.
+                    A <span className="font-semibold text-foreground">Data Analyst Agent</span> can be tasked to <span className="font-semibold text-foreground">&ldquo;Generate Weekly Sales PDF&rdquo;</span> and run it automatically every Friday evening.
                 </p>
               </CardContent>
             </Card>
@@ -174,7 +174,7 @@ export default function AutomationOverviewPage() {
             <ArrowRight className="h-6 w-6 text-muted-foreground hidden md:block" />
             <div className="flex flex-col items-center max-w-[10rem]">
                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
-                <ScrollText className="h-6 w-6 text-primary" />
+                <FileText className="h-6 w-6 text-primary" />
               </div>
               <p className="font-semibold">3. Define Task</p>
               <p className="text-xs text-muted-foreground">An objective for a primary agent, which can orchestrate sub-agents.</p>

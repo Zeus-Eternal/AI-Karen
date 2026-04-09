@@ -1,33 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle,
-} from '@/components/ui/card';
+// Card components removed as they are not used in this file
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Trash2, 
-  PlusCircle, 
-  Search, 
-  ShieldCheck, 
-  User, 
-  Globe, 
-  Briefcase, 
-  Lightbulb, 
-  Eye, 
-  EyeOff,
+import {
+  Trash2,
+  PlusCircle,
+  Search,
+  ShieldCheck,
+  User,
+  Globe,
+  Lightbulb,
   MoreVertical,
-  CheckCircle2,
   Clock,
-  ArrowRight,
-  Info,
   History,
   Zap,
   Target,
@@ -35,7 +23,6 @@ import {
   MessageSquare,
   Calendar,
   Mail,
-  ChevronRight,
   Sparkles,
   Brain,
   Lock,
@@ -45,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 import { mockFactApi, Fact, FactVisibility, FactDomain, FactSuggestion } from '@/lib/mockFactsApi';
 import { cn } from '@/lib/utils';
 
@@ -88,11 +75,7 @@ export default function PersonalFactsSettings() {
   const [newDomain, setNewDomain] = useState<FactDomain>('lifestyle');
   const [newCategory, setNewCategory] = useState('General');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [factsData, suggestionsData] = await Promise.all([
@@ -101,12 +84,16 @@ export default function PersonalFactsSettings() {
       ]);
       setFacts(factsData);
       setSuggestions(suggestionsData);
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Failed to load knowledge vault.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredFacts = useMemo(() => {
     return facts.filter(f => {
@@ -144,7 +131,7 @@ export default function PersonalFactsSettings() {
       setIsAddDialogOpen(false);
       loadData();
       toast({ title: "Memory Updated", description: "Karen has stored this fact in the neural vault." });
-    } catch (e) {
+    } catch {
       toast({ title: "Vault Failure", description: "Could not commit fact to long-term memory.", variant: "destructive" });
     }
   };
@@ -157,7 +144,7 @@ export default function PersonalFactsSettings() {
         title: status === 'accepted' ? "Fact Confirmed" : "Suggestion Ignored", 
         description: status === 'accepted' ? "Insight has been promoted to permanent memory." : "Karen will ignore this insight pattern." 
       });
-    } catch (e) {
+    } catch {
       toast({ title: "Error", description: "Failed to process suggestion.", variant: "destructive" });
     }
   };
@@ -166,7 +153,7 @@ export default function PersonalFactsSettings() {
     try {
       await mockFactApi.deleteFact(id);
       loadData();
-    } catch (e) {
+    } catch {
       toast({ title: "Error", description: "Failed to delete fact.", variant: "destructive" });
     }
   };
@@ -239,7 +226,7 @@ export default function PersonalFactsSettings() {
         <div className="flex items-center gap-4 py-2 border-y border-border/20">
            <div className="flex items-center gap-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest pl-2">Visibility:</span>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-auto">
+               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | FactVisibility)} className="w-auto">
                 <TabsList className="bg-muted/40 h-8 p-1 rounded-lg border border-border/10">
                   <TabsTrigger value="all" className="h-6 px-3 text-[9px] font-bold uppercase">All</TabsTrigger>
                   <TabsTrigger value="personal" className="h-6 px-3 text-[9px] font-bold uppercase">Personal</TabsTrigger>
@@ -252,10 +239,10 @@ export default function PersonalFactsSettings() {
            <div className="flex items-center gap-2">
               <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">Domain:</span>
               <div className="flex gap-1.5">
-                {['all', 'lifestyle', 'professional', 'business'].map((d) => (
-                  <button 
+                {(['all', 'lifestyle', 'professional', 'business'] as const).map((d) => (
+                  <button
                     key={d}
-                    onClick={() => setDomainFilter(d as any)}
+                    onClick={() => setDomainFilter(d)}
                     className={cn(
                       "px-3 py-1 rounded-lg text-[9px] font-black uppercase border transition-all",
                       domainFilter === d 
@@ -408,12 +395,12 @@ export default function PersonalFactsSettings() {
                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Confidence: {Math.round(sug.confidence * 100)}%</span>
                   </div>
                   
-                  <p className="text-base font-black leading-tight text-foreground/90">"{sug.text}"</p>
+                   <p className="text-base font-black leading-tight text-foreground/90">&ldquo;{sug.text}&rdquo;</p>
                   
                   <div className="p-4 rounded-xl bg-background/40 border border-white/5 space-y-2">
                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-zinc-500">
                         <Bot className="w-3 h-3" />
-                        Karen's Reasoning
+                         Karen&apos;s Reasoning
                      </div>
                      <p className="text-[10px] font-medium leading-relaxed text-muted-foreground/80 italic">
                         {sug.reasoning}
@@ -482,7 +469,7 @@ export default function PersonalFactsSettings() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Visibility Level</Label>
-                <Select value={newVisibility} onValueChange={(v) => setNewVisibility(v as any)}>
+                <Select value={newVisibility} onValueChange={(v) => setNewVisibility(v as FactVisibility)}>
                   <SelectTrigger className="h-12 bg-black border border-white/10 rounded-xl font-bold uppercase tracking-widest text-[10px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -495,7 +482,7 @@ export default function PersonalFactsSettings() {
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-1">Context Domain</Label>
-                <Select value={newDomain} onValueChange={(v) => setNewDomain(v as any)}>
+                <Select value={newDomain} onValueChange={(v) => setNewDomain(v as FactDomain)}>
                   <SelectTrigger className="h-12 bg-black border border-white/10 rounded-xl font-bold uppercase tracking-widest text-[10px]">
                     <SelectValue />
                   </SelectTrigger>

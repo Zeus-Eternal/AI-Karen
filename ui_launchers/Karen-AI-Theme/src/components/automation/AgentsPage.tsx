@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import useAuth from "@/lib/useAuth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,47 +92,47 @@ export default function AgentsPage() {
     setNewAgentTools(DEFAULT_TOOLS);
   };
 
-  const fetchAgents = async () => {
-    if (!isAuthenticated) {
-      setAgents([]);
-      setSystemMetrics(null);
-      setErrorMsg("Sign in to manage agents.");
-      setIsLoading(false);
-      return;
-    }
+   const fetchAgents = useCallback(async () => {
+     if (!isAuthenticated) {
+       setAgents([]);
+       setSystemMetrics(null);
+       setErrorMsg("Sign in to manage agents.");
+       setIsLoading(false);
+       return;
+     }
 
-    setIsLoading(true);
-    setErrorMsg("");
-    try {
-      const { apiClient } = await import("@/lib/api");
-      const data = await apiClient.get<AgentRecord[]>("/api/agents/");
-      setAgents(data || []);
+     setIsLoading(true);
+     setErrorMsg("");
+     try {
+       const { apiClient } = await import("@/lib/api");
+       const data = await apiClient.get<AgentRecord[]>("/api/agents/");
+       setAgents(data || []);
 
-      if (isAdmin) {
-        try {
-          const metrics = await apiClient.get<SystemMetrics>("/api/agents/system/metrics");
-          setSystemMetrics(metrics);
-        } catch {
-          setSystemMetrics(null);
-        }
-      } else {
-        setSystemMetrics(null);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to fetch agents.";
-      console.error(err);
-      setErrorMsg(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+       if (isAdmin) {
+         try {
+           const metrics = await apiClient.get<SystemMetrics>("/api/agents/system/metrics");
+           setSystemMetrics(metrics);
+         } catch {
+           setSystemMetrics(null);
+         }
+       } else {
+         setSystemMetrics(null);
+       }
+     } catch (err: unknown) {
+       const message = err instanceof Error ? err.message : "Failed to fetch agents.";
+       console.error(err);
+       setErrorMsg(message);
+     } finally {
+       setIsLoading(false);
+     }
+   }, [isAuthenticated, isAdmin]);
 
-  useEffect(() => {
-    if (isAuthLoading) {
-      return;
-    }
-    fetchAgents();
-  }, [isAuthenticated, isAuthLoading, isAdmin]);
+   useEffect(() => {
+     if (isAuthLoading) {
+       return;
+     }
+     fetchAgents();
+   }, [isAuthenticated, isAuthLoading, fetchAgents]);
 
   const handleCreateAgent = async () => {
     if (!isAuthenticated || !isAdmin) {

@@ -33,7 +33,6 @@ export interface PermissionGuardProps {
  * </PermissionGuard>
  */
 export function PermissionGuard({
-  pluginId,
   requiredRoles,
   children,
 }: PermissionGuardProps): React.ReactElement | null {

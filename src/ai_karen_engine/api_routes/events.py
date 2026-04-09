@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
+
 try:
     from pydantic import BaseModel, ConfigDict
 except ImportError:
@@ -8,7 +9,7 @@ except ImportError:
 
 from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
-    get_current_user_context,
+    bypass_user_context_func,
 )
 from ai_karen_engine.event_bus import get_event_bus
 
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 # Alias core dependencies for convenience
-get_current_user = get_current_user_context
+get_current_user = bypass_user_context_func
 get_current_tenant = get_current_tenant_id
 
 

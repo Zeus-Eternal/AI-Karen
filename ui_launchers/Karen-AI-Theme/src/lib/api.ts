@@ -66,6 +66,15 @@ class ApiClient {
       return url;
     }
 
+    // Handle protocol-relative URLs (//api:8000/api/auth/me)
+    if (url.startsWith('//')) {
+      const apiIndex = url.indexOf('/api/');
+      if (apiIndex >= 0) {
+        return url.slice(apiIndex);
+      }
+      return url;
+    }
+
     try {
       const parsed = new URL(url, window.location.origin);
       return `${parsed.pathname}${parsed.search}${parsed.hash}`;
@@ -85,6 +94,8 @@ class ApiClient {
    */
   private getPreferredBaseUrl(): string {
     if (this.isBrowser()) {
+      const env = (process as any).env || {};
+      console.log('[ApiClient] Browser context, forcing relative URLs');
       return '';
     }
 
@@ -129,20 +140,24 @@ class ApiClient {
       const dockerHostPattern = /https?:\/\/(api|api-copilot|172\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|localhost:8000|host\.docker\.internal)(:\d+)?/gi;
       
       let finalUrl = baseUrl ? `${baseUrl}${normalizedEndpoint}` : normalizedEndpoint;
+      console.log(`[ApiClient] buildUrl - Base: ${baseUrl}, Endpoint: ${endpoint}, Initial: ${finalUrl}`);
       
       // If it's an absolute URL pointing to internal Docker hosts, strip it
       if (finalUrl.startsWith('http')) {
         finalUrl = finalUrl.replace(dockerHostPattern, '');
+        console.log(`[ApiClient] buildUrl - After stripping Docker hosts: ${finalUrl}`);
       }
       
       // If we are in the browser and the URL is still absolute to 'api', force it to relative
       if (finalUrl.includes('://api')) {
          finalUrl = finalUrl.substring(finalUrl.indexOf('/api/'));
+         console.log(`[ApiClient] buildUrl - After forcing relative API path: ${finalUrl}`);
       }
 
       // Ensure it starts with /api if it's a relative path to our backend
       if (!finalUrl.startsWith('http') && !finalUrl.startsWith('/')) {
         finalUrl = '/' + finalUrl;
+        console.log(`[ApiClient] buildUrl - After ensuring leading slash: ${finalUrl}`);
       }
       
       return finalUrl;
@@ -204,10 +219,16 @@ class ApiClient {
         'Content-Type': 'application/json'
       };
 
-      if (!this.shouldPreferCookieSession()) {
+      const prefersCookieSession = this.shouldPreferCookieSession();
+      console.log('[ApiClient] getAuthHeaders called, prefersCookieSession:', prefersCookieSession);
+
+      if (!prefersCookieSession) {
         const accessToken = localStorage.getItem('access_token');
+        console.log('[ApiClient] No cookie session, checking access token:', !!accessToken);
+
         if (accessToken) {
           if (this.isTokenExpired(accessToken)) {
+            console.log('[ApiClient] Access token expired, attempting refresh');
             try {
               await this.refreshAccessToken();
               const newToken = localStorage.getItem('access_token');
@@ -216,9 +237,14 @@ class ApiClient {
               console.warn('Failed to refresh token, proceeding without auth');
             }
           } else {
+            console.log('[ApiClient] Using access token for Authorization header');
             headers['Authorization'] = `Bearer ${accessToken}`;
           }
+        } else {
+          console.log('[ApiClient] No access token available');
         }
+      } else {
+        console.log('[ApiClient] Using cookie session (session marker present)');
       }
       return headers;
     } catch {
@@ -275,9 +301,9 @@ class ApiClient {
     }
   }
 
-  private async request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, init: RequestInit = {}, skipAuth: boolean = false): Promise<T> {
     const send = async (baseUrl: string | null): Promise<Response> => {
-      const authHeaders = await this.getAuthHeaders();
+      const authHeaders = skipAuth ? {} : await this.getAuthHeaders();
       const requestHeaders = {
         ...authHeaders,
         ...((init.headers as Record<string, string> | undefined) || {}),
@@ -343,6 +369,20 @@ class ApiClient {
       }
       const fallbackMessage = `HTTP ${response.status}: ${response.statusText}`;
       const errorPayload = errorData.detail ?? errorData.message ?? errorData.error ?? rawText;
+
+      // Handle 401 errors by redirecting to login
+      if (response.status === 401 && typeof window !== 'undefined') {
+        console.warn('[ApiClient] Authentication failed, redirecting to login');
+        // Clear any remaining auth data
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_data');
+        // Redirect to login page
+        window.location.href = '/login';
+        // Don't throw error, let the redirect happen
+        return undefined as T;
+      }
+
       throw new ApiError(
         response.status,
         this.formatApiErrorMessage(errorPayload, fallbackMessage),
@@ -357,6 +397,10 @@ class ApiClient {
 
   async get<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint);
+  }
+
+  async getUnauthenticated<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {}, true);
   }
 
   async post<T>(endpoint: string, data?: any, init: RequestInit = {}): Promise<T> {
