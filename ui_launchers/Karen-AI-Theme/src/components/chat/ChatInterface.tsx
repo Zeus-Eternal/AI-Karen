@@ -147,7 +147,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     try {
       // Load session metadata and history
       // We use the same endpoint for both since ConversationResponse includes all metadata
-      const conversationResponse = await apiClient.get<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
+      const conversationResponse = await apiClient.post<ConversationResponse>(`/api/conversations/ensure-session/${sessionId}`);
       
       const session: Session = {
         id: sessionId,
@@ -195,7 +195,7 @@ export function SessionProvider({ children, initialSessionId }: SessionProviderP
     setError(null);
     
     try {
-      const response = await apiClient.get<ConversationApiResponse>('/api/conversations/');
+      const response = await apiClient.get<ConversationApiResponse>('/api/conversations');
       const sessionsData: Session[] = response.conversations?.map((session) => ({
         id: session.id,
         title: session.title || 'Untitled Chat',
@@ -630,6 +630,18 @@ export default function ChatInterface() {
 
   const getDegradedResponseMessage = (error: unknown): string => {
     if (error instanceof ApiError) {
+      const errorPayload = error.details as Record<string, unknown>;
+      const runtimeMode = typeof errorPayload?.mode === 'string' ? errorPayload.mode : '';
+
+      if (
+        (runtimeMode === 'maintenance' ||
+          runtimeMode === 'emergency_fallback' ||
+          runtimeMode === 'degraded') &&
+        typeof errorPayload?.message === 'string'
+      ) {
+        return errorPayload.message;
+      }
+
       const detail = error.message?.trim();
       
       // If we have a specific informative detail, prioritize it.
@@ -639,7 +651,6 @@ export default function ChatInterface() {
       }
 
        // If we have detailed error content in the response body, use it specifically.
-       const errorPayload = error.details as Record<string, unknown>;
        if (errorPayload?.detail && typeof errorPayload.detail === 'string') {
         return errorPayload.detail;
       }
@@ -1192,28 +1203,63 @@ export default function ChatInterface() {
 
       if (error instanceof TypeError) {
         setIsBackendOffline(true);
-      } else if (error instanceof ApiError && error.status >= 500) {
+      } else if (
+        error instanceof ApiError &&
+        error.status >= 500 &&
+        typeof (error.details as Record<string, unknown> | undefined)?.mode !== 'string'
+      ) {
         setIsBackendOffline(true);
       }
 
+      const runtimePayload =
+        error instanceof ApiError &&
+        error.details &&
+        typeof error.details === 'object' &&
+        typeof (error.details as Record<string, unknown>).mode === 'string'
+          ? (error.details as Record<string, unknown>)
+          : null;
+
+      const normalizedErrorResponse = runtimePayload
+        ? normalizeBackendChatResponse(runtimePayload)
+        : null;
+
       const assistantMessage: ChatMessage = {
-        id: 'assistant-error-' + Date.now(),
+        id: normalizedErrorResponse?.correlationId || 'assistant-error-' + Date.now(),
         role: 'assistant',
-        content: getDegradedResponseMessage(error),
+        content: normalizedErrorResponse?.answer || getDegradedResponseMessage(error),
         timestamp: new Date(),
-        status: 'failed',
-        metadata: getAssistFailureMetadata(error, selectedProvider, selectedModel),
+        status: normalizedErrorResponse ? 'completed' : 'failed',
+        structuredContent: normalizedErrorResponse?.structuredContent,
+        actions: normalizedErrorResponse?.actions,
+        metadata:
+          normalizedErrorResponse?.metadata ||
+          getAssistFailureMetadata(error, selectedProvider, selectedModel),
       };
       setMessages((prev) => {
         // Update user message to failed and add error response
-        return prev.map(m => m.id === userMessage.id ? { ...m, status: 'failed' as const } : m)
+        return prev.map(m => m.id === userMessage.id ? {
+          ...m,
+          status: normalizedErrorResponse ? 'completed' as const : 'failed' as const,
+        } : m)
           .concat(assistantMessage);
       });
-      toast({
-        title: 'Chat request failed',
-        description: getDegradedResponseMessage(error),
-        variant: 'destructive',
-      });
+      toast(
+        normalizedErrorResponse
+          ? {
+              title:
+                runtimePayload?.mode === 'maintenance'
+                  ? 'Maintenance mode active'
+                  : runtimePayload?.mode === 'emergency_fallback'
+                    ? 'Emergency fallback active'
+                    : 'Limited chat mode',
+              description: normalizedErrorResponse.answer,
+            }
+          : {
+              title: 'Chat request failed',
+              description: getDegradedResponseMessage(error),
+              variant: 'destructive',
+            },
+      );
       console.error('Chat request failed:', error);
     } finally {
       submitInFlightRef.current = false;

@@ -18,6 +18,7 @@ SCHEMA_MIGRATIONS: List[str] = [
     "001_agui_chat_core.sql",
     "002_context_management.sql",
     "003_persona_persistence.sql",
+    "004_chat_runtime_control_plane.sql",
 ]
 
 

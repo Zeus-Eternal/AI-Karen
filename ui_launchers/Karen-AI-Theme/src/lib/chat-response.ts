@@ -11,6 +11,15 @@ type BackendChatEnvelope = {
   answer?: string;
   content?: string;
   response?: string;
+  mode?: string;
+  message?: string;
+  reason?: string;
+  retry_after_seconds?: number;
+  estimated_completion_time?: string | null;
+  notification_supported?: boolean;
+  notification_request_allowed?: boolean;
+  system_status_code?: number;
+  support_hint?: string;
   structured_content?: Record<string, unknown>;
   structuredContent?: Record<string, unknown>;
   actions?: SuggestedAction[];
@@ -364,6 +373,67 @@ const ensureLlmMetadata = (
   return metadata;
 };
 
+const ensureRuntimeModeMetadata = (
+  metadata: Record<string, any>,
+  raw: BackendChatEnvelope,
+): Record<string, any> => {
+  const runtimeMode = String(raw.mode || metadata.mode || '').trim();
+  if (!runtimeMode) {
+    return metadata;
+  }
+
+  metadata.mode = runtimeMode;
+  metadata.runtime = {
+    ...(metadata.runtime || {}),
+    mode: runtimeMode,
+    retry_after_seconds:
+      raw.retry_after_seconds ?? metadata.runtime?.retry_after_seconds,
+    estimated_completion_time:
+      raw.estimated_completion_time ?? metadata.runtime?.estimated_completion_time,
+    notification_supported:
+      raw.notification_supported ?? metadata.runtime?.notification_supported,
+    notification_request_allowed:
+      raw.notification_request_allowed ?? metadata.runtime?.notification_request_allowed,
+    system_status_code:
+      raw.system_status_code ?? metadata.runtime?.system_status_code,
+    support_hint: raw.support_hint ?? metadata.runtime?.support_hint,
+  };
+
+  const llm = { ...(metadata.llm || {}) };
+  llm.provider = llm.provider || 'system';
+  llm.source = llm.source || 'runtime_control_plane';
+  llm.model_name =
+    llm.model_name ||
+    (runtimeMode === 'maintenance'
+      ? 'Maintenance'
+      : runtimeMode === 'emergency_fallback'
+        ? 'Emergency Fallback'
+        : runtimeMode === 'degraded'
+          ? 'Degraded Mode'
+          : 'Runtime Control');
+
+  if (runtimeMode === 'maintenance' || runtimeMode === 'emergency_fallback') {
+    metadata.degraded_mode = true;
+    llm.is_degraded = true;
+    llm.fallback_level = runtimeMode === 'maintenance' ? 'maintenance' : 'emergency';
+    llm.failure_reason = String(raw.reason || raw.message || raw.support_hint || '').trim();
+    llm.routing_rationale =
+      runtimeMode === 'maintenance'
+        ? 'Karen is in planned maintenance mode.'
+        : 'Karen is serving the emergency fallback response.';
+  } else if (runtimeMode === 'degraded') {
+    metadata.degraded_mode = true;
+    llm.is_degraded = true;
+    llm.fallback_level = llm.fallback_level || 'degraded';
+    // Do not mirror the primary assistant message as failure reason; that causes
+    // duplicate degraded text in UI banners + message body.
+    llm.failure_reason = llm.failure_reason || String(raw.reason || '').trim();
+  }
+
+  metadata.llm = llm;
+  return metadata;
+};
+
 export function normalizeBackendChatResponse(
   raw: BackendChatEnvelope,
   options?: {
@@ -372,6 +442,10 @@ export function normalizeBackendChatResponse(
   },
 ): NormalizedChatResponse {
   const answer = sanitizeChatContent(raw.answer ?? raw.content ?? raw.response);
+  const runtimeMode = String(raw.mode || '').trim();
+  const looksLikeCapabilityBanner =
+    /^limited assistant with:/i.test(answer) ||
+    /^minimal text-only assistant$/i.test(answer);
   const correlationId = String(
     raw.correlation_id ||
       raw.request_id ||
@@ -414,6 +488,7 @@ export function normalizeBackendChatResponse(
   }
 
   ensureLlmMetadata(metadata, raw);
+  ensureRuntimeModeMetadata(metadata, raw);
 
   const llm = metadata.llm ? { ...metadata.llm } : {};
   const requestedProvider = normalizeProviderName(options?.requestedProvider);
@@ -444,7 +519,16 @@ export function normalizeBackendChatResponse(
   }
 
   return {
-    answer: answer || 'Karen returned an empty response.',
+    answer:
+      (looksLikeCapabilityBanner && runtimeMode === 'degraded'
+        ? 'Karen is running in degraded mode right now, but can still help with brief answers. Please try your request again.'
+        : answer) ||
+      sanitizeChatContent(raw.message) ||
+      (String(raw.mode || '').trim() === 'maintenance'
+        ? 'Karen is temporarily unavailable while scheduled maintenance is in progress.'
+        : String(raw.mode || '').trim() === 'emergency_fallback'
+          ? 'Karen is temporarily unavailable. Please try again shortly.'
+          : 'Karen returned an empty response.'),
     structuredContent: sanitizeStructuredContent(
       raw.structured_content || raw.structuredContent || {},
     ),

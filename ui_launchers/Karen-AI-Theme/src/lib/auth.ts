@@ -504,7 +504,7 @@ class AuthService {
       if (!response.ok) {
         // Try to refresh token if validation fails and we have a refresh token available.
         try {
-          if (shouldPreferCookieSession || !refreshToken) {
+          if (!refreshToken) {
             return false;
           }
           await this.refreshToken();

@@ -32,6 +32,14 @@ from ai_karen_engine.chat.stream_processor import (
     AsyncStreamProcessor as StreamProcessor,
 )
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
+from ai_karen_engine.core.chat_runtime_control_plane import (
+    get_chat_runtime_control_plane,
+    RuntimeMode,
+    MaintenanceResponse,
+    EmergencyFallbackResponse,
+    DegradedResponse,
+    serialize_runtime_response,
+)
 
 # REMOVED: Complex auth service - replaced with simple auth
 from ai_karen_engine.utils.dependency_checks import import_pydantic
@@ -208,6 +216,25 @@ async def websocket_chat_endpoint(
     connection_id = None
 
     try:
+        # ── Control Plane Gate ──────────────────────────────────
+        control_plane = await get_chat_runtime_control_plane()
+        runtime_response = await control_plane.get_runtime_response()
+
+        if runtime_response is not None:
+            await websocket.accept()
+            payload = {
+                "type": "runtime_mode",
+            }
+            if isinstance(
+                runtime_response,
+                (MaintenanceResponse, EmergencyFallbackResponse, DegradedResponse),
+            ):
+                payload.update(serialize_runtime_response(runtime_response) or {})
+            await websocket.send_text(json.dumps(payload))
+            await websocket.close(code=1013)  # Try Again Later
+            return
+        # ── End Control Plane Gate ──────────────────────────────
+
         # Handle WebSocket connection
         connection_id = await gateway.handle_websocket_connection(websocket)
         logger.info(

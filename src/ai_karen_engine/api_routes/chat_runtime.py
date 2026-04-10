@@ -26,6 +26,15 @@ import uuid
 from ..core.dependencies import bypass_user_context_func
 from ..core.config_manager import get_config_manager
 from ..core.logging.logger import get_structured_logger
+from ..core.chat_runtime_control_plane import (
+    get_chat_runtime_control_plane,
+    RuntimeMode,
+    MaintenanceResponse,
+    EmergencyFallbackResponse,
+    DegradedResponse,
+    serialize_runtime_response,
+    runtime_response_http_status,
+)
 from ..chat.chat_orchestrator import (
     ChatOrchestrator,
     ChatRequest as OrchestratorChatRequest,
@@ -263,8 +272,38 @@ async def create_chat_response(
     structured_logger = get_structured_logger()
 
     try:
-        # Note: Rate limiting functionality needs to be implemented
-        # For now, we'll skip rate limiting
+        # ── Control Plane Gate ─────────────────────────────────────
+        # All chat entry points must consult the single authority.
+        control_plane = await get_chat_runtime_control_plane()
+        runtime_response = await control_plane.get_runtime_response()
+
+        if runtime_response is not None:
+            # Non-normal mode — consume the control-plane contract directly.
+            if isinstance(runtime_response, DegradedResponse):
+                if runtime_response.is_minimal:
+                    # Minimal degraded — can't reach orchestrator, return message
+                    from fastapi.responses import JSONResponse
+                    payload = serialize_runtime_response(runtime_response) or {}
+                    return JSONResponse(
+                        status_code=runtime_response_http_status(runtime_response) or 200,
+                        content=payload,
+                        headers={"Retry-After": str(runtime_response.retry_after_seconds)},
+                    )
+                # Non-minimal degraded: proceed to orchestrator with available capabilities
+            elif isinstance(
+                runtime_response,
+                (MaintenanceResponse, EmergencyFallbackResponse),
+            ):
+                from fastapi.responses import JSONResponse
+
+                payload = serialize_runtime_response(runtime_response) or {}
+                status_code = runtime_response_http_status(runtime_response) or 503
+                return JSONResponse(
+                    status_code=status_code,
+                    content=payload,
+                    headers={"Retry-After": str(runtime_response.retry_after_seconds)},
+                )
+        # ── End Control Plane Gate ─────────────────────────────────
 
         # Validate and sanitize session ID
         session_id = SecurityValidator.sanitize_session_id(request.session_id)

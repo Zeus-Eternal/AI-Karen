@@ -36,6 +36,8 @@ function sanitizeHeaders(headers: Headers, backendBaseUrl: string): Headers {
     // Skip hop-by-hop headers and other sensitive proxy headers
     const skipHeaders = [
       'host',
+      'content-length',
+      'content-encoding',
       'connection',
       'keep-alive',
       'proxy-authenticate',

@@ -1222,6 +1222,22 @@ async def ensure_session_conversation(
         )
 
 
+@router.get("/ensure-session/{session_id}")
+async def ensure_session_conversation_get(
+    session_id: str,
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
+):
+    """Compatibility alias for clients still using GET during session ensure."""
+    return await ensure_session_conversation(
+        session_id=session_id,
+        conversation_service=conversation_service,
+        tenant_id=tenant_id,
+        user_ctx=user_ctx,
+    )
+
+
 @router.post("/update-session-activity/{session_id}")
 async def update_session_activity(
     session_id: str,

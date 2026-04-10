@@ -16,7 +16,12 @@ from ai_karen_engine.chat.ChatOrchestrator import (
 )
 from ai_karen_engine.core.chat_runtime_control_plane import (
     get_chat_runtime_control_plane,
+    DegradedResponse,
+    EmergencyFallbackResponse,
+    serialize_runtime_response,
+    runtime_response_http_status,
 )
+from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
 
 if TYPE_CHECKING:
     from pydantic import BaseModel, ConfigDict, Field
@@ -109,6 +114,50 @@ def _assist_response_json(
             "metadata": metadata or {},
             "correlation_id": correlation_id,
         },
+    )
+
+
+def _build_degraded_assist_response(
+    *,
+    degraded: DegradedResponse,
+    user_message: str,
+    correlation_id: str,
+    status_code: int = 200,
+) -> JSONResponse:
+    """Return a useful degraded assistant payload (not just a mode banner)."""
+    payload = serialize_runtime_response(degraded) or {}
+    shim = generate_degraded_mode_response(user_message)
+    shim_answer = str(
+        (
+            shim.get("final")
+            or shim.get("message")
+            or shim.get("response")
+            or shim.get("answer")
+            or ""
+        )
+    ).strip()
+    answer = shim_answer or degraded.message
+
+    metadata = {
+        "runtime": payload,
+        "mode": payload.get("mode", "degraded"),
+        "degraded_mode": True,
+        "llm": {
+            "provider": "system",
+            "model_name": "Degraded Mode",
+            "source": "runtime_control_plane",
+            "is_degraded": True,
+            "fallback_level": "degraded",
+            "failure_reason": degraded.message,
+        },
+    }
+    return _assist_response_json(
+        answer=answer,
+        structured_content={},
+        actions=[],
+        metadata=metadata,
+        correlation_id=correlation_id,
+        status_code=status_code,
     )
 
 
@@ -389,6 +438,7 @@ async def copilot_assist(
     try:
         # Get runtime control plane
         runtime_plane = await get_chat_runtime_control_plane()
+        degraded_continuation_response: Optional[DegradedResponse] = None
 
         # Get runtime response based on current mode
         response = await runtime_plane.get_runtime_response(
@@ -398,59 +448,143 @@ async def copilot_assist(
             correlation_id=correlation_id,
         )
 
-        # Handle different response types
-        if hasattr(response, "mode"):
-            # Structured runtime response (maintenance, emergency, etc.)
-            if response.mode == "maintenance":
-                return JSONResponse(
-                    status_code=response.system_status_code,
-                    content={
-                        "mode": response.mode,
-                        "message": response.message,
-                        "estimated_completion_time": response.estimated_completion_time.isoformat()
-                        if response.estimated_completion_time
-                        else None,
-                        "notification_supported": response.notification_supported,
-                        "notification_request_allowed": response.notification_request_allowed,
-                        "retry_after_seconds": response.retry_after_seconds,
-                        "correlation_id": correlation_id,
-                    },
-                    headers={"X-Correlation-Id": correlation_id},
+        if response is not None:
+            if isinstance(response, DegradedResponse):
+                logger.info(
+                    "Copilot continuing through degraded mode",
+                    extra={"correlation_id": correlation_id},
                 )
-            elif response.mode == "emergency_fallback":
+                degraded_continuation_response = response
+            else:
+                payload = serialize_runtime_response(response) or {}
+                payload["correlation_id"] = correlation_id
+                status_code = runtime_response_http_status(response) or 503
                 return JSONResponse(
-                    status_code=response.system_status_code,
-                    content={
-                        "mode": response.mode,
-                        "message": response.message,
-                        "retry_after_seconds": response.retry_after_seconds,
-                        "correlation_id": correlation_id,
-                    },
-                    headers={"X-Correlation-Id": correlation_id},
-                )
-            elif response.mode == "degraded":
-                # For now, return degraded response
-                return JSONResponse(
-                    status_code=200,
-                    content={
-                        "mode": response.mode,
-                        "message": response.message,
-                        "correlation_id": correlation_id,
-                    },
+                    status_code=status_code,
+                    content=payload,
                     headers={"X-Correlation-Id": correlation_id},
                 )
 
-        # Normal mode response - would be chat orchestrator output
-        # For now, return a placeholder
-        return JSONResponse(
-            status_code=200,
-            content={
-                "mode": "normal",
-                "answer": "Chat functionality is temporarily disabled for maintenance.",
-                "correlation_id": correlation_id,
+        # Normal/degraded-chat path: execute via ChatOrchestrator.
+        try:
+            orchestrator = await _get_chat_orchestrator()
+        except Exception as orchestrator_error:
+            if degraded_continuation_response is not None:
+                logger.warning(
+                    "Copilot degraded continuation falling back to degraded response: %s",
+                    orchestrator_error,
+                    extra={"correlation_id": correlation_id},
+                )
+                return _build_degraded_assist_response(
+                    degraded=degraded_continuation_response,
+                    user_message=request.message,
+                    correlation_id=correlation_id,
+                    status_code=runtime_response_http_status(
+                        degraded_continuation_response
+                    )
+                    or 200,
+                )
+            raise
+
+        conversation_id = _normalize_session_id(request.session_id)
+        if not conversation_id:
+            conversation_id = str(uuid.uuid4())
+
+        chat_request = ChatRequest(
+            correlation_id=correlation_id,
+            tenant_id=str(request.org_id or "default"),
+            message=request.message,
+            user_id=request.user_id,
+            org_id=request.org_id,
+            conversation_id=conversation_id,
+            session_id=conversation_id,
+            streaming=False,
+            stream=False,
+            include_context=True,
+            attachments=[],
+            metadata={
+                "surface": "copilot",
+                "top_k": request.top_k,
+                "context": _json_safe(request.context or {}),
+                "preferred_llm_provider": request.preferred_llm_provider,
+                "preferred_model": request.preferred_model,
             },
-            headers={"X-Correlation-Id": correlation_id},
         )
+
+        try:
+            orchestrator_response = await orchestrator.handle_chat(chat_request)
+        except Exception as orchestrator_error:
+            if degraded_continuation_response is not None:
+                logger.warning(
+                    "Copilot degraded continuation encountered orchestrator error: %s",
+                    orchestrator_error,
+                    extra={"correlation_id": correlation_id},
+                )
+                return _build_degraded_assist_response(
+                    degraded=degraded_continuation_response,
+                    user_message=request.message,
+                    correlation_id=correlation_id,
+                    status_code=runtime_response_http_status(
+                        degraded_continuation_response
+                    )
+                    or 200,
+                )
+            raise
+        if isinstance(orchestrator_response, ChatResponse):
+            response_text = str(orchestrator_response.response or "").strip()
+            if degraded_continuation_response is not None and (
+                not response_text
+                or response_text.lower().startswith("limited assistant with:")
+                or response_text == degraded_continuation_response.message
+            ):
+                logger.info(
+                    "Copilot replacing placeholder degraded text with degraded shim response",
+                    extra={"correlation_id": correlation_id},
+                )
+                return _build_degraded_assist_response(
+                    degraded=degraded_continuation_response,
+                    user_message=request.message,
+                    correlation_id=correlation_id,
+                    status_code=200,
+                )
+
+            action_models = [
+                SuggestedAction(
+                    type=str(action.get("type", "unknown")),
+                    params=(
+                        action.get("params")
+                        if isinstance(action.get("params"), dict)
+                        else {
+                            k: v
+                            for k, v in action.items()
+                            if k not in {"type", "confidence", "description"}
+                        }
+                    ),
+                    confidence=float(action.get("confidence", 0.8)),
+                    description=action.get("description"),
+                )
+                for action in (orchestrator_response.actions or [])
+                if isinstance(action, dict)
+            ]
+
+            metadata: Dict[str, Any] = _json_safe(orchestrator_response.metadata or {})
+            metadata["status"] = str(orchestrator_response.status.value)
+            metadata["processing_time"] = orchestrator_response.processing_time
+            metadata["conversation_id"] = orchestrator_response.conversation_id
+            metadata["used_fallback"] = orchestrator_response.used_fallback
+
+            return _assist_response_json(
+                answer=response_text,
+                structured_content=_json_safe(
+                    orchestrator_response.structured_content or {}
+                ),
+                actions=action_models,
+                metadata=metadata,
+                correlation_id=correlation_id,
+                status_code=200,
+            )
+
+        raise RuntimeError("Unexpected ChatOrchestrator response type")
 
     except Exception as e:
         logger.error(
@@ -458,15 +592,12 @@ async def copilot_assist(
             extra={"correlation_id": correlation_id},
         )
 
-        # Return emergency fallback on any error
+        fallback = EmergencyFallbackResponse()
+        payload = serialize_runtime_response(fallback) or {}
+        payload["correlation_id"] = correlation_id
         return JSONResponse(
-            status_code=503,
-            content={
-                "mode": "emergency_fallback",
-                "message": "Service temporarily unavailable",
-                "retry_after_seconds": 60,
-                "correlation_id": correlation_id,
-            },
+            status_code=runtime_response_http_status(fallback) or 503,
+            content=payload,
             headers={"X-Correlation-Id": correlation_id},
         )
 

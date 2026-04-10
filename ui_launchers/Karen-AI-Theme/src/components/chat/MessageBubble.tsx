@@ -123,6 +123,10 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
     tokensLabel,
   } = deriveResponseDetailsPresentation(message.metadata);
   const normalizedContent = sanitizeChatContent(message.content);
+  const normalizedDegradedNotice = sanitizeChatContent(visibleDegradedNotice);
+  const shouldShowDegradedNotice =
+    Boolean(normalizedDegradedNotice) &&
+    normalizedDegradedNotice.toLowerCase() !== normalizedContent.toLowerCase();
 
   return (
     <div className={`user-bubble flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -139,9 +143,9 @@ export function MessageBubble({ message, onActionClick }: MessageBubbleProps) {
         <CardContent className="p-3 md:p-4">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 space-y-2 overflow-hidden">
-              {!isUser && message.role === 'assistant' && visibleDegradedNotice && (
+              {!isUser && message.role === 'assistant' && shouldShowDegradedNotice && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200/90">
-                  {visibleDegradedNotice}
+                  {normalizedDegradedNotice}
                 </div>
               )}
 

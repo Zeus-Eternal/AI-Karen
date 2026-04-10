@@ -251,13 +251,13 @@ class ChatServiceFactory:
         logger.info("Creating chat orchestrator with all services")
 
         # Create all dependent services (with error handling for production robustness)
-        memory_processor = await self.create_memory_processor()
-        file_attachment_service = await self.create_file_attachment_service()
-        multimedia_service = await self.create_multimedia_service()
-        code_execution_service = await self.create_code_execution_service()
-        tool_integration_service = await self.create_tool_integration_service()
-        instruction_processor = await self.create_instruction_processor()
-        context_integrator = await self.create_context_integrator()
+        memory_processor = self.create_memory_processor()
+        file_attachment_service = self.create_file_attachment_service()
+        multimedia_service = self.create_multimedia_service()
+        code_execution_service = self.create_code_execution_service()
+        tool_integration_service = self.create_tool_integration_service()
+        instruction_processor = self.create_instruction_processor()
+        context_integrator = self.create_context_integrator()
 
         # Session state manager (optional - may fail in some environments)
         session_state_manager = None

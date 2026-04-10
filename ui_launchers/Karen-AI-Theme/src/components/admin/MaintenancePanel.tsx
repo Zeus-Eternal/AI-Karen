@@ -9,6 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface CleanupAction {
   action_type: string;
@@ -36,6 +39,38 @@ interface RecommendationResponse {
   timestamp: string;
 }
 
+interface RuntimeStatusResponse {
+  mode: string;
+  maintenance_active: boolean;
+  maintenance_message?: string | null;
+  estimated_completion_time?: string | null;
+  normal_ready: boolean;
+  degraded_ready: boolean;
+  dependencies: Record<string, {
+    status: string;
+    reason?: string | null;
+    response_time_ms: number;
+    consecutive_successes: number;
+    consecutive_failures: number;
+    checked_at?: string | null;
+  }>;
+}
+
+interface NotificationSubscription {
+  id: string;
+  user_id?: string | null;
+  session_id?: string | null;
+  channel: string;
+  status: string;
+  requested_at?: string | null;
+  dispatched_at?: string | null;
+}
+
+interface NotificationSubscriptionResponse {
+  subscriptions: NotificationSubscription[];
+  count: number;
+}
+
 export default function MaintenancePanel() {
   const { toast } = useToast();
   const [recommendations, setRecommendations] = useState<string[]>([]);
@@ -43,6 +78,87 @@ export default function MaintenancePanel() {
   const [cleaning, setCleaning] = useState(false);
   const [report, setReport] = useState<CleanupReport | null>(null);
   const [lastCheck, setLastCheck] = useState<string | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusResponse | null>(null);
+  const [subscriptions, setSubscriptions] = useState<NotificationSubscription[]>([]);
+  const [runtimeLoading, setRuntimeLoading] = useState(false);
+  const [submittingMaintenance, setSubmittingMaintenance] = useState(false);
+  const [maintenanceReason, setMaintenanceReason] = useState("planned_maintenance");
+  const [maintenanceMessage, setMaintenanceMessage] = useState("Scheduled maintenance is in progress.");
+  const [maintenanceEta, setMaintenanceEta] = useState("");
+
+  const fetchRuntimeStatus = useCallback(async () => {
+    setRuntimeLoading(true);
+    try {
+      const [statusResponse, notificationsResponse] = await Promise.all([
+        apiClient.get<RuntimeStatusResponse>("/admin/runtime/status"),
+        apiClient.get<NotificationSubscriptionResponse>("/admin/runtime/maintenance/notifications"),
+      ]);
+      setRuntimeStatus(statusResponse);
+      setSubscriptions(notificationsResponse.subscriptions || []);
+    } catch (error) {
+      toast({
+        title: "Runtime status unavailable",
+        description: error instanceof Error ? error.message : "Could not load runtime control data.",
+        variant: "destructive",
+      });
+    } finally {
+      setRuntimeLoading(false);
+    }
+  }, [toast]);
+
+  const triggerHealthCheck = useCallback(async () => {
+    try {
+      await apiClient.post("/admin/runtime/check-health", {});
+      await fetchRuntimeStatus();
+      toast({ title: "Health check completed", description: "Runtime dependency status was refreshed." });
+    } catch (error) {
+      toast({
+        title: "Health check failed",
+        description: error instanceof Error ? error.message : "Could not refresh runtime health.",
+        variant: "destructive",
+      });
+    }
+  }, [fetchRuntimeStatus, toast]);
+
+  const submitMaintenanceAction = useCallback(async (action: "enable" | "update" | "disable") => {
+    setSubmittingMaintenance(true);
+    try {
+      if (action === "enable") {
+        await apiClient.post("/admin/runtime/maintenance/enable", {
+          reason: maintenanceReason,
+          message: maintenanceMessage,
+          estimated_completion_time: maintenanceEta || null,
+          auto_end_policy: maintenanceEta ? "at_time" : "manual",
+        });
+      } else if (action === "update") {
+        await apiClient.put("/admin/runtime/maintenance/update", {
+          message: maintenanceMessage,
+          estimated_completion_time: maintenanceEta || null,
+          auto_end_policy: maintenanceEta ? "at_time" : "manual",
+        });
+      } else {
+        await apiClient.post("/admin/runtime/maintenance/disable", {});
+      }
+      await fetchRuntimeStatus();
+      toast({
+        title:
+          action === "enable"
+            ? "Maintenance enabled"
+            : action === "update"
+              ? "Maintenance updated"
+              : "Maintenance disabled",
+        description: "Operator runtime controls have been applied.",
+      });
+    } catch (error) {
+      toast({
+        title: "Maintenance action failed",
+        description: error instanceof Error ? error.message : "Could not update maintenance state.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingMaintenance(false);
+    }
+  }, [fetchRuntimeStatus, maintenanceEta, maintenanceMessage, maintenanceReason, toast]);
 
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
@@ -95,6 +211,10 @@ export default function MaintenancePanel() {
     void fetchRecommendations();
   }, [fetchRecommendations]);
 
+  useEffect(() => {
+    void fetchRuntimeStatus();
+  }, [fetchRuntimeStatus]);
+
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -105,6 +225,118 @@ export default function MaintenancePanel() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl">Runtime Control Plane</CardTitle>
+                <CardDescription>Authoritative runtime mode, maintenance controls, and dependency visibility.</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void fetchRuntimeStatus()} disabled={runtimeLoading}>
+                {runtimeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border p-4">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Current mode</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge>{runtimeStatus?.mode || "unknown"}</Badge>
+                  {runtimeStatus?.maintenance_active ? <Badge variant="secondary">maintenance active</Badge> : null}
+                </div>
+              </div>
+              <div className="rounded-xl border p-4">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Normal ready</div>
+                <div className="mt-2 text-lg font-semibold">{runtimeStatus?.normal_ready ? "yes" : "no"}</div>
+              </div>
+              <div className="rounded-xl border p-4">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">Degraded ready</div>
+                <div className="mt-2 text-lg font-semibold">{runtimeStatus?.degraded_ready ? "yes" : "no"}</div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="maintenance-reason">Reason</Label>
+                <Input id="maintenance-reason" value={maintenanceReason} onChange={(e) => setMaintenanceReason(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maintenance-eta">ETA</Label>
+                <Input id="maintenance-eta" type="datetime-local" value={maintenanceEta} onChange={(e) => setMaintenanceEta(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maintenance-message">Message</Label>
+              <Textarea id="maintenance-message" value={maintenanceMessage} onChange={(e) => setMaintenanceMessage(e.target.value)} rows={3} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => void submitMaintenanceAction("enable")} disabled={submittingMaintenance}>
+                Enable maintenance
+              </Button>
+              <Button variant="outline" onClick={() => void submitMaintenanceAction("update")} disabled={submittingMaintenance || !runtimeStatus?.maintenance_active}>
+                Update maintenance
+              </Button>
+              <Button variant="secondary" onClick={() => void submitMaintenanceAction("disable")} disabled={submittingMaintenance || !runtimeStatus?.maintenance_active}>
+                Disable maintenance
+              </Button>
+              <Button variant="outline" onClick={() => void triggerHealthCheck()} disabled={runtimeLoading}>
+                Trigger health check
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Dependency health</div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {Object.entries(runtimeStatus?.dependencies || {}).map(([name, dependency]) => (
+                  <div key={name} className="rounded-lg border p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{name}</span>
+                      <Badge variant={dependency.status === "healthy" ? "default" : "secondary"}>{dependency.status}</Badge>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {dependency.reason || "No issues reported"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Maintenance notifications</CardTitle>
+            <CardDescription>Current subscription state from the authoritative runtime control plane.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">Subscriptions: {subscriptions.length}</div>
+            <ScrollArea className="h-[360px]">
+              <div className="space-y-2">
+                {subscriptions.map((subscription) => (
+                  <div key={subscription.id} className="rounded-lg border p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{subscription.channel}</span>
+                      <Badge variant="outline">{subscription.status}</Badge>
+                    </div>
+                    <div className="mt-2 text-muted-foreground break-all">
+                      {subscription.user_id || subscription.session_id || subscription.id}
+                    </div>
+                  </div>
+                ))}
+                {subscriptions.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+                    No maintenance notification subscriptions found.
+                  </div>
+                ) : null}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader>
