@@ -49,61 +49,16 @@ class GeneratedImportRegistry:
 
         # Track registry entries
         self.entries: Dict[str, RegistryEntry] = {}
-        self._load_registry()
+        # Source of truth is the filesystem + ui_installer state; do not attempt
+        # to parse the generated TypeScript module back into Python.
 
     def _load_registry(self) -> None:
         """Load existing registry from file."""
-        if not self.output_file.exists():
-            return
-
-        try:
-            with open(self.output_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            for entry_data in data.get('entries', []):
-                entry = RegistryEntry(
-                    plugin_id=entry_data['plugin_id'],
-                    import_path=entry_data['import_path'],
-                    component_name=entry_data['component_name'],
-                    checksum=entry_data['checksum'],
-                    size_bytes=entry_data['size_bytes'],
-                    generated_at=datetime.fromisoformat(entry_data['generated_at']),
-                    manifest_data=entry_data.get('manifest_data', {})
-                )
-                self.entries[entry.plugin_id] = entry
-            
-            logger.info(f"Loaded existing registry with {len(self.entries)} entries")
-            
-        except Exception as e:
-            logger.error(f"Failed to load registry: {e}")
-            self.entries = {}
+        return
 
     def _save_registry(self) -> None:
         """Save registry to file."""
-        try:
-            data = {
-                'generated_at': datetime.now().isoformat(),
-                'entries': [
-                    {
-                        'plugin_id': entry.plugin_id,
-                        'import_path': entry.import_path,
-                        'component_name': entry.component_name,
-                        'checksum': entry.checksum,
-                        'size_bytes': entry.size_bytes,
-                        'generated_at': entry.generated_at.isoformat(),
-                        'manifest_data': entry.manifest_data
-                    }
-                    for entry in self.entries.values()
-                ]
-            }
-            
-            with open(self.output_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"Saved registry with {len(self.entries)} entries to {self.output_file}")
-            
-        except Exception as e:
-            logger.error(f"Failed to save registry: {e}")
+        return
 
     def _generate_import_path(self, plugin_id: str) -> str:
         """Generate import path for a plugin."""
@@ -242,9 +197,6 @@ class GeneratedImportRegistry:
             except Exception as e:
                 logger.error(f"Failed to generate entry for {plugin_id}: {e}")
         
-        # Save registry
-        self._save_registry()
-        
         # Generate TypeScript file
         self._generate_typescript_file()
         
@@ -256,45 +208,34 @@ class GeneratedImportRegistry:
         }
 
     def _generate_typescript_file(self) -> None:
-        """Generate the TypeScript import map file."""
+        """Generate the TypeScript import map file (bundler-safe static module)."""
         try:
-            # Generate TypeScript content
-            ts_content = """// Auto-generated plugin import registry
-// Generated at: {}
+            lines: List[str] = []
+            lines.append("/**")
+            lines.append(" * Generated plugin import map (frontend).")
+            lines.append(" *")
+            lines.append(" * Single loading authority: `plugin_host/loader.ts` must import from here and")
+            lines.append(" * resolve ONLY installed UI packages under `src/plugin_repo/<plugin-id>/`.")
+            lines.append(" */")
+            lines.append("import type React from 'react';")
+            lines.append("")
+            lines.append("export type PluginImporter = () => Promise<{")
+            lines.append("  default: React.ComponentType<Record<string, unknown>>;")
+            lines.append("}>;")
+            lines.append("")
+            lines.append("export type PluginImportMap = Record<string, PluginImporter>;")
+            lines.append("")
+            lines.append("export const PLUGIN_IMPORT_MAP: PluginImportMap = {")
 
-import type { PluginImporter } from './loader';
+            for plugin_id in sorted(self.entries.keys()):
+                entry = self.entries[plugin_id]
+                lines.append(
+                    f"  {json.dumps(plugin_id)}: () => import({json.dumps(entry.import_path)}),"
+                )
 
-export const GENERATED_PLUGIN_IMPORT_MAP: Record<string, PluginImporter> = {{
-""".format(datetime.now().isoformat())
-
-            # Add entries
-            for entry in self.entries.values():
-                ts_content += f'  "{entry.plugin_id}": () => import("{entry.import_path}"),\n'
-
-            ts_content += ""};
-
-// Plugin metadata for runtime use
-export const GENERATED_PLUGIN_METADATA: Record<string, {
-  plugin_id: string;
-  component_name: string;
-  checksum: string;
-  size_bytes: number;
-  manifest_data: Record<string, any>;
-}> = {
-"""
-
-            # Add metadata
-            for entry in self.entries.values():
-                ts_content += f"""  "{entry.plugin_id}": {{
-    plugin_id: "{entry.plugin_id}",
-    component_name: "{entry.component_name}",
-    checksum: "{entry.checksum}",
-    size_bytes: {entry.size_bytes},
-    manifest_data: {json.dumps(entry.manifest_data, indent=2)}
-  }},
-"""
-
-            ts_content += "};\n"
+            lines.append("};")
+            lines.append("")
+            ts_content = "\n".join(lines)
 
             # Write to file
             with open(self.output_file, 'w', encoding='utf-8') as f:

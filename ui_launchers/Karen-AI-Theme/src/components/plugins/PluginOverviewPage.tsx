@@ -28,6 +28,7 @@ import {
 import { usePluginRegistry, usePluginHealth, type PluginHealthRecord, type FrontendMountState } from "@/plugin_host/registry";
 import { PluginHost } from "./PluginHost";
 import { apiClient } from "@/lib/api";
+import { getRegisteredPluginIds, refreshImportMap, normalizePluginId } from "@/plugin_host/loader";
 import {
   PlugZap,
   MessageSquare,
@@ -80,12 +81,18 @@ function BackendStateBadge({ state, detail }: { state: string; detail?: string }
   );
 }
 
-function FrontendStateBadge({ state }: { state: FrontendMountState }) {
+function FrontendStateBadge({ state }: { state: FrontendMountState | 'registered' }) {
   switch (state) {
     case 'mounted':
       return (
         <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
           <CheckCircle2 className="h-3 w-3" /> mounted
+        </span>
+      );
+    case 'registered':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+          <CheckCircle2 className="h-3 w-3" /> registered
         </span>
       );
     case 'error':
@@ -188,6 +195,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   description: string;
   version: string;
 }) {
+  const { refresh } = usePluginRegistry();
   const health: PluginHealthRecord = usePluginHealth(pluginId);
   const [uiInstallStatus, setUiInstallStatus] = useState<UIInstallStatus>('not_installed');
   const [uiRegistrationStatus, setUiRegistrationStatus] = useState<'not_registered' | 'registered' | 'mountable' | 'mount_error'>('not_registered');
@@ -209,6 +217,14 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     return status === 'restoring';
   };
   const [backendStatusDetail, setBackendStatusDetail] = useState<'not_discovered' | 'discovered' | 'validated' | 'installed' | 'enabled' | 'disabled' | 'broken' | 'uninstalled' | 'restorable'>('discovered');
+  const isUiRegistered = React.useMemo(
+    () => getRegisteredPluginIds().includes(normalizePluginId(pluginId)),
+    [pluginId]
+  );
+  const frontendDisplayState: FrontendMountState | 'registered' =
+    health.frontendMountState === 'not_registered' && isUiRegistered
+      ? 'registered'
+      : health.frontendMountState;
 
   // Initialize extended status from basic health data and determine UI install status
   React.useEffect(() => {
@@ -217,7 +233,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       case 'active':
         setBackendStatusDetail('enabled');
         setUiInstallStatus('installed');
-        setUiRegistrationStatus('registered');
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
         break;
       case 'error':
         setBackendStatusDetail('broken');
@@ -231,14 +247,14 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       case 'disabled':
         setBackendStatusDetail('disabled');
         setUiInstallStatus('installed');
-        setUiRegistrationStatus('registered');
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
         break;
       default:
         setBackendStatusDetail('discovered');
         setUiInstallStatus('not_installed');
         setUiRegistrationStatus('not_registered');
     }
-  }, [health.backendState]);
+  }, [health.backendState, isUiRegistered]);
 
   // Determine if plugin has UI capabilities based on menu contributions
   const hasUiCapabilities = health.pluginId && 
@@ -258,10 +274,11 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       });
 
       if (result.success) {
+        await refreshImportMap();
         setUiInstallStatus('installed');
-        setUiRegistrationStatus('registered');
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'mountable');
         setBackendStatusDetail('installed');
-        // The health state will be updated via the registry hooks
+        await refresh();
       } else {
         setUiInstallStatus('error');
         console.error(`Failed to install plugin ${pluginId}:`, result.message);
@@ -280,10 +297,11 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
     try {
       const result: any = await apiClient.post(`/api/plugins/${pluginId}/uninstall`);
       if (result.success) {
+        await refreshImportMap();
         setUiInstallStatus('not_installed');
         setUiRegistrationStatus('not_registered');
         setBackendStatusDetail('uninstalled');
-        // The health state will be updated via the registry hooks
+        await refresh();
       } else {
         setUiInstallStatus('error');
         console.error(`Failed to uninstall plugin ${pluginId}:`, result.message);
@@ -306,10 +324,11 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       });
 
       if (result.success) {
+        await refreshImportMap();
         setUiInstallStatus('installed');
-        setUiRegistrationStatus('registered');
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'mountable');
         setBackendStatusDetail('installed');
-        // The health state will be updated via the registry hooks
+        await refresh();
       } else {
         setUiInstallStatus('error');
         console.error(`Failed to restore plugin ${pluginId}:`, result.message);
@@ -323,9 +342,18 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
   };
 
   const handleRetryRegistration = async () => {
-    // In a real implementation, this would trigger re-registration
-    // For now, we'll simulate by toggling registration status
-    setUiRegistrationStatus('registered');
+    setIsOperationInProgress(true);
+    try {
+      await refreshImportMap();
+      await refresh();
+      setUiRegistrationStatus(
+        getRegisteredPluginIds().includes(normalizePluginId(pluginId))
+          ? 'registered'
+          : 'not_registered'
+      );
+    } finally {
+      setIsOperationInProgress(false);
+    }
   };
 
   const handleEnablePlugin = async () => {
@@ -334,7 +362,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       const result: any = await apiClient.post(`/api/plugins/${pluginId}/enable`);
       if (result.success) {
         setBackendStatusDetail('enabled');
-        // The health state will be updated via the registry hooks
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
+        await refresh();
       } else {
         console.error(`Failed to enable plugin ${pluginId}:`, result.message);
         setUiInstallStatus('error');
@@ -353,7 +382,8 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       const result: any = await apiClient.post(`/api/plugins/${pluginId}/disable`);
       if (result.success) {
         setBackendStatusDetail('disabled');
-        // The health state will be updated via the registry hooks
+        setUiRegistrationStatus(isUiRegistered ? 'registered' : 'not_registered');
+        await refresh();
       } else {
         console.error(`Failed to disable plugin ${pluginId}:`, result.message);
         setUiInstallStatus('error');
@@ -394,7 +424,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">Frontend:</span>
-          <FrontendStateBadge state={health.frontendMountState} />
+          <FrontendStateBadge state={frontendDisplayState} />
         </div>
         {hasUiCapabilities && (
           <div className="flex items-center gap-2">
@@ -422,7 +452,7 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
       )}
       
       {/* UI-specific discrepancy */}
-      {hasUiCapabilities && uiInstallStatus === 'installed' && health.frontendMountState === 'not_registered' && (
+      {hasUiCapabilities && uiInstallStatus === 'installed' && !isUiRegistered && (
         <Alert variant="warning" className="py-2 px-3">
           <AlertTriangle className="h-3 w-3" />
           <AlertDescription className="text-xs">
@@ -436,11 +466,27 @@ function PluginHealthCard({ pluginId, displayName, description, version }: {
         
         {/* Status indicators */}
         <div className="flex flex-wrap gap-2">
-          {hasUiCapabilities && uiInstallStatus === 'installed' && (
+          {hasUiCapabilities && uiInstallStatus === 'installed' && health.backendState === 'active' && (
             <div className="flex items-center gap-2 text-xs text-green-600">
               <CheckCircle2 className="h-3 w-3" />
-              UI Available
+              UI Mounted
             </div>
+          )}
+          {hasUiCapabilities && uiInstallStatus === 'installed' && health.backendState !== 'active' && (
+            <div className="flex items-center gap-2 text-xs text-amber-600">
+              <AlertTriangle className="h-3 w-3" />
+              UI Unmounted
+            </div>
+          )}
+          {hasUiCapabilities && uiInstallStatus === 'installed' && !isUiRegistered && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetryRegistration}
+              disabled={isOperationInProgress}
+            >
+              {isOperationInProgress ? 'Registering...' : 'Retry Registration'}
+            </Button>
           )}
           {hasUiCapabilities && uiInstallStatus === 'not_installed' && (
             <Button

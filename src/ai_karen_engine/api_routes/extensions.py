@@ -202,34 +202,57 @@ async def install_extension(request: InstallRequest):
 async def list_extensions():
     """List all extensions and their status."""
     try:
-        manager = get_extension_manager()
-        if not manager:
-            logger.warning("Extension manager not available, returning empty list")
+        from ai_karen_engine.core.dependencies import get_plugin_service
+        from services.memory.plugin_registry import PluginStatus
+
+        plugin_service = await get_plugin_service()
+
+        registry = plugin_service.registry
+        if not registry:
+            logger.warning("Plugin registry not available, returning empty list")
             return []
 
-        # Return a simple hardcoded list for now to avoid crashes
-        return [
-            {
-                "id": "weather-query",
-                "name": "weather-query",
-                "display_name": "Weather Query",
-                "description": "Get weather information for any location",
-                "version": "0.2.0",
-                "status": "active",
-                "loaded_at": None,
-                "category": "plugins",
-                "capabilities": {"provides_ui": True},
-                "has_component": True,
-                "ui_entry_points": [
+        extensions: List[Dict[str, Any]] = []
+        for plugin in registry.plugins.values():
+            manifest = plugin.manifest
+            plugin_id = manifest.name
+            extension_dir = Path("src/extensions") / manifest.category / plugin_id
+            gui_dir = extension_dir / plugin_id
+            gui_manifest_path = gui_dir / "manifest.json"
+            has_gui = gui_manifest_path.exists()
+
+            status = "active" if plugin.status == PluginStatus.REGISTERED else plugin.status.value
+            if plugin.status == PluginStatus.DISABLED:
+                status = "disabled"
+
+            ui_entry_points: List[Dict[str, Any]] = []
+            if has_gui:
+                ui_entry_points.append(
                     {
-                        "entry_id": "weather-query-main",
-                        "component": "weather-query",
-                        "zone": "page.plugins.overview",
-                        "label": "Weather",
+                        "entry_id": f"{plugin_id}-main",
+                        "component": plugin_id,
+                        "zone": "sidebar.plugins",
+                        "label": manifest.name.replace("-", " ").title(),
                     }
-                ],
-            }
-        ]
+                )
+
+            extensions.append(
+                {
+                    "id": plugin_id,
+                    "name": plugin_id,
+                    "display_name": manifest.name.replace("-", " ").title(),
+                    "description": manifest.description,
+                    "version": manifest.version,
+                    "status": status,
+                    "loaded_at": plugin.last_updated.isoformat() if plugin.last_updated else None,
+                    "category": manifest.category,
+                    "capabilities": {"provides_ui": has_gui},
+                    "has_component": has_gui,
+                    "ui_entry_points": ui_entry_points,
+                }
+            )
+
+        return extensions
 
     except Exception as e:
         logger.error(f"Error in list_extensions: {e}", exc_info=True)

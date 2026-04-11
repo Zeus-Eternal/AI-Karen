@@ -136,6 +136,9 @@ function PluginMountTracker({
 }) {
   useEffect(() => {
     setPluginMountState(pluginId, 'mounted');
+    return () => {
+      setPluginMountState(pluginId, 'not_registered');
+    };
   }, [pluginId]);
 
   return <>{children}</>;

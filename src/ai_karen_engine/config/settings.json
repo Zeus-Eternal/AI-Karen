@@ -1,11 +1,11 @@
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "llama-cpp",
+  "model": "tinyllama-1.1b-chat-v1.0.Q4_K_M",
   "use_memory": true,
   "context_length": 512,
   "decay": 0.1,
   "features": {
-    "copilot_cloud_enabled": true,
+    "copilot_cloud_enabled": false,
     "copilot_advanced_ui": true,
     "copilot_batch_operations": true
   },
@@ -36,10 +36,10 @@
       "backup_registry": true
     }
   },
-  "last_selected_model": "gemini-2.5-flash",
+  "last_selected_model": "tinyllama-1.1b-chat-v1.0.Q4_K_M",
   "model_providers": {
     "zai": {
-      "last_model": "glm-4.5",
+      "last_model": "glm-4.7",
       "base_url": "https://api.z.ai/api/coding/paas/v4"
     },
     "llama-cpp": {

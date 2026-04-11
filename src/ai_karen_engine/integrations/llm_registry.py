@@ -711,6 +711,29 @@ class LLMRegistry:
         # Save updated registry
         self._save_registry()
 
+    def _resolve_provider_alias(self, name: str) -> str:
+        """Resolve common provider aliases to canonical registry names."""
+        raw = (name or "").strip()
+        if not raw:
+            return raw
+        if raw in self._registrations:
+            return raw
+
+        normalized = raw.lower().replace("_", "-")
+        alias_map = {
+            "llama-cpp": "llamacpp",
+            "llama.cpp": "llamacpp",
+            "llamacpp": "llamacpp",
+        }
+        canonical = alias_map.get(normalized)
+        if canonical and canonical in self._registrations:
+            return canonical
+
+        if normalized == "local" and "llamacpp" in self._registrations:
+            return "llamacpp"
+
+        return raw
+
     def get_provider(self, name: str, **init_kwargs) -> Optional[LLMProviderBase]:
         """
         Get provider instance by name.
@@ -722,13 +745,14 @@ class LLMRegistry:
         Returns:
             Provider instance or None if not found
         """
-        if name not in self._registrations:
+        resolved_name = self._resolve_provider_alias(name)
+        if resolved_name not in self._registrations:
             logger.error(f"Provider '{name}' not registered")
             return None
 
         # Build cache key including model so different model inits are not conflated
-        model_key = init_kwargs.get("model") or self._registrations[name].default_model or ""
-        cache_key = f"{name}|{model_key}"
+        model_key = init_kwargs.get("model") or self._registrations[resolved_name].default_model or ""
+        cache_key = f"{resolved_name}|{model_key}"
 
         # Return cached instance if available, unless it is a stale failed instance
         if cache_key in self._providers:
@@ -737,7 +761,7 @@ class LLMRegistry:
                 return cached
             logger.info(
                 "Discarding stale cached provider instance for %s (model=%s) due to initialization error: %s",
-                name,
+                resolved_name,
                 model_key,
                 getattr(cached, "initialization_error", None),
             )
@@ -745,7 +769,7 @@ class LLMRegistry:
 
         # Create new instance
         try:
-            registration = self._registrations[name]
+            registration = self._registrations[resolved_name]
             provider_class = self._get_provider_class(registration.provider_class)
 
             if provider_class:
@@ -753,13 +777,13 @@ class LLMRegistry:
                 if "model" not in init_kwargs and registration.default_model:
                     init_kwargs["model"] = registration.default_model
 
-                init_kwargs = self._apply_saved_provider_settings(name, init_kwargs)
+                init_kwargs = self._apply_saved_provider_settings(resolved_name, init_kwargs)
 
                 if registration.provider_class == "OpenAIProvider" and "provider_name" not in init_kwargs:
-                    init_kwargs["provider_name"] = name
+                    init_kwargs["provider_name"] = resolved_name
 
                 # Translate llamacpp model id to a concrete model_path when possible
-                if name == "llamacpp":
+                if resolved_name == "llamacpp":
                     # If a specific GGUF model was selected, resolve to a verified file path
                     model_id = init_kwargs.get("model")
                     if model_id and "model_path" not in init_kwargs:
@@ -787,12 +811,12 @@ class LLMRegistry:
                     provider = provider_class(**init_kwargs)
                 self._providers[cache_key] = provider
 
-                logger.info(f"Created provider instance: {name} (model={init_kwargs.get('model')})")
+                logger.info(f"Created provider instance: {resolved_name} (model={init_kwargs.get('model')})")
                 return provider
 
         except Exception as ex:
-            logger.error(f"Failed to create provider '{name}': {ex}")
-            registration = self._registrations.get(name)
+            logger.error(f"Failed to create provider '{resolved_name}': {ex}")
+            registration = self._registrations.get(resolved_name)
             if registration:
                 registration.health_status = "unhealthy"
                 registration.last_health_check = time.time()
@@ -806,8 +830,15 @@ class LLMRegistry:
 
     def invalidate_provider_cache(self, name: str) -> None:
         """Remove cached provider instances for a provider so new config/secrets take effect."""
-        prefix = f"{name}|"
-        stale_keys = [cache_key for cache_key in self._providers.keys() if cache_key.startswith(prefix)]
+        canonical = self._resolve_provider_alias(name)
+        prefixes = {f"{canonical}|"}
+        if canonical == "llamacpp":
+            prefixes.update({"llama-cpp|", "llama.cpp|", "llama_cpp|", "local|"})
+        stale_keys = [
+            cache_key
+            for cache_key in self._providers.keys()
+            if any(cache_key.startswith(prefix) for prefix in prefixes)
+        ]
         for cache_key in stale_keys:
             self._providers.pop(cache_key, None)
         if stale_keys:
@@ -1066,16 +1097,17 @@ class LLMRegistry:
 
     def get_provider_info(self, name: str) -> Optional[Dict[str, Any]]:
         """Get provider registration information."""
-        if name not in self._registrations:
+        resolved_name = self._resolve_provider_alias(name)
+        if resolved_name not in self._registrations:
             return None
 
-        registration = self._registrations[name]
+        registration = self._registrations[resolved_name]
         info = asdict(registration)
 
         # Ensure provider is instantiated to gather runtime metadata
-        provider = self._providers.get(name)
+        provider = self._providers.get(resolved_name)
         if provider is None:
-            provider = self.get_provider(name)
+            provider = self.get_provider(resolved_name)
 
         if provider:
             try:
@@ -1088,14 +1120,15 @@ class LLMRegistry:
 
     def health_check(self, name: str) -> Dict[str, Any]:
         """Perform enhanced health check on a provider with model validation."""
-        if name not in self._registrations:
+        resolved_name = self._resolve_provider_alias(name)
+        if resolved_name not in self._registrations:
             return {
                 "status": "not_registered",
                 "error": f"Provider '{name}' not registered",
             }
 
         try:
-            provider = self.get_provider(name)
+            provider = self.get_provider(resolved_name)
             if not provider:
                 return {
                     "status": "failed_to_create",
@@ -1112,7 +1145,7 @@ class LLMRegistry:
 
             # Add model validation for providers with installed models (requirement 2.5)
             provider_models = self.get_models_by_library(
-                self._get_library_for_provider(name)
+                self._get_library_for_provider(resolved_name)
             )
             
             if provider_models:

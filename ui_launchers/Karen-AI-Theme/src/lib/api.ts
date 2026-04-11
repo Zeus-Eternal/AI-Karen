@@ -219,32 +219,25 @@ class ApiClient {
         'Content-Type': 'application/json'
       };
 
-      const prefersCookieSession = this.shouldPreferCookieSession();
-      console.log('[ApiClient] getAuthHeaders called, prefersCookieSession:', prefersCookieSession);
+      const accessToken = localStorage.getItem('access_token');
+      console.log('[ApiClient] getAuthHeaders called; token present:', !!accessToken);
 
-      if (!prefersCookieSession) {
-        const accessToken = localStorage.getItem('access_token');
-        console.log('[ApiClient] No cookie session, checking access token:', !!accessToken);
-
-        if (accessToken) {
-          if (this.isTokenExpired(accessToken)) {
-            console.log('[ApiClient] Access token expired, attempting refresh');
-            try {
-              await this.refreshAccessToken();
-              const newToken = localStorage.getItem('access_token');
-              if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
-            } catch {
-              console.warn('Failed to refresh token, proceeding without auth');
-            }
-          } else {
-            console.log('[ApiClient] Using access token for Authorization header');
-            headers['Authorization'] = `Bearer ${accessToken}`;
+      if (accessToken) {
+        if (this.isTokenExpired(accessToken)) {
+          console.log('[ApiClient] Access token expired, attempting refresh');
+          try {
+            await this.refreshAccessToken();
+            const newToken = localStorage.getItem('access_token');
+            if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
+          } catch {
+            console.warn('Failed to refresh token, proceeding without auth');
           }
         } else {
-          console.log('[ApiClient] No access token available');
+          console.log('[ApiClient] Using access token for Authorization header');
+          headers['Authorization'] = `Bearer ${accessToken}`;
         }
       } else {
-        console.log('[ApiClient] Using cookie session (session marker present)');
+        console.log('[ApiClient] No access token available; relying on cookie session if present');
       }
       return headers;
     } catch {
@@ -342,7 +335,7 @@ class ApiClient {
     }
 
     // 401 Handling
-    if (response.status === 401 && !this.shouldPreferCookieSession()) {
+    if (response.status === 401) {
       try {
         await this.refreshAccessToken();
         response = await send(preferredBaseUrl);

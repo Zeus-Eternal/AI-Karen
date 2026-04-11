@@ -18,9 +18,9 @@ from enum import Enum
 import logging
 from datetime import datetime
 
-from ..core.registry.plugin_registry import get_registry
-from ..core.registry.canonical_validator import get_validator
-from ..core.registry.manifest_enforcer import get_enforcer
+from .plugin_registry import get_registry
+from .canonical_validator import get_validator
+from .manifest_enforcer import get_enforcer
 
 
 logger = logging.getLogger(__name__)

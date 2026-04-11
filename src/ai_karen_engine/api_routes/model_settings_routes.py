@@ -7,6 +7,7 @@ provider selection, encrypted API key storage, and local model discovery.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -594,12 +595,9 @@ def _build_provider_payload(provider: ProviderConfig, selected_provider: str, se
     last_model = override.get("last_model") or provider.default_model or ""
     provider_selected_model = selected_model if provider.name == selected_provider else last_model
 
-    # Use discovered models for the selected provider or local providers (llama-cpp, ollama)
-    # to ensure the UI shows the current state of available models.
-    if provider.name == selected_provider or provider.provider_type == ProviderType.LOCAL:
-        models = _load_provider_models(provider, override)
-    else:
-        models = _configured_models(provider)
+    # Keep settings reads lightweight and deterministic.
+    # Explicit model discovery happens via /providers/{provider_id}/models.
+    models = _configured_models(provider)
 
     if provider_selected_model and all(model.id != provider_selected_model for model in models):
         models.append(
@@ -804,6 +802,49 @@ def _validate_runtime_provider(provider_name: str, model_name: str) -> None:
         raise HTTPException(status_code=error_status, detail=error_text)
 
 
+def _validate_runtime_provider_with_details(
+    provider_name: str,
+    model_name: str,
+    api_key: Optional[str],
+    base_url: Optional[str],
+) -> Dict[str, Any]:
+    """Run provider validation and return initialization details.
+
+    This function may perform blocking network I/O depending on provider.
+    """
+
+    registry = get_registry()
+    registry.invalidate_provider_cache(provider_name)
+    runtime_provider = registry.get_provider(
+        provider_name,
+        model=model_name,
+        api_key=api_key,
+        base_url=base_url,
+    )
+
+    if runtime_provider is None:
+        return {"valid": False, "message": f"Failed to initialize {provider_name}.", "models_discovered": None}
+
+    initialization_error = getattr(runtime_provider, "initialization_error", None)
+    if initialization_error:
+        return {"valid": False, "message": str(initialization_error), "models_discovered": None}
+
+    models_discovered: Optional[int] = None
+    get_models = getattr(runtime_provider, "get_models", None)
+    if callable(get_models):
+        try:
+            models = get_models()
+            models_discovered = len(models) if isinstance(models, list) else None
+        except Exception:
+            models_discovered = None
+
+    return {
+        "valid": True,
+        "message": "credentials validated successfully.",
+        "models_discovered": models_discovered,
+    }
+
+
 @router.get("", response_model=ModelSettingsResponse)
 async def get_model_settings() -> ModelSettingsResponse:
     """Return persisted provider/model settings plus provider metadata."""
@@ -909,7 +950,16 @@ async def update_model_settings(
     )
     _refresh_runtime_provider_state(provider.name, selected_model)
     if requires_api_key and (provided_api_key or _has_saved_api_key(provider.name, provider)):
-        _validate_runtime_provider(provider.name, selected_model)
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(_validate_runtime_provider, provider.name, selected_model),
+                timeout=20.0,
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=f"{provider.display_name} validation timed out",
+            ) from exc
 
     settings._save_settings()
     return _build_response()
@@ -1039,44 +1089,36 @@ async def validate_model_settings_provider(
             message=f"{provider.display_name} saved. Runtime validation is deferred to the provider endpoint.",
         )
 
-    registry = get_registry()
-    registry.invalidate_provider_cache(provider.name)
-    runtime_provider = registry.get_provider(
-        provider.name,
-        model=selected_model,
-        api_key=effective_api_key,
-        base_url=normalized_base_url,
-    )
-
-    if runtime_provider is None:
+    try:
+        validation_result = await asyncio.wait_for(
+            asyncio.to_thread(
+                _validate_runtime_provider_with_details,
+                provider.name,
+                selected_model,
+                effective_api_key,
+                normalized_base_url,
+            ),
+            timeout=30.0,
+        )
+    except asyncio.TimeoutError:
         return ProviderSettingsValidationResponse(
             provider=provider.name,
             valid=False,
-            message=f"Failed to initialize {provider.display_name}.",
+            message=f"{provider.display_name} validation timed out",
         )
 
-    initialization_error = getattr(runtime_provider, "initialization_error", None)
-    if initialization_error:
+    if not validation_result.get("valid"):
         return ProviderSettingsValidationResponse(
             provider=provider.name,
             valid=False,
-            message=str(initialization_error),
+            message=str(validation_result.get("message") or f"Failed to initialize {provider.display_name}."),
         )
-
-    models_discovered: Optional[int] = None
-    get_models = getattr(runtime_provider, "get_models", None)
-    if callable(get_models):
-        try:
-            models = get_models()
-            models_discovered = len(models) if isinstance(models, list) else None
-        except Exception:
-            models_discovered = None
 
     return ProviderSettingsValidationResponse(
         provider=provider.name,
         valid=True,
         message=f"{provider.display_name} credentials validated successfully.",
-        models_discovered=models_discovered,
+        models_discovered=validation_result.get("models_discovered"),
     )
 
 
@@ -1097,7 +1139,12 @@ async def list_provider_models(
         override["base_url"] = base_url
 
     try:
-        models = _load_provider_models(provider, override)
+        # Discovery can perform blocking network I/O (urllib). Keep it off the event loop
+        # and bound response time so auth/session endpoints are not starved.
+        models = await asyncio.wait_for(
+            asyncio.to_thread(_load_provider_models, provider, override),
+            timeout=12.0,
+        )
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore") if hasattr(exc, "read") else str(exc)
         raise HTTPException(status_code=exc.code, detail=detail or f"Unable to query {provider_id} models") from exc
@@ -1108,6 +1155,7 @@ async def list_provider_models(
             detail=f"Unable to reach {provider.display_name} at {resolved_base_url}",
         ) from exc
     except Exception as exc:
+        logger.warning("Model discovery fallback for %s: %s", provider_id, exc)
         if provider.name == "ollama":
             resolved_base_url = _resolve_provider_base_url(provider, override)
             raise HTTPException(

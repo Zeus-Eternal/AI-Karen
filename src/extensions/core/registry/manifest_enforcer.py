@@ -250,7 +250,6 @@ class ManifestStandardsEnforcer:
         if not entry.get("default") and not entry.get("entry_file"):
             results.append(ManifestValidationResult(
                 manifest_type=ManifestType.GUI,
-                manifest_type=ManifestType.GUI,
                 severity=ManifestValidationSeverity.WARNING,
                 field="entry.default",
                 message="No default entry specified",

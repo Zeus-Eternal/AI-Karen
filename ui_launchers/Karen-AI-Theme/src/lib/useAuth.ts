@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { authService, AuthUser, LoginCredentials } from './auth';
 
 interface AuthState {
@@ -11,6 +11,7 @@ interface AuthState {
 }
 
 export function useAuth() {
+  const initializeInFlightRef = useRef<Promise<void> | null>(null);
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -20,42 +21,67 @@ export function useAuth() {
 
   // Initialize auth state
   const initializeAuth = useCallback(async () => {
-    try {
-      setState((prev: AuthState) => ({ ...prev, isLoading: true, error: null }));
-      console.log('[useAuth] Initializing auth state...');
-
-      const isValid = await authService.validateSession();
-      const currentUser = isValid ? authService.getCurrentUser() : null;
-
-      console.log('[useAuth] Session validation result:', {
-        isValid,
-        hasCurrentUser: !!currentUser,
-        hasAccessToken: !!authService.getAccessToken(),
-        hasRefreshToken: !!authService.getRefreshToken(),
-        isAuthenticated: authService.isAuthenticated(),
-      });
-
-      if (!isValid || !currentUser) {
-        console.log('[useAuth] Session invalid, clearing auth');
-        authService.clearAuth();
-      }
-
-      setState({
-        user: isValid ? currentUser : null,
-        isAuthenticated: isValid && !!currentUser,
-        isLoading: false,
-        error: null,
-      });
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      authService.clearAuth();
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Authentication failed',
-      });
+    if (initializeInFlightRef.current) {
+      return initializeInFlightRef.current;
     }
+
+    initializeInFlightRef.current = (async () => {
+      try {
+        const cachedUser = authService.getCurrentUser();
+        const hasCachedSession = !!cachedUser && authService.isAuthenticated();
+
+        setState((prev: AuthState) => ({
+          ...prev,
+          user: hasCachedSession ? cachedUser : prev.user,
+          isAuthenticated: hasCachedSession ? true : prev.isAuthenticated,
+          isLoading: true,
+          error: null,
+        }));
+        console.log('[useAuth] Initializing auth state...');
+
+        const isValid = await authService.validateSession();
+        const currentUser = isValid ? authService.getCurrentUser() : cachedUser;
+        const hasAccessToken = !!authService.getAccessToken();
+        const hasRefreshToken = !!authService.getRefreshToken();
+        const hadUser = !!authService.getCurrentUser();
+
+        console.log('[useAuth] Session validation result:', {
+          isValid,
+          hasCurrentUser: !!currentUser,
+          hasAccessToken,
+          hasRefreshToken,
+          isAuthenticated: authService.isAuthenticated(),
+        });
+
+        if ((!isValid || !currentUser) && !hasCachedSession) {
+          // Only clear when auth artifacts actually exist, to avoid no-op churn.
+          if (hasAccessToken || hasRefreshToken || hadUser) {
+            console.log('[useAuth] Session invalid, clearing auth');
+            authService.clearAuth();
+          }
+        }
+
+        setState({
+          user: currentUser,
+          isAuthenticated: !!currentUser && (isValid || hasCachedSession),
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        authService.clearAuth();
+        setState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Authentication failed',
+        });
+      } finally {
+        initializeInFlightRef.current = null;
+      }
+    })();
+
+    return initializeInFlightRef.current;
   }, []);
 
   // Login function

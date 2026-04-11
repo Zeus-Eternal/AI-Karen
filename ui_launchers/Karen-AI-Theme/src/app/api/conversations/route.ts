@@ -6,9 +6,8 @@ export const dynamic = 'force-dynamic';
 
 function handle(request: NextRequest) {
   return proxyToBackend(request, '/api/conversations', {
-    longTimeout: true,
-    retryAttempts: 4,
-    retryDelayMs: 300,
+    retryAttempts: 3,
+    retryDelayMs: 200,
   });
 }
 

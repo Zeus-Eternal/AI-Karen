@@ -100,7 +100,12 @@ export type CompactBadgePresentation = {
 export const normalizeProviderName = (provider?: string | null): string => {
   const value = String(provider || '').trim().toLowerCase();
   if (!value) return '';
-  if (value === 'local' || value === 'llama-cpp' || value === 'llama_cpp') {
+  if (
+    value === 'local' ||
+    value === 'llama-cpp' ||
+    value === 'llama_cpp' ||
+    value === 'llama.cpp'
+  ) {
     return 'llamacpp';
   }
   return value;
@@ -137,6 +142,52 @@ export const getDisplayModelName = (
     ?.replace(/\.(gguf|bin)$/i, '')
     .replace(/[-_]/g, ' ')
     .trim() || rawModelId;
+};
+
+const KAREN_FALLBACK_MODEL_IDS = new Set([
+  'kari-fallback-v1',
+]);
+
+const getFriendlyProviderLabel = (
+  provider?: string | null,
+): string => {
+  const rawProvider = String(provider || '').trim();
+  const normalizedProvider = normalizeProviderName(rawProvider);
+
+  if (!normalizedProvider) {
+    return '';
+  }
+
+  if (normalizedProvider === 'fallback') {
+    return 'Local Emergency Fallback';
+  }
+
+  if (normalizedProvider === 'llamacpp') {
+    return 'llama.cpp';
+  }
+
+  return rawProvider;
+};
+
+const getFriendlyModelLabel = (
+  modelId?: string | null,
+  modelName?: string | null,
+): string => {
+  const normalizedModel = normalizeModelName(modelId || modelName);
+  if (normalizedModel && KAREN_FALLBACK_MODEL_IDS.has(normalizedModel)) {
+    return 'Karen Local Fallback';
+  }
+  return getDisplayModelName(modelId, modelName);
+};
+
+const getFallbackTargetLabel = (
+  providerLabel: string,
+  modelLabel: string,
+): string => {
+  if (providerLabel && modelLabel) {
+    return `${providerLabel} (${modelLabel})`;
+  }
+  return providerLabel || modelLabel || 'fallback';
 };
 
 export const sanitizeChatContent = (content?: string | null): string => {
@@ -192,12 +243,20 @@ export const deriveDegradedPresentation = (
   const requestedProvider = String(llm?.requested_provider || '').trim();
   const requestedModel = String(llm?.requested_model || '').trim();
   const actualProvider = String(llm?.provider || '').trim();
-  const actualModel = getDisplayModelName(llm?.model_id, llm?.model_name);
+  const actualModelId = String(llm?.model_id || '').trim();
+  const actualModel = getFriendlyModelLabel(llm?.model_id, llm?.model_name);
+  const normalizedActualProvider = normalizeProviderName(actualProvider);
+  const normalizedRequestedProvider = normalizeProviderName(requestedProvider);
+  const isLlamaCppBackedFallback =
+    normalizedActualProvider === 'fallback' &&
+    actualModelId.toLowerCase().startsWith('llamacpp:');
+  const actualProviderLabel = isLlamaCppBackedFallback
+    ? 'llama.cpp'
+    : getFriendlyProviderLabel(actualProvider);
+  const fallbackTargetLabel = getFallbackTargetLabel(actualProviderLabel, actualModel);
   const preferredFailureReason = String(llm?.preferred_failure_reason || '').trim();
   const failureReason = String(preferredFailureReason || llm?.failure_reason || '').trim();
   const failureReasonLower = failureReason.toLowerCase();
-  const normalizedRequestedProvider = normalizeProviderName(requestedProvider);
-  const normalizedActualProvider = normalizeProviderName(actualProvider);
   const normalizedRequestedModel = normalizeModelName(requestedModel);
   const normalizedActualModel = normalizeModelName(llm?.model_id || llm?.model_name || actualModel);
   const providerOrModelChanged =
@@ -214,12 +273,14 @@ export const deriveDegradedPresentation = (
           : '';
   const degradedBannerText = isSafetyBlocked
     ? 'Provider policy blocked this response.'
+    : requestedProvider && isLlamaCppBackedFallback && normalizedRequestedProvider === 'llamacpp'
+      ? `${requestedProvider} primary path failed, recovered via local llama.cpp fallback path${actualModel ? ` (${actualModel})` : ''}.`
     : requestedProvider && actualProvider && providerOrModelChanged
-      ? `${requestedProvider} failed, switched to ${actualProvider}${actualModel ? ` ${actualModel}` : ''}.`
+      ? `${requestedProvider} failed, switched to ${fallbackTargetLabel}.`
       : requestedProvider && failureReasonLower.includes('rate limit')
-        ? `${requestedProvider} rate limited, switched to ${actualProvider || 'fallback'}${actualModel ? ` ${actualModel}` : ''}.`
+        ? `${requestedProvider} rate limited, switched to ${fallbackTargetLabel}.`
         : requestedProvider && failureReasonLower.includes('quota')
-          ? `${requestedProvider} quota exceeded, switched to ${actualProvider || 'fallback'}${actualModel ? ` ${actualModel}` : ''}.`
+          ? `${requestedProvider} quota exceeded, switched to ${fallbackTargetLabel}.`
           : failureReason
             ? failureReason
             : '';
@@ -229,7 +290,7 @@ export const deriveDegradedPresentation = (
       ? `${degradedBannerText} Reason: ${failureReason}`
       : degradedBannerText || failureReason;
   const shouldRenderDegradedState = isDegraded || isSafetyBlocked || Boolean(visibleDegradedNotice);
-  const providerDisplayName = actualProvider || 'system';
+  const providerDisplayName = actualProviderLabel || actualProvider || 'system';
   const modelDisplayName = isSafetyBlocked
     ? 'Safety Blocked'
     : actualModel || 'auto';

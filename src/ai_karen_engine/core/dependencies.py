@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # --- Authentication Dependencies ---
 
+
 def bypass_user_context_func() -> Dict[str, Any]:
     """
     Unified user context provider.
@@ -44,7 +45,7 @@ def bypass_user_context_func() -> Dict[str, Any]:
                 "roles": ["admin", "user"],
                 "is_active": True,
                 "token_id": str(uuid.uuid4()),
-                "authenticated": True
+                "authenticated": True,
             }
 
         # In a "fresh app" state, we prioritize explicitly handled context.
@@ -54,22 +55,33 @@ def bypass_user_context_func() -> Dict[str, Any]:
             "email": None,
             "roles": [],
             "tenant_id": "default",
-            "is_active": True
+            "is_active": True,
         }
     except Exception as e:
         logger.error(f"Context resolution failure: {e}")
-        raise HTTPException(status_code=401, detail="Authentication context unavailable")
+        raise HTTPException(
+            status_code=401, detail="Authentication context unavailable"
+        )
 
-async def get_current_user_id(user_ctx: Dict[str, Any] = Depends(bypass_user_context_func)) -> str:
+
+async def get_current_user_id(
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
+) -> str:
     return str(user_ctx.get("user_id", "anonymous"))
 
-async def get_current_tenant_id(user_ctx: Dict[str, Any] = Depends(bypass_user_context_func)) -> str:
+
+async def get_current_tenant_id(
+    user_ctx: Dict[str, Any] = Depends(bypass_user_context_func),
+) -> str:
     return str(user_ctx.get("tenant_id", "dev-tenant"))
 
 
 # --- Core Service Resolution Helper ---
 
-async def _resolve_service(service_name: str, factory_func: Optional[Callable] = None) -> Any:
+
+async def _resolve_service(
+    service_name: str, factory_func: Optional[Callable] = None
+) -> Any:
     """
     internal helper following the DRY principle for service discovery.
     Tries Registry -> Lazy Loading -> Factory.
@@ -86,9 +98,10 @@ async def _resolve_service(service_name: str, factory_func: Optional[Callable] =
     # 2. Secondary: Lazy Loading
     try:
         from ai_karen_engine.core.lazy_loading import lazy_registry, setup_lazy_services
+
         if not lazy_registry.list_services():
             await setup_lazy_services()
-        
+
         service = await lazy_registry.get_service_instance(service_name)
         if service:
             return service
@@ -98,7 +111,9 @@ async def _resolve_service(service_name: str, factory_func: Optional[Callable] =
     # 3. Final: Factory Fallback
     if factory_func:
         try:
-            logger.info(f"🔄 Final resilience fallback: Executing factory for {service_name}")
+            logger.info(
+                f"🔄 Final resilience fallback: Executing factory for {service_name}"
+            )
             service = await factory_func()
             if service:
                 return service
@@ -106,41 +121,50 @@ async def _resolve_service(service_name: str, factory_func: Optional[Callable] =
             logger.error(f"❌ Factory fallback for {service_name} failed: {e}")
 
     logger.error(f"❌ Critical Service Failure: {service_name} is unavailable.")
-    raise HTTPException(status_code=503, detail=f"Service '{service_name}' is currently unavailable.")
+    raise HTTPException(
+        status_code=503, detail=f"Service '{service_name}' is currently unavailable."
+    )
 
 
 # --- Public Service Dependencies ---
+
 
 async def get_ai_orchestrator_service() -> Any:
     """Discovery for AI Orchestrator."""
     return await _resolve_service("ai_orchestrator")
 
+
 async def get_chat_orchestrator_service() -> Any:
     """Absolute source of truth for Chat Orchestrator."""
+
     async def factory():
         from ai_karen_engine.chat.factory import get_chat_orchestrator
+
         return await get_chat_orchestrator()
-    
+
     return await _resolve_service("chat_orchestrator", factory)
+
 
 async def get_memory_service() -> Any:
     """Discovery for Memory service."""
     return await _resolve_service("memory_service")
 
+
 async def get_conversation_service() -> Any:
     """Discovery for Conversation service with complex legacy mapping support."""
+
     async def factory():
         from ai_karen_engine.chat.factory import get_chat_service_factory
         from services.memory.conversation_service import WebUIConversationService
         from services.memory.memory_service import WebUIMemoryService
-        
+
         factory_inst = get_chat_service_factory()
         base_manager = factory_inst.create_conversation_manager()
         memory_service = factory_inst.create_memory_service() or WebUIMemoryService()
-        
+
         if not base_manager:
             return None
-            
+
         # Inline minimal adapter if needed, though ideally this should be in a factory
         return WebUIConversationService(
             base_conversation_manager=cast(Any, base_manager),
@@ -149,20 +173,54 @@ async def get_conversation_service() -> Any:
 
     return await _resolve_service("conversation_service", factory)
 
+
 async def get_plugin_service() -> Any:
-    return await _resolve_service("plugin_service")
+    async def factory():
+        from pathlib import Path
+        from services.infra.plugin_service import (
+            get_plugin_service as get_infra_plugin_service,
+            initialize_plugin_service,
+        )
+
+        expected_path = Path("src/extensions/plugins")
+        service = get_infra_plugin_service()
+
+        if (
+            not getattr(service, "initialized", False)
+            or getattr(service, "marketplace_path", None) != expected_path
+            or getattr(service, "core_plugins_path", None) != expected_path
+        ):
+            service = await initialize_plugin_service(
+                marketplace_path=expected_path,
+                core_plugins_path=expected_path,
+                auto_discover=True,
+            )
+
+        return service
+
+    return await _resolve_service("plugin_service", factory)
+
 
 async def get_tool_service() -> Any:
-    return await _resolve_service("tool_service")
+    async def factory():
+        from services.memory.tool_service import ToolService
+
+        return ToolService()
+
+    return await _resolve_service("tool_service", factory)
+
 
 async def get_analytics_service() -> Any:
     return await _resolve_service("analytics_service")
 
+
 async def get_current_config() -> AIKarenConfig:
     return get_config()
 
+
 async def get_health_monitor_service() -> HealthMonitor:
     return get_health_monitor()
+
 
 async def get_service_registry_instance() -> Any:
     return get_service_registry()

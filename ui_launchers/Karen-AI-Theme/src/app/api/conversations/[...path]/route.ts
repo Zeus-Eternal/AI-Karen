@@ -12,9 +12,8 @@ async function handle(
   const fullPath = path.join('/');
 
   return proxyToBackend(request, `/api/conversations/${fullPath}`, {
-    longTimeout: true,
-    retryAttempts: 4,
-    retryDelayMs: 300,
+    retryAttempts: 3,
+    retryDelayMs: 200,
   });
 }
 

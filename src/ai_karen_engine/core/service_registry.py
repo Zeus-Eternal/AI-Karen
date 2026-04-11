@@ -780,8 +780,8 @@ class ServiceRegistry:
                     try:
                         from pathlib import Path
 
-                        marketplace_path = Path("plugin_marketplace")
-                        core_plugins_path = Path("src/ai_karen_engine/plugins")
+                        marketplace_path = Path("src/extensions/plugins")
+                        core_plugins_path = Path("src/extensions/plugins")
                         instance = PluginService(
                             marketplace_path=marketplace_path,
                             core_plugins_path=core_plugins_path,

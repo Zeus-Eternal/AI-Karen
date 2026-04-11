@@ -70,8 +70,14 @@ class AuthService {
   private readonly LEGACY_ACCESS_COOKIE_NAME = 'access_token';
   private readonly LEGACY_REFRESH_COOKIE_NAME = 'refresh_token';
   private readonly SESSION_MARKER_KEY = 'kari_session_expected';
+  private readonly LOGIN_SUCCESS_AT_KEY = 'kari_login_success_at';
   private readonly REQUEST_TIMEOUT_MS = 15000;
   private readonly SESSION_VALIDATION_TIMEOUT_MS = 30000;
+  private readonly REFRESH_RETRY_COOLDOWN_MS = 60000;
+  private readonly LOGIN_VALIDATION_GRACE_MS = 15000;
+  private refreshInFlight: Promise<string> | null = null;
+  private sessionValidationInFlight: Promise<boolean> | null = null;
+  private refreshBlockedUntil = 0;
 
   private async fetchWithTimeout(
     input: RequestInfo | URL,
@@ -242,6 +248,36 @@ class AuthService {
     }
   }
 
+  private markLoginSuccess(): void {
+    try {
+      localStorage.setItem(this.LOGIN_SUCCESS_AT_KEY, String(Date.now()));
+    } catch {
+      // Ignore storage issues and continue.
+    }
+  }
+
+  private clearLoginSuccessMarker(): void {
+    try {
+      localStorage.removeItem(this.LOGIN_SUCCESS_AT_KEY);
+    } catch {
+      // Ignore storage issues and continue.
+    }
+  }
+
+  private hasFreshLoginMarker(): boolean {
+    try {
+      const raw = localStorage.getItem(this.LOGIN_SUCCESS_AT_KEY);
+      if (!raw) {
+        return false;
+      }
+
+      const timestamp = Number(raw);
+      return Number.isFinite(timestamp) && Date.now() - timestamp <= this.LOGIN_VALIDATION_GRACE_MS;
+    } catch {
+      return false;
+    }
+  }
+
   private async getErrorMessage(response: Response, fallback: string): Promise<string> {
     try {
       const errorData = await response.json();
@@ -302,7 +338,10 @@ class AuthService {
        localStorage.setItem('access_token', data.access_token);
        localStorage.setItem('refresh_token', data.refresh_token);
        localStorage.setItem('user_data', JSON.stringify(data.user));
-        this.setSessionMarker();
+       this.setSessionMarker();
+       this.markLoginSuccess();
+
+       this.refreshBlockedUntil = 0;
 
        console.log('[AuthService] Login successful, tokens stored:', {
          hasAccessToken: !!data.access_token,
@@ -349,6 +388,7 @@ class AuthService {
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_data');
       this.clearSessionMarker();
+      this.clearLoginSuccessMarker();
 
       this.clearClientCookies();
     }
@@ -358,35 +398,55 @@ class AuthService {
    * Refresh access token
    */
   async refreshToken(): Promise<string> {
-    try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await this.fetchWithTimeout('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('access_token', data.access_token);
-      
-      return data.access_token;
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      // If refresh fails, logout the user
-      await this.logout();
-      throw error;
+    if (this.refreshInFlight) {
+      return this.refreshInFlight;
     }
+
+    const now = Date.now();
+    if (now < this.refreshBlockedUntil) {
+      throw new Error('Token refresh temporarily blocked after recent auth failure');
+    }
+
+    this.refreshInFlight = (async () => {
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await this.fetchWithTimeout('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            this.refreshBlockedUntil = Date.now() + this.REFRESH_RETRY_COOLDOWN_MS;
+          }
+          throw new Error(await this.getErrorMessage(response, 'Token refresh failed'));
+        }
+
+        const data = await response.json();
+        localStorage.setItem('access_token', data.access_token);
+        this.markLoginSuccess();
+        this.refreshBlockedUntil = 0;
+        
+        return data.access_token;
+      } catch (error) {
+        console.error('Token refresh error:', error);
+        // Hard refresh failure should be terminal for this local session
+        this.clearAuth();
+        throw error;
+      } finally {
+        this.refreshInFlight = null;
+      }
+    })();
+
+    return this.refreshInFlight;
   }
 
   /**
@@ -479,34 +539,66 @@ class AuthService {
    * Validate current session
    */
   async validateSession(): Promise<boolean> {
-    try {
-      const accessToken = this.getAccessToken();
-      const refreshToken = this.getRefreshToken();
-      const currentUser = this.getCurrentUser();
-      const hasSessionMarker = this.hasSessionMarker();
+    if (this.sessionValidationInFlight) {
+      return this.sessionValidationInFlight;
+    }
 
-      if (!accessToken && !refreshToken && !currentUser && !hasSessionMarker) {
-        return false;
-      }
+    this.sessionValidationInFlight = (async (): Promise<boolean> => {
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+      let currentUser: AuthUser | null = null;
+      let hasSessionMarker = false;
 
-      const shouldPreferCookieSession = typeof window !== 'undefined' && hasSessionMarker;
-      const requestHeaders: Record<string, string> = {};
-      if (!shouldPreferCookieSession && accessToken) {
-        requestHeaders.Authorization = `Bearer ${accessToken}`;
-      }
+      try {
+        accessToken = this.getAccessToken();
+        refreshToken = this.getRefreshToken();
+        currentUser = this.getCurrentUser();
+        hasSessionMarker = this.hasSessionMarker();
 
-      const response = await this.fetchWithTimeout('/api/auth/validate-session', {
-        method: 'GET',
-        headers: requestHeaders,
-        credentials: 'include',
-      }, this.SESSION_VALIDATION_TIMEOUT_MS);
+        if (!accessToken && !refreshToken && !currentUser && !hasSessionMarker) {
+          return false;
+        }
 
-      if (!response.ok) {
-        // Try to refresh token if validation fails and we have a refresh token available.
-        try {
-          if (!refreshToken) {
-            return false;
+        if (accessToken && currentUser && this.hasFreshLoginMarker()) {
+          return true;
+        }
+
+        const requestHeaders: Record<string, string> = {};
+        // Always send bearer token when available; cookie session remains enabled via credentials.
+        // This prevents false negatives when kari_session cookie propagation lags behind login.
+        if (accessToken) {
+          requestHeaders.Authorization = `Bearer ${accessToken}`;
+        }
+
+        const response = await this.fetchWithTimeout('/api/auth/validate-session', {
+          method: 'GET',
+          headers: requestHeaders,
+          credentials: 'include',
+        }, this.SESSION_VALIDATION_TIMEOUT_MS);
+
+        console.log('[AuthService] validateSession response:', {
+          status: response.status,
+          ok: response.ok,
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          hasCurrentUser: !!currentUser,
+          hasSessionMarker,
+        });
+
+        if (!response.ok) {
+          if (response.status !== 401 && response.status !== 403) {
+            // Treat transient non-auth failures as non-terminal when local auth state exists.
+            if (accessToken && currentUser) {
+              console.warn('[AuthService] validateSession transient failure, preserving local session');
+              return true;
+            }
           }
+
+          // Try to refresh token if validation fails and we have a refresh token available.
+          try {
+            if (!refreshToken) {
+              return false;
+            }
           await this.refreshToken();
           // Retry validation with new token
           const refreshedHeaders: Record<string, string> = {};
@@ -521,6 +613,12 @@ class AuthService {
             credentials: 'include',
           }, this.SESSION_VALIDATION_TIMEOUT_MS);
 
+          console.log('[AuthService] validateSession retry response:', {
+            status: newResponse.status,
+            ok: newResponse.ok,
+            hasRefreshedAccessToken: !!refreshedAccessToken,
+          });
+
           if (!newResponse.ok) {
             this.clearSessionMarker();
             return false;
@@ -530,6 +628,7 @@ class AuthService {
           if (refreshedSession?.user) {
             localStorage.setItem('user_data', JSON.stringify(refreshedSession.user));
             this.setSessionMarker();
+            this.markLoginSuccess();
           }
 
           return true;
@@ -539,17 +638,29 @@ class AuthService {
         }
       }
 
-      const session = await response.json();
-      if (session?.user) {
-        localStorage.setItem('user_data', JSON.stringify(session.user));
-        this.setSessionMarker();
-      }
+        const session = await response.json();
+        if (session?.user) {
+          localStorage.setItem('user_data', JSON.stringify(session.user));
+          this.setSessionMarker();
+          this.markLoginSuccess();
+        }
 
-      return true;
-    } catch (error) {
-      console.error('Session validation error:', error);
-      return false;
-    }
+        return true;
+      } catch (error) {
+        console.error('Session validation error:', error);
+        // During dev/HMR, in-flight validation requests can be interrupted while local auth
+        // state is still valid. Avoid hard logout on transient transport failures.
+        if (accessToken && currentUser) {
+          console.warn('[AuthService] validateSession transport failure, preserving local session');
+          return true;
+        }
+        return false;
+      } finally {
+        this.sessionValidationInFlight = null;
+      }
+    })();
+
+    return this.sessionValidationInFlight;
   }
 
   /**
@@ -560,6 +671,7 @@ class AuthService {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
     this.clearSessionMarker();
+    this.clearLoginSuccessMarker();
 
     this.clearClientCookies();
   }

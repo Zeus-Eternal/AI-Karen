@@ -12,6 +12,7 @@
   */
 
 import React from 'react';
+import { PLUGIN_IMPORT_MAP } from '@/plugin-import-map.generated';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,8 +37,6 @@ export interface UIEntryPoint {
 }
 
 type PluginImporter = () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>;
-
-
 
 /** Backend catalog response - can be direct array or wrapped */
 // Direct array response from backend
@@ -64,37 +63,21 @@ interface BackendCatalog {
   * Import map from generated registry - only includes installed packages.
   * This replaces the old static discovery + legacy fallback approach.
   */
-let generatedImportMap: Record<string, PluginImporter> = {}; // Used for plugin component loading
+const generatedImportMap: Record<string, PluginImporter> = PLUGIN_IMPORT_MAP;
+
+// Backward-compatible export: other frontend modules/tests import this symbol from loader.ts.
+export { PLUGIN_IMPORT_MAP };
 
 /**
-  * Load the generated import map from the backend API.
-  * This uses the manifest integration system to get dynamic import mappings.
-  */
-async function loadGeneratedImportMap(): Promise<void> {
-  // For now, just use fallback plugins to avoid API issues
-  console.log('[PluginLoader] Using fallback plugin imports');
-
-  // Use direct path from src directory
-  generatedImportMap = {
-    'weather-query': () => import('@/plugin_repo/weather-query/weather-query'),
-  };
-}
-
-/**
-  * Refresh the generated import map from the backend.
-  * This can be called when plugins are installed or updated.
-  */
+ * Refresh the import map.
+ *
+ * In production this is a no-op because the map is a static module generated
+ * at build/materialization time. We still invalidate the catalog cache so UI
+ * state refreshes after lifecycle actions.
+ */
 export async function refreshImportMap(): Promise<void> {
-  await loadGeneratedImportMap();
-  // Force catalog cache invalidation
   invalidateCatalogCache();
 }
-
-// Load the generated import map (async)
-loadGeneratedImportMap().catch(console.error);
-
-// Export the generated import map for external use
-export { generatedImportMap as PLUGIN_IMPORT_MAP };
 
 // ─── Backend Catalog Cache ───────────────────────────────────────────────────
 
@@ -250,21 +233,13 @@ export async function resolvePluginComponentAsync(
   pluginId: string,
   entryId?: string
 ): Promise<React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>> | null> {
-  // Special case for weather-query in development
-  if (pluginId === 'weather-query') {
-    const importer = generatedImportMap['weather-query'];
-    if (importer) {
-      return React.lazy(importer);
-    }
-  }
-
   const catalog = await fetchBackendCatalog();
   return resolvePluginComponent(pluginId, catalog, entryId);
 }
 
-/** Returns the set of plugin IDs currently registered in the import map. */
+/** List plugin IDs that have a bundled importer entry. */
 export function getRegisteredPluginIds(): string[] {
-  return Object.keys(generatedImportMap);
+  return Object.keys(generatedImportMap).sort();
 }
 
 /**

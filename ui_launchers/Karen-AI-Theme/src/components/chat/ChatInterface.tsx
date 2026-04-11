@@ -23,6 +23,7 @@ import {
   normalizeConversationMessage,
   normalizeProviderName,
 } from '@/lib/chat-response';
+import { formatModelSwitchError } from '@/lib/model-switch-errors';
 
 // Session Management Types
 interface Session {
@@ -1028,7 +1029,7 @@ export default function ChatInterface() {
     } catch (err) {
       toast({
         title: 'Model switch failed',
-        description: err instanceof Error ? err.message : 'Karen could not update the active provider and model.',
+        description: formatModelSwitchError(err, provider.display_name),
         variant: 'destructive',
       });
     } finally {

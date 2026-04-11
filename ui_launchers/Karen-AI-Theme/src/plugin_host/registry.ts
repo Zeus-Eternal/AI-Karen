@@ -233,6 +233,8 @@ function isPromptFirstValid(entry: BackendPluginEntry): boolean {
   if (typeof entry.purpose === 'string' && entry.purpose.trim().length > 0) return true;
   if (Array.isArray(entry.actions) && entry.actions.length > 0) return true;
   if (entry.invocation_guidance && typeof entry.invocation_guidance === 'object') return true;
+  if (entry.capabilities?.provides_ui === true || entry.has_component === true) return true;
+  if (Array.isArray(entry.ui_entry_points) && entry.ui_entry_points.length > 0) return true;
   return false;
 }
 
@@ -242,17 +244,19 @@ function normaliseEntry(raw: BackendPluginEntry): PluginCatalogEntry {
   const enabled = raw.status === 'active';
   const has_gui =
     raw.capabilities?.provides_ui === true ||
-    raw.ui?.has_component === true;
+    raw.ui?.has_component === true ||
+    raw.has_component === true ||
+    (Array.isArray(raw.ui_entry_points) && raw.ui_entry_points.length > 0);
 
   const promptFirstValid = isPromptFirstValid(raw);
 
   // Build UI manifest
   let uiManifest: PluginUIManifest | undefined;
-  if (has_gui && raw.ui) {
+  if (has_gui) {
     uiManifest = {
       pluginId: id,
-      componentId: raw.ui.component_id ?? id,
-      purpose: raw.ui.purpose,
+      componentId: raw.ui?.component_id ?? raw.ui_entry_points?.[0]?.component ?? id,
+      purpose: raw.ui?.purpose,
       displayName: raw.display_name,
     };
   }
@@ -270,6 +274,24 @@ function normaliseEntry(raw: BackendPluginEntry): PluginCatalogEntry {
       zone,
       order: entry.order != null && entry.order !== 0 ? entry.order : null,
       iconPath: entry.icon,
+    });
+  });
+
+  // Convert backend entry-point declarations into menu contributions when a
+  // richer GUI manifest is not available from the backend yet.
+  const entryPoints = raw.ui_entry_points ?? [];
+  entryPoints.forEach((entry, index) => {
+    const zone = entry.zone ?? 'sidebar.plugins';
+    if (menuContributions.some((existing) => existing.zone === zone && existing.label === (entry.label ?? raw.display_name ?? id))) {
+      return;
+    }
+
+    menuContributions.push({
+      pluginId: id,
+      entryId: entry.entry_id ?? `${id}.${zone.replace(/\./g, '-')}.${index}`,
+      label: entry.label ?? raw.display_name ?? id,
+      zone,
+      order: entry.order != null && entry.order !== 0 ? entry.order : null,
     });
   });
 

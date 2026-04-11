@@ -13,7 +13,7 @@ import os
 import textwrap
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
 from ai_karen_engine.integrations.llm_utils import (
     EmbeddingFailed,
@@ -140,111 +140,64 @@ class FallbackProvider(LLMProviderBase):
         logger.info(f"Discovered {len(models)} local models: {list(models.keys())}")
         return models
     
-    # Removed _llamacpp_runtimes as it's now handled by LlamaCppRuntime singleton
+    # Removed direct llama.cpp runtime ownership here. The registry-owned
+    # `llamacpp` provider is now the single authoritative local GGUF path.
+    def _try_local_llamacpp(
+        self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any
+    ) -> Optional[str]:
+        """Delegate local GGUF generation to the authoritative registry provider."""
+        try:
+            from ai_karen_engine.integrations.llm_registry import get_registry
 
-    def _try_local_llamacpp(self, messages: Union[str, List[Dict[str, str]]], **kwargs: Any) -> Optional[str]:
-        """Try to use local llama-cpp model for generation.
-        
-        Args:
-            messages: Prompt string or list of chat messages
-            
-        Returns:
-            Generated text or None if failed
-        """
-        # Find llama-cpp model paths
-        llama_models = {k: v for k, v in self._local_models.items() if k.startswith("llamacpp_")}
-        
-        if not llama_models:
-            logger.debug("No local llama-cpp models found")
-            return None
-        
-        # Determine model attempt order
-        requested_model = kwargs.get("model")
-        if not requested_model:
-            try:
-                from ai_karen_engine.config.config_manager import get_default_model
+            requested_model = kwargs.get("model")
+            if not requested_model:
+                try:
+                    from ai_karen_engine.config.config_manager import get_default_model
 
-                requested_model = get_default_model("llamacpp")
-            except Exception:
-                requested_model = None
-        attempt_order = []
-        
-        # 1. First priority: Specifically requested model
-        if requested_model:
-            normalized_requested = str(requested_model).strip()
-            requested_stem = Path(normalized_requested).stem
-            # Check for exact match or extension-stripped match
-            for m_name, m_path in llama_models.items():
-                candidate_stem = Path(m_path).stem
-                if (
-                    m_name == normalized_requested
-                    or m_name == f"llamacpp_{normalized_requested}"
-                    or candidate_stem == normalized_requested
-                    or candidate_stem == requested_stem
-                ):
-                    attempt_order.append((m_name, m_path))
-                    break
-        
-        # 2. Rest of the models (sorted by size, prefer smaller for speed)
-        remaining = [
-            (name, path) for name, path in llama_models.items() 
-            if (name, path) not in attempt_order
-        ]
-        attempt_order.extend(sorted(remaining, key=lambda x: Path(x[1]).stat().st_size))
-        
-        # Try each model in order
-        for model_name, model_path in attempt_order:
-            try:
-                from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
-                
-                # Get global singleton runtime
-                runtime = LlamaCppRuntime.get_instance()
-                
-                # Load model if not already loaded or different
-                if not runtime.is_loaded() or runtime.model_path != model_path:
-                    logger.info(f"Loading local model into shared runtime: {model_name}")
-                    if not runtime.load_model(model_path):
-                        logger.warning(f"Failed to load model: {model_name}")
-                        continue
-                else:
-                    logger.debug(f"Using already loaded model in shared runtime: {model_name}")
-                
-                # Generate response
-                if isinstance(messages, list):
-                    prepared_messages = self._prepare_local_messages(messages)
-                    logger.info(
-                        "Generating chat with %d/%d trimmed messages using %s",
-                        len(prepared_messages),
-                        len(messages),
-                        model_name,
-                    )
+                    requested_model = get_default_model("llamacpp")
+                except Exception:
+                    requested_model = None
+
+            registry = get_registry()
+            llamacpp_provider = registry.get_provider("llamacpp", model=requested_model)
+            if not llamacpp_provider:
+                logger.debug("Authoritative llamacpp provider unavailable")
+                return None
+
+            if isinstance(messages, list):
+                prepared_messages = self._prepare_local_messages(messages)
+                logger.info(
+                    "Generating chat with %d/%d trimmed messages using authoritative llamacpp provider",
+                    len(prepared_messages),
+                    len(messages),
+                )
+                runtime = getattr(llamacpp_provider, "runtime", None)
+                if runtime and hasattr(runtime, "chat"):
                     response = runtime.chat(
                         prepared_messages,
                         max_tokens=192,
                         temperature=0.7,
                         top_p=0.9,
-                        stop=["\n\n", "Human:", "User:"]
+                        stop=["\n\n", "Human:", "User:"],
                     )
                 else:
-                    logger.info(f"Generating completion for prompt (len={len(messages)}) using {model_name}")
-                    response = runtime.generate(
-                        messages,
-                        max_tokens=256,
-                        temperature=0.7,
-                        top_p=0.9,
-                        stop=["\n\n", "Human:", "User:"]
+                    raise GenerationFailed(
+                        "Authoritative llamacpp provider does not expose chat runtime."
                     )
-                
-                if response and len(response.strip()) > 0:
-                    logger.info(f"Successfully generated response using {model_name}")
-                    # Store current model name for record_success
-                    self._current_model_id = model_name
-                    return response
-                
-            except Exception as e:
-                logger.warning(f"Failed to use {model_name}: {e}")
-                continue
-        
+            else:
+                logger.info(
+                    "Generating completion for prompt (len=%d) using authoritative llamacpp provider",
+                    len(messages),
+                )
+                response = llamacpp_provider.generate_text(messages, **kwargs)
+
+            if response and len(response.strip()) > 0:
+                model_path = getattr(llamacpp_provider, "model_path", None)
+                model_name = Path(model_path).stem if model_path else str(requested_model or "local")
+                self._current_model_id = f"llamacpp:{model_name}"
+                return response
+        except Exception as e:
+            logger.warning("Authoritative llamacpp provider failed: %s", e)
         return None
     
     # Shared cache for transformers runtimes across instances to prevent OOM
@@ -319,8 +272,9 @@ class FallbackProvider(LLMProviderBase):
                 
                 if response and len(response.strip()) > 0:
                     logger.info(f"Successfully generated response using {model_name}")
-                    # Store current model name for record_success
-                    self._current_model_id = model_name
+                    # Store a canonical provider-prefixed model id for correct attribution.
+                    logical_name = str(model_name).removeprefix("transformers_")
+                    self._current_model_id = f"transformers:{logical_name}"
                     return response
                 
             except Exception as e:
@@ -371,7 +325,7 @@ class FallbackProvider(LLMProviderBase):
             
         Fallback hierarchy:
         1. Try registered llamacpp provider (if available)
-        2. Try local llama-cpp models directly
+        2. Try local llama-cpp through the authoritative registry provider
         3. Try local transformers models
         4. Fall back to deterministic response
         """
@@ -418,13 +372,20 @@ class FallbackProvider(LLMProviderBase):
             error_details.append(f"Registered llamacpp: {str(e)}")
             logger.debug(f"Registered llamacpp provider failed: {e}")
         
-        # Step 3: Try local llama-cpp models directly
+        # Step 2: Retry through the authoritative local llamacpp path.
+        # This keeps fallback behavior on the same provider/runtime authority
+        # while still allowing trimmed-message degraded execution semantics.
         try:
-            logger.info("Attempting to use local llama-cpp models")
+            logger.info("Attempting authoritative local llama-cpp fallback path")
             local_llama_response = self._try_local_llamacpp(prompt, **kwargs)
             if local_llama_response:
-                logger.info("✓ Successfully used local llama-cpp model")
-                return self._record_success(local_llama_response, start, "local_llamacpp", model_id=getattr(self, '_current_model_id', 'local:llamacpp'))
+                logger.info("✓ Successfully used authoritative local llama-cpp fallback path")
+                return self._record_success(
+                    local_llama_response,
+                    start,
+                    "registered_llamacpp",
+                    model_id=getattr(self, "_current_model_id", "llamacpp:local"),
+                )
         except Exception as e:
             error_details.append(f"Local llama-cpp: {str(e)}")
             logger.debug(f"Local llama-cpp failed: {e}")

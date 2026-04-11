@@ -85,21 +85,6 @@ export class UIInstallerService {
    */
   public async installUI(pluginId: string): Promise<UIInstallResult> {
     try {
-      // Special handling for weather-query since it's manually installed
-      if (pluginId === 'weather-query') {
-        // Save installation state
-        const installations = this.loadInstallations();
-        installations[pluginId] = 'installed';
-        this.saveInstallations(installations);
-
-        return {
-          success: true,
-          message: 'UI is already installed (manually installed)',
-          pluginId,
-          status: 'installed',
-        };
-      }
-
       // Call backend to materialize UI artifacts for this plugin
       const response = await fetch(`${this.apiBase}/materialize/${pluginId}`, {
         method: 'POST',

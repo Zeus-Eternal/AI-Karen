@@ -11,8 +11,8 @@ const DEFAULT_BACKEND_URL = IS_DOCKER
   : process.env.KAREN_BACKEND_URL ||
     process.env.BACKEND_URL ||
     'http://localhost:8000';
-const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '60000', 10);
-const LONG_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '180000', 10);
+const DEFAULT_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || '15000', 10);
+const LONG_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || '30000', 10);
 const RETRYABLE_PROXY_ERROR_CODES = new Set([
   'ECONNREFUSED',
   'ECONNRESET',
@@ -111,6 +111,10 @@ function clearInitTimeout(init: RequestInit): void {
 function isRetryableProxyError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
+  }
+
+  if (error.name === 'AbortError') {
+    return true;
   }
 
   const errorWithCode = error as Error & { code?: string; cause?: { code?: string } };

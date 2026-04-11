@@ -101,12 +101,12 @@ Production-ready authentication with advanced security and flexibility:
 # Login with username
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "<your-password>"}'
 
 # Login with email
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+  -d '{"email": "admin@karen.ai", "password": "<your-password>"}'
 
 # Get enhanced authentication statistics
 curl -X GET "http://localhost:8000/api/auth/status"
@@ -268,9 +268,14 @@ KARI_LAZY_LOADING=true KARI_MINIMAL_STARTUP=true python start_optimized.py
 - **Database**: localhost:5434 (PostgreSQL)
 
 **Default Login Credentials:**
-- Username: `admin` or Email: `admin@kari.ai`
-- Password: `admin123`
-- **⚠️ Important**: Change default password after first login
+- Username: `admin` or Email: `admin@karen.ai` (alias: `admin@kari.ai`)
+- Password: set via first-run setup or `KARI_ADMIN_PASSWORD`
+- **⚠️ Important**: Do not ship a default password in production; rotate immediately if you used a bootstrap value.
+
+**Login Identifier Notes**
+- The backend accepts `username` or `email`. For environments that have historical accounts under both `@karen.ai` and `@kari.ai`, login resolution is deterministic:
+  - If you log in with `username: "admin"`, the service prefers `admin@karen.ai` when both exist.
+  - If you log in with `email: "admin@karen.ai"`, it will also accept the `admin@kari.ai` alias when only that account exists (and vice versa).
 
 ## Performance & Optimization
 
@@ -401,21 +406,21 @@ The enhanced authentication migration (v022) has been applied, adding:
 # Login with username
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "<your-password>"}'
 
 # Login with email  
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+  -d '{"email": "admin@karen.ai", "password": "<your-password>"}'
 
 # Get authentication status and statistics
 curl -X GET "http://localhost:8000/api/auth/status"
 ```
 
 **Default Credentials:**
-- Username: `admin` or Email: `admin@kari.ai`
-- Password: `admin123`
-- **Important**: Change the default password immediately after first login
+- Username: `admin` or Email: `admin@karen.ai`
+- Password: set via first-run setup or `KARI_ADMIN_PASSWORD`
+- **Important**: Rotate/replace any bootstrap password after first login
 
 **Migration Documentation:**
 See [Enhanced Authentication Migration Guide](ENHANCED_AUTH_MIGRATION_README.md) for detailed migration information and new features.
@@ -643,12 +648,12 @@ curl -H "X-Tenant-ID: default" \
 # Login with username (new feature)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "<your-password>"}'
 
 # Login with email (traditional method)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@kari.ai", "password": "admin123"}'
+  -d '{"email": "admin@karen.ai", "password": "<your-password>"}'
 
 # Use token for authenticated requests
 curl -H "Authorization: Bearer <token>" \
@@ -671,18 +676,18 @@ The new validation system provides comprehensive form validation with detailed e
 # Test login validation - missing identifier (should fail)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"password": "admin123"}'
+  -d '{"password": "<your-password>"}'
 # Returns: "Either email or username must be provided"
 
 # Test with invalid email format (should fail)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "invalid-email", "password": "admin123"}'
+  -d '{"email": "invalid-email", "password": "<your-password>"}'
 
 # Test with valid username (should succeed)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "<your-password>"}'
 ```
 
 **Validation Features:**
@@ -811,7 +816,7 @@ curl http://localhost:8000/api/auth/status
 # Verify default credentials work
 curl -X POST "http://localhost:8000/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "admin", "password": "<your-password>"}'
 
 # Check authentication statistics
 curl http://localhost:8000/api/auth/status | jq .stats

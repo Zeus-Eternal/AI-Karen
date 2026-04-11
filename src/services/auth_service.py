@@ -7,6 +7,7 @@ import os
 import secrets
 import time
 import uuid
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator
@@ -422,13 +423,18 @@ class AuthService(BaseService):
             logger.info("AuthService: Performing lazy initialization...")
             await self.initialize()
 
-        email = login_identifier  # Compatibility with existing logic below
+        email = login_identifier.strip()  # Compatibility with existing logic below
 
         # Note: _db_session check removed - method handles None case with temporary client
 
         try:
-            # Get user by email or username
-            user = await self.get_user_by_email(email)
+            # Get user by email or username (with deterministic alias support)
+            user = None
+            for candidate in self._iter_email_alias_candidates(email):
+                user = await self.get_user_by_email(candidate)
+                if user:
+                    break
+
             if not user and "@" not in email:
                 user = await self.get_user_by_username(email)
             if not user:
@@ -1041,22 +1047,46 @@ class AuthService(BaseService):
         if not self._initialized:
             await self.initialize()
 
+        normalized_username = (username or "").strip().lower()
+
         # Check cache first
         for user in self._user_cache.values():
-            if (
-                user.email == username
-            ):  # For now, use email as username (since we don't have username field)
+            cached_email = (user.email or "").lower()
+            if cached_email == normalized_username:
+                return user
+            if cached_email.startswith(f"{normalized_username}@"):
                 return user
 
         try:
             async with self._session_scope() as session:
+                # Backward-compat deterministic aliases (admin@karen.ai <-> admin@kari.ai)
+                for candidate in self._iter_email_alias_candidates(normalized_username):
+                    result = await session.execute(
+                        select(AuthUser).where(
+                            AuthUser.email == candidate,
+                            AuthUser.is_active == True,  # type: ignore
+                        )
+                    )
+                    auth_user = result.scalar_one_or_none()
+                    if auth_user:
+                        user = self._build_user_account(auth_user)
+                        self._user_cache[user.id] = user
+                        return user
+
+                # Local-part username match (e.g. "admin" -> admin@karen.ai / admin@kari.ai)
                 result = await session.execute(
                     select(AuthUser).where(
-                        AuthUser.email == username,  # For now, use email as username
+                        AuthUser.email.ilike(f"{normalized_username}@%"),
                         AuthUser.is_active == True,  # type: ignore
                     )
                 )
-                auth_user = result.scalar_one_or_none()
+                matches = list(result.scalars().all())
+                if not matches:
+                    return None
+
+                auth_user = self._pick_preferred_localpart_user(
+                    matches, normalized_username
+                )
                 if not auth_user:
                     return None
 
@@ -1066,6 +1096,61 @@ class AuthService(BaseService):
         except Exception as e:
             logger.error(f"Error fetching user by username: {e}")
             return None
+
+    def _iter_email_alias_candidates(self, identifier: str) -> List[str]:
+        """Return deterministic email candidates for login identifier."""
+        raw = (identifier or "").strip()
+        lowered = raw.lower()
+        if not lowered:
+            return []
+
+        candidates: List[str] = []
+        seen = set()
+
+        def _append(candidate: str) -> None:
+            normalized = candidate.strip().lower()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                candidates.append(normalized)
+
+        _append(lowered)
+        if "@" not in lowered:
+            _append(f"{lowered}@karen.ai")
+            _append(f"{lowered}@kari.ai")
+            return candidates
+
+        local_part, domain = lowered.split("@", 1)
+        if domain == "karen.ai":
+            _append(f"{local_part}@kari.ai")
+        elif domain == "kari.ai":
+            _append(f"{local_part}@karen.ai")
+
+        return candidates
+
+    def _pick_preferred_localpart_user(
+        self, matches: List[AuthUser], local_part: str
+    ) -> Optional[AuthUser]:
+        """Select a deterministic preferred account when local-part is ambiguous."""
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return matches[0]
+
+        by_email = {
+            str(getattr(user, "email", "")).strip().lower(): user for user in matches
+        }
+        for preferred in (
+            f"{local_part}@karen.ai",
+            f"{local_part}@kari.ai",
+        ):
+            if preferred in by_email:
+                return by_email[preferred]
+
+        grouped = defaultdict(list)
+        for user in matches:
+            grouped[str(getattr(user, "email", "")).strip().lower()].append(user)
+        first_email = sorted(grouped.keys())[0]
+        return grouped[first_email][0]
 
     async def create_session(
         self,

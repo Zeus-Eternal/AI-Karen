@@ -21,6 +21,7 @@ from ai_karen_engine.models.web_api_error_responses import (
     create_service_error_response,
     get_http_status_for_error_code,
 )
+from ai_karen_engine.auth.session import get_current_user
 from services.infra.plugin_service import PluginService
 
 # REMOVED: RBAC access control - replaced with simple role checking
@@ -29,10 +30,6 @@ from services.memory.internal.plugin_execution import ExecutionRequest
 router = APIRouter(tags=["plugins"])
 # Public mirror (read-only) for unauthenticated UI health checks
 public_router = APIRouter(tags=["plugins-public"], prefix="/api/public/plugins")
-
-
-# Alias core dependency for convenience
-get_current_user = bypass_user_context_func
 
 
 logger = get_logger(__name__)

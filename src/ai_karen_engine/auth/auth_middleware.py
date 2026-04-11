@@ -206,6 +206,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "user_type": user_data.get("user_type", "user"),
             "permissions": user_data.get("permissions", []),
             "tenant_id": user_data.get("tenant_id", "default"),
+            "roles": user_data.get("roles", []),
             "token_id": token_id,
             "iat": now,
             "exp": now + timedelta(hours=self.jwt_expiration_hours),
@@ -362,6 +363,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "permissions": payload.get("permissions", []),
             "tenant_id": payload.get("tenant_id", "default"),
             "token_id": payload.get("token_id"),
+            "roles": payload.get("roles", []),
         }
 
     def get_current_user(self, request: Request) -> Dict[str, Any]:
@@ -441,6 +443,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
             "email": payload.get("email"),
             "user_type": payload.get("user_type", "user"),
             "permissions": payload.get("permissions", []),
+            "roles": payload.get("roles", []),
         }
         return self.create_tokens(user_data)
 
@@ -500,6 +503,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                         "permissions": payload.get("permissions", []),
                         "tenant_id": payload.get("tenant_id", "default"),
                         "token_id": payload.get("token_id"),
+                        "roles": payload.get("roles", []),
                     }
 
             session_token = self._extract_session_token_from_request(request)
@@ -514,6 +518,7 @@ class SecureAuthMiddleware(BaseAuthMiddleware):
                         "permissions": payload.get("permissions", []),
                         "tenant_id": payload.get("tenant_id", "default"),
                         "token_id": payload.get("token_id"),
+                        "roles": payload.get("roles", []),
                     }
 
                 auth_service = await get_auth_service()
